@@ -11,6 +11,7 @@
 """
 Microstrategy source helpers.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -54,9 +55,7 @@ class MicroStrategyColumnParser:
         """
 
         array_data_type = None
-        data_type = cls.datatype_mapping.get(
-            field["dataType"].lower(), DataType.UNKNOWN
-        )
+        data_type = cls.datatype_mapping.get(field["dataType"].lower(), DataType.UNKNOWN)
 
         column_def = {
             "name": truncate_column_name(str(field["name"])),

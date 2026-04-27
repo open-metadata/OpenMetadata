@@ -249,16 +249,14 @@ class TestOperationMetricsState:
 
     def test_merge_all_threads(self) -> None:
         metrics = OperationMetricsState()
-        results = []
+        results = []  # noqa: F841
 
         def record_in_thread(category, operation, duration):
             metrics.record_operation(category, operation, duration)
 
         threads = []
         for i in range(5):
-            t = threading.Thread(
-                target=record_in_thread, args=("db_queries", "SELECT", float(i + 1))
-            )
+            t = threading.Thread(target=record_in_thread, args=("db_queries", "SELECT", float(i + 1)))
             threads.append(t)
             t.start()
 
@@ -274,7 +272,7 @@ class TestOperationMetricsState:
     def test_thread_isolation_before_merge(self) -> None:
         metrics = OperationMetricsState()
         barrier = threading.Barrier(2)
-        results = {"thread1_count": 0, "thread2_count": 0}
+        results = {"thread1_count": 0, "thread2_count": 0}  # noqa: F841
 
         def thread1_work():
             metrics.record_operation("db_queries", "SELECT", 10.0)
@@ -320,16 +318,14 @@ class TestTrackOperationDecorator:
         metrics = OperationMetricsState()
         summary = metrics.get_summary()
         assert summary["db_queries"]["SELECT"]["Table"]["count"] == 1
-        assert (
-            summary["db_queries"]["SELECT"]["Table"]["avgTimeMs"] >= 10
-        )  # At least 10ms
+        assert summary["db_queries"]["SELECT"]["Table"]["avgTimeMs"] >= 10  # At least 10ms
 
     def test_decorator_uses_function_name_when_no_operation(self) -> None:
         @track_operation(category="entity_operations")
         def yield_tables():
             return ["table1", "table2"]
 
-        result = yield_tables()
+        result = yield_tables()  # noqa: F841
 
         metrics = OperationMetricsState()
         summary = metrics.get_summary()
@@ -433,9 +429,7 @@ class TestMultiThreadedOperations:
                 metrics.record_operation("db_queries", "SELECT", float(i))
             metrics.merge_thread_metrics()
 
-        threads = [
-            threading.Thread(target=record_operations) for _ in range(num_threads)
-        ]
+        threads = [threading.Thread(target=record_operations) for _ in range(num_threads)]
         for t in threads:
             t.start()
         for t in threads:
@@ -451,9 +445,7 @@ class TestMultiThreadedOperations:
         def process_entities():
             for entity_type in ["Database", "Schema", "Table"]:
                 for _ in range(10):
-                    metrics.record_operation(
-                        "entity_operations", "yield_entity", 1.0, entity_type
-                    )
+                    metrics.record_operation("entity_operations", "yield_entity", 1.0, entity_type)
             metrics.merge_thread_metrics()
 
         threads = [threading.Thread(target=process_entities) for _ in range(5)]
@@ -464,9 +456,7 @@ class TestMultiThreadedOperations:
 
         summary = metrics.get_summary()
         for entity_type in ["Database", "Schema", "Table"]:
-            assert (
-                summary["entity_operations"]["yield_entity"][entity_type]["count"] == 50
-            )
+            assert summary["entity_operations"]["yield_entity"][entity_type]["count"] == 50
 
 
 class TestWorkflowTiming:
@@ -579,9 +569,7 @@ class TestWorkflowTiming:
         metrics.record_operation("source_fetch", "yield_table", 100.0, "Table")
         metrics.record_operation("source_db_queries", "SELECT", 50.0, "Table")
         metrics.record_operation("source_db_queries", "DESCRIBE", 30.0, "Table")
-        metrics.record_operation(
-            "source_api_calls", "GET:/dashboards", 80.0, "Dashboard"
-        )
+        metrics.record_operation("source_api_calls", "GET:/dashboards", 80.0, "Dashboard")
 
         timing = metrics.get_workflow_timing()
 
@@ -591,10 +579,7 @@ class TestWorkflowTiming:
         assert timing["source_db_queries"]["by_operation"]["SELECT"]["total_ms"] == 50.0
         assert timing["source_api_calls"]["total_ms"] == 80.0
         assert timing["source_api_calls"]["call_count"] == 1
-        assert (
-            timing["source_api_calls"]["by_operation"]["GET:/dashboards"]["total_ms"]
-            == 80.0
-        )
+        assert timing["source_api_calls"]["by_operation"]["GET:/dashboards"]["total_ms"] == 80.0
 
 
 class TestRunContext:

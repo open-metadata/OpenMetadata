@@ -75,15 +75,11 @@ class SagemakerSource(MlModelServiceSource):
         self.sagemaker = self.client
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SageMakerConnection = config.serviceConnection.root.config
         if not isinstance(connection, SageMakerConnection):
-            raise InvalidSourceException(
-                f"Expected SageMakerConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected SageMakerConnection, but got {connection}")
         return cls(config, metadata)
 
     def list_registered_models(self):
@@ -99,9 +95,7 @@ class SagemakerSource(MlModelServiceSource):
                     group_name = summary["ModelPackageGroupName"]
 
                     # Get full metadata for this registered model
-                    desc = self.sagemaker.describe_model_package_group(
-                        ModelPackageGroupName=group_name
-                    )
+                    desc = self.sagemaker.describe_model_package_group(ModelPackageGroupName=group_name)
                     registered_models.append(
                         {
                             "ModelName": desc["ModelPackageGroupName"],
@@ -112,9 +106,7 @@ class SagemakerSource(MlModelServiceSource):
                     )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Failed to fetch unified studio registered models list - {err}"
-            )
+            logger.error(f"Failed to fetch unified studio registered models list - {err}")
         return registered_models
 
     def get_mlmodels(  # pylint: disable=arguments-differ
@@ -136,11 +128,11 @@ class SagemakerSource(MlModelServiceSource):
         registered_models = self.list_registered_models()
         if registered_models:
             logger.debug(
-                f"Successfully found registered models under sagemaker unified studio"
+                f"Successfully found registered models under sagemaker unified studio"  # noqa: F541
             )
             models.extend(registered_models)
         else:
-            logger.debug(f"No registered models found under sagemaker unified studio")
+            logger.debug(f"No registered models found under sagemaker unified studio")  # noqa: F541
 
         for model in models:
             try:
@@ -160,20 +152,14 @@ class SagemakerSource(MlModelServiceSource):
                 )
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Validation error while creating SageMakerModel from model details - {err}"
-                )
+                logger.warning(f"Validation error while creating SageMakerModel from model details - {err}")
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Wild error while creating SageMakerModel from model details - {err}"
-                )
+                logger.warning(f"Wild error while creating SageMakerModel from model details - {err}")
             continue
 
     def _get_algorithm(self) -> str:  # pylint: disable=arguments-differ
-        logger.info(
-            "Setting algorithm to default value of `mlmodel` for SageMaker Model"
-        )
+        logger.info("Setting algorithm to default value of `mlmodel` for SageMaker Model")
         return "mlmodel"
 
     def yield_mlmodel(  # pylint: disable=arguments-differ
@@ -215,14 +201,10 @@ class SagemakerSource(MlModelServiceSource):
                 return MlStore(storage=storage, imageRepository=image_repository)
         except ValidationError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Validation error adding the MlModel store from model description: {model_name} - {err}"
-            )
+            logger.warning(f"Validation error adding the MlModel store from model description: {model_name} - {err}")
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Wild error adding the MlModel store from model description: {model_name} - {err}"
-            )
+            logger.warning(f"Wild error adding the MlModel store from model description: {model_name} - {err}")
         return None
 
     def _get_tags(self, model_arn: str) -> Optional[List[TagLabel]]:
@@ -241,14 +223,10 @@ class SagemakerSource(MlModelServiceSource):
                 ]
         except ValidationError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Validation error adding TagLabel from model tags: {model_arn} - {err}"
-            )
+            logger.warning(f"Validation error adding TagLabel from model tags: {model_arn} - {err}")
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Wild error adding TagLabel from model tags: {model_arn} - {err}"
-            )
+            logger.warning(f"Wild error adding TagLabel from model tags: {model_arn} - {err}")
         return None
 
     def _get_hyper_params(self, *args, **kwargs) -> Optional[List[MlHyperParameter]]:

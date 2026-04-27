@@ -86,9 +86,7 @@ MOCK_DATABASE = Database(
     fullyQualifiedName="saperp_source_test.saperp_database",
     displayName="saperp_database",
     description="",
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"
-    ),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"),
 )
 
 MOCK_DATABASE_SCHEMA = DatabaseSchema(
@@ -151,15 +149,11 @@ EXPECTED_TABLES_AND_COLUMNS = [
                 columns=["BUKRS", "FIELD", "MANDT", "RRCTY"],
             )
         ],
-        databaseSchema=FullyQualifiedEntityName(
-            root="saperp_source_test.saperp_database.saperp_database_schema"
-        ),
+        databaseSchema=FullyQualifiedEntityName(root="saperp_source_test.saperp_database.saperp_database_schema"),
     ),
     CreateTableRequest(
         name=EntityName(root="T001B_PS_PER"),
-        description=Markdown(
-            root="Permitted Posting Periods for Account Assignment Objects"
-        ),
+        description=Markdown(root="Permitted Posting Periods for Account Assignment Objects"),
         tableType="Regular",
         columns=[
             Column(
@@ -197,17 +191,13 @@ EXPECTED_TABLES_AND_COLUMNS = [
                 columns=["BKONT", "BUKRS"],
             )
         ],
-        databaseSchema=FullyQualifiedEntityName(
-            root="saperp_source_test.saperp_database.saperp_database_schema"
-        ),
+        databaseSchema=FullyQualifiedEntityName(root="saperp_source_test.saperp_database.saperp_database_schema"),
     ),
 ]
 
 
 def read_datasets(file_name: str) -> dict:
-    mock_file_path = (
-        Path(__file__).parent.parent.parent / f"resources/datasets/saperp/{file_name}"
-    )
+    mock_file_path = Path(__file__).parent.parent.parent / f"resources/datasets/saperp/{file_name}"
     with open(mock_file_path, encoding="UTF-8") as file:
         return json.load(file)
 
@@ -219,9 +209,7 @@ def mock_list_tables(self):  # pylint: disable=unused-argument
 
 def mock_list_columns(self, table_name: str):  # pylint: disable=unused-argument
     columns = read_datasets("columns.json")
-    return [
-        SapErpColumn(**column) for column in columns if column["tabname"] == table_name
-    ]
+    return [SapErpColumn(**column) for column in columns if column["tabname"] == table_name]
 
 
 class SapErpUnitTest(TestCase):
@@ -230,9 +218,7 @@ class SapErpUnitTest(TestCase):
     Alation Unit Test
     """
 
-    @patch(
-        "metadata.ingestion.source.database.saperp.metadata.SaperpSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.saperp.metadata.SaperpSource.test_connection")
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
@@ -242,12 +228,8 @@ class SapErpUnitTest(TestCase):
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.saperp.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.saperp.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
-        self.saperp.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.saperp.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.saperp.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     @patch.object(SapErpClient, "list_tables", mock_list_tables)
     @patch.object(SapErpClient, "list_columns", mock_list_columns)
@@ -258,10 +240,6 @@ class SapErpUnitTest(TestCase):
         tables = self.saperp.get_tables_name_and_type()
         returned_tables = []
         for table in tables:
-            returned_tables.extend(
-                [either.right for either in self.saperp.yield_table(table)]
-            )
-        for _, (expected, original) in enumerate(
-            zip(EXPECTED_TABLES_AND_COLUMNS, returned_tables)
-        ):
+            returned_tables.extend([either.right for either in self.saperp.yield_table(table)])
+        for _, (expected, original) in enumerate(zip(EXPECTED_TABLES_AND_COLUMNS, returned_tables)):
             self.assertEqual(expected, original)

@@ -12,6 +12,7 @@
 """
 Teradata source implementation.
 """
+
 import traceback
 from typing import Iterable, Optional
 
@@ -68,15 +69,11 @@ class TeradataSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection = config.serviceConnection.root.config
         if not isinstance(connection, TeradataConnection):
-            raise InvalidSourceException(
-                f"Expected TeradataConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected TeradataConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_stored_procedures(self) -> Iterable[TeradataStoredProcedure]:
@@ -92,15 +89,9 @@ class TeradataSource(CommonDbSourceService):
                 ).all()
             for row in results:
                 try:
-                    stored_procedure = TeradataStoredProcedure.model_validate(
-                        row._asdict()
-                    )
-                    stored_procedure.definition = self.describe_procedure_definition(
-                        stored_procedure
-                    )
-                    if self.is_stored_procedure_filtered(
-                        stored_procedure.procedure_name
-                    ):
+                    stored_procedure = TeradataStoredProcedure.model_validate(row._asdict())
+                    stored_procedure.definition = self.describe_procedure_definition(stored_procedure)
+                    if self.is_stored_procedure_filtered(stored_procedure.procedure_name):
                         continue
                     yield stored_procedure
                 except Exception as exc:
@@ -113,9 +104,7 @@ class TeradataSource(CommonDbSourceService):
                         )
                     )
 
-    def describe_procedure_definition(
-        self, stored_procedure: TeradataStoredProcedure
-    ) -> str:
+    def describe_procedure_definition(self, stored_procedure: TeradataStoredProcedure) -> str:
         """
         We can only get the SP definition via SHOW PROCEDURE
         """
@@ -140,9 +129,7 @@ class TeradataSource(CommonDbSourceService):
                 name=EntityName(stored_procedure.procedure_name),
                 description=None,
                 storedProcedureCode=StoredProcedureCode(
-                    language=STORED_PROC_LANGUAGE_MAP.get(
-                        stored_procedure.procedure_type
-                    ),
+                    language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.procedure_type),
                     code=stored_procedure.definition,
                 ),
                 databaseSchema=fqn.build(

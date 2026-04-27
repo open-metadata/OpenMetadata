@@ -169,22 +169,16 @@ class SourceConnectionTest(TestCase):
         )
 
         expected_result = "hive://localhost:10000"
-        hive_conn_obj = HiveConnection(
-            scheme=HiveScheme.hive, hostPort="localhost:10000"
-        )
+        hive_conn_obj = HiveConnection(scheme=HiveScheme.hive, hostPort="localhost:10000")
         assert expected_result == get_connection_url(hive_conn_obj)
 
         expected_http_result = "hive+http://localhost:1000"
-        http_conn_obj = HiveConnection(
-            scheme=HiveScheme.hive_http, hostPort="localhost:1000"
-        )
+        http_conn_obj = HiveConnection(scheme=HiveScheme.hive_http, hostPort="localhost:1000")
 
         assert expected_http_result == get_connection_url(http_conn_obj)
 
         exptected_https_result = "hive+https://localhost:1000"
-        http_conn_obj = HiveConnection(
-            scheme=HiveScheme.hive_https, hostPort="localhost:1000"
-        )
+        http_conn_obj = HiveConnection(scheme=HiveScheme.hive_https, hostPort="localhost:1000")
         assert exptected_https_result == get_connection_url(http_conn_obj)
 
     def test_hive_url_custom_auth(self):
@@ -319,9 +313,7 @@ class SourceConnectionTest(TestCase):
         )
 
         expected_result = "impala://localhost:21050"
-        impala_conn_obj = ImpalaConnection(
-            scheme=ImpalaScheme.impala, hostPort="localhost:21050"
-        )
+        impala_conn_obj = ImpalaConnection(scheme=ImpalaScheme.impala, hostPort="localhost:21050")
         assert expected_result == get_connection_url(impala_conn_obj)
 
     def test_impala_url_custom_auth(self):
@@ -459,9 +451,7 @@ class SourceConnectionTest(TestCase):
             scheme=TrinoScheme.trino,
         )
         trino_connection = TrinoConnection(trino_conn_obj)
-        assert (
-            expected_args == trino_connection.build_connection_args(trino_conn_obj).root
-        )
+        assert expected_args == trino_connection.build_connection_args(trino_conn_obj).root
 
         # connection arguments with connectionArguments and without proxies
         expected_args = {
@@ -478,9 +468,7 @@ class SourceConnectionTest(TestCase):
             scheme=TrinoScheme.trino,
         )
         trino_connection = TrinoConnection(trino_conn_obj)
-        assert (
-            expected_args == trino_connection.build_connection_args(trino_conn_obj).root
-        )
+        assert expected_args == trino_connection.build_connection_args(trino_conn_obj).root
 
         # connection arguments without connectionArguments and with proxies
         expected_args = {
@@ -552,9 +540,7 @@ class SourceConnectionTest(TestCase):
         )
         trino_connection = TrinoConnection(trino_conn_obj)
         assert expected_url == str(trino_connection.client.url)
-        assert (
-            expected_args == trino_connection.build_connection_args(trino_conn_obj).root
-        )
+        assert expected_args == trino_connection.build_connection_args(trino_conn_obj).root
 
     def test_trino_with_proxies(self):
         test_proxies = {"http": "http_proxy", "https": "https_proxy"}
@@ -567,12 +553,7 @@ class SourceConnectionTest(TestCase):
             proxies=test_proxies,
         )
         trino_connection = TrinoConnection(trino_conn_obj)
-        assert (
-            test_proxies
-            == trino_connection.build_connection_args(trino_conn_obj)
-            .root.get("http_session")
-            .proxies
-        )
+        assert test_proxies == trino_connection.build_connection_args(trino_conn_obj).root.get("http_session").proxies
 
     def test_trino_without_catalog(self):
         # Test trino url without catalog
@@ -587,7 +568,7 @@ class SourceConnectionTest(TestCase):
         trino_connection = TrinoConnection(trino_conn_obj)
         assert expected_url == str(trino_connection.client.url)
 
-    def test_trino_without_catalog(self):
+    def test_trino_without_catalog(self):  # noqa: F811
         # Test trino url without catalog
         expected_url = "trino://username@localhost:443"
         trino_conn_obj = TrinoConnectionConfig(
@@ -602,7 +583,7 @@ class SourceConnectionTest(TestCase):
 
     def test_trino_with_oauth2(self):
         # Test trino url without catalog
-        expected_url = "trino://username@localhost:443"
+        expected_url = "trino://username@localhost:443"  # noqa: F841
         trino_conn_obj = TrinoConnectionConfig(
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
@@ -611,15 +592,10 @@ class SourceConnectionTest(TestCase):
         )
 
         trino_connection = TrinoConnection(trino_conn_obj)
-        assert (
-            trino_connection.build_connection_args(trino_conn_obj).root.get("auth")
-            == OAuth2Authentication()
-        )
+        assert trino_connection.build_connection_args(trino_conn_obj).root.get("auth") == OAuth2Authentication()
 
     def test_vertica_url(self):
-        expected_url = (
-            "vertica+vertica_python://username:password@localhost:5443/database"
-        )
+        expected_url = "vertica+vertica_python://username:password@localhost:5443/database"
         vertica_conn_obj = VerticaConnection(
             scheme=VerticaScheme.vertica_vertica_python,
             hostPort="localhost:5443",
@@ -647,9 +623,7 @@ class SourceConnectionTest(TestCase):
         )
 
         expected_url = "druid://localhost:8082/druid/v2/sql"
-        druid_conn_obj = DruidConnection(
-            scheme=DruidScheme.druid, hostPort="localhost:8082"
-        )
+        druid_conn_obj = DruidConnection(scheme=DruidScheme.druid, hostPort="localhost:8082")
 
         assert expected_url == get_connection_url(druid_conn_obj)
 
@@ -658,9 +632,7 @@ class SourceConnectionTest(TestCase):
             get_connection_url,
         )
 
-        expected_url = (
-            "pinot://localhost:8099/query/sql?controller=http://localhost:9000/"
-        )
+        expected_url = "pinot://localhost:8099/query/sql?controller=http://localhost:9000/"
         pinot_conn_obj = PinotDBConnection(
             scheme=PinotDBScheme.pinot,
             hostPort="localhost:8099",
@@ -709,9 +681,7 @@ class SourceConnectionTest(TestCase):
         )
         assert expected_url == get_connection_url_common(clickhouse_conn_obj)
 
-        expected_url = (
-            "clickhouse+http://username:@localhost:8123/default?protocol=https"
-        )
+        expected_url = "clickhouse+http://username:@localhost:8123/default?protocol=https"
         clickhouse_conn_obj = ClickhouseConnection(
             username="username",
             hostPort="localhost:8123",
@@ -753,7 +723,9 @@ class SourceConnectionTest(TestCase):
 
     def test_redshift_url(self):
         # connection arguments witho db
-        expected_url = "redshift+psycopg2://username:strong_password@cluster.name.region.redshift.amazonaws.com:5439/dev"
+        expected_url = (
+            "redshift+psycopg2://username:strong_password@cluster.name.region.redshift.amazonaws.com:5439/dev"
+        )
         redshift_conn_obj = RedshiftConnection(
             username="username",
             authType=BasicAuth(password="strong_password"),
@@ -804,12 +776,12 @@ class SourceConnectionTest(TestCase):
             account="ue18849.us-east-2.aws",
         )
 
-        assert expected_url == SnowflakeConnection.get_connection_url(
-            snowflake_conn_obj
-        )
+        assert expected_url == SnowflakeConnection.get_connection_url(snowflake_conn_obj)
 
         # connection arguments with db
-        expected_url = "snowflake://coding:Abhi@ue18849.us-east-2.aws/testdb?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
+        expected_url = (
+            "snowflake://coding:Abhi@ue18849.us-east-2.aws/testdb?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
+        )
         snowflake_conn_obj = SnowflakeConnectionConfig(
             scheme=SnowflakeScheme.snowflake,
             username="coding",
@@ -819,9 +791,7 @@ class SourceConnectionTest(TestCase):
             account="ue18849.us-east-2.aws",
         )
 
-        assert expected_url == SnowflakeConnection.get_connection_url(
-            snowflake_conn_obj
-        )
+        assert expected_url == SnowflakeConnection.get_connection_url(snowflake_conn_obj)
 
     def test_mysql_conn_arguments(self):
         # connection arguments without connectionArguments
@@ -1073,7 +1043,7 @@ class SourceConnectionTest(TestCase):
 
         assert expected_url == get_connection_url(mssql_conn_obj)
 
-    def test_mssql_url(self):
+    def test_mssql_url(self):  # noqa: F811
         from metadata.ingestion.source.database.mssql.connection import (
             get_connection_url,
         )
@@ -1162,9 +1132,7 @@ class SourceConnectionTest(TestCase):
         assert expected_url == OracleConnection.get_connection_url(oracle_conn_obj)
 
         # oracle with service name
-        expected_url = (
-            "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb"
-        )
+        expected_url = "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb"
 
         oracle_conn_obj = OracleConnectionConfig(
             username="admin",
@@ -1187,9 +1155,7 @@ class SourceConnectionTest(TestCase):
             hostPort="localhost:1541",
             scheme=OracleScheme.oracle_cx_oracle,
             oracleConnectionType=OracleDatabaseSchema(databaseSchema="testdb"),
-            connectionOptions=dict(
-                test_key_1="test_value_1", test_key_2="test_value_2"
-            ),
+            connectionOptions=dict(test_key_1="test_value_1", test_key_2="test_value_2"),
         )
         assert OracleConnection.get_connection_url(oracle_conn_obj) in expected_url
 
@@ -1205,9 +1171,7 @@ class SourceConnectionTest(TestCase):
             hostPort="localhost:1541",
             scheme=OracleScheme.oracle_cx_oracle,
             oracleConnectionType=OracleServiceName(oracleServiceName="testdb"),
-            connectionOptions=dict(
-                test_key_1="test_value_1", test_key_2="test_value_2"
-            ),
+            connectionOptions=dict(test_key_1="test_value_1", test_key_2="test_value_2"),
         )
         assert OracleConnection.get_connection_url(oracle_conn_obj) in expected_url
 
@@ -1221,9 +1185,7 @@ class SourceConnectionTest(TestCase):
             username="admin",
             password="password",
             hostPort="localhost:1541",  # We will ignore it here
-            oracleConnectionType=OracleTNSConnection(
-                oracleTNSConnection=tns_connection
-            ),
+            oracleConnectionType=OracleTNSConnection(oracleTNSConnection=tns_connection),
         )
         assert OracleConnection.get_connection_url(oracle_conn_obj) == expected_url
 
@@ -1232,9 +1194,7 @@ class SourceConnectionTest(TestCase):
             get_connection_url,
         )
 
-        def generate_test_data(
-            username="admin", password="password", port=8563, hostname="localhost"
-        ):
+        def generate_test_data(username="admin", password="password", port=8563, hostname="localhost"):
             from collections import namedtuple
 
             TestData = namedtuple("TestData", ["comment", "kwargs", "expected"])

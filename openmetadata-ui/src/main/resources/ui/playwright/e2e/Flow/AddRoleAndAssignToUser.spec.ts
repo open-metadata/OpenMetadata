@@ -79,7 +79,9 @@ test.describe.serial('Add role and assign it to the user', () => {
   test('Create new user and assign new role to him', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.USERS);
 
+    const initialRolesResponse = page.waitForResponse('/api/v1/roles/search?*');
     await page.click('[data-testid="add-user"]');
+    await initialRolesResponse;
 
     await page.fill('[data-testid="email"]', user.email);
     await page.fill('[data-testid="displayName"]', userDisplayName);
@@ -96,7 +98,9 @@ test.describe.serial('Add role and assign it to the user', () => {
     await page.locator('.ant-select-dropdown').waitFor({
       state: 'visible',
     });
+    const rolesSearchResponse = page.waitForResponse('/api/v1/roles/search?*');
     await page.fill('#roles', roleName);
+    await rolesSearchResponse;
     await page.click(`[title="${roleName}"]`);
 
     await page.keyboard.press('Escape');

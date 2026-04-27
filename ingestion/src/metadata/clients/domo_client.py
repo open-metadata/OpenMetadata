@@ -98,9 +98,7 @@ class DomoClient:
 
     def __init__(
         self,
-        config: Union[
-            DomoDashboardConnection, DomoPipelineConnection, DomoDatabaseConnection
-        ],
+        config: Union[DomoDashboardConnection, DomoPipelineConnection, DomoDatabaseConnection],
     ):
         self.config = config
         HEADERS.update({"X-DOMO-Developer-Token": self.config.accessToken})
@@ -127,9 +125,7 @@ class DomoClient:
                 return DomoChartDetails(
                     id=str(response[0]["id"]),
                     name=response[0]["title"],
-                    metadata=DomoChartMetadataDetails(
-                        chartType=response[0].get("metadata", {}).get("chartType", "")
-                    ),
+                    metadata=DomoChartMetadataDetails(chartType=response[0].get("metadata", {}).get("chartType", "")),
                     description=response[0].get("description", ""),
                 )
 
@@ -154,9 +150,7 @@ class DomoClient:
             response = self.client.get(path=url, headers=HEADERS)
             return response
         except Exception as exc:
-            logger.warning(
-                f"Error while getting runs for pipeline {workflow_id} - {exc}"
-            )
+            logger.warning(f"Error while getting runs for pipeline {workflow_id} - {exc}")
             logger.debug(traceback.format_exc())
         return []
 

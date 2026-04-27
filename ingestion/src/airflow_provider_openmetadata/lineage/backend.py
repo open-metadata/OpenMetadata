@@ -46,7 +46,7 @@ class OpenMetadataLineageBackend(LineageBackend):
 
     def send_lineage(
         self,
-        operator: "BaseOperator",
+        operator: "BaseOperator",  # noqa: F821
         inlets: Optional[List] = None,
         outlets: Optional[List] = None,
         context: Dict = None,

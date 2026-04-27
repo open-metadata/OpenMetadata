@@ -11,6 +11,7 @@
 """
 Unit tests for SSRS RDL parser
 """
+
 from pathlib import Path
 
 import pytest
@@ -90,11 +91,7 @@ class TestParseRdl:
             parse_rdl(b"")
 
     def test_doctype_is_rejected(self):
-        payload = (
-            b'<?xml version="1.0"?>'
-            b'<!DOCTYPE lolz [<!ENTITY lol "lol">]>'
-            b"<Report />"
-        )
+        payload = b'<?xml version="1.0"?><!DOCTYPE lolz [<!ENTITY lol "lol">]><Report />'
         with pytest.raises(ValueError, match="DTD or entity"):
             parse_rdl(payload)
 
@@ -123,11 +120,7 @@ class TestParseRdl:
 
     def test_doctype_after_leading_comment_rejected(self):
         padding = b"<!-- " + (b"x" * 8192) + b" -->"
-        payload = (
-            b'<?xml version="1.0"?>'
-            + padding
-            + b'<!DOCTYPE lolz [<!ENTITY lol "lol">]><Report />'
-        )
+        payload = b'<?xml version="1.0"?>' + padding + b'<!DOCTYPE lolz [<!ENTITY lol "lol">]><Report />'
         with pytest.raises(ValueError, match="DTD or entity"):
             parse_rdl(payload)
 

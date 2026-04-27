@@ -12,6 +12,7 @@
 """
 Test Quicksight connector with CLI
 """
+
 from typing import List
 
 import pytest
@@ -81,9 +82,7 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
     def test_lineage(self) -> None:
         pytest.skip("Lineage not configured. Skipping Test")
 
-    def assert_for_vanilla_ingestion(
-        self, source_status: Status, sink_status: Status
-    ) -> None:
+    def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
         """
         We are overriding this method because of diff.
         of 1 in source and sink records

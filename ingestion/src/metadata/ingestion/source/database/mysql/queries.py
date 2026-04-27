@@ -11,6 +11,7 @@
 """
 SQL Queries used during ingestion
 """
+
 import textwrap
 
 MYSQL_SQL_STATEMENT = textwrap.dedent(

@@ -12,6 +12,7 @@
 """
 Read files as string from S3
 """
+
 import traceback
 from typing import Any, Dict, List
 
@@ -35,9 +36,7 @@ def return_s3_storage_options(config_source: S3Config) -> Dict[str, Any]:
     if connection_args.awsAccessKeyId:
         storage_options["key"] = connection_args.awsAccessKeyId
     if connection_args.awsSecretAccessKey:
-        storage_options[
-            "secret"
-        ] = connection_args.awsSecretAccessKey.get_secret_value()
+        storage_options["secret"] = connection_args.awsSecretAccessKey.get_secret_value()
     if connection_args.awsSessionToken:
         storage_options["token"] = connection_args.awsSessionToken
 
@@ -61,9 +60,7 @@ class S3Reader(Reader):
     def __init__(self, client):
         self.client = client
 
-    def read(
-        self, path: str, *, bucket_name: str = None, verbose: bool = True, **__
-    ) -> bytes:
+    def read(self, path: str, *, bucket_name: str = None, verbose: bool = True, **__) -> bytes:
         try:
             return self.client.get_object(Bucket=bucket_name, Key=path)["Body"].read()
         except Exception as err:

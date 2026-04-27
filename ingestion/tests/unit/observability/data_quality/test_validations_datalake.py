@@ -1239,9 +1239,7 @@ def test_suite_validation_datalake(
 
     test_handler = test_handler_obj(
         PandasRunner(
-            dataset=lambda: iter(
-                (DATALAKE_DATA_FRAME(1_000), DATALAKE_DATA_FRAME(1_000))
-            ),
+            dataset=lambda: iter((DATALAKE_DATA_FRAME(1_000), DATALAKE_DATA_FRAME(1_000))),
             raw_dataset=None,
         ),
         test_case=test_case,
@@ -1275,11 +1273,7 @@ def test_suite_validation_datalake(
         assert len(res.dimensionResults) == len(expected_dimension)
         for expected_dim in expected_dimension:
             dim = next(
-                (
-                    dim
-                    for dim in res.dimensionResults
-                    if dim.dimensionKey == expected_dim[0]
-                ),
+                (dim for dim in res.dimensionResults if dim.dimensionKey == expected_dim[0]),
                 None,
             )
             assert dim is not None

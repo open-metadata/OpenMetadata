@@ -11,6 +11,7 @@
 """
 Ssrs integration test fixtures
 """
+
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer

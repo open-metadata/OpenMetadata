@@ -107,8 +107,7 @@ class StdioTransport:
         resolved = shutil.which(command)
         if resolved is None:
             raise McpProtocolError(
-                f"Command not found: {command}. "
-                "Ensure the MCP server command is installed and in PATH."
+                f"Command not found: {command}. Ensure the MCP server command is installed and in PATH."
             )
         return resolved
 
@@ -119,9 +118,7 @@ class StdioTransport:
         if self.env:
             overridden = self._SENSITIVE_ENV_VARS & self.env.keys()
             if overridden:
-                logger.warning(
-                    f"MCP server '{self.command}' overrides sensitive env vars: {overridden}"
-                )
+                logger.warning(f"MCP server '{self.command}' overrides sensitive env vars: {overridden}")
             full_env.update(self.env)
 
         try:
@@ -198,9 +195,7 @@ class StdioTransport:
         except Exception as e:
             raise McpProtocolError(f"Failed to send notification: {e}")
 
-    def send_request(
-        self, method: str, params: Optional[Dict] = None
-    ) -> Dict[str, Any]:
+    def send_request(self, method: str, params: Optional[Dict] = None) -> Dict[str, Any]:
         """Send a JSON-RPC request and wait for response"""
         if not self.process or not self.process.stdin:
             raise McpProtocolError("Transport not connected")
@@ -231,9 +226,7 @@ class StdioTransport:
                 self._response_events.pop(msg_id, None)
                 response = self._responses.pop(msg_id, {})
             if "error" in response:
-                raise McpProtocolError(
-                    f"MCP error: {response['error'].get('message', 'Unknown error')}"
-                )
+                raise McpProtocolError(f"MCP error: {response['error'].get('message', 'Unknown error')}")
             return response.get("result", {})
 
         with self._lock:
@@ -296,9 +289,7 @@ class HttpTransport:
         except Exception as e:
             logger.warning(f"Failed to send notification '{method}': {e}")
 
-    def send_request(
-        self, method: str, params: Optional[Dict] = None
-    ) -> Dict[str, Any]:
+    def send_request(self, method: str, params: Optional[Dict] = None) -> Dict[str, Any]:
         """Send a JSON-RPC request via HTTP POST"""
         request = {
             "jsonrpc": "2.0",
@@ -318,9 +309,7 @@ class HttpTransport:
             result = response.json()
 
             if "error" in result:
-                raise McpProtocolError(
-                    f"MCP error: {result['error'].get('message', 'Unknown error')}"
-                )
+                raise McpProtocolError(f"MCP error: {result['error'].get('message', 'Unknown error')}")
             return result.get("result", {})
         except (requests.RequestException, ValueError) as e:
             raise McpProtocolError(f"HTTP request failed: {e}")
@@ -455,9 +444,7 @@ class McpClient:
         self._initialized = False
 
 
-def parse_claude_desktop_config(
-    config_path: str, config: Optional[Dict] = None
-) -> List[McpServerInfo]:
+def parse_claude_desktop_config(config_path: str, config: Optional[Dict] = None) -> List[McpServerInfo]:
     """
     Parse Claude Desktop configuration file to extract MCP server definitions.
 
@@ -502,9 +489,7 @@ def parse_claude_desktop_config(
     return servers
 
 
-def parse_vscode_config(
-    config_path: str, config: Optional[Dict] = None
-) -> List[McpServerInfo]:
+def parse_vscode_config(config_path: str, config: Optional[Dict] = None) -> List[McpServerInfo]:
     """
     Parse VS Code settings.json to extract MCP server definitions.
 

@@ -12,6 +12,7 @@
 """
 snowflake unit tests
 """
+
 # pylint: disable=line-too-long
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
@@ -83,9 +84,7 @@ SNOWFLAKE_INCREMENTAL_CONFIGURATION = {
     **{
         "source": {
             **SNOWFLAKE_CONFIGURATION["source"],
-            "sourceConfig": {
-                "config": {"type": "DatabaseMetadata", "incremental": {"enabled": True}}
-            },
+            "sourceConfig": {"config": {"type": "DatabaseMetadata", "incremental": {"enabled": True}}},
         }
     },
 }
@@ -177,18 +176,14 @@ def get_snowflake_sources():
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection",
         return_value=False,
     ):
-        config = OpenMetadataWorkflowConfig.model_validate(
-            SNOWFLAKE_CONFIGURATIONS["not_incremental"]
-        )
+        config = OpenMetadataWorkflowConfig.model_validate(SNOWFLAKE_CONFIGURATIONS["not_incremental"])
         sources["not_incremental"] = SnowflakeSource.create(
             SNOWFLAKE_CONFIGURATIONS["not_incremental"]["source"],
             config.workflowConfig.openMetadataServerConfig,
             SNOWFLAKE_CONFIGURATIONS["not_incremental"]["ingestionPipelineFQN"],
         )
 
-        config_custom = OpenMetadataWorkflowConfig.model_validate(
-            SNOWFLAKE_CONFIGURATIONS["custom_host"]
-        )
+        config_custom = OpenMetadataWorkflowConfig.model_validate(SNOWFLAKE_CONFIGURATIONS["custom_host"])
         sources["custom_host"] = SnowflakeSource.create(
             SNOWFLAKE_CONFIGURATIONS["custom_host"]["source"],
             config_custom.workflowConfig.openMetadataServerConfig,
@@ -199,9 +194,7 @@ def get_snowflake_sources():
             "metadata.ingestion.source.database.incremental_metadata_extraction.IncrementalConfigCreator._get_pipeline_statuses",
             return_value=MOCK_PIPELINE_STATUSES,
         ):
-            config = OpenMetadataWorkflowConfig.model_validate(
-                SNOWFLAKE_CONFIGURATIONS["incremental"]
-            )
+            config = OpenMetadataWorkflowConfig.model_validate(SNOWFLAKE_CONFIGURATIONS["incremental"])
             sources["incremental"] = SnowflakeSource.create(
                 SNOWFLAKE_CONFIGURATIONS["incremental"]["source"],
                 config.workflowConfig.openMetadataServerConfig,
@@ -222,10 +215,7 @@ class SnowflakeUnitTest(TestCase):
     def test_partition_parse_columns(self):
         for source in self.sources.values():
             for idx, expr in enumerate(RAW_CLUSTER_KEY_EXPRS):
-                assert (
-                    source.parse_column_name_from_expr(expr)
-                    == EXPECTED_PARTITION_COLUMNS[idx]
-                )
+                assert source.parse_column_name_from_expr(expr) == EXPECTED_PARTITION_COLUMNS[idx]
 
     def test_incremental_config_is_created_accordingly(self):
         self.assertFalse(self.sources["not_incremental"].incremental.enabled)
@@ -233,9 +223,7 @@ class SnowflakeUnitTest(TestCase):
         self.assertTrue(self.sources["incremental"].incremental.enabled)
 
         milliseconds_in_one_day = 24 * 60 * 60 * 1000
-        safety_margin_days = self.sources[
-            "incremental"
-        ].source_config.incremental.safetyMarginDays
+        safety_margin_days = self.sources["incremental"].source_config.incremental.safetyMarginDays
 
         self.assertEqual(
             self.sources["incremental"].incremental.start_timestamp,
@@ -250,9 +238,7 @@ class SnowflakeUnitTest(TestCase):
                 expected_dynamic_url = EXPECTED_SNOW_URL_DYNAMIC_CUSTOM
                 expected_external_url = EXPECTED_SNOW_URL_EXTERNAL_CUSTOM
                 expected_view_url = EXPECTED_SNOW_URL_VIEW_CUSTOM
-                expected_materialized_view_url = (
-                    EXPECTED_SNOW_URL_MATERIALIZED_VIEW_CUSTOM
-                )
+                expected_materialized_view_url = EXPECTED_SNOW_URL_MATERIALIZED_VIEW_CUSTOM
                 expected_stream_url = EXPECTED_SNOW_URL_STREAM_CUSTOM
                 expected_procedure_url = EXPECTED_SNOW_URL_PROCEDURE_CUSTOM
                 expected_udf_url = EXPECTED_SNOW_URL_UDF_CUSTOM
@@ -505,12 +491,8 @@ class SnowflakeUnitTest(TestCase):
         self.assertEqual(map_type.value_type, sqltypes.VARCHAR)  # default
         self.assertFalse(map_type.not_null)  # default
 
-    @patch(
-        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_tag_labels"
-    )
-    @patch(
-        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_schema_tag_labels"
-    )
+    @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_tag_labels")
+    @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_schema_tag_labels")
     @patch("metadata.ingestion.source.database.snowflake.metadata.get_tag_label")
     def test_schema_tag_inheritance(
         self,
@@ -522,16 +504,12 @@ class SnowflakeUnitTest(TestCase):
         for source in self.sources.values():
             # Verify tags are fetched and stored
             mock_schema_tags = [
-                Mock(
-                    SCHEMA_NAME="TEST_SCHEMA", TAG_NAME="SCHEMA_TAG", TAG_VALUE="VALUE"
-                ),
+                Mock(SCHEMA_NAME="TEST_SCHEMA", TAG_NAME="SCHEMA_TAG", TAG_VALUE="VALUE"),
             ]
             mock_conn = MagicMock()
             mock_conn.execute.return_value = mock_schema_tags
             source.engine = MagicMock()
-            source.engine.connect.return_value.__enter__ = MagicMock(
-                return_value=mock_conn
-            )
+            source.engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
             source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
             source.set_schema_tags_map("TEST_DATABASE")
@@ -571,12 +549,8 @@ class SnowflakeUnitTest(TestCase):
             self.assertIn("SnowflakeTag.SCHEMA_TAG", tag_fqns)
             self.assertIn("SnowflakeTag.TABLE_TAG", tag_fqns)
 
-    @patch(
-        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_tag_labels"
-    )
-    @patch(
-        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_schema_tag_labels"
-    )
+    @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_tag_labels")
+    @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_schema_tag_labels")
     @patch("metadata.ingestion.source.database.snowflake.metadata.get_tag_label")
     def test_database_tag_inheritance(
         self,
@@ -597,9 +571,7 @@ class SnowflakeUnitTest(TestCase):
             mock_conn = MagicMock()
             mock_conn.execute.return_value = mock_database_tags
             source.engine = MagicMock()
-            source.engine.connect.return_value.__enter__ = MagicMock(
-                return_value=mock_conn
-            )
+            source.engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
             source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
             # Test set_database_tags_map
@@ -611,9 +583,7 @@ class SnowflakeUnitTest(TestCase):
             )
 
             # Setup schema tags for combined testing
-            source.schema_tags_map = {
-                "TEST_SCHEMA": [{"tag_name": "SCHEMA_TAG", "tag_value": "SCHEMA_VALUE"}]
-            }
+            source.schema_tags_map = {"TEST_SCHEMA": [{"tag_name": "SCHEMA_TAG", "tag_value": "SCHEMA_VALUE"}]}
 
             # Mock tag label creation
             def mock_tag_label_side_effect(metadata, tag_name, classification_name):
@@ -654,12 +624,8 @@ class SnowflakeUnitTest(TestCase):
             self.assertIn("SCHEMA_TAG.SCHEMA_VALUE", tag_fqns)
             self.assertIn("DATABASE_TAG.DB_VALUE", tag_fqns)
 
-    @patch(
-        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_tag_labels"
-    )
-    @patch(
-        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_schema_tag_labels"
-    )
+    @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_tag_labels")
+    @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_schema_tag_labels")
     @patch("metadata.ingestion.source.database.snowflake.metadata.get_tag_label")
     def test_tag_value_precedence(
         self,
@@ -678,13 +644,9 @@ class SnowflakeUnitTest(TestCase):
             # Schema: ENV=staging
             # Table: ENV=production
 
-            source.database_tags_map = {
-                "TEST_DATABASE": [{"tag_name": "ENV", "tag_value": "dev"}]
-            }
+            source.database_tags_map = {"TEST_DATABASE": [{"tag_name": "ENV", "tag_value": "dev"}]}
 
-            source.schema_tags_map = {
-                "TEST_SCHEMA": [{"tag_name": "ENV", "tag_value": "staging"}]
-            }
+            source.schema_tags_map = {"TEST_SCHEMA": [{"tag_name": "ENV", "tag_value": "staging"}]}
 
             def mock_tag_label_side_effect(metadata, tag_name, classification_name):
                 return TagLabel(
@@ -771,9 +733,7 @@ class SnowflakeUnitTest(TestCase):
         """
         source = self.sources["not_incremental"]
         source.source_config.includeStoredProcedures = True
-        source.source_config.storedProcedureFilterPattern = FilterPattern(
-            excludes=["sp_exclude"]
-        )
+        source.source_config.storedProcedureFilterPattern = FilterPattern(excludes=["sp_exclude"])
         source.context.get().__dict__["database_service"] = "snowflake_source"
         source.context.get().__dict__["database"] = "test_db"
         source.context.get().__dict__["database_schema"] = "test_schema"
@@ -841,9 +801,7 @@ class SnowflakeUnitTest(TestCase):
             mock_conn = MagicMock()
             mock_conn.execute.return_value = mock_schema_tags
             source.engine = MagicMock()
-            source.engine.connect.return_value.__enter__ = MagicMock(
-                return_value=mock_conn
-            )
+            source.engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
             source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
             source.set_schema_tags_map("TEST_DATABASE")
@@ -877,9 +835,7 @@ class TestSnowflakeGetDatabaseNamesRawEagerFetch:
         mock_conn = MagicMock()
         mock_conn.execute.return_value = result
 
-        with patch.object(
-            SnowflakeSource, "connection", new_callable=PropertyMock
-        ) as mocked_conn_prop:
+        with patch.object(SnowflakeSource, "connection", new_callable=PropertyMock) as mocked_conn_prop:
             mocked_conn_prop.return_value = mock_conn
             list(source.get_database_names_raw())
 
@@ -892,9 +848,7 @@ class TestSnowflakeGetDatabaseNamesRawEagerFetch:
         mock_conn = MagicMock()
         mock_conn.execute.return_value = result
 
-        with patch.object(
-            SnowflakeSource, "connection", new_callable=PropertyMock
-        ) as mocked_conn_prop:
+        with patch.object(SnowflakeSource, "connection", new_callable=PropertyMock) as mocked_conn_prop:
             mocked_conn_prop.return_value = mock_conn
             names = list(source.get_database_names_raw())
 

@@ -12,6 +12,7 @@
 """
 Tests for GCP CloudSQL MySQL connection handling
 """
+
 import sys
 from types import ModuleType
 from unittest.mock import MagicMock, patch
@@ -69,9 +70,7 @@ def _make_mysql_connection(connection):
 
 
 class TestMySQLCloudSQLConnection:
-    @patch(
-        "metadata.ingestion.source.database.mysql.connection.create_generic_db_connection"
-    )
+    @patch("metadata.ingestion.source.database.mysql.connection.create_generic_db_connection")
     def test_cloudsql_password_auth(self, mock_create_conn, mock_connector):
         mock_connector_cls, mock_connector_inst = mock_connector
         mock_create_conn.return_value = MagicMock()
@@ -96,18 +95,13 @@ class TestMySQLCloudSQLConnection:
 
         mock_connector_inst.connect.assert_called_once()
         connect_kwargs = mock_connector_inst.connect.call_args.kwargs
-        assert (
-            connect_kwargs["instance_connection_string"]
-            == "my-project:us-central1:my-instance"
-        )
+        assert connect_kwargs["instance_connection_string"] == "my-project:us-central1:my-instance"
         assert connect_kwargs["driver"] == "pymysql"
         assert connect_kwargs["user"] == "dbuser"
         assert connect_kwargs["password"] == "dbpassword"
         assert "enable_iam_auth" not in connect_kwargs
 
-    @patch(
-        "metadata.ingestion.source.database.mysql.connection.create_generic_db_connection"
-    )
+    @patch("metadata.ingestion.source.database.mysql.connection.create_generic_db_connection")
     def test_cloudsql_iam_auth(self, mock_create_conn, mock_connector):
         _, mock_connector_inst = mock_connector
         mock_create_conn.return_value = MagicMock()
@@ -130,9 +124,7 @@ class TestMySQLCloudSQLConnection:
         assert connect_kwargs["enable_iam_auth"] is True
         assert "password" not in connect_kwargs
 
-    @patch(
-        "metadata.ingestion.source.database.mysql.connection.create_generic_db_connection"
-    )
+    @patch("metadata.ingestion.source.database.mysql.connection.create_generic_db_connection")
     def test_cloudsql_url_is_bare_scheme(self, mock_create_conn, mock_connector):
         mock_create_conn.return_value = MagicMock()
 
@@ -149,12 +141,8 @@ class TestMySQLCloudSQLConnection:
         assert url_fn(connection) == "mysql+pymysql://"
 
     @patch("metadata.ingestion.source.database.mysql.connection.set_google_credentials")
-    @patch(
-        "metadata.ingestion.source.database.mysql.connection.create_generic_db_connection"
-    )
-    def test_cloudsql_sets_gcp_credentials_when_provided(
-        self, mock_create_conn, mock_set_creds, mock_connector
-    ):
+    @patch("metadata.ingestion.source.database.mysql.connection.create_generic_db_connection")
+    def test_cloudsql_sets_gcp_credentials_when_provided(self, mock_create_conn, mock_set_creds, mock_connector):
         mock_create_conn.return_value = MagicMock()
 
         gcp_config = MagicMock()
@@ -171,12 +159,8 @@ class TestMySQLCloudSQLConnection:
         mock_set_creds.assert_called_once_with(gcp_config)
 
     @patch("metadata.ingestion.source.database.mysql.connection.set_google_credentials")
-    @patch(
-        "metadata.ingestion.source.database.mysql.connection.create_generic_db_connection"
-    )
-    def test_cloudsql_skips_gcp_credentials_when_not_provided(
-        self, mock_create_conn, mock_set_creds, mock_connector
-    ):
+    @patch("metadata.ingestion.source.database.mysql.connection.create_generic_db_connection")
+    def test_cloudsql_skips_gcp_credentials_when_not_provided(self, mock_create_conn, mock_set_creds, mock_connector):
         mock_create_conn.return_value = MagicMock()
 
         connection = MysqlConnection(
@@ -190,9 +174,7 @@ class TestMySQLCloudSQLConnection:
 
         mock_set_creds.assert_not_called()
 
-    @patch(
-        "metadata.ingestion.source.database.mysql.connection.create_generic_db_connection"
-    )
+    @patch("metadata.ingestion.source.database.mysql.connection.create_generic_db_connection")
     def test_cloudsql_passes_database_schema(self, mock_create_conn, mock_connector):
         _, mock_connector_inst = mock_connector
         mock_create_conn.return_value = MagicMock()

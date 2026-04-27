@@ -44,11 +44,7 @@ class TestDatalakeS3ClientColdStorage(unittest.TestCase):
             {"Key": "data/ia.csv", "StorageClass": "STANDARD_IA"},
         ]
 
-        result = list(
-            self.client.get_table_names(
-                bucket_name="my-bucket", prefix=None, skip_cold_storage=True
-            )
-        )
+        result = list(self.client.get_table_names(bucket_name="my-bucket", prefix=None, skip_cold_storage=True))
 
         self.assertEqual(
             result,
@@ -67,11 +63,7 @@ class TestDatalakeS3ClientColdStorage(unittest.TestCase):
             {"Key": "data/glacier.csv", "StorageClass": "GLACIER"},
         ]
 
-        result = list(
-            self.client.get_table_names(
-                bucket_name="my-bucket", prefix=None, skip_cold_storage=False
-            )
-        )
+        result = list(self.client.get_table_names(bucket_name="my-bucket", prefix=None, skip_cold_storage=False))
 
         self.assertEqual(
             result,
@@ -104,11 +96,7 @@ class TestDatalakeS3ClientColdStorage(unittest.TestCase):
             {"Key": "data/no_class.csv"},
         ]
 
-        result = list(
-            self.client.get_table_names(
-                bucket_name="my-bucket", prefix=None, skip_cold_storage=True
-            )
-        )
+        result = list(self.client.get_table_names(bucket_name="my-bucket", prefix=None, skip_cold_storage=True))
 
         self.assertEqual(result, [("data/no_class.csv", None)])
 
@@ -120,15 +108,10 @@ class TestDatalakeS3ClientColdStorage(unittest.TestCase):
         THEN: All cold-class objects should be filtered out
         """
         mock_list_s3.return_value = [
-            {"Key": f"data/{cls.lower()}.csv", "StorageClass": cls}
-            for cls in S3_COLD_STORAGE_CLASSES
+            {"Key": f"data/{cls.lower()}.csv", "StorageClass": cls} for cls in S3_COLD_STORAGE_CLASSES
         ]
 
-        result = list(
-            self.client.get_table_names(
-                bucket_name="my-bucket", prefix=None, skip_cold_storage=True
-            )
-        )
+        result = list(self.client.get_table_names(bucket_name="my-bucket", prefix=None, skip_cold_storage=True))
 
         self.assertEqual(result, [])
 
@@ -147,15 +130,10 @@ class TestDatalakeS3ClientColdStorage(unittest.TestCase):
             "REDUCED_REDUNDANCY",
         ]
         mock_list_s3.return_value = [
-            {"Key": f"data/{cls.lower()}.csv", "StorageClass": cls}
-            for cls in non_cold_classes
+            {"Key": f"data/{cls.lower()}.csv", "StorageClass": cls} for cls in non_cold_classes
         ]
 
-        result = list(
-            self.client.get_table_names(
-                bucket_name="my-bucket", prefix=None, skip_cold_storage=True
-            )
-        )
+        result = list(self.client.get_table_names(bucket_name="my-bucket", prefix=None, skip_cold_storage=True))
 
         self.assertEqual(
             result,

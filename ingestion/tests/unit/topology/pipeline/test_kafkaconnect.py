@@ -12,6 +12,7 @@
 """
 Test KafkaConnect client and models
 """
+
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 
@@ -136,36 +137,26 @@ class TestKafkaConnectClient(TestCase):
 
     def test_client_initialization_no_auth(self):
         """Test client initialization without authentication"""
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ) as mock_kafka_connect:
-            client = KafkaConnectClient(self.mock_config)
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect") as mock_kafka_connect:
+            client = KafkaConnectClient(self.mock_config)  # noqa: F841
 
-            mock_kafka_connect.assert_called_once_with(
-                url="http://localhost:8083", auth=None, ssl_verify=True
-            )
+            mock_kafka_connect.assert_called_once_with(url="http://localhost:8083", auth=None, ssl_verify=True)
 
     def test_client_initialization_with_auth(self):
         """Test client initialization with authentication"""
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ) as mock_kafka_connect:
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect") as mock_kafka_connect:
             mock_auth_config = MagicMock()
             mock_auth_config.username = "user"
             mock_auth_config.password.get_secret_value.return_value = "pass"
             self.mock_config.KafkaConnectConfig = mock_auth_config
 
-            client = KafkaConnectClient(self.mock_config)
+            client = KafkaConnectClient(self.mock_config)  # noqa: F841
 
-            mock_kafka_connect.assert_called_once_with(
-                url="http://localhost:8083", auth="user:pass", ssl_verify=True
-            )
+            mock_kafka_connect.assert_called_once_with(url="http://localhost:8083", auth="user:pass", ssl_verify=True)
 
     def test_get_cluster_info(self):
         """Test get_cluster_info method"""
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ) as mock_kafka_connect:
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect") as mock_kafka_connect:
             client = KafkaConnectClient(self.mock_config)
             mock_client = mock_kafka_connect.return_value
             mock_client.get_cluster_info.return_value = {"version": "3.0.0"}
@@ -237,9 +228,7 @@ class TestConfluentCloudSupport(TestCase):
         confluent_config.KafkaConnectConfig = None
 
         client = KafkaConnectClient(confluent_config)
-        client.get_connector_config = Mock(
-            return_value={"topics": "topic1,topic2,topic3"}
-        )
+        client.get_connector_config = Mock(return_value={"topics": "topic1,topic2,topic3"})
 
         topics = client.get_connector_topics("test-connector")
         self.assertIsNotNone(topics)
@@ -264,9 +253,7 @@ class TestKafkaConnectColumnLineage(TestCase):
             KafkaConnectColumnMapping(source_column="id", target_column="user_id"),
             KafkaConnectColumnMapping(source_column="name", target_column="full_name"),
         ]
-        dataset = KafkaConnectDatasetDetails(
-            table="users", database="mydb", column_mappings=mappings
-        )
+        dataset = KafkaConnectDatasetDetails(table="users", database="mydb", column_mappings=mappings)
 
         self.assertEqual(len(dataset.column_mappings), 2)
         self.assertEqual(dataset.column_mappings[0].source_column, "id")
@@ -279,9 +266,7 @@ class TestKafkaConnectColumnLineage(TestCase):
 
     def test_extract_column_mappings_with_smt_renames(self):
         """Test extract_column_mappings with SMT ReplaceField transform"""
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ):
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
             mock_config = MagicMock(spec=KafkaConnectConnection)
             mock_config.hostPort = "http://localhost:8083"
             mock_config.verifySSL = True
@@ -306,9 +291,7 @@ class TestKafkaConnectColumnLineage(TestCase):
 
     def test_extract_column_mappings_no_transforms(self):
         """Test extract_column_mappings with no transforms"""
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ):
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
             mock_config = MagicMock(spec=KafkaConnectConnection)
             mock_config.hostPort = "http://localhost:8083"
             mock_config.verifySSL = True
@@ -323,9 +306,7 @@ class TestKafkaConnectColumnLineage(TestCase):
 
     def test_extract_column_mappings_transform_without_renames(self):
         """Test extract_column_mappings with transform but no renames"""
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ):
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
             mock_config = MagicMock(spec=KafkaConnectConnection)
             mock_config.hostPort = "http://localhost:8083"
             mock_config.verifySSL = True
@@ -344,9 +325,7 @@ class TestKafkaConnectColumnLineage(TestCase):
 
     def test_extract_column_mappings_multiple_transforms(self):
         """Test extract_column_mappings with multiple transforms"""
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ):
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
             mock_config = MagicMock(spec=KafkaConnectConnection)
             mock_config.hostPort = "http://localhost:8083"
             mock_config.verifySSL = True
@@ -375,9 +354,7 @@ class TestKafkaConnectColumnLineage(TestCase):
             KafkaconnectSource,
         )
 
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ):
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
             # Create a minimal source instance
             mock_config = MagicMock(spec=KafkaConnectConnection)
             mock_config.hostPort = "http://localhost:8083"
@@ -385,20 +362,12 @@ class TestKafkaConnectColumnLineage(TestCase):
             mock_config.KafkaConnectConfig = None
             mock_config.messagingServiceName = "test_kafka"
 
-            mock_metadata = Mock()
+            mock_metadata = Mock()  # noqa: F841
 
             # Create source with minimal setup - we're only testing build_column_lineage
             source = Mock(spec=KafkaconnectSource)
-            source._get_topic_field_fqn = (
-                KafkaconnectSource._get_topic_field_fqn.__get__(
-                    source, KafkaconnectSource
-                )
-            )
-            source.build_column_lineage = (
-                KafkaconnectSource.build_column_lineage.__get__(
-                    source, KafkaconnectSource
-                )
-            )
+            source._get_topic_field_fqn = KafkaconnectSource._get_topic_field_fqn.__get__(source, KafkaconnectSource)
+            source.build_column_lineage = KafkaconnectSource.build_column_lineage.__get__(source, KafkaconnectSource)
 
             # Create mock entities
             mock_table_entity = Mock(spec=Table)
@@ -450,9 +419,7 @@ class TestCDCTopicParsing(TestCase):
             parse_cdc_topic_name,
         )
 
-        result = parse_cdc_topic_name(
-            "PostgresKafkaCDC.public.orders", "PostgresKafkaCDC"
-        )
+        result = parse_cdc_topic_name("PostgresKafkaCDC.public.orders", "PostgresKafkaCDC")
         self.assertEqual(result, {"database": "public", "table": "orders"})
 
     def test_parse_cdc_topic_two_parts(self):
@@ -548,25 +515,19 @@ class TestCDCTopicParsing(TestCase):
         # Server name with dots: myapp.payments.prod
         # Full topic: myapp.payments.prod.transactions.orders
         # Expected: database=transactions, table=orders
-        result = parse_cdc_topic_name(
-            "myapp.payments.prod.transactions.orders", "myapp.payments.prod"
-        )
+        result = parse_cdc_topic_name("myapp.payments.prod.transactions.orders", "myapp.payments.prod")
         self.assertEqual(result, {"database": "transactions", "table": "orders"})
 
         # Server name with dots and only table (no schema)
         # Full topic: myapp.payments.prod.users
         # Expected: database=myapp.payments.prod, table=users
-        result = parse_cdc_topic_name(
-            "myapp.payments.prod.users", "myapp.payments.prod"
-        )
+        result = parse_cdc_topic_name("myapp.payments.prod.users", "myapp.payments.prod")
         self.assertEqual(result, {"database": "myapp.payments.prod", "table": "users"})
 
         # Multiple level server name
         # Server: app.service.env.region
         # Topic: app.service.env.region.schema1.table1
-        result = parse_cdc_topic_name(
-            "app.service.env.region.schema1.table1", "app.service.env.region"
-        )
+        result = parse_cdc_topic_name("app.service.env.region.schema1.table1", "app.service.env.region")
         self.assertEqual(result, {"database": "schema1", "table": "table1"})
 
 
@@ -588,9 +549,7 @@ class TestKafkaConnectCDCColumnExtraction(TestCase):
         # Create a mock Debezium CDC topic with nested envelope structure
         self.cdc_topic = MagicMock()
         self.cdc_topic.name = "MysqlKafkaV2.ecommerce.orders"
-        self.cdc_topic.fullyQualifiedName.root = (
-            'KafkaProd."MysqlKafkaV2.ecommerce.orders"'
-        )
+        self.cdc_topic.fullyQualifiedName.root = 'KafkaProd."MysqlKafkaV2.ecommerce.orders"'
 
         # Mock message schema with CDC structure
         self.cdc_topic.messageSchema = MagicMock()
@@ -604,26 +563,32 @@ class TestKafkaConnectCDCColumnExtraction(TestCase):
             return name_obj
 
         envelope_field = MagicMock()
-        envelope_field.name = create_field_name(
-            "MysqlKafkaV2.ecommerce.orders.Envelope"
+        envelope_field.name = create_field_name("MysqlKafkaV2.ecommerce.orders.Envelope")
+        envelope_field.fullyQualifiedName.root = (
+            'KafkaProd."MysqlKafkaV2.ecommerce.orders".MysqlKafkaV2.ecommerce.orders.Envelope'
         )
-        envelope_field.fullyQualifiedName.root = 'KafkaProd."MysqlKafkaV2.ecommerce.orders".MysqlKafkaV2.ecommerce.orders.Envelope'
 
         # CDC envelope children
         op_field = MagicMock()
         op_field.name = create_field_name("op")
         op_field.children = None
-        op_field.fullyQualifiedName.root = 'KafkaProd."MysqlKafkaV2.ecommerce.orders".MysqlKafkaV2.ecommerce.orders.Envelope.op'
+        op_field.fullyQualifiedName.root = (
+            'KafkaProd."MysqlKafkaV2.ecommerce.orders".MysqlKafkaV2.ecommerce.orders.Envelope.op'
+        )
 
         before_field = MagicMock()
         before_field.name = create_field_name("before")
         before_field.children = None
-        before_field.fullyQualifiedName.root = 'KafkaProd."MysqlKafkaV2.ecommerce.orders".MysqlKafkaV2.ecommerce.orders.Envelope.before'
+        before_field.fullyQualifiedName.root = (
+            'KafkaProd."MysqlKafkaV2.ecommerce.orders".MysqlKafkaV2.ecommerce.orders.Envelope.before'
+        )
 
         after_field = MagicMock()
         after_field.name = create_field_name("after")
         after_field.children = None
-        after_field.fullyQualifiedName.root = 'KafkaProd."MysqlKafkaV2.ecommerce.orders".MysqlKafkaV2.ecommerce.orders.Envelope.after'
+        after_field.fullyQualifiedName.root = (
+            'KafkaProd."MysqlKafkaV2.ecommerce.orders".MysqlKafkaV2.ecommerce.orders.Envelope.after'
+        )
 
         source_field = MagicMock()
         source_field.name = create_field_name("source")
@@ -742,9 +707,7 @@ class TestKafkaConnectCDCColumnExtraction(TestCase):
 
         # CDC envelope structure but no schemaText
         envelope_field = MagicMock()
-        envelope_field.name = create_field_name(
-            "MysqlKafkaV2.ecommerce.orders.Envelope"
-        )
+        envelope_field.name = create_field_name("MysqlKafkaV2.ecommerce.orders.Envelope")
 
         op_field = MagicMock()
         op_field.name = create_field_name("op")
@@ -806,18 +769,14 @@ class TestKafkaConnectLineageRefactoring(TestCase):
         self.mock_service_connection = MagicMock(spec=KafkaConnectConnection)
         self.mock_service_connection.hostPort = "http://localhost:8083"
 
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ):
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
             self.source = object.__new__(KafkaconnectSource)
             self.source.metadata = self.mock_metadata
             self.source.service_connection = self.mock_service_connection
 
     def test_resolve_messaging_service_from_config(self):
         """Test resolving messaging service from connector config match"""
-        pipeline_details = KafkaConnectPipelineDetails(
-            name="test-connector", conn_type="source"
-        )
+        pipeline_details = KafkaConnectPipelineDetails(name="test-connector", conn_type="source")
 
         with patch.object(
             self.source,
@@ -833,18 +792,14 @@ class TestKafkaConnectLineageRefactoring(TestCase):
 
     def test_resolve_messaging_service_from_connection(self):
         """Test resolving messaging service from service connection"""
-        pipeline_details = KafkaConnectPipelineDetails(
-            name="test-connector", conn_type="source"
-        )
+        pipeline_details = KafkaConnectPipelineDetails(name="test-connector", conn_type="source")
 
         self.mock_service_connection.messagingServiceName = "configured-kafka-service"
 
         with patch.object(
             self.source,
             "get_service_from_connector_config",
-            return_value=ServiceResolutionResult(
-                database_service_name=None, messaging_service_name=None
-            ),
+            return_value=ServiceResolutionResult(database_service_name=None, messaging_service_name=None),
         ):
             result = self.source._resolve_messaging_service(pipeline_details)
 
@@ -852,18 +807,14 @@ class TestKafkaConnectLineageRefactoring(TestCase):
 
     def test_resolve_messaging_service_none(self):
         """Test resolving messaging service when neither config nor connection available"""
-        pipeline_details = KafkaConnectPipelineDetails(
-            name="test-connector", conn_type="source"
-        )
+        pipeline_details = KafkaConnectPipelineDetails(name="test-connector", conn_type="source")
 
         delattr(self.mock_service_connection, "messagingServiceName")
 
         with patch.object(
             self.source,
             "get_service_from_connector_config",
-            return_value=ServiceResolutionResult(
-                database_service_name=None, messaging_service_name=None
-            ),
+            return_value=ServiceResolutionResult(database_service_name=None, messaging_service_name=None),
         ):
             result = self.source._resolve_messaging_service(pipeline_details)
 
@@ -873,9 +824,7 @@ class TestKafkaConnectLineageRefactoring(TestCase):
         """Test topic resolution with explicit pipeline_details.topics"""
 
         topic1 = KafkaConnectTopics(name="test-topic-1")
-        pipeline_details = KafkaConnectPipelineDetails(
-            name="test-connector", conn_type="source", topics=[topic1]
-        )
+        pipeline_details = KafkaConnectPipelineDetails(name="test-connector", conn_type="source", topics=[topic1])
 
         mock_topic_entity = MagicMock(spec=Topic)
         mock_topic_entity.id = "topic-id-1"
@@ -900,25 +849,19 @@ class TestKafkaConnectLineageRefactoring(TestCase):
                 self.assertEqual(len(result.topics), 1)
                 self.assertEqual(result.topics[0].name, "test-topic-1")
                 self.assertIn("test-topic-1", result.topic_entity_map)
-                self.assertEqual(
-                    result.topic_entity_map["test-topic-1"], mock_topic_entity
-                )
+                self.assertEqual(result.topic_entity_map["test-topic-1"], mock_topic_entity)
 
     def test_parse_and_resolve_topics_with_fqn(self):
         """Test topic resolution using pre-built FQN"""
 
-        topic_with_fqn = KafkaConnectTopics(
-            name="test-topic", fqn='KafkaProd."test-topic"'
-        )
+        topic_with_fqn = KafkaConnectTopics(name="test-topic", fqn='KafkaProd."test-topic"')
         pipeline_details = KafkaConnectPipelineDetails(
             name="test-connector", conn_type="source", topics=[topic_with_fqn]
         )
 
         mock_topic_entity = MagicMock(spec=Topic)
 
-        with patch.object(
-            self.source.metadata, "get_by_name", return_value=mock_topic_entity
-        ) as mock_get:
+        with patch.object(self.source.metadata, "get_by_name", return_value=mock_topic_entity) as mock_get:
             result = self.source._parse_and_resolve_topics(
                 pipeline_details=pipeline_details,
                 database_server_name=None,
@@ -933,16 +876,12 @@ class TestKafkaConnectLineageRefactoring(TestCase):
         """Test topic resolution using messaging service name"""
 
         topic = KafkaConnectTopics(name="orders-topic")
-        pipeline_details = KafkaConnectPipelineDetails(
-            name="test-connector", conn_type="source", topics=[topic]
-        )
+        pipeline_details = KafkaConnectPipelineDetails(name="test-connector", conn_type="source", topics=[topic])
 
         mock_topic_entity = MagicMock(spec=Topic)
 
         with patch("metadata.utils.fqn.build", return_value='KafkaProd."orders-topic"'):
-            with patch.object(
-                self.source.metadata, "get_by_name", return_value=mock_topic_entity
-            ) as mock_get:
+            with patch.object(self.source.metadata, "get_by_name", return_value=mock_topic_entity) as mock_get:
                 result = self.source._parse_and_resolve_topics(
                     pipeline_details=pipeline_details,
                     database_server_name=None,
@@ -951,17 +890,13 @@ class TestKafkaConnectLineageRefactoring(TestCase):
                 )
 
                 mock_get.assert_called_once()
-                self.assertEqual(
-                    result.topic_entity_map["orders-topic"], mock_topic_entity
-                )
+                self.assertEqual(result.topic_entity_map["orders-topic"], mock_topic_entity)
 
     def test_parse_and_resolve_topics_cross_service_search(self):
         """Test topic resolution via cross-service wildcard search"""
 
         topic = KafkaConnectTopics(name="payments-topic")
-        pipeline_details = KafkaConnectPipelineDetails(
-            name="test-connector", conn_type="source", topics=[topic]
-        )
+        pipeline_details = KafkaConnectPipelineDetails(name="test-connector", conn_type="source", topics=[topic])
 
         mock_topic_entity = MagicMock(spec=Topic)
         mock_service = MagicMock()
@@ -981,9 +916,7 @@ class TestKafkaConnectLineageRefactoring(TestCase):
             )
 
             mock_search.assert_called_once()
-            self.assertEqual(
-                result.topic_entity_map["payments-topic"], mock_topic_entity
-            )
+            self.assertEqual(result.topic_entity_map["payments-topic"], mock_topic_entity)
 
     def test_parse_and_resolve_topics_cdc_from_config(self):
         """Test CDC topic parsing from table.include.list"""
@@ -1000,9 +933,7 @@ class TestKafkaConnectLineageRefactoring(TestCase):
         )
 
         with patch.object(self.source.metadata, "get_by_name", return_value=None):
-            with patch.object(
-                self.source.metadata, "search_in_any_service", return_value=None
-            ):
+            with patch.object(self.source.metadata, "search_in_any_service", return_value=None):
                 result = self.source._parse_and_resolve_topics(
                     pipeline_details=pipeline_details,
                     database_server_name="pg.inventory",
@@ -1055,13 +986,9 @@ class TestKafkaConnectLineageRefactoring(TestCase):
             KafkaConnectTopics(name="analytics-metrics"),
         ]
 
-        with patch.object(
-            self.source, "_search_topics_by_regex", return_value=regex_topics
-        ) as mock_search:
+        with patch.object(self.source, "_search_topics_by_regex", return_value=regex_topics) as mock_search:
             with patch.object(self.source.metadata, "get_by_name", return_value=None):
-                with patch.object(
-                    self.source.metadata, "search_in_any_service", return_value=None
-                ):
+                with patch.object(self.source.metadata, "search_in_any_service", return_value=None):
                     result = self.source._parse_and_resolve_topics(
                         pipeline_details=pipeline_details,
                         database_server_name=None,
@@ -1106,18 +1033,14 @@ class TestGetDatasetEntityContainerSearch:
         """Exact FQN hit → prefix-search fallback must never be triggered."""
         source = self._make_source()
         pipeline = self._make_pipeline()
-        dataset = KafkaConnectDatasetDetails(
-            container_name="raw_kafka", parent_container="dear-lake-stg"
-        )
+        dataset = KafkaConnectDatasetDetails(container_name="raw_kafka", parent_container="dear-lake-stg")
 
         mock_container = MagicMock()
         source.metadata.get_by_name = MagicMock(return_value=mock_container)
 
         with patch(_FQN_BUILD, return_value=_STATIC_FQN):
             with patch(_SEARCH_CONTAINER) as mock_search:
-                with patch.object(
-                    source, "get_storage_service_names", return_value=["DearlakeS3"]
-                ):
+                with patch.object(source, "get_storage_service_names", return_value=["DearlakeS3"]):
                     result = source.get_dataset_entity(pipeline, dataset)
 
         assert result is mock_container
@@ -1127,21 +1050,15 @@ class TestGetDatasetEntityContainerSearch:
         """When get_by_name returns None, search_container_from_es must be attempted."""
         source = self._make_source()
         pipeline = self._make_pipeline()
-        dataset = KafkaConnectDatasetDetails(
-            container_name="raw_kafka", parent_container="dear-lake-stg"
-        )
+        dataset = KafkaConnectDatasetDetails(container_name="raw_kafka", parent_container="dear-lake-stg")
 
         mock_container = MagicMock()
-        mock_container.fullyQualifiedName.root = (
-            "DearlakeS3.dear-lake-stg.raw_kafka/topic-01.v1"
-        )
+        mock_container.fullyQualifiedName.root = "DearlakeS3.dear-lake-stg.raw_kafka/topic-01.v1"
         source.metadata.get_by_name = MagicMock(return_value=None)
 
         with patch(_FQN_BUILD, return_value=_STATIC_FQN):
             with patch(_SEARCH_CONTAINER, return_value=mock_container) as mock_search:
-                with patch.object(
-                    source, "get_storage_service_names", return_value=[None]
-                ):
+                with patch.object(source, "get_storage_service_names", return_value=[None]):
                     result = source.get_dataset_entity(pipeline, dataset)
 
         assert result is mock_container
@@ -1156,23 +1073,15 @@ class TestGetDatasetEntityContainerSearch:
         """
         source = self._make_source()
         pipeline = self._make_pipeline()
-        dataset = KafkaConnectDatasetDetails(
-            container_name="raw_kafka", parent_container="dear-lake-stg"
-        )
+        dataset = KafkaConnectDatasetDetails(container_name="raw_kafka", parent_container="dear-lake-stg")
 
         container_with_suffix = MagicMock()
-        container_with_suffix.fullyQualifiedName.root = (
-            "DearlakeS3.dear-lake-stg.raw_kafka/topic-01.v1"
-        )
+        container_with_suffix.fullyQualifiedName.root = "DearlakeS3.dear-lake-stg.raw_kafka/topic-01.v1"
         source.metadata.get_by_name = MagicMock(return_value=None)
 
         with patch(_FQN_BUILD, return_value=_STATIC_FQN):
-            with patch(
-                _SEARCH_CONTAINER, return_value=container_with_suffix
-            ) as mock_search:
-                with patch.object(
-                    source, "get_storage_service_names", return_value=["DearlakeS3"]
-                ):
+            with patch(_SEARCH_CONTAINER, return_value=container_with_suffix) as mock_search:
+                with patch.object(source, "get_storage_service_names", return_value=["DearlakeS3"]):
                     result = source.get_dataset_entity(pipeline, dataset)
 
         assert result is container_with_suffix
@@ -1187,17 +1096,13 @@ class TestGetDatasetEntityContainerSearch:
         """search_container_from_es must receive parent_container when it is set."""
         source = self._make_source()
         pipeline = self._make_pipeline()
-        dataset = KafkaConnectDatasetDetails(
-            container_name="raw_kafka", parent_container="dear-lake-stg"
-        )
+        dataset = KafkaConnectDatasetDetails(container_name="raw_kafka", parent_container="dear-lake-stg")
 
         source.metadata.get_by_name = MagicMock(return_value=None)
 
         with patch(_FQN_BUILD, return_value=_STATIC_FQN):
             with patch(_SEARCH_CONTAINER, return_value=None) as mock_search:
-                with patch.object(
-                    source, "get_storage_service_names", return_value=[None]
-                ):
+                with patch.object(source, "get_storage_service_names", return_value=[None]):
                     source.get_dataset_entity(pipeline, dataset)
 
         _, call_kwargs = mock_search.call_args
@@ -1214,9 +1119,7 @@ class TestGetDatasetEntityContainerSearch:
 
         with patch(_FQN_BUILD, return_value="DearlakeS3.raw_kafka"):
             with patch(_SEARCH_CONTAINER, return_value=None) as mock_search:
-                with patch.object(
-                    source, "get_storage_service_names", return_value=[None]
-                ):
+                with patch.object(source, "get_storage_service_names", return_value=[None]):
                     source.get_dataset_entity(pipeline, dataset)
 
         _, call_kwargs = mock_search.call_args
@@ -1227,17 +1130,13 @@ class TestGetDatasetEntityContainerSearch:
         """When a specific storage service is configured it is forwarded as service_name."""
         source = self._make_source()
         pipeline = self._make_pipeline()
-        dataset = KafkaConnectDatasetDetails(
-            container_name="raw_kafka", parent_container="dear-lake-stg"
-        )
+        dataset = KafkaConnectDatasetDetails(container_name="raw_kafka", parent_container="dear-lake-stg")
 
         source.metadata.get_by_name = MagicMock(return_value=None)
 
         with patch(_FQN_BUILD, return_value=_STATIC_FQN):
             with patch(_SEARCH_CONTAINER, return_value=None) as mock_search:
-                with patch.object(
-                    source, "get_storage_service_names", return_value=["DearlakeS3"]
-                ):
+                with patch.object(source, "get_storage_service_names", return_value=["DearlakeS3"]):
                     source.get_dataset_entity(pipeline, dataset)
 
         _, call_kwargs = mock_search.call_args
@@ -1247,17 +1146,13 @@ class TestGetDatasetEntityContainerSearch:
         """If neither exact match nor prefix search finds anything, None is returned."""
         source = self._make_source()
         pipeline = self._make_pipeline()
-        dataset = KafkaConnectDatasetDetails(
-            container_name="raw_kafka", parent_container="dear-lake-stg"
-        )
+        dataset = KafkaConnectDatasetDetails(container_name="raw_kafka", parent_container="dear-lake-stg")
 
         source.metadata.get_by_name = MagicMock(return_value=None)
 
         with patch(_FQN_BUILD, return_value=_STATIC_FQN):
             with patch(_SEARCH_CONTAINER, return_value=None):
-                with patch.object(
-                    source, "get_storage_service_names", return_value=[None]
-                ):
+                with patch.object(source, "get_storage_service_names", return_value=[None]):
                     result = source.get_dataset_entity(pipeline, dataset)
 
         assert result is None
@@ -1272,9 +1167,7 @@ class TestGetDatasetEntityContainerSearch:
 
         with patch(_FQN_BUILD, return_value=None):
             with patch(_SEARCH_CONTAINER) as mock_search:
-                with patch.object(
-                    source, "get_storage_service_names", return_value=[None]
-                ):
+                with patch.object(source, "get_storage_service_names", return_value=[None]):
                     source.get_dataset_entity(pipeline, dataset)
 
         mock_search.assert_not_called()

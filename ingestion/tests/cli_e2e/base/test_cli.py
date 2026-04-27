@@ -12,6 +12,7 @@
 """
 Test database connectors with CLI
 """
+
 import os
 import re
 import subprocess
@@ -49,9 +50,7 @@ class CliBase(ABC):
     ingestion_bot_jwt_token: Optional[str] = None
 
     def run_command(self, command: str = "ingest", test_file_path=None) -> str:
-        file_path = (
-            test_file_path if test_file_path is not None else self.test_file_path
-        )
+        file_path = test_file_path if test_file_path is not None else self.test_file_path
         args = [
             "metadata",
             command,
@@ -72,9 +71,7 @@ class CliBase(ABC):
         return stderr.decode("utf-8")
 
     def retrieve_lineage(self, entity_fqn: str) -> dict:
-        return self.openmetadata.client.get(
-            f"/lineage/table/name/{entity_fqn}?upstreamDepth=3&downstreamDepth=3"
-        )
+        return self.openmetadata.client.get(f"/lineage/table/name/{entity_fqn}?upstreamDepth=3&downstreamDepth=3")
 
     @classmethod
     def set_ingestion_bot_jwt_token(cls) -> None:
@@ -82,25 +79,19 @@ class CliBase(ABC):
         ingestion_bot_auth: AuthenticationMechanism = cls.openmetadata.get_by_id(
             AuthenticationMechanism, ingestion_bot.id
         )
-        cls.ingestion_bot_jwt_token = (
-            ingestion_bot_auth.config.JWTToken.get_secret_value()
-        )
+        cls.ingestion_bot_jwt_token = ingestion_bot_auth.config.JWTToken.get_secret_value()
 
     def patch_server_security_config(self, config: dict[str, Any]) -> dict[str, Any]:
         if self.ingestion_bot_jwt_token is None:
             return config
 
         server_config = deepcopy(config)
-        server_config["workflowConfig"]["openMetadataServerConfig"][
-            "securityConfig"
-        ] = {
+        server_config["workflowConfig"]["openMetadataServerConfig"]["securityConfig"] = {
             "jwtToken": self.ingestion_bot_jwt_token,
         }
         return server_config
 
-    def build_config_file(
-        self, test_type: E2EType = E2EType.INGEST, extra_args: dict = None
-    ) -> None:
+    def build_config_file(self, test_type: E2EType = E2EType.INGEST, extra_args: dict = None) -> None:
         config_yaml = load_config_file(Path(self.config_file_path))
         config_yaml = self.build_yaml(config_yaml, test_type, extra_args)
         config_yaml = self.patch_server_security_config(config_yaml)
@@ -114,9 +105,7 @@ class CliBase(ABC):
 
     @staticmethod
     def get_workflow(connector: str, test_type: str) -> MetadataWorkflow:
-        config_file = Path(
-            PATH_TO_RESOURCES + f"/{test_type}/{connector}/{connector}.yaml"
-        )
+        config_file = Path(PATH_TO_RESOURCES + f"/{test_type}/{connector}/{connector}.yaml")
         config_dict = load_config_file(config_file)
         return MetadataWorkflow.create(config_dict)
 
@@ -131,9 +120,7 @@ class CliBase(ABC):
         try:
             return Status.model_validate(literal_eval(output_clean_regex[0].strip()))
         except Exception as exc:
-            raise RuntimeError(
-                f"Error extracting source status: {exc}. Check the output {output}"
-            )
+            raise RuntimeError(f"Error extracting source status: {exc}. Check the output {output}")
 
     @staticmethod
     def extract_sink_status(output) -> Status:
@@ -141,16 +128,12 @@ class CliBase(ABC):
         output_clean = re.sub(" +", " ", output_clean)
         output_clean_ansi = re.compile(r"\x1b[^m]*m")
         output_clean = output_clean_ansi.sub("", output_clean)
-        regex = (
-            r".*OpenMetadata Status:%(log)s(.*?)%(log)sExecution.*Summary.*" % REGEX_AUX
-        )
+        regex = r".*OpenMetadata Status:%(log)s(.*?)%(log)sExecution.*Summary.*" % REGEX_AUX
         output_clean_regex = re.findall(regex, output_clean.strip())[0].strip()
         try:
             return Status.model_validate(literal_eval(output_clean_regex))
         except Exception as exc:
-            raise RuntimeError(
-                f"Error extracting sink status: {exc}. Check the output {output}"
-            )
+            raise RuntimeError(f"Error extracting sink status: {exc}. Check the output {output}")
 
     @staticmethod
     def build_yaml(config_yaml: dict, test_type: E2EType, extra_args: dict):
