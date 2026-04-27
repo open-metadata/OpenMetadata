@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
@@ -189,7 +190,7 @@ class MigrationUtilTest {
             .one())
         .thenReturn(0L);
 
-    when(handle.createQuery(anyString()).mapTo(Long.class).findFirst())
+    when(handle.createQuery(anyString()).mapTo(Long.class).findOne())
         .thenReturn(java.util.Optional.of(0L));
 
     when(handle.createQuery(contains("entity_relationship")).mapToMap().list())
@@ -203,8 +204,10 @@ class MigrationUtilTest {
     List<String> allSql = sqlCaptor.getAllValues();
     long entityRelationshipInserts =
         allSql.stream().filter(s -> s.contains("entity_relationship")).count();
-    // Expect at least: ASSIGNED_TO (assignee) + MENTIONED_IN (about entity)
-    assertEquals(true, entityRelationshipInserts >= 2);
+    assertTrue(
+        entityRelationshipInserts >= 2,
+        "Expected at least 2 entity_relationship inserts (ASSIGNED_TO + MENTIONED_IN), got "
+            + entityRelationshipInserts);
   }
 
   @Test
@@ -213,8 +216,8 @@ class MigrationUtilTest {
     String entityId = "9999-8888-7777-6666";
 
     // suggestions table exists
-    when(handle.createQuery("SELECT 1 FROM suggestions LIMIT 1").mapTo(Integer.class).findFirst())
-        .thenReturn(java.util.Optional.of(1));
+    when(handle.createQuery("SELECT 1 FROM suggestions LIMIT 1").mapToMap().list())
+        .thenReturn(List.of(Map.of("1", 1)));
 
     String suggestionJson =
         """
@@ -249,7 +252,7 @@ class MigrationUtilTest {
         .thenReturn(0L);
 
     // sequence
-    when(handle.createQuery(anyString()).mapTo(Long.class).findFirst())
+    when(handle.createQuery(anyString()).mapTo(Long.class).findOne())
         .thenReturn(java.util.Optional.of(0L));
 
     // resolveDomainsForTaskAbout — empty
@@ -264,8 +267,10 @@ class MigrationUtilTest {
     List<String> allSql = sqlCaptor.getAllValues();
     long entityRelationshipInserts =
         allSql.stream().filter(s -> s.contains("entity_relationship")).count();
-    // Expect at least: CREATED + MENTIONED_IN
-    assertNotNull(entityRelationshipInserts >= 2);
+    assertTrue(
+        entityRelationshipInserts >= 2,
+        "Expected at least 2 entity_relationship inserts (CREATED + MENTIONED_IN), got "
+            + entityRelationshipInserts);
   }
 
   @Test
