@@ -509,7 +509,7 @@ def _preprocess_auto_classification_config(config_dict: dict) -> None:
 
             config_dict["source"]["sourceConfig"]["config"] = validated_config
 
-    except (KeyError, AttributeError) as exc:
+    except (KeyError, AttributeError, ValidationError) as exc:
         logger.debug(f"Could not preprocess auto-classification config: {exc}")
 
 

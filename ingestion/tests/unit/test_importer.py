@@ -66,7 +66,9 @@ class ImporterTest(TestCase):
     def test_import_policy_source_class_invalid_format(self) -> None:
         with self.assertRaises(DynamicImportException) as ctx:
             import_source_class(service_type=ServiceType.Database, source_type="policy")
-        self.assertIn("Invalid policy source type", str(ctx.exception))
+        exc = ctx.exception
+        self.assertEqual(exc.module, "policy")
+        self.assertIn("Invalid policy source type", str(exc.cause))
 
     def test_import_policy_source_class_unsupported_connector(self) -> None:
         with self.assertRaises(DynamicImportException) as ctx:
@@ -74,12 +76,10 @@ class ImporterTest(TestCase):
                 service_type=ServiceType.Database,
                 source_type="doesnotexist-policy",
             )
-        message = str(ctx.exception)
-        self.assertIn("Policy source type", message)
-        self.assertIn("doesnotexist-policy", message)
+        exc = ctx.exception
         self.assertIn(
             "metadata.ingestion.source.database.doesnotexist.policy.PolicyAgentSource",
-            message,
+            exc.module,
         )
 
     def test_import_processor_class(self) -> None:
