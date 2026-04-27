@@ -23,10 +23,29 @@ import {
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
-import { transitionIncident } from '../../../../rest/incidentManagerAPI';
+import { postTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
-import { createTask } from '../../../../rest/tasksAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+
+jest.mock('../../../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn((entity) => entity?.displayName ?? entity?.name ?? ''),
+  getEntityReferenceFromEntity: jest.fn((entity, type) => ({
+    id: entity?.id,
+    name: entity?.name,
+    displayName: entity?.displayName,
+    type,
+  })),
+}));
+
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
+    currentUser: {
+      id: 'current-user-id',
+      name: 'currentUser',
+      displayName: 'Current User',
+    },
+  })),
+}));
 
 jest.mock('@untitledui/icons', () => ({
   ArrowLeft: () => <svg data-testid="icon-arrow-left" />,
@@ -303,7 +322,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('../../../../rest/incidentManagerAPI', () => ({
-  transitionIncident: jest.fn().mockResolvedValue({}),
+  postTestCaseIncidentStatus: jest.fn().mockResolvedValue({
+    id: 'new-status-id',
+    stateId: 'state-id',
+    testCaseResolutionStatusType: TestCaseResolutionStatusTypes.ACK,
+  }),
   getListTestCaseIncidentByStateId: jest.fn().mockResolvedValue({
     data: [
       {
@@ -313,13 +336,6 @@ jest.mock('../../../../rest/incidentManagerAPI', () => ({
       },
     ],
   }),
-}));
-
-jest.mock('../../../../rest/tasksAPI', () => ({
-  createTask: jest.fn().mockResolvedValue({ id: 'new-task-id' }),
-  TaskCategory: { Incident: 'Incident' },
-  TaskEntityType: { TestCaseResolution: 'TestCaseResolution' },
-  TaskResolutionType: { Completed: 'Completed' },
 }));
 
 jest.mock('../../../../rest/miscAPI', () => ({
@@ -486,9 +502,11 @@ describe('InlineTestCaseIncidentStatus', () => {
       });
 
       await waitFor(() => {
-        expect(transitionIncident).toHaveBeenCalledWith(
-          mockData.stateId,
-          expect.objectContaining({ transitionId: 'ack' })
+        expect(postTestCaseIncidentStatus).toHaveBeenCalledWith(
+          expect.objectContaining({
+            testCaseResolutionStatusType: TestCaseResolutionStatusTypes.ACK,
+            testCaseReference: mockData.testCaseReference?.fullyQualifiedName,
+          })
         );
       });
     });
@@ -663,15 +681,13 @@ describe('InlineTestCaseIncidentStatus', () => {
       });
 
       await waitFor(() => {
-        // Current status is Assigned, so re-assigning uses 'reassign' transition
-        expect(transitionIncident).toHaveBeenCalledWith(
-          mockData.stateId,
+        expect(postTestCaseIncidentStatus).toHaveBeenCalledWith(
           expect.objectContaining({
-            transitionId: 'reassign',
-            payload: expect.objectContaining({
-              assignees: expect.arrayContaining([
-                expect.objectContaining({ name: 'user1' }),
-              ]),
+            testCaseResolutionStatusType:
+              TestCaseResolutionStatusTypes.Assigned,
+            testCaseReference: mockData.testCaseReference?.fullyQualifiedName,
+            testCaseResolutionStatusDetails: expect.objectContaining({
+              assignee: expect.objectContaining({ name: 'user1' }),
             }),
           })
         );
@@ -893,12 +909,15 @@ describe('InlineTestCaseIncidentStatus', () => {
       });
 
       await waitFor(() => {
-        // Current status is Resolved, so submitStatusChange routes to
-        // reopenIncident which creates a new task instead of calling
-        // transitionIncident with 'resolve'.
-        expect(createTask).toHaveBeenCalledWith(
+        expect(postTestCaseIncidentStatus).toHaveBeenCalledWith(
           expect.objectContaining({
-            about: mockData.testCaseReference?.fullyQualifiedName,
+            testCaseResolutionStatusType:
+              TestCaseResolutionStatusTypes.Resolved,
+            testCaseReference: mockData.testCaseReference?.fullyQualifiedName,
+            testCaseResolutionStatusDetails: expect.objectContaining({
+              testCaseFailureReason: TestCaseFailureReasonType.FalsePositive,
+              testCaseFailureComment: 'Test comment',
+            }),
           })
         );
 
@@ -977,7 +996,7 @@ describe('InlineTestCaseIncidentStatus', () => {
     });
 
     it('shows error toast when API call fails', async () => {
-      (transitionIncident as jest.Mock).mockRejectedValueOnce(
+      (postTestCaseIncidentStatus as jest.Mock).mockRejectedValueOnce(
         new Error('API Error')
       );
 
