@@ -139,8 +139,7 @@ def parse_resource_id(resource_id: str) -> Optional[SASResourceContext]:
     # Expected: ['', 'dataTables', 'dataSources', '<context>', 'tables', ...]
     if len(segments) < 4:
         logger.warning(
-            "resourceId %r has fewer than 4 slash-delimited segments; "
-            "cannot extract provider/host/library.",
+            "resourceId %r has fewer than 4 slash-delimited segments; cannot extract provider/host/library.",
             resource_id,
         )
         return None
@@ -164,9 +163,7 @@ def parse_resource_id(resource_id: str) -> Optional[SASResourceContext]:
     )
 
 
-class SasSource(
-    DatabaseServiceSource
-):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """
     Implements the necessary methods to extract
     Database metadata from SAS Database Source
@@ -179,9 +176,7 @@ class SasSource(
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.source_config: DatabaseServiceMetadataPipeline = (
-            self.config.sourceConfig.config
-        )
+        self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
         self.service_connection = self.config.serviceConnection.root.config
 
         self.sas_client = get_connection(self.service_connection)
@@ -215,9 +210,7 @@ class SasSource(
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SASConnection = config.serviceConnection.root.config
         if not isinstance(connection, SASConnection):
-            raise InvalidSourceException(
-                f"Expected SASConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected SASConnection, but got {connection}")
         return cls(config, metadata)
 
     def _iter(self) -> Iterable[Either[Entity]]:
@@ -247,9 +240,7 @@ class SasSource(
         self.table_fqns = []
         logger.info(f"Ingesting report: {report}")
         report_instance = self.sas_client.get_instance(report["id"])
-        for table in self.get_report_tables(
-            report_instance["resourceId"].split("/")[-1]
-        ):
+        for table in self.get_report_tables(report_instance["resourceId"].split("/")[-1]):
             yield from self.create_table_entity(table)
         yield from self.create_report_entity(report_instance)
 
@@ -277,13 +268,9 @@ class SasSource(
             yield from self.create_table_entity(input_asset)
         input_fqns = copy.deepcopy(self.table_fqns)
         self.table_fqns = []
-        for output_asset in (
-            self.sas_client.get_instance(id) for id in output_asset_ids
-        ):
+        for output_asset in (self.sas_client.get_instance(id) for id in output_asset_ids):
             yield from self.create_table_entity(output_asset)
-        yield from self.create_data_flow_entity(
-            data_flow_instance, input_fqns, copy.deepcopy(self.table_fqns)
-        )
+        yield from self.create_data_flow_entity(data_flow_instance, input_fqns, copy.deepcopy(self.table_fqns))
 
     def create_database_alt(self, db):
         """
@@ -336,15 +323,12 @@ class SasSource(
                 )
                 database = self.metadata.create_or_update(data=database)
 
-                db_schema = CreateDatabaseSchemaRequest(
-                    name=self.db_schema_name, database=database.fullyQualifiedName
-                )
+                db_schema = CreateDatabaseSchemaRequest(name=self.db_schema_name, database=database.fullyQualifiedName)
                 return self.metadata.create_or_update(db_schema)
 
             except HTTPError as exc:
                 logger.debug(
-                    "Falling back to relationships-based schema lookup for "
-                    "%s after HTTP error: %s",
+                    "Falling back to relationships-based schema lookup for %s after HTTP error: %s",
                     resource_id,
                     exc,
                 )
@@ -380,9 +364,7 @@ class SasSource(
         data_store = self.sas_client.get_instance(data_store_id)
         database = self.create_database_alt(data_store)
         self.db_schema_name = data_store["name"]
-        db_schema = CreateDatabaseSchemaRequest(
-            name=data_store["name"], database=database.fullyQualifiedName
-        )
+        db_schema = CreateDatabaseSchemaRequest(name=data_store["name"], database=database.fullyQualifiedName)
         return self.metadata.create_or_update(db_schema)
 
     def create_columns_alt(self, table):
@@ -429,9 +411,7 @@ class SasSource(
 
         col_entity_instances = views["entities"]
         # find datatables in col_entity_instances
-        table_entity_instance = list(
-            filter(lambda x: "Table" in x["type"], col_entity_instances)
-        )
+        table_entity_instance = list(filter(lambda x: "Table" in x["type"], col_entity_instances))
         if len(table_entity_instance) == 1:
             table_entity_instance = table_entity_instance[0]
 
@@ -496,29 +476,20 @@ class SasSource(
                     else:
                         col_profile_dict[mapped_attr] = col_attributes[attr]
             if "rowCount" in table_entity_instance["attributes"]:
-                col_profile_dict["valuesCount"] = table_entity_instance["attributes"][
-                    "rowCount"
-                ]
+                col_profile_dict["valuesCount"] = table_entity_instance["attributes"]["rowCount"]
             if "valuesCount" in col_profile_dict:
                 if "distinctCount" in col_profile_dict:
                     col_profile_dict["distinctProportion"] = (
-                        col_profile_dict["distinctCount"]
-                        / col_profile_dict["valuesCount"]
+                        col_profile_dict["distinctCount"] / col_profile_dict["valuesCount"]
                     )
                     col_profile_dict["uniqueCount"] = col_profile_dict["distinctCount"]
                 if "nullCount" in col_profile_dict:
-                    col_profile_dict["nullProportion"] = (
-                        col_profile_dict["nullCount"] / col_profile_dict["valuesCount"]
-                    )
+                    col_profile_dict["nullProportion"] = col_profile_dict["nullCount"] / col_profile_dict["valuesCount"]
                 if "missingCount" in col_profile_dict:
                     col_profile_dict["missingPercentage"] = (
-                        col_profile_dict["missingCount"]
-                        / col_profile_dict["valuesCount"]
+                        col_profile_dict["missingCount"] / col_profile_dict["valuesCount"]
                     )
-                    col_profile_dict["validCount"] = (
-                        col_profile_dict["valuesCount"]
-                        - col_profile_dict["missingCount"]
-                    )
+                    col_profile_dict["validCount"] = col_profile_dict["valuesCount"] - col_profile_dict["missingCount"]
             col_profile_dict["timestamp"] = self.timestamp
             col_profile_dict["name"] = parsed_string["name"]
             column_profile = ColumnProfile(**col_profile_dict)
@@ -548,9 +519,7 @@ class SasSource(
 
         try:
             table_url = self.sas_client.get_information_catalog_link(table["id"])
-            col_entity_instances, table_entity_instance = self.get_entities_using_view(
-                table["id"]
-            )
+            col_entity_instances, table_entity_instance = self.get_entities_using_view(table["id"])
             logger.info(f"table entity: {table_entity_instance}")
 
             if not table_entity_instance:
@@ -564,9 +533,7 @@ class SasSource(
 
             # find the table entity to see if it already exists
             table_fqn = self.get_table_fqn(table_name)
-            table_entity = self.metadata.get_by_name(
-                entity=Table, fqn=table_fqn, fields=["extension"]
-            )
+            table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn, fields=["extension"])
 
             logger.debug(table_entity)
 
@@ -574,8 +541,7 @@ class SasSource(
             # only update it when either the sourceUrl or analysisTimeStamp changed
             if not table_entity or (
                 table_url != table_entity.sourceUrl.root
-                or table_entity.extension.root.get("analysisTimeStamp")
-                != table_extension.get("analysisTimeStamp")
+                or table_entity.extension.root.get("analysisTimeStamp") != table_extension.get("analysisTimeStamp")
             ):
                 # create the columns of the table
                 columns, col_profile_list = self.create_columns_and_profiles(
@@ -591,9 +557,7 @@ class SasSource(
                     )
                     try:
                         # Create columns alternatively
-                        table_resource = self.sas_client.get_resource(
-                            table_entity_instance["resourceId"][1:]
-                        )
+                        table_resource = self.sas_client.get_resource(table_entity_instance["resourceId"][1:])
                         columns = self.create_columns_alt(table_resource)
                     except HTTPError as http_err:
                         table_description = f"{str(http_err)} This table does not exist in the file path"
@@ -609,9 +573,7 @@ class SasSource(
                     if isinstance(table_extension[attr], bool):
                         table_extension[attr] = str(table_extension[attr])
 
-                custom_attributes = [
-                    custom_attribute["name"] for custom_attribute in TABLE_CUSTOM_ATTR
-                ]
+                custom_attributes = [custom_attribute["name"] for custom_attribute in TABLE_CUSTOM_ATTR]
                 # Drop null values — OpenMetadata's custom-field types
                 # (e.g. STRING_TYPE) reject null and fail the create with
                 # "Custom field <name> has invalid JSON [$: null found, string expected]"
@@ -635,9 +597,7 @@ class SasSource(
                 # find the table entity to see if it already exists
                 yield from self.create_lineage_table_source(table_extension, table_name)
 
-                table_entity = self.metadata.get_by_name(
-                    entity=Table, fqn=self.get_table_fqn(table_name)
-                )
+                table_entity = self.metadata.get_by_name(entity=Table, fqn=self.get_table_fqn(table_name))
                 # If the table wasn't actually persisted (e.g. the sink
                 # rejected the CreateTableRequest), skip the follow-up
                 # patch/profile calls so we don't raise an AttributeError
@@ -651,9 +611,7 @@ class SasSource(
                     return
 
                 # update the description
-                logger.debug(
-                    f"Updating description for {table_entity.id.root} with {table_description}"
-                )
+                logger.debug(f"Updating description for {table_entity.id.root} with {table_description}")
                 self.metadata.client.patch(
                     path=f"/tables/{table_entity.id.root}",
                     data=json.dumps(
@@ -668,9 +626,7 @@ class SasSource(
                 )
 
                 # update the custom properties
-                logger.debug(
-                    f"Updating custom properties for {table_entity.id.root} with {extension_attributes}"
-                )
+                logger.debug(f"Updating custom properties for {table_entity.id.root} with {extension_attributes}")
                 self.metadata.client.patch(
                     path=f"/tables/{table_entity.id.root}",
                     data=json.dumps(
@@ -685,16 +641,10 @@ class SasSource(
                 )
 
                 # quit updating table profile if table doesn't exist
-                if (
-                    table_description
-                    and "This table does not exist in the file path"
-                    in table_description
-                ):
+                if table_description and "This table does not exist in the file path" in table_description:
                     return
 
-                raw_create_date: Optional[datetime] = table_entity_instance.get(
-                    "creationTimeStamp"
-                )
+                raw_create_date: Optional[datetime] = table_entity_instance.get("creationTimeStamp")
                 if raw_create_date:
                     raw_create_date = raw_create_date.replace(tzinfo=timezone.utc)
 
@@ -716,9 +666,7 @@ class SasSource(
 
         except Exception as exc:
             logger.error(f"table failed to create: {table}")
-            error_name = table_name or (
-                table.get("id") if isinstance(table, dict) else "unknown"
-            )
+            error_name = table_name or (table.get("id") if isinstance(table, dict) else "unknown")
             yield Either(
                 left=StackTraceError(
                     name=str(error_name),
@@ -739,41 +687,29 @@ class SasSource(
             # see if the source table already exists
             source_table_fqn = self.get_table_fqn(source_name)
             logger.debug(f"source_table_fqn for sourceTable is {source_table_fqn}")
-            source_table_entity = self.metadata.get_by_name(
-                entity=Table, fqn=source_table_fqn
-            )
-            target_table_entity = self.metadata.get_by_name(
-                entity=Table, fqn=self.get_table_fqn(table_name)
-            )
+            source_table_entity = self.metadata.get_by_name(entity=Table, fqn=source_table_fqn)
+            target_table_entity = self.metadata.get_by_name(entity=Table, fqn=self.get_table_fqn(table_name))
 
             # process to create lineage if source table doesn't exist
             if not source_table_entity:
                 sanitized_source_name = re.sub("[@!#$%^&*]", "", source_name)
                 param = f"filter=contains(name, '{sanitized_source_name}')"
-                get_instances_with_param = self.sas_client.get_instances_with_param(
-                    param
-                )
+                get_instances_with_param = self.sas_client.get_instances_with_param(param)
                 if get_instances_with_param and len(get_instances_with_param) == 1:
                     source_table = get_instances_with_param[0]
                     yield from self.create_table_entity(source_table)
 
-            source_table_entity = self.metadata.get_by_name(
-                entity=Table, fqn=source_table_fqn
-            )
+            source_table_entity = self.metadata.get_by_name(entity=Table, fqn=source_table_fqn)
 
             if source_table_entity and target_table_entity:
-                yield from self.create_table_lineage(
-                    source_table_entity, target_table_entity
-                )
+                yield from self.create_table_lineage(source_table_entity, target_table_entity)
 
     def add_table_custom_attributes(self):
         """
         Adding custom attribute from extension_attr.py
         """
         string_type = self.metadata.client.get(path="/metadata/types/name/string")["id"]
-        integer_type = self.metadata.client.get(path="/metadata/types/name/integer")[
-            "id"
-        ]
+        integer_type = self.metadata.client.get(path="/metadata/types/name/integer")["id"]
         for attr in TABLE_CUSTOM_ATTR:
             if attr["propertyType"]["id"] == "STRING_TYPE":
                 attr["propertyType"]["id"] = string_type
@@ -782,9 +718,7 @@ class SasSource(
         table_type = self.metadata.client.get(path="/metadata/types/name/table")
         table_id = table_type["id"]
         for attr in TABLE_CUSTOM_ATTR:
-            self.metadata.client.put(
-                path=f"/metadata/types/{table_id}", data=json.dumps(attr)
-            )
+            self.metadata.client.put(path=f"/metadata/types/{table_id}", data=json.dumps(attr))
 
     def create_table_lineage(self, from_entity, to_entity):
         yield self.create_lineage_request("table", "table", from_entity, to_entity)
@@ -864,9 +798,7 @@ class SasSource(
         try:
             report_resource = report["resourceId"]
             report_url = self.sas_client.get_report_link("report", report_resource)
-            self.report_description = (
-                str(self.report_description) if self.report_description else None
-            )
+            self.report_description = str(self.report_description) if self.report_description else None
             report_request = CreateDashboardRequest(
                 name=report_id,
                 displayName=report_name,
@@ -884,17 +816,13 @@ class SasSource(
                 dashboard_name=report_id,
             )
 
-            dashboard_entity = self.metadata.get_by_name(
-                entity=Dashboard, fqn=dashboard_fqn
-            )
+            dashboard_entity = self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn)
             table_entities = []
             for table in self.table_fqns:
                 entity_instance = self.metadata.get_by_name(entity=Table, fqn=table)
                 table_entities.append(entity_instance)
             for entity in table_entities:
-                yield self.create_lineage_request(
-                    "table", "dashboard", entity, dashboard_entity
-                )
+                yield self.create_lineage_request("table", "dashboard", entity, dashboard_entity)
         except Exception as exc:
             logger.error(f"report failed to create: {report}")
             yield Either(
@@ -913,9 +841,7 @@ class SasSource(
         data_flow_resource = data_flow["resourceId"]
 
         try:
-            data_flow_url = self.sas_client.get_report_link(
-                "dataFlow", data_flow_resource
-            )
+            data_flow_url = self.sas_client.get_report_link("dataFlow", data_flow_resource)
             data_flow_request = CreateDashboardRequest(
                 name=data_flow_id,
                 displayName=data_flow["name"],
@@ -931,27 +857,17 @@ class SasSource(
                 dashboard_name=data_flow_id,
             )
 
-            dashboard_entity = self.metadata.get_by_name(
-                entity=Dashboard, fqn=dashboard_fqn
-            )
+            dashboard_entity = self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn)
 
-            input_entities = [
-                self.metadata.get_by_name(entity=Table, fqn=input_entity)
-                for input_entity in input_fqns
-            ]
+            input_entities = [self.metadata.get_by_name(entity=Table, fqn=input_entity) for input_entity in input_fqns]
             output_entities = [
-                self.metadata.get_by_name(entity=Table, fqn=output_entity)
-                for output_entity in output_fqns
+                self.metadata.get_by_name(entity=Table, fqn=output_entity) for output_entity in output_fqns
             ]
 
             for entity in input_entities:
-                yield self.create_lineage_request(
-                    "table", "dashboard", entity, dashboard_entity
-                )
+                yield self.create_lineage_request("table", "dashboard", entity, dashboard_entity)
             for entity in output_entities:
-                yield self.create_lineage_request(
-                    "dashboard", "table", dashboard_entity, entity
-                )
+                yield self.create_lineage_request("dashboard", "table", dashboard_entity, entity)
         except Exception as exc:
             logger.error(f"dataflow failed to create: {data_flow}")
             yield Either(
@@ -966,9 +882,7 @@ class SasSource(
         for database in self.databases:
             yield database
 
-    def yield_database(
-        self, database_name: str
-    ) -> Iterable[Either[CreateDatabaseRequest]]:
+    def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
         database_request = CreateDatabaseRequest(
             name=EntityName(database_name),
             service=self.context.get().database_service,
@@ -981,9 +895,7 @@ class SasSource(
             for database_schema in database_schemas:
                 yield database, database_schema
 
-    def yield_database_schema(
-        self, schema_name: Tuple[str, str]
-    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
+    def yield_database_schema(self, schema_name: Tuple[str, str]) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
 
         schema_request = CreateDatabaseSchemaRequest(
             name=schema_name[1],
@@ -998,31 +910,23 @@ class SasSource(
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def yield_tag(
-        self, schema_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """No tags to send"""
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, list]]]:
         """Not implemented"""
 
-    def yield_table(
-        self, table_name_and_type: Tuple[str, list]
-    ) -> Iterable[Either[Entity]]:
+    def yield_table(self, table_name_and_type: Tuple[str, list]) -> Iterable[Either[Entity]]:
         """Not implemented"""
 
     def get_stored_procedures(self) -> Iterable[Any]:
         """Not implemented"""
 
-    def yield_stored_procedure(
-        self, stored_procedure: Any
-    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+    def yield_stored_procedure(self, stored_procedure: Any) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Not implemented"""
 
     def close(self) -> None:
         pass
 
     def test_connection(self) -> None:
-        test_connection_common(
-            self.metadata, self.connection_obj, self.service_connection
-        )
+        test_connection_common(self.metadata, self.connection_obj, self.service_connection)

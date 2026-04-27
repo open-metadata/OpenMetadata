@@ -12,7 +12,8 @@
 """
 Source connection handler
 """
-from functools import partial
+
+from functools import partial  # noqa: I001
 from typing import Optional
 
 from cassandra.auth import PlainTextAuthProvider
@@ -78,9 +79,7 @@ def get_connection(connection: CassandraConnection):
                 password=connection.authType.password.get_secret_value(),
             )
 
-    connection.connectionArguments = (
-        connection.connectionArguments or init_empty_connection_arguments()
-    )
+    connection.connectionArguments = connection.connectionArguments or init_empty_connection_arguments()
 
     cluster = Cluster(
         **cluster_config,

@@ -13,6 +13,7 @@ Microsoft Fabric API Response Models
 
 Pydantic models for Microsoft Fabric REST API responses.
 """
+
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -75,9 +76,7 @@ class FabricWarehouse(BaseModel):
     workspace_id: Optional[str] = Field(default=None, alias="workspaceId")
     connection_string: Optional[str] = Field(default=None, alias="connectionString")
     # SQL endpoint for connecting via T-SQL
-    sql_endpoint_properties: Optional[Dict[str, Any]] = Field(
-        default=None, alias="properties"
-    )
+    sql_endpoint_properties: Optional[Dict[str, Any]] = Field(default=None, alias="properties")
 
 
 class FabricLakehouse(BaseModel):
@@ -93,9 +92,7 @@ class FabricLakehouse(BaseModel):
     onelake_tables_path: Optional[str] = Field(default=None, alias="oneLakeTablesPath")
     onelake_files_path: Optional[str] = Field(default=None, alias="oneLakeFilesPath")
     # SQL endpoint for connecting via T-SQL
-    sql_endpoint_properties: Optional[Dict[str, Any]] = Field(
-        default=None, alias="properties"
-    )
+    sql_endpoint_properties: Optional[Dict[str, Any]] = Field(default=None, alias="properties")
 
 
 class FabricPipeline(BaseModel):
@@ -132,9 +129,7 @@ class FabricPipelineRun(BaseModel):
     end_time: Optional[datetime] = Field(default=None, alias="endTimeUtc")
     invoker_type: Optional[str] = Field(default=None, alias="invokeType")
     job_type: Optional[str] = Field(default=None, alias="jobType")
-    failure_reason: Optional[Dict[str, Any]] = Field(
-        default=None, alias="failureReason"
-    )
+    failure_reason: Optional[Dict[str, Any]] = Field(default=None, alias="failureReason")
 
 
 class FabricActivity(BaseModel):
@@ -147,9 +142,7 @@ class FabricActivity(BaseModel):
     description: Optional[str] = None
     depends_on: Optional[List[Dict[str, Any]]] = Field(default=None, alias="dependsOn")
     # Activity-specific properties (Copy, Notebook, etc.)
-    type_properties: Optional[Dict[str, Any]] = Field(
-        default=None, alias="typeProperties"
-    )
+    type_properties: Optional[Dict[str, Any]] = Field(default=None, alias="typeProperties")
 
 
 class FabricActivityRun(BaseModel):

@@ -169,9 +169,7 @@ class TestDatalakeUtils(TestCase):
 
     def test_create_column_object(self):
         """test create column object fn"""
-        formatted_column = GenericDataFrameColumnParser.construct_json_column_children(
-            STRUCTURE
-        )
+        formatted_column = GenericDataFrameColumnParser.construct_json_column_children(STRUCTURE)
         column = {
             "dataTypeDisplay": "STRING",
             "dataType": "STRING",
@@ -188,9 +186,7 @@ class TestParquetDataFrameColumnParser(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        resources_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "resources"
-        )
+        resources_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources")
         cls.parquet_path = os.path.join(resources_path, "datalake", "example.parquet")
 
         cls.df = pd.read_parquet(cls.parquet_path)
@@ -213,26 +209,18 @@ class TestParquetDataFrameColumnParser(TestCase):
         for other_type in other_types:
             with self.subTest(other_type=other_type):
                 generic_parser = DataFrameColumnParser.create(self.df, other_type)
-                self.assertIsInstance(
-                    generic_parser.parser, GenericDataFrameColumnParser
-                )
+                self.assertIsInstance(generic_parser.parser, GenericDataFrameColumnParser)
 
     def test_shuffle_and_sample_from_parser(self):
         """test the shuffle and sampling logic from the parser creator method"""
         parquet_parser = DataFrameColumnParser.create(self.df, SupportedTypes.PARQUET)
         self.assertEqual(parquet_parser.parser.data_frame.shape, self.df.shape)
 
-        parquet_parser = DataFrameColumnParser.create(
-            [self.df, self.df], SupportedTypes.PARQUET
-        )
+        parquet_parser = DataFrameColumnParser.create([self.df, self.df], SupportedTypes.PARQUET)
         self.assertEqual(parquet_parser.parser.data_frame.shape, self.df.shape)
 
-        parquet_parser = DataFrameColumnParser.create(
-            [self.df, self.df], SupportedTypes.PARQUET, sample=False
-        )
-        self.assertEqual(
-            parquet_parser.parser.data_frame.shape, pd.concat([self.df, self.df]).shape
-        )
+        parquet_parser = DataFrameColumnParser.create([self.df, self.df], SupportedTypes.PARQUET, sample=False)
+        self.assertEqual(parquet_parser.parser.data_frame.shape, pd.concat([self.df, self.df]).shape)
 
     def test_get_columns(self):
         """test `get_columns` method of the parquet column parser"""
@@ -549,7 +537,7 @@ class TestParquetDataFrameColumnParser(TestCase):
         local_config = LocalConfig()
 
         # Create DSV reader
-        reader = DSVDataFrameReader(config_source=local_config, client=None)
+        reader = DSVDataFrameReader(config_source=local_config, client=None)  # noqa: F841
 
         # Test compression detection logic (this is the same logic used in the dispatch methods)
         test_cases = [
@@ -776,12 +764,8 @@ class TestCSVQuotedHeaderFix(TestCase):
             LocalConfig,
         )
 
-        cls.csv_reader = DSVDataFrameReader(
-            config_source=LocalConfig(), client=None, separator=","
-        )
-        cls.tsv_reader = DSVDataFrameReader(
-            config_source=LocalConfig(), client=None, separator="\t"
-        )
+        cls.csv_reader = DSVDataFrameReader(config_source=LocalConfig(), client=None, separator=",")
+        cls.tsv_reader = DSVDataFrameReader(config_source=LocalConfig(), client=None, separator="\t")
 
     def test_normal_csv_no_fix_applied(self):
         """Test that normal CSV files with proper headers are not modified"""

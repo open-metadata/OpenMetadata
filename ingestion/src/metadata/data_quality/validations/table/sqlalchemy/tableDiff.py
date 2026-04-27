@@ -102,20 +102,14 @@ class ColumnDiffResult(BaseModel):
     schemaTable2: SchemaDiffResult
 
 
-def build_sample_where_clause(
-    table: TableParameter, key_columns: List[str], salt: str, hex_nounce: str
-) -> str:
+def build_sample_where_clause(table: TableParameter, key_columns: List[str], salt: str, hex_nounce: str) -> str:
     sql_alchemy_columns = [
         build_orm_col(i, c, table.database_service_type)
         for i, c in enumerate(table.columns)
         if c.name.root in key_columns
     ]
-    reduced_concat = reduce(
-        lambda c1, c2: c1.concat(c2), sql_alchemy_columns + [literal(salt)]
-    )
-    sqa_dialect = make_url(
-        f"{PythonDialects[table.database_service_type.name].value}://"
-    ).get_dialect()
+    reduced_concat = reduce(lambda c1, c2: c1.concat(c2), sql_alchemy_columns + [literal(salt)])
+    sqa_dialect = make_url(f"{PythonDialects[table.database_service_type.name].value}://").get_dialect()
     return str(
         select()
         .filter(
@@ -159,12 +153,7 @@ def compile_and_clauses(elements) -> str:
         if len(elements) == 1:
             return compile_and_clauses(elements[0])
         return " and ".join(
-            (
-                f"({compile_and_clauses(e)})"
-                if isinstance(e, list)
-                else compile_and_clauses(e)
-            )
-            for e in elements
+            (f"({compile_and_clauses(e)})" if isinstance(e, list) else compile_and_clauses(e)) for e in elements
         )
     raise ValueError("Input must be a string or a list")
 
@@ -230,9 +219,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             )
             return result
         except Exception as e:
-            logger.error(
-                f"Unexpected error while running the table diff test: {str(e)}\n{traceback.format_exc()}"
-            )
+            logger.error(f"Unexpected error while running the table diff test: {str(e)}\n{traceback.format_exc()}")
             result = TestCaseResult(
                 timestamp=self.execution_date,  # type: ignore
                 testCaseStatus=TestCaseStatus.Aborted,
@@ -256,18 +243,13 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     def _run(self) -> TestCaseResult:
         column_diff: ColumnDiffResult = self.get_column_diff()
-        threshold = self.get_test_case_param_value(
-            self.test_case.parameterValues, "threshold", int, default=0
-        )
+        threshold = self.get_test_case_param_value(self.test_case.parameterValues, "threshold", int, default=0)
         if column_diff:
             # If there are column differences, we set extra_columns to the common columns for the diff
             # Exclude incomparable columns (different data types) from the comparison
             # Also exclude key columns since they are handled separately and should not be in extra_columns
             common_columns = list(
-                (
-                    set(column_diff.schemaTable1.schema_.keys())
-                    & set(column_diff.schemaTable2.schema_.keys())
-                )
+                (set(column_diff.schemaTable1.schema_.keys()) & set(column_diff.schemaTable2.schema_.keys()))
                 - set(column_diff.changed)
                 - set(self.runtime_params.table1.key_columns or [])
                 - set(self.runtime_params.table2.key_columns or [])
@@ -299,12 +281,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             )
             count = self._compute_row_count(self.runner, None)  # type: ignore
             test_case_result.passedRows = stats["unchanged"]
-            test_case_result.passedRowsPercentage = (
-                test_case_result.passedRows / count * 100
-            )
-            test_case_result.failedRowsPercentage = (
-                test_case_result.failedRows / count * 100
-            )
+            test_case_result.passedRowsPercentage = test_case_result.passedRows / count * 100
+            test_case_result.failedRowsPercentage = test_case_result.failedRows / count * 100
             return test_case_result
         return self.get_row_diff_test_case_result(
             threshold,
@@ -326,9 +304,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table1.key_columns,
             extra_columns=self.runtime_params.extraColumns,
             case_sensitive=self.get_case_sensitive(),
-            key_content=normalize_pem_string(
-                self.runtime_params.table1.privateKey.get_secret_value()
-            )
+            key_content=normalize_pem_string(self.runtime_params.table1.privateKey.get_secret_value())
             if self.runtime_params.table1.privateKey
             else None,
             private_key_passphrase=self.runtime_params.table1.passPhrase.get_secret_value()
@@ -341,9 +317,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table2.key_columns,
             extra_columns=self.runtime_params.extraColumns,
             case_sensitive=self.get_case_sensitive(),
-            key_content=normalize_pem_string(
-                self.runtime_params.table2.privateKey.get_secret_value()
-            )
+            key_content=normalize_pem_string(self.runtime_params.table2.privateKey.get_secret_value())
             if self.runtime_params.table2.privateKey
             else None,
             private_key_passphrase=self.runtime_params.table2.passPhrase.get_secret_value()
@@ -387,9 +361,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         except AttributeError:
             pass
         try:
-            result = getattr(
-                sqlalchemy.types, type(column).__name__.upper()
-            )().python_type
+            result = getattr(sqlalchemy.types, type(column).__name__.upper())().python_type
         except AttributeError:
             pass
         if result == ArithAlphanumeric:
@@ -473,13 +445,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         sample_config = profile_sample_config.root if profile_sample_config else None
         static = sample_config.config if sample_config else None
         profile_sample = getattr(static, "profileSample", None) if static else None
-        profile_sample_type = (
-            getattr(static, "profileSampleType", None) if static else None
-        )
-        if profile_sample is None or (
-            profile_sample_type == ProfileSampleType.PERCENTAGE
-            and profile_sample == 100
-        ):
+        profile_sample_type = getattr(static, "profileSampleType", None) if static else None
+        if profile_sample is None or (profile_sample_type == ProfileSampleType.PERCENTAGE and profile_sample == 100):
             return None, None
         if DatabaseServiceType.Mssql in [
             self.runtime_params.table1.database_service_type,
@@ -515,11 +482,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         )
 
     def maybe_case_sensitive(self, iterable: Iterable[str]) -> list[str]:
-        return (
-            CaseInsensitiveList(iterable)
-            if not self.get_case_sensitive()
-            else list(iterable)
-        )
+        return CaseInsensitiveList(iterable) if not self.get_case_sensitive() else list(iterable)
 
     def calculate_nounce(self, max_nounce=2**32 - 1) -> int:
         """Calculate the nounce based on the profile sample configuration. The nounce is
@@ -572,27 +535,15 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         if column_diff:
             test_case_results.extend(
                 [
-                    TestResultValue(
-                        name="removedColumns", value=str(len(column_diff.removed))
-                    ),
-                    TestResultValue(
-                        name="addedColumns", value=str(len(column_diff.added))
-                    ),
-                    TestResultValue(
-                        name="changedColumns", value=str(len(column_diff.changed))
-                    ),
-                    TestResultValue(
-                        name="schemaTable1", value=str(column_diff.schemaTable1)
-                    ),
-                    TestResultValue(
-                        name="schemaTable2", value=str(column_diff.schemaTable2)
-                    ),
+                    TestResultValue(name="removedColumns", value=str(len(column_diff.removed))),
+                    TestResultValue(name="addedColumns", value=str(len(column_diff.added))),
+                    TestResultValue(name="changedColumns", value=str(len(column_diff.changed))),
+                    TestResultValue(name="schemaTable1", value=str(column_diff.schemaTable1)),
+                    TestResultValue(name="schemaTable2", value=str(column_diff.schemaTable2)),
                 ]
             )
 
-        has_column_diff = column_diff is not None and (
-            column_diff.removed or column_diff.added or column_diff.changed
-        )
+        has_column_diff = column_diff is not None and (column_diff.removed or column_diff.added or column_diff.changed)
 
         if has_column_diff:
             result_message = (
@@ -608,8 +559,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         return TestCaseResult(
             timestamp=self.execution_date,  # type: ignore
             testCaseStatus=self.get_test_case_status(
-                not has_column_diff
-                and ((threshold or total_diffs) == 0 or total_diffs < threshold)
+                not has_column_diff and ((threshold or total_diffs) == 0 or total_diffs < threshold)
             ),
             result=result_message,
             failedRows=total_diffs,
@@ -694,9 +644,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         added: List[str] = []
         right_columns_dict: Dict[str, Column] = {c.name.root: c for c in right}
         if not case_sensitive:
-            right_columns_dict = cast(
-                Dict[str, Column], CaseInsensitiveDict(right_columns_dict)
-            )
+            right_columns_dict = cast(Dict[str, Column], CaseInsensitiveDict(right_columns_dict))
         for column in left:
             table2_column = right_columns_dict.get(column.name.root)
             if table2_column is None:
@@ -723,30 +671,22 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         Returns:
             TestCaseResult: The result of the column validation with a meaningful message
         """
-        message = (
-            f"Tables have {sum(map(len, [removed, added, changed]))} different columns:"
-        )
+        message = f"Tables have {sum(map(len, [removed, added, changed]))} different columns:"
         if removed:
             message += f"\n  Removed columns: {', '.join(removed)}\n"
         if added:
             message += f"\n  Added columns: {', '.join(added)}\n"
         if changed:
             message += "\n  Changed columns:"
-            table1_columns = {
-                c.name.root: c for c in self.runtime_params.table1.columns
-            }
-            table2_columns = {
-                c.name.root: c for c in self.runtime_params.table2.columns
-            }
+            table1_columns = {c.name.root: c for c in self.runtime_params.table1.columns}
+            table2_columns = {c.name.root: c for c in self.runtime_params.table2.columns}
             if not self.get_case_sensitive():
                 table1_columns = CaseInsensitiveDict(table1_columns)
                 table2_columns = CaseInsensitiveDict(table2_columns)
             for col in changed:
                 col1 = table1_columns[col]
                 col2 = table2_columns[col]
-                message += (
-                    f"\n    {col}: {col1.dataType.value} -> {col2.dataType.value}"
-                )
+                message += f"\n    {col}: {col1.dataType.value} -> {col2.dataType.value}"
         return TestCaseResult(
             timestamp=self.execution_date,  # type: ignore
             testCaseStatus=TestCaseStatus.Failed,
@@ -758,9 +698,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             ],
         )
 
-    def calculate_diffs_with_limit(
-        self, diff_iter: Iterable[Tuple[str, Tuple[str, ...]]], limit: int
-    ) -> int:
+    def calculate_diffs_with_limit(self, diff_iter: Iterable[Tuple[str, Tuple[str, ...]]], limit: int) -> int:
         """Given an iterator of diffs like
         - ('+', (...))
         - ('-', (...))
@@ -804,9 +742,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                     pass
 
     def get_case_sensitive(self):
-        return utils.get_bool_test_case_param(
-            self.test_case.parameterValues, "caseSensitiveColumns"
-        )
+        return utils.get_bool_test_case_param(self.test_case.parameterValues, "caseSensitiveColumns")
 
     def get_row_count(self) -> Optional[int]:
         return self._compute_row_count(self.runner, None)

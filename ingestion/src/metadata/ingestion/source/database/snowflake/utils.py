@@ -12,7 +12,8 @@
 """
 Module to define overridden dialect methods
 """
-import operator
+
+import operator  # noqa: I001
 from functools import reduce
 from typing import Dict, Optional
 
@@ -102,8 +103,7 @@ def _denormalize_quote_join(*idents):
     )
     quoted_identifiers = ip._quote_free_identifiers(*split_idents)
     normalized_identifiers = (
-        item if item.startswith('"') and item.endswith('"') else f'"{item}"'
-        for item in quoted_identifiers
+        item if item.startswith('"') and item.endswith('"') else f'"{item}"' for item in quoted_identifiers
     )
     return ".".join(normalized_identifiers)
 
@@ -139,9 +139,7 @@ def get_table_names_reflection(self, schema=None, **kw):
     """
 
     with self._operation_context() as conn:  # pylint: disable=protected-access
-        return self.dialect.get_table_names(
-            conn, schema, info_cache=self.info_cache, **kw
-        )
+        return self.dialect.get_table_names(conn, schema, info_cache=self.info_cache, **kw)
 
 
 def get_view_names_reflection(self, schema=None, **kw):
@@ -153,9 +151,7 @@ def get_view_names_reflection(self, schema=None, **kw):
     """
 
     with self._operation_context() as conn:  # pylint: disable=protected-access
-        return self.dialect.get_view_names(
-            conn, schema, info_cache=self.info_cache, **kw
-        )
+        return self.dialect.get_view_names(conn, schema, info_cache=self.info_cache, **kw)
 
 
 def get_stream_names_reflection(self, schema=None, **kw):
@@ -167,9 +163,7 @@ def get_stream_names_reflection(self, schema=None, **kw):
     """
 
     with self._operation_context() as conn:  # pylint: disable=protected-access
-        return self.dialect.get_stream_names(
-            conn, schema, info_cache=self.info_cache, **kw
-        )
+        return self.dialect.get_stream_names(conn, schema, info_cache=self.info_cache, **kw)
 
 
 def get_stage_names_reflection(self, schema=None, **kw):
@@ -181,14 +175,10 @@ def get_stage_names_reflection(self, schema=None, **kw):
     """
 
     with self._operation_context() as conn:  # pylint: disable=protected-access
-        return self.dialect.get_stage_names(
-            conn, schema, info_cache=self.info_cache, **kw
-        )
+        return self.dialect.get_stage_names(conn, schema, info_cache=self.info_cache, **kw)
 
 
-def _get_query_map(
-    incremental: Optional[IncrementalConfig], query_maps: Dict[str, QueryMap]
-):
+def _get_query_map(incremental: Optional[IncrementalConfig], query_maps: Dict[str, QueryMap]):
     """Returns the proper queries depending if the extraction is Incremental or Full."""
     if incremental and incremental.enabled:
         return query_maps["incremental"]
@@ -207,11 +197,7 @@ def _get_query_parameters(
     """Returns the proper query parameters depending if the extraction is Incremental or Full"""
     parameters = {
         "schema": fqn.unquote_name(schema),
-        "include_transient_tables": (
-            "TRUE"
-            if include_transient_tables
-            else "COALESCE(IS_TRANSIENT, 'NO') != 'YES'"
-        ),
+        "include_transient_tables": ("TRUE" if include_transient_tables else "COALESCE(IS_TRANSIENT, 'NO') != 'YES'"),
         "include_views": "TRUE" if include_views else "TABLE_TYPE != 'VIEW'",
     }
 
@@ -277,9 +263,7 @@ def get_view_names(self, connection, schema, **kw):
     account_usage = kw.get("account_usage")
 
     queries = _get_query_map(incremental, VIEW_QUERY_MAPS)
-    parameters = _get_query_parameters(
-        self, connection, schema, incremental, account_usage
-    )
+    parameters = _get_query_parameters(self, connection, schema, incremental, account_usage)
 
     if kw.get("materialized_views"):
         query = queries["materialized_views"]
@@ -288,10 +272,7 @@ def get_view_names(self, connection, schema, **kw):
 
     cursor = connection.execute(text(query.format(**parameters)))
     result = SnowflakeTableList(
-        tables=[
-            SnowflakeTable(name=self.normalize_name(row[0]), deleted=row[1])
-            for row in cursor
-        ]
+        tables=[SnowflakeTable(name=self.normalize_name(row[0]), deleted=row[1]) for row in cursor]
     )
     return result
 
@@ -306,10 +287,7 @@ def get_stream_names(self, connection, schema, **kw):
 
     cursor = connection.execute(text(query.format(**parameters)))
     result = SnowflakeTableList(
-        tables=[
-            SnowflakeTable(name=self.normalize_name(row[1]), deleted=None)
-            for row in cursor
-        ]
+        tables=[SnowflakeTable(name=self.normalize_name(row[1]), deleted=None) for row in cursor]
     )
     return result
 
@@ -332,9 +310,7 @@ def get_stage_names(self, connection, schema, **kw):
 
 
 @reflection.cache
-def get_view_definition(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_view_definition(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     view_definition = get_view_definition_wrapper(
         self,
         connection,
@@ -347,15 +323,11 @@ def get_view_definition(
 
     # If the view definition is not found via optimized query,
     # we need to get the view definition from the view ddl
-    logger.debug(
-        f"View definition not found via optimized query for {schema}.{table_name}, falling back to DDL query"
-    )
+    logger.debug(f"View definition not found via optimized query for {schema}.{table_name}, falling back to DDL query")
 
     schema = schema or self.default_schema_name
     view_name = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
-    cursor = connection.execute(
-        text(SNOWFLAKE_GET_VIEW_DDL.format(view_name=view_name))
-    )
+    cursor = connection.execute(text(SNOWFLAKE_GET_VIEW_DDL.format(view_name=view_name)))
     try:
         result = cursor.fetchone()
         if result:
@@ -374,9 +346,7 @@ def get_stream_definition(  # pylint: disable=unused-argument
     """
     schema = schema or self.default_schema_name
     stream_name = f'"{schema}"."{stream_name}"' if schema else f'"{stream_name}"'
-    cursor = connection.execute(
-        text(SNOWFLAKE_GET_STREAM_DEFINITION.format(stream_name=stream_name))
-    )
+    cursor = connection.execute(text(SNOWFLAKE_GET_STREAM_DEFINITION.format(stream_name=stream_name)))
     try:
         result = cursor.fetchone()
         if result:
@@ -387,9 +357,7 @@ def get_stream_definition(  # pylint: disable=unused-argument
 
 
 @reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_comment(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     return get_table_comment_wrapper(
         self,
         connection,
@@ -412,15 +380,11 @@ def get_schema_columns(self, connection, schema, **kw):
     current_database, _ = self._current_database_schema(connection, **kw)
     full_schema_name = _denormalize_quote_join(current_database, fqn.quote_name(schema))
     try:
-        schema_primary_keys = self._get_schema_primary_keys(
-            connection, full_schema_name, **kw
-        )
+        schema_primary_keys = self._get_schema_primary_keys(connection, full_schema_name, **kw)
         # removing " " from schema name because schema name is in the WHERE clause of a query
         table_schema = self.denormalize_name(fqn.unquote_name(schema))
         table_schema = table_schema.lower() if schema.islower() else table_schema
-        result = connection.execute(
-            text(SNOWFLAKE_GET_SCHEMA_COLUMNS), {"table_schema": table_schema}
-        )
+        result = connection.execute(text(SNOWFLAKE_GET_SCHEMA_COLUMNS), {"table_schema": table_schema})
 
     except sa_exc.ProgrammingError as p_err:
         if p_err.orig.errno == 90030:
@@ -451,9 +415,7 @@ def get_schema_columns(self, connection, schema, **kw):
         col_type = self.ischema_names.get(coltype, None)
         col_type_kw = {}
         if col_type is None:
-            sa_util.warn(
-                f"Did not recognize type '{coltype}' of column '{column_name}'"
-            )
+            sa_util.warn(f"Did not recognize type '{coltype}' of column '{column_name}'")
             col_type = sqltypes.NullType
             type_instance = col_type()
         else:
@@ -484,10 +446,7 @@ def get_schema_columns(self, connection, schema, **kw):
                 ),
                 "comment": comment,
                 "primary_key": (
-                    (
-                        column_name
-                        in schema_primary_keys[table_name]["constrained_columns"]
-                    )
+                    (column_name in schema_primary_keys[table_name]["constrained_columns"])
                     if current_table_pks
                     else False
                 ),
@@ -505,9 +464,7 @@ def get_schema_columns(self, connection, schema, **kw):
 @reflection.cache
 def _current_database_schema(self, connection, **kw):  # pylint: disable=unused-argument
     """Getting table name in quotes"""
-    res = connection.exec_driver_sql(
-        "select current_database(), current_schema();"
-    ).fetchone()
+    res = connection.exec_driver_sql("select current_database(), current_schema();").fetchone()
     return (
         self.normalize_name(_quoted_name(entity_name=res[0])),
         self.normalize_name(res[1]),
@@ -519,13 +476,11 @@ def get_pk_constraint(self, connection, table_name, schema=None, **kw):
     schema = schema or self.default_schema_name
     schema = _quoted_name(entity_name=schema)
     current_database, current_schema = self._current_database_schema(connection, **kw)
-    full_schema_name = _denormalize_quote_join(
-        current_database, schema if schema else current_schema
-    )
+    full_schema_name = _denormalize_quote_join(current_database, schema if schema else current_schema)
 
-    return self._get_schema_primary_keys(
-        connection, self.denormalize_name(full_schema_name), **kw
-    ).get(table_name, {"constrained_columns": [], "name": None})
+    return self._get_schema_primary_keys(connection, self.denormalize_name(full_schema_name), **kw).get(
+        table_name, {"constrained_columns": [], "name": None}
+    )
 
 
 @reflection.cache
@@ -536,13 +491,9 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
     schema = schema or self.default_schema_name
     schema = _quoted_name(entity_name=schema)
     current_database, current_schema = self._current_database_schema(connection, **kw)
-    full_schema_name = _denormalize_quote_join(
-        current_database, schema if schema else current_schema
-    )
+    full_schema_name = _denormalize_quote_join(current_database, schema if schema else current_schema)
 
-    foreign_key_map = self._get_schema_foreign_keys(
-        connection, self.denormalize_name(full_schema_name), **kw
-    )
+    foreign_key_map = self._get_schema_foreign_keys(connection, self.denormalize_name(full_schema_name), **kw)
     return foreign_key_map.get(table_name, [])
 
 
@@ -550,9 +501,7 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
 def get_schema_foreign_keys(self, connection, schema, **kw):
     current_database, current_schema = self._current_database_schema(connection, **kw)
     result = connection.execute(
-        text(
-            f"SHOW /* sqlalchemy:_get_schema_foreign_keys */ IMPORTED KEYS IN SCHEMA {schema}"
-        )
+        text(f"SHOW /* sqlalchemy:_get_schema_foreign_keys */ IMPORTED KEYS IN SCHEMA {schema}")
     )
     foreign_key_map = {}
     for row in result:
@@ -560,23 +509,15 @@ def get_schema_foreign_keys(self, connection, schema, **kw):
         if name not in foreign_key_map:
             referred_schema = self.normalize_name(row._mapping["pk_schema_name"])
             foreign_key_map[name] = {
-                "constrained_columns": [
-                    self.normalize_name(row._mapping["fk_column_name"])
-                ],
+                "constrained_columns": [self.normalize_name(row._mapping["fk_column_name"])],
                 # referred schema should be None in context where it doesn't need to be specified
                 # https://docs.sqlalchemy.org/en/14/core/reflection.html#reflection-schema-qualified-interaction
                 "referred_schema": (
-                    referred_schema
-                    if referred_schema not in (self.default_schema_name, current_schema)
-                    else None
+                    referred_schema if referred_schema not in (self.default_schema_name, current_schema) else None
                 ),
                 "referred_table": self.normalize_name(row._mapping["pk_table_name"]),
-                "referred_columns": [
-                    self.normalize_name(row._mapping["pk_column_name"])
-                ],
-                "referred_database": self.normalize_name(
-                    row._mapping["pk_database_name"]
-                ),
+                "referred_columns": [self.normalize_name(row._mapping["pk_column_name"])],
+                "referred_database": self.normalize_name(row._mapping["pk_database_name"]),
                 "name": name,
                 "table_name": self.normalize_name(row._mapping["fk_table_name"]),
             }
@@ -587,21 +528,15 @@ def get_schema_foreign_keys(self, connection, schema, **kw):
                 options["onupdate"] = self.normalize_name(row._mapping["update_rule"])
             foreign_key_map[name]["options"] = options
         else:
-            foreign_key_map[name]["constrained_columns"].append(
-                self.normalize_name(row._mapping["fk_column_name"])
-            )
-            foreign_key_map[name]["referred_columns"].append(
-                self.normalize_name(row._mapping["pk_column_name"])
-            )
+            foreign_key_map[name]["constrained_columns"].append(self.normalize_name(row._mapping["fk_column_name"]))
+            foreign_key_map[name]["referred_columns"].append(self.normalize_name(row._mapping["pk_column_name"]))
 
     ans = {}
 
     for _, v in foreign_key_map.items():
         if v["table_name"] not in ans:
             ans[v["table_name"]] = []
-        ans[v["table_name"]].append(
-            {k2: v2 for k2, v2 in v.items() if k2 != "table_name"}
-        )
+        ans[v["table_name"]].append({k2: v2 for k2, v2 in v.items() if k2 != "table_name"})
     return ans
 
 
@@ -610,13 +545,11 @@ def get_unique_constraints(self, connection, table_name, schema, **kw):
     schema = schema or self.default_schema_name
     schema = _quoted_name(entity_name=schema)
     current_database, current_schema = self._current_database_schema(connection, **kw)
-    full_schema_name = _denormalize_quote_join(
-        current_database, schema if schema else current_schema
-    )
+    full_schema_name = _denormalize_quote_join(current_database, schema if schema else current_schema)
 
-    return self._get_schema_unique_constraints(
-        connection, self.denormalize_name(full_schema_name), **kw
-    ).get(table_name, [])
+    return self._get_schema_unique_constraints(connection, self.denormalize_name(full_schema_name), **kw).get(
+        table_name, []
+    )
 
 
 @reflection.cache
@@ -639,17 +572,13 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
 
 @reflection.cache
-def get_table_ddl(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_ddl(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     """
     Gets the Table DDL
     """
     schema = schema or self.default_schema_name
     table_name = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
-    cursor = connection.execute(
-        text(SNOWFLAKE_GET_TABLE_DDL.format(table_name=table_name))
-    )
+    cursor = connection.execute(text(SNOWFLAKE_GET_TABLE_DDL.format(table_name=table_name)))
     try:
         result = cursor.fetchone()
         if result:

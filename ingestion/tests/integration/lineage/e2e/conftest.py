@@ -94,9 +94,7 @@ def oracle_lineage_container():
     )
 
     container = OracleTestContainer()
-    print(
-        f"\nOracle container started on port {container.exposed_port} for lineage tests"
-    )
+    print(f"\nOracle container started on port {container.exposed_port} for lineage tests")
 
     _grant_query_privileges(container)
 
@@ -116,17 +114,13 @@ def oracle_lineage_container():
 @pytest.fixture(scope="package")
 def oracle_lineage_ingestion(oracle_lineage_service_name, metadata):
     print("\n\nRunning metadata ingestion workflow for lineage tests...")
-    metadata_workflow_config = OpenMetadataWorkflowConfig.model_validate(
-        ORACLE_METADATA_CONFIG
-    )
+    metadata_workflow_config = OpenMetadataWorkflowConfig.model_validate(ORACLE_METADATA_CONFIG)
     metadata_workflow: IngestionWorkflow = MetadataWorkflow(metadata_workflow_config)
     metadata_workflow.execute()
     print("Metadata ingestion workflow completed.")
 
     print("\nRunning lineage ingestion workflow for lineage tests...")
-    lineage_workflow_config = OpenMetadataWorkflowConfig.model_validate(
-        ORACLE_LINEAGE_CONFIG
-    )
+    lineage_workflow_config = OpenMetadataWorkflowConfig.model_validate(ORACLE_LINEAGE_CONFIG)
     lineage_workflow: IngestionWorkflow = MetadataWorkflow(lineage_workflow_config)
     lineage_workflow.execute()
     print("Lineage ingestion workflow completed.")
@@ -136,21 +130,15 @@ def oracle_lineage_ingestion(oracle_lineage_service_name, metadata):
     print("\nCleaning up lineage test service...")
     service_entity = metadata.get_by_name(DatabaseService, oracle_lineage_service_name)
     if service_entity:
-        metadata.delete(
-            DatabaseService, service_entity.id, recursive=True, hard_delete=True
-        )
+        metadata.delete(DatabaseService, service_entity.id, recursive=True, hard_delete=True)
         print("Lineage test service cleaned up.")
 
 
 def _grant_query_privileges(container):
     print("\nGranting query privileges to test user...")
 
-    dsn = oracledb.makedsn(
-        "localhost", container.exposed_port, service_name=container.dbname
-    )
-    connection = oracledb.connect(
-        user="sys", password="test", dsn=dsn, mode=oracledb.AUTH_MODE_SYSDBA
-    )
+    dsn = oracledb.makedsn("localhost", container.exposed_port, service_name=container.dbname)
+    connection = oracledb.connect(user="sys", password="test", dsn=dsn, mode=oracledb.AUTH_MODE_SYSDBA)
     cursor = connection.cursor()
 
     # Grant query history access
@@ -217,9 +205,7 @@ def _load_sql_file(container, sql_file_path: Path):
 
         cursor.close()
         connection.close()
-        print(
-            "Successfully loaded lineage.sql into Oracle container for lineage tests."
-        )
+        print("Successfully loaded lineage.sql into Oracle container for lineage tests.")
 
     except Exception as e:
         print(f"Failed to load SQL: {e}")

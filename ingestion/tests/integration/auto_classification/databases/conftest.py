@@ -36,9 +36,7 @@ def postgres_container():
         init_file, "/docker-entrypoint-initdb.d/init.sql"
     )
 
-    with (
-        try_bind(container, 5432, 5432) if not os.getenv("CI") else container
-    ) as container:
+    with try_bind(container, 5432, 5432) if not os.getenv("CI") else container as container:
         yield container
 
 
@@ -411,9 +409,7 @@ def person_column_name_recognizer() -> Recognizer:
 
 
 @pytest.fixture(scope="session")
-def pii_classification(
-    metadata: OpenMetadata[Classification, CreateClassificationRequest]
-) -> Classification:
+def pii_classification(metadata: OpenMetadata[Classification, CreateClassificationRequest]) -> Classification:
     create_classification_request = CreateClassificationRequestFactory.create(
         fqn="PII",
         autoClassificationConfig__conflictResolution=ConflictResolution.highest_priority.value,

@@ -26,9 +26,7 @@ def mongodbContainer(tmp_path_factory):
 
     container = MongoDbContainer()
 
-    with (
-        try_bind(container, 27017, None) if not os.getenv("CI") else container
-    ) as container:
+    with try_bind(container, 27017, None) if not os.getenv("CI") else container as container:
         db = container.get_connection_client().test
         db.user_profiles.insert_one(
             {

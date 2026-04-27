@@ -143,11 +143,7 @@ class MetricFilter:
         Returns:
             List[Type[TMetric]]:
         """
-        return [
-            metric
-            for metric in self.metrics
-            if issubclass(metric, _type) and metric.is_computed_metric()
-        ]
+        return [metric for metric in self.metrics if issubclass(metric, _type) and metric.is_computed_metric()]
 
     def filter_column_metrics_from_global_config(
         self,
@@ -170,8 +166,7 @@ class MetricFilter:
             List[Type[TMetric]]
         """
         if not self.global_profiler_config or (
-            self.global_profiler_config
-            and not self.global_profiler_config.metricConfiguration
+            self.global_profiler_config and not self.global_profiler_config.metricConfiguration
         ):
             return [metric for metric in metrics if metric.is_col_metric()]
 
@@ -185,9 +180,7 @@ class MetricFilter:
         if not isinstance(column, SQALikeColumn):
             mapper = converter_registry[service_type]
             sqa_to_om_types = mapper.map_sqa_to_om_types()
-            om_data_types: Optional[Set] = sqa_to_om_types.get(
-                column.type.__class__, None
-            )
+            om_data_types: Optional[Set] = sqa_to_om_types.get(column.type.__class__, None)
         else:
             om_data_types = {column.type}
 
@@ -203,9 +196,7 @@ class MetricFilter:
             None,
         )
 
-        if not col_dtype_config or (
-            not col_dtype_config.disabled and not col_dtype_config.metrics
-        ):
+        if not col_dtype_config or (not col_dtype_config.disabled and not col_dtype_config.metrics):
             return [metric for metric in metrics if metric.is_col_metric()]
 
         if col_dtype_config.disabled:
@@ -214,8 +205,7 @@ class MetricFilter:
         metrics = [
             Metric.value
             for Metric in self.metrics_registry
-            if Metric.value.name() in {mtrc.value for mtrc in col_dtype_config.metrics}
-            and Metric.value in metrics
+            if Metric.value.name() in {mtrc.value for mtrc in col_dtype_config.metrics} and Metric.value in metrics
         ]
 
         return metrics
@@ -238,9 +228,7 @@ class MetricFilter:
             return [metric for metric in metrics if metric.is_col_metric()]
 
         columns_config = (
-            self.column_profiler_config
-            if self.column_profiler_config
-            else self.table_profiler_config.includeColumns
+            self.column_profiler_config if self.column_profiler_config else self.table_profiler_config.includeColumns
         )
         columns_config = cast(List[ColumnProfilerConfig], columns_config)
         metric_names = next(
@@ -258,8 +246,7 @@ class MetricFilter:
         metrics = [
             Metric.value
             for Metric in self.metrics_registry
-            if Metric.value.name().lower() in {mtrc.lower() for mtrc in metric_names}
-            and Metric.value in metrics
+            if Metric.value.name().lower() in {mtrc.lower() for mtrc in metric_names} and Metric.value in metrics
         ]
         return [metric for metric in metrics if metric.is_col_metric()]
 
@@ -275,9 +262,7 @@ class MetricFilter:
             List[Type[TMetric]]:
         """
         _metrics = self.filter_by_type(metric_type)
-        metrics = self.filter_column_metrics_from_global_config(
-            _metrics, column, service_type
-        )
+        metrics = self.filter_column_metrics_from_global_config(_metrics, column, service_type)
         if metrics:
             metrics = self.filter_column_metrics_from_table_config(metrics, column)
 

@@ -11,6 +11,7 @@
 """
 MongoDB adaptor for the NoSQL profiler.
 """
+
 import json
 from enum import Enum
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
@@ -74,10 +75,7 @@ class Aggregation(Executable):
                 {
                     "$group": {
                         "_id": None,
-                        **{
-                            a.name.lower(): {a.value: f"${self.column}"}
-                            for a in self.aggregations
-                        },
+                        **{a.name.lower(): {a.value: f"${self.column}"} for a in self.aggregations},
                     }
                 }
             ]
@@ -95,9 +93,7 @@ class MongoDB(NoSQLAdaptor):
         collection = db[table.name.root]
         return collection.count_documents({})
 
-    def scan(
-        self, table: Table, columns: List[Column], limit: int
-    ) -> List[Dict[str, any]]:
+    def scan(self, table: Table, columns: List[Column], limit: int) -> List[Dict[str, any]]:
         return self.execute(
             Query(
                 database=table.databaseSchema.name,
@@ -106,9 +102,7 @@ class MongoDB(NoSQLAdaptor):
             )
         )
 
-    def query(
-        self, table: Table, columns: List[Column], query: any, limit: int
-    ) -> List[Dict[str, any]]:
+    def query(self, table: Table, columns: List[Column], query: any, limit: int) -> List[Dict[str, any]]:
         try:
             json_query = json.loads(query)
         except json.JSONDecodeError:

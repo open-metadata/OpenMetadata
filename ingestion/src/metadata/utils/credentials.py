@@ -11,6 +11,7 @@
 """
 Credentials helper module
 """
+
 import base64
 import json
 import os
@@ -180,9 +181,7 @@ def build_google_credentials_dict(
     )
 
 
-def set_google_credentials(
-    gcp_credentials: GCPCredentials, single_project: bool = False
-) -> None:
+def set_google_credentials(gcp_credentials: GCPCredentials, single_project: bool = False) -> None:
     """
     Set GCP credentials environment variable
     :param gcp_credentials: GCPCredentials
@@ -191,42 +190,28 @@ def set_google_credentials(
         os.environ[GOOGLE_CREDENTIALS] = str(gcp_credentials.gcpConfig.path)
         return
 
-    if (
-        isinstance(gcp_credentials.gcpConfig, GcpCredentialsValues)
-        and gcp_credentials.gcpConfig.projectId is None
-    ):
-        logger.info(
-            "No credentials available, using the current environment permissions authenticated via gcloud SDK."
-        )
+    if isinstance(gcp_credentials.gcpConfig, GcpCredentialsValues) and gcp_credentials.gcpConfig.projectId is None:
+        logger.info("No credentials available, using the current environment permissions authenticated via gcloud SDK.")
         return
 
     if isinstance(gcp_credentials.gcpConfig, GcpExternalAccount):
-        logger.info(
-            "Using External account credentials to authenticate with GCP services."
-        )
+        logger.info("Using External account credentials to authenticate with GCP services.")
         return
 
     if isinstance(gcp_credentials.gcpConfig, GcpCredentialsValues):
-        if (
-            gcp_credentials.gcpConfig.projectId
-            and not gcp_credentials.gcpConfig.privateKey
-        ):
+        if gcp_credentials.gcpConfig.projectId and not gcp_credentials.gcpConfig.privateKey:
             logger.info(
                 "Overriding default projectid, using the current environment permissions authenticated via gcloud SDK."
             )
             return
 
-        credentials_dict = build_google_credentials_dict(
-            gcp_credentials.gcpConfig, single_project
-        )
+        credentials_dict = build_google_credentials_dict(gcp_credentials.gcpConfig, single_project)
         tmp_credentials_file = create_credential_tmp_file(credentials=credentials_dict)
         os.environ[GOOGLE_CREDENTIALS] = tmp_credentials_file
         return
 
     if isinstance(gcp_credentials.gcpConfig, GcpADC):
-        logger.info(
-            "Using Application Default Credentials to authenticate with GCP services."
-        )
+        logger.info("Using Application Default Credentials to authenticate with GCP services.")
         return
 
     raise InvalidGcpConfigException(
@@ -269,9 +254,7 @@ def get_gcp_impersonate_credentials(
     scopes = scopes or GOOGLE_CLOUD_SCOPES
     source_credentials, _ = auth.default()
     if quoted_project_id:
-        source_credentials, quoted_project_id = auth.default(
-            quota_project_id=quoted_project_id
-        )
+        source_credentials, quoted_project_id = auth.default(quota_project_id=quoted_project_id)
     return impersonated_credentials.Credentials(
         source_credentials=source_credentials,
         target_principal=impersonate_service_account,
@@ -304,8 +287,6 @@ def get_azure_access_token(azure_config: AzureConfigurationSource) -> str:
         )
 
     azure_client = AzureClient(azure_config.azureConfig).create_client()
-    access_token_obj = azure_client.get_token(
-        *azure_config.azureConfig.scopes.split(",")
-    )
+    access_token_obj = azure_client.get_token(*azure_config.azureConfig.scopes.split(","))
 
     return access_token_obj.token

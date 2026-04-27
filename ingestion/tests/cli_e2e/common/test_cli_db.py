@@ -12,6 +12,7 @@
 """
 Test database connectors which extend from `CommonDbSourceService` with CLI
 """
+
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -38,40 +39,26 @@ class CliCommonDB:
         @classmethod
         def setUpClass(cls) -> None:
             connector = cls.get_connector_name()
-            workflow: MetadataWorkflow = cls.get_workflow(
-                connector, cls.get_test_type()
-            )
+            workflow: MetadataWorkflow = cls.get_workflow(connector, cls.get_test_type())
             cls.engine = workflow.source.engine
 
             cls.openmetadata = workflow.source.metadata
             cls.set_ingestion_bot_jwt_token()
 
-            cls.config_file_path = str(
-                Path(PATH_TO_RESOURCES + f"/database/{connector}/{connector}.yaml")
-            )
-            cls.test_file_path = str(
-                Path(PATH_TO_RESOURCES + f"/database/{connector}/test.yaml")
-            )
+            cls.config_file_path = str(Path(PATH_TO_RESOURCES + f"/database/{connector}/{connector}.yaml"))
+            cls.test_file_path = str(Path(PATH_TO_RESOURCES + f"/database/{connector}/test.yaml"))
 
         @classmethod
         def tearDownClass(cls):
-            workflow = OpenMetadataWorkflowConfig.model_validate(
-                load_config_file(Path(cls.config_file_path))
-            )
-            db_service: DatabaseService = cls.openmetadata.get_by_name(
-                DatabaseService, workflow.source.serviceName
-            )
+            workflow = OpenMetadataWorkflowConfig.model_validate(load_config_file(Path(cls.config_file_path)))
+            db_service: DatabaseService = cls.openmetadata.get_by_name(DatabaseService, workflow.source.serviceName)
             if db_service and os.getenv("E2E_CLEAN_DB", "false") == "true":
-                cls.openmetadata.delete(
-                    DatabaseService, db_service.id, hard_delete=True, recursive=True
-                )
+                cls.openmetadata.delete(DatabaseService, db_service.id, hard_delete=True, recursive=True)
 
         def tearDown(self) -> None:
             self.engine.dispose()
 
-        def assert_for_vanilla_ingestion(
-            self, source_status: Status, sink_status: Status
-        ) -> None:
+        def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
             self.assertEqual(len(source_status.failures), 0)
             self.assertEqual(len(source_status.warnings), 0)
             self.assertEqual(len(source_status.filtered), 0)
@@ -86,9 +73,7 @@ class CliCommonDB:
                 self.expected_tables(),
             )
 
-        def assert_for_table_with_profiler(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_for_table_with_profiler(self, source_status: Status, sink_status: Status):
             self.assertEqual(len(source_status.failures), 0)
             self.assertGreaterEqual(
                 (len(source_status.records) + len(source_status.updated_records)),
@@ -113,16 +98,12 @@ class CliCommonDB:
             retrieved_view_column_lineage_count = len(
                 lineage_data["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]
             )
-            self.assertEqual(
-                retrieved_view_column_lineage_count, self.view_column_lineage_count()
-            )
+            self.assertEqual(retrieved_view_column_lineage_count, self.view_column_lineage_count())
 
             retrieved_lineage_node = lineage_data["nodes"][0]["fullyQualifiedName"]
             self.assertEqual(retrieved_lineage_node, self.expected_lineage_node())
 
-        def assert_auto_classification_sample_data(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_auto_classification_sample_data(self, source_status: Status, sink_status: Status):
             self.assertEqual(len(source_status.failures), 0)
             self.assertGreaterEqual(
                 (len(source_status.records) + len(source_status.updated_records)),
@@ -131,15 +112,11 @@ class CliCommonDB:
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
             self.assertEqual(len(sample_data.rows), self.expected_sample_size())
 
-        def assert_for_table_with_profiler_time_partition(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_for_table_with_profiler_time_partition(self, source_status: Status, sink_status: Status):
             self.assertEqual(len(source_status.failures), 0)
             self.assertEqual(len(sink_status.failures), 0)
             profile = self.retrieve_profile(self.fqn_created_table())
-            expected_profiler_time_partition_results = (
-                self.get_profiler_time_partition_results()
-            )
+            expected_profiler_time_partition_results = self.get_profiler_time_partition_results()
             if expected_profiler_time_partition_results:
                 table_profile = profile.profile.model_dump()
                 for key in expected_profiler_time_partition_results["table_profile"]:
@@ -152,9 +129,7 @@ class CliCommonDB:
                     expected_column_profile = next(
                         (
                             profile.get(column.name.root)
-                            for profile in expected_profiler_time_partition_results[
-                                "column_profile"
-                            ]
+                            for profile in expected_profiler_time_partition_results["column_profile"]
                             if profile.get(column.name.root)
                         ),
                         None,
@@ -168,52 +143,30 @@ class CliCommonDB:
                                     expected_column_profile[key].__round__(10),
                                 )
                                 continue
-                            self.assertEqual(
-                                column_profile[key], expected_column_profile[key]
-                            )
+                            self.assertEqual(column_profile[key], expected_column_profile[key])
 
-        def assert_for_delete_table_is_marked_as_deleted(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_for_delete_table_is_marked_as_deleted(self, source_status: Status, sink_status: Status):
             self.assertEqual(self.retrieve_table(self.fqn_deleted_table()), None)
 
-        def assert_filtered_schemas_includes(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_filtered_schemas_includes(self, source_status: Status, sink_status: Status):
             self.assertEqual(len(source_status.failures), 0)
-            self.assertGreaterEqual(
-                len(source_status.filtered), self.expected_filtered_schema_includes()
-            )
+            self.assertGreaterEqual(len(source_status.filtered), self.expected_filtered_schema_includes())
 
-        def assert_filtered_schemas_excludes(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_filtered_schemas_excludes(self, source_status: Status, sink_status: Status):
             self.assertEqual(len(source_status.failures), 0)
-            self.assertGreaterEqual(
-                len(source_status.filtered), self.expected_filtered_schema_excludes()
-            )
+            self.assertGreaterEqual(len(source_status.filtered), self.expected_filtered_schema_excludes())
 
-        def assert_filtered_tables_includes(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_filtered_tables_includes(self, source_status: Status, sink_status: Status):
             self.assertEqual(len(source_status.failures), 0)
-            self.assertGreaterEqual(
-                len(source_status.filtered), self.expected_filtered_table_includes()
-            )
+            self.assertGreaterEqual(len(source_status.filtered), self.expected_filtered_table_includes())
 
-        def assert_filtered_tables_excludes(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_filtered_tables_excludes(self, source_status: Status, sink_status: Status):
             self.assertEqual(len(source_status.failures), 0)
-            self.assertGreaterEqual(
-                len(source_status.filtered), self.expected_filtered_table_excludes()
-            )
+            self.assertGreaterEqual(len(source_status.filtered), self.expected_filtered_table_excludes())
 
         def assert_filtered_mix(self, source_status: Status, sink_status: Status):
             self.assertEqual(len(source_status.failures), 0)
-            self.assertGreaterEqual(
-                len(source_status.filtered), self.expected_filtered_mix()
-            )
+            self.assertGreaterEqual(len(source_status.filtered), self.expected_filtered_mix())
 
         @staticmethod
         @abstractmethod

@@ -11,6 +11,7 @@
 """
 Microsoft Fabric Database Service Spec
 """
+
 from metadata.ingestion.source.database.microsoftfabric.lineage import (
     MicrosoftFabricLineageSource,
 )

@@ -11,6 +11,7 @@
 """
 Hosts the singledispatch to get DBT files
 """
+
 import json
 import os
 import re
@@ -71,9 +72,7 @@ def get_dbt_details(config):
     """
 
     if config:
-        raise NotImplementedError(
-            f"Config not implemented for type {type(config)}: {config}"
-        )
+        raise NotImplementedError(f"Config not implemented for type {type(config)}: {config}")
 
 
 @get_dbt_details.register
@@ -82,14 +81,10 @@ def _(config: DbtLocalConfig):
         manifest_path = config.dbtManifestFilePath
         if not os.path.exists(manifest_path):
             raise DBTConfigException(
-                f"Manifest file not found at '{manifest_path}'. "
-                "Please verify the file path is correct."
+                f"Manifest file not found at '{manifest_path}'. Please verify the file path is correct."
             )
         if not os.access(manifest_path, os.R_OK):
-            raise DBTConfigException(
-                f"Cannot read manifest file at '{manifest_path}'. "
-                "Please check file permissions."
-            )
+            raise DBTConfigException(f"Cannot read manifest file at '{manifest_path}'. Please check file permissions.")
 
         blob_grouped_by_directory = defaultdict(list)
 
@@ -110,13 +105,11 @@ def _(config: DbtLocalConfig):
         raise
     except json.JSONDecodeError as exc:
         raise DBTConfigException(
-            f"Manifest file at '{config.dbtManifestFilePath}' is not valid JSON. "
-            "Please verify the file contents."
+            f"Manifest file at '{config.dbtManifestFilePath}' is not valid JSON. Please verify the file contents."
         ) from exc
     except PermissionError as exc:
         raise DBTConfigException(
-            f"Permission denied accessing '{config.dbtManifestFilePath}'. "
-            "Please check file permissions."
+            f"Permission denied accessing '{config.dbtManifestFilePath}'. Please check file permissions."
         ) from exc
     except Exception as exc:
         logger.debug(traceback.format_exc())
@@ -126,11 +119,7 @@ def _(config: DbtLocalConfig):
 @get_dbt_details.register
 def _(config: DbtHttpConfig):
     try:
-        verify_ssl_fn = (
-            get_verify_ssl_fn(config.dbtVerifySSL)
-            if config.dbtVerifySSL
-            else lambda _: None
-        )
+        verify_ssl_fn = get_verify_ssl_fn(config.dbtVerifySSL) if config.dbtVerifySSL else lambda _: None
         ssl_verify = verify_ssl_fn(config.dbtSSLConfig) if config.dbtVerifySSL else None
         if ssl_verify is None:
             ssl_verify = True
@@ -140,9 +129,7 @@ def _(config: DbtHttpConfig):
         logger.debug(f"Requesting [dbtManifestHttpPath] to: {manifest_url}")
 
         try:
-            dbt_manifest = requests.get(
-                manifest_url, headers=request_headers, verify=ssl_verify, timeout=30
-            )
+            dbt_manifest = requests.get(manifest_url, headers=request_headers, verify=ssl_verify, timeout=30)
             dbt_manifest.raise_for_status()
         except requests.exceptions.SSLError as exc:
             raise DBTConfigException(
@@ -156,14 +143,12 @@ def _(config: DbtHttpConfig):
             ) from exc
         except requests.exceptions.ConnectionError as exc:
             raise DBTConfigException(
-                f"Unable to connect to '{manifest_url}'. "
-                "Please verify the URL is correct and accessible."
+                f"Unable to connect to '{manifest_url}'. Please verify the URL is correct and accessible."
             ) from exc
         except requests.exceptions.HTTPError as exc:
             if exc.response.status_code == 404:
                 raise DBTConfigException(
-                    f"Manifest file not found at '{manifest_url}'. "
-                    "Please verify the URL is correct."
+                    f"Manifest file not found at '{manifest_url}'. Please verify the URL is correct."
                 ) from exc
             if exc.response.status_code in (401, 403):
                 raise DBTConfigException(
@@ -178,15 +163,12 @@ def _(config: DbtHttpConfig):
             manifest_json = dbt_manifest.json()
         except json.JSONDecodeError as exc:
             raise DBTConfigException(
-                f"Response from '{manifest_url}' is not valid JSON. "
-                "Please verify the URL returns a valid dbt manifest."
+                f"Response from '{manifest_url}' is not valid JSON. Please verify the URL returns a valid dbt manifest."
             ) from exc
 
         dbt_run_results = None
         if config.dbtRunResultsHttpPath:
-            logger.debug(
-                f"Requesting [dbtRunResultsHttpPath] to: {config.dbtRunResultsHttpPath}"
-            )
+            logger.debug(f"Requesting [dbtRunResultsHttpPath] to: {config.dbtRunResultsHttpPath}")
             try:
                 run_results_resp = requests.get(
                     config.dbtRunResultsHttpPath,
@@ -197,15 +179,11 @@ def _(config: DbtHttpConfig):
                 run_results_resp.raise_for_status()
                 dbt_run_results = run_results_resp.json()
             except Exception as exc:
-                logger.warning(
-                    f"Could not fetch run_results from '{config.dbtRunResultsHttpPath}': {exc}"
-                )
+                logger.warning(f"Could not fetch run_results from '{config.dbtRunResultsHttpPath}': {exc}")
 
         dbt_catalog = None
         if config.dbtCatalogHttpPath:
-            logger.debug(
-                f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}"
-            )
+            logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
             try:
                 catalog_resp = requests.get(
                     config.dbtCatalogHttpPath,
@@ -216,15 +194,11 @@ def _(config: DbtHttpConfig):
                 catalog_resp.raise_for_status()
                 dbt_catalog = catalog_resp.json()
             except Exception as exc:
-                logger.warning(
-                    f"Could not fetch catalog from '{config.dbtCatalogHttpPath}': {exc}"
-                )
+                logger.warning(f"Could not fetch catalog from '{config.dbtCatalogHttpPath}': {exc}")
 
         dbt_sources = None
         if config.dbtSourcesHttpPath:
-            logger.debug(
-                f"Requesting [dbtSourcesHttpPath] to: {config.dbtSourcesHttpPath}"
-            )
+            logger.debug(f"Requesting [dbtSourcesHttpPath] to: {config.dbtSourcesHttpPath}")
             try:
                 sources_resp = requests.get(
                     config.dbtSourcesHttpPath,
@@ -235,9 +209,7 @@ def _(config: DbtHttpConfig):
                 sources_resp.raise_for_status()
                 dbt_sources = sources_resp.json()
             except Exception as exc:
-                logger.warning(
-                    f"Could not fetch sources from '{config.dbtSourcesHttpPath}': {exc}"
-                )
+                logger.warning(f"Could not fetch sources from '{config.dbtSourcesHttpPath}': {exc}")
 
         yield DbtFiles(
             dbt_catalog=dbt_catalog,
@@ -275,9 +247,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
         account_id = config.dbtCloudAccountId
         project_id = config.dbtCloudProjectId
         job_id = config.dbtCloudJobId
-        logger.debug(
-            "Requesting [dbt_catalog], [dbt_manifest] and [dbt_run_results] data"
-        )
+        logger.debug("Requesting [dbt_catalog], [dbt_manifest] and [dbt_run_results] data")
         params_data = {
             "order_by": "-finished_at",
             "limit": "1",
@@ -300,8 +270,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
                 ) from exc
             if "404" in error_msg:
                 raise DBTConfigException(
-                    f"dbt Cloud account ID '{account_id}' not found. "
-                    "Please verify the account ID is correct."
+                    f"dbt Cloud account ID '{account_id}' not found. Please verify the account ID is correct."
                 ) from exc
             if "connection" in error_msg or "timeout" in error_msg:
                 raise DBTConfigException(
@@ -336,23 +305,16 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
             )
             try:
                 logger.debug("Requesting [dbt_catalog]")
-                dbt_catalog = client.get(
-                    f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_CATALOG_FILE_NAME}"
-                )
+                dbt_catalog = client.get(f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_CATALOG_FILE_NAME}")
             except Exception as exc:
-                logger.warning(
-                    f"dbt catalog file not found for run {run_id}, skipping catalog: {exc}"
-                )
+                logger.warning(f"dbt catalog file not found for run {run_id}, skipping catalog: {exc}")
                 logger.debug(traceback.format_exc())
             try:
                 logger.debug("Requesting [dbt_manifest]")
-                dbt_manifest = client.get(
-                    f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_MANIFEST_FILE_NAME}"
-                )
+                dbt_manifest = client.get(f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_MANIFEST_FILE_NAME}")
             except Exception as exc:
                 raise DBTConfigException(
-                    f"Manifest artifact not found for run {run_id}. "
-                    "Please ensure the dbt job generates artifacts."
+                    f"Manifest artifact not found for run {run_id}. Please ensure the dbt job generates artifacts."
                 ) from exc
             try:
                 logger.debug("Requesting [dbt_run_results]")
@@ -360,14 +322,11 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
                     f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_RUN_RESULTS_FILE_NAME}.json"
                 )
             except Exception as exc:
-                logger.warning(
-                    f"dbt run_results file not found for run {run_id}, skipping dbt tests: {exc}"
-                )
+                logger.warning(f"dbt run_results file not found for run {run_id}, skipping dbt tests: {exc}")
                 logger.debug(traceback.format_exc())
         if not dbt_manifest:
             raise DBTConfigException(
-                "Manifest file not found in dbt Cloud. "
-                "Please ensure your dbt job generates artifacts."
+                "Manifest file not found in dbt Cloud. Please ensure your dbt job generates artifacts."
             )
 
         yield DbtFiles(
@@ -497,9 +456,7 @@ def download_dbt_files(
                             logger.debug(f"{DBT_CATALOG_FILE_NAME} found in {key}")
                             dbt_catalog = reader.read(path=blob, **kwargs)
                         except Exception as exc:
-                            logger.warning(
-                                f"{DBT_CATALOG_FILE_NAME} not found in {key}: {exc}"
-                            )
+                            logger.warning(f"{DBT_CATALOG_FILE_NAME} not found in {key}: {exc}")
                     if DBT_RUN_RESULTS_FILE_NAME in blob_file_name.lower():
                         try:
                             logger.debug(f"{blob_file_name} found in {key}")
@@ -507,9 +464,7 @@ def download_dbt_files(
                             if dbt_run_result:
                                 dbt_run_results.append(json.loads(dbt_run_result))
                         except Exception as exc:
-                            logger.warning(
-                                f"{DBT_RUN_RESULTS_FILE_NAME} not found in {key}: {exc}"
-                            )
+                            logger.warning(f"{DBT_RUN_RESULTS_FILE_NAME} not found in {key}: {exc}")
                     if DBT_SOURCES_FILE_NAME == blob_file_name.lower():
                         logger.debug(f"{DBT_SOURCES_FILE_NAME} found in {key}")
                         dbt_sources = reader.read(path=blob, **kwargs)
@@ -542,12 +497,9 @@ def _(config: DbtS3Config):
             error_msg = str(exc).lower()
             if "credentials" in error_msg or "accessdenied" in error_msg:
                 raise DBTConfigException(
-                    "AWS authentication failed. Please verify your AWS Access Key ID "
-                    "and Secret Access Key are correct."
+                    "AWS authentication failed. Please verify your AWS Access Key ID and Secret Access Key are correct."
                 ) from exc
-            raise DBTConfigException(
-                f"Failed to initialize AWS S3 client: {exc}"
-            ) from exc
+            raise DBTConfigException(f"Failed to initialize AWS S3 client: {exc}") from exc
 
         if not bucket_name:
             try:
@@ -556,8 +508,7 @@ def _(config: DbtS3Config):
                 error_msg = str(exc).lower()
                 if "accessdenied" in error_msg or "forbidden" in error_msg:
                     raise DBTConfigException(
-                        "Access denied when listing S3 buckets. "
-                        "Please check your IAM permissions."
+                        "Access denied when listing S3 buckets. Please check your IAM permissions."
                     ) from exc
                 raise DBTConfigException(f"Failed to list S3 buckets: {exc}") from exc
         else:
@@ -571,24 +522,18 @@ def _(config: DbtS3Config):
 
             logger.debug(f"Listing S3 objects in s3://{current_bucket}/{prefix or ''}")
             try:
-                blob_grouped = get_blobs_grouped_by_dir(
-                    blobs=(obj["Key"] for obj in list_s3_objects(client, **kwargs))
-                )
+                blob_grouped = get_blobs_grouped_by_dir(blobs=(obj["Key"] for obj in list_s3_objects(client, **kwargs)))
             except Exception as exc:
                 error_msg = str(exc).lower()
                 if "nosuchbucket" in error_msg:
                     raise DBTConfigException(
-                        f"S3 bucket '{current_bucket}' not found. "
-                        "Please verify the bucket name is correct."
+                        f"S3 bucket '{current_bucket}' not found. Please verify the bucket name is correct."
                     ) from exc
                 if "accessdenied" in error_msg or "forbidden" in error_msg:
                     raise DBTConfigException(
-                        f"Access denied to S3 bucket '{current_bucket}'. "
-                        "Please check your IAM permissions."
+                        f"Access denied to S3 bucket '{current_bucket}'. Please check your IAM permissions."
                     ) from exc
-                raise DBTConfigException(
-                    f"Failed to list objects in S3 bucket '{current_bucket}': {exc}"
-                ) from exc
+                raise DBTConfigException(f"Failed to list objects in S3 bucket '{current_bucket}': {exc}") from exc
 
             if not blob_grouped:
                 prefix_path = prefix or ""
@@ -621,9 +566,7 @@ def _(config: DbtGcsConfig):
         from google.cloud import storage
 
         try:
-            set_google_credentials(
-                gcp_credentials=config.dbtSecurityConfig, single_project=True
-            )
+            set_google_credentials(gcp_credentials=config.dbtSecurityConfig, single_project=True)
         except (ValueError, GoogleAuthError) as cred_exc:
             logger.error(
                 f"Failed to set Google Cloud credentials: {str(cred_exc)}. "
@@ -656,9 +599,7 @@ def _(config: DbtGcsConfig):
             try:
                 buckets = [client.get_bucket(bucket_name)]
             except Exception as bucket_exc:
-                logger.error(
-                    f"Failed to access GCS bucket {bucket_name}: {str(bucket_exc)}"
-                )
+                logger.error(f"Failed to access GCS bucket {bucket_name}: {str(bucket_exc)}")
                 raise DBTConfigException(
                     f"Unable to access GCS bucket {bucket_name}."
                     "Please verify the bucket exists and you have proper permissions."
@@ -666,16 +607,9 @@ def _(config: DbtGcsConfig):
 
         for bucket in buckets:
             try:
-                logger.debug(
-                    f"Listing GCS objects in gs://{bucket.name}/{prefix or ''}"
-                )
+                logger.debug(f"Listing GCS objects in gs://{bucket.name}/{prefix or ''}")
                 blob_grouped = get_blobs_grouped_by_dir(
-                    blobs=(
-                        blob.name
-                        for blob in client.list_blobs(
-                            bucket.name, prefix=prefix if prefix else None
-                        )
-                    )
+                    blobs=(blob.name for blob in client.list_blobs(bucket.name, prefix=prefix if prefix else None))
                 )
 
                 if not blob_grouped:
@@ -695,9 +629,7 @@ def _(config: DbtGcsConfig):
             except DBTConfigException:
                 raise
             except Exception as blob_exc:
-                logger.error(
-                    f"Failed to process blobs in bucket {bucket.name}: {str(blob_exc)}"
-                )
+                logger.error(f"Failed to process blobs in bucket {bucket.name}: {str(blob_exc)}")
                 logger.debug(traceback.format_exc())
 
     except DBTConfigException:
@@ -737,16 +669,10 @@ def _(config: DbtAzureConfig):
                 error_msg = str(exc).lower()
                 if "authorization" in error_msg or "forbidden" in error_msg:
                     raise DBTConfigException(
-                        "Access denied when listing Azure containers. "
-                        "Please check your permissions."
+                        "Access denied when listing Azure containers. Please check your permissions."
                     ) from exc
-                raise DBTConfigException(
-                    f"Failed to list Azure containers: {exc}"
-                ) from exc
-            containers = [
-                client.get_container_client(container["name"])
-                for container in container_dicts
-            ]
+                raise DBTConfigException(f"Failed to list Azure containers: {exc}") from exc
+            containers = [client.get_container_client(container["name"]) for container in container_dicts]
         else:
             try:
                 container_client = client.get_container_client(bucket_name)
@@ -756,31 +682,21 @@ def _(config: DbtAzureConfig):
                 error_msg = str(exc).lower()
                 if "not found" in error_msg or "does not exist" in error_msg:
                     raise DBTConfigException(
-                        f"Azure container '{bucket_name}' not found. "
-                        "Please verify the container name is correct."
+                        f"Azure container '{bucket_name}' not found. Please verify the container name is correct."
                     ) from exc
                 if "authorization" in error_msg or "forbidden" in error_msg:
                     raise DBTConfigException(
-                        f"Access denied to Azure container '{bucket_name}'. "
-                        "Please check your permissions."
+                        f"Access denied to Azure container '{bucket_name}'. Please check your permissions."
                     ) from exc
-                raise DBTConfigException(
-                    f"Failed to access Azure container '{bucket_name}': {exc}"
-                ) from exc
+                raise DBTConfigException(f"Failed to access Azure container '{bucket_name}': {exc}") from exc
             containers = [container_client]
 
         for container_client in containers:
             container_name = container_client.container_name
             try:
-                logger.debug(
-                    f"Listing Azure blobs in container '{container_name}/{prefix or ''}'"
-                )
-                blob_iter = container_client.list_blobs(
-                    name_starts_with=prefix if prefix else None
-                )
-                blob_grouped = get_blobs_grouped_by_dir(
-                    blobs=(blob.name for blob in blob_iter)
-                )
+                logger.debug(f"Listing Azure blobs in container '{container_name}/{prefix or ''}'")
+                blob_iter = container_client.list_blobs(name_starts_with=prefix if prefix else None)
+                blob_grouped = get_blobs_grouped_by_dir(blobs=(blob.name for blob in blob_iter))
 
                 if not blob_grouped:
                     prefix_path = prefix or ""
@@ -799,9 +715,7 @@ def _(config: DbtAzureConfig):
             except DBTConfigException:
                 raise
             except Exception as exc:
-                logger.error(
-                    f"Failed to process blobs in container {container_name}: {str(exc)}"
-                )
+                logger.error(f"Failed to process blobs in container {container_name}: {str(exc)}")
                 logger.debug(traceback.format_exc())
 
     except DBTConfigException:

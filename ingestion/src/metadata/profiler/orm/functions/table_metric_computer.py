@@ -65,17 +65,13 @@ ROW_COUNT = "rowCount"
 SIZE_IN_BYTES = "sizeInBytes"
 CREATE_DATETIME = "createDateTime"
 
-ERROR_MSG = (
-    "Schema/Table name not found in table args. Falling back to default computation"
-)
+ERROR_MSG = "Schema/Table name not found in table args. Falling back to default computation"
 
 
 class AbstractTableMetricComputer(ABC):
     """Base table computer"""
 
-    def __init__(
-        self, runner: QueryRunner, metrics: List[Metrics], conn_config, entity: OMTable
-    ):
+    def __init__(self, runner: QueryRunner, metrics: List[Metrics], conn_config, entity: OMTable):
         """Instantiate base table computer"""
         self._runner = runner
         self._metrics = metrics
@@ -147,9 +143,7 @@ class AbstractTableMetricComputer(ABC):
         Returns:
             Tuple[str, int]
         """
-        col_names = literal(
-            ",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String
-        ).label(COLUMN_NAMES)
+        col_names = literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String).label(COLUMN_NAMES)
         col_count = literal(len(inspect(self.runner.raw_dataset).c)).label(COLUMN_COUNT)
         return col_names, col_count
 
@@ -177,9 +171,7 @@ class BaseTableMetricComputer(AbstractTableMetricComputer):
     def compute(self):
         """Default compute behavior for table metrics. This method will use the raw table
         to compute metrics and omit any sampling or partitioning logic."""
-        return self.runner.select_first_from_table(
-            *[metric().fn() for metric in self.metrics]
-        )
+        return self.runner.select_first_from_table(*[metric().fn() for metric in self.metrics])
 
 
 class SnowflakeTableMetricComputer(BaseTableMetricComputer):
@@ -264,9 +256,7 @@ class OracleTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -288,16 +278,12 @@ class ClickHouseTableMetricComputer(BaseTableMetricComputer):
             Column("name") == self.table_name,
         ]
 
-        query = self._build_query(
-            columns, self._build_table("tables", "system"), where_clause
-        )
+        query = self._build_query(columns, self._build_table("tables", "system"), where_clause)
 
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -342,9 +328,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -375,9 +359,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -405,16 +387,12 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
             Column("TABLE_SCHEMA") == self.schema_name,
             Column("TABLE_NAME") == self.table_name,
         ]
-        query = self._build_query(
-            columns, self._build_table("tables", "information_schema"), where_clause
-        )
+        query = self._build_query(columns, self._build_table("tables", "information_schema"), where_clause)
 
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -453,9 +431,7 @@ class PostgresTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             return super().compute()
         return res
 
@@ -508,8 +484,7 @@ class TimescaleTableMetricComputer(PostgresTableMetricComputer):
                 )
         except Exception:
             logger.debug(
-                "TimescaleDB-specific metric query failed for %s.%s, "
-                "falling back to PostgreSQL logic",
+                "TimescaleDB-specific metric query failed for %s.%s, falling back to PostgreSQL logic",
                 self.schema_name,
                 self.table_name,
             )
@@ -536,15 +511,11 @@ class RedshiftTableMetricComputer(BaseTableMetricComputer):
             Column("table") == self.table_name,
         ]
 
-        query = self._build_query(
-            columns, self._build_table("svv_table_info", "pg_catalog"), where_clause
-        )
+        query = self._build_query(columns, self._build_table("svv_table_info", "pg_catalog"), where_clause)
         res = self.runner._session.execute(query).first()
         if not res:
             return super().compute()
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -582,9 +553,7 @@ class MSSQLTableMetricComputer(BaseTableMetricComputer):
             self._build_query(
                 [
                     Column("object_id"),
-                    (func.sum(Column("reserved_page_count")) * 8192).label(
-                        "size_bytes"
-                    ),
+                    (func.sum(Column("reserved_page_count")) * 8192).label("size_bytes"),
                 ],
                 self._build_table("dm_db_partition_stats", "sys"),
             ).group_by(Column("object_id"))
@@ -629,9 +598,7 @@ class MSSQLTableMetricComputer(BaseTableMetricComputer):
 
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             return super().compute()
         return res
 
@@ -670,9 +637,7 @@ class MSSQLTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             return super().compute()
         return res
 
@@ -715,9 +680,7 @@ class CockroachTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             return super().compute()
         return res
 
@@ -748,11 +711,7 @@ class DB2TableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if (
-            res.rowCount is None
-            or res.rowCount < 0
-            or (res.rowCount == 0 and self._entity.tableType == TableType.View)
-        ):
+        if res.rowCount is None or res.rowCount < 0 or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             return super().compute()
         return res
 
@@ -782,9 +741,7 @@ class VerticaTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             return super().compute()
         return res
 
@@ -856,9 +813,7 @@ class SAPHanaTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             return super().compute()
         return res
 
@@ -893,12 +848,10 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
         from metadata.profiler.metrics.static.column_count import ColumnCountFn
         from metadata.profiler.metrics.static.column_names import ColunNameFn
 
-        col_names = ColunNameFn(
-            literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String)
-        ).label(COLUMN_NAMES)
-        col_count = ColumnCountFn(
-            literal(len(inspect(self.runner.raw_dataset).c))
-        ).label(COLUMN_COUNT)
+        col_names = ColunNameFn(literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String)).label(
+            COLUMN_NAMES
+        )
+        col_count = ColumnCountFn(literal(len(inspect(self.runner.raw_dataset).c))).label(COLUMN_COUNT)
         return col_names, col_count
 
     def compute(self):
@@ -948,14 +901,12 @@ class TableMetricComputer:
         self._conn_config = conn_config
 
         effective_dialect = self._resolve_dialect(dialect, conn_config)
-        self.table_metric_computer: AbstractTableMetricComputer = (
-            table_metric_computer_factory.construct(
-                effective_dialect,
-                runner=self._runner,
-                metrics=self._metrics,
-                conn_config=self._conn_config,
-                entity=self._entity,
-            )
+        self.table_metric_computer: AbstractTableMetricComputer = table_metric_computer_factory.construct(
+            effective_dialect,
+            runner=self._runner,
+            metrics=self._metrics,
+            conn_config=self._conn_config,
+            entity=self._entity,
         )
 
     @staticmethod
@@ -1009,9 +960,7 @@ table_metric_computer_factory.register("base", BaseTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Redshift, RedshiftTableMetricComputer)
 table_metric_computer_factory.register(Dialects.MySQL, MySQLTableMetricComputer)
 table_metric_computer_factory.register(Dialects.BigQuery, BigQueryTableMetricComputer)
-table_metric_computer_factory.register(
-    Dialects.ClickHouse, ClickHouseTableMetricComputer
-)
+table_metric_computer_factory.register(Dialects.ClickHouse, ClickHouseTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Oracle, OracleTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Snowflake, SnowflakeTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Postgres, PostgresTableMetricComputer)

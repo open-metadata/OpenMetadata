@@ -15,6 +15,7 @@ Query masking tests — core masking logic
 Tests for masking SQL queries with different parsers (SqlGlot, SqlFluff, SqlParse).
 Covers: parser dispatch, caching, literal types, ordinal preservation edge cases.
 """
+
 from unittest import TestCase
 
 from ingestion.tests.unit.lineage.masker.helpers import assert_masked_query
@@ -122,7 +123,6 @@ class TestQueryMasker(TestCase):
         ]
 
         for test_case in query_test_cases:
-
             # ValueError: Unknown dialect 'random_invalid_dialect'.
             with self.assertRaises(ValueError):
                 assert_masked_query(
@@ -225,7 +225,6 @@ class TestQueryMasker(TestCase):
         ]
 
         for test_case in query_test_cases:
-
             # compute and cache
             masked_query_cache.clear()
             assert_masked_query(

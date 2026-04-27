@@ -1,4 +1,5 @@
 """Lightweight, typed helpers for entity CRUD operations in the SDK."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -122,9 +123,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
     @classmethod
     def use_client(cls, client: Union[OpenMetadata, OMetaClient]) -> None:
         """Register a default client for SDK calls."""
-        cls._default_client = (
-            client.ometa if isinstance(client, OpenMetadata) else client
-        )
+        cls._default_client = client.ometa if isinstance(client, OpenMetadata) else client
 
     @classmethod
     def set_default_client(cls, client: Union[OpenMetadata, OMetaClient]) -> None:
@@ -209,9 +208,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
             entity_id=cls._stringify_identifier(entity_identifier),
             fields=None,
         )
-        updated = cast(Any, client).patch(
-            entity=cls.entity_type(), source=current, destination=entity
-        )
+        updated = cast(Any, client).patch(entity=cls.entity_type(), source=current, destination=entity)
         return cls._coerce_entity(updated)
 
     @classmethod
@@ -328,9 +325,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         """Fetch all historical versions for an entity."""
 
         client = cls._get_client()
-        list_versions = cast(
-            Callable[..., Any], getattr(client, "get_list_entity_versions")
-        )
+        list_versions = cast(Callable[..., Any], getattr(client, "get_list_entity_versions"))
         kwargs: Dict[str, Any] = {
             "entity": cls.entity_type(),
             "entity_id": cls._stringify_identifier(entity_id),
@@ -357,9 +352,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         """Fetch entity versions within a time range."""
 
         client = cls._get_client()
-        get_history = cast(
-            Callable[..., Any], getattr(client, "get_entity_history_by_timeline")
-        )
+        get_history = cast(Callable[..., Any], getattr(client, "get_entity_history_by_timeline"))
         return get_history(
             entity=cls.entity_type(),
             start_ts=start_ts,
@@ -386,9 +379,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
     # Relationship helpers
     # ------------------------------------------------------------------
     @classmethod
-    def add_followers(
-        cls, entity_id: UuidLike, follower_ids: Sequence[UuidLike]
-    ) -> TEntity:
+    def add_followers(cls, entity_id: UuidLike, follower_ids: Sequence[UuidLike]) -> TEntity:
         """Add followers to an entity and return the refreshed payload."""
 
         if not follower_ids:
@@ -411,9 +402,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         return cls._coerce_entity(updated)
 
     @classmethod
-    def remove_followers(
-        cls, entity_id: UuidLike, follower_ids: Sequence[UuidLike]
-    ) -> TEntity:
+    def remove_followers(cls, entity_id: UuidLike, follower_ids: Sequence[UuidLike]) -> TEntity:
         """Remove followers from an entity and return the refreshed payload."""
 
         if not follower_ids:

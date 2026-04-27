@@ -87,9 +87,7 @@ class OMetaAnnouncementMixin:
         if include:
             query.append(f"include={quote(include)}")
         suffix = f"?{'&'.join(query)}" if query else ""
-        resp = self.client.get(
-            f"{self._announcements_path}/{model_str(announcement_id)}{suffix}"
-        )
+        resp = self.client.get(f"{self._announcements_path}/{model_str(announcement_id)}{suffix}")
         return Announcement.model_validate(resp)
 
     def get_announcement_by_name(
@@ -107,44 +105,30 @@ class OMetaAnnouncementMixin:
         resp = self.client.get(f"{self._announcements_path}/name/{quote(fqn)}{suffix}")
         return Announcement.model_validate(resp)
 
-    def create_announcement(
-        self, create_request: CreateAnnouncementRequest
-    ) -> Announcement:
+    def create_announcement(self, create_request: CreateAnnouncementRequest) -> Announcement:
         resp = self.client.post(
             self._announcements_path,
-            create_request.model_dump_json(
-                context={"mask_secrets": False}, by_alias=True
-            ),
+            create_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         return Announcement.model_validate(resp)
 
-    def create_or_update_announcement(
-        self, create_request: CreateAnnouncementRequest
-    ) -> Announcement:
+    def create_or_update_announcement(self, create_request: CreateAnnouncementRequest) -> Announcement:
         resp = self.client.put(
             self._announcements_path,
-            create_request.model_dump_json(
-                context={"mask_secrets": False}, by_alias=True
-            ),
+            create_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         return Announcement.model_validate(resp)
 
-    def patch_announcement(
-        self, announcement_id: Union[str, UUID], patch: list[dict]
-    ) -> Announcement:
+    def patch_announcement(self, announcement_id: Union[str, UUID], patch: list[dict]) -> Announcement:
         resp = self.client.patch(
             f"{self._announcements_path}/{model_str(announcement_id)}",
             json.dumps(patch),
         )
         return Announcement.model_validate(resp)
 
-    def delete_announcement(
-        self, announcement_id: Union[str, UUID], hard_delete: bool = False
-    ) -> None:
+    def delete_announcement(self, announcement_id: Union[str, UUID], hard_delete: bool = False) -> None:
         suffix = "?hardDelete=true" if hard_delete else ""
-        self.client.delete(
-            f"{self._announcements_path}/{model_str(announcement_id)}{suffix}"
-        )
+        self.client.delete(f"{self._announcements_path}/{model_str(announcement_id)}{suffix}")
 
     def restore_announcement(self, announcement_id: Union[str, UUID]) -> Announcement:
         resp = self.client.put(

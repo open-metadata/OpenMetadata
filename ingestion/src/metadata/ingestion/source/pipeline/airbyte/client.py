@@ -11,6 +11,7 @@
 """
 Client to interact with airbyte apis
 """
+
 import json
 import time
 from typing import Iterable, Optional, Tuple, Type, Union
@@ -91,9 +92,7 @@ class AirbyteClient:
         offset = 0
         while True:
             separator = "&" if "?" in path else "?"
-            response = self.client.get(
-                f"{path}{separator}limit={limit}&offset={offset}"
-            )
+            response = self.client.get(f"{path}{separator}limit={limit}&offset={offset}")
             if not response:
                 raise APIError({"message": "Empty response from Airbyte API"})
             if response.get("exceptionStack"):
@@ -139,9 +138,7 @@ class AirbyteClient:
             raise APIError(response)
         yield from AirbyteConnectionList.model_validate(response).connections
 
-    def list_jobs(
-        self, connection_id: str
-    ) -> Iterable[Union[AirbyteSelfHostedJob, AirbyteCloudJob]]:
+    def list_jobs(self, connection_id: str) -> Iterable[Union[AirbyteSelfHostedJob, AirbyteCloudJob]]:
         """
         Method returns the list of all jobs of a connection.
         """
@@ -185,9 +182,7 @@ class AirbyteClient:
         Method returns destination details.
         """
         if self._use_public_api:
-            response = self.client.get(
-                f"/destinations/{quote(destination_id, safe='')}"
-            )
+            response = self.client.get(f"/destinations/{quote(destination_id, safe='')}")
             if not response:
                 raise APIError({"message": "Empty response from Airbyte API"})
             if response.get("exceptionStack"):
@@ -217,9 +212,7 @@ class AirbyteCloudClient(AirbyteClient):
         self._oauth_token_expiry: float = 0
 
         if not isinstance(config.auth, Oauth20ClientCredentialsAuthentication):
-            raise ValueError(
-                "AirbyteCloudClient requires OAuth 2.0 Client Credentials authentication"
-            )
+            raise ValueError("AirbyteCloudClient requires OAuth 2.0 Client Credentials authentication")
 
         # The connection schema defaults apiVersion to "api/v1" (the internal API path).
         # AirbyteCloudClient always uses the public API, so silently promote the

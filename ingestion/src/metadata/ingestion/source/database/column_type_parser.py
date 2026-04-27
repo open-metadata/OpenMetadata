@@ -351,25 +351,22 @@ class ColumnTypeParser:
 
     @staticmethod
     def _parse_datatype_string(
-        data_type: str, **kwargs: Any  # pylint: disable=unused-argument
+        data_type: str,
+        **kwargs: Any,  # pylint: disable=unused-argument
     ) -> Union[object, Dict[str, object]]:
         data_type = data_type.lower().strip()
         data_type = data_type.replace(" ", "")
         if data_type.startswith("array<"):
             if data_type[-1] != ">":
                 raise ValueError(f"expected '>' found: {data_type}")
-            arr_data_type = ColumnTypeParser._parse_primitive_datatype_string(
-                data_type[6:-1]
-            )["dataType"]
+            arr_data_type = ColumnTypeParser._parse_primitive_datatype_string(data_type[6:-1])["dataType"]
             data_type_string = {
                 "dataType": "ARRAY",
                 "arrayDataType": arr_data_type,
                 "dataTypeDisplay": data_type,
             }
             if arr_data_type == DataType.STRUCT.value:
-                children = ColumnTypeParser._parse_struct_fields_string(
-                    data_type[6:-1][7:-1]
-                )["children"]
+                children = ColumnTypeParser._parse_struct_fields_string(data_type[6:-1][7:-1])["children"]
                 data_type_string["children"] = children
             return data_type_string
         if data_type.startswith("map<"):
@@ -378,8 +375,7 @@ class ColumnTypeParser:
             parts = ColumnTypeParser._ignore_brackets_split(data_type[4:-1], ",")
             if len(parts) != 2:
                 raise ValueError(
-                    "The map type string format is: 'map<key_type,value_type>', "
-                    + f"but got: {data_type}"
+                    "The map type string format is: 'map<key_type,value_type>', " + f"but got: {data_type}"
                 )
             return {"dataType": "MAP", "dataTypeDisplay": data_type}
         if data_type.startswith("uniontype<") or data_type.startswith("union<"):
@@ -400,22 +396,16 @@ class ColumnTypeParser:
 
     @staticmethod
     def _parse_struct_fields_string(stuct_type: str) -> Dict[str, object]:
-        parts = ColumnTypeParser._ignore_brackets_split(
-            stuct_type, ",", skip_no_child_validation=True
-        )
+        parts = ColumnTypeParser._ignore_brackets_split(stuct_type, ",", skip_no_child_validation=True)
         columns = []
         for part in parts:
             name_and_type = ColumnTypeParser._ignore_brackets_split(part, ":")
             if len(name_and_type) != 2:
-                raise ValueError(
-                    "expected format is: 'field_name:field_type', " + f"but got: {part}"
-                )
+                raise ValueError("expected format is: 'field_name:field_type', " + f"but got: {part}")
             field_name = name_and_type[0].strip()
             if field_name.startswith("`"):
                 if field_name[-1] != "`":
-                    raise ValueError(
-                        f"'`' should be the last char, but got: {stuct_type}"
-                    )
+                    raise ValueError(f"'`' should be the last char, but got: {stuct_type}")
                 field_name = field_name[1:-1]
             field_type = ColumnTypeParser._parse_datatype_string(name_and_type[1])
             field_type["name"] = field_name
@@ -470,9 +460,7 @@ class ColumnTypeParser:
         }
 
     @staticmethod
-    def _ignore_brackets_split(
-        string: str, separator: str, skip_no_child_validation: bool = False
-    ) -> List[str]:
+    def _ignore_brackets_split(string: str, separator: str, skip_no_child_validation: bool = False) -> List[str]:
         parts = []
         buf = ""
         level = 0
@@ -500,9 +488,7 @@ class ColumnTypeParser:
         return parts
 
     @staticmethod
-    def check_col_precision(
-        datatype: str, col_raw_type: object
-    ) -> Optional[Tuple[str, str]]:
+    def check_col_precision(datatype: str, col_raw_type: object) -> Optional[Tuple[str, str]]:
         """
         Method retuerns the precision details of column if available
         """

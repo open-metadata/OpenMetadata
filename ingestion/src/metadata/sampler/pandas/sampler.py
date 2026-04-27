@@ -12,6 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
+
 from typing import Callable, List, Optional, cast
 
 from metadata.generated.schema.entity.data.table import (
@@ -66,9 +67,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
 
     def _rdn_sample_from_user_query(self) -> Callable:
         """Generate sample from user query"""
-        return self.get_sampled_query_dataframe(
-            sample_query=self.sample_query, raw_dataset=self.raw_dataset
-        )
+        return self.get_sampled_query_dataframe(sample_query=self.sample_query, raw_dataset=self.raw_dataset)
 
     def get_col_row(
         self,
@@ -121,14 +120,9 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         return self.get_sampled_dataframe(raw_dataset, self.sample_config)
 
     def _fetch_rows(self, data_frame):
-        return [
-            [self._truncate_cell(cell) for cell in row]
-            for row in data_frame.dropna().values.tolist()
-        ]
+        return [[self._truncate_cell(cell) for cell in row] for row in data_frame.dropna().values.tolist()]
 
-    def fetch_sample_data(
-        self, columns: Optional[List[SQALikeColumn]] = None
-    ) -> TableData:
+    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]] = None) -> TableData:
         """Fetch sample data from the table
 
         Returns:
@@ -150,9 +144,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
                 sqalike_columns.append(
                     SQALikeColumn(
                         column_name,
-                        GenericDataFrameColumnParser.fetch_col_types(
-                            first_chunk, column_name
-                        ),
+                        GenericDataFrameColumnParser.fetch_col_types(first_chunk, column_name),
                     )
                 )
             return sqalike_columns
