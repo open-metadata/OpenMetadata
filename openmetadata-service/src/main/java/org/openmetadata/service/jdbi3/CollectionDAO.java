@@ -2600,16 +2600,6 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @SqlUpdate(
-        "DELETE FROM entity_relationship WHERE fromId = :fromId "
-            + "AND fromEntity = :fromEntity AND toEntity = :toEntity "
-            + "AND relation = :relation")
-    void deleteFrom(
-        @BindUUID("fromId") UUID fromId,
-        @Bind("fromEntity") String fromEntity,
-        @Bind("toEntity") String toEntity,
-        @Bind("relation") int relation);
-
-    @SqlUpdate(
         "DELETE FROM entity_relationship WHERE toId IN (<toIds>) "
             + "AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity")
     void deleteToMany(

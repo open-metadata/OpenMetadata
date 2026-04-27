@@ -625,15 +625,13 @@ public class TestCaseResolutionStatusRepository
         .orElse(records.get(records.size() - 1));
   }
 
-  public void deleteAllRelationshipsByTestCase(String testCaseFqn) {
-    EntityReference testCaseRef =
-        getEntityReferenceByName(Entity.TEST_CASE, testCaseFqn, Include.ALL);
+  public void deleteAllRelationshipsByTestCase(UUID testCaseId) {
     daoCollection
         .relationshipDAO()
         .deleteFrom(
-            testCaseRef.getId(),
+            testCaseId,
             Entity.TEST_CASE,
-            Entity.TEST_CASE_RESOLUTION_STATUS,
-            Relationship.PARENT_OF.ordinal());
+            Relationship.PARENT_OF.ordinal(),
+            Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 }

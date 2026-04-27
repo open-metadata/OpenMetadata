@@ -893,8 +893,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
         (TestCaseResolutionStatusRepository)
             Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-    testCaseResolutionStatusRepository.deleteAllRelationshipsByTestCase(
-        entityInterface.getFullyQualifiedName());
+    testCaseResolutionStatusRepository.deleteAllRelationshipsByTestCase(entityInterface.getId());
   }
 
   private void deleteAllTestCaseResults(String fqn) {
