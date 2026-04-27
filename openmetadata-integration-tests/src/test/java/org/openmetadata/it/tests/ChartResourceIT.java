@@ -158,6 +158,17 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().charts().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().charts().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Chart getVersion(UUID id, Double version) {
     return SdkClients.adminClient().charts().getVersion(id.toString(), version);
   }

@@ -61,6 +61,7 @@ from metadata.generated.schema.entity.services.securityService import (
     SecurityConnection,
     SecurityServiceType,
 )
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.entity.services.storageService import (
     StorageConnection,
     StorageServiceType,
@@ -72,6 +73,9 @@ from metadata.generated.schema.metadataIngestion.apiServiceMetadataPipeline impo
 from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
     DashboardMetadataConfigType,
     DashboardServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
+    DatabaseServiceAutoClassificationPipeline,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseMetadataConfigType,
@@ -131,6 +135,9 @@ from metadata.generated.schema.metadataIngestion.securityServiceMetadataPipeline
     SecurityMetadataConfigType,
     SecurityServiceMetadataPipeline,
 )
+from metadata.generated.schema.metadataIngestion.storageServiceAutoClassificationPipeline import (
+    StorageServiceAutoClassificationPipeline,
+)
 from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import (
     StorageMetadataConfigType,
     StorageServiceMetadataPipeline,
@@ -139,6 +146,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     WorkflowConfig,
 )
+from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -249,7 +257,10 @@ def get_source_config_class(
     if source_config_class:
         return source_config_class
 
-    raise ValueError(f"Cannot find the service type of {source_config_type}")
+    raise ValueError(
+        f"Cannot determine the sourceConfig type for type {source_config_type}. "
+        f"Verify the sourceConfig spelling and that it is supported."
+    )
 
 
 def get_connection_class(
@@ -468,6 +479,49 @@ def parse_workflow_source(config_dict: dict) -> None:
     parse_source_config(config_dict)
 
 
+def _preprocess_auto_classification_config(config_dict: dict) -> None:
+    """
+    Preprocess AutoClassification configs to ensure correct type before Pydantic validation.
+
+    When sourceConfig.config has type="AutoClassification", we need to determine if it's
+    a Storage or Database classification pipeline and pre-validate with the correct class.
+    This prevents Pydantic from defaulting to DatabaseServiceAutoClassificationPipeline
+    when it's actually a StorageServiceAutoClassificationPipeline.
+
+    :param config_dict: Workflow config dict (mutated in place)
+    """
+    try:
+        source_config_type = (
+            config_dict.get("source", {})
+            .get("sourceConfig", {})
+            .get("config", {})
+            .get("type")
+        )
+
+        if source_config_type == "AutoClassification":
+            source_type = config_dict["source"].get("type")
+
+            if not source_type:
+                return
+
+            service_type = get_service_type_from_source_type(source_type)
+
+            if service_type == ServiceType.Storage:
+                pipeline_class = StorageServiceAutoClassificationPipeline
+            elif service_type == ServiceType.Database:
+                pipeline_class = DatabaseServiceAutoClassificationPipeline
+            else:
+                return
+
+            config_data = config_dict["source"]["sourceConfig"]["config"]
+            validated_config = pipeline_class.model_validate(config_data)
+
+            config_dict["source"]["sourceConfig"]["config"] = validated_config
+
+    except (KeyError, AttributeError) as exc:
+        logger.debug(f"Could not preprocess auto-classification config: {exc}")
+
+
 def parse_workflow_config_gracefully(
     config_dict: dict,
 ) -> OpenMetadataWorkflowConfig:
@@ -486,6 +540,8 @@ def parse_workflow_config_gracefully(
     :param config_dict: JSON workflow config
     :return:workflow config or scoped error
     """
+
+    _preprocess_auto_classification_config(config_dict)
 
     try:
         workflow_config = OpenMetadataWorkflowConfig.model_validate(config_dict)

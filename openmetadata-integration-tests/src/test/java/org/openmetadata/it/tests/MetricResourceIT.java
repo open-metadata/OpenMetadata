@@ -156,6 +156,17 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().metrics().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().metrics().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Metric getVersion(UUID id, Double version) {
     return SdkClients.adminClient().metrics().getVersion(id.toString(), version);
   }

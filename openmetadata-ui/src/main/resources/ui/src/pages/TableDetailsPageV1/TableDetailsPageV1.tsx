@@ -49,10 +49,6 @@ import {
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Column, Table, TableType } from '../../generated/entity/data/table';
-import {
-  Suggestion,
-  SuggestionType,
-} from '../../generated/entity/feed/suggestion';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import { TestCaseStatus } from '../../generated/tests/testCase';
@@ -75,6 +71,7 @@ import {
   restoreTable,
   updateTablesVotes,
 } from '../../rest/tableAPI';
+import { Suggestion, SuggestionType } from '../../types/taskSuggestion';
 import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,

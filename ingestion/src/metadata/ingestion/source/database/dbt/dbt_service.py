@@ -204,7 +204,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         required_manifest_keys = {"nodes", "sources", "metadata", "exposures"}
         manifest_dict.update(
             {
-                key: {}
+                key: [] if isinstance(manifest_dict[key], list) else {}
                 for key in manifest_dict
                 if key.lower() not in required_manifest_keys
             }

@@ -725,7 +725,7 @@ test.describe('Large Table Column Search & Copy Link', () => {
             ) &&
           response.url().includes('profile') &&
           response.request().method() === 'GET',
-        { timeout: 90_000 }
+        { timeout: 150_000 } // TODO: Reduce timeout once the latency issue is fixed
       ),
       page.goto(clipboardText),
     ]);

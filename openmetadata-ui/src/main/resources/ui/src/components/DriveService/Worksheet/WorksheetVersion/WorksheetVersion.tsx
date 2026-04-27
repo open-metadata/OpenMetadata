@@ -61,6 +61,9 @@ const WorksheetVersion = ({
   tier,
   breadCrumbList,
   versionList,
+  onLoadMore,
+  hasMore,
+  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -281,9 +284,12 @@ const WorksheetVersion = ({
       <EntityVersionTimeLine
         currentVersion={toString(version)}
         entityType={EntityType.WORKSHEET}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
+        onLoadMore={onLoadMore}
       />
     </>
   );

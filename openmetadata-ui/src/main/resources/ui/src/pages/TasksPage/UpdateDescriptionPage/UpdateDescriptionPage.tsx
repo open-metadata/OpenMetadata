@@ -26,39 +26,41 @@ import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/E
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
-import { EntityField } from '../../../constants/Feeds.constants';
 import { TASK_SANITIZE_VALUE_REGEX } from '../../../constants/regex.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import {
-  CreateThread,
-  TaskType,
-  ThreadType,
-} from '../../../generated/api/feed/createThread';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
-import { postThread } from '../../../rest/feedsAPI';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
+import { TaskFormSchema } from '../../../rest/taskFormSchemasAPI';
+import {
+  CreateTask,
+  createTask,
+  TaskCategory,
+  TaskEntityType,
+  TaskPayload,
+  TaskPriority,
+} from '../../../rest/tasksAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
-  ENTITY_LINK_SEPARATOR,
-  getEntityFeedLink,
-} from '../../../utils/EntityUtils';
+  applyTaskFormSchemaDefaults,
+  getResolvedTaskFormSchema,
+} from '../../../utils/TaskFormSchemaUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
-  getColumnObject,
-  getEntityColumnsDetails,
+  getColumnObjectByPath,
+  getDescriptionTaskFieldPath,
   getTaskAssignee,
   getTaskEntityFQN,
+  getTaskFieldColumns,
   getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';
-import { DescriptionTabs } from '../shared/DescriptionTabs';
+import TaskPayloadSchemaFields from '../shared/TaskPayloadSchemaFields';
 import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
@@ -78,7 +80,8 @@ const UpdateDescription = () => {
   const [entityData, setEntityData] = useState<EntityData>({} as EntityData);
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Array<Option>>([]);
-  const [currentDescription, setCurrentDescription] = useState<string>('');
+  const [payload, setPayload] = useState<TaskPayload>({});
+  const [taskFormSchema, setTaskFormSchema] = useState<TaskFormSchema>();
   const [isLoading, setIsLoading] = useState(false);
 
   const entityFQN = useMemo(
@@ -106,14 +109,16 @@ const UpdateDescription = () => {
   const back = () => navigate(-1);
 
   const columnObject = useMemo(() => {
-    const column = sanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
+    const fieldPathSegments = sanitizeValue
+      .split(FQN_SEPARATOR_CHAR)
+      .filter(Boolean);
 
-    return getColumnObject(
-      column[0],
-      getEntityColumnsDetails(entityType, entityData),
+    return getColumnObjectByPath(
+      fieldPathSegments,
+      getTaskFieldColumns(entityType, entityData, field),
       entityType
     );
-  }, [field, entityData, entityType]);
+  }, [field, entityData, entityType, sanitizeValue]);
 
   const getDescription = () => {
     if (!isEmpty(columnObject) && !isUndefined(columnObject)) {
@@ -132,54 +137,58 @@ const UpdateDescription = () => {
   };
 
   const getTaskAbout = () => {
-    if (field && value) {
-      return `${field}${ENTITY_LINK_SEPARATOR}${value}${ENTITY_LINK_SEPARATOR}description`;
-    } else {
-      return EntityField.DESCRIPTION;
-    }
+    return getDescriptionTaskFieldPath(field, value);
   };
 
-  const onCreateTask: FormProps['onFinish'] = (value) => {
+  const onCreateTask: FormProps['onFinish'] = async (formValues) => {
     setIsLoading(true);
-    const data: CreateThread = {
-      message: value.title || taskMessage,
-      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
-      taskDetails: {
-        assignees: assignees.map((assignee) => ({
-          id: assignee.value,
-          type: assignee.type,
-        })),
-        suggestion: isDescriptionContentEmpty(value.description)
-          ? ''
-          : value.description,
-        type: TaskType.UpdateDescription,
-        oldValue: currentDescription,
-      },
-      type: ThreadType.Task,
-    };
-    postThread(data)
-      .then(() => {
-        showSuccessToast(
-          t('server.create-entity-success', {
-            entity: t('label.task'),
-          })
-        );
-        navigate(
-          entityUtilClassBase.getEntityLink(
-            entityType,
-            entityFQN,
-            EntityTabs.ACTIVITY_FEED,
-            ActivityFeedTabs.TASKS
-          )
-        );
-      })
-      .catch((err: AxiosError) => showErrorToast(err))
-      .finally(() => setIsLoading(false));
+
+    try {
+      const data: CreateTask = {
+        name: formValues.title || taskMessage,
+        category: TaskCategory.MetadataUpdate,
+        type: TaskEntityType.DescriptionUpdate,
+        priority: TaskPriority.Medium,
+        about: entityFQN,
+        aboutType: entityType,
+        assignees: assignees.map((assignee) => assignee.name ?? ''),
+        payload: applyTaskFormSchemaDefaults(
+          payload,
+          taskFormSchema?.formSchema
+        ),
+      };
+
+      await createTask(data);
+      showSuccessToast(
+        t('server.create-entity-success', {
+          entity: t('label.task'),
+        })
+      );
+      navigate(
+        entityUtilClassBase.getEntityLink(
+          entityType,
+          entityFQN,
+          EntityTabs.ACTIVITY_FEED,
+          ActivityFeedTabs.TASKS
+        )
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchEntityDetail(entityType, entityFQN, setEntityData);
   }, [entityFQN, entityType]);
+
+  useEffect(() => {
+    getResolvedTaskFormSchema(
+      TaskEntityType.DescriptionUpdate,
+      TaskCategory.MetadataUpdate
+    ).then(setTaskFormSchema);
+  }, []);
 
   useEffect(() => {
     const defaultAssignee = getTaskAssignee(entityData as Glossary);
@@ -196,8 +205,19 @@ const UpdateDescription = () => {
   }, [entityData]);
 
   useEffect(() => {
-    setCurrentDescription(getDescription());
+    const description = getDescription();
+    setPayload({
+      fieldPath: getTaskAbout(),
+      currentDescription: description,
+      newDescription: description,
+    });
   }, [entityData, columnObject]);
+
+  useEffect(() => {
+    setPayload((prevPayload) =>
+      applyTaskFormSchemaDefaults(prevPayload, taskFormSchema?.formSchema)
+    );
+  }, [taskFormSchema?.formSchema]);
 
   if (isEmpty(entityData)) {
     return <Loader />;
@@ -265,18 +285,12 @@ const UpdateDescription = () => {
                   />
                 </Form.Item>
 
-                {currentDescription && (
-                  <Form.Item
-                    data-testid="description-tabs"
-                    label={`${t('label.description')}:`}
-                    name="description"
-                    rules={[{ required: true }]}>
-                    <DescriptionTabs
-                      suggestion={currentDescription}
-                      value={currentDescription}
-                    />
-                  </Form.Item>
-                )}
+                <TaskPayloadSchemaFields
+                  payload={payload}
+                  schema={taskFormSchema?.formSchema}
+                  uiSchema={taskFormSchema?.uiSchema}
+                  onChange={setPayload}
+                />
 
                 <Form.Item>
                   <Space
