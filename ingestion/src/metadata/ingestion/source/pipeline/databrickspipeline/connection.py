@@ -13,7 +13,6 @@
 Source connection handler
 """
 
-import logging
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -33,11 +32,12 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
+from metadata.ingestion.source.database.databricks.log_filters import (
+    suppress_user_agent_entry_deprecation_log,
+)
 from metadata.utils.constants import THREE_MIN
 
-# Suppress noisy deprecation warning from databricks-sqlalchemy using
-# the deprecated '_user_agent_entry' parameter internally
-logging.getLogger("databricks.sql.session").setLevel(logging.ERROR)
+suppress_user_agent_entry_deprecation_log()
 
 
 def get_connection_url(connection: DatabricksPipelineConnection) -> str:

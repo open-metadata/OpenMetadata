@@ -13,7 +13,6 @@
 Source connection handler
 """
 
-import logging
 from copy import deepcopy
 from functools import partial
 from typing import Optional
@@ -44,6 +43,9 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.auth import get_auth_config
+from metadata.ingestion.source.database.databricks.log_filters import (
+    suppress_user_agent_entry_deprecation_log,
+)
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_SQL_STATEMENT_TEST,
@@ -60,9 +62,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-# Suppress noisy deprecation warning from databricks-sqlalchemy using
-# the deprecated '_user_agent_entry' parameter internally
-logging.getLogger("databricks.sql.session").setLevel(logging.ERROR)
+suppress_user_agent_entry_deprecation_log()
 
 
 class DatabricksEngineWrapper:

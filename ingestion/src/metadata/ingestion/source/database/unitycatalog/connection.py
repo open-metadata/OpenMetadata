@@ -13,7 +13,6 @@
 Source connection handler
 """
 
-import logging
 from copy import deepcopy
 from functools import partial
 from typing import Optional
@@ -50,6 +49,9 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.auth import get_auth_config
+from metadata.ingestion.source.database.databricks.log_filters import (
+    suppress_user_agent_entry_deprecation_log,
+)
 from metadata.ingestion.source.database.unitycatalog.models import DatabricksTable
 from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_GET_ALL_SCHEMA_TAGS,
@@ -65,9 +67,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-# Suppress noisy deprecation warning from databricks-sqlalchemy using
-# the deprecated '_user_agent_entry' parameter internally
-logging.getLogger("databricks.sql.session").setLevel(logging.ERROR)
+suppress_user_agent_entry_deprecation_log()
 
 
 def get_connection_url(connection: UnityCatalogConnection) -> str:
