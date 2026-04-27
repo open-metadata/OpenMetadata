@@ -16,6 +16,7 @@ Vertica CE image already comes with a sample database `VMart` that
 we will use here. If for some reason the data gets lost, it can be
 regenerated via: `./opt/vertica/examples/VMart_Schema/vmart_gen`
 """
+
 from typing import List
 
 from .common.test_cli_db import CliCommonDB

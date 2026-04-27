@@ -100,9 +100,7 @@ class AssumeArbitrary(Assumption):
         self.fn = fn
 
     def assume_positive(self, df: DataFrame):
-        assert self.fn(
-            df[self.column]
-        ).all(), f"failed test {self.__class__.__name__} for column {self.column}"
+        assert self.fn(df[self.column]).all(), f"failed test {self.__class__.__name__} for column {self.column}"
 
 
 class Assumptions:

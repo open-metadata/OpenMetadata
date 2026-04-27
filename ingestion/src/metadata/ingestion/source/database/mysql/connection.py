@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from sqlalchemy.engine import Engine
@@ -92,11 +93,7 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
         self._cloud_sql_connector = Connector()
         instance_connection_name = connection.hostPort
         enable_iam_auth = connection.authType.enableIamAuth or False
-        password = (
-            connection.authType.password.get_secret_value()
-            if connection.authType.password
-            else ""
-        )
+        password = connection.authType.password.get_secret_value() if connection.authType.password else ""
 
         def getconn():
             connect_kwargs = {

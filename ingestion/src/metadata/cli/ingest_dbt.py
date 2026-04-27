@@ -36,36 +36,22 @@ class FilterPattern(BaseModel):
     """Filter pattern model for database/schema/table filtering"""
 
     includes: List[str] = Field(default=[".*"], description="Patterns to include")
-    excludes: Optional[List[str]] = Field(
-        default=None, description="Patterns to exclude"
-    )
+    excludes: Optional[List[str]] = Field(default=None, description="Patterns to exclude")
 
 
 class OpenMetadataDBTConfig(BaseModel):
     """Pydantic model for OpenMetadata DBT configuration"""
 
     # Required fields
-    openmetadata_host_port: str = Field(
-        ..., description="OpenMetadata server host and port"
-    )
+    openmetadata_host_port: str = Field(..., description="OpenMetadata server host and port")
     openmetadata_jwt_token: str = Field(..., description="JWT token for authentication")
-    openmetadata_service_name: str = Field(
-        ..., description="Service name for the DBT service"
-    )
+    openmetadata_service_name: str = Field(..., description="Service name for the DBT service")
 
     # Optional DBT source configuration with defaults
-    openmetadata_dbt_update_descriptions: bool = Field(
-        default=True, description="Update model descriptions from DBT"
-    )
-    openmetadata_dbt_update_owners: bool = Field(
-        default=True, description="Update model owners from DBT"
-    )
-    openmetadata_include_tags: bool = Field(
-        default=True, description="Include DBT tags as metadata"
-    )
-    openmetadata_search_across_databases: bool = Field(
-        default=False, description="Search across multiple databases"
-    )
+    openmetadata_dbt_update_descriptions: bool = Field(default=True, description="Update model descriptions from DBT")
+    openmetadata_dbt_update_owners: bool = Field(default=True, description="Update model owners from DBT")
+    openmetadata_include_tags: bool = Field(default=True, description="Include DBT tags as metadata")
+    openmetadata_search_across_databases: bool = Field(default=False, description="Search across multiple databases")
     openmetadata_dbt_classification_name: Optional[str] = Field(
         default=None, description="Custom classification name for DBT tags"
     )
@@ -89,14 +75,12 @@ class OpenMetadataDBTConfig(BaseModel):
             # This will raise ValueError if not a valid http/https/ws/wss URL
             URL(v)
             return v
-        except (ValueError, TypeError) as e:
+        except (ValueError, TypeError) as e:  # noqa: F841
             raise ValueError(
-                f"Host port must be a valid URL starting with http:// or https://"
+                f"Host port must be a valid URL starting with http:// or https://"  # noqa: F541
             )
 
-    def _get_filter_pattern(
-        self, pattern_dict: Optional[Dict[str, List[str]]]
-    ) -> FilterPattern:
+    def _get_filter_pattern(self, pattern_dict: Optional[Dict[str, List[str]]]) -> FilterPattern:
         """Convert filter pattern dict to FilterPattern model or return default"""
         if pattern_dict:
             return FilterPattern(**pattern_dict)
@@ -162,9 +146,7 @@ def substitute_env_vars(content: str) -> str:
             if default_value is not None:
                 # Remove quotes from default value
                 return default_value.strip("\"'")
-            raise ValueError(
-                f"Environment variable '{var_name}' is not set and no default provided"
-            )
+            raise ValueError(f"Environment variable '{var_name}' is not set and no default provided")
         return env_value
 
     # Pattern for ${VAR}
@@ -172,9 +154,7 @@ def substitute_env_vars(content: str) -> str:
 
     # Pattern for {{ env_var("VAR") }} and {{ env_var("VAR", "default") }}
     # This handles both single and double quotes around variable names and defaults
-    function_pattern = re.compile(
-        r'\{\{\s*env_var\(\s*["\']([\w-]+)["\']\s*(?:,\s*["\']([\w\s-]*)["\']\s*)?\)\s*\}\}'
-    )
+    function_pattern = re.compile(r'\{\{\s*env_var\(\s*["\']([\w-]+)["\']\s*(?:,\s*["\']([\w\s-]*)["\']\s*)?\)\s*\}\}')
 
     # Apply substitutions
     content = shell_pattern.sub(replace_shell_vars, content)
@@ -241,9 +221,7 @@ def extract_openmetadata_config(dbt_config: Dict) -> OpenMetadataDBTConfig:
         raise ValueError(f"Invalid OpenMetadata configuration: {error_msg}")
 
 
-def create_dbt_workflow_config(
-    dbt_project_path: Path, om_config: OpenMetadataDBTConfig
-) -> Dict:
+def create_dbt_workflow_config(dbt_project_path: Path, om_config: OpenMetadataDBTConfig) -> Dict:
     """
     Create OpenMetadata workflow configuration for dbt artifacts ingestion
 
@@ -283,18 +261,14 @@ def create_dbt_workflow_config(
         "dbtUpdateOwners": om_config.openmetadata_dbt_update_owners,
         "includeTags": om_config.openmetadata_include_tags,
         "searchAcrossDatabases": om_config.openmetadata_search_across_databases,
-        "databaseFilterPattern": om_config.database_filter.model_dump(
-            exclude_none=True
-        ),
+        "databaseFilterPattern": om_config.database_filter.model_dump(exclude_none=True),
         "schemaFilterPattern": om_config.schema_filter.model_dump(exclude_none=True),
         "tableFilterPattern": om_config.table_filter.model_dump(exclude_none=True),
     }
 
     # Add optional classification name if provided
     if om_config.openmetadata_dbt_classification_name:
-        source_config[
-            "dbtClassificationName"
-        ] = om_config.openmetadata_dbt_classification_name
+        source_config["dbtClassificationName"] = om_config.openmetadata_dbt_classification_name
 
     # Create workflow configuration
     config = {
@@ -330,14 +304,10 @@ def run_ingest_dbt(dbt_project_path: Path) -> None:
         logger.info(f"Starting DBT artifacts ingestion from: {dbt_project_path}")
 
         if not dbt_project_path.exists():
-            raise FileNotFoundError(
-                f"DBT project path does not exist: {dbt_project_path}"
-            )
+            raise FileNotFoundError(f"DBT project path does not exist: {dbt_project_path}")
 
         if not dbt_project_path.is_dir():
-            raise NotADirectoryError(
-                f"DBT project path is not a directory: {dbt_project_path}"
-            )
+            raise NotADirectoryError(f"DBT project path is not a directory: {dbt_project_path}")
 
         logger.info("Loading dbt project configuration...")
         dbt_config = find_dbt_project_config(dbt_project_path)

@@ -13,7 +13,6 @@
 OpenMetadata high-level API Workflow test
 """
 
-
 from metadata.generated.schema.api.automations.createWorkflow import (
     CreateWorkflowRequest,
 )
@@ -69,17 +68,13 @@ def test_connection_workflow(metadata, mysql_container):
     test_connection_fn = get_test_connection_fn(service_connection)
     test_connection_fn(metadata, automation_workflow=automation_workflow)
 
-    final_workflow: Workflow = metadata.get_by_name(
-        entity=Workflow, fqn="test-connection-mysql"
-    )
+    final_workflow: Workflow = metadata.get_by_name(entity=Workflow, fqn="test-connection-mysql")
 
     assert final_workflow.status == WorkflowStatus.Successful
     assert len(final_workflow.response.steps) == 5
     # Get queries is not passing since we're not enabling the logs in the container
     assert final_workflow.response.status.value == StatusType.Failed.value
-    steps = [
-        step for step in final_workflow.response.steps if step.name != "GetQueries"
-    ]
+    steps = [step for step in final_workflow.response.steps if step.name != "GetQueries"]
     assert all(step.passed for step in steps)
 
     metadata.delete(
@@ -111,16 +106,12 @@ def test_connection_workflow_ko(metadata):
         ),
     )
 
-    automation_workflow: Workflow = metadata.create_or_update(
-        data=wrong_workflow_request
-    )
+    automation_workflow: Workflow = metadata.create_or_update(data=wrong_workflow_request)
 
     test_connection_fn = get_test_connection_fn(wrong_service_connection)
     test_connection_fn(metadata, automation_workflow=automation_workflow)
 
-    final_workflow: Workflow = metadata.get_by_name(
-        entity=Workflow, fqn="test-connection-mysql-bad"
-    )
+    final_workflow: Workflow = metadata.get_by_name(entity=Workflow, fqn="test-connection-mysql-bad")
 
     assert final_workflow.response.status == StatusType.Failed
 

@@ -44,9 +44,7 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
 from metadata.utils.helpers import get_start_and_end
 
 
-class OracleLineageSource(
-    OracleQueryParserSource, StoredProcedureLineageMixin, LineageSource
-):
+class OracleLineageSource(OracleQueryParserSource, StoredProcedureLineageMixin, LineageSource):
     # command types mapping to query types:
     # 1 = CREATE TABLE
     # 2 = INSERT

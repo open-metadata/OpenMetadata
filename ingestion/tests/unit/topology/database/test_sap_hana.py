@@ -11,6 +11,7 @@
 """
 Test SAP Hana source
 """
+
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, create_autospec, patch
@@ -63,9 +64,7 @@ def test_parse_analytic_view() -> None:
         parse_fn = parse_registry.registry.get(ViewType.ANALYTIC_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
 
-    ds = DataSource(
-        name="SBOOK", location="SFLIGHT", source_type=ViewType.DATA_BASE_TABLE
-    )
+    ds = DataSource(name="SBOOK", location="SFLIGHT", source_type=ViewType.DATA_BASE_TABLE)
 
     assert parsed_lineage
     assert len(parsed_lineage.mappings) == 8  # 6 attributes + 2 measures
@@ -85,16 +84,12 @@ def test_parse_attribute_view() -> None:
         parse_fn = parse_registry.registry.get(ViewType.ATTRIBUTE_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
 
-    ds = DataSource(
-        name="SFLIGHT", location="SFLIGHT", source_type=ViewType.DATA_BASE_TABLE
-    )
+    ds = DataSource(name="SFLIGHT", location="SFLIGHT", source_type=ViewType.DATA_BASE_TABLE)
 
     assert parsed_lineage
     assert len(parsed_lineage.mappings) == 20  # 15 columns + 5 derived from formulas
     assert parsed_lineage.sources == {
-        DataSource(
-            name="SCARR", location="SFLIGHT", source_type=ViewType.DATA_BASE_TABLE
-        ),
+        DataSource(name="SCARR", location="SFLIGHT", source_type=ViewType.DATA_BASE_TABLE),
         ds,
     }
     assert parsed_lineage.mappings[0] == ColumnMapping(
@@ -112,9 +107,7 @@ def test_parse_cv_tab() -> None:
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
 
-    ds = DataSource(
-        name="SFLIGHT", location="SFLIGHT", source_type=ViewType.DATA_BASE_TABLE
-    )
+    ds = DataSource(name="SFLIGHT", location="SFLIGHT", source_type=ViewType.DATA_BASE_TABLE)
 
     assert parsed_lineage
     assert len(parsed_lineage.mappings) == 7  # 4 attributes, 3 measures
@@ -188,9 +181,7 @@ def test_parse_cv() -> None:
     assert parsed_lineage.sources == {ds_sbook, ds_sflight}
 
     # We can validate that MANDT comes from 2 sources
-    mandt_mappings = [
-        mapping for mapping in parsed_lineage.mappings if mapping.target == "MANDT"
-    ]
+    mandt_mappings = [mapping for mapping in parsed_lineage.mappings if mapping.target == "MANDT"]
     assert len(mandt_mappings) == 2
     assert {mapping.data_source for mapping in mandt_mappings} == {ds_sbook, ds_sflight}
 
@@ -218,34 +209,22 @@ def test_schema_mapping_in_datasource():
     mock_metadata = MagicMock()
     mock_metadata.get_by_name.return_value = MagicMock()
 
-    with patch(
-        "metadata.ingestion.source.database.saphana.cdata_parser._get_mapped_schema"
-    ) as mock_get_mapped:
+    with patch("metadata.ingestion.source.database.saphana.cdata_parser._get_mapped_schema") as mock_get_mapped:
         mock_get_mapped.return_value = "PHYSICAL_SCHEMA_1"
 
         # Call get_entity which should use the mapped schema
-        ds.get_entity(
-            metadata=mock_metadata, engine=mock_engine, service_name="test_service"
-        )
+        ds.get_entity(metadata=mock_metadata, engine=mock_engine, service_name="test_service")
 
         # Verify _get_mapped_schema was called with the correct parameters
-        mock_get_mapped.assert_called_once_with(
-            engine=mock_engine, schema_name="AUTHORING_SCHEMA"
-        )
+        mock_get_mapped.assert_called_once_with(engine=mock_engine, schema_name="AUTHORING_SCHEMA")
 
     # Test case 2: Schema has no mapping (returns original)
     mock_result.scalar.return_value = None
 
-    with patch(
-        "metadata.ingestion.source.database.saphana.cdata_parser._get_mapped_schema"
-    ) as mock_get_mapped:
-        mock_get_mapped.return_value = (
-            "AUTHORING_SCHEMA"  # Returns original when no mapping
-        )
+    with patch("metadata.ingestion.source.database.saphana.cdata_parser._get_mapped_schema") as mock_get_mapped:
+        mock_get_mapped.return_value = "AUTHORING_SCHEMA"  # Returns original when no mapping
 
-        ds.get_entity(
-            metadata=mock_metadata, engine=mock_engine, service_name="test_service"
-        )
+        ds.get_entity(metadata=mock_metadata, engine=mock_engine, service_name="test_service")
 
         mock_get_mapped.assert_called_once()
 
@@ -293,16 +272,12 @@ def test_parsed_lineage_with_schema_mapping():
         )
 
         # Verify get_entity was called with engine parameter
-        mock_to_entity.assert_called_with(
-            metadata=mock_metadata, engine=mock_engine, service_name="test_service"
-        )
+        mock_to_entity.assert_called_with(metadata=mock_metadata, engine=mock_engine, service_name="test_service")
 
 
 def test_join_view_duplicate_column_mapping() -> None:
     """Test that Join views correctly handle duplicate column mappings by keeping the first occurrence"""
-    with open(
-        RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join.xml"
-    ) as file:
+    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join.xml") as file:
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
@@ -324,37 +299,25 @@ def test_join_view_duplicate_column_mapping() -> None:
     # Verify that when Join views have duplicate mappings (ORDER_ID mapped twice),
     # we keep the first mapping and ignore the duplicate
     # ORDER_ID_1 comes from first input (Projection_2 -> CV_AGGREGATED_ORDERS)
-    order_id_1_mappings = [
-        mapping for mapping in parsed_lineage.mappings if mapping.target == "ORDER_ID_1"
-    ]
+    order_id_1_mappings = [mapping for mapping in parsed_lineage.mappings if mapping.target == "ORDER_ID_1"]
     assert len(order_id_1_mappings) == 1
     assert order_id_1_mappings[0].data_source == ds_aggregated
     assert order_id_1_mappings[0].sources == ["ORDER_ID"]
 
     # ORDER_ID_1_1 comes from second input (Projection_1 -> CV_ORDERS)
-    order_id_1_1_mappings = [
-        mapping
-        for mapping in parsed_lineage.mappings
-        if mapping.target == "ORDER_ID_1_1"
-    ]
+    order_id_1_1_mappings = [mapping for mapping in parsed_lineage.mappings if mapping.target == "ORDER_ID_1_1"]
     assert len(order_id_1_1_mappings) == 1
     assert order_id_1_1_mappings[0].data_source == ds_orders
     assert order_id_1_1_mappings[0].sources == ["ORDER_ID"]
 
     # Verify renamed columns maintain correct source mapping
-    quantity_1_mappings = [
-        mapping for mapping in parsed_lineage.mappings if mapping.target == "QUANTITY_1"
-    ]
+    quantity_1_mappings = [mapping for mapping in parsed_lineage.mappings if mapping.target == "QUANTITY_1"]
     assert len(quantity_1_mappings) == 1
     assert quantity_1_mappings[0].data_source == ds_aggregated
     assert quantity_1_mappings[0].sources == ["QUANTITY"]
 
     # QUANTITY_1_1 maps to CV_ORDERS.QUANTITY (renamed in Join)
-    quantity_1_1_mappings = [
-        mapping
-        for mapping in parsed_lineage.mappings
-        if mapping.target == "QUANTITY_1_1"
-    ]
+    quantity_1_1_mappings = [mapping for mapping in parsed_lineage.mappings if mapping.target == "QUANTITY_1_1"]
     assert len(quantity_1_1_mappings) == 1
     assert quantity_1_1_mappings[0].data_source == ds_orders
     assert quantity_1_1_mappings[0].sources == ["QUANTITY"]
@@ -362,9 +325,7 @@ def test_join_view_duplicate_column_mapping() -> None:
 
 def test_union_view_with_multiple_projections() -> None:
     """Test parsing of calculation view with Union combining multiple Projection sources"""
-    with open(
-        RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml"
-    ) as file:
+    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml") as file:
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
@@ -390,26 +351,20 @@ def test_union_view_with_multiple_projections() -> None:
 
     # Verify Union view correctly combines sources from multiple projections
     # AMOUNT comes from CV_DEV_SALES through Projection_3
-    amount_mappings = [
-        mapping for mapping in parsed_lineage.mappings if mapping.target == "AMOUNT"
-    ]
+    amount_mappings = [mapping for mapping in parsed_lineage.mappings if mapping.target == "AMOUNT"]
     assert len(amount_mappings) == 1
     assert amount_mappings[0].data_source == ds_sales
     assert amount_mappings[0].sources == ["AMOUNT"]
 
     # Test column name resolution through Union and Join layers
     # PRICE_1 maps to Join_1.PRICE which traces back through Union_1 to CV_ORDERS
-    price_1_mappings = [
-        mapping for mapping in parsed_lineage.mappings if mapping.target == "PRICE_1"
-    ]
+    price_1_mappings = [mapping for mapping in parsed_lineage.mappings if mapping.target == "PRICE_1"]
     assert len(price_1_mappings) == 1
     assert price_1_mappings[0].data_source == ds_orders
     assert price_1_mappings[0].sources == ["PRICE"]
 
     # PRICE_1_1 maps to Join_1.PRICE_1 which comes from Projection_2 (CV_AGGREGATED_ORDERS)
-    price_1_1_mappings = [
-        mapping for mapping in parsed_lineage.mappings if mapping.target == "PRICE_1_1"
-    ]
+    price_1_1_mappings = [mapping for mapping in parsed_lineage.mappings if mapping.target == "PRICE_1_1"]
     assert len(price_1_1_mappings) == 1
     assert price_1_1_mappings[0].data_source == ds_aggregated
     assert price_1_1_mappings[0].sources == ["PRICE"]
@@ -417,9 +372,7 @@ def test_union_view_with_multiple_projections() -> None:
 
 def test_analytic_view_formula_column_source_mapping() -> None:
     """Test that formula columns correctly map to their source table columns"""
-    with open(
-        RESOURCES_DIR / "custom" / "cdata_analytic_view_formula_column.xml"
-    ) as file:
+    with open(RESOURCES_DIR / "custom" / "cdata_analytic_view_formula_column.xml") as file:
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.ANALYTIC_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
@@ -441,9 +394,7 @@ def test_analytic_view_formula_column_source_mapping() -> None:
     # Test that base columns from ORDERS table are mapped correctly
     orders_columns = ["ORDER_ID", "CUSTOMER_ID", "ORDER_DATE", "PRICE", "QUANTITY"]
     for col_name in orders_columns:
-        col_mappings = [
-            mapping for mapping in parsed_lineage.mappings if mapping.target == col_name
-        ]
+        col_mappings = [mapping for mapping in parsed_lineage.mappings if mapping.target == col_name]
         assert len(col_mappings) == 1
         assert col_mappings[0].data_source == ds_orders
         assert col_mappings[0].sources == [col_name]
@@ -451,9 +402,7 @@ def test_analytic_view_formula_column_source_mapping() -> None:
     # Test that columns from CUSTOMER_DATA table are mapped correctly
     customer_columns = ["CUSTOMER_ID_1", "NAME", "EMAIL", "IS_ACTIVE", "SIGNUP_DATE"]
     for col_name in customer_columns:
-        col_mappings = [
-            mapping for mapping in parsed_lineage.mappings if mapping.target == col_name
-        ]
+        col_mappings = [mapping for mapping in parsed_lineage.mappings if mapping.target == col_name]
         assert len(col_mappings) == 1
         assert col_mappings[0].data_source == ds_customer
         # CUSTOMER_ID_1 maps from CUSTOMER_ID in CUSTOMER_DATA table
@@ -464,24 +413,18 @@ def test_analytic_view_formula_column_source_mapping() -> None:
     # This verifies the fix for formula columns that reference renamed attributes
     # For example, if formula has "CUSTOMER_ID_1" (attribute ID), the source should be
     # "CUSTOMER_ID" (actual column name from CUSTOMER_DATA table), not "CUSTOMER_ID_1"
-    formula_mappings = [
-        mapping for mapping in parsed_lineage.mappings if mapping.formula
-    ]
+    formula_mappings = [mapping for mapping in parsed_lineage.mappings if mapping.formula]
     for mapping in formula_mappings:
         # Verify that sources are actual table column names, not intermediate attribute IDs
         for source_col in mapping.sources:
             # Source columns should match columns in the source tables
             if mapping.data_source == ds_orders:
                 assert source_col in orders_columns, (
-                    f"Source column '{source_col}' should be an actual column from ORDERS table, "
-                    f"not an attribute ID"
+                    f"Source column '{source_col}' should be an actual column from ORDERS table, not an attribute ID"
                 )
             elif mapping.data_source == ds_customer:
                 # Map back to actual source column names
-                actual_customer_cols = [
-                    "CUSTOMER_ID" if c == "CUSTOMER_ID_1" else c
-                    for c in customer_columns
-                ]
+                actual_customer_cols = ["CUSTOMER_ID" if c == "CUSTOMER_ID_1" else c for c in customer_columns]
                 assert source_col in actual_customer_cols, (
                     f"Source column '{source_col}' should be an actual column from CUSTOMER_DATA table, "
                     f"not an attribute ID"
@@ -491,9 +434,7 @@ def test_analytic_view_formula_column_source_mapping() -> None:
 def test_formula_columns_reference_correct_layer():
     """Test that formula columns reference the correct calculation view layer"""
     # Load the complex star join view XML
-    with open(
-        RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml"
-    ) as file:
+    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml") as file:
         xml = file.read()
 
     ns = {
@@ -536,9 +477,7 @@ def test_formula_columns_reference_correct_layer():
 
 def test_projection_formula_columns():
     """Test that projection view formula columns reference the correct layer"""
-    with open(
-        RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml"
-    ) as file:
+    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml") as file:
         xml = file.read()
 
     ns = {
@@ -582,9 +521,7 @@ def test_projection_formula_columns():
 
 def test_formula_columns_in_final_lineage():
     """Test that formula columns are correctly resolved in the final lineage"""
-    with open(
-        RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml"
-    ) as file:
+    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml") as file:
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed = parse_fn(cdata)
@@ -654,18 +591,12 @@ def test_formula_parsing_comprehensive():
     parsed = parse_fn(logical_model_xml)
 
     # Test logical model calculated attribute
-    calc_price = next(
-        (m for m in parsed.mappings if m.target == "CALCULATED_PRICE"), None
-    )
-    assert (
-        calc_price and calc_price.formula == '"PRICE"'
-    ), "Logical model calculated attribute formula missing"
+    calc_price = next((m for m in parsed.mappings if m.target == "CALCULATED_PRICE"), None)
+    assert calc_price and calc_price.formula == '"PRICE"', "Logical model calculated attribute formula missing"
 
     # Test logical model calculated measure
     total = next((m for m in parsed.mappings if m.target == "TOTAL"), None)
-    assert (
-        total and total.formula == '"QUANTITY" * "PRICE"'
-    ), "Logical model calculated measure formula missing"
+    assert total and total.formula == '"QUANTITY" * "PRICE"', "Logical model calculated measure formula missing"
 
     # Scenario 2: Nested calculation view formulas (the deeper layer issue we found)
     nested_view_xml = """<?xml version="1.0" encoding="UTF-8"?>
@@ -708,9 +639,9 @@ def test_formula_parsing_comprehensive():
     # Critical test: Formula from calculation view must propagate through logical model
     proj_total = [m for m in parsed.mappings if m.target == "PROJ_TOTAL"]
     assert len(proj_total) > 0, "PROJ_TOTAL not found in mappings"
-    assert any(
-        m.formula == '"PRICE" * "QUANTITY"' for m in proj_total
-    ), f"Nested calculation view formula not propagated. Got: {[(m.formula, m.sources) for m in proj_total]}"
+    assert any(m.formula == '"PRICE" * "QUANTITY"' for m in proj_total), (
+        f"Nested calculation view formula not propagated. Got: {[(m.formula, m.sources) for m in proj_total]}"
+    )
 
     # Scenario 3: Multiple formula types and edge cases
     edge_cases_xml = """<?xml version="1.0" encoding="UTF-8"?>
@@ -756,20 +687,12 @@ def test_formula_parsing_comprehensive():
     assert "CONSTANT_ATTR" not in targets, "Constant formula should not create mapping"
 
     # Test string formulas work
-    string_formula = next(
-        (m for m in parsed.mappings if m.target == "STRING_FORMULA"), None
-    )
-    assert (
-        string_formula and "string(" in string_formula.formula
-    ), "String formula not preserved"
+    string_formula = next((m for m in parsed.mappings if m.target == "STRING_FORMULA"), None)
+    assert string_formula and "string(" in string_formula.formula, "String formula not preserved"
 
     # Test complex formulas with constants
-    complex_calc = next(
-        (m for m in parsed.mappings if m.target == "COMPLEX_CALC"), None
-    )
-    assert (
-        complex_calc and complex_calc.formula == '"PRICE" * 1.1 + 10'
-    ), "Complex formula not preserved"
+    complex_calc = next((m for m in parsed.mappings if m.target == "COMPLEX_CALC"), None)
+    assert complex_calc and complex_calc.formula == '"PRICE" * 1.1 + 10', "Complex formula not preserved"
 
 
 def test_circular_reference_prevention() -> None:
@@ -827,9 +750,7 @@ def test_circular_reference_prevention() -> None:
 
         # With circular reference prevention, should visit each node only once
         # Without prevention, this would recurse infinitely
-        assert (
-            call_count <= 3
-        ), f"Too many function calls: {call_count} (indicates circular recursion)"
+        assert call_count <= 3, f"Too many function calls: {call_count} (indicates circular recursion)"
 
 
 def test_sap_hana_lineage_filter_pattern() -> None:
@@ -844,9 +765,7 @@ def test_sap_hana_lineage_filter_pattern() -> None:
         serviceName="test_sap_hana",
         serviceConnection=DatabaseConnection(
             config=SapHanaConnection(
-                connection=SapHanaSQLConnection(
-                    username="test", password="test", hostPort="localhost:39015"
-                )
+                connection=SapHanaSQLConnection(username="test", password="test", hostPort="localhost:39015")
             )
         ),
         sourceConfig=SourceConfig(
@@ -859,9 +778,7 @@ def test_sap_hana_lineage_filter_pattern() -> None:
         ),
     )
 
-    with patch(
-        "metadata.ingestion.source.database.saphana.lineage.get_ssl_connection"
-    ) as mock_get_engine:
+    with patch("metadata.ingestion.source.database.saphana.lineage.get_ssl_connection") as mock_get_engine:
         mock_engine = MagicMock()
         mock_connection = MagicMock()
         mock_get_engine.return_value = mock_engine
@@ -925,9 +842,7 @@ def test_sap_hana_lineage_filter_pattern() -> None:
 
         mock_execution = MagicMock()
         mock_execution.__iter__ = Mock(return_value=iter(mock_result))
-        mock_connection.execution_options.return_value.execute.return_value = (
-            mock_execution
-        )
+        mock_connection.execution_options.return_value.execute.return_value = mock_execution
 
         source = SaphanaLineageSource(config=mock_config, metadata=mock_metadata)
 
@@ -963,27 +878,21 @@ def test_renamed_attribute_in_calculated_column() -> None:
     Fix: Now we use mapping.sources from the base lineage, which contains the actual
          source column names after traversing datasources.
     """
-    with open(
-        RESOURCES_DIR / "custom" / "cdata_calculation_view_renamed_attribute.xml"
-    ) as file:
+    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_renamed_attribute.xml") as file:
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
 
     # Find the calculated attribute EMAIL that references EMAIL_1 in its formula
     email_calc_mappings = [
-        mapping
-        for mapping in parsed_lineage.mappings
-        if mapping.target == "EMAIL" and mapping.formula
+        mapping for mapping in parsed_lineage.mappings if mapping.target == "EMAIL" and mapping.formula
     ]
 
     assert len(email_calc_mappings) > 0, "Should find calculated EMAIL attribute"
 
     # Verify the formula references EMAIL_1 (the attribute ID)
     email_mapping = email_calc_mappings[0]
-    assert (
-        "EMAIL_1" in email_mapping.formula
-    ), "Formula should reference EMAIL_1 attribute ID"
+    assert "EMAIL_1" in email_mapping.formula, "Formula should reference EMAIL_1 attribute ID"
 
     # CRITICAL: Verify that sources use actual column names from datasource, not attribute IDs
     # The source should be "EMAIL" (from CV_SALESOVERVIEW), not "EMAIL_1"
@@ -1006,9 +915,7 @@ def test_renamed_attribute_in_calculated_column() -> None:
         location="/my-package/calculationviews/CV_SALESOVERVIEW",
         source_type=ViewType.CALCULATION_VIEW,
     )
-    assert (
-        email_mapping.data_source == ds_salesoverview_1
-    ), "Calculated EMAIL should trace back to CV_SALESOVERVIEW_1"
+    assert email_mapping.data_source == ds_salesoverview_1, "Calculated EMAIL should trace back to CV_SALESOVERVIEW_1"
 
 
 def test_calculation_view_end_to_end_lineage() -> None:
@@ -1064,8 +971,7 @@ def test_calculation_view_end_to_end_lineage() -> None:
 
     # Verify all expected columns have lineage
     assert expected_columns == actual_targets, (
-        f"Missing columns: {expected_columns - actual_targets}, "
-        f"Extra columns: {actual_targets - expected_columns}"
+        f"Missing columns: {expected_columns - actual_targets}, Extra columns: {actual_targets - expected_columns}"
     )
 
     # Verify correct datasources are identified
@@ -1081,9 +987,7 @@ def test_calculation_view_end_to_end_lineage() -> None:
     mandt_sources = {m.data_source for m in mandt_mappings}
     assert ds_at_sflight in mandt_sources, "MANDT should come from AT_SFLIGHT"
     assert ds_an_sbook in mandt_sources, "MANDT should come from AN_SBOOK"
-    assert all(
-        m.sources == ["MANDT"] for m in mandt_mappings
-    ), "MANDT should map directly without renaming"
+    assert all(m.sources == ["MANDT"] for m in mandt_mappings), "MANDT should map directly without renaming"
 
     # 2. CARRNAME - comes only from AT_SFLIGHT
     carrname_mappings = [m for m in parsed_lineage.mappings if m.target == "CARRNAME"]
@@ -1092,9 +996,7 @@ def test_calculation_view_end_to_end_lineage() -> None:
     assert carrname_mappings[0].sources == ["CARRNAME"]
 
     # 3. SEATSMAX_ALL - comes from AT_SFLIGHT
-    seatsmax_mappings = [
-        m for m in parsed_lineage.mappings if m.target == "SEATSMAX_ALL"
-    ]
+    seatsmax_mappings = [m for m in parsed_lineage.mappings if m.target == "SEATSMAX_ALL"]
     assert len(seatsmax_mappings) == 1
     assert seatsmax_mappings[0].data_source == ds_at_sflight
     assert seatsmax_mappings[0].sources == ["SEATSMAX_ALL"]
@@ -1103,12 +1005,10 @@ def test_calculation_view_end_to_end_lineage() -> None:
     usage_pct_mappings = [m for m in parsed_lineage.mappings if m.target == "USAGE_PCT"]
 
     # Should have mappings from AT_SFLIGHT (formula references SEATSOCC_ALL and SEATSMAX_ALL)
-    usage_pct_at_sflight = [
-        m for m in usage_pct_mappings if m.data_source == ds_at_sflight
-    ]
-    assert (
-        len(usage_pct_at_sflight) >= 1
-    ), f"USAGE_PCT should have at least one lineage from AT_SFLIGHT, got {len(usage_pct_at_sflight)}"
+    usage_pct_at_sflight = [m for m in usage_pct_mappings if m.data_source == ds_at_sflight]
+    assert len(usage_pct_at_sflight) >= 1, (
+        f"USAGE_PCT should have at least one lineage from AT_SFLIGHT, got {len(usage_pct_at_sflight)}"
+    )
 
     # CRITICAL: Verify formula mappings use actual source column names from AT_SFLIGHT
     # The formula references SEATSOCC_ALL and SEATSMAX_ALL
@@ -1121,33 +1021,28 @@ def test_calculation_view_end_to_end_lineage() -> None:
         all_formula_sources.update(m.sources)
 
     # The formula should reference both columns
-    assert (
-        "SEATSOCC_ALL" in all_formula_sources
-    ), f"Formula should reference SEATSOCC_ALL, got: {all_formula_sources}"
-    assert (
-        "SEATSMAX_ALL" in all_formula_sources
-    ), f"Formula should reference SEATSMAX_ALL, got: {all_formula_sources}"
+    assert "SEATSOCC_ALL" in all_formula_sources, f"Formula should reference SEATSOCC_ALL, got: {all_formula_sources}"
+    assert "SEATSMAX_ALL" in all_formula_sources, f"Formula should reference SEATSMAX_ALL, got: {all_formula_sources}"
 
     # Verify formula text is preserved in at least one mapping
-    assert any(
-        '"SEATSOCC_ALL"' in m.formula and '"SEATSMAX_ALL"' in m.formula
-        for m in formula_mappings
-    ), "Formula text should be preserved with both column references"
+    assert any('"SEATSOCC_ALL"' in m.formula and '"SEATSMAX_ALL"' in m.formula for m in formula_mappings), (
+        "Formula text should be preserved with both column references"
+    )
 
     # Verify no mappings reference intermediate calculation view names as sources
     # All sources should be actual table column names
     for mapping in parsed_lineage.mappings:
         for source_col in mapping.sources:
             # Source column names should not contain calculation view IDs
-            assert not source_col.startswith(
-                "Aggregation_"
-            ), f"Source should be table column, not calculation view: {source_col}"
-            assert not source_col.startswith(
-                "Projection_"
-            ), f"Source should be table column, not calculation view: {source_col}"
-            assert not source_col.startswith(
-                "Union_"
-            ), f"Source should be table column, not calculation view: {source_col}"
+            assert not source_col.startswith("Aggregation_"), (
+                f"Source should be table column, not calculation view: {source_col}"
+            )
+            assert not source_col.startswith("Projection_"), (
+                f"Source should be table column, not calculation view: {source_col}"
+            )
+            assert not source_col.startswith("Union_"), (
+                f"Source should be table column, not calculation view: {source_col}"
+            )
 
     # Verify datasources are real tables or views, not logical intermediate views
     for source in parsed_lineage.sources:
@@ -1157,9 +1052,7 @@ def test_calculation_view_end_to_end_lineage() -> None:
             ViewType.ANALYTIC_VIEW,
             ViewType.CALCULATION_VIEW,
         ], f"Datasource should be a real entity, not LOGICAL: {source}"
-        assert (
-            source.source_type != ViewType.LOGICAL
-        ), f"Final lineage should not contain LOGICAL datasources: {source}"
+        assert source.source_type != ViewType.LOGICAL, f"Final lineage should not contain LOGICAL datasources: {source}"
 
 
 # ---- Tests for TABLE_FUNCTION support (issue #24586) ----
@@ -1200,9 +1093,7 @@ def test_parse_calculation_view_with_table_function() -> None:
     - Column mappings are correctly traced through the Projection layer
     - The DataSource location preserves the package::name format
     """
-    with open(
-        RESOURCES_DIR / "custom" / "cdata_calculation_view_table_function.xml"
-    ) as file:
+    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_table_function.xml") as file:
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
@@ -1241,15 +1132,9 @@ def test_get_entity_delegates_to_table_function_for_table_function_type() -> Non
     mock_engine = MagicMock()
     mock_sp = MagicMock()
 
-    with patch.object(
-        ds, "_get_table_function_entity", return_value=mock_sp
-    ) as mock_fn:
-        result = ds.get_entity(
-            metadata=mock_metadata, engine=mock_engine, service_name="test_service"
-        )
-        mock_fn.assert_called_once_with(
-            metadata=mock_metadata, service_name="test_service"
-        )
+    with patch.object(ds, "_get_table_function_entity", return_value=mock_sp) as mock_fn:
+        result = ds.get_entity(metadata=mock_metadata, engine=mock_engine, service_name="test_service")
+        mock_fn.assert_called_once_with(metadata=mock_metadata, service_name="test_service")
         assert result is mock_sp
 
 
@@ -1274,9 +1159,7 @@ def test_get_table_function_entity_encodes_fqn_and_searches_es() -> None:
         "metadata.ingestion.source.database.saphana.cdata_parser.get_entity_from_es_result",
         return_value=mock_sp,
     ) as mock_get_entity:
-        result = ds._get_table_function_entity(
-            metadata=mock_metadata, service_name="sap-hana-svc"
-        )
+        result = ds._get_table_function_entity(metadata=mock_metadata, service_name="sap-hana-svc")
 
     call_args = mock_metadata.es_search_from_fqn.call_args
     assert call_args.kwargs["entity_type"] is StoredProcedure
@@ -1305,9 +1188,7 @@ def test_get_table_function_entity_returns_none_when_not_found() -> None:
         "metadata.ingestion.source.database.saphana.cdata_parser.get_entity_from_es_result",
         return_value=None,
     ):
-        result = ds._get_table_function_entity(
-            metadata=mock_metadata, service_name="sap-hana-svc"
-        )
+        result = ds._get_table_function_entity(metadata=mock_metadata, service_name="sap-hana-svc")
 
     assert result is None
 
@@ -1525,10 +1406,7 @@ def test_yield_stored_procedure_creates_request() -> None:
     # EntityName encodes :: as __reserved__colon__ via replace_separators
     assert "TF_ORDERS" in str(request.name.root)
     assert request.storedProcedureType == StoredProcedureType.Function
-    assert (
-        request.storedProcedureCode.code
-        == "FUNCTION my-package::TF_ORDERS() RETURNS TABLE (ORDER_ID INT)"
-    )
+    assert request.storedProcedureCode.code == "FUNCTION my-package::TF_ORDERS() RETURNS TABLE (ORDER_ID INT)"
     mock_source.register_record_stored_proc_request.assert_called_once_with(request)
 
 

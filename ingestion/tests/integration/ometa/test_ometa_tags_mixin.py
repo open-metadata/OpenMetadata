@@ -1,6 +1,7 @@
 """
 Tests for the OMeta tag MixIn
 """
+
 import uuid
 
 import pytest
@@ -94,9 +95,7 @@ def special_char_tag(metadata, primary_tag):
 def long_tag_classification(metadata):
     """Module-scoped classification with long name."""
     classification = metadata.create_or_update(
-        CreateClassificationRequest(
-            description="test tag", name=LONG_CLASSIFICATION_NAME
-        )
+        CreateClassificationRequest(description="test tag", name=LONG_CLASSIFICATION_NAME)
     )
     yield classification
 
@@ -136,10 +135,7 @@ class TestOMetaTagMixin:
 
     def test_create_tags(self, primary_tag, secondary_tag, special_char_tag):
         """Test POST tag creation including nested and special chars"""
-        assert (
-            secondary_tag.fullyQualifiedName
-            == f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}.{SECONDARY_TAG_NAME}"
-        )
+        assert secondary_tag.fullyQualifiedName == f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}.{SECONDARY_TAG_NAME}"
         assert (
             special_char_tag.fullyQualifiedName
             == f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}.{TEST_SPECIAL_CHARS_TAG_NAME}"
@@ -147,9 +143,7 @@ class TestOMetaTagMixin:
 
     def test_get_classification(self, metadata, tag_classification):
         """Test GET classification by name"""
-        classification = metadata.get_by_name(
-            entity=Classification, fqn=CLASSIFICATION_NAME
-        )
+        classification = metadata.get_by_name(entity=Classification, fqn=CLASSIFICATION_NAME)
         assert classification.name.root == CLASSIFICATION_NAME
 
     def test_get_primary_tag(self, metadata, primary_tag):
@@ -175,9 +169,7 @@ class TestOMetaTagMixin:
 
     def test_list_tag_in_category(self, metadata, primary_tag):
         """Get tags from a category"""
-        tags = metadata.list_entities(
-            entity=Tag, params={"parent": CLASSIFICATION_NAME}
-        ).entities
+        tags = metadata.list_entities(entity=Tag, params={"parent": CLASSIFICATION_NAME}).entities
         assert tags is not None
 
     def test_create_long_classification(self, long_tag_classification):
@@ -187,10 +179,7 @@ class TestOMetaTagMixin:
     def test_create_long_tag(self, long_primary_tag):
         """Test POST tag creation with long name"""
         assert long_primary_tag.name.root == LONG_PRIMARY_TAG_NAME
-        assert (
-            long_primary_tag.fullyQualifiedName
-            == f"{LONG_CLASSIFICATION_NAME}.{LONG_PRIMARY_TAG_NAME}"
-        )
+        assert long_primary_tag.fullyQualifiedName == f"{LONG_CLASSIFICATION_NAME}.{LONG_PRIMARY_TAG_NAME}"
 
     def test_get_tag_assets(self, metadata, primary_tag):
         """We can get assets for a tag"""

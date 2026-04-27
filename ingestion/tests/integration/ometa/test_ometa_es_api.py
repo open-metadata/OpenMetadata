@@ -11,6 +11,7 @@
 """
 OMeta ES Mixin integration tests. The API needs to be up
 """
+
 import json
 import logging
 import time
@@ -134,9 +135,7 @@ def es_schema(metadata, es_database):
 
     yield schema
 
-    metadata.delete(
-        entity=DatabaseSchema, entity_id=schema.id, recursive=True, hard_delete=True
-    )
+    metadata.delete(entity=DatabaseSchema, entity_id=schema.id, recursive=True, hard_delete=True)
 
 
 @pytest.fixture(scope="module")
@@ -238,9 +237,7 @@ class TestOMetaESAPI:
         """
         We can fetch tables from a service using ES search with wildcards
         """
-        fqn_search_string = fqn._build(
-            es_service.name.root, "*", "*", es_table.name.root
-        )
+        fqn_search_string = fqn._build(es_service.name.root, "*", "*", es_table.name.root)
 
         res = metadata.es_search_from_fqn(
             entity_type=Table,
@@ -301,9 +298,7 @@ class TestOMetaESAPI:
         )
         assert res == quote(expected)
 
-    def test_get_queries_with_lineage(
-        self, metadata, es_service, es_queries, wait_for_es_index
-    ):
+    def test_get_queries_with_lineage(self, metadata, es_service, es_queries, wait_for_es_index):
         """Check the payload from ES"""
         res = metadata.es_get_queries_with_lineage(es_service.name.root)
         assert es_queries["checksum"] in res
@@ -361,11 +356,7 @@ class TestOMetaESAPI:
                     '{"query":{"bool":{"must":[{"bool":{"should":[{"term":'
                     f'{{"service.displayName.keyword":"{es_service.name.root}"}}}}]}}}}]}}}}}}'
                 )
-                assets = list(
-                    metadata.paginate_es(
-                        entity=Table, query_filter=query_filter, size=2
-                    )
-                )
+                assets = list(metadata.paginate_es(entity=Table, query_filter=query_filter, size=2))
                 assert len(assets) == 10
         finally:
             for table in created_tables:
@@ -398,9 +389,7 @@ class TestOMetaESAPI:
                 f'{{"term":{{"service.displayName.keyword":"{es_service.name.root}"}}}}'
                 "]}}]}}}"
             )
-            assets = list(
-                metadata.paginate_es(entity=Table, query_filter=query_filter, size=2)
-            )
+            assets = list(metadata.paginate_es(entity=Table, query_filter=query_filter, size=2))
             assert len(assets) == 5
         finally:
             for table in created_tables:
@@ -433,18 +422,8 @@ class TestOMetaESAPI:
                             {
                                 "bool": {
                                     "must": [
-                                        {
-                                            "term": {
-                                                "service.name.keyword": (
-                                                    es_service.name.root
-                                                )
-                                            }
-                                        },
-                                        {
-                                            "wildcard": {
-                                                "name.keyword": f"paginating_table_{test_id}_*"
-                                            }
-                                        },
+                                        {"term": {"service.name.keyword": (es_service.name.root)}},
+                                        {"wildcard": {"name.keyword": f"paginating_table_{test_id}_*"}},
                                     ]
                                 }
                             }
@@ -455,13 +434,9 @@ class TestOMetaESAPI:
 
             query_filter = json.dumps(query_filter_obj)
 
-            assets = list(
-                metadata.paginate_es(entity=Table, query_filter=query_filter, size=2)
-            )
+            assets = list(metadata.paginate_es(entity=Table, query_filter=query_filter, size=2))
             returned_table_names = [
-                asset.name.root
-                for asset in assets
-                if asset.name.root.startswith(f"paginating_table_{test_id}_")
+                asset.name.root for asset in assets if asset.name.root.startswith(f"paginating_table_{test_id}_")
             ]
             assert returned_table_names == [
                 f"paginating_table_{test_id}_4",
@@ -471,15 +446,9 @@ class TestOMetaESAPI:
                 f"paginating_table_{test_id}_0",
             ]
 
-            assets = list(
-                metadata.paginate_es(
-                    entity=Table, query_filter=query_filter, size=2, sort_order="asc"
-                )
-            )
+            assets = list(metadata.paginate_es(entity=Table, query_filter=query_filter, size=2, sort_order="asc"))
             returned_table_names = [
-                asset.name.root
-                for asset in assets
-                if asset.name.root.startswith(f"paginating_table_{test_id}_")
+                asset.name.root for asset in assets if asset.name.root.startswith(f"paginating_table_{test_id}_")
             ]
             assert returned_table_names == [
                 f"paginating_table_{test_id}_0",
@@ -489,15 +458,9 @@ class TestOMetaESAPI:
                 f"paginating_table_{test_id}_4",
             ]
 
-            assets = list(
-                metadata.paginate_es(
-                    entity=Table, query_filter=query_filter, size=2, sort_field="_score"
-                )
-            )
+            assets = list(metadata.paginate_es(entity=Table, query_filter=query_filter, size=2, sort_field="_score"))
             returned_table_names = {
-                asset.name.root
-                for asset in assets
-                if asset.name.root.startswith(f"paginating_table_{test_id}_")
+                asset.name.root for asset in assets if asset.name.root.startswith(f"paginating_table_{test_id}_")
             }
             # Use set to deduplicate: server-side FieldValue type mismatch in search_after
             # for _score sort can cause ES to return duplicate pages (KNOWN ISSUE)
@@ -518,13 +481,7 @@ class TestOMetaESAPI:
                         {
                             "bool": {
                                 "must": [
-                                    {
-                                        "term": {
-                                            "service.name.keyword": (
-                                                es_service.name.root
-                                            )
-                                        }
-                                    },
+                                    {"term": {"service.name.keyword": (es_service.name.root)}},
                                 ]
                             }
                         }
@@ -554,21 +511,11 @@ class TestOMetaESAPI:
             )
 
         # Searching by an almost exact match has the highest rank.
-        assets = list(
-            metadata.paginate_es(
-                entity=Table, search_query="table 2", sort_field="_score"
-            )
-        )
-        returned_table_names = [
-            asset.name.root for asset in assets if asset.name.root.startswith("Table ")
-        ]
+        assets = list(metadata.paginate_es(entity=Table, search_query="table 2", sort_field="_score"))
+        returned_table_names = [asset.name.root for asset in assets if asset.name.root.startswith("Table ")]
         assert returned_table_names[0] == "Table 2"
 
         # Searching by a value that doesn't exist returns an empty set of results.
-        assets = list(
-            metadata.paginate_es(
-                entity=Table, search_query="N0NExistent", sort_field="_score"
-            )
-        )
+        assets = list(metadata.paginate_es(entity=Table, search_query="N0NExistent", sort_field="_score"))
         returned_table_names = [asset.name.root for asset in assets]
         assert returned_table_names == []

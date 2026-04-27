@@ -35,9 +35,7 @@ class SSEClient:
         self.stream_completed: bool = False
         self.logger: Logger = ometa_logger()
 
-    def stream(
-        self, method: str, path: str, data: None | dict[str, Any] = None
-    ) -> Generator[Any, Any, None]:
+    def stream(self, method: str, path: str, data: None | dict[str, Any] = None) -> Generator[Any, Any, None]:
         """Connect to the SSE stream and yield events.
 
         Args:
@@ -50,9 +48,7 @@ class SSEClient:
         self.stream_completed = False
         retries = 0
 
-        url: URL = URL(
-            self.config.base_url + "/" + (self.config.api_version or "v1") + path
-        )
+        url: URL = URL(self.config.base_url + "/" + (self.config.api_version or "v1") + path)
         method = method.upper()
         headers = {
             "Accept": "text/event-stream",
@@ -116,9 +112,7 @@ class SSEClient:
                 raise
             except Exception as e:
                 retries += 1
-                self.logger.error(
-                    f"Connection error (retry {retries}/{self.max_retries}): {e}"
-                )
+                self.logger.error(f"Connection error (retry {retries}/{self.max_retries}): {e}")
 
                 if retries >= self.max_retries:
                     raise
@@ -163,6 +157,4 @@ class SSEClient:
                 if isinstance(expiry, datetime):
                     self.config.expires_in = expiry.timestamp() - 120
                 else:
-                    self.config.expires_in = (
-                        datetime.now(timezone.utc).timestamp() + expiry - 120
-                    )
+                    self.config.expires_in = datetime.now(timezone.utc).timestamp() + expiry - 120

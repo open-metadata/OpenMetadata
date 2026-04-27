@@ -13,6 +13,7 @@ Mixin class containing Lineage specific methods
 
 To be used by OpenMetadata class
 """
+
 import functools
 import json
 import traceback
@@ -164,15 +165,11 @@ class ESMixin(Generic[T]):
 
         return None
 
-    def get_entity_from_es(
-        self, entity: Type[T], query_string: str, fields: Optional[list] = None
-    ) -> Optional[T]:
+    def get_entity_from_es(self, entity: Type[T], query_string: str, fields: Optional[list] = None) -> Optional[T]:
         """Fetch an entity instance from ES"""
 
         try:
-            entity_list = self._search_es_entity(
-                entity_type=entity, query_string=query_string, fields=fields
-            )
+            entity_list = self._search_es_entity(entity_type=entity, query_string=query_string, fields=fields)
             for instance in entity_list or []:
                 return instance
         except Exception as err:
@@ -181,15 +178,11 @@ class ESMixin(Generic[T]):
 
         return None
 
-    def yield_entities_from_es(
-        self, entity: Type[T], query_string: str, fields: Optional[list] = None
-    ) -> Iterable[T]:
+    def yield_entities_from_es(self, entity: Type[T], query_string: str, fields: Optional[list] = None) -> Iterable[T]:
         """Fetch an entity instance from ES"""
 
         try:
-            entity_list = self._search_es_entity(
-                entity_type=entity, query_string=query_string, fields=fields
-            )
+            entity_list = self._search_es_entity(entity_type=entity, query_string=query_string, fields=fields)
             for instance in entity_list or []:
                 yield instance
         except Exception as err:
@@ -290,20 +283,14 @@ class ESMixin(Generic[T]):
         )
 
         try:
-            response = self._search_es_entity(
-                entity_type=entity_type, query_string=query_string, fields=fields
-            )
+            response = self._search_es_entity(entity_type=entity_type, query_string=query_string, fields=fields)
             return response
         except KeyError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Cannot find the index in ES_INDEX_MAP for {entity_type.__name__}: {err}"
-            )
+            logger.warning(f"Cannot find the index in ES_INDEX_MAP for {entity_type.__name__}: {err}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Elasticsearch search failed for query [{query_string}]: {exc}"
-            )
+            logger.warning(f"Elasticsearch search failed for query [{query_string}]: {exc}")
         return None
 
     @staticmethod
@@ -392,9 +379,7 @@ class ESMixin(Generic[T]):
             sort_order=sort_order,
         )
         while True:
-            query_string = query(
-                after="&search_after=" + quote_plus(after) if after else ""
-            )
+            query_string = query(after="&search_after=" + quote_plus(after) if after else "")
             response = self._get_es_response(query_string)
 
             # Allow 3 errors getting pages before getting out of the loop
@@ -449,18 +434,14 @@ class ESMixin(Generic[T]):
             sort_order=sort_order,
             sort_field=sort_field,
         ):
-            yield from self._yield_hits_from_api(
-                response=response, entity=entity, fields=fields
-            )
+            yield from self._yield_hits_from_api(response=response, entity=entity, fields=fields)
 
     def _get_es_response(self, query_string: str) -> Optional[ESResponse]:
         """Get the Elasticsearch response"""
         try:
             response = self.client.get(query_string)
             if response is None:
-                logger.warning(
-                    f"Received null response from Elasticsearch for query: {query_string}"
-                )
+                logger.warning(f"Received null response from Elasticsearch for query: {query_string}")
                 return None
             return ESResponse.model_validate(response)
         except Exception as exc:
@@ -472,9 +453,7 @@ class ESMixin(Generic[T]):
             )
         return None
 
-    def _yield_hits_from_api(
-        self, response: ESResponse, entity: Type[T], fields: Optional[List[str]]
-    ) -> Iterator[T]:
+    def _yield_hits_from_api(self, response: ESResponse, entity: Type[T], fields: Optional[List[str]]) -> Iterator[T]:
         """Get the data from the API based on ES responses"""
         for hit in response.hits.hits:
             try:
@@ -485,9 +464,7 @@ class ESMixin(Generic[T]):
                     nullable=False,  # Raise an error if we don't find the Entity
                 )
             except Exception as exc:
-                logger.warning(
-                    f"Error while getting {hit.source['fullyQualifiedName']} - {exc}"
-                )
+                logger.warning(f"Error while getting {hit.source['fullyQualifiedName']} - {exc}")
 
     @calculate_execution_time_generator(context="ES.FetchViewDefinition")
     def yield_es_view_def(
@@ -505,44 +482,18 @@ class ESMixin(Generic[T]):
             "query": {
                 "bool": {
                     "must": [
-                        {
-                            "bool": {
-                                "should": [
-                                    {"term": {"service.name.keyword": service_name}}
-                                ]
-                            }
-                        },
+                        {"bool": {"should": [{"term": {"service.name.keyword": service_name}}]}},
                         {
                             "bool": {
                                 "must": [
                                     {
                                         "bool": {
                                             "should": [
-                                                {
-                                                    "term": {
-                                                        "tableType": TableType.View.value
-                                                    }
-                                                },
-                                                {
-                                                    "term": {
-                                                        "tableType": TableType.MaterializedView.value
-                                                    }
-                                                },
-                                                {
-                                                    "term": {
-                                                        "tableType": TableType.SecureView.value
-                                                    }
-                                                },
-                                                {
-                                                    "term": {
-                                                        "tableType": TableType.Dynamic.value
-                                                    }
-                                                },
-                                                {
-                                                    "term": {
-                                                        "tableType": TableType.Stream.value
-                                                    }
-                                                },
+                                                {"term": {"tableType": TableType.View.value}},
+                                                {"term": {"tableType": TableType.MaterializedView.value}},
+                                                {"term": {"tableType": TableType.SecureView.value}},
+                                                {"term": {"tableType": TableType.Dynamic.value}},
+                                                {"term": {"tableType": TableType.Stream.value}},
                                             ]
                                         }
                                     }
@@ -550,11 +501,7 @@ class ESMixin(Generic[T]):
                             }
                         },
                         {"bool": {"should": [{"term": {"deleted": False}}]}},
-                        {
-                            "bool": {
-                                "should": [{"exists": {"field": "schemaDefinition"}}]
-                            }
-                        },
+                        {"bool": {"should": [{"exists": {"field": "schemaDefinition"}}]}},
                     ]
                 }
             }
@@ -565,13 +512,7 @@ class ESMixin(Generic[T]):
                     "bool": {
                         "should": [
                             {"term": {"processedLineage": False}},
-                            {
-                                "bool": {
-                                    "must_not": {
-                                        "exists": {"field": "processedLineage"}
-                                    }
-                                }
-                            },
+                            {"bool": {"must_not": {"exists": {"field": "processedLineage"}}}},
                         ]
                     }
                 }
@@ -583,9 +524,7 @@ class ESMixin(Generic[T]):
             include_fields=["schemaDefinition", "fullyQualifiedName"],
         ):
             for hit in response.hits.hits:
-                _, database_name, schema_name, table_name = fqn.split(
-                    hit.source["fullyQualifiedName"]
-                )
+                _, database_name, schema_name, table_name = fqn.split(hit.source["fullyQualifiedName"])
                 if hit.source.get("schemaDefinition"):
                     yield TableView(
                         view_definition=hit.source["schemaDefinition"],
@@ -605,9 +544,7 @@ class ESMixin(Generic[T]):
         fetch table from es when with/without `db_service_name`
         """
         try:
-            prepended_fqn = fqn.prefix_entity_for_wildcard_search(
-                entity_type=entity_type, fqn=fqn_search_string
-            )
+            prepended_fqn = fqn.prefix_entity_for_wildcard_search(entity_type=entity_type, fqn=fqn_search_string)
             entity_result = get_entity_from_es_result(
                 entity_list=self.es_search_from_fqn(
                     entity_type=entity_type,
@@ -617,8 +554,6 @@ class ESMixin(Generic[T]):
             )
             return entity_result
         except Exception as exc:
-            logger.debug(
-                f"Error to fetch entity: fqn={fqn_search_string} from es: {exc}"
-            )
+            logger.debug(f"Error to fetch entity: fqn={fqn_search_string} from es: {exc}")
             logger.debug(traceback.format_exc())
         return None

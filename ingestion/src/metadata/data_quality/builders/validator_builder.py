@@ -42,9 +42,7 @@ class TestCaseImporter:
         test_definition: str,
         validator_class: str,
     ) -> Type[BaseTestValidator]:
-        return import_test_case_class(
-            test_type, runner_type, test_definition, validator_class
-        )
+        return import_test_case_class(test_type, runner_type, test_definition, validator_class)
 
 
 class SourceType(Enum):
@@ -74,9 +72,7 @@ class ValidatorBuilder(TestCaseImporter):
         super().__init__()
         self._test_case = test_case
         self.runner = runner
-        self.validator_cls: Type[
-            BaseTestValidator
-        ] = super().import_test_case_validator(
+        self.validator_cls: Type[BaseTestValidator] = super().import_test_case_validator(
             entity_type,
             source_type.value,
             test_definition.fullyQualifiedName.root,  # type: ignore
@@ -106,9 +102,7 @@ class ValidatorBuilder(TestCaseImporter):
                 # If there are no parameters, create a new list
                 self.test_case.parameterValues = []
             self.test_case.parameterValues.append(
-                TestCaseParameterValue(
-                    name=type(params).__name__, value=params.model_dump_json()
-                )
+                TestCaseParameterValue(name=type(params).__name__, value=params.model_dump_json())
             )
 
     def reset(self):
@@ -116,7 +110,5 @@ class ValidatorBuilder(TestCaseImporter):
         self._validator = self.validator_cls(
             self.runner,
             test_case=self.test_case,
-            execution_date=Timestamp(
-                int(datetime.now(tz=timezone.utc).timestamp() * 1000)
-            ),
+            execution_date=Timestamp(int(datetime.now(tz=timezone.utc).timestamp() * 1000)),
         )

@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """A client for Google Cloud Storage that supports multiple projects."""
+
 from functools import partial
 from typing import List, Optional, Type, Union
 
@@ -37,10 +38,7 @@ class MultiProjectClient:
     ):
         self.default_project = None
         if project_ids:
-            self.clients = {
-                project_id: client_class(project=project_id, **client_kwargs)
-                for project_id in project_ids
-            }
+            self.clients = {project_id: client_class(project=project_id, **client_kwargs) for project_id in project_ids}
         else:
             _, project_id = auth.default()
             self.default_project = project_id

@@ -23,9 +23,7 @@ from metadata.data_quality.validations.table.base.tableColumnCountToBeBetween im
 )
 
 
-class TableColumnCountToBeBetweenValidator(
-    BaseTableColumnCountToBeBetweenValidator, PandasValidatorMixin
-):
+class TableColumnCountToBeBetweenValidator(BaseTableColumnCountToBeBetweenValidator, PandasValidatorMixin):
     """Validator for table column count to be between test case"""
 
     def _run_results(self) -> Optional[int]:

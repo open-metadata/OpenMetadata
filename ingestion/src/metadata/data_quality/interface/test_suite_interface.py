@@ -78,9 +78,7 @@ class TestSuiteInterface(ABC):
         )
 
     @abstractmethod
-    def _get_validator_builder(
-        self, test_case: TestCase, entity_type: str
-    ) -> ValidatorBuilder:
+    def _get_validator_builder(self, test_case: TestCase, entity_type: str) -> ValidatorBuilder:
         """get the builder class for the validator. Define this in the implementation class
 
         Args:
@@ -98,9 +96,7 @@ class TestSuiteInterface(ABC):
         return cls.runtime_params_setter_fact()
 
     @classmethod
-    def _set_runtime_params_setter_fact(
-        cls, class_fact: Type[RuntimeParameterSetterFactory]
-    ):
+    def _set_runtime_params_setter_fact(cls, class_fact: Type[RuntimeParameterSetterFactory]):
         """Set the runtime parameter setter factory.
         Use this method to set the runtime parameter setter factory and override the default.
 
@@ -111,12 +107,8 @@ class TestSuiteInterface(ABC):
 
     def run_test_case(self, test_case: TestCase) -> Optional[TestCaseResultResponse]:
         """run column data quality tests"""
-        runtime_params_setter_fact: RuntimeParameterSetterFactory = (
-            self._get_runtime_params_setter_fact()
-        )  # type: ignore
-        runtime_params_setters: Set[
-            RuntimeParameterSetter
-        ] = runtime_params_setter_fact.get_runtime_param_setters(
+        runtime_params_setter_fact: RuntimeParameterSetterFactory = self._get_runtime_params_setter_fact()  # type: ignore
+        runtime_params_setters: Set[RuntimeParameterSetter] = runtime_params_setter_fact.get_runtime_param_setters(
             test_case.testDefinition.fullyQualifiedName,  # type: ignore
             self.ometa_client,
             self.service_connection_config,
@@ -125,24 +117,18 @@ class TestSuiteInterface(ABC):
         )
 
         # get `column` or `table` type for validator import
-        entity_type: str = self.ometa_client.get_by_id(
-            TestDefinition, test_case.testDefinition.id
-        ).entityType.value
+        entity_type: str = self.ometa_client.get_by_id(TestDefinition, test_case.testDefinition.id).entityType.value
 
         validator_builder = self._get_validator_builder(test_case, entity_type)
         validator_builder.set_runtime_params(runtime_params_setters)
         validator: BaseTestValidator = validator_builder.validator
         try:
             test_result = validator.run_validation()
-            response = TestCaseResultResponse(
-                testCaseResult=test_result, testCase=test_case
-            )
+            response = TestCaseResultResponse(testCaseResult=test_result, testCase=test_case)
             validator.result_with_failed_samples(response)
             return response
         except Exception as err:
-            message = (
-                f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
-            )
+            message = f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
             logger.exception(message)
             return TestCaseResultResponse(
                 testCase=test_case,

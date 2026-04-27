@@ -39,10 +39,7 @@ class MetricRegistry(Enum):
 
     def __init__(self, metric):
         if not issubclass(metric, Metric):
-            raise TypeError(
-                "Only Metrics can be part of the Metric Registry,"
-                + f" but found {type(metric)} instead."
-            )
+            raise TypeError("Only Metrics can be part of the Metric Registry," + f" but found {type(metric)} instead.")
         self.metric = metric
 
     def __call__(self, *args, **kwargs):
@@ -102,7 +99,6 @@ class TypeRegistry(Enum):
     def __init__(self, _type):
         if not issubclass(_type, TypeDecorator):
             raise TypeError(
-                "Only TypeDecorator can be part of the Type Registry,"
-                + f" but found {type(_type)} instead."
+                "Only TypeDecorator can be part of the Type Registry," + f" but found {type(_type)} instead."
             )
         self._type = _type

@@ -12,6 +12,7 @@
 """
 Query parser utils tests
 """
+
 import json
 import os.path
 from unittest import TestCase
@@ -80,14 +81,10 @@ class QueryParserTest(TestCase):
             "shopify.raw_customer": 11,
         }
         config_dict = json.loads(config)
-        config_dict["source"]["serviceConnection"]["config"]["connectionOptions"][
-            "sampleDataFolder"
-        ] = (
+        config_dict["source"]["serviceConnection"]["config"]["connectionOptions"]["sampleDataFolder"] = (
             os.path.dirname(__file__)
             + "/../../../../"
-            + config_dict["source"]["serviceConnection"]["config"]["connectionOptions"][
-                "sampleDataFolder"
-            ]
+            + config_dict["source"]["serviceConnection"]["config"]["connectionOptions"]["sampleDataFolder"]
         )
         workflow = UsageWorkflow.create(config_dict)
         workflow.execute()
