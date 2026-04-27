@@ -15,6 +15,7 @@ This classes are used in the generated module, which should have NO
 dependencies against any other metadata package. This class should
 be self-sufficient with only pydantic at import time.
 """
+
 import json
 import logging
 from typing import Any, Callable, Dict, Literal, Optional, Union
@@ -122,12 +123,12 @@ def strip_hostport_scheme(raw: str) -> str:
 # pinned to the original underscored symbol while the helper was private.
 _strip_hostport_scheme = strip_hostport_scheme
 
-# Connection classes whose hostPort field legitimately stores a full URL
-# (e.g. "http://airflow:8080" or "http://localhost:8585/api") and must NOT
-# have their scheme stripped by model_post_init.
-_HOSTPORT_URL_ALLOWED: frozenset = frozenset(
-    {"AirflowConnection", "OpenMetadataConnection"}
-)
+# Module sub-path that identifies database-connector classes.
+# Only *Connection classes whose module contains this sub-path have a plain
+# ``hostname[:port]`` hostPort — all other connection categories
+# (dashboard, pipeline, search, metadata, …) legitimately store a full URL
+# in hostPort and must NOT have their scheme stripped.
+_DATABASE_CONNECTION_MODULE_MARKER = ".services.connections.database."
 
 
 class BaseModel(PydanticBaseModel):
@@ -154,16 +155,21 @@ class BaseModel(PydanticBaseModel):
         if not hasattr(self, "__pydantic_fields__"):
             return
 
-        # Strip accidental URL schemes from hostPort at model construction time.
-        # This protects connectors that split hostPort manually (e.g. Cassandra,
-        # Databricks, Redshift, DB2, Microsoft Fabric) without going through
-        # get_connection_url_common. ValueError for genuinely invalid inputs
-        # (e.g. non-numeric port) propagates immediately with a clear message.
+        # Strip accidental URL schemes from hostPort at model construction time,
+        # but ONLY for database-connector classes whose hostPort is a plain
+        # ``hostname[:port]``.  Dashboard, pipeline, search, and other connector
+        # categories legitimately use a full URL in hostPort (e.g.
+        # ``http://grafana:3000``), so we restrict stripping to classes whose
+        # module path contains the database-connection marker.
+        # The isinstance(str) guard prevents an AttributeError when hostPort is
+        # optional and left unset (None).
+        host_port = getattr(self, "hostPort", None)
         if (
-            hasattr(self, "hostPort")
-            and self.__class__.__name__ not in _HOSTPORT_URL_ALLOWED
+            isinstance(host_port, str)
+            and "://" in host_port
+            and _DATABASE_CONNECTION_MODULE_MARKER in (self.__class__.__module__ or "")
         ):
-            self.hostPort = strip_hostport_scheme(self.hostPort)
+            self.hostPort = strip_hostport_scheme(host_port)
 
         try:
             for field in self.__pydantic_fields__:

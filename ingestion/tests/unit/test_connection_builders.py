@@ -11,10 +11,14 @@
 """
 Validate connection builder utilities
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
+)
+from metadata.generated.schema.entity.services.connections.database.cassandraConnection import (
+    CassandraConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
@@ -27,7 +31,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_options_dict,
     init_empty_connection_arguments,
 )
-from metadata.ingestion.models.custom_pydantic import _HOSTPORT_URL_ALLOWED
+from metadata.ingestion.models.custom_pydantic import _DATABASE_CONNECTION_MODULE_MARKER
 
 
 class ConnectionBuilderTest(TestCase):
@@ -127,20 +131,34 @@ class ConnectionBuilderTest(TestCase):
                 hostPort="http://localhost:abc",
             )
 
-    def test_url_allowed_connections_not_stripped(self):
+    def test_non_database_connections_not_stripped(self):
         """
-        Verify that connection classes in _HOSTPORT_URL_ALLOWED (AirflowConnection
-        and OpenMetadataConnection) are excluded from hostPort scheme stripping,
-        since their hostPort field legitimately stores a full URL.
-        """
-        # Confirm the exclusion set contains the expected class names
-        self.assertIn("AirflowConnection", _HOSTPORT_URL_ALLOWED)
-        self.assertIn("OpenMetadataConnection", _HOSTPORT_URL_ALLOWED)
+        Verify that non-database connection classes (metadata, dashboard, pipeline, …)
+        are NOT subject to hostPort scheme stripping because their hostPort legitimately
+        stores a full URL (e.g. OpenMetadataConnection hostPort = http://localhost:8585/api).
 
-        # OpenMetadataConnection.hostPort is a plain str field that expects a
-        # full URL like "http://localhost:8585/api" — it must NOT be stripped.
+        The guard uses the module path: only classes whose __module__ contains
+        _DATABASE_CONNECTION_MODULE_MARKER ('.services.connections.database.')
+        are stripped.  All others pass through unchanged.
+        """
+        # Confirm the marker is correct
+        self.assertIn("database", _DATABASE_CONNECTION_MODULE_MARKER)
+
+        # OpenMetadataConnection.hostPort is a plain str that expects a full URL.
+        # Its module contains '.connections.metadata.' — NOT the database marker —
+        # so it must NOT be stripped.
         ometa = OpenMetadataConnection(
             hostPort="http://localhost:8585/api",
         )
         self.assertIn("http", ometa.hostPort)
         self.assertIn("localhost", ometa.hostPort)
+
+    def test_none_hostport_does_not_crash(self):
+        """
+        Regression test for gitar-bot bug report: constructing a database
+        connection where hostPort is Optional and left as None must NOT raise
+        AttributeError from strip_hostport_scheme(None).
+        """
+        # CassandraConnection.hostPort is Optional[str] = None by default.
+        conn = CassandraConnection()
+        self.assertIsNone(conn.hostPort)
