@@ -73,6 +73,7 @@ describe('AdvancedSearchClassBase', () => {
       'tags.labelType',
       'tier.labelType',
       'createdBy',
+      EntityFields.ENTITY_STATUS,
     ]);
   });
 });
@@ -177,10 +178,7 @@ describe('getEntitySpecificQueryBuilderFields', () => {
       SearchIndex.GLOSSARY_TERM,
     ]);
 
-    expect(Object.keys(result)).toEqual([
-      EntityFields.GLOSSARY_TERM_STATUS,
-      EntityFields.GLOSSARY,
-    ]);
+    expect(Object.keys(result)).toEqual([EntityFields.GLOSSARY]);
   });
 
   it('should return databaseSchema specific fields', () => {
