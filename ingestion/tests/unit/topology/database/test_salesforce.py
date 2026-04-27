@@ -494,9 +494,7 @@ EXPECTED_COLUMN_TYPE = ["VARCHAR", "VARCHAR", "VARCHAR", "UNKNOWN"]
 
 
 class SalesforceUnitTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection")
     @patch("simple_salesforce.api.Salesforce")
     def __init__(self, methodName, salesforce, test_connection) -> None:
         super().__init__(methodName)
@@ -507,19 +505,11 @@ class SalesforceUnitTest(TestCase):
             OpenMetadata(config=self.config.workflowConfig.openMetadataServerConfig),
         )
 
-        self.salesforce_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
-        self.salesforce_source.context.get().__dict__[
-            "database"
-        ] = MOCK_DATABASE.name.root
-        self.salesforce_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.salesforce_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.salesforce_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.salesforce_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
-    @patch(
-        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.get_table_column_description"
-    )
+    @patch("metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.get_table_column_description")
     def test_table_column(self, get_table_column_description):
         get_table_column_description.return_value = [
             {"QualifiedApiName": "Description", "Description": "Contact Description"}
@@ -529,34 +519,22 @@ class SalesforceUnitTest(TestCase):
 
     def test_column_type(self):
         for i in range(len(SALESFORCE_FIELDS)):
-            result = self.salesforce_source.column_type(
-                SALESFORCE_FIELDS[i]["type"].upper()
-            )
+            result = self.salesforce_source.column_type(SALESFORCE_FIELDS[i]["type"].upper())
             assert result == EXPECTED_COLUMN_TYPE[i]
 
-    @patch(
-        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection")
     @patch("simple_salesforce.api.Salesforce")
     def test_oauth_connection(self, salesforce, test_connection) -> None:
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(
-            mock_salesforce_oauth_config
-        )
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_salesforce_oauth_config)
         self.salesforce_source = SalesforceSource.create(
             mock_salesforce_oauth_config["source"],
             OpenMetadata(config=self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.assertTrue(
-            self.salesforce_source.config.serviceConnection.root.config.consumerKey
-        )
-        self.assertTrue(
-            self.salesforce_source.config.serviceConnection.root.config.consumerSecret
-        )
+        self.assertTrue(self.salesforce_source.config.serviceConnection.root.config.consumerKey)
+        self.assertTrue(self.salesforce_source.config.serviceConnection.root.config.consumerSecret)
 
-    @patch(
-        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection")
     @patch("simple_salesforce.api.Salesforce")
     def test_check_ssl(self, salesforce, test_connection) -> None:
         mock_salesforce_config["source"]["serviceConnection"]["config"]["sslConfig"] = {
@@ -567,16 +545,12 @@ class SalesforceUnitTest(TestCase):
         """
         }
 
-        mock_salesforce_config["source"]["serviceConnection"]["config"]["sslConfig"][
-            "sslKey"
-        ] = """
+        mock_salesforce_config["source"]["serviceConnection"]["config"]["sslConfig"]["sslKey"] = """
         -----BEGIN CERTIFICATE-----
         sample caCertificateData
         -----END CERTIFICATE-----
         """
-        mock_salesforce_config["source"]["serviceConnection"]["config"]["sslConfig"][
-            "sslCertificate"
-        ] = """
+        mock_salesforce_config["source"]["serviceConnection"]["config"]["sslConfig"]["sslCertificate"] = """
         -----BEGIN CERTIFICATE-----
         sample sslCertificateData
         -----END CERTIFICATE-----
@@ -592,14 +566,12 @@ class SalesforceUnitTest(TestCase):
         self.assertTrue(self.salesforce_source.ssl_manager.cert_file_path)
         self.assertTrue(self.salesforce_source.ssl_manager.key_file_path)
 
-    @patch(
-        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection")
     @patch("simple_salesforce.api.Salesforce")
     def test_sobject_names_config(self, salesforce, test_connection) -> None:
         """Test that sobjectNames array is properly parsed from config"""
         test_connection.return_value = False
-        config = OpenMetadataWorkflowConfig.model_validate(
+        config = OpenMetadataWorkflowConfig.model_validate(  # noqa: F841
             mock_salesforce_multi_objects_config
         )
         salesforce_source = SalesforceSource.create(
@@ -611,29 +583,19 @@ class SalesforceUnitTest(TestCase):
             ["Contact", "Account", "Lead"],
         )
 
-    @patch(
-        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection")
     @patch("simple_salesforce.api.Salesforce")
-    def test_ingestion_with_sobject_names_list(
-        self, salesforce, test_connection
-    ) -> None:
+    def test_ingestion_with_sobject_names_list(self, salesforce, test_connection) -> None:
         """Test that sobjectNames list correctly filters which objects to ingest"""
         test_connection.return_value = False
-        config = OpenMetadataWorkflowConfig.model_validate(
-            mock_salesforce_multi_objects_config
-        )
+        config = OpenMetadataWorkflowConfig.model_validate(mock_salesforce_multi_objects_config)
         salesforce_source = SalesforceSource.create(
             mock_salesforce_multi_objects_config["source"],
             OpenMetadata(config=config.workflowConfig.openMetadataServerConfig),
         )
-        salesforce_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        salesforce_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         salesforce_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        salesforce_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        salesforce_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
         # Mock describe to return many objects
         salesforce_source.client.describe = lambda: {
@@ -659,9 +621,7 @@ class SalesforceUnitTest(TestCase):
         self.assertNotIn("Opportunity", table_names)
         self.assertNotIn("Case", table_names)
 
-    @patch(
-        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection")
     @patch("simple_salesforce.api.Salesforce")
     def test_ingestion_without_sobject_names(self, salesforce, test_connection) -> None:
         """Test that without sobjectNames, all objects from describe are ingested"""
@@ -696,13 +656,9 @@ class SalesforceUnitTest(TestCase):
             config_without_filters["source"],
             OpenMetadata(config=config.workflowConfig.openMetadataServerConfig),
         )
-        salesforce_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        salesforce_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         salesforce_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        salesforce_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        salesforce_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
         # Mock describe to return specific objects
         salesforce_source.client.describe = lambda: {

@@ -11,6 +11,7 @@
 """
 Profiler Processor Step
 """
+
 import traceback
 from typing import Optional, Type, cast
 
@@ -61,9 +62,7 @@ class ProfilerProcessor(Processor):
         super().__init__()
 
         self.config = config
-        self.profiler_config = profiler_config_class.model_validate(
-            self.config.processor.model_dump().get("config")
-        )
+        self.profiler_config = profiler_config_class.model_validate(self.config.processor.model_dump().get("config"))
         self.source_config: DatabaseServiceProfilerPipeline = cast(
             DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
         )  # Used to satisfy type checked
@@ -79,9 +78,7 @@ class ProfilerProcessor(Processor):
                 record.entity.fullyQualifiedName.root,
             )
 
-        profiler_runner: Profiler = record.profiler_source.get_profiler_runner(
-            record.entity, self.profiler_config
-        )
+        profiler_runner: Profiler = record.profiler_source.get_profiler_runner(record.entity, self.profiler_config)
 
         try:
             profile: ProfilerResponse = profiler_runner.process()
@@ -93,9 +90,7 @@ class ProfilerProcessor(Processor):
                     stackTrace=traceback.format_exc(),
                 )
             )
-            self.status.failures.extend(
-                record.profiler_source.interface.status.failures
-            )
+            self.status.failures.extend(record.profiler_source.interface.status.failures)
         else:
             # at this point we know we have an interface variable since we the `try` block above didn't raise
             self.status.records.extend(record.profiler_source.interface.status.records)
@@ -107,9 +102,7 @@ class ProfilerProcessor(Processor):
         return Either()
 
     @classmethod
-    def create(
-        cls, config_dict: dict, _: OpenMetadata, pipeline_name: Optional[str] = None
-    ) -> "Step":
+    def create(cls, config_dict: dict, _: OpenMetadata, pipeline_name: Optional[str] = None) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config)
 

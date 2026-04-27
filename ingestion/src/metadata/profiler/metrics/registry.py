@@ -18,6 +18,7 @@ Note that we are using our own Registry definition
 that allows us to directly call our metrics without
 having the verbosely pass .value all the time...
 """
+
 from metadata.profiler.metrics.composed.distinct_ratio import DistinctRatio
 from metadata.profiler.metrics.composed.duplicate_count import DuplicateCount
 from metadata.profiler.metrics.composed.ilike_ratio import ILikeRatio

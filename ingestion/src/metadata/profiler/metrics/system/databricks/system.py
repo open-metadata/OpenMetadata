@@ -40,15 +40,11 @@ class DatabricksSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
         self.database = catalog
         self.schema = runner.schema_name
 
-    def _get_metrics_from_queries(
-        self, ddls: List[QueryResult], operation: str
-    ) -> List[SystemProfile]:
+    def _get_metrics_from_queries(self, ddls: List[QueryResult], operation: str) -> List[SystemProfile]:
         return TypeAdapter(List[SystemProfile]).validate_python(
             [
                 {
-                    "timestamp": datetime_to_timestamp(
-                        ddl.start_time, milliseconds=True
-                    ),
+                    "timestamp": datetime_to_timestamp(ddl.start_time, milliseconds=True),
                     "operation": operation,
                     "rowsAffected": ddl.rows,
                 }
@@ -77,9 +73,7 @@ class DatabricksSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
             ),
             DatabaseDMLOperations.INSERT.value,
         )
-        return self._get_metrics_from_queries(
-            queries, DatabaseDMLOperations.INSERT.value
-        )
+        return self._get_metrics_from_queries(queries, DatabaseDMLOperations.INSERT.value)
 
     def get_deletes(self) -> List[SystemProfile]:
         operations = ", ".join(
@@ -102,9 +96,7 @@ class DatabricksSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
             ),
             DatabaseDMLOperations.DELETE.value,
         )
-        return self._get_metrics_from_queries(
-            queries, DatabaseDMLOperations.DELETE.value
-        )
+        return self._get_metrics_from_queries(queries, DatabaseDMLOperations.DELETE.value)
 
     def get_updates(self) -> List[SystemProfile]:
         operations = ", ".join(
@@ -127,6 +119,4 @@ class DatabricksSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
             ),
             DatabaseDMLOperations.UPDATE.value,
         )
-        return self._get_metrics_from_queries(
-            queries, DatabaseDMLOperations.UPDATE.value
-        )
+        return self._get_metrics_from_queries(queries, DatabaseDMLOperations.UPDATE.value)

@@ -1,4 +1,5 @@
 """Tables entity SDK with fluent helpers."""
+
 from __future__ import annotations
 
 from typing import Any, Optional, Type, cast
@@ -50,9 +51,7 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
         return cls._coerce_entity(updated)
 
     @classmethod
-    def update_column_description(
-        cls, table_id: UuidLike, column_name: str, description: str
-    ) -> Table:
+    def update_column_description(cls, table_id: UuidLike, column_name: str, description: str) -> Table:
         """Update the description for a specific column."""
         client = cls._get_client()
         current = client.get_by_id(
@@ -77,9 +76,7 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
         return cls._coerce_entity(updated)
 
     @classmethod
-    def add_custom_metric(
-        cls, table_id: UuidLike, custom_metric: CreateCustomMetricRequest
-    ) -> Table:
+    def add_custom_metric(cls, table_id: UuidLike, custom_metric: CreateCustomMetricRequest) -> Table:
         """Add or update a table-level custom metric."""
         client = cls._get_client()
         updated = cast(Any, client).create_or_update_custom_metric(
@@ -89,9 +86,7 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
         return cls._coerce_entity(updated)
 
     @classmethod
-    def add_sample_data(
-        cls, table_id: UuidLike, sample_data: TableData
-    ) -> Optional[TableData]:
+    def add_sample_data(cls, table_id: UuidLike, sample_data: TableData) -> Optional[TableData]:
         """Attach sample data rows to a table."""
         client = cls._get_client()
         table = cls._build_table_reference(table_id)

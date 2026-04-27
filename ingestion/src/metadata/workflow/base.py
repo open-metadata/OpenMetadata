@@ -112,16 +112,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         set_loggers_level(self.workflow_config.loggerLevel.value)
 
         # We create the ometa client at the workflow level and pass it to the steps
-        self.metadata = create_ometa_client(
-            self.workflow_config.openMetadataServerConfig
-        )
+        self.metadata = create_ometa_client(self.workflow_config.openMetadataServerConfig)
 
         # Setup streamable logging if configured
-        if (
-            self.config.ingestionPipelineFQN
-            and self.config.pipelineRunId
-            and self.config.enableStreamableLogs
-        ):
+        if self.config.ingestionPipelineFQN and self.config.pipelineRunId and self.config.enableStreamableLogs:
             setup_streamable_logging_for_workflow(
                 metadata=self.metadata,
                 pipeline_fqn=self.config.ingestionPipelineFQN,
@@ -134,9 +128,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         # Set run context for operation metrics tracking
         OperationMetricsState().set_run_context(
-            run_id=str(self.config.pipelineRunId.root)
-            if self.config.pipelineRunId
-            else None,
+            run_id=str(self.config.pipelineRunId.root) if self.config.pipelineRunId else None,
             pipeline_fqn=self.config.ingestionPipelineFQN,
         )
         self.set_ingestion_pipeline_status(state=PipelineState.running)
@@ -180,9 +172,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         Status timer: It will print the source & sink status every `interval` seconds.
         """
         if not self._timer:
-            self._timer = RepeatedTimer(
-                REPORTS_INTERVAL_SECONDS, self._report_ingestion_status
-            )
+            self._timer = RepeatedTimer(REPORTS_INTERVAL_SECONDS, self._report_ingestion_status)
 
         return self._timer
 
@@ -212,9 +202,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             logger.warning("No steps to calculate success")
             return None
 
-        return mean(
-            [step.get_status().calculate_success() for step in self.workflow_steps()]
-        )
+        return mean([step.get_status().calculate_success() for step in self.workflow_steps()])
 
     @abstractmethod
     def get_failures(self) -> List[StackTraceError]:
@@ -229,24 +217,18 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         for step in self.workflow_steps():
             if (
                 step.get_status().failures
-                and step.get_status().calculate_success()
-                < self.workflow_config.successThreshold
+                and step.get_status().calculate_success() < self.workflow_config.successThreshold
             ):
-                raise WorkflowExecutionError(
-                    f"{step.name} reported errors: {Summary.from_step(step)}"
-                )
+                raise WorkflowExecutionError(f"{step.name} reported errors: {Summary.from_step(step)}")
 
             if raise_warnings and step.status.warnings:
-                raise WorkflowExecutionError(
-                    f"{step.name} reported warning: {Summary.from_step(step)}"
-                )
+                raise WorkflowExecutionError(f"{step.name} reported warning: {Summary.from_step(step)}")
 
     def _log_workflow_execution_info(self) -> None:
         """Log the workflow type and ingestion runner at the start of execution"""
         if self.config.ingestionRunnerName:
             logger.info(
-                f"Executing workflow [{self.config.ingestionPipelineFQN}]"
-                f" in Runner [{self.config.ingestionRunnerName}]"
+                f"Executing workflow [{self.config.ingestionPipelineFQN}] in Runner [{self.config.ingestionRunnerName}]"
             )
 
     def execute(self) -> None:
@@ -334,13 +316,9 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                         name=pipeline_name,
                         service=EntityReference(
                             id=service.id,
-                            type=get_reference_type_from_service_type(
-                                self.service_type
-                            ),
+                            type=get_reference_type_from_service_type(self.service_type),
                         ),
-                        pipelineType=get_pipeline_type_from_source_config(
-                            self.config.source.sourceConfig
-                        ),
+                        pipelineType=get_pipeline_type_from_source_config(self.config.source.sourceConfig),
                         sourceConfig=self.config.source.sourceConfig,
                         airflowConfig=AirflowConfig(),
                         enableStreamableLogs=self.config.enableStreamableLogs,
@@ -350,9 +328,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             return maybe_pipeline
 
         except Exception as exc:
-            logger.error(
-                f"Error trying to get or create the Ingestion Pipeline due to [{exc}]"
-            )
+            logger.error(f"Error trying to get or create the Ingestion Pipeline due to [{exc}]")
             return None
 
     def _get_ingestion_pipeline_service(self) -> Optional[T]:
@@ -375,11 +351,8 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         try:
             for step in self.workflow_steps():
-
                 record_count: int = (
-                    step.status.record_count
-                    if step.status.record_count > 0
-                    else len(step.status.records)
+                    step.status.record_count if step.status.record_count > 0 else len(step.status.records)
                 )
 
                 logger.info(

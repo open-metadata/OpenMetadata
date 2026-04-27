@@ -61,9 +61,7 @@ def generate_avro_schema(df: pd.DataFrame, topic: str) -> str:
     """Generate an Avro schema from a pandas DataFrame"""
     fields: List[Dict[str, str]] = []
     for column in df.columns:
-        fields.append(
-            {"name": sanitize_name(column), "type": "string"}
-        )  # Assuming all columns are of type string
+        fields.append({"name": sanitize_name(column), "type": "string"})  # Assuming all columns are of type string
     schema_dict: Dict[str, any] = {
         "namespace": "example.avro",
         "type": "record",
@@ -102,9 +100,7 @@ def send_csv_to_kafka(kafka: Kafka, schema_registry: SchemaRegistry, file_path: 
         try:
             producer.produce(
                 topic=topic,
-                value=avro_serializer(
-                    message, SerializationContext(topic, MessageField.VALUE)
-                ),
+                value=avro_serializer(message, SerializationContext(topic, MessageField.VALUE)),
                 callback=delivery_report,
             )
         except Exception as e:

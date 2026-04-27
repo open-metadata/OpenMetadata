@@ -12,6 +12,7 @@
 """
 DBT source methods.
 """
+
 import traceback
 from copy import deepcopy
 from datetime import datetime
@@ -130,9 +131,7 @@ class DbtSource(DbtServiceSource):
         self.source_config = self.config.sourceConfig.config
         self.metadata = metadata
         self.tag_classification_name = (
-            self.source_config.dbtClassificationName
-            if self.source_config.dbtClassificationName
-            else "dbtTags"
+            self.source_config.dbtClassificationName if self.source_config.dbtClassificationName else "dbtTags"
         )
         self.omd_custom_properties = {}
         self.extracted_custom_properties = {}
@@ -140,9 +139,7 @@ class DbtSource(DbtServiceSource):
         self._load_omd_custom_properties()
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         return cls(config, metadata)
 
@@ -162,16 +159,14 @@ class DbtSource(DbtServiceSource):
         """
         try:
             response = self.metadata.client.get(
-                f"/metadata/types/name/table?fields=customProperties"
+                f"/metadata/types/name/table?fields=customProperties"  # noqa: F541
             )
 
             if response and "customProperties" in response:
                 for prop in response["customProperties"]:
                     self.omd_custom_properties[prop["name"]] = prop
 
-            logger.debug(
-                f"Loaded {len(self.omd_custom_properties)} custom properties for tables"
-            )
+            logger.debug(f"Loaded {len(self.omd_custom_properties)} custom properties for tables")
         except Exception as exc:
             logger.warning(f"Error loading custom properties: {exc}")
 
@@ -180,11 +175,7 @@ class DbtSource(DbtServiceSource):
         Extracts domain from meta.openmetadata.domain and returns EntityReference
         """
         try:
-            if (
-                not manifest_node
-                or not hasattr(manifest_node, "meta")
-                or not manifest_node.meta
-            ):
+            if not manifest_node or not hasattr(manifest_node, "meta") or not manifest_node.meta:
                 return None
 
             dbt_meta_info = DbtMeta(**manifest_node.meta)
@@ -206,9 +197,7 @@ class DbtSource(DbtServiceSource):
 
         return None
 
-    def get_dbt_owner(
-        self, manifest_node: Any, catalog_node: Optional[Any]
-    ) -> Optional[EntityReferenceList]:
+    def get_dbt_owner(self, manifest_node: Any, catalog_node: Optional[Any]) -> Optional[EntityReferenceList]:
         """
         Returns dbt owner with priority:
         1. manifest_node.meta.openmetadata.owner (OpenMetadata docs format - HIGHEST PRIORITY)
@@ -241,9 +230,7 @@ class DbtSource(DbtServiceSource):
                         if catalog_owner:
                             dbt_owner = catalog_owner
                     except Exception as catalog_exc:
-                        logger.debug(
-                            f"Error accessing catalog_node.metadata.owner: {catalog_exc}"
-                        )
+                        logger.debug(f"Error accessing catalog_node.metadata.owner: {catalog_exc}")
 
             if dbt_owner and isinstance(dbt_owner, str):
                 owner_ref = self.metadata.get_reference_by_name(
@@ -251,10 +238,7 @@ class DbtSource(DbtServiceSource):
                 ) or self.metadata.get_reference_by_email(email=dbt_owner)
                 if owner_ref:
                     return owner_ref
-                logger.warning(
-                    "Unable to ingest owner from DBT since no user or"
-                    f" team was found with name {dbt_owner}"
-                )
+                logger.warning(f"Unable to ingest owner from DBT since no user or team was found with name {dbt_owner}")
             elif dbt_owner and isinstance(dbt_owner, list):
                 owner_list = EntityReferenceList(root=[])
                 for owner_name in dbt_owner:
@@ -265,8 +249,7 @@ class DbtSource(DbtServiceSource):
                         owner_list.root.extend(owner_ref.root)
                     else:
                         logger.warning(
-                            "Unable to ingest owner from DBT since no user or"
-                            f" team was found with name {owner_name}"
+                            f"Unable to ingest owner from DBT since no user or team was found with name {owner_name}"
                         )
                 if owner_list.root:
                     return owner_list
@@ -277,10 +260,7 @@ class DbtSource(DbtServiceSource):
 
     def check_columns(self, catalog_node):
         for catalog_key, catalog_column in catalog_node.get("columns").items():
-            if all(
-                required_catalog_key in catalog_column
-                for required_catalog_key in REQUIRED_CATALOG_KEYS
-            ):
+            if all(required_catalog_key in catalog_column for required_catalog_key in REQUIRED_CATALOG_KEYS):
                 logger.debug(f"Successfully Validated DBT Column: {catalog_key}")
             else:
                 logger.warning(
@@ -308,19 +288,11 @@ class DbtSource(DbtServiceSource):
                     **dbt_files.dbt_catalog[DbtCommonEnum.SOURCES.value],
                 }
             for key, manifest_node in manifest_entities.items():
-                if manifest_node[DbtCommonEnum.RESOURCETYPE.value] in [
-                    item.value for item in SkipResourceTypeEnum
-                ]:
+                if manifest_node[DbtCommonEnum.RESOURCETYPE.value] in [item.value for item in SkipResourceTypeEnum]:
                     continue
 
-                if (
-                    manifest_node[DbtCommonEnum.RESOURCETYPE.value]
-                    == DbtCommonEnum.EXPOSURE.value
-                ):
-                    if all(
-                        required_key in manifest_node
-                        for required_key in REQUIRED_EXPOSURE_KEYS
-                    ):
+                if manifest_node[DbtCommonEnum.RESOURCETYPE.value] == DbtCommonEnum.EXPOSURE.value:
+                    if all(required_key in manifest_node for required_key in REQUIRED_EXPOSURE_KEYS):
                         logger.debug(f"Successfully Validated DBT Node: {key}")
                     else:
                         logger.warning(
@@ -331,10 +303,7 @@ class DbtSource(DbtServiceSource):
                     continue
 
                 # Validate if all the required keys are present in the manifest nodes
-                if all(
-                    required_key in manifest_node
-                    for required_key in REQUIRED_MANIFEST_KEYS
-                ):
+                if all(required_key in manifest_node for required_key in REQUIRED_MANIFEST_KEYS):
                     logger.debug(f"Successfully Validated DBT Node: {key}")
                 else:
                     logger.warning(
@@ -348,20 +317,14 @@ class DbtSource(DbtServiceSource):
                     if catalog_node and "columns" in catalog_node:
                         self.check_columns(catalog_node=catalog_node)
                     else:
-                        logger.warning(
-                            f"Unable to find the node or columns in the catalog file for dbt node: {key}"
-                        )
+                        logger.warning(f"Unable to find the node or columns in the catalog file for dbt node: {key}")
 
     def filter_tags(self, tags: List[str]) -> List[str]:
         """
         Filter tags based on tag filter pattern if configured
         """
         if self.source_config.tagFilterPattern:
-            return [
-                tag
-                for tag in tags
-                if not filter_by_tag(self.source_config.tagFilterPattern, tag)
-            ]
+            return [tag for tag in tags if not filter_by_tag(self.source_config.tagFilterPattern, tag)]
         return tags
 
     def process_dbt_domain(self, data_model_link: DataModelLink):
@@ -386,9 +349,7 @@ class DbtSource(DbtServiceSource):
             domain_entity = find_domain_by_name(self.metadata, domain_name)
 
             if not domain_entity:
-                logger.warning(
-                    f"Domain '{domain_name}' not found in OpenMetadata for table {table_fqn}"
-                )
+                logger.warning(f"Domain '{domain_name}' not found in OpenMetadata for table {table_fqn}")
                 return
 
             domain_ref_data = format_domain_reference(domain_entity)
@@ -402,16 +363,12 @@ class DbtSource(DbtServiceSource):
             domain_list = EntityReferenceList(root=[domain_ref])
 
             # Use the existing patch_domain method
-            updated_entity = self.metadata.patch_domain(
-                entity=Table, source=table_entity, domains=domain_list
-            )
+            updated_entity = self.metadata.patch_domain(entity=Table, source=table_entity, domains=domain_list)
 
             if updated_entity:
                 logger.info(f"Successfully updated domain for table {table_fqn}")
             else:
-                logger.debug(
-                    f"Domain already set for table {table_fqn}, skipping update"
-                )
+                logger.debug(f"Domain already set for table {table_fqn}, skipping update")
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning(f"Failed to update dbt domain for {table_fqn}: {exc}")
@@ -436,19 +393,13 @@ class DbtSource(DbtServiceSource):
                 logger.debug(f"No custom_properties found for table {table_fqn}")
                 return
 
-            logger.info(
-                f"Processing {len(custom_properties)} custom_properties for table {table_fqn}"
-            )
+            logger.info(f"Processing {len(custom_properties)} custom_properties for table {table_fqn}")
 
             # Validate and convert custom properties
-            valid_custom_properties = self._validate_custom_properties(
-                table_entity, custom_properties
-            )
+            valid_custom_properties = self._validate_custom_properties(table_entity, custom_properties)
 
             if not valid_custom_properties:
-                logger.warning(
-                    f"No valid custom properties found for table {table_fqn}"
-                )
+                logger.warning(f"No valid custom properties found for table {table_fqn}")
                 return
 
             # Use the new patch_custom_properties method
@@ -460,18 +411,12 @@ class DbtSource(DbtServiceSource):
             )
 
             if updated_entity:
-                logger.info(
-                    f"Successfully updated custom properties for table {table_fqn}"
-                )
+                logger.info(f"Successfully updated custom properties for table {table_fqn}")
             else:
-                logger.warning(
-                    f"Failed to update custom properties for table {table_fqn}"
-                )
+                logger.warning(f"Failed to update custom properties for table {table_fqn}")
 
         except Exception as exc:
-            logger.warning(
-                f"Failed to process custom properties for {table_fqn}: {exc}"
-            )
+            logger.warning(f"Failed to process custom properties for {table_fqn}: {exc}")
             logger.debug(traceback.format_exc())
 
     def _validate_custom_properties(
@@ -496,9 +441,7 @@ class DbtSource(DbtServiceSource):
         validation_errors = []
         table_fqn = table_entity.fullyQualifiedName.root
 
-        logger.debug(
-            f"Validating {len(custom_properties)} custom properties for table {table_fqn}"
-        )
+        logger.debug(f"Validating {len(custom_properties)} custom properties for table {table_fqn}")
 
         for field_name, field_value in custom_properties.items():
             # Step 1: Check if property exists in OpenMetadata
@@ -515,9 +458,7 @@ class DbtSource(DbtServiceSource):
             property_type = custom_property["propertyType"]["name"]
 
             # Extract property configuration (format, enum values, etc.)
-            property_config = custom_property.get("customPropertyConfig", {}).get(
-                "config"
-            )
+            property_config = custom_property.get("customPropertyConfig", {}).get("config")
 
             # Step 2: Validate and convert value (single pass)
             # This validates type compatibility, format constraints, and converts to backend format
@@ -546,8 +487,7 @@ class DbtSource(DbtServiceSource):
             # Check if conversion failed (converted_value is None)
             if converted_value is None:
                 error_msg = (
-                    f"Failed to convert custom property '{field_name}' "
-                    f"(type: {property_type}, value: {field_value})"
+                    f"Failed to convert custom property '{field_name}' (type: {property_type}, value: {field_value})"
                 )
                 logger.warning(f"Table {table_fqn}: {error_msg}")
                 validation_errors.append(f"{field_name}: Conversion failed")
@@ -556,8 +496,7 @@ class DbtSource(DbtServiceSource):
             # Log if enum values were filtered
             if property_type == "enum" and converted_value != field_value:
                 logger.debug(
-                    f"Table {table_fqn}: Filtered enum property '{field_name}' "
-                    f"from {field_value} to {converted_value}"
+                    f"Table {table_fqn}: Filtered enum property '{field_name}' from {field_value} to {converted_value}"
                 )
 
             # Successfully validated and converted
@@ -581,23 +520,16 @@ class DbtSource(DbtServiceSource):
             )
         else:
             logger.warning(
-                f"No valid custom properties found for table {table_fqn} "
-                f"(attempted: {len(custom_properties)})"
+                f"No valid custom properties found for table {table_fqn} (attempted: {len(custom_properties)})"
             )
 
         return valid_custom_properties if valid_custom_properties else None
 
-    def yield_dbt_tags(
-        self, dbt_objects: DbtObjects
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_dbt_tags(self, dbt_objects: DbtObjects) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Create and yield tags from DBT
         """
-        if (
-            self.source_config.dbtConfigSource
-            and dbt_objects.dbt_manifest
-            and self.source_config.includeTags
-        ):
+        if self.source_config.dbtConfigSource and dbt_objects.dbt_manifest and self.source_config.includeTags:
             manifest_entities = {
                 **dbt_objects.dbt_manifest.nodes,
                 **dbt_objects.dbt_manifest.sources,
@@ -606,9 +538,7 @@ class DbtSource(DbtServiceSource):
             dbt_tags_list = []
             for key, manifest_node in manifest_entities.items():
                 try:
-                    if manifest_node.resource_type in [
-                        item.value for item in SkipResourceTypeEnum
-                    ]:
+                    if manifest_node.resource_type in [item.value for item in SkipResourceTypeEnum]:
                         continue
 
                     # Add the tags from the model
@@ -667,10 +597,7 @@ class DbtSource(DbtServiceSource):
         that OpenMetadata always reflects the latest test state.
         """
         matches = [
-            item
-            for run_result in dbt_objects.dbt_run_results
-            for item in run_result.results
-            if item.unique_id == key
+            item for run_result in dbt_objects.dbt_run_results for item in run_result.results if item.unique_id == key
         ]
         if not matches:
             return None
@@ -683,9 +610,7 @@ class DbtSource(DbtServiceSource):
                     completed = timing.completed_at
                     if isinstance(completed, str):
                         try:
-                            return datetime.strptime(
-                                completed, DBT_RUN_RESULT_DATE_FORMAT
-                            )
+                            return datetime.strptime(completed, DBT_RUN_RESULT_DATE_FORMAT)
                         except ValueError:
                             return None
                     return completed
@@ -697,21 +622,15 @@ class DbtSource(DbtServiceSource):
             return max(with_ts, key=lambda pair: pair[1])[0]
         return matches[0]
 
-    def add_dbt_tests(
-        self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
-    ) -> None:
+    def add_dbt_tests(self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects) -> None:
         """
         Method to append dbt test cases for later processing
         """
-        self.context.get().dbt_tests[key] = {
-            DbtCommonEnum.MANIFEST_NODE.value: manifest_node
-        }
-        self.context.get().dbt_tests[key][
-            DbtCommonEnum.UPSTREAM.value
-        ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
-        self.context.get().dbt_tests[key][
-            DbtCommonEnum.RESULTS.value
-        ] = self._get_latest_result(dbt_objects, key)
+        self.context.get().dbt_tests[key] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node}
+        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM.value] = self.parse_upstream_nodes(
+            manifest_entities, manifest_node
+        )
+        self.context.get().dbt_tests[key][DbtCommonEnum.RESULTS.value] = self._get_latest_result(dbt_objects, key)
 
     def add_dbt_exposure(self, key: str, manifest_node, manifest_entities):
         exposure_entity = self.parse_exposure_node(manifest_node)
@@ -722,13 +641,11 @@ class DbtSource(DbtServiceSource):
                 DbtCommonEnum.MANIFEST_NODE: manifest_node,
             }
 
-            self.context.get().exposures[key][
-                DbtCommonEnum.UPSTREAM
-            ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
+            self.context.get().exposures[key][DbtCommonEnum.UPSTREAM] = self.parse_upstream_nodes(
+                manifest_entities, manifest_node
+            )
 
-    def add_dbt_sources(
-        self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
-    ) -> None:
+    def add_dbt_sources(self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects) -> None:
         """
         Method to append dbt test cases based on sources file for later processing
         In dbt manifest sources node name is table/view name (not test name like with test nodes)
@@ -743,15 +660,11 @@ class DbtSource(DbtServiceSource):
         )
 
         if freshness_test_result:
-            self.context.get().dbt_tests[key + "_freshness"] = {
-                DbtCommonEnum.MANIFEST_NODE.value: manifest_node_new
-            }
-            self.context.get().dbt_tests[key + "_freshness"][
-                DbtCommonEnum.UPSTREAM.value
-            ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
-            self.context.get().dbt_tests[key + "_freshness"][
-                DbtCommonEnum.RESULTS.value
-            ] = freshness_test_result
+            self.context.get().dbt_tests[key + "_freshness"] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node_new}
+            self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM.value] = self.parse_upstream_nodes(
+                manifest_entities, manifest_node
+            )
+            self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.RESULTS.value] = freshness_test_result
 
     def _get_table_entity(self, table_fqn) -> Optional[Table]:
         def search_table(fqn_search_string: str) -> Optional[Table]:
@@ -767,22 +680,13 @@ class DbtSource(DbtServiceSource):
             if not table_entities:
                 return None
 
-            logger.debug(
-                f"Found table entities from {fqn_search_string}: {len(table_entities)} entities"
-            )
-            return (
-                next(iter(filter(None, table_entities)), None)
-                if table_entities
-                else None
-            )
+            logger.debug(f"Found table entities from {fqn_search_string}: {len(table_entities)} entities")
+            return next(iter(filter(None, table_entities)), None) if table_entities else None
 
         try:
             table_entity = search_table(table_fqn)
             if table_entity:
-                logger.debug(
-                    f"Using Table Entity: {table_entity.fullyQualifiedName.root}"
-                    f"with id {table_entity.id}"
-                )
+                logger.debug(f"Using Table Entity: {table_entity.fullyQualifiedName.root}with id {table_entity.id}")
                 return table_entity
 
             if self.source_config.searchAcrossDatabases:
@@ -811,16 +715,12 @@ class DbtSource(DbtServiceSource):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to get table entity '{table_fqn}' from OpenMetadata: {exc}"
-            )
+            logger.warning(f"Failed to get table entity '{table_fqn}' from OpenMetadata: {exc}")
 
         return None
 
     # pylint: disable=too-many-locals, too-many-branches
-    def yield_data_models(
-        self, dbt_objects: DbtObjects
-    ) -> Iterable[Either[DataModelLink]]:
+    def yield_data_models(self, dbt_objects: DbtObjects) -> Iterable[Either[DataModelLink]]:
         """
         Yield the data models
         """
@@ -846,16 +746,9 @@ class DbtSource(DbtServiceSource):
 
             # Since we'll be processing multiple run_results for a single project
             # we'll only consider the first run_results generated_at time
-            if (
-                dbt_objects.dbt_run_results
-                and dbt_objects.dbt_run_results[0].metadata.generated_at
-            ):
-                self.context.get().run_results_generate_time = (
-                    dbt_objects.dbt_run_results[0].metadata.generated_at
-                )
-            dbt_project_name = getattr(
-                dbt_objects.dbt_manifest.metadata, "project_name", None
-            )
+            if dbt_objects.dbt_run_results and dbt_objects.dbt_run_results[0].metadata.generated_at:
+                self.context.get().run_results_generate_time = dbt_objects.dbt_run_results[0].metadata.generated_at
+            dbt_project_name = getattr(dbt_objects.dbt_manifest.metadata, "project_name", None)
             for key, manifest_node in manifest_entities.items():
                 try:
                     resource_type = getattr(
@@ -864,10 +757,7 @@ class DbtSource(DbtServiceSource):
                         manifest_node.resource_type,
                     )
                     # If the run_results file is passed then only DBT tests will be processed
-                    if (
-                        dbt_objects.dbt_run_results
-                        and resource_type == SkipResourceTypeEnum.TEST.value
-                    ):
+                    if dbt_objects.dbt_run_results and resource_type == SkipResourceTypeEnum.TEST.value:
                         # Test nodes will be processed further in the topology
                         self.add_dbt_tests(
                             key,
@@ -877,10 +767,7 @@ class DbtSource(DbtServiceSource):
                         )
                         continue
 
-                    if (
-                        dbt_objects.dbt_sources
-                        and resource_type == DbtCommonEnum.SOURCE.value
-                    ):
+                    if dbt_objects.dbt_sources and resource_type == DbtCommonEnum.SOURCE.value:
                         self.add_dbt_sources(
                             key,
                             manifest_node=manifest_node,
@@ -906,9 +793,7 @@ class DbtSource(DbtServiceSource):
 
                     # snapshots can redirect output to a different schema/database via config.target_schema/target_database
                     if resource_type == "snapshot":
-                        location = get_snapshot_effective_schema_and_database(
-                            manifest_node
-                        )
+                        location = get_snapshot_effective_schema_and_database(manifest_node)
                         node_schema = location.schema_
                         node_database = location.database
                     else:
@@ -953,9 +838,7 @@ class DbtSource(DbtServiceSource):
                     )
 
                     if manifest_node.meta:
-                        dbt_table_tags_list.extend(
-                            self.process_dbt_meta(manifest_node.meta, table_fqn) or []
-                        )
+                        dbt_table_tags_list.extend(self.process_dbt_meta(manifest_node.meta, table_fqn) or [])
 
                     dbt_compiled_query = get_dbt_compiled_query(manifest_node)
                     dbt_raw_query = get_dbt_raw_query(manifest_node)
@@ -971,22 +854,12 @@ class DbtSource(DbtServiceSource):
                             datamodel=DataModel(
                                 modelType=ModelType.DBT,
                                 resourceType=resource_type,
-                                description=manifest_node.description
-                                if manifest_node.description
-                                else None,
+                                description=manifest_node.description if manifest_node.description else None,
                                 path=get_data_model_path(manifest_node=manifest_node),
-                                rawSql=SqlQuery(dbt_raw_query)
-                                if dbt_raw_query
-                                else None,
-                                sql=SqlQuery(dbt_compiled_query)
-                                if dbt_compiled_query
-                                else None,
-                                columns=self.parse_data_model_columns(
-                                    manifest_node, catalog_node
-                                ),
-                                upstream=self.parse_upstream_nodes(
-                                    manifest_entities, manifest_node
-                                ),
+                                rawSql=SqlQuery(dbt_raw_query) if dbt_raw_query else None,
+                                sql=SqlQuery(dbt_compiled_query) if dbt_compiled_query else None,
+                                columns=self.parse_data_model_columns(manifest_node, catalog_node),
+                                upstream=self.parse_upstream_nodes(manifest_entities, manifest_node),
                                 owners=self.get_dbt_owner(
                                     manifest_node=manifest_node,
                                     catalog_node=catalog_node,
@@ -1034,9 +907,7 @@ class DbtSource(DbtServiceSource):
                         parent_node.resource_type,
                     )
                     if parent_resource_type == "snapshot":
-                        parent_location = get_snapshot_effective_schema_and_database(
-                            parent_node
-                        )
+                        parent_location = get_snapshot_effective_schema_and_database(parent_node)
                         parent_database = parent_location.database
                         parent_schema = parent_location.schema_
                     else:
@@ -1054,9 +925,7 @@ class DbtSource(DbtServiceSource):
                     # check if the node is an ephemeral node
                     # Recursively store the upstream of the ephemeral node in the upstream list
                     if check_ephemeral_node(parent_node):
-                        upstream_nodes.extend(
-                            self.parse_upstream_nodes(manifest_entities, parent_node)
-                        )
+                        upstream_nodes.extend(self.parse_upstream_nodes(manifest_entities, parent_node))
                     else:
                         parent_fqn = fqn.build(
                             self.metadata,
@@ -1072,16 +941,12 @@ class DbtSource(DbtServiceSource):
                             upstream_nodes.append(parent_fqn)
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Failed to parse the DBT node {node} to get upstream nodes: {exc}"
-                    )
+                    logger.warning(f"Failed to parse the DBT node {node} to get upstream nodes: {exc}")
                     continue
 
         return upstream_nodes
 
-    def parse_data_model_columns(
-        self, manifest_node: Any, catalog_node: Any
-    ) -> List[Column]:
+    def parse_data_model_columns(self, manifest_node: Any, catalog_node: Any) -> List[Column]:
         """
         Method to parse the DBT columns
         """
@@ -1095,9 +960,7 @@ class DbtSource(DbtServiceSource):
                 catalog_column = None
                 if catalog_node and catalog_node.columns:
                     catalog_column = catalog_node.columns.get(key)
-                column_name = (
-                    catalog_column.name if catalog_column else manifest_column.name
-                )
+                column_name = catalog_column.name if catalog_column else manifest_column.name
                 column_description = None
                 if catalog_column and catalog_column.comment:
                     column_description = catalog_column.comment
@@ -1117,10 +980,7 @@ class DbtSource(DbtServiceSource):
                 if manifest_column.meta:
                     dbt_column_meta = DbtMeta(**manifest_column.meta)
                     logger.debug(f"Processing DBT column glossary: {key}")
-                    if (
-                        dbt_column_meta.openmetadata
-                        and dbt_column_meta.openmetadata.glossary
-                    ):
+                    if dbt_column_meta.openmetadata and dbt_column_meta.openmetadata.glossary:
                         dbt_column_tag_list.extend(
                             get_tag_labels(
                                 metadata=self.metadata,
@@ -1143,10 +1003,7 @@ class DbtSource(DbtServiceSource):
                                 tag_parts = fqn.split(tag_fqn)
                             except Exception as exc:  # pylint: disable=broad-except
                                 logger.debug(traceback.format_exc())
-                                logger.warning(
-                                    f"Failed to parse tag FQN {tag_fqn!r} for column"
-                                    f" {column_name}: {exc}"
-                                )
+                                logger.warning(f"Failed to parse tag FQN {tag_fqn!r} for column {column_name}: {exc}")
                                 continue
                             if len(tag_parts) >= 2:
                                 classification_name = tag_parts[0]
@@ -1165,18 +1022,12 @@ class DbtSource(DbtServiceSource):
                     Column(
                         name=column_name,
                         # If the catalog description is present, use it, else use the manifest description
-                        description=column_description
-                        if column_description
-                        else manifest_column.description,
+                        description=column_description if column_description else manifest_column.description,
                         dataType=ColumnTypeParser.get_column_type(
-                            catalog_column.type
-                            if catalog_column
-                            else manifest_column.data_type
+                            catalog_column.type if catalog_column else manifest_column.data_type
                         ),
                         dataLength=1,
-                        ordinalPosition=catalog_column.index
-                        if catalog_column
-                        else None,
+                        ordinalPosition=catalog_column.index if catalog_column else None,
                         tags=dbt_column_tag_list or [],
                     )
                 )
@@ -1222,25 +1073,19 @@ class DbtSource(DbtServiceSource):
         try:
             entity_fqn = exposure_spec.meta["open_metadata_fqn"]
         except KeyError:
-            logger.warning(
-                f"meta.open_metadata_fqn not found in [{exposure_spec.name}] exposure spec."
-            )
+            logger.warning(f"meta.open_metadata_fqn not found in [{exposure_spec.name}] exposure spec.")
             return None
 
         entity = self.metadata.get_by_name(fqn=entity_fqn, entity=entity_type)
 
         if not entity:
-            logger.warning(
-                f"Entity [{entity_fqn}] of [{exposure_type}] type not found in Open Metadata."
-            )
+            logger.warning(f"Entity [{entity_fqn}] of [{exposure_type}] type not found in Open Metadata.")
 
             return None
 
         return entity
 
-    def create_dbt_lineage(
-        self, data_model_link: DataModelLink
-    ) -> Iterable[Either[AddLineageRequest]]:
+    def create_dbt_lineage(self, data_model_link: DataModelLink) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to process DBT lineage from upstream nodes
         """
@@ -1249,9 +1094,7 @@ class DbtSource(DbtServiceSource):
 
         for upstream_node in data_model_link.datamodel.upstream:
             try:
-                from_entity: Optional[Table] = self._get_table_entity(
-                    table_fqn=upstream_node
-                )
+                from_entity: Optional[Table] = self._get_table_entity(table_fqn=upstream_node)
                 if from_entity and to_entity:
                     lineage_request = AddLineageRequest(
                         edge=EntitiesEdge(
@@ -1292,21 +1135,15 @@ class DbtSource(DbtServiceSource):
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Failed to parse the node {upstream_node} to capture lineage: {exc}"
-                )
+                logger.warning(f"Failed to parse the node {upstream_node} to capture lineage: {exc}")
 
-    def create_dbt_query_lineage(
-        self, data_model_link: DataModelLink
-    ) -> Iterable[Either[AddLineageRequest]]:
+    def create_dbt_query_lineage(self, data_model_link: DataModelLink) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to process DBT lineage from queries
         """
         if data_model_link.datamodel.sql:
             to_entity: Table = data_model_link.table_entity
-            logger.debug(
-                f"Processing DBT Query lineage for: {to_entity.fullyQualifiedName.root}"
-            )
+            logger.debug(f"Processing DBT Query lineage for: {to_entity.fullyQualifiedName.root}")
 
             try:
                 source_elements = fqn.split(to_entity.fullyQualifiedName.root)
@@ -1315,12 +1152,8 @@ class DbtSource(DbtServiceSource):
                     *source_elements[-3:]
                 )
                 query_fqn = ".".join([f'"{i}"' for i in query_fqn.split(".")])
-                query = (
-                    f"create table {query_fqn} as {data_model_link.datamodel.sql.root}"
-                )
-                connection_type = str(
-                    self.config.serviceConnection.root.config.type.value
-                )
+                query = f"create table {query_fqn} as {data_model_link.datamodel.sql.root}"
+                connection_type = str(self.config.serviceConnection.root.config.type.value)
                 dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
                 lineages = get_lineage_by_query(
                     self.metadata,
@@ -1348,16 +1181,13 @@ class DbtSource(DbtServiceSource):
                     left=StackTraceError(
                         name=data_model_link.datamodel.sql.root,
                         error=(
-                            f"Failed to parse the query {data_model_link.datamodel.sql.root}"
-                            f" to capture lineage: {exc}"
+                            f"Failed to parse the query {data_model_link.datamodel.sql.root} to capture lineage: {exc}"
                         ),
                         stackTrace=traceback.format_exc(),
                     )
                 )
 
-    def create_dbt_exposures_lineage(
-        self, exposure_spec: dict
-    ) -> Iterable[Either[AddLineageRequest]]:
+    def create_dbt_exposures_lineage(self, exposure_spec: dict) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to process dbt exposure lineage
         """
@@ -1371,9 +1201,7 @@ class DbtSource(DbtServiceSource):
                     entity_type=Table,
                     fqn_search_string=upstream_node,
                 )
-                from_entity: Optional[
-                    Union[Table, List[Table]]
-                ] = get_entity_from_es_result(
+                from_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
                     entity_list=from_es_result, fetch_multiple_entities=False
                 )
                 if from_entity and to_entity:
@@ -1385,13 +1213,9 @@ class DbtSource(DbtServiceSource):
                             ),
                             toEntity=EntityReference(
                                 id=Uuid(to_entity.id.root),
-                                type=ExposureTypeMap[manifest_node.type.value][
-                                    "entity_type_name"
-                                ],
+                                type=ExposureTypeMap[manifest_node.type.value]["entity_type_name"],
                             ),
-                            lineageDetails=LineageDetails(
-                                source=LineageSource.DbtLineage
-                            ),
+                            lineageDetails=LineageDetails(source=LineageSource.DbtLineage),
                         )
                     )
                     if lineage_request is not None:
@@ -1415,9 +1239,7 @@ class DbtSource(DbtServiceSource):
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Failed to parse the node {upstream_node} to capture lineage: {exc}"
-                )
+                logger.warning(f"Failed to parse the node {upstream_node} to capture lineage: {exc}")
 
     def process_dbt_meta(self, manifest_meta, table_fqn):
         """
@@ -1449,23 +1271,14 @@ class DbtSource(DbtServiceSource):
                     or []
                 )
 
-            if (
-                dbt_meta_info.openmetadata
-                and dbt_meta_info.openmetadata.customProperties
-            ):
+            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.customProperties:
                 # Store custom properties mapped to table FQN
-                self.extracted_custom_properties[
-                    table_fqn
-                ] = dbt_meta_info.openmetadata.customProperties
+                self.extracted_custom_properties[table_fqn] = dbt_meta_info.openmetadata.customProperties
 
             if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.domain:
                 self.extracted_domains[table_fqn] = dbt_meta_info.openmetadata.domain
 
-            if (
-                self.source_config.includeTags
-                and dbt_meta_info.openmetadata
-                and dbt_meta_info.openmetadata.tags
-            ):
+            if self.source_config.includeTags and dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tags:
                 for tag_fqn in dbt_meta_info.openmetadata.tags:
                     if not tag_fqn:
                         continue
@@ -1473,10 +1286,7 @@ class DbtSource(DbtServiceSource):
                         tag_parts = fqn.split(tag_fqn)
                     except Exception as exc:  # pylint: disable=broad-except
                         logger.debug(traceback.format_exc())
-                        logger.warning(
-                            f"Failed to parse tag FQN {tag_fqn!r} for table"
-                            f" {table_fqn}: {exc}"
-                        )
+                        logger.warning(f"Failed to parse tag FQN {tag_fqn!r} for table {table_fqn}: {exc}")
                         continue
                     if len(tag_parts) >= 2:
                         classification_name = tag_parts[0]
@@ -1502,20 +1312,13 @@ class DbtSource(DbtServiceSource):
         Method to process DBT descriptions using patch APIs
         """
         table_entity: Table = data_model_link.table_entity
-        logger.debug(
-            f"Processing DBT Descriptions for: {table_entity.fullyQualifiedName.root}"
-        )
+        logger.debug(f"Processing DBT Descriptions for: {table_entity.fullyQualifiedName.root}")
         if table_entity:
             try:
-                service_name, database_name, schema_name, table_name = fqn.split(
-                    table_entity.fullyQualifiedName.root
-                )
+                service_name, database_name, schema_name, table_name = fqn.split(table_entity.fullyQualifiedName.root)
                 data_model = data_model_link.datamodel
                 force_override = False
-                if (
-                    data_model.resourceType != DbtCommonEnum.SOURCE.value
-                    and self.source_config.dbtUpdateDescriptions
-                ):
+                if data_model.resourceType != DbtCommonEnum.SOURCE.value and self.source_config.dbtUpdateDescriptions:
                     force_override = True
 
                 # Patch table descriptions from DBT
@@ -1553,30 +1356,20 @@ class DbtSource(DbtServiceSource):
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Failed to parse the node {table_entity.fullyQualifiedName.root} "
-                    f"to update dbt description: {exc}"
+                    f"Failed to parse the node {table_entity.fullyQualifiedName.root} to update dbt description: {exc}"
                 )
 
-    def process_dbt_owners(
-        self, data_model_link: DataModelLink
-    ) -> Iterable[Either[PatchedEntity]]:
+    def process_dbt_owners(self, data_model_link: DataModelLink) -> Iterable[Either[PatchedEntity]]:
         """
         Method to process DBT owners
         """
         table_entity: Table = data_model_link.table_entity
         if table_entity:
-            logger.debug(
-                f"Processing DBT owners for: {table_entity.fullyQualifiedName.root}"
-            )
+            logger.debug(f"Processing DBT owners for: {table_entity.fullyQualifiedName.root}")
             try:
                 data_model = data_model_link.datamodel
-                if (
-                    data_model.resourceType != DbtCommonEnum.SOURCE.value
-                    and self.source_config.dbtUpdateOwners
-                ):
-                    logger.debug(
-                        f"Overwriting owners with DBT owners: {table_entity.fullyQualifiedName.root}"
-                    )
+                if data_model.resourceType != DbtCommonEnum.SOURCE.value and self.source_config.dbtUpdateOwners:
+                    logger.debug(f"Overwriting owners with DBT owners: {table_entity.fullyQualifiedName.root}")
                     if data_model.owners:
                         new_entity = deepcopy(table_entity)
                         new_entity.owners = data_model.owners
@@ -1598,18 +1391,14 @@ class DbtSource(DbtServiceSource):
                     )
                 )
 
-    def create_dbt_tests_definition(
-        self, dbt_test: dict
-    ) -> Iterable[Either[CreateTestDefinitionRequest]]:
+    def create_dbt_tests_definition(self, dbt_test: dict) -> Iterable[Either[CreateTestDefinitionRequest]]:
         """
         A Method to add DBT test definitions
         """
         try:
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
-                logger.debug(
-                    f"Processing DBT Tests Definition for node: {manifest_node.name}"
-                )
+                logger.debug(f"Processing DBT Tests Definition for node: {manifest_node.name}")
                 check_test_definition_exists = self.metadata.get_by_name(
                     fqn=manifest_node.name,
                     entity=TestDefinition,
@@ -1624,9 +1413,7 @@ class DbtSource(DbtServiceSource):
                             description=manifest_node.description,
                             entityType=entity_type,
                             testPlatforms=[TestPlatform.dbt],
-                            parameterDefinition=create_test_case_parameter_definitions(
-                                manifest_node
-                            ),
+                            parameterDefinition=create_test_case_parameter_definitions(manifest_node),
                             displayName=None,
                             owners=None,
                         )
@@ -1640,9 +1427,7 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
-    def create_dbt_test_case(
-        self, dbt_test: dict
-    ) -> Iterable[Either[CreateTestCaseRequest]]:
+    def create_dbt_test_case(self, dbt_test: dict) -> Iterable[Either[CreateTestCaseRequest]]:
         """
         After test suite and test definitions have been processed, add the tests cases info
         """
@@ -1666,22 +1451,16 @@ class DbtSource(DbtServiceSource):
                         test_case_name=manifest_node.name,
                     )
 
-                    test_case = self.metadata.get_by_name(
-                        TestCase, test_case_fqn, fields=["testDefinition,testSuite"]
-                    )
+                    test_case = self.metadata.get_by_name(TestCase, test_case_fqn, fields=["testDefinition,testSuite"])
                     if test_case is None:
                         # Create the test case only if it does not exist
                         yield Either(
                             right=CreateTestCaseRequest(
                                 name=manifest_node.name,
                                 description=manifest_node.description,
-                                testDefinition=FullyQualifiedEntityName(
-                                    manifest_node.name
-                                ),
+                                testDefinition=FullyQualifiedEntityName(manifest_node.name),
                                 entityLink=entity_link_str,
-                                parameterValues=create_test_case_parameter_values(
-                                    dbt_test
-                                ),
+                                parameterValues=create_test_case_parameter_values(dbt_test),
                                 displayName=None,
                                 owners=None,
                             )
@@ -1704,14 +1483,10 @@ class DbtSource(DbtServiceSource):
             # Process the Test Status
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
-                logger.debug(
-                    f"Adding DBT Test Case Results for node: {manifest_node.name}"
-                )
+                logger.debug(f"Adding DBT Test Case Results for node: {manifest_node.name}")
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)
                 if not dbt_test_result:
-                    logger.warning(
-                        f"DBT Test Case Results not found for node: {manifest_node.name}"
-                    )
+                    logger.warning(f"DBT Test Case Results not found for node: {manifest_node.name}")
                     return
 
                 # Skip compiled-only entries: `dbt run` includes test nodes in
@@ -1726,14 +1501,10 @@ class DbtSource(DbtServiceSource):
 
                 test_case_status = TestCaseStatus.Aborted
                 test_result_value = 0
-                if dbt_test_result.status.value in [
-                    item.value for item in DbtTestSuccessEnum
-                ]:
+                if dbt_test_result.status.value in [item.value for item in DbtTestSuccessEnum]:
                     test_case_status = TestCaseStatus.Success
                     test_result_value = 1
-                elif dbt_test_result.status.value in [
-                    item.value for item in DbtTestFailureEnum
-                ]:
+                elif dbt_test_result.status.value in [item.value for item in DbtTestFailureEnum]:
                     test_case_status = TestCaseStatus.Failed
                     test_result_value = 0
 
@@ -1751,15 +1522,11 @@ class DbtSource(DbtServiceSource):
 
                 # check if the timestamp is a str type and convert accordingly
                 if isinstance(dbt_timestamp, str):
-                    dbt_timestamp = datetime.strptime(
-                        dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT
-                    )
+                    dbt_timestamp = datetime.strptime(dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT)
 
                 # Create the test case result object
                 test_case_result = TestCaseResult(
-                    timestamp=Timestamp(
-                        datetime_to_timestamp(dbt_timestamp, milliseconds=True)
-                    ),
+                    timestamp=Timestamp(datetime_to_timestamp(dbt_timestamp, milliseconds=True)),
                     testCaseStatus=test_case_status,
                     testResultValue=[
                         TestResultValue(
@@ -1797,9 +1564,7 @@ class DbtSource(DbtServiceSource):
 
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.debug(
-                f"Failed to capture tests results for node: {manifest_node.name} {err}"
-            )
+            logger.debug(f"Failed to capture tests results for node: {manifest_node.name} {err}")
 
     def close(self):
         self.metadata.close()

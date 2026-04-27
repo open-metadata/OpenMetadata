@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """Orchestration engine for DataFrame validation execution."""
+
 import logging
 import time
 from datetime import datetime
@@ -67,9 +68,7 @@ class DataFrameValidationEngine:
         execution_time = (time.time() - start_time) * 1000
         return self._build_validation_result(results, execution_time)
 
-    def _execute_single_test(
-        self, df: DataFrame, test_case: TestCase
-    ) -> TestCaseResult:
+    def _execute_single_test(self, df: DataFrame, test_case: TestCase) -> TestCaseResult:
         """Execute validation and return structured result.
 
         Returns:
@@ -87,9 +86,7 @@ class DataFrameValidationEngine:
             result = validator.run_validation()
             return result
         except Exception as err:
-            message = (
-                f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
-            )
+            message = f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
             logger.exception(message)
             return validator.get_test_case_result_object(
                 validator.execution_date,
@@ -111,9 +108,7 @@ class DataFrameValidationEngine:
         Returns:
             ValidationResult with aggregated outcomes
         """
-        passed = sum(
-            1 for _, r in test_results if r.testCaseStatus == TestCaseStatus.Success
-        )
+        passed = sum(1 for _, r in test_results if r.testCaseStatus == TestCaseStatus.Success)
         failed = len(test_results) - passed
         success = failed == 0
 
@@ -140,8 +135,6 @@ class DataFrameValidationEngine:
             test_case.testDefinition.fullyQualifiedName  # pyright: ignore[reportArgumentType]
         )
         if not validator_class:
-            raise ValueError(
-                f"Unknown test definition: {test_case.testDefinition.fullyQualifiedName}"
-            )
+            raise ValueError(f"Unknown test definition: {test_case.testDefinition.fullyQualifiedName}")
 
         return validator_class

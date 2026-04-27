@@ -47,9 +47,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     @blueprint.route("/kill", methods=["POST"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)])
     def kill() -> Response:
         """
         Given a DAG ID, mark all running tasks as FAILED

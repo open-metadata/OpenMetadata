@@ -11,6 +11,7 @@
 """
 Client to interact with databricks apis
 """
+
 import json
 import traceback
 
@@ -54,9 +55,7 @@ class UnityCatalogClient(DatabricksClient):
             AzureAdSetup: get_azure_ad_auth,
         }.get(type(self.config.authType))
         if not auth_method:
-            raise ValueError(
-                f"Unsupported authentication type: {type(self.config.authType)}"
-            )
+            raise ValueError(f"Unsupported authentication type: {type(self.config.authType)}")
 
         auth_args = auth_method(self.config)
         if auth_args.get("access_token"):
@@ -73,9 +72,7 @@ class UnityCatalogClient(DatabricksClient):
                 "table_name": table_name,
             }
 
-            logger.debug(
-                f"Fetching table lineage from Databricks API for: {table_name}"
-            )
+            logger.debug(f"Fetching table lineage from Databricks API for: {table_name}")
             raw_response = self.client.get(
                 f"{self.base_url}{TABLE_LINEAGE_PATH}",
                 headers=self.headers,
@@ -96,9 +93,7 @@ class UnityCatalogClient(DatabricksClient):
                 return LineageTableStreams(**response)
 
         except Exception as exc:
-            logger.error(
-                f"Unexpected error while fetching table lineage for {table_name}: {exc}"
-            )
+            logger.error(f"Unexpected error while fetching table lineage for {table_name}: {exc}")
             logger.debug(traceback.format_exc())
 
         return LineageTableStreams()

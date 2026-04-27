@@ -12,6 +12,7 @@
 """
 Google Drive service specification
 """
+
 from metadata.ingestion.source.drive.googledrive.metadata import GoogleDriveSource
 from metadata.utils.service_spec.service_spec import BaseSpec
 

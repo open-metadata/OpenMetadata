@@ -47,23 +47,14 @@ class NonExistentModel(Base):
 
 @pytest.fixture(scope="module")
 def mssql_engine():
-    container = SqlServerContainer(
-        "mcr.microsoft.com/mssql/server:2022-latest", dbname="master"
-    )
+    container = SqlServerContainer("mcr.microsoft.com/mssql/server:2022-latest", dbname="master")
     with container as container:
         url = "mssql+pytds://" + container.get_connection_url().split("://")[1]
         engine = create_engine(url, connect_args={"autocommit": True})
         with engine.connect() as conn:
-            conn.execute(
-                text(
-                    "CREATE TABLE dbo.metric_computer_test "
-                    "(id INT PRIMARY KEY, name NVARCHAR(256))"
-                )
-            )
+            conn.execute(text("CREATE TABLE dbo.metric_computer_test (id INT PRIMARY KEY, name NVARCHAR(256))"))
             values = ", ".join(f"({i}, 'name_{i}')" for i in range(1, 101))
-            conn.execute(
-                text(f"INSERT INTO dbo.metric_computer_test (id, name) VALUES {values}")
-            )
+            conn.execute(text(f"INSERT INTO dbo.metric_computer_test (id, name) VALUES {values}"))
         yield engine
         with engine.connect() as conn:
             conn.execute(text("DROP TABLE IF EXISTS dbo.metric_computer_test"))

@@ -74,9 +74,7 @@ if TYPE_CHECKING:
 # Configuration constants
 DEFAULT_SAMPLE_WEIGHT_THRESHOLD = 100.0  # Samples needed for full weight
 DEFAULT_NORMALIZATION_FACTOR = 1.5  # Divisor to normalize scores to ~0-1 range
-DEFAULT_TOP_DIMENSIONS = (
-    5  # Number of top dimensions to show before grouping as "Others"
-)
+DEFAULT_TOP_DIMENSIONS = 5  # Number of top dimensions to show before grouping as "Others"
 MAX_TOP_DIMENSIONS = 50
 
 # Volume factor tiers for the impact score formula
@@ -160,9 +158,7 @@ def get_impact_score_expression(
     Where volume_factor is a tiered value based on total rows for database compatibility
     """
     # Calculate failure rate with safe division
-    failure_rate = case(
-        (total_count > 0, func.cast(failed_count, Float) / total_count), else_=0.0
-    )
+    failure_rate = case((total_count > 0, func.cast(failed_count, Float) / total_count), else_=0.0)
 
     # Square the failure rate to emphasize high failure percentages
     # 50% failure -> 0.25, 90% failure -> 0.81
@@ -240,9 +236,7 @@ def calculate_impact_score_pandas(
     df = df_grouped.copy()
 
     # Calculate failure rate
-    df["failure_rate"] = np.where(
-        df[total_column] > 0, df[failed_column] / df[total_column], 0.0
-    )
+    df["failure_rate"] = np.where(df[total_column] > 0, df[failed_column] / df[total_column], 0.0)
 
     # Square the failure rate
     df["failure_severity"] = df["failure_rate"] ** 2
@@ -254,14 +248,10 @@ def calculate_impact_score_pandas(
     df["sample_weight"] = np.minimum(1.0, df[total_column] / sample_weight_threshold)
 
     # Calculate raw impact
-    df["raw_impact"] = (
-        df["failure_severity"] * df["volume_factor"] * df["sample_weight"]
-    )
+    df["raw_impact"] = df["failure_severity"] * df["volume_factor"] * df["sample_weight"]
 
     # Normalize to 0-1 range
-    df["impact_score"] = np.minimum(
-        1.0, np.maximum(0.0, df["raw_impact"] / normalization_factor)
-    )
+    df["impact_score"] = np.minimum(1.0, np.maximum(0.0, df["raw_impact"] / normalization_factor))
 
     # Clean up intermediate columns
     df.drop(

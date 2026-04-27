@@ -50,10 +50,7 @@ def pg_engine(postgres_container):  # noqa: F811
     engine = create_engine(postgres_container.get_connection_url())
     with engine.connect() as conn:
         conn.execute(
-            text(
-                "CREATE TABLE IF NOT EXISTS public.metric_computer_test "
-                "(id INTEGER PRIMARY KEY, name VARCHAR(256))"
-            )
+            text("CREATE TABLE IF NOT EXISTS public.metric_computer_test (id INTEGER PRIMARY KEY, name VARCHAR(256))")
         )
         conn.execute(
             text(

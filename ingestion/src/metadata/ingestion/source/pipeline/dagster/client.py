@@ -55,9 +55,7 @@ class DagsterClient:
             url,
             transport=RequestsHTTPTransport(
                 url=f"{url}/graphql",
-                headers={"Dagster-Cloud-Api-Token": config.token.get_secret_value()}
-                if config.token
-                else None,
+                headers={"Dagster-Cloud-Api-Token": config.token.get_secret_value()} if config.token else None,
                 timeout=config.timeout,
             ),
         )
@@ -108,15 +106,11 @@ class DagsterClient:
             return runs.pipelineOrError
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error while getting runs for {job_id} - {pipeline_name} - {err}"
-            )
+            logger.error(f"Error while getting runs for {job_id} - {pipeline_name} - {err}")
 
         return None
 
-    def get_jobs(
-        self, pipeline_name, repository_name: str, repository_location: str
-    ) -> Optional[GraphOrError]:
+    def get_jobs(self, pipeline_name, repository_name: str, repository_location: str) -> Optional[GraphOrError]:
         """
         Get all the jobs for a pipeline
         """
@@ -139,9 +133,7 @@ class DagsterClient:
 
         return None
 
-    def get_assets(
-        self, repository_name: str, repository_location: str
-    ) -> Optional[List[DagsterAssetNode]]:
+    def get_assets(self, repository_name: str, repository_location: str) -> Optional[List[DagsterAssetNode]]:
         """
         Retrieve all assets from a repository with their dependencies.
         """
@@ -160,9 +152,7 @@ class DagsterClient:
             if response.repositoryOrError.typename == "Repository":
                 return response.repositoryOrError.assetNodes
 
-            logger.warning(
-                f"Failed to fetch assets: {response.repositoryOrError.typename}"
-            )
+            logger.warning(f"Failed to fetch assets: {response.repositoryOrError.typename}")
             return None
 
         except Exception as exc:

@@ -59,15 +59,11 @@ class AzuresqlSource(CommonDbSourceService, MultiDBSource):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AzureSQLConnection = config.serviceConnection.root.config
         if not isinstance(connection, AzureSQLConnection):
-            raise InvalidSourceException(
-                f"Expected AzureSQLConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected AzureSQLConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_configured_database(self) -> Optional[str]:
@@ -94,9 +90,7 @@ class AzuresqlSource(CommonDbSourceService, MultiDBSource):
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    database_fqn if self.source_config.useFqnForFiltering else new_database,
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -106,6 +100,4 @@ class AzuresqlSource(CommonDbSourceService, MultiDBSource):
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(
-                        f"Error trying to connect to database {new_database}: {exc}"
-                    )
+                    logger.error(f"Error trying to connect to database {new_database}: {exc}")

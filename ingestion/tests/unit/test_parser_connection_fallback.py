@@ -51,6 +51,7 @@ This test suite validates:
 4. Comprehensive validation of all 46 services
 5. Performance (fallback has negligible overhead)
 """
+
 import pytest
 
 from metadata.generated.schema.entity.services.databaseService import (
@@ -148,22 +149,18 @@ class TestConnectionFallbackMechanism:
         connection_class = get_connection_class(service_name, DatabaseConnection)
 
         # Verify class was loaded successfully
-        assert (
-            connection_class is not None
-        ), f"Failed to load connection class for {service_name}"
+        assert connection_class is not None, f"Failed to load connection class for {service_name}"
 
         # Verify class name is correct
         expected_class_name = f"{service_name}Connection"
         assert connection_class.__name__ == expected_class_name, (
-            f"Expected class name '{expected_class_name}', "
-            f"got '{connection_class.__name__}'"
+            f"Expected class name '{expected_class_name}', got '{connection_class.__name__}'"
         )
 
         # Verify module uses all-lowercase naming
         expected_module = f"{service_name.lower()}Connection"
         assert connection_class.__module__.endswith(expected_module), (
-            f"Expected module to end with '{expected_module}', "
-            f"got '{connection_class.__module__}'"
+            f"Expected module to end with '{expected_module}', got '{connection_class.__module__}'"
         )
 
     @pytest.mark.parametrize("service_name", CAMELCASE_SERVICES)
@@ -185,29 +182,25 @@ class TestConnectionFallbackMechanism:
         connection_class = get_connection_class(service_name, DatabaseConnection)
 
         # Verify class was loaded successfully
-        assert (
-            connection_class is not None
-        ), f"Failed to load connection class for {service_name}"
+        assert connection_class is not None, f"Failed to load connection class for {service_name}"
 
         # Verify class name is correct
         expected_class_name = f"{service_name}Connection"
         assert connection_class.__name__ == expected_class_name, (
-            f"Expected class name '{expected_class_name}', "
-            f"got '{connection_class.__name__}'"
+            f"Expected class name '{expected_class_name}', got '{connection_class.__name__}'"
         )
 
         # Verify module uses camelCase naming (not all-lowercase)
         expected_module = f"{service_name[0].lower()}{service_name[1:]}Connection"
         assert connection_class.__module__.endswith(expected_module), (
-            f"Expected module to end with '{expected_module}', "
-            f"got '{connection_class.__module__}'"
+            f"Expected module to end with '{expected_module}', got '{connection_class.__module__}'"
         )
 
         # Verify it's NOT using all-lowercase (that would be wrong)
         wrong_module = f"{service_name.lower()}Connection"
-        assert not connection_class.__module__.endswith(
-            wrong_module
-        ), f"Module should use camelCase, not all-lowercase '{wrong_module}'"
+        assert not connection_class.__module__.endswith(wrong_module), (
+            f"Module should use camelCase, not all-lowercase '{wrong_module}'"
+        )
 
     @pytest.mark.parametrize("service_name", SIMPLE_SERVICES)
     def test_simple_name_services(self, service_name):
@@ -220,9 +213,7 @@ class TestConnectionFallbackMechanism:
         connection_class = get_connection_class(service_name, DatabaseConnection)
 
         # Verify class was loaded successfully
-        assert (
-            connection_class is not None
-        ), f"Failed to load connection class for {service_name}"
+        assert connection_class is not None, f"Failed to load connection class for {service_name}"
 
         # Verify class name is correct
         expected_class_name = f"{service_name}Connection"
@@ -250,9 +241,7 @@ class TestConnectionFallbackMechanism:
                 continue
 
             try:
-                connection_class = get_connection_class(
-                    service_name, DatabaseConnection
-                )
+                connection_class = get_connection_class(service_name, DatabaseConnection)
 
                 # Verify basic properties
                 assert connection_class is not None
@@ -273,9 +262,7 @@ class TestConnectionFallbackMechanism:
         total_services = len(list(DatabaseServiceType)) - len(excluded_services)
 
         if failed_services:
-            failure_details = "\n".join(
-                f"  - {name}: {error}" for name, error in failed_services
-            )
+            failure_details = "\n".join(f"  - {name}: {error}" for name, error in failed_services)
             pytest.fail(
                 f"❌ Failed to import {len(failed_services)} out of {total_services} services:\n"
                 f"{failure_details}\n\n"
@@ -315,9 +302,9 @@ class TestConnectionFallbackMechanism:
         assert "sasConnection" in connection_class.__module__
 
         # Verify it has expected Pydantic model attributes
-        assert hasattr(connection_class, "model_fields") or hasattr(
-            connection_class, "__fields__"
-        ), "Connection class should be a Pydantic model"
+        assert hasattr(connection_class, "model_fields") or hasattr(connection_class, "__fields__"), (
+            "Connection class should be a Pydantic model"
+        )
 
     def test_fallback_mechanism_performance(self):
         """
@@ -348,9 +335,7 @@ class TestConnectionFallbackMechanism:
 
         # Fallback has negligible overhead in absolute terms (extra import attempt adds ~1ms)
         # Use absolute threshold rather than relative to avoid CI timing sensitivity
-        assert (
-            fallback_time < 0.1
-        ), f"Fallback path ({fallback_time:.4f}s) should be fast in absolute terms"
+        assert fallback_time < 0.1, f"Fallback path ({fallback_time:.4f}s) should be fast in absolute terms"
 
     def test_edge_case_numeric_service_name(self):
         """

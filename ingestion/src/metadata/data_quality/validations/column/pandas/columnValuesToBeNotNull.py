@@ -113,27 +113,19 @@ class ColumnValuesToBeNotNullValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    dimension_aggregates[dimension_value][
-                        Metrics.nullCount.name
-                    ] = null_count_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.nullCount.name] = null_count_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.nullCount.name],
                         group_df,
                     )
-                    dimension_aggregates[dimension_value][
-                        Metrics.rowCount.name
-                    ] = row_count_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.rowCount.name] = row_count_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.rowCount.name],
                         group_df,
                     )
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                null_count = null_count_impl.aggregate_accumulator(
-                    agg[Metrics.nullCount.name]
-                )
-                row_count = row_count_impl.aggregate_accumulator(
-                    agg[Metrics.rowCount.name]
-                )
+                null_count = null_count_impl.aggregate_accumulator(agg[Metrics.nullCount.name])
+                row_count = row_count_impl.aggregate_accumulator(agg[Metrics.rowCount.name])
 
                 results_data.append(
                     {

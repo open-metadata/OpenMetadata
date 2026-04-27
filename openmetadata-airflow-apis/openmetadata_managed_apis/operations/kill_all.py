@@ -11,6 +11,7 @@
 """
 Module containing the logic to kill all DAG not finished executions
 """
+
 from typing import List
 
 from airflow import settings
@@ -45,15 +46,11 @@ def kill_all(dag_id: str) -> Response:
 
         instances: List[TaskInstance] = session.query(TaskInstance).filter(
             TaskInstance.dag_id == dag_id,
-            TaskInstance.state.notin_(
-                (TaskInstanceState.SUCCESS, TaskInstanceState.FAILED)
-            ),
+            TaskInstance.state.notin_((TaskInstanceState.SUCCESS, TaskInstanceState.FAILED)),
         )
 
         if not runs or not instances:
-            return ApiResponse.not_found(
-                f"Workflow [{dag_id}] has no running or pending runs nor tasks"
-            )
+            return ApiResponse.not_found(f"Workflow [{dag_id}] has no running or pending runs nor tasks")
 
         for dag_run in runs:
             dag_run.set_state(DagRunState.FAILED)
