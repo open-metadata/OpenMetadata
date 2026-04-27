@@ -12,6 +12,7 @@
 """
 Source connection helper
 """
+
 import re
 import traceback
 from copy import deepcopy
@@ -59,9 +60,7 @@ class InspectorWrapper(BaseModel):
     inspector: Any
 
 
-def get_inspector_details(
-    database_name: str, service_connection: BigQueryConnection
-) -> InspectorWrapper:
+def get_inspector_details(database_name: str, service_connection: BigQueryConnection) -> InspectorWrapper:
     """
     Method to get the bigquery inspector details
     """
@@ -74,32 +73,22 @@ def get_inspector_details(
         kwargs["location"] = new_service_connection.usageLocation
 
     if isinstance(new_service_connection.credentials.gcpConfig, GcpCredentialsValues):
-        new_service_connection.credentials.gcpConfig.projectId = SingleProjectId(
-            database_name
-        )
+        new_service_connection.credentials.gcpConfig.projectId = SingleProjectId(database_name)
         if new_service_connection.credentials.gcpImpersonateServiceAccount:
-            kwargs[
-                "impersonate_service_account"
-            ] = (
+            kwargs["impersonate_service_account"] = (
                 new_service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
             )
 
-            kwargs[
-                "lifetime"
-            ] = new_service_connection.credentials.gcpImpersonateServiceAccount.lifetime
+            kwargs["lifetime"] = new_service_connection.credentials.gcpImpersonateServiceAccount.lifetime
 
-    client = get_bigquery_client(
-        project_id=new_service_connection.billingProjectId or database_name, **kwargs
-    )
+    client = get_bigquery_client(project_id=new_service_connection.billingProjectId or database_name, **kwargs)
     engine = get_connection(new_service_connection)
     inspector = inspect(engine)
 
     return InspectorWrapper(client=client, engine=engine, inspector=inspector)
 
 
-def get_pk_constraint(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_pk_constraint(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     """
     This function overrides to get primary key constraint
     """
@@ -109,13 +98,7 @@ def get_pk_constraint(
 
         if cache_key not in CONSTRAINT_CACHE:
             with connection.engine.connect() as conn:
-                constraints = conn.execute(
-                    text(
-                        BIGQUERY_CONSTRAINTS.format(
-                            project_id=project, dataset_name=schema
-                        )
-                    )
-                )
+                constraints = conn.execute(text(BIGQUERY_CONSTRAINTS.format(project_id=project, dataset_name=schema)))
                 CONSTRAINT_CACHE[cache_key] = constraints.fetchall()
 
         col_names = [
@@ -126,15 +109,11 @@ def get_pk_constraint(
         return {"constrained_columns": tuple(col_names)}
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(
-            f"Error while fetching primary key constraint error for table [{schema}.{table_name}]: {exc}"
-        )
+        logger.warning(f"Error while fetching primary key constraint error for table [{schema}.{table_name}]: {exc}")
         return {"constrained_columns": []}
 
 
-def get_foreign_keys(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_foreign_keys(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     """
     This function overrides to get foreign key constraint
     """
@@ -144,13 +123,7 @@ def get_foreign_keys(
 
         if cache_key not in CONSTRAINT_CACHE:
             with connection.engine.connect() as conn:
-                constraints = conn.execute(
-                    text(
-                        BIGQUERY_CONSTRAINTS.format(
-                            project_id=project, dataset_name=schema
-                        )
-                    )
-                )
+                constraints = conn.execute(text(BIGQUERY_CONSTRAINTS.format(project_id=project, dataset_name=schema)))
                 CONSTRAINT_CACHE[cache_key] = constraints.fetchall()
 
         fk_list = []
@@ -168,9 +141,7 @@ def get_foreign_keys(
         return fk_list
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(
-            f"Error while fetching foreign key constraint error for table [{schema}.{table_name}]: {exc}"
-        )
+        logger.warning(f"Error while fetching foreign key constraint error for table [{schema}.{table_name}]: {exc}")
         return []
 
 

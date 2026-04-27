@@ -12,6 +12,7 @@
 """
 Handle column logic when reading data from DataLake
 """
+
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 
 
@@ -20,9 +21,7 @@ def _get_root_col(col_name: str) -> str:
 
 
 def clean_dataframe(df):
-    all_complex_root_columns = set(
-        _get_root_col(col) for col in df if COMPLEX_COLUMN_SEPARATOR in col
-    )
+    all_complex_root_columns = set(_get_root_col(col) for col in df if COMPLEX_COLUMN_SEPARATOR in col)
     for complex_col in all_complex_root_columns:
         if complex_col in df.columns:
             df = df.drop(complex_col, axis=1)

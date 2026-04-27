@@ -20,6 +20,7 @@ Note: The parquet reader uses s3fs (aiobotocore) which is incompatible
 with moto in this environment. Parquet credential flow is covered by
 unit tests in test_parquet_reader.py with mocked s3fs.
 """
+
 import io
 
 import boto3

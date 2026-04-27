@@ -11,6 +11,7 @@
 """
 Sample Usage source ingestion
 """
+
 import csv
 import json
 from datetime import datetime
@@ -49,9 +50,7 @@ class SampleUsageSource(UsageSource):
         super().__init__(config, metadata, False)
         self.analysis_date = DateTime(datetime.now())
 
-        sample_data_folder = self.service_connection.connectionOptions.root.get(
-            "sampleDataFolder"
-        )
+        sample_data_folder = self.service_connection.connectionOptions.root.get("sampleDataFolder")
         if not sample_data_folder:
             raise ValueError("Cannot get sampleDataFolder from connection options")
 
@@ -65,21 +64,15 @@ class SampleUsageSource(UsageSource):
         self.query_log_csv = sample_data_folder + "/datasets/query_log"
         with open(self.query_log_csv, "r", encoding="utf-8") as fin:
             self.query_logs = [dict(i) for i in csv.DictReader(fin)]
-        self.service = self.metadata.get_service_or_create(
-            entity=DatabaseService, config=config
-        )
+        self.service = self.metadata.get_service_or_create(entity=DatabaseService, config=config)
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: CustomDatabaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, CustomDatabaseConnection):
-            raise InvalidSourceException(
-                f"Expected CustomDatabaseConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected CustomDatabaseConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_table_query(self) -> Optional[Iterable[Dict[str, str]]]:

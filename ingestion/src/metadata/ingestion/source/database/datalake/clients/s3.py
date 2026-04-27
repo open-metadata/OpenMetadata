@@ -12,6 +12,7 @@
 """
 Datalake S3 Client
 """
+
 from functools import partial
 from typing import Callable, Iterable, Optional, Set, Tuple
 
@@ -86,9 +87,7 @@ class DatalakeS3Client(DatalakeBaseClient):
                     continue
             yield key["Key"], key.get("Size")
 
-    def get_folders_prefix(
-        self, bucket_name: str, prefix: Optional[str]
-    ) -> Iterable[str]:
+    def get_folders_prefix(self, bucket_name: str, prefix: Optional[str]) -> Iterable[str]:
         for page in self._client.get_paginator("list_objects_v2").paginate(
             Bucket=bucket_name, Prefix=prefix or "", Delimiter="/"
         ):

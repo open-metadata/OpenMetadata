@@ -11,6 +11,7 @@
 """
 Test dbt cloud using the topology
 """
+
 import json
 from unittest import TestCase
 from unittest.mock import patch
@@ -249,9 +250,7 @@ MOCK_PIPELINE = Pipeline(
             tags=[],
         ),
     ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"),
     scheduleInterval="6 */12 * * 0,1,2,3,4,5,6",
 )
 
@@ -263,9 +262,7 @@ class GluePipelineUnitTest(TestCase):
     DBTCloud unit tests
     """
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
@@ -276,15 +273,10 @@ class GluePipelineUnitTest(TestCase):
             config.workflowConfig.openMetadataServerConfig,
         )
         self.gluepipeline.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        self.gluepipeline.context.get().__dict__[
-            "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.root
+        self.gluepipeline.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
 
     def test_pipeline_name(self):
-        assert (
-            self.gluepipeline.get_pipeline_name(EXPECTED_JOB_DETAILS)
-            == EXPECTED_PIPELINE_NAME
-        )
+        assert self.gluepipeline.get_pipeline_name(EXPECTED_JOB_DETAILS) == EXPECTED_PIPELINE_NAME
 
     def test_pipelines(self):
         pipeline = list(self.gluepipeline.yield_pipeline(EXPECTED_JOB_DETAILS))[0].right
@@ -311,13 +303,8 @@ class GluePipelineUnitTest(TestCase):
         )
 
         # First call should be with the trailing slash stripped
-        first_call_path = mock_metadata.es_search_container_by_path.call_args_list[0][
-            1
-        ]["full_path"]
-        assert (
-            first_call_path
-            == "s3://collate-glue-connector-test/glue-sample-data/parquet"
-        )
+        first_call_path = mock_metadata.es_search_container_by_path.call_args_list[0][1]["full_path"]
+        assert first_call_path == "s3://collate-glue-connector-test/glue-sample-data/parquet"
         assert len(lineage_details["sources"]) == 1
         assert lineage_details["sources"][0].type == "container"
 
@@ -400,9 +387,7 @@ class GluePipelineUnitTest(TestCase):
 
         lineage_details = {"sources": [], "targets": []}
         catalog_ref = CatalogRef(database="my_database", table="my_table")
-        self.gluepipeline._resolve_catalog_entities(
-            [catalog_ref], lineage_details, "sources"
-        )
+        self.gluepipeline._resolve_catalog_entities([catalog_ref], lineage_details, "sources")
 
         assert len(lineage_details["sources"]) == 1
         assert lineage_details["sources"][0].name == "my_table"

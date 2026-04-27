@@ -67,15 +67,11 @@ class DomodashboardSource(DashboardServiceSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: DomoDashboardConnection = config.serviceConnection.root.config
         if not isinstance(connection, DomoDashboardConnection):
-            raise InvalidSourceException(
-                f"Expected DomoDashboardConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected DomoDashboardConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_dashboards_list(self) -> Optional[List[DomoDashboardDetails]]:
@@ -103,9 +99,7 @@ class DomodashboardSource(DashboardServiceSource):
     def get_dashboard_details(self, dashboard: DomoDashboardDetails) -> dict:
         return dashboard
 
-    def get_owner_ref(
-        self, dashboard_details: DomoDashboardDetails
-    ) -> Optional[EntityReferenceList]:
+    def get_owner_ref(self, dashboard_details: DomoDashboardDetails) -> Optional[EntityReferenceList]:
         try:
             if not self.source_config.includeOwners:
                 return None
@@ -113,35 +107,23 @@ class DomodashboardSource(DashboardServiceSource):
                 try:
                     owner_details = self.client.domo.users_get(owner.id)
                     if owner_details.get("email"):
-                        return self.metadata.get_reference_by_email(
-                            owner_details["email"]
-                        )
+                        return self.metadata.get_reference_by_email(owner_details["email"])
                 except Exception as exc:
-                    logger.warning(
-                        f"Error while getting details of user {owner.displayName} - {exc}"
-                    )
+                    logger.warning(f"Error while getting details of user {owner.displayName} - {exc}")
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
-    def yield_dashboard(
-        self, dashboard_details: DomoDashboardDetails
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def yield_dashboard(self, dashboard_details: DomoDashboardDetails) -> Iterable[Either[CreateDashboardRequest]]:
         try:
-            dashboard_url = (
-                f"{self.service_connection.instanceDomain}page/{dashboard_details.id}"
-            )
+            dashboard_url = f"{self.service_connection.instanceDomain}page/{dashboard_details.id}"
 
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.id),
                 sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.name,
-                description=(
-                    Markdown(dashboard_details.description)
-                    if dashboard_details.description
-                    else None
-                ),
+                description=(Markdown(dashboard_details.description) if dashboard_details.description else None),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -186,9 +168,7 @@ class DomodashboardSource(DashboardServiceSource):
     def get_owners(self, owners: List[dict]) -> List[DomoOwner]:
         domo_owner = []
         for owner in owners:
-            domo_owner.append(
-                DomoOwner(id=str(owner["id"]), displayName=owner["displayName"])
-            )
+            domo_owner.append(DomoOwner(id=str(owner["id"]), displayName=owner["displayName"]))
 
         return domo_owner
 
@@ -204,9 +184,7 @@ class DomodashboardSource(DashboardServiceSource):
                 owners=self.get_owners(pages.get("owners", [])),
             )
         except Exception as exc:
-            logger.warning(
-                f"Error while getting details from collection page {page_id} - {exc}"
-            )
+            logger.warning(f"Error while getting details from collection page {page_id} - {exc}")
             logger.debug(traceback.format_exc())
             return None
 
@@ -218,9 +196,7 @@ class DomodashboardSource(DashboardServiceSource):
                 chart_ids.append(chart)
         return chart_ids
 
-    def yield_dashboard_chart(
-        self, dashboard_details: DomoDashboardDetails
-    ) -> Iterable[Either[CreateChartRequest]]:
+    def yield_dashboard_chart(self, dashboard_details: DomoDashboardDetails) -> Iterable[Either[CreateChartRequest]]:
         chart_ids = dashboard_details.cardIds
         chart_id_from_collection = self.get_chart_ids(dashboard_details.collectionIds)
         chart_ids.extend(chart_id_from_collection)
@@ -229,8 +205,7 @@ class DomodashboardSource(DashboardServiceSource):
             try:
                 chart = self.client.custom.get_chart_details(page_id=chart_id)
                 chart_url = (
-                    f"{self.service_connection.instanceDomain}page/"
-                    f"{dashboard_details.id}/kpis/details/{chart_id}"
+                    f"{self.service_connection.instanceDomain}page/{dashboard_details.id}/kpis/details/{chart_id}"
                 )
 
                 if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
@@ -239,9 +214,7 @@ class DomodashboardSource(DashboardServiceSource):
                 if chart.name:
                     chart_request = CreateChartRequest(
                         name=EntityName(str(chart_id)),
-                        description=(
-                            Markdown(chart.description) if chart.description else None
-                        ),
+                        description=(Markdown(chart.description) if chart.description else None),
                         displayName=chart.name,
                         sourceUrl=SourceUrl(chart_url),
                         service=self.context.get().dashboard_service,

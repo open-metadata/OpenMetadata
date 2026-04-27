@@ -38,9 +38,7 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 logger = test_suite_logger()
 
 
-class ColumnValueMaxToBeBetweenValidator(
-    BaseColumnValueMaxToBeBetweenValidator, PandasValidatorMixin
-):
+class ColumnValueMaxToBeBetweenValidator(BaseColumnValueMaxToBeBetweenValidator, PandasValidatorMixin):
     """Validator for column value max to be between test case"""
 
     def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
@@ -102,16 +100,12 @@ class ColumnValueMaxToBeBetweenValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    dimension_aggregates[dimension_value][
-                        Metrics.max.name
-                    ] = max_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.max.name] = max_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.max.name],
                         group_df,
                     )
 
-                    dimension_aggregates[dimension_value][
-                        DIMENSION_TOTAL_COUNT_KEY
-                    ] += len(group_df)
+                    dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY] += len(group_df)
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
@@ -126,11 +120,7 @@ class ColumnValueMaxToBeBetweenValidator(
                     )
                     continue
 
-                failed_count = (
-                    total_rows
-                    if checker.violates_pandas({Metrics.max.name: max_value})
-                    else 0
-                )
+                failed_count = total_rows if checker.violates_pandas({Metrics.max.name: max_value}) else 0
 
                 results_data.append(
                     {

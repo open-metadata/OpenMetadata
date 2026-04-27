@@ -35,9 +35,7 @@ def _parse_array_children(
     already_parsed: Optional[dict] = None,
 ) -> Tuple[str, Optional[Union[FieldModel, Column]]]:
     if isinstance(arr_item, ArraySchema):
-        display_type, children = _parse_array_children(
-            arr_item.items, cls=cls, already_parsed=already_parsed
-        )
+        display_type, children = _parse_array_children(arr_item.items, cls=cls, already_parsed=already_parsed)
         return f"ARRAY<{display_type}>", children
 
     if isinstance(arr_item, UnionSchema):
@@ -99,9 +97,7 @@ def parse_array_fields(
         description=field.doc,
     )
 
-    display, children = _parse_array_children(
-        arr_item=field.type.items, cls=cls, already_parsed=already_parsed
-    )
+    display, children = _parse_array_children(arr_item=field.type.items, cls=cls, already_parsed=already_parsed)
 
     obj.dataTypeDisplay = f"ARRAY<{display}>"
     if cls == Column:
@@ -119,19 +115,13 @@ def _parse_union_children(
     cls: Type[BaseModel] = FieldModel,
     already_parsed: Optional[dict] = None,
 ) -> Tuple[str, Optional[Union[FieldModel, Column]]]:
-    non_null_schema = [
-        (i, schema)
-        for i, schema in enumerate(union_field.schemas)
-        if schema.type != "null"
-    ]
+    non_null_schema = [(i, schema) for i, schema in enumerate(union_field.schemas) if schema.type != "null"]
     sub_type = ",".join(str(schema.type) for schema in union_field.schemas)
     if len(union_field.schemas) == 2 and len(non_null_schema) == 1:
         field = non_null_schema[0][1]
 
         if isinstance(field, ArraySchema):
-            display, children = _parse_array_children(
-                arr_item=field.items, cls=cls, already_parsed=already_parsed
-            )
+            display, children = _parse_array_children(arr_item=field.items, cls=cls, already_parsed=already_parsed)
             sub_type = [None, None]
             sub_type[non_null_schema[0][0]] = f"ARRAY<{display}>"
             sub_type[non_null_schema[0][0] ^ 1] = "null"
@@ -142,9 +132,7 @@ def _parse_union_children(
             children = cls(
                 name=field.name,
                 dataType=str(field.type).upper(),
-                children=None
-                if field == parent
-                else get_avro_fields(field, cls, already_parsed),
+                children=None if field == parent else get_avro_fields(field, cls, already_parsed),
                 description=field.doc,
             )
             return sub_type, children
@@ -228,9 +216,7 @@ def parse_union_fields(
     return obj
 
 
-def parse_single_field(
-    field: Schema, cls: Type[BaseModel] = FieldModel
-) -> Optional[List[Union[FieldModel, Column]]]:
+def parse_single_field(field: Schema, cls: Type[BaseModel] = FieldModel) -> Optional[List[Union[FieldModel, Column]]]:
     """
     Parse primitive field for avro schema
     """
@@ -243,9 +229,7 @@ def parse_single_field(
     return obj
 
 
-def parse_avro_schema(
-    schema: str, cls: Type[BaseModel] = FieldModel
-) -> Optional[List[Union[FieldModel, Column]]]:
+def parse_avro_schema(schema: str, cls: Type[BaseModel] = FieldModel) -> Optional[List[Union[FieldModel, Column]]]:
     """
     Method to parse the avro schema
     """
@@ -285,9 +269,7 @@ def get_avro_fields(
     for field in parsed_schema.fields:
         try:
             if isinstance(field.type, ArraySchema):
-                field_models.append(
-                    parse_array_fields(field, cls=cls, already_parsed=already_parsed)
-                )
+                field_models.append(parse_array_fields(field, cls=cls, already_parsed=already_parsed))
             elif isinstance(field.type, UnionSchema):
                 field_models.append(
                     parse_union_fields(
@@ -298,9 +280,7 @@ def get_avro_fields(
                     )
                 )
             elif isinstance(field.type, RecordSchema):
-                field_models.append(
-                    parse_record_fields(field, cls=cls, already_parsed=already_parsed)
-                )
+                field_models.append(parse_record_fields(field, cls=cls, already_parsed=already_parsed))
             else:
                 field_models.append(parse_single_field(field, cls=cls))
         except Exception as exc:  # pylint: disable=broad-except

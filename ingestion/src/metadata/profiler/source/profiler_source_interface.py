@@ -52,6 +52,4 @@ class ProfilerSourceInterface(ABC):
         config: DatabaseServiceProfilerPipeline,
     ) -> ProcessingEngine:
         """Get the processing engine based on the configuration."""
-        return config.processingEngine or ProcessingEngine(
-            root=NativeEngineConfiguration(type=Type.Native)
-        )
+        return config.processingEngine or ProcessingEngine(root=NativeEngineConfiguration(type=Type.Native))

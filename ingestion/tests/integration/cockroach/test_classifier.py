@@ -16,9 +16,7 @@ logger = getLogger(__name__)
 
 
 @pytest.fixture(scope="module")
-def sampling_only_classifier_config(
-    db_service, sink_config, workflow_config, classifier_config
-):
+def sampling_only_classifier_config(db_service, sink_config, workflow_config, classifier_config):
     config = deepcopy(classifier_config)
     config["source"]["sourceConfig"]["config"]["enableAutoClassification"] = False
     return config
@@ -84,9 +82,7 @@ def test_auto_classification_workflow(
     table_name: str,
     db_service: DatabaseServiceAutoClassificationPipeline,
 ):
-    table = metadata.get_by_name(
-        Table, table_name.format(database_service=db_service.fullyQualifiedName.root)
-    )
+    table = metadata.get_by_name(Table, table_name.format(database_service=db_service.fullyQualifiedName.root))
     assert metadata.get_sample_data(table) is not None
 
 
@@ -98,9 +94,7 @@ def test_bytes_column_sample_data(
 ):
     table = metadata.get_by_name(
         Table,
-        "{database_service}.roach.public.kv".format(
-            database_service=db_service.fullyQualifiedName.root
-        ),
+        "{database_service}.roach.public.kv".format(database_service=db_service.fullyQualifiedName.root),
     )
     assert table is not None
     sample_data = metadata.get_sample_data(table)

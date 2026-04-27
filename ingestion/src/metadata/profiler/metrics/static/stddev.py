@@ -84,8 +84,7 @@ def _(element, compiler, **kw):
     # Check if the first clause is an instance of LenFn and its type is not in FLOAT_SET
     # or if the type of the first clause is date time
     if (
-        isinstance(first_clause, LenFn)
-        and type(first_clause.clauses.clauses[0].type) not in FLOAT_SET
+        isinstance(first_clause, LenFn) and type(first_clause.clauses.clauses[0].type) not in FLOAT_SET
     ) or is_date_time(first_clause.type):
         # If the condition is true, return the stddev value of the column
         return f"STDDEV_POP({proc})"
@@ -158,9 +157,7 @@ class StdDev(StaticMetric):
                 )
                 return None
             except Exception as err:
-                logger.debug(
-                    f"Error while computing 'Standard Deviation' for column {self.col.name}: {err}"
-                )
+                logger.debug(f"Error while computing 'Standard Deviation' for column {self.col.name}: {err}")
                 return None
         return computation.aggregate_accumulator(accumulator)
 
@@ -172,16 +169,12 @@ class StdDev(StaticMetric):
         """
         return PandasComputation[SumSumSquaresCount, Optional[float]](
             create_accumulator=lambda: SumSumSquaresCount(0.0, 0.0, 0),
-            update_accumulator=lambda acc, df: StdDev.update_accumulator(
-                acc, df, self.col
-            ),
+            update_accumulator=lambda acc, df: StdDev.update_accumulator(acc, df, self.col),
             aggregate_accumulator=StdDev.aggregate_accumulator,
         )
 
     @staticmethod
-    def update_accumulator(
-        sum_sum_squares_count: SumSumSquaresCount, df: "pd.DataFrame", column
-    ) -> SumSumSquaresCount:
+    def update_accumulator(sum_sum_squares_count: SumSumSquaresCount, df: "pd.DataFrame", column) -> SumSumSquaresCount:
         """Optimized accumulator: maintains running sum, sum of squares, and count
 
         Instead of concatenating dataframes, directly accumulates the necessary
@@ -226,8 +219,7 @@ class StdDev(StaticMetric):
 
         return SumSumSquaresCount(
             sum_value=sum_sum_squares_count.sum_value + chunk_sum,
-            sum_squares_value=sum_sum_squares_count.sum_squares_value
-            + chunk_sum_squares,
+            sum_squares_value=sum_sum_squares_count.sum_squares_value + chunk_sum_squares,
             count_value=sum_sum_squares_count.count_value + chunk_count,
         )
 
@@ -251,9 +243,7 @@ class StdDev(StaticMetric):
             return None
 
         mean = sum_sum_squares_count.sum_value / sum_sum_squares_count.count_value
-        mean_of_squares = (
-            sum_sum_squares_count.sum_squares_value / sum_sum_squares_count.count_value
-        )
+        mean_of_squares = sum_sum_squares_count.sum_squares_value / sum_sum_squares_count.count_value
 
         variance = mean_of_squares - (mean**2)
 
@@ -262,9 +252,7 @@ class StdDev(StaticMetric):
             if abs(variance) < 1e-10:  # Close to zero due to floating point
                 variance = 0
             else:
-                logger.warning(
-                    f"Negative variance ({variance}) encountered, returning None"
-                )
+                logger.warning(f"Negative variance ({variance}) encountered, returning None")
                 return None
 
         return math.sqrt(variance)

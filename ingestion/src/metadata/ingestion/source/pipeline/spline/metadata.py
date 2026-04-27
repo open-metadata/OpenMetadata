@@ -11,6 +11,7 @@
 """
 Spline source to extract metadata
 """
+
 import traceback
 from typing import Iterable, Optional
 
@@ -56,20 +57,14 @@ class SplineSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SplineConnection = config.serviceConnection.root.config
         if not isinstance(connection, SplineConnection):
-            raise InvalidSourceException(
-                f"Expected SplineConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected SplineConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_connections_jobs(
-        self, pipeline_details: ExecutionEvent, connection_url: str
-    ):
+    def get_connections_jobs(self, pipeline_details: ExecutionEvent, connection_url: str):
         """
         Returns the list of tasks linked to connection
         """
@@ -81,9 +76,7 @@ class SplineSource(PipelineServiceSource):
             )
         ]
 
-    def yield_pipeline(
-        self, pipeline_details: ExecutionEvent
-    ) -> Iterable[Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details: ExecutionEvent) -> Iterable[Either[CreatePipelineRequest]]:
         """
         Convert a Connection into a Pipeline Entity
         :param pipeline_details: pipeline_details object from airbyte
@@ -105,14 +98,10 @@ class SplineSource(PipelineServiceSource):
         yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
 
-    def yield_pipeline_status(
-        self, pipeline_details: ExecutionEvent
-    ) -> Iterable[Either[OMetaPipelineStatus]]:
+    def yield_pipeline_status(self, pipeline_details: ExecutionEvent) -> Iterable[Either[OMetaPipelineStatus]]:
         """pipeline status not supported for spline connector"""
 
-    def _get_table_entity(
-        self, database_name: str, schema_name: str, table_name: str
-    ) -> Optional[Table]:
+    def _get_table_entity(self, database_name: str, schema_name: str, table_name: str) -> Optional[Table]:
         if not table_name:
             return None
         for service_name in self.get_db_service_names():
@@ -125,19 +114,13 @@ class SplineSource(PipelineServiceSource):
                 database_name=database_name,
             )
             if table_fqn:
-                table_entity: Table = self.metadata.get_by_name(
-                    entity=Table, fqn=table_fqn
-                )
+                table_entity: Table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
                 if table_entity:
                     return table_entity
         return None
 
     def _get_table_from_datasource_name(self, datasource: str) -> Optional[Table]:
-        if (
-            not datasource
-            and not datasource.startswith("dbfs")
-            and not datasource.startswith("jdbc")
-        ):
+        if not datasource and not datasource.startswith("dbfs") and not datasource.startswith("jdbc"):
             return None
 
         try:
@@ -167,9 +150,7 @@ class SplineSource(PipelineServiceSource):
         """
         if not self.get_db_service_names():
             return
-        lineage_details = self.client.get_lineage_details(
-            pipeline_details.executionPlanId
-        )
+        lineage_details = self.client.get_lineage_details(pipeline_details.executionPlanId)
         if (
             lineage_details
             and lineage_details.executionPlan
@@ -187,39 +168,21 @@ class SplineSource(PipelineServiceSource):
                     target = edge.target
                     if target:
                         source_name = next(
-                            (
-                                node.name
-                                for node in col_lineage_details.lineage.nodes
-                                if node.id == source
-                            ),
+                            (node.name for node in col_lineage_details.lineage.nodes if node.id == source),
                             None,
                         )
                         target_name = next(
-                            (
-                                node.name
-                                for node in col_lineage_details.lineage.nodes
-                                if node.id == target
-                            ),
+                            (node.name for node in col_lineage_details.lineage.nodes if node.id == target),
                             None,
                         )
                         if target_name and source_name:
-                            target_to_sources_map.setdefault(target_name, []).append(
-                                source_name
-                            )
+                            target_to_sources_map.setdefault(target_name, []).append(source_name)
             from_entities = lineage_details.executionPlan.inputs
             to_entity = lineage_details.executionPlan.output
 
             for from_entity in from_entities:
-                from_table = (
-                    self._get_table_from_datasource_name(from_entity.source)
-                    if from_entity
-                    else None
-                )
-                to_table = (
-                    self._get_table_from_datasource_name(to_entity.source)
-                    if to_entity
-                    else None
-                )
+                from_table = self._get_table_from_datasource_name(from_entity.source) if from_entity else None
+                to_table = self._get_table_from_datasource_name(to_entity.source) if to_entity else None
                 if from_table and to_table:
                     pipeline_fqn = fqn.build(
                         metadata=self.metadata,
@@ -227,9 +190,7 @@ class SplineSource(PipelineServiceSource):
                         service_name=self.context.get().pipeline_service,
                         pipeline_name=self.context.get().pipeline,
                     )
-                    pipeline_entity = self.metadata.get_by_name(
-                        entity=Pipeline, fqn=pipeline_fqn
-                    )
+                    pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
                     yield Either(
                         right=AddLineageRequest(
                             edge=EntitiesEdge(
@@ -241,20 +202,15 @@ class SplineSource(PipelineServiceSource):
                                     columnsLineage=[
                                         ColumnLineage(
                                             fromColumns=[
-                                                get_column_fqn(from_table, src_col)
-                                                for src_col in source_columns
+                                                get_column_fqn(from_table, src_col) for src_col in source_columns
                                             ],
-                                            toColumn=get_column_fqn(
-                                                to_table, target_column
-                                            ),
+                                            toColumn=get_column_fqn(to_table, target_column),
                                         )
                                         for target_column, source_columns in target_to_sources_map.items()
                                     ],
                                     source=LineageSource.PipelineLineage,
                                 ),
-                                fromEntity=EntityReference(
-                                    id=from_table.id, type="table"
-                                ),
+                                fromEntity=EntityReference(id=from_table.id, type="table"),
                                 toEntity=EntityReference(id=to_table.id, type="table"),
                             ),
                         )

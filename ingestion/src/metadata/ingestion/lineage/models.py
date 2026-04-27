@@ -11,6 +11,7 @@
 """
 Models related to lineage parsing
 """
+
 from enum import Enum
 from typing import Dict, List, Optional
 

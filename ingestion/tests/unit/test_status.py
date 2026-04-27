@@ -11,6 +11,7 @@
 """
 Tests for metadata.ingestion.api.status.Status
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -80,9 +81,7 @@ class TestStatus(TestCase):
 
     def test_as_string_no_escaped_newlines(self):
         """Truncated output should not contain escaped newline characters."""
-        self.status.records = [
-            f"record_{i}" for i in range(MAX_STATUS_DISPLAY_ITEMS + 10)
-        ]
+        self.status.records = [f"record_{i}" for i in range(MAX_STATUS_DISPLAY_ITEMS + 10)]
 
         output = self.status.as_string()
         self.assertNotIn("\\n", output)
@@ -90,19 +89,14 @@ class TestStatus(TestCase):
     # ── failed / fail_all ────────────────────────────────────────────
 
     def test_failed_appends_to_failures(self):
-        error = StackTraceError(
-            name="test", error="something broke", stackTrace="traceback..."
-        )
+        error = StackTraceError(name="test", error="something broke", stackTrace="traceback...")
         self.status.failed(error)
 
         self.assertEqual(len(self.status.failures), 1)
         self.assertEqual(self.status.failures[0].error, "something broke")
 
     def test_fail_all_extends_failures(self):
-        errors = [
-            StackTraceError(name=f"e{i}", error=f"err_{i}", stackTrace="tb")
-            for i in range(3)
-        ]
+        errors = [StackTraceError(name=f"e{i}", error=f"err_{i}", stackTrace="tb") for i in range(3)]
         self.status.fail_all(errors)
 
         self.assertEqual(len(self.status.failures), 3)

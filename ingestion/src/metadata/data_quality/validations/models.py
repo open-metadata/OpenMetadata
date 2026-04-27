@@ -32,12 +32,8 @@ class TableParameter(BaseModel):
 class TableDiffRuntimeParameters(BaseModel):
     table1: TableParameter
     table2: TableParameter
-    keyColumns: Optional[List[str]] = Field(
-        ..., deprecated="Please use `tableX.key_columns` instead"
-    )
-    extraColumns: Optional[List[str]] = Field(
-        ..., deprecated="Please use `tableX.extra_columns` instead"
-    )
+    keyColumns: Optional[List[str]] = Field(..., deprecated="Please use `tableX.key_columns` instead")
+    extraColumns: Optional[List[str]] = Field(..., deprecated="Please use `tableX.extra_columns` instead")
     whereClause: Optional[str]
     table_profile_config: Optional[TableProfilerConfig]
 
