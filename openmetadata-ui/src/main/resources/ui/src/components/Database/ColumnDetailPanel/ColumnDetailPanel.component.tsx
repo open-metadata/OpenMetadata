@@ -25,7 +25,7 @@ import { isString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-icon.svg';
+import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
 import {
   DE_ACTIVE_COLOR,

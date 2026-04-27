@@ -122,7 +122,7 @@ jest.mock('../../../assets/svg/up-arrow-icon.svg', () => ({
   ReactComponent: () => <div data-testid="arrow-up-icon">ArrowUp</div>,
 }));
 
-jest.mock('../../../assets/svg/ic-column-icon.svg', () => ({
+jest.mock('../../../assets/svg/ic-column.svg', () => ({
   ReactComponent: () => <div data-testid="column-icon">ColumnIcon</div>,
 }));
 

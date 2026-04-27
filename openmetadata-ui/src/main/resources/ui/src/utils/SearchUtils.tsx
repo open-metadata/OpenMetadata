@@ -20,7 +20,7 @@ import { ReactComponent as IconChart } from '../assets/svg/chart.svg';
 import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as IconApiCollection } from '../assets/svg/ic-api-collection-default.svg';
 import { ReactComponent as IconApiEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
-import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column-icon.svg';
+import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as IconDatabase } from '../assets/svg/ic-database.svg';
 import { ReactComponent as IconDatabaseSchema } from '../assets/svg/ic-schema.svg';
