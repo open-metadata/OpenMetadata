@@ -47,19 +47,14 @@ def get_dag_status(all_tasks: List[str], task_status: List[TaskStatus]):
     """
 
     if len(all_tasks) < len(task_status):
-        raise ValueError(
-            "We have more status than children:"
-            + f"children {all_tasks} vs. status {task_status}"
-        )
+        raise ValueError("We have more status than children:" + f"children {all_tasks} vs. status {task_status}")
 
     # We are still processing tasks...
     if len(all_tasks) > len(task_status):
         return StatusType.Pending
 
     # Check for any failure if all tasks have been processed
-    if len(all_tasks) == len(task_status) and StatusType.Failed in {
-        task.executionStatus for task in task_status
-    }:
+    if len(all_tasks) == len(task_status) and StatusType.Failed in {task.executionStatus for task in task_status}:
         return StatusType.Failed
 
     return StatusType.Successful
@@ -95,11 +90,7 @@ def add_status(
     # We will append based on the current registered status
     if pipeline_status and pipeline_status.timestamp.root == execution_date:
         # If we are clearing a task, use the status of the new execution
-        task_status = [
-            task
-            for task in pipeline_status.taskStatus
-            if task.name != task_instance.task_id
-        ]
+        task_status = [task for task in pipeline_status.taskStatus if task.name != task_instance.task_id]
 
     # Prepare the new task status information based on the tasks already
     # visited and the current task
@@ -124,6 +115,4 @@ def add_status(
     )
 
     operator.log.info(f"Added status to DAG {updated_status}")
-    metadata.add_pipeline_status(
-        fqn=pipeline.fullyQualifiedName.root, status=updated_status
-    )
+    metadata.add_pipeline_status(fqn=pipeline.fullyQualifiedName.root, status=updated_status)

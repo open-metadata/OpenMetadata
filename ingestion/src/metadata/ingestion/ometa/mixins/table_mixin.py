@@ -13,6 +13,7 @@ Mixin class containing Table specific methods
 
 To be used by OpenMetadata class
 """
+
 import base64
 import datetime
 import decimal
@@ -167,9 +168,7 @@ class OMetaTableMixin:
 
     client: REST
 
-    def ingest_table_sample_data(
-        self, table: Table, sample_data: TableData
-    ) -> Optional[TableData]:
+    def ingest_table_sample_data(self, table: Table, sample_data: TableData) -> Optional[TableData]:
         """
         PUT sample data for a table
 
@@ -183,7 +182,6 @@ class OMetaTableMixin:
             # types, spatial objects, etc.) are converted to JSON-safe
             # primitives before model_dump_json() is called.
             if sample_data and sample_data.rows:
-
                 for row in sample_data.rows:
                     if not row:
                         continue
@@ -207,9 +205,7 @@ class OMetaTableMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to PUT sample data for {table.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Error trying to PUT sample data for {table.fullyQualifiedName.root}: {exc}")
 
         if resp:
             try:
@@ -221,9 +217,7 @@ class OMetaTableMixin:
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error trying to parse sample data results from {table.fullyQualifiedName.root}: {exc}"
-                )
+                logger.warning(f"Error trying to parse sample data results from {table.fullyQualifiedName.root}: {exc}")
 
         return None
 
@@ -240,9 +234,7 @@ class OMetaTableMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to GET sample data for {table.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Error trying to GET sample data for {table.fullyQualifiedName.root}: {exc}")
 
         if resp:
             try:
@@ -254,9 +246,7 @@ class OMetaTableMixin:
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error trying to parse sample data results from {table.fullyQualifiedName.root}: {exc}"
-                )
+                logger.warning(f"Error trying to parse sample data results from {table.fullyQualifiedName.root}: {exc}")
 
         return None
 
@@ -270,9 +260,7 @@ class OMetaTableMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to DELETE sample data for {table.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Error trying to DELETE sample data for {table.fullyQualifiedName.root}: {exc}")
 
     def add_pipeline_observability(
         self, table_id: Uuid, pipeline_observability: List[PipelineObservability]
@@ -286,16 +274,12 @@ class OMetaTableMixin:
         resp = None
         try:
             try:
-                data_list = [
-                    obs.model_dump(mode="json") for obs in pipeline_observability
-                ]
+                data_list = [obs.model_dump(mode="json") for obs in pipeline_observability]
                 # Convert list to JSON string for requests.put()
                 data = json.dumps(data_list)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error serializing pipeline observability data for table {table_id.root}: {exc}"
-                )
+                logger.warning(f"Error serializing pipeline observability data for table {table_id.root}: {exc}")
                 return None
 
             resp = self.client.put(
@@ -304,18 +288,14 @@ class OMetaTableMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to PUT pipeline observability data for table {table_id.root}: {exc}"
-            )
+            logger.warning(f"Error trying to PUT pipeline observability data for table {table_id.root}: {exc}")
 
         if resp:
             try:
                 return Table(**resp)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error trying to parse pipeline observability results for table {table_id.root}: {exc}"
-                )
+                logger.warning(f"Error trying to parse pipeline observability results for table {table_id.root}: {exc}")
 
         return None
 
@@ -330,10 +310,7 @@ class OMetaTableMixin:
         """
         resp = None
         try:
-            if (
-                pipeline_observability.pipeline
-                and pipeline_observability.pipeline.fullyQualifiedName
-            ):
+            if pipeline_observability.pipeline and pipeline_observability.pipeline.fullyQualifiedName:
                 pipeline_fqn = pipeline_observability.pipeline.fullyQualifiedName
 
                 try:
@@ -352,15 +329,11 @@ class OMetaTableMixin:
                     data=data,
                 )
             else:
-                logger.warning(
-                    f"Pipeline FQN missing in observability data for table {table_id.root}"
-                )
+                logger.warning(f"Pipeline FQN missing in observability data for table {table_id.root}")
                 return None
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to PUT single pipeline observability data for table {table_id.root}: {exc}"
-            )
+            logger.warning(f"Error trying to PUT single pipeline observability data for table {table_id.root}: {exc}")
 
         if resp:
             try:
@@ -373,9 +346,7 @@ class OMetaTableMixin:
 
         return None
 
-    def ingest_profile_data(
-        self, table: Table, profile_request: CreateTableProfileRequest
-    ) -> Table:
+    def ingest_profile_data(self, table: Table, profile_request: CreateTableProfileRequest) -> Table:
         """
         PUT profile data for a table
 
@@ -401,23 +372,17 @@ class OMetaTableMixin:
         )
         return Table(**resp)
 
-    def publish_table_usage(
-        self, table: Table, table_usage_request: UsageRequest
-    ) -> None:
+    def publish_table_usage(self, table: Table, table_usage_request: UsageRequest) -> None:
         """
         POST usage details for a Table
 
         :param table: Table Entity to update
         :param table_usage_request: Usage data to add
         """
-        resp = self.client.post(
-            f"/usage/table/{table.id.root}", data=table_usage_request.model_dump_json()
-        )
+        resp = self.client.post(f"/usage/table/{table.id.root}", data=table_usage_request.model_dump_json())
         logger.debug("published table usage %s", resp)
 
-    def publish_frequently_joined_with(
-        self, table: Table, table_join_request: TableJoins
-    ) -> None:
+    def publish_frequently_joined_with(self, table: Table, table_join_request: TableJoins) -> None:
         """
         POST frequently joined with for a table
 
@@ -516,18 +481,13 @@ class OMetaTableMixin:
                 raise ValueError(f"{fqn} is not a column fqn")
             data: List[T] = [ColumnProfile(**datum) for datum in resp["data"]]  # type: ignore
         else:
-            raise TypeError(
-                f"{profile_type} is not an accepeted type."
-                "Type must be `TableProfile` or `ColumnProfile`"
-            )
+            raise TypeError(f"{profile_type} is not an accepeted type.Type must be `TableProfile` or `ColumnProfile`")
         total = resp["paging"]["total"]
         after = resp["paging"]["after"] if "after" in resp["paging"] else None
 
         return EntityList(entities=data, total=total, after=after)
 
-    def get_latest_table_profile(
-        self, fqn: FullyQualifiedEntityName
-    ) -> Optional[Table]:
+    def get_latest_table_profile(self, fqn: FullyQualifiedEntityName) -> Optional[Table]:
         """Get the latest profile data for a table
 
         Args:
@@ -538,9 +498,7 @@ class OMetaTableMixin:
         """
         return self._get(Table, f"{quote(fqn)}/tableProfile/latest")
 
-    def create_or_update_custom_metric(
-        self, custom_metric: CreateCustomMetricRequest, table_id: str
-    ) -> Table:
+    def create_or_update_custom_metric(self, custom_metric: CreateCustomMetricRequest, table_id: str) -> Table:
         """Create or update custom metric. If custom metric name matches an existing
         one then it will be updated.
 
@@ -553,9 +511,7 @@ class OMetaTableMixin:
         )
         return Table(**resp)
 
-    def bulk_create_or_update_tables(
-        self, bulk_request: BulkCreateTable, use_async: bool = False
-    ):
+    def bulk_create_or_update_tables(self, bulk_request: BulkCreateTable, use_async: bool = False):
         """Bulk create or update multiple tables in a single API call.
 
         Args:
@@ -569,10 +525,7 @@ class OMetaTableMixin:
         # Backend endpoint expects List<CreateTable> directly, not wrapped in BulkCreateTable
         # Serialize the tables list to JSON
         tables_json = json.dumps(
-            [
-                table.model_dump(mode="json", by_alias=True, exclude_none=True)
-                for table in bulk_request.tables
-            ]
+            [table.model_dump(mode="json", by_alias=True, exclude_none=True) for table in bulk_request.tables]
         )
 
         # Build URL with async parameter if requested

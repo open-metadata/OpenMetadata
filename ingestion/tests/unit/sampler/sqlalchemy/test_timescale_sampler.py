@@ -19,6 +19,7 @@ Validates that ``_has_compressed_chunks`` correctly distinguishes between:
 - hypertables where all chunks are compressed
 - database errors during detection
 """
+
 from collections import namedtuple
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -37,9 +38,7 @@ from metadata.profiler.orm.registry import Dialects
 from metadata.sampler.sqlalchemy.timescale.sampler import TimescaleSampler
 
 TimeDimensionRow = namedtuple("TimeDimensionRow", ["column_name"])
-CompressionInfoRow = namedtuple(
-    "CompressionInfoRow", ["has_compressed", "uncompressed_boundary"]
-)
+CompressionInfoRow = namedtuple("CompressionInfoRow", ["has_compressed", "uncompressed_boundary"])
 
 
 class Base(DeclarativeBase):
@@ -194,34 +193,16 @@ class TestHasCompressedChunks:
 
 class TestResolveDialect:
     def test_timescale_connection_resolves_to_timescale(self):
-        ts_config = TimescaleConnectionConfig(
-            hostPort="localhost:5432", username="test", database="testdb"
-        )
-        assert (
-            TableMetricComputer._resolve_dialect(Dialects.Postgres, ts_config)
-            == "timescale"
-        )
+        ts_config = TimescaleConnectionConfig(hostPort="localhost:5432", username="test", database="testdb")
+        assert TableMetricComputer._resolve_dialect(Dialects.Postgres, ts_config) == "timescale"
 
     def test_postgres_connection_stays_postgres(self):
-        pg_config = PostgresConnectionConfig(
-            hostPort="localhost:5432", username="test", database="testdb"
-        )
-        assert (
-            TableMetricComputer._resolve_dialect(Dialects.Postgres, pg_config)
-            == Dialects.Postgres
-        )
+        pg_config = PostgresConnectionConfig(hostPort="localhost:5432", username="test", database="testdb")
+        assert TableMetricComputer._resolve_dialect(Dialects.Postgres, pg_config) == Dialects.Postgres
 
     def test_non_postgres_dialect_unchanged(self):
-        ts_config = TimescaleConnectionConfig(
-            hostPort="localhost:5432", username="test", database="testdb"
-        )
-        assert (
-            TableMetricComputer._resolve_dialect(Dialects.MySQL, ts_config)
-            == Dialects.MySQL
-        )
+        ts_config = TimescaleConnectionConfig(hostPort="localhost:5432", username="test", database="testdb")
+        assert TableMetricComputer._resolve_dialect(Dialects.MySQL, ts_config) == Dialects.MySQL
 
     def test_none_conn_config(self):
-        assert (
-            TableMetricComputer._resolve_dialect(Dialects.Postgres, None)
-            == Dialects.Postgres
-        )
+        assert TableMetricComputer._resolve_dialect(Dialects.Postgres, None) == Dialects.Postgres

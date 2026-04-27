@@ -35,14 +35,8 @@ def get_connection_url(connection: ExasolConnection) -> str:
 
     if connection.username:
         url += f"{quote_plus(connection.username)}"
-        connection.password = (
-            SecretStr("") if not connection.password else connection.password
-        )
-        url += (
-            f":{quote_plus(connection.password.get_secret_value())}"
-            if connection
-            else ""
-        )
+        connection.password = SecretStr("") if not connection.password else connection.password
+        url += f":{quote_plus(connection.password.get_secret_value())}" if connection else ""
         url += "@"
 
     url += connection.hostPort
@@ -61,9 +55,7 @@ def get_connection_url(connection: ExasolConnection) -> str:
             hasattr(connection, "databaseSchema") and not connection.databaseSchema
         ):
             url += "/"
-        params = "&".join(
-            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
-        )
+        params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
         url = f"{url}?{params}"
     return url
 

@@ -11,6 +11,7 @@
 """
 Module containing the logic to toggle DAG state between enabled/disabled
 """
+
 from airflow import settings
 from airflow.models import DagModel
 from flask import Response
@@ -28,9 +29,7 @@ def _update_dag_state(dag_id: str, paused: bool, message: str) -> Response:
     """
 
     with settings.Session() as session:
-        dag_model: DagModel = (
-            session.query(DagModel).filter(DagModel.dag_id == dag_id).first()
-        )
+        dag_model: DagModel = session.query(DagModel).filter(DagModel.dag_id == dag_id).first()
 
         if not dag_model:
             return ApiResponse.not_found(f"DAG {dag_id} not found.")
@@ -48,9 +47,7 @@ def enable_dag(dag_id: str) -> Response:
     :return: API Response
     """
 
-    return _update_dag_state(
-        dag_id=dag_id, paused=False, message=f"DAG {dag_id} has been enabled"
-    )
+    return _update_dag_state(dag_id=dag_id, paused=False, message=f"DAG {dag_id} has been enabled")
 
 
 def disable_dag(dag_id: str) -> Response:
@@ -60,6 +57,4 @@ def disable_dag(dag_id: str) -> Response:
     :return: API Response
     """
 
-    return _update_dag_state(
-        dag_id=dag_id, paused=True, message=f"DAG {dag_id} has been disabled"
-    )
+    return _update_dag_state(dag_id=dag_id, paused=True, message=f"DAG {dag_id} has been disabled")

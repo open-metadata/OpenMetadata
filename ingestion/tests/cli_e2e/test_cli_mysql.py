@@ -12,6 +12,7 @@
 """
 Test MySql connector with CLI
 """
+
 from typing import List
 
 from .common.test_cli_db import CliCommonDB

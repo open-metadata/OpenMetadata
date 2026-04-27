@@ -11,7 +11,8 @@
 """
 Trino source implementation.
 """
-import re
+
+import re  # noqa: I001
 import traceback
 from copy import deepcopy
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -95,9 +96,7 @@ def parse_row_data_type(type_str: str) -> str:
     final = type_name.replace(ROW_DATA_TYPE, "struct") + "<"
     if type_opts:
         for data_type in datatype.aware_split(type_opts) or []:
-            attr_name, attr_type_str = datatype.aware_split(
-                data_type.strip(), delimiter=" ", maxsplit=1
-            )
+            attr_name, attr_type_str = datatype.aware_split(data_type.strip(), delimiter=" ", maxsplit=1)
             if attr_type_str.startswith(ROW_DATA_TYPE):
                 final += attr_name + ":" + parse_row_data_type(attr_type_str) + ","
             elif attr_type_str.startswith(ARRAY_DATA_TYPE):
@@ -107,9 +106,7 @@ def parse_row_data_type(type_str: str) -> str:
     return final[:-1] + ">"
 
 
-def _get_columns(
-    self, connection: Connection, table_name: str, schema: str = None, **__
-) -> List[Dict[str, Any]]:
+def _get_columns(self, connection: Connection, table_name: str, schema: str = None, **__) -> List[Dict[str, Any]]:
     # pylint: disable=protected-access
     schema = schema or self._get_default_schema_name(connection)
     preparer = connection.dialect.identifier_preparer
@@ -155,9 +152,7 @@ def get_table_comment(  # pylint: disable=unused-argument
     )
     if schema_name is None:
         raise exc.NoSuchTableError("schema is required")
-    self.processed_schema = (
-        self.processed_schema if hasattr(self, "processed_schema") else set()
-    )
+    self.processed_schema = self.processed_schema if hasattr(self, "processed_schema") else set()
     try:
         if (
             not hasattr(self, "all_table_comments")
@@ -167,9 +162,7 @@ def get_table_comment(  # pylint: disable=unused-argument
             self.processed_schema.add(schema)
             self.get_all_table_comments(
                 connection,
-                TRINO_TABLE_COMMENTS.format(
-                    catalog_name=catalog_name, schema_name=schema
-                ),
+                TRINO_TABLE_COMMENTS.format(catalog_name=catalog_name, schema_name=schema),
             )
         return {"text": self.all_table_comments.get((table_name, schema))}
     except error.TrinoQueryError as exe:
@@ -178,9 +171,7 @@ def get_table_comment(  # pylint: disable=unused-argument
         raise
 
 
-def get_view_definition(
-    self, connection: Connection, view_name: str, schema: str = None, **kw
-) -> Optional[str]:
+def get_view_definition(self, connection: Connection, view_name: str, schema: str = None, **kw) -> Optional[str]:
     """
     Get the view definition for Trino views.
 
@@ -194,9 +185,7 @@ def get_view_definition(
     catalog_name = self._get_default_catalog_name(  # pylint: disable=protected-access
         connection
     )
-    schema = schema or self._get_default_schema_name(
-        connection
-    )  # pylint: disable=protected-access
+    schema = schema or self._get_default_schema_name(connection)  # pylint: disable=protected-access
     if schema is None:
         raise exc.NoSuchTableError("schema is required")
 
@@ -219,8 +208,7 @@ def get_view_definition(
                 view_definition = res.scalar()
             except Exception as fallback_err:
                 logger.warning(
-                    f"SHOW CREATE VIEW failed for [{full_view_name}] "
-                    f"(may require owner permissions): {fallback_err}"
+                    f"SHOW CREATE VIEW failed for [{full_view_name}] (may require owner permissions): {fallback_err}"
                 )
 
         if not view_definition:
@@ -228,17 +216,13 @@ def get_view_definition(
             return None
 
         # Ensure CREATE VIEW prefix exists for lineage parser compatibility.
-        create_view_pattern = re.compile(
-            r"CREATE\s+(OR\s+REPLACE\s+)?VIEW", re.IGNORECASE
-        )
+        create_view_pattern = re.compile(r"CREATE\s+(OR\s+REPLACE\s+)?VIEW", re.IGNORECASE)
         if not create_view_pattern.search(view_definition):
             view_definition = f"CREATE VIEW {full_view_name} AS {view_definition}"
 
         return view_definition
     except Exception as err:
-        logger.error(
-            f"Could not get view definition for view [{full_view_name}]: {err}"
-        )
+        logger.error(f"Could not get view definition for view [{full_view_name}]: {err}")
 
 
 TrinoDialect._get_columns = _get_columns  # pylint: disable=protected-access
@@ -255,15 +239,11 @@ class TrinoSource(CommonDbSourceService):
     ColumnTypeParser._COLUMN_TYPE_MAPPING[JSON] = "JSON"
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: TrinoConnection = config.serviceConnection.root.config
         if not isinstance(connection, TrinoConnection):
-            raise InvalidSourceException(
-                f"Expected TrinoConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected TrinoConnection, but got {connection}")
         return cls(config, metadata)
 
     def set_inspector(self, database_name: str) -> None:
@@ -280,9 +260,7 @@ class TrinoSource(CommonDbSourceService):
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         table_type = TableType.Regular
         try:
             catalog_name = self.context.get().database
@@ -297,8 +275,7 @@ class TrinoSource(CommonDbSourceService):
             logger.debug(traceback.format_exc())
 
         return [
-            TableNameAndType(name=name, type_=table_type)
-            for name in self.inspector.get_table_names(schema_name) or []
+            TableNameAndType(name=name, type_=table_type) for name in self.inspector.get_table_names(schema_name) or []
         ]
 
     def get_database_names(self) -> Iterable[str]:
@@ -319,11 +296,7 @@ class TrinoSource(CommonDbSourceService):
                     )
                     if filter_by_database(
                         self.source_config.databaseFilterPattern,
-                        (
-                            database_fqn
-                            if self.source_config.useFqnForFiltering
-                            else new_catalog
-                        ),
+                        (database_fqn if self.source_config.useFqnForFiltering else new_catalog),
                     ):
                         self.status.filter(database_fqn, "Database Filtered Out")
                         continue
@@ -333,6 +306,4 @@ class TrinoSource(CommonDbSourceService):
                         yield new_catalog
                     except Exception as err:
                         logger.debug(traceback.format_exc())
-                        logger.warning(
-                            f"Error trying to connect to database {new_catalog}: {err}"
-                        )
+                        logger.warning(f"Error trying to connect to database {new_catalog}: {err}")

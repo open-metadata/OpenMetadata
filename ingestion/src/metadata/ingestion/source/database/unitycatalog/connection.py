@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from copy import deepcopy
 from functools import partial
 from typing import Optional
@@ -77,19 +78,13 @@ def get_connection(connection: UnityCatalogConnection) -> WorkspaceClient:
         client_params["token"] = connection.authType.token.get_secret_value()
     elif isinstance(connection.authType, DatabricksOauth):
         client_params["client_id"] = connection.authType.clientId
-        client_params[
-            "client_secret"
-        ] = connection.authType.clientSecret.get_secret_value()
+        client_params["client_secret"] = connection.authType.clientSecret.get_secret_value()
     elif isinstance(connection.authType, AzureAdSetup):
         client_params["azure_client_id"] = connection.authType.azureClientId
-        client_params[
-            "azure_client_secret"
-        ] = connection.authType.azureClientSecret.get_secret_value()
+        client_params["azure_client_secret"] = connection.authType.azureClientSecret.get_secret_value()
         client_params["azure_tenant_id"] = connection.authType.azureTenantId
 
-    return WorkspaceClient(
-        host=get_host_from_host_port(connection.hostPort), **client_params
-    )
+    return WorkspaceClient(host=get_host_from_host_port(connection.hostPort), **client_params)
 
 
 def get_sqlalchemy_connection(connection: UnityCatalogConnection) -> Engine:
@@ -157,29 +152,19 @@ def test_connection(
 
     def get_tables(connection: WorkspaceClient, table_obj: DatabricksTable):
         if table_obj.catalog_name and table_obj.schema_name:
-            for table in connection.tables.list(
-                catalog_name=table_obj.catalog_name, schema_name=table_obj.schema_name
-            ):
+            for table in connection.tables.list(catalog_name=table_obj.catalog_name, schema_name=table_obj.schema_name):
                 table_obj.name = table.name
                 break
 
-    def get_tags(
-        service_connection: UnityCatalogConnection, table_obj: DatabricksTable
-    ):
+    def get_tags(service_connection: UnityCatalogConnection, table_obj: DatabricksTable):
         engine = get_sqlalchemy_connection(service_connection)
         with engine.connect() as connection:
             connection.execute(
-                text(
-                    UNITY_CATALOG_GET_CATALOGS_TAGS.format(
-                        database=table_obj.catalog_name
-                    ).replace(";", " limit 1;")
-                )
+                text(UNITY_CATALOG_GET_CATALOGS_TAGS.format(database=table_obj.catalog_name).replace(";", " limit 1;"))
             )
             connection.execute(
                 text(
-                    UNITY_CATALOG_GET_ALL_SCHEMA_TAGS.format(
-                        database=table_obj.catalog_name
-                    ).replace(";", " limit 1;")
+                    UNITY_CATALOG_GET_ALL_SCHEMA_TAGS.format(database=table_obj.catalog_name).replace(";", " limit 1;")
                 )
             )
             connection.execute(

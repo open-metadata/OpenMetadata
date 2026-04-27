@@ -27,9 +27,7 @@ from metadata.generated.schema.metadataIngestion.messagingServiceMetadataPipelin
 )
 
 
-def _connect_to_network(
-    ctr: DockerContainer, network: testcontainers.core.network, alias: str
-):
+def _connect_to_network(ctr: DockerContainer, network: testcontainers.core.network, alias: str):
     # Needed until https://github.com/testcontainers/testcontainers-python/issues/645 is fixed
     ctr.with_kwargs(
         network=network.name,
@@ -41,9 +39,7 @@ class CustomKafkaContainer(KafkaContainer):
     def __init__(self):
         super().__init__()
         self.security_protocol_map += ",EXTERNAL:PLAINTEXT"
-        self.with_env(
-            "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP", self.security_protocol_map
-        )
+        self.with_env("KAFKA_LISTENER_SECURITY_PROTOCOL_MAP", self.security_protocol_map)
 
         self.listeners = f"PLAINTEXT://0.0.0.0:29092,BROKER://0.0.0.0:9092,EXTERNAL://0.0.0.0:{self.port}"
         self.with_env("KAFKA_LISTENERS", self.listeners)
@@ -81,10 +77,14 @@ def docker_network():
 
 @pytest.fixture(scope="module")
 def schema_registry_container(docker_network, kafka_container):
-    with SchemaRegistryContainer(
-        schema_registry_kafkastore_bootstrap_servers="PLAINTEXT://kafka:9092",
-        schema_registry_host_name="schema-registry",
-    ).with_network(docker_network).with_network_aliases("schema-registry") as container:
+    with (
+        SchemaRegistryContainer(
+            schema_registry_kafkastore_bootstrap_servers="PLAINTEXT://kafka:9092",
+            schema_registry_host_name="schema-registry",
+        )
+        .with_network(docker_network)
+        .with_network_aliases("schema-registry") as container
+    ):
         load_csv_data.main(
             kafka_broker=kafka_container.get_bootstrap_server(),
             schema_registry_url=container.get_connection_url(),
@@ -121,9 +121,7 @@ def ingestion_config(db_service, metadata, workflow_config, sink_config):
         "source": {
             "type": db_service.connection.config.type.value.lower(),
             "serviceName": db_service.fullyQualifiedName.root,
-            "sourceConfig": {
-                "config": {"type": MessagingMetadataConfigType.MessagingMetadata.value}
-            },
+            "sourceConfig": {"config": {"type": MessagingMetadataConfigType.MessagingMetadata.value}},
             "serviceConnection": db_service.connection.model_dump(),
         },
         "sink": sink_config,

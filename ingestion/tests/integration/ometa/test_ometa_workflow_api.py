@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Workflow test
 """
+
 import pytest
 
 from metadata.generated.schema.api.automations.createWorkflow import (
@@ -76,9 +77,7 @@ class TestOMetaWorkflowAPI:
     - create_workflow: Workflow factory (function scope)
     """
 
-    def test_create(
-        self, metadata_ingestion_bot, workflow_request, expected_fqn, create_workflow
-    ):
+    def test_create(self, metadata_ingestion_bot, workflow_request, expected_fqn, create_workflow):
         """
         We can create a Workflow and we receive it back as Entity
         """
@@ -94,9 +93,7 @@ class TestOMetaWorkflowAPI:
         assert fetched is not None
         assert fetched.id == res.id
 
-    def test_get_name(
-        self, metadata_ingestion_bot, workflow_request, expected_fqn, create_workflow
-    ):
+    def test_get_name(self, metadata_ingestion_bot, workflow_request, expected_fqn, create_workflow):
         """
         We can fetch a Workflow by name and get it back as Entity
         """
@@ -105,14 +102,9 @@ class TestOMetaWorkflowAPI:
         res = metadata_ingestion_bot.get_by_name(entity=Workflow, fqn=expected_fqn)
         assert res.name.root == created.name.root
 
-        assert (
-            res.request.connection.config.authType.password.get_secret_value()
-            == "password"
-        )
+        assert res.request.connection.config.authType.password.get_secret_value() == "password"
 
-    def test_get_id(
-        self, metadata_ingestion_bot, workflow_request, expected_fqn, create_workflow
-    ):
+    def test_get_id(self, metadata_ingestion_bot, workflow_request, expected_fqn, create_workflow):
         """
         We can fetch a Workflow by ID and get it back as Entity
         """

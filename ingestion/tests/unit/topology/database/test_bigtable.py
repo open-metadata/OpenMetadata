@@ -43,9 +43,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigtable.metadata import BigtableSource
 
-mock_file_path = (
-    Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
-)
+mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
 with open(mock_file_path) as file:
     mock_data: dict = json.load(file)
 
@@ -150,9 +148,7 @@ MOCK_CREATE_TABLE = CreateTableRequest(
             dataTypeDisplay=DataType.BYTES.value,
         ),
     ],
-    tableConstraints=[
-        TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=["row_key"])
-    ],
+    tableConstraints=[TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=["row_key"])],
     databaseSchema="local_bigtable.my-gcp-project.my_instance",
     sourceUrl=SourceUrl(
         "https://console.cloud.google.com/bigtable/instances/my_instance/tables/random_table/overview?project=my-gcp-project"
@@ -177,11 +173,7 @@ EXPECTED_TABLE_NAMES = [
 
 
 def custom_column_compare(self, other):
-    return (
-        self.name == other.name
-        and self.description == other.description
-        and self.children == other.children
-    )
+    return self.name == other.name and self.description == other.description and self.children == other.children
 
 
 @pytest.fixture
@@ -243,44 +235,24 @@ class BigTableUnitTest(TestCase):
             mock_bigtable_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.bigtable_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
-        self.bigtable_source.context.get().__dict__[
-            "database"
-        ] = MOCK_DATABASE.name.root
-        self.bigtable_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.bigtable_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.bigtable_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.bigtable_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
         self.bigtable_source.instances = {
-            "my-gcp-project": {
-                mock_bigtable_instance.instance_id: mock_bigtable_instance
-            }
+            "my-gcp-project": {mock_bigtable_instance.instance_id: mock_bigtable_instance}
         }
         self.bigtable_source.tables = {
-            "my-gcp-project": {
-                mock_bigtable_instance.instance_id: {
-                    mock_bigtable_table.table_id: mock_bigtable_table
-                }
-            }
+            "my-gcp-project": {mock_bigtable_instance.instance_id: {mock_bigtable_table.table_id: mock_bigtable_table}}
         }
 
     def test_database_names(self):
-        assert (
-            list(self.bigtable_source.get_database_names()) == EXPECTED_DATABASE_NAMES
-        )
+        assert list(self.bigtable_source.get_database_names()) == EXPECTED_DATABASE_NAMES
 
     def test_database_schema_names(self):
-        assert (
-            list(self.bigtable_source.get_database_schema_names())
-            == EXPECTED_DATABASE_SCHEMA_NAMES
-        )
+        assert list(self.bigtable_source.get_database_schema_names()) == EXPECTED_DATABASE_SCHEMA_NAMES
 
     def test_table_names(self):
-        assert (
-            list(self.bigtable_source.get_tables_name_and_type())
-            == EXPECTED_TABLE_NAMES
-        )
+        assert list(self.bigtable_source.get_tables_name_and_type()) == EXPECTED_TABLE_NAMES
 
     def test_yield_tables(self):
         Column.__eq__ = custom_column_compare
