@@ -14,6 +14,10 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 @Slf4j
 public class DefaultToolContext {
+  static final String TOOL_LIST_INGESTION_PIPELINES = "list_ingestion_pipelines";
+  static final String TOOL_GET_PIPELINE_STATUS = "get_pipeline_status";
+  static final String TOOL_TRIGGER_INGESTION_PIPELINE = "trigger_ingestion_pipeline";
+
   public DefaultToolContext() {}
 
   /**
@@ -83,13 +87,13 @@ public class DefaultToolContext {
         case "create_metric":
           result = new CreateMetricTool().execute(authorizer, limits, securityContext, params);
           break;
-        case "list_ingestion_pipelines":
+        case TOOL_LIST_INGESTION_PIPELINES:
           result = new ListIngestionPipelinesTool().execute(authorizer, securityContext, params);
           break;
-        case "get_pipeline_status":
+        case TOOL_GET_PIPELINE_STATUS:
           result = new GetPipelineStatusTool().execute(authorizer, securityContext, params);
           break;
-        case "trigger_ingestion_pipeline":
+        case TOOL_TRIGGER_INGESTION_PIPELINE:
           result = new TriggerIngestionPipelineTool().execute(authorizer, securityContext, params);
           break;
         default:

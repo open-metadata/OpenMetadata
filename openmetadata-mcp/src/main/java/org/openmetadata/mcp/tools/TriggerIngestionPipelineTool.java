@@ -5,7 +5,6 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.McpApplicationContext;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
@@ -25,53 +24,67 @@ public class TriggerIngestionPipelineTool implements McpTool {
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
+    String fqn = requireFqn(params);
+    authorize(authorizer, securityContext);
+    PipelineServiceClientInterface client = resolveClient(fqn);
+    if (client == null) return clientNotConfiguredError(fqn);
+    IngestionPipeline pipeline = fetchPipeline(fqn);
+    if (!Boolean.TRUE.equals(pipeline.getDeployed())) return notDeployedError(fqn);
+    LOG.info("Triggering ingestion pipeline: {}", fqn);
+    setupServerConnection(pipeline);
+    Object service = Entity.getEntity(pipeline.getService(), "ingestionRunner", null);
+    var response = client.runPipeline(pipeline, service);
+    LOG.info("Trigger response for pipeline {}: {}", fqn, response);
+    return JsonUtils.getMap(response);
+  }
+
+  private static String requireFqn(Map<String, Object> params) {
     String fqn = (String) params.get("fqn");
     if (fqn == null || fqn.isBlank()) {
       throw new IllegalArgumentException("Parameter 'fqn' is required");
     }
+    return fqn;
+  }
 
+  private static void authorize(Authorizer authorizer, CatalogSecurityContext securityContext) {
     authorizer.authorize(
         securityContext,
         new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.EDIT_ALL),
         new ResourceContext<>(Entity.INGESTION_PIPELINE));
+  }
 
-    PipelineServiceClientInterface pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(null);
-    if (pipelineServiceClient == null) {
-      return Map.of(
-          "error",
-          "Pipeline service client is not configured. Ensure the ingestion infrastructure is"
-              + " set up.",
-          "fqn",
-          fqn);
-    }
+  private static PipelineServiceClientInterface resolveClient(String fqn) {
+    return PipelineServiceClientFactory.createPipelineServiceClient(null);
+  }
 
-    IngestionPipeline pipeline =
-        (IngestionPipeline) Entity.getEntityByName(Entity.INGESTION_PIPELINE, fqn, "*", null);
+  private static Map<String, Object> clientNotConfiguredError(String fqn) {
+    return Map.of(
+        "error",
+        "Pipeline service client is not configured."
+            + " Ensure the ingestion infrastructure is set up.",
+        "fqn",
+        fqn);
+  }
 
-    if (!Boolean.TRUE.equals(pipeline.getDeployed())) {
-      return Map.of(
-          "error",
-          "Pipeline '" + fqn + "' is not deployed. Deploy it first before triggering a run.",
-          "fqn",
-          fqn,
-          "deployed",
-          false);
-    }
+  private static Map<String, Object> notDeployedError(String fqn) {
+    return Map.of(
+        "error",
+        "Pipeline '" + fqn + "' is not deployed. Deploy it first before triggering a run.",
+        "fqn",
+        fqn,
+        "deployed",
+        false);
+  }
 
-    LOG.info("Triggering ingestion pipeline: {}", fqn);
+  private static IngestionPipeline fetchPipeline(String fqn) throws IOException {
+    return (IngestionPipeline) Entity.getEntityByName(Entity.INGESTION_PIPELINE, fqn, "*", null);
+  }
 
+  private static void setupServerConnection(IngestionPipeline pipeline) {
     if (McpApplicationContext.getConfig() != null) {
       pipeline.setOpenMetadataServerConnection(
           new OpenMetadataConnectionBuilder(McpApplicationContext.getConfig()).build());
     }
-
-    EntityReference serviceRef = pipeline.getService();
-    Object service = Entity.getEntity(serviceRef, "ingestionRunner", null);
-
-    var response = pipelineServiceClient.runPipeline(pipeline, service);
-    LOG.info("Trigger response for pipeline {}: {}", fqn, response);
-    return JsonUtils.getMap(response);
   }
 
   @Override

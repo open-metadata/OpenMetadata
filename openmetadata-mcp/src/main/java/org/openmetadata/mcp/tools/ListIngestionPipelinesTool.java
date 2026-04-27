@@ -33,38 +33,47 @@ public class ListIngestionPipelinesTool implements McpTool {
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
-    String service = (String) params.get("service");
-    String pipelineType = (String) params.get("pipelineType");
-    String after = (String) params.get("after");
+    authorize(authorizer, securityContext);
     int limit = CommonUtils.parseLimit(params, "limit", 10);
+    LOG.info(
+        "Listing ingestion pipelines — service: {}, pipelineType: {}, limit: {}",
+        params.get("service"),
+        params.get("pipelineType"),
+        limit);
+    return fetchAndClean(params, limit);
+  }
 
+  private static void authorize(Authorizer authorizer, CatalogSecurityContext securityContext) {
     authorizer.authorize(
         securityContext,
         new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.VIEW_BASIC),
         new ResourceContext<>(Entity.INGESTION_PIPELINE));
+  }
 
-    LOG.info(
-        "Listing ingestion pipelines — service: {}, pipelineType: {}, limit: {}",
-        service,
-        pipelineType,
-        limit);
-
-    IngestionPipelineRepository repository =
+  private static Map<String, Object> fetchAndClean(Map<String, Object> params, int limit)
+      throws IOException {
+    IngestionPipelineRepository repo =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
-
-    ListFilter filter = new ListFilter(Include.NON_DELETED);
-    if (service != null && !service.isBlank()) {
-      filter.addQueryParam("service", service);
-    }
-    if (pipelineType != null && !pipelineType.isBlank()) {
-      filter.addQueryParam("pipelineType", pipelineType);
-    }
-
+    ListFilter filter = buildFilter(params);
+    String after = (String) params.get("after");
     var resultList =
-        repository.listAfter(
-            null, repository.getFields("sourceConfig,pipelineType"), filter, limit, after);
-
+        repo.listAfter(null, repo.getFields("sourceConfig,pipelineType"), filter, limit, after);
     Map<String, Object> response = JsonUtils.getMap(resultList);
+    stripVerboseFields(response);
+    return response;
+  }
+
+  private static ListFilter buildFilter(Map<String, Object> params) {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    String service = (String) params.get("service");
+    String pipelineType = (String) params.get("pipelineType");
+    if (service != null && !service.isBlank()) filter.addQueryParam("service", service);
+    if (pipelineType != null && !pipelineType.isBlank())
+      filter.addQueryParam("pipelineType", pipelineType);
+    return filter;
+  }
+
+  private static void stripVerboseFields(Map<String, Object> response) {
     if (response.get("data") instanceof List<?> pipelines) {
       pipelines.forEach(
           p -> {
@@ -75,7 +84,6 @@ public class ListIngestionPipelinesTool implements McpTool {
             }
           });
     }
-    return response;
   }
 
   @Override
