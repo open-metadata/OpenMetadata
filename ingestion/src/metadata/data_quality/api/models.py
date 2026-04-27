@@ -61,15 +61,11 @@ class TableAndTests(BaseModel):
 
     table: Table = Field(None, description="Table being processed by the DQ workflow")
     service_type: str = Field(..., description="Service type the table belongs to")
-    test_cases: List[TestCase] = Field(
-        None, description="Test Cases already existing in the Test Suite, if any"
-    )
+    test_cases: List[TestCase] = Field(None, description="Test Cases already existing in the Test Suite, if any")
     executable_test_suite: Optional[CreateTestSuiteRequest] = Field(
         None, description="If no executable test suite is found, we'll create one"
     )
-    service_connection: DatabaseConnection = Field(
-        ..., description="Service connection for the given table"
-    )
+    service_connection: DatabaseConnection = Field(..., description="Service connection for the given table")
 
 
 class TestCaseResults(BaseModel):

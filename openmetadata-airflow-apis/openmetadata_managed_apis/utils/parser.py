@@ -32,9 +32,7 @@ def parse_validation_err(validation_error: ValidationError) -> str:
     Convert the validation error into a message to log
     """
     missing_fields = [
-        f"Extra parameter '{err.get('loc')[0]}'"
-        if len(err.get("loc")) == 1
-        else f"Extra parameter in {err.get('loc')}"
+        f"Extra parameter '{err.get('loc')[0]}'" if len(err.get("loc")) == 1 else f"Extra parameter in {err.get('loc')}"
         for err in validation_error.errors()
         if err.get("type") == "value_error.extra"
     ]
@@ -87,9 +85,7 @@ def parse_service_connection(connection_dict: dict) -> None:
     if source_type is None:
         raise InvalidWorkflowException("Missing type in the serviceConnection config")
 
-    logger.debug(
-        f"Error parsing the Workflow Configuration for {source_type} ingestion"
-    )
+    logger.debug(f"Error parsing the Workflow Configuration for {source_type} ingestion")
 
     service_type = get_service_type(source_type)
     connection_class = get_connection_class(source_type, service_type)

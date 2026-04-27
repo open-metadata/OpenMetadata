@@ -81,9 +81,7 @@ class JobConnections(BaseModel):
 
 
 class JobNodes(BaseModel):
-    config_nodes: Optional[dict] = Field(
-        default=None, alias="CodeGenConfigurationNodes"
-    )
+    config_nodes: Optional[dict] = Field(default=None, alias="CodeGenConfigurationNodes")
     command: Optional[JobCommand] = Field(default=None, alias="Command")
     connections: Optional[JobConnections] = Field(default=None, alias="Connections")
     default_arguments: Optional[dict] = Field(default=None, alias="DefaultArguments")

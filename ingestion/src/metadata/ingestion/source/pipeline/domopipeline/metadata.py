@@ -12,6 +12,7 @@
 """
 Domo Pipeline source to extract metadata
 """
+
 import traceback
 from typing import Dict, Iterable, Optional
 
@@ -66,15 +67,11 @@ class DomopipelineSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: DomoPipelineConnection = config.serviceConnection.root.config
         if not isinstance(connection, DomoPipelineConnection):
-            raise InvalidSourceException(
-                f"Expected DomoPipelineConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected DomoPipelineConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_pipeline_name(self, pipeline_details) -> str:
@@ -85,9 +82,7 @@ class DomopipelineSource(PipelineServiceSource):
         for result in results:
             yield result
 
-    def yield_pipeline(
-        self, pipeline_details
-    ) -> Iterable[Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details) -> Iterable[Either[CreatePipelineRequest]]:
         try:
             pipeline_name = str(pipeline_details["id"])
             source_url = self.get_source_url(pipeline_id=pipeline_name)
@@ -101,9 +96,7 @@ class DomopipelineSource(PipelineServiceSource):
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(pipeline_name),
                 displayName=pipeline_details.get("name"),
-                description=Markdown(pipeline_details["description"])
-                if pipeline_details.get("description")
-                else None,
+                description=Markdown(pipeline_details["description"]) if pipeline_details.get("description") else None,
                 tasks=[task],
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
                 startDate=pipeline_details.get("created"),
@@ -129,47 +122,33 @@ class DomopipelineSource(PipelineServiceSource):
                 )
             )
 
-    def yield_pipeline_lineage_details(
-        self, pipeline_details
-    ) -> Iterable[Either[AddLineageRequest]]:
+    def yield_pipeline_lineage_details(self, pipeline_details) -> Iterable[Either[AddLineageRequest]]:
         """Lineage not implemented"""
 
     def yield_pipeline_status(self, pipeline_details) -> Iterable[OMetaPipelineStatus]:
         pipeline_id = str(pipeline_details.get("id"))
         if not pipeline_id:
-            logger.debug(
-                f"Could not extract ID from {pipeline_details} while getting status."
-            )
+            logger.debug(f"Could not extract ID from {pipeline_details} while getting status.")
             return
         runs = self.connection.get_runs(pipeline_id)
         try:
             for run in runs or []:
                 start_time = (
-                    Timestamp(convert_timestamp_to_milliseconds(run["beginTime"]))
-                    if run.get("beginTime")
-                    else None
+                    Timestamp(convert_timestamp_to_milliseconds(run["beginTime"])) if run.get("beginTime") else None
                 )
-                end_time = (
-                    Timestamp(convert_timestamp_to_milliseconds(run["endTime"]))
-                    if run.get("endTime")
-                    else None
-                )
+                end_time = Timestamp(convert_timestamp_to_milliseconds(run["endTime"])) if run.get("endTime") else None
                 run_state = run.get("state", "Pending")
 
                 task_status = TaskStatus(
                     name=pipeline_id,
-                    executionStatus=STATUS_MAP.get(
-                        run_state.lower(), StatusType.Pending.value
-                    ),
+                    executionStatus=STATUS_MAP.get(run_state.lower(), StatusType.Pending.value),
                     startTime=start_time,
                     endTime=end_time,
                 )
 
                 pipeline_status = PipelineStatus(
                     taskStatus=[task_status],
-                    executionStatus=STATUS_MAP.get(
-                        run_state.lower(), StatusType.Pending.value
-                    ),
+                    executionStatus=STATUS_MAP.get(run_state.lower(), StatusType.Pending.value),
                     timestamp=end_time,
                 )
                 pipeline_fqn = fqn.build(

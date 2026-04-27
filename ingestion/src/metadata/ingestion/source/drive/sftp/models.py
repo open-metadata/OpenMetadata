@@ -11,6 +11,7 @@
 """
 SFTP API response models
 """
+
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -26,9 +27,7 @@ class SftpFileInfo(BaseModel):
     name: str = Field(..., description="File name")
     full_path: str = Field(..., description="Full path to the file")
     size: Optional[int] = Field(None, description="File size in bytes")
-    modified_time: Optional[float] = Field(
-        None, description="Last modified time as Unix timestamp"
-    )
+    modified_time: Optional[float] = Field(None, description="Last modified time as Unix timestamp")
     mime_type: Optional[str] = Field(None, description="MIME type")
 
 
@@ -41,12 +40,6 @@ class SftpDirectoryInfo(BaseModel):
 
     name: str = Field(..., description="Directory name")
     full_path: str = Field(..., description="Full path to directory")
-    parents: List[str] = Field(
-        default_factory=list, description="Parent directory paths"
-    )
-    modified_time: Optional[float] = Field(
-        None, description="Last modified time as Unix timestamp"
-    )
-    path: Optional[List[str]] = Field(
-        None, description="Calculated directory path as list of components"
-    )
+    parents: List[str] = Field(default_factory=list, description="Parent directory paths")
+    modified_time: Optional[float] = Field(None, description="Last modified time as Unix timestamp")
+    path: Optional[List[str]] = Field(None, description="Calculated directory path as list of components")

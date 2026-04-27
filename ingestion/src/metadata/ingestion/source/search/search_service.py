@@ -11,6 +11,7 @@
 """
 Base class for ingesting search index services
 """
+
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
@@ -67,9 +68,7 @@ class SearchServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -84,9 +83,7 @@ class SearchServiceTopology(ServiceTopology):
         children=["search_index", "search_index_template"],
         post_process=["mark_search_indexes_as_deleted"],
     )
-    search_index: Annotated[
-        TopologyNode, Field(description="Search Index Processing Node")
-    ] = TopologyNode(
+    search_index: Annotated[TopologyNode, Field(description="Search Index Processing Node")] = TopologyNode(
         producer="get_search_index",
         stages=[
             NodeStage(
@@ -105,19 +102,19 @@ class SearchServiceTopology(ServiceTopology):
         ],
     )
 
-    search_index_template: Annotated[
-        TopologyNode, Field(description="Search Index Template Processing Node")
-    ] = TopologyNode(
-        producer="get_search_index_template",
-        stages=[
-            NodeStage(
-                type_=SearchIndex,
-                context="search_index_template",
-                processor="yield_search_index_template",
-                consumer=["search_service"],
-                use_cache=True,
-            )
-        ],
+    search_index_template: Annotated[TopologyNode, Field(description="Search Index Template Processing Node")] = (
+        TopologyNode(
+            producer="get_search_index_template",
+            stages=[
+                NodeStage(
+                    type_=SearchIndex,
+                    context="search_index_template",
+                    processor="yield_search_index_template",
+                    consumer=["search_service"],
+                    use_cache=True,
+                )
+            ],
+        )
     )
 
 
@@ -130,7 +127,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: SearchServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: SearchConnection.model_fields["config"].annotation
+    service_connection: SearchConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = SearchServiceTopology()
     context = TopologyContextManager(topology)
@@ -145,9 +142,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.source_config: SearchServiceMetadataPipeline = (
-            self.config.sourceConfig.config
-        )
+        self.source_config: SearchServiceMetadataPipeline = self.config.sourceConfig.config
         self.service_connection = self.config.serviceConnection.root.config
         self.connection = get_connection(self.service_connection)
 
@@ -160,14 +155,10 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         return self.service_connection.type.name
 
     @abstractmethod
-    def yield_search_index(
-        self, search_index_details: Any
-    ) -> Iterable[Either[CreateSearchIndexRequest]]:
+    def yield_search_index(self, search_index_details: Any) -> Iterable[Either[CreateSearchIndexRequest]]:
         """Method to Get Search Index Entity"""
 
-    def yield_search_index_sample_data(
-        self, search_index_details: Any
-    ) -> Iterable[Either[SearchIndexSampleData]]:
+    def yield_search_index_sample_data(self, search_index_details: Any) -> Iterable[Either[SearchIndexSampleData]]:
         """Method to Get Sample Data of Search Index Entity"""
 
     @abstractmethod
@@ -206,9 +197,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     def get_search_index_template(self) -> Any:
         if self.source_config.includeIndexTemplate:
             for index_template_details in self.get_search_index_template_list():
-                if search_index_template_name := self.get_search_index_template_name(
-                    index_template_details
-                ):
+                if search_index_template_name := self.get_search_index_template_name(index_template_details):
                     if filter_by_search_index(
                         self.source_config.searchIndexFilterPattern,
                         search_index_template_name,
@@ -223,11 +212,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     def yield_create_request_search_service(
         self, config: WorkflowSource
     ) -> Iterable[Either[CreateSearchServiceRequest]]:
-        yield Either(
-            right=self.metadata.get_create_service_from_source(
-                entity=SearchService, config=config
-            )
-        )
+        yield Either(right=self.metadata.get_create_service_from_source(entity=SearchService, config=config))
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
@@ -236,9 +221,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         """Nothing to prepare by default"""
 
     def test_connection(self) -> None:
-        test_connection_common(
-            self.metadata, self.connection_obj, self.service_connection
-        )
+        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def mark_search_indexes_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the search index as deleted"""

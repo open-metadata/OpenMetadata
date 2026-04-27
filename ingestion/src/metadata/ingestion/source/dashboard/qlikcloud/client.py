@@ -11,6 +11,7 @@
 """
 REST Auth & Client for QlikCloud
 """
+
 import json
 import re
 import traceback
@@ -96,9 +97,7 @@ class QlikCloudClient:
         if self.socket_connection:
             self.socket_connection.close()
 
-    def _websocket_send_request(
-        self, request: dict, response: bool = False
-    ) -> Optional[Dict]:
+    def _websocket_send_request(self, request: dict, response: bool = False) -> Optional[Dict]:
         """
         Method to send request to websocket
 
@@ -140,9 +139,7 @@ class QlikCloudClient:
                     resp = QlikAppResponse(**resp_apps)
                     yield from resp.apps
                     if resp.links and resp.links.next and resp.links.next.href:
-                        link = resp.links.next.href.replace(
-                            f"{self.config.hostPort}{API_VERSION}", ""
-                        )
+                        link = resp.links.next.href.replace(f"{self.config.hostPort}{API_VERSION}", "")
                     else:
                         break
         except Exception:
@@ -212,9 +209,7 @@ class QlikCloudClient:
                     resp = QlikSpaceResponse(**resp_spaces)
                     yield from resp.spaces
                     if resp.links and resp.links.next and resp.links.next.href:
-                        link = resp.links.next.href.replace(
-                            f"{self.config.hostPort}{API_VERSION}", ""
-                        )
+                        link = resp.links.next.href.replace(f"{self.config.hostPort}{API_VERSION}", "")
                     else:
                         break
         except Exception:
@@ -229,9 +224,7 @@ class QlikCloudClient:
             script_result = QlikScriptResult(**script_response)
             if script_result.result.qScript:
                 script_value = script_result.result.qScript
-                matches = re.findall(
-                    r'FROM\s+["\']?([a-zA-Z0-9_.]+)["\']?', script_value, re.IGNORECASE
-                )
+                matches = re.findall(r'FROM\s+["\']?([a-zA-Z0-9_.]+)["\']?', script_value, re.IGNORECASE)
                 if isinstance(matches, list):
                     for table in matches:
                         table_name = table.split(".")[-1]

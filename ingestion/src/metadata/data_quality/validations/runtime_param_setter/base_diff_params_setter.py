@@ -75,9 +75,7 @@ class BaseTableParameter:
         """
         return TableParameter(
             database_service_type=service.serviceType,
-            path=self.get_data_diff_table_path(
-                entity.fullyQualifiedName.root, service.serviceType
-            ),
+            path=self.get_data_diff_table_path(entity.fullyQualifiedName.root, service.serviceType),
             fullyQualifiedName=entity.fullyQualifiedName.root,
             serviceUrl=self.get_data_diff_url(
                 service,
@@ -97,9 +95,7 @@ class BaseTableParameter:
         )
 
     @staticmethod
-    def get_data_diff_table_path(
-        table_fqn: str, service_type: DatabaseServiceType
-    ) -> str:
+    def get_data_diff_table_path(table_fqn: str, service_type: DatabaseServiceType) -> str:
         """Get the data diff table path.
 
         Args:
@@ -117,9 +113,7 @@ class BaseTableParameter:
                 table = dialect_instance.denormalize_name(name=table)
                 schema = dialect_instance.denormalize_name(name=schema)
         except Exception as e:
-            logger.debug(
-                f"[Data Diff]: Error denormalizing table and schema names. Skipping denormalization\n{e}"
-            )
+            logger.debug(f"[Data Diff]: Error denormalizing table and schema names. Skipping denormalization\n{e}")
         return fqn._build(  # pylint: disable=protected-access
             "___SERVICE___", "__DATABASE__", schema, table
         ).replace("___SERVICE___.__DATABASE__.", "")
@@ -135,17 +129,13 @@ class BaseTableParameter:
         if not service_connection_config:
             return None
 
-        service_spec_patch = ServiceSpecPatch(
-            ServiceType.Database, service_connection_config.type.value.lower()
-        )
+        service_spec_patch = ServiceSpecPatch(ServiceType.Database, service_connection_config.type.value.lower())
 
         try:
             connection_class = service_spec_patch.get_connection_class()
             if not connection_class:
                 return (
-                    get_connection(service_connection_config).url.render_as_string(
-                        hide_password=False
-                    )
+                    get_connection(service_connection_config).url.render_as_string(hide_password=False)
                     if service_connection_config
                     else None
                 )
@@ -153,9 +143,7 @@ class BaseTableParameter:
             return connection.get_connection_dict()
         except (ValueError, AttributeError, NotImplementedError):
             return (
-                get_connection(service_connection_config).url.render_as_string(
-                    hide_password=False
-                )
+                get_connection(service_connection_config).url.render_as_string(hide_password=False)
                 if service_connection_config
                 else None
             )
@@ -184,9 +172,7 @@ class BaseTableParameter:
             str: The url for the data diff service
         """
         source_url = (
-            self._get_service_connection_config(db_service.connection.config)
-            if not override_url
-            else override_url
+            self._get_service_connection_config(db_service.connection.config) if not override_url else override_url
         )
         if isinstance(source_url, dict):
             source_url["driver"] = source_url["driver"].split("+")[0]
@@ -228,8 +214,6 @@ class BaseTableParameter:
             List[Column]
         """
         validated_columns = (
-            [*key_columns, *extra_columns]
-            if case_sensitive
-            else CaseInsensitiveList([*key_columns, *extra_columns])
+            [*key_columns, *extra_columns] if case_sensitive else CaseInsensitiveList([*key_columns, *extra_columns])
         )
         return [c for c in columns if c.name.root in validated_columns]

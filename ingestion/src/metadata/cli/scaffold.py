@@ -26,6 +26,7 @@ For SQLAlchemy database connectors, also generates concrete code templates
 For all other connector types, generates skeleton files that point the AI agent
 at the reference connector and CONNECTOR_CONTEXT.md for implementation.
 """
+
 import argparse
 import json
 import re
@@ -218,9 +219,7 @@ def _prompt(label: str, default: str = "", choices: Optional[list[str]] = None) 
         print("    This field is required.")
 
 
-def _prompt_multi(
-    label: str, choices: list[str], defaults: Optional[list[str]] = None
-) -> list[str]:
+def _prompt_multi(label: str, choices: list[str], defaults: Optional[list[str]] = None) -> list[str]:
     default_str = ",".join(defaults) if defaults else ""
     suffix = f" [{', '.join(choices)}]"
     if default_str:
@@ -243,9 +242,7 @@ def _prompt_multi(
         parts = [v.strip() for v in value.replace(" ", ",").split(",") if v.strip()]
         invalid = [p for p in parts if p not in choices]
         if invalid:
-            print(
-                f"    Invalid: {', '.join(invalid)}. Must be from: {', '.join(choices)}"
-            )
+            print(f"    Invalid: {', '.join(invalid)}. Must be from: {', '.join(choices)}")
             continue
         return parts
 
@@ -298,9 +295,7 @@ def collect_interactive() -> ConnectorProfile:
         profile.name = _prompt("Connector name")
 
     profile.display_name = _prompt("Display name", default=profile.camel)
-    profile.description = _prompt_optional(
-        "Short description", "e.g. 'Cloud-native OLAP database'"
-    )
+    profile.description = _prompt_optional("Short description", "e.g. 'Cloud-native OLAP database'")
     print()
 
     # --- Classification ---
@@ -317,13 +312,9 @@ def collect_interactive() -> ConnectorProfile:
         print("    sqlalchemy  — Uses SQLAlchemy engine (most common for SQL DBs)")
         print("    rest_api    — Uses REST API client (like Salesforce)")
         print("    sdk_client  — Uses vendor SDK")
-        profile.connection_type = _prompt(
-            "Connection type", default="sqlalchemy", choices=CONNECTION_TYPES
-        )
+        profile.connection_type = _prompt("Connection type", default="sqlalchemy", choices=CONNECTION_TYPES)
         if profile.connection_type == "sqlalchemy":
-            profile.scheme = _prompt_optional(
-                "SQLAlchemy scheme", "e.g. 'mysql+pymysql', 'postgresql+psycopg2'"
-            )
+            profile.scheme = _prompt_optional("SQLAlchemy scheme", "e.g. 'mysql+pymysql', 'postgresql+psycopg2'")
             port = _prompt_optional("Default port", "e.g. 3306, 5432")
             if port:
                 try:
@@ -335,9 +326,7 @@ def collect_interactive() -> ConnectorProfile:
         print("--- Connection Type ---")
         print("    rest_api    — Uses REST API client (most common)")
         print("    sdk_client  — Uses vendor SDK")
-        profile.connection_type = _prompt(
-            "Connection type", default="rest_api", choices=["rest_api", "sdk_client"]
-        )
+        profile.connection_type = _prompt("Connection type", default="rest_api", choices=["rest_api", "sdk_client"])
         print()
 
     # --- Auth ---
@@ -349,12 +338,8 @@ def collect_interactive() -> ConnectorProfile:
     # --- Capabilities ---
     print("--- Capabilities ---")
     if profile.service_type == "database" and profile.connection_type == "sqlalchemy":
-        print(
-            "    Available: metadata, lineage, usage, profiler, stored_procedures, data_diff"
-        )
-        print(
-            "    lineage  — Query-log-based lineage (generates lineage.py + query_parser.py)"
-        )
+        print("    Available: metadata, lineage, usage, profiler, stored_procedures, data_diff")
+        print("    lineage  — Query-log-based lineage (generates lineage.py + query_parser.py)")
         print("    usage    — Query-log-based usage (generates usage.py)")
         print("    profiler — Column profiling + data quality (needs SQLAlchemy)")
         profile.capabilities = _prompt_multi(
@@ -371,9 +356,7 @@ def collect_interactive() -> ConnectorProfile:
         profile.capabilities = ["metadata"]
         print("    Default: metadata")
         print("    Note: Lineage, usage, and data models for non-database connectors")
-        print(
-            "    are implemented as method overrides in metadata.py (no extra files)."
-        )
+        print("    are implemented as method overrides in metadata.py (no extra files).")
         print("    See CONNECTOR_CONTEXT.md for details.")
     print()
 
@@ -382,15 +365,9 @@ def collect_interactive() -> ConnectorProfile:
     print("  This info helps AI agents implement the connector logic.")
     print()
 
-    profile.docs_url = _prompt_optional(
-        "API/SDK documentation URL", "e.g. https://docs.example.com/api"
-    )
-    profile.sdk_package = _prompt_optional(
-        "Python SDK package", "e.g. 'boto3', 'looker-sdk', PyPI name"
-    )
-    profile.api_endpoints = _prompt_optional(
-        "Key API endpoints", "e.g. 'GET /api/v1/databases, GET /api/v1/tables'"
-    )
+    profile.docs_url = _prompt_optional("API/SDK documentation URL", "e.g. https://docs.example.com/api")
+    profile.sdk_package = _prompt_optional("Python SDK package", "e.g. 'boto3', 'looker-sdk', PyPI name")
+    profile.api_endpoints = _prompt_optional("Key API endpoints", "e.g. 'GET /api/v1/databases, GET /api/v1/tables'")
     profile.docs_notes = _prompt_multiline(
         "Any additional notes about the source?",
         "auth quirks, pagination, rate limits, special types, etc.",
@@ -502,9 +479,7 @@ def generate_connection_schema(p: ConnectorProfile) -> dict:
     return schema
 
 
-def _add_database_sqlalchemy_props(
-    p: ConnectorProfile, schema: dict, props: dict, required: list
-) -> None:
+def _add_database_sqlalchemy_props(p: ConnectorProfile, schema: dict, props: dict, required: list) -> None:
     camel = p.camel
     scheme_def = f"{p.module_name}Scheme"
     scheme_val = p.scheme or f"{p.name}+py{p.name}"
@@ -585,9 +560,7 @@ def _add_database_sqlalchemy_props(
         "title": "Supports Metadata Extraction",
         "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction",
     }
-    props["supportsDBTExtraction"] = {
-        "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
-    }
+    props["supportsDBTExtraction"] = {"$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"}
     if "profiler" in p.capabilities:
         props["supportsProfiler"] = {
             "title": "Supports Profiler",
@@ -603,18 +576,14 @@ def _add_database_sqlalchemy_props(
             "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff",
         }
     if "usage" in p.capabilities:
-        props["supportsUsageExtraction"] = {
-            "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
-        }
+        props["supportsUsageExtraction"] = {"$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"}
     if "lineage" in p.capabilities:
         props["supportsLineageExtraction"] = {
             "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
         }
 
 
-def _add_database_non_sqlalchemy_props(
-    p: ConnectorProfile, props: dict, required: list
-) -> None:
+def _add_database_non_sqlalchemy_props(p: ConnectorProfile, props: dict, required: list) -> None:
     camel = p.camel
     props["hostPort"] = {
         "title": "Host and Port",
@@ -673,9 +642,7 @@ def _add_database_non_sqlalchemy_props(
         "title": "Supports Metadata Extraction",
         "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction",
     }
-    props["supportsDBTExtraction"] = {
-        "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
-    }
+    props["supportsDBTExtraction"] = {"$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"}
 
 
 def _add_dashboard_props(p: ConnectorProfile, props: dict, required: list) -> None:
@@ -895,9 +862,7 @@ def generate_test_connection_json(p: ConnectorProfile) -> dict:
             }
         )
 
-    if p.service_type == "database" and (
-        "usage" in p.capabilities or "lineage" in p.capabilities
-    ):
+    if p.service_type == "database" and ("usage" in p.capabilities or "lineage" in p.capabilities):
         steps.append(
             {
                 "name": "GetQueries",
@@ -1029,23 +994,15 @@ def gen_service_spec_database(p: ConnectorProfile) -> str:
     spec_args = [f"    metadata_source_class={camel}Source,"]
 
     if "lineage" in p.capabilities:
-        imports.append(
-            f"from metadata.ingestion.source.database.{p.name}.lineage import {camel}LineageSource"
-        )
+        imports.append(f"from metadata.ingestion.source.database.{p.name}.lineage import {camel}LineageSource")
         spec_args.append(f"    lineage_source_class={camel}LineageSource,")
     if "usage" in p.capabilities:
-        imports.append(
-            f"from metadata.ingestion.source.database.{p.name}.usage import {camel}UsageSource"
-        )
+        imports.append(f"from metadata.ingestion.source.database.{p.name}.usage import {camel}UsageSource")
         spec_args.append(f"    usage_source_class={camel}UsageSource,")
 
-    imports.append(
-        f"from metadata.ingestion.source.database.{p.name}.connection import {camel}Connection"
-    )
+    imports.append(f"from metadata.ingestion.source.database.{p.name}.connection import {camel}Connection")
     spec_args.append(f"    connection_class={camel}Connection,")
-    imports.append(
-        "from metadata.utils.service_spec.default import DefaultDatabaseSpec"
-    )
+    imports.append("from metadata.utils.service_spec.default import DefaultDatabaseSpec")
 
     return (
         COPYRIGHT_HEADER
@@ -1326,9 +1283,7 @@ def _get_base_info(p: ConnectorProfile):
     if p.service_type == "database" and p.connection_type != "sqlalchemy":
         base_class, base_module = DATABASE_NON_SQL_BASE
         ref = "salesforce"
-        base_file = (
-            "ingestion/src/metadata/ingestion/source/database/database_service.py"
-        )
+        base_file = "ingestion/src/metadata/ingestion/source/database/database_service.py"
     else:
         base_class, base_module = BASE_CLASS_MAP[p.service_type]
         ref = REFERENCE_CONNECTORS.get(p.service_type, "mysql")
@@ -1345,7 +1300,9 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
     ref_dir = f"ingestion/src/metadata/ingestion/source/{p.service_type}/{ref}"
     svc_schema = f"openmetadata-spec/src/main/resources/json/schema/entity/services/{p.service_type}Service.json"
     conn_schema = f"openmetadata-spec/src/main/resources/json/schema/entity/services/connections/{p.service_type}/{p.module_name}Connection.json"
-    test_conn = f"openmetadata-service/src/main/resources/json/data/testConnections/{p.service_type}/{p.module_name}.json"
+    test_conn = (
+        f"openmetadata-service/src/main/resources/json/data/testConnections/{p.service_type}/{p.module_name}.json"
+    )
     ui_utils = UI_UTILS_FILES.get(p.service_type, "")
 
     is_sqla = p.service_type == "database" and p.connection_type == "sqlalchemy"
@@ -1370,9 +1327,7 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
     # --- Environment Setup ---
     s.append("## Prerequisites: Environment Setup")
     s.append("")
-    s.append(
-        "Before running any `make` or `python` commands, set up the Python environment:"
-    )
+    s.append("Before running any `make` or `python` commands, set up the Python environment:")
     s.append("")
     s.append("```bash")
     s.append("# From the root of the OpenMetadata project")
@@ -1430,9 +1385,7 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
     # --- Step 1: Read reference ---
     s.append("## Step 1: Read the Reference Connector")
     s.append("")
-    s.append(
-        f"The `{ref}` connector is the closest reference. **Read these files first**:"
-    )
+    s.append(f"The `{ref}` connector is the closest reference. **Read these files first**:")
     s.append("")
 
     ref_files = [f"{ref_dir}/metadata.py", f"{ref_dir}/connection.py"]
@@ -1450,9 +1403,7 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
     for rf in ref_files:
         s.append(f"- `{rf}`")
     s.append("")
-    s.append(
-        "Also read the base class to understand the topology and abstract methods:"
-    )
+    s.append("Also read the base class to understand the topology and abstract methods:")
     s.append(f"- `{base_class_file}`")
     s.append("")
 
@@ -1461,18 +1412,14 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
     s.append("")
 
     if is_sqla:
-        s.append(
-            "The scaffold generated concrete code templates for this SQLAlchemy connector."
-        )
+        s.append("The scaffold generated concrete code templates for this SQLAlchemy connector.")
         s.append("Each file has `# TODO` markers showing what to implement.")
         s.append("")
         s.append(f"### `{source_dir}/connection.py`")
         s.append(
             "- `_get_client()` — Return a SQLAlchemy `Engine`. The default `create_generic_db_connection` works if the DB uses standard host/port/user/password. Customize for special auth (e.g., token injection)."
         )
-        s.append(
-            "- `test_connection()` — Usually works as-is with `test_connection_db_schema_sources`."
-        )
+        s.append("- `test_connection()` — Usually works as-is with `test_connection_db_schema_sources`.")
         s.append("")
         s.append(f"### `{source_dir}/metadata.py`")
         s.append(
@@ -1484,20 +1431,14 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
         s.append("")
         if "lineage" in p.capabilities:
             s.append(f"### `{source_dir}/lineage.py`")
-            s.append(
-                "- Set `filters` to SQL conditions that identify lineage-relevant queries."
-            )
+            s.append("- Set `filters` to SQL conditions that identify lineage-relevant queries.")
             s.append("")
             s.append(f"### `{source_dir}/query_parser.py`")
-            s.append(
-                "- Implement `get_sql_statement()` to return the SQL that fetches query logs."
-            )
+            s.append("- Implement `get_sql_statement()` to return the SQL that fetches query logs.")
             s.append("")
         if "usage" in p.capabilities:
             s.append(f"### `{source_dir}/usage.py`")
-            s.append(
-                '- Usually just sets `filters = ""` to capture all queries for usage analysis.'
-            )
+            s.append('- Usually just sets `filters = ""` to capture all queries for usage analysis.')
             s.append("")
         s.append(f"### `{source_dir}/service_spec.py`")
         s.append("Already complete. No changes needed.")
@@ -1510,32 +1451,22 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
         if p.service_type == "database":
             s.append(f"### `{source_dir}/metadata.py`")
             s.append("")
-            s.append(f"Extend `DatabaseServiceSource` (not CommonDbSourceService).")
-            s.append(
-                "Implement the database topology methods. See `salesforce/metadata.py` for the pattern:"
-            )
+            s.append(f"Extend `DatabaseServiceSource` (not CommonDbSourceService).")  # noqa: F541
+            s.append("Implement the database topology methods. See `salesforce/metadata.py` for the pattern:")
             s.append("")
             s.append("- `get_database_names(self)` → yield database names")
             s.append("- `get_database_schema_names(self)` → yield schema names")
-            s.append(
-                "- `get_tables_name_and_type(self)` → yield (table_name, TableType) tuples"
-            )
-            s.append(
-                "- `yield_table(self, table_name_and_type)` → build CreateTableRequest with columns"
-            )
+            s.append("- `get_tables_name_and_type(self)` → yield (table_name, TableType) tuples")
+            s.append("- `yield_table(self, table_name_and_type)` → build CreateTableRequest with columns")
             s.append("")
             s.append(f"### `{source_dir}/service_spec.py`")
             s.append("")
-            s.append(
-                "Use `DefaultDatabaseSpec(metadata_source_class=YourSource)`. See `salesforce/service_spec.py`."
-            )
+            s.append("Use `DefaultDatabaseSpec(metadata_source_class=YourSource)`. See `salesforce/service_spec.py`.")
             s.append("")
         else:
             s.append(f"### `{source_dir}/metadata.py`")
             s.append("")
-            s.append(
-                f"Extend `{base_class}`. You **must** implement these abstract methods:"
-            )
+            s.append(f"Extend `{base_class}`. You **must** implement these abstract methods:")
             s.append("")
             methods = ABSTRACT_METHODS.get(p.service_type, [])
             for sig, ret, desc in methods:
@@ -1543,21 +1474,15 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
             s.append("")
             s.append(f"### `{source_dir}/service_spec.py`")
             s.append("")
-            s.append(
-                f"Use `BaseSpec(metadata_source_class=YourSource)`. See `{ref}/service_spec.py`."
-            )
+            s.append(f"Use `BaseSpec(metadata_source_class=YourSource)`. See `{ref}/service_spec.py`.")
             s.append("")
 
         s.append(f"### `{source_dir}/client.py`")
         s.append("")
         s.append("Build the REST/SDK client. Required methods:")
         s.append("")
-        s.append(
-            "- `__init__(self, config)` — Initialize HTTP session or SDK client, set up auth"
-        )
-        s.append(
-            "- `test_access(self)` — Make a lightweight API call to verify credentials"
-        )
+        s.append("- `__init__(self, config)` — Initialize HTTP session or SDK client, set up auth")
+        s.append("- `test_access(self)` — Make a lightweight API call to verify credentials")
         s.append("")
 
         s.append(f"### `{source_dir}/connection.py`")
@@ -1595,23 +1520,17 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
     s.append(f'- Add `"{camel}"` to the `{p.service_type}ServiceType` enum array')
     s.append("- Add to the connection `oneOf` array:")
     s.append("  ```json")
-    s.append(
-        f'  {{"$ref": "connections/{p.service_type}/{p.module_name}Connection.json"}}'
-    )
+    s.append(f'  {{"$ref": "connections/{p.service_type}/{p.module_name}Connection.json"}}')
     s.append("  ```")
     s.append("")
     s.append(f"### 3b. UI service utils: `{ui_utils}`")
     s.append("")
     s.append(f"- Import the resolved connection schema for `{camel}`")
-    s.append(
-        f"- Add a `case '{camel}':` in the switch statement that returns the schema"
-    )
+    s.append(f"- Add a `case '{camel}':` in the switch statement that returns the schema")
     s.append("")
     s.append("### 3c. Localization")
     s.append("")
-    s.append(
-        "- Add i18n keys in `openmetadata-ui/src/main/resources/ui/src/locale/languages/`"
-    )
+    s.append("- Add i18n keys in `openmetadata-ui/src/main/resources/ui/src/locale/languages/`")
     s.append(f'- Add display name entry for `"{camel}"` service')
     s.append("")
 
@@ -1620,13 +1539,9 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
     s.append("")
     s.append("```bash")
     s.append("source env/bin/activate")
-    s.append(
-        "make generate                                # Python models from JSON Schema"
-    )
+    s.append("make generate                                # Python models from JSON Schema")
     s.append("mvn clean install -pl openmetadata-spec      # Java models")
-    s.append(
-        "cd openmetadata-ui/src/main/resources/ui && yarn parse-schema  # UI forms"
-    )
+    s.append("cd openmetadata-ui/src/main/resources/ui && yarn parse-schema  # UI forms")
     s.append("make py_format                               # Format Python code")
     s.append("mvn spotless:apply                           # Format Java code")
     s.append("```")
@@ -1639,14 +1554,10 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
     s.append("")
 
     unit_ref = f"ingestion/tests/unit/topology/{p.service_type}/"
-    s.append(f"### Unit tests")
+    s.append(f"### Unit tests")  # noqa: F541
     s.append(f"- **Reference directory**: `{unit_ref}`")
-    s.append(
-        f"- **Create**: `ingestion/tests/unit/topology/{p.service_type}/test_{p.name}.py`"
-    )
-    s.append(
-        "- Pattern: mock config dict, patch `test_connection`/`get_connection`, create source, test methods"
-    )
+    s.append(f"- **Create**: `ingestion/tests/unit/topology/{p.service_type}/test_{p.name}.py`")
+    s.append("- Pattern: mock config dict, patch `test_connection`/`get_connection`, create source, test methods")
     s.append("")
 
     if p.docker_image:
@@ -1658,18 +1569,14 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
             "- **Reference**: `ingestion/tests/integration/mysql/conftest.py` (database) or "
             "`ingestion/tests/integration/metabase/conftest.py` (non-database)"
         )
-        s.append(
-            f"- Use `testcontainers` to spin up `{p.docker_image}`, create sample data, run ingestion"
-        )
+        s.append(f"- Use `testcontainers` to spin up `{p.docker_image}`, create sample data, run ingestion")
         s.append("")
 
     s.append("### Validate")
     s.append("")
     s.append("```bash")
     s.append("source env/bin/activate")
-    s.append(
-        f"python -m pytest ingestion/tests/unit/topology/{p.service_type}/test_{p.name}.py -v"
-    )
+    s.append(f"python -m pytest ingestion/tests/unit/topology/{p.service_type}/test_{p.name}.py -v")
     s.append("```")
     s.append("")
 
@@ -1702,18 +1609,10 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
         if "usage" in p.capabilities:
             s.append(f"| `{source_dir}/usage.py` | Template — has TODOs |")
     else:
-        s.append(
-            f"| `{source_dir}/connection.py` | **Skeleton** — implement from reference |"
-        )
-        s.append(
-            f"| `{source_dir}/metadata.py` | **Skeleton** — implement from reference |"
-        )
-        s.append(
-            f"| `{source_dir}/service_spec.py` | **Skeleton** — implement from reference |"
-        )
-        s.append(
-            f"| `{source_dir}/client.py` | **Skeleton** — implement from reference |"
-        )
+        s.append(f"| `{source_dir}/connection.py` | **Skeleton** — implement from reference |")
+        s.append(f"| `{source_dir}/metadata.py` | **Skeleton** — implement from reference |")
+        s.append(f"| `{source_dir}/service_spec.py` | **Skeleton** — implement from reference |")
+        s.append(f"| `{source_dir}/client.py` | **Skeleton** — implement from reference |")
     s.append("")
 
     return "\n".join(s)
@@ -1730,9 +1629,7 @@ def write_file(path: Path, content: str) -> None:
         logger.warning(f"File already exists, skipping: {path}")
         return
     path.write_text(content)
-    logger.info(
-        f"  Created: {path.relative_to(Path.cwd()) if path.is_relative_to(Path.cwd()) else path}"
-    )
+    logger.info(f"  Created: {path.relative_to(Path.cwd()) if path.is_relative_to(Path.cwd()) else path}")
 
 
 # ---------------------------------------------------------------------------
@@ -1746,9 +1643,7 @@ def get_repo_root() -> Path:
         if (current / "openmetadata-spec").is_dir():
             return current
         current = current.parent
-    raise RuntimeError(
-        "Could not find repository root (no 'openmetadata-spec' directory found)"
-    )
+    raise RuntimeError("Could not find repository root (no 'openmetadata-spec' directory found)")
 
 
 def run_scaffold(profile: ConnectorProfile) -> None:
@@ -1766,31 +1661,21 @@ def run_scaffold(profile: ConnectorProfile) -> None:
     is_sqla = p.service_type == "database" and p.connection_type == "sqlalchemy"
 
     # 1. Connection JSON Schema
-    schema_dir = (
-        root
-        / "openmetadata-spec/src/main/resources/json/schema/entity/services/connections"
-        / p.service_type
-    )
+    schema_dir = root / "openmetadata-spec/src/main/resources/json/schema/entity/services/connections" / p.service_type
     write_file(
         schema_dir / f"{p.module_name}Connection.json",
         json.dumps(generate_connection_schema(p), indent=2) + "\n",
     )
 
     # 2. Test Connection JSON
-    test_conn_dir = (
-        root
-        / "openmetadata-service/src/main/resources/json/data/testConnections"
-        / p.service_type
-    )
+    test_conn_dir = root / "openmetadata-service/src/main/resources/json/data/testConnections" / p.service_type
     write_file(
         test_conn_dir / f"{p.module_name}.json",
         json.dumps(generate_test_connection_json(p), indent=4) + "\n",
     )
 
     # 3. Connector Python files
-    source_dir = (
-        root / "ingestion/src/metadata/ingestion/source" / p.service_type / p.name
-    )
+    source_dir = root / "ingestion/src/metadata/ingestion/source" / p.service_type / p.name
     write_file(source_dir / "__init__.py", gen_init_py())
 
     if is_sqla:
@@ -1841,9 +1726,7 @@ def run_scaffold(profile: ConnectorProfile) -> None:
     logger.info("  Generated:")
     logger.info("    - Connection JSON Schema")
     logger.info("    - Test connection JSON")
-    logger.info(
-        f"    - {'Concrete code templates' if is_sqla else 'Skeleton files'} in {source_dir.relative_to(root)}"
-    )
+    logger.info(f"    - {'Concrete code templates' if is_sqla else 'Skeleton files'} in {source_dir.relative_to(root)}")
     logger.info("    - CONNECTOR_CONTEXT.md (AI agent working document)")
     logger.info("")
     logger.info("  Next steps:")
@@ -1874,9 +1757,7 @@ def run_scaffold_cli(args: argparse.Namespace) -> None:
     profile = ConnectorProfile()
     profile.name = args.name
     profile.service_type = args.service_type
-    profile.connection_type = args.connection_type or (
-        "sqlalchemy" if args.service_type == "database" else "rest_api"
-    )
+    profile.connection_type = args.connection_type or ("sqlalchemy" if args.service_type == "database" else "rest_api")
     profile.scheme = args.scheme
     profile.default_port = args.default_port
     profile.auth_types = args.auth_types or ["basic"]
@@ -1895,9 +1776,7 @@ def run_scaffold_cli(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     if profile.service_type != "database" and profile.connection_type == "sqlalchemy":
-        logger.error(
-            "--connection-type sqlalchemy is only valid for database service type."
-        )
+        logger.error("--connection-type sqlalchemy is only valid for database service type.")
         sys.exit(1)
 
     run_scaffold(profile)

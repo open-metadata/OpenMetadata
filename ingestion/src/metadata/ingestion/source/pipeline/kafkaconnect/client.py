@@ -122,9 +122,7 @@ class KafkaConnectClient:
         parsed_url = urlparse(url)
         self.is_confluent_cloud = parsed_url.hostname == "api.confluent.cloud"
 
-    def _infer_cdc_topics_from_server_name(
-        self, database_server_name: str
-    ) -> Optional[List[KafkaConnectTopics]]:
+    def _infer_cdc_topics_from_server_name(self, database_server_name: str) -> Optional[List[KafkaConnectTopics]]:
         """
         For CDC connectors, infer topic names based on database.server.name or topic.prefix.
         CDC connectors create topics with pattern: {server-name}.{database}.{table}
@@ -145,38 +143,26 @@ class KafkaConnectClient:
             # Get all connectors and check their topics
             # Note: This is a best-effort approach for Confluent Cloud
             # In practice, the messaging service should already have ingested these topics
-            logger.debug(
-                f"CDC connector detected with server name: {database_server_name}"
-            )
+            logger.debug(f"CDC connector detected with server name: {database_server_name}")
             return None  # Topics will be matched via messaging service during lineage
         except Exception as exc:
             logger.debug(f"Unable to infer CDC topics: {exc}")
             return None
 
-    def _enrich_connector_details(
-        self, connector_details: KafkaConnectPipelineDetails, connector_name: str
-    ) -> None:
+    def _enrich_connector_details(self, connector_details: KafkaConnectPipelineDetails, connector_name: str) -> None:
         """Helper method to enrich connector details with additional information."""
         connector_details.topics = self.get_connector_topics(connector=connector_name)
         connector_details.config = self.get_connector_config(connector=connector_name)
         if connector_details.config:
-            connector_details.description = connector_details.config.get(
-                "description", None
-            )
+            connector_details.description = connector_details.config.get("description", None)
 
             # For CDC connectors without explicit topics, try to infer from server name
-            if (
-                not connector_details.topics
-                and connector_details.conn_type.lower() == "source"
-            ):
+            if not connector_details.topics and connector_details.conn_type.lower() == "source":
                 database_server_name = connector_details.config.get(
                     "database.server.name"
                 ) or connector_details.config.get("topic.prefix")
                 if database_server_name:
-                    inferred_topics = (
-                        self._infer_cdc_topics_from_server_name(database_server_name)
-                        or None
-                    )
+                    inferred_topics = self._infer_cdc_topics_from_server_name(database_server_name) or None
                     if inferred_topics:
                         connector_details.topics = inferred_topics
 
@@ -190,9 +176,7 @@ class KafkaConnectClient:
         if self.is_confluent_cloud:
             # Confluent Cloud doesn't support the root endpoint (/)
             # Use /connectors to test authentication and connectivity
-            logger.info(
-                "Confluent Cloud detected - testing connection via connectors list endpoint"
-            )
+            logger.info("Confluent Cloud detected - testing connection via connectors list endpoint")
             try:
                 connectors = self.client.list_connectors()
                 # Connection successful - return a valid response
@@ -276,9 +260,7 @@ class KafkaConnectClient:
                     config_dict = {
                         item["config"]: item["value"]
                         for item in configs_array
-                        if isinstance(item, dict)
-                        and "config" in item
-                        and "value" in item
+                        if isinstance(item, dict) and "config" in item and "value" in item
                     }
                     return config_dict or None
 
@@ -291,9 +273,7 @@ class KafkaConnectClient:
 
         return None
 
-    def extract_column_mappings(
-        self, connector_config: dict
-    ) -> Optional[List[KafkaConnectColumnMapping]]:
+    def extract_column_mappings(self, connector_config: dict) -> Optional[List[KafkaConnectColumnMapping]]:
         """
         Extract column mappings from connector configuration.
         For Debezium and JDBC connectors, columns are typically mapped 1:1
@@ -319,15 +299,11 @@ class KafkaConnectClient:
 
             transform_list = [t.strip() for t in transforms.split(",")]
             for transform in transform_list:
-                transform_type = connector_config.get(
-                    f"transforms.{transform}.type", ""
-                )
+                transform_type = connector_config.get(f"transforms.{transform}.type", "")
 
                 # ReplaceField transform can rename columns
                 if "ReplaceField" in transform_type:
-                    renames = connector_config.get(
-                        f"transforms.{transform}.renames", ""
-                    )
+                    renames = connector_config.get(f"transforms.{transform}.renames", "")
                     if renames:
                         for rename in renames.split(","):
                             if ":" in rename:
@@ -347,9 +323,7 @@ class KafkaConnectClient:
 
         return None
 
-    def get_connector_topics(
-        self, connector: str
-    ) -> Optional[List[KafkaConnectTopics]]:
+    def get_connector_topics(self, connector: str) -> Optional[List[KafkaConnectTopics]]:
         """
         Get the list of topics for a connector.
 
@@ -379,28 +353,16 @@ class KafkaConnectClient:
                             # Handle single topic or comma-separated list
                             if isinstance(topic_value, str):
                                 topic_list = [t.strip() for t in topic_value.split(",")]
-                                topics.extend(
-                                    [
-                                        KafkaConnectTopics(name=topic)
-                                        for topic in topic_list
-                                    ]
-                                )
+                                topics.extend([KafkaConnectTopics(name=topic) for topic in topic_list])
 
                     if topics:
-                        logger.info(
-                            f"Extracted {len(topics)} topics from Confluent Cloud connector config"
-                        )
+                        logger.info(f"Extracted {len(topics)} topics from Confluent Cloud connector config")
                         return topics
             else:
                 # Self-hosted Kafka Connect supports /topics endpoint
-                result = self.client.list_connector_topics(connector=connector).get(
-                    connector
-                )
+                result = self.client.list_connector_topics(connector=connector).get(connector)
                 if result:
-                    topics = [
-                        KafkaConnectTopics(name=topic)
-                        for topic in result.get("topics") or []
-                    ]
+                    topics = [KafkaConnectTopics(name=topic) for topic in result.get("topics") or []]
                     return topics
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -423,9 +385,7 @@ class KafkaConnectClient:
                 if isinstance(connector_info, dict) and "status" in connector_info:
                     status_info = connector_info["status"]
                     connector_details = KafkaConnectPipelineDetails(**status_info)
-                    connector_details.status = status_info.get("connector", {}).get(
-                        "state", "UNASSIGNED"
-                    )
+                    connector_details.status = status_info.get("connector", {}).get("state", "UNASSIGNED")
                     self._enrich_connector_details(connector_details, connector_name)
                     if connector_details:
                         yield connector_details

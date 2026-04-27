@@ -11,6 +11,7 @@
 """
 Mixin class containing Task entity specific methods.
 """
+
 import json
 from typing import Dict, List, Optional, Union
 from uuid import UUID
@@ -55,9 +56,7 @@ class OMetaTaskMixin:
         """
         resp = self.client.post(
             self._tasks_path,
-            create_request.model_dump_json(
-                context={"mask_secrets": False}, by_alias=True
-            ),
+            create_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         return Task.model_validate(resp)
 
@@ -78,9 +77,7 @@ class OMetaTaskMixin:
         path = f"{self._tasks_path}/{model_str(task_id)}/resolve"
         resp = self.client.post(
             path,
-            resolve_request.model_dump_json(
-                context={"mask_secrets": False}, by_alias=True
-            ),
+            resolve_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         return Task.model_validate(resp)
 
@@ -181,9 +178,7 @@ class OMetaTaskMixin:
             before=resp["paging"].get("before"),
         )
 
-    def add_task_comment(
-        self, task_id: Union[str, UUID], message: str
-    ) -> Optional[Task]:
+    def add_task_comment(self, task_id: Union[str, UUID], message: str) -> Optional[Task]:
         """Add a comment to a task.
 
         Args:
@@ -207,34 +202,22 @@ class OMetaTaskMixin:
         )
         return Task.model_validate(resp)
 
-    def close_task(
-        self, task_id: Union[str, UUID], comment: Optional[str] = None
-    ) -> Task:
+    def close_task(self, task_id: Union[str, UUID], comment: Optional[str] = None) -> Task:
         """Close a task without applying changes."""
         suffix = f"?comment={quote(comment)}" if comment else ""
-        resp = self.client.post(
-            f"{self._tasks_path}/{model_str(task_id)}/close{suffix}"
-        )
+        resp = self.client.post(f"{self._tasks_path}/{model_str(task_id)}/close{suffix}")
         return Task.model_validate(resp)
 
-    def apply_suggestion(
-        self, task_id: Union[str, UUID], comment: Optional[str] = None
-    ) -> Task:
+    def apply_suggestion(self, task_id: Union[str, UUID], comment: Optional[str] = None) -> Task:
         """Approve and apply a suggestion task to its target entity."""
         suffix = f"?comment={quote(comment)}" if comment else ""
-        resp = self.client.put(
-            f"{self._tasks_path}/{model_str(task_id)}/suggestion/apply{suffix}"
-        )
+        resp = self.client.put(f"{self._tasks_path}/{model_str(task_id)}/suggestion/apply{suffix}")
         return Task.model_validate(resp)
 
-    def bulk_task_operation(
-        self, bulk_request: BulkTaskOperationRequest
-    ) -> BulkTaskOperationResult:
+    def bulk_task_operation(self, bulk_request: BulkTaskOperationRequest) -> BulkTaskOperationResult:
         """Run a bulk task operation."""
         resp = self.client.post(
             f"{self._tasks_path}/bulk",
-            bulk_request.model_dump_json(
-                context={"mask_secrets": False}, by_alias=True
-            ),
+            bulk_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         return BulkTaskOperationResult.model_validate(resp)

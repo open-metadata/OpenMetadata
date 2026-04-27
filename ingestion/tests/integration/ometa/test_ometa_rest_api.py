@@ -13,6 +13,7 @@
 OpenMetadata high-level API REST API test
 Tests for ApiService, APICollection, and APIEndpoint entities
 """
+
 from copy import deepcopy
 
 import pytest
@@ -164,9 +165,7 @@ class TestOMetaRestAPI:
     """
 
     @pytest.mark.order(1)
-    def test_create_api_collection(
-        self, metadata, api_service, api_collection, collection_request
-    ):
+    def test_create_api_collection(self, metadata, api_service, api_collection, collection_request):
         """
         We can create an APICollection and we receive it back as Entity
         """
@@ -177,9 +176,7 @@ class TestOMetaRestAPI:
         assert res.owners is None or res.owners == EntityReferenceList(root=[])
 
     @pytest.mark.order(2)
-    def test_create_api_endpoint(
-        self, metadata, api_service, api_collection, endpoint_request
-    ):
+    def test_create_api_endpoint(self, metadata, api_service, api_collection, endpoint_request):
         """
         We can create an APIEndpoint and we receive it back as Entity
         """
@@ -214,20 +211,14 @@ class TestOMetaRestAPI:
 
         created = metadata.create_or_update(data=delete_collection)
 
-        res_name = metadata.get_by_name(
-            entity=APICollection, fqn=created.fullyQualifiedName
-        )
+        res_name = metadata.get_by_name(entity=APICollection, fqn=created.fullyQualifiedName)
         res_id = metadata.get_by_id(entity=APICollection, entity_id=res_name.id)
 
         metadata.delete(entity=APICollection, entity_id=str(res_id.id.root))
 
         res = metadata.list_entities(entity=APICollection)
         assert not next(
-            iter(
-                ent
-                for ent in res.entities
-                if ent.fullyQualifiedName == created.fullyQualifiedName
-            ),
+            iter(ent for ent in res.entities if ent.fullyQualifiedName == created.fullyQualifiedName),
             None,
         )
 
@@ -244,20 +235,14 @@ class TestOMetaRestAPI:
         )
 
         endpoint_res = metadata.create_or_update(data=delete_endpoint)
-        res_name = metadata.get_by_name(
-            entity=APIEndpoint, fqn=endpoint_res.fullyQualifiedName
-        )
+        res_name = metadata.get_by_name(entity=APIEndpoint, fqn=endpoint_res.fullyQualifiedName)
         res_id = metadata.get_by_id(entity=APIEndpoint, entity_id=res_name.id)
 
         metadata.delete(entity=APIEndpoint, entity_id=str(res_id.id.root))
 
         res = metadata.list_entities(entity=APIEndpoint)
         assert not next(
-            iter(
-                ent
-                for ent in res.entities
-                if ent.fullyQualifiedName == endpoint_res.fullyQualifiedName
-            ),
+            iter(ent for ent in res.entities if ent.fullyQualifiedName == endpoint_res.fullyQualifiedName),
             None,
         )
 
@@ -288,11 +273,7 @@ class TestOMetaRestAPI:
 
         res = metadata.list_entities(entity=ApiService)
         assert not next(
-            iter(
-                ent
-                for ent in res.entities
-                if ent.fullyQualifiedName == created.fullyQualifiedName
-            ),
+            iter(ent for ent in res.entities if ent.fullyQualifiedName == created.fullyQualifiedName),
             None,
         )
 
@@ -303,30 +284,22 @@ class TestOMetaRestAPI:
         """
         metadata.create_or_update(data=collection_request)
 
-        res_name = metadata.get_by_name(
-            entity=APICollection, fqn=api_collection.fullyQualifiedName
-        )
+        res_name = metadata.get_by_name(entity=APICollection, fqn=api_collection.fullyQualifiedName)
         res = metadata.get_by_id(entity=APICollection, entity_id=str(res_name.id.root))
 
         assert res_name.id == res.id
 
     @pytest.mark.order(8)
-    def test_get_api_collection_name(
-        self, metadata, api_collection, collection_request
-    ):
+    def test_get_api_collection_name(self, metadata, api_collection, collection_request):
         """
         We can fetch an APICollection by name and get it back as Entity
         """
         metadata.create_or_update(data=collection_request)
 
-        res = metadata.get_by_name(
-            entity=APICollection, fqn=api_collection.fullyQualifiedName
-        )
+        res = metadata.get_by_name(entity=APICollection, fqn=api_collection.fullyQualifiedName)
         assert res.name == api_collection.name
 
-        nullable_res = metadata.get_by_name(
-            entity=APICollection, fqn="something.made.up"
-        )
+        nullable_res = metadata.get_by_name(entity=APICollection, fqn="something.made.up")
         assert nullable_res is None
 
     @pytest.mark.order(9)
@@ -343,9 +316,7 @@ class TestOMetaRestAPI:
 
         endpoint_res = metadata.create_or_update(data=endpoint_request)
 
-        res_name = metadata.get_by_name(
-            entity=APIEndpoint, fqn=endpoint_res.fullyQualifiedName
-        )
+        res_name = metadata.get_by_name(entity=APIEndpoint, fqn=endpoint_res.fullyQualifiedName)
         res = metadata.get_by_id(entity=APIEndpoint, entity_id=str(res_name.id.root))
 
         assert res_name.id == res.id
@@ -364,39 +335,29 @@ class TestOMetaRestAPI:
 
         endpoint_res = metadata.create_or_update(data=endpoint_request)
 
-        res = metadata.get_by_name(
-            entity=APIEndpoint, fqn=endpoint_res.fullyQualifiedName
-        )
+        res = metadata.get_by_name(entity=APIEndpoint, fqn=endpoint_res.fullyQualifiedName)
         assert res.name == endpoint_res.name
 
         nullable_res = metadata.get_by_name(entity=APIEndpoint, fqn="something.made.up")
         assert nullable_res is None
 
     @pytest.mark.order(11)
-    def test_get_entity_ref_api_collection(
-        self, metadata, api_collection, collection_request
-    ):
+    def test_get_entity_ref_api_collection(self, metadata, api_collection, collection_request):
         """
         test get EntityReference for APICollection
         """
         res = metadata.create_or_update(data=collection_request)
-        entity_ref = metadata.get_entity_reference(
-            entity=APICollection, fqn=res.fullyQualifiedName
-        )
+        entity_ref = metadata.get_entity_reference(entity=APICollection, fqn=res.fullyQualifiedName)
 
         assert res.id == entity_ref.id
 
     @pytest.mark.order(12)
-    def test_get_entity_ref_api_endpoint(
-        self, metadata, api_collection, endpoint_request
-    ):
+    def test_get_entity_ref_api_endpoint(self, metadata, api_collection, endpoint_request):
         """
         test get EntityReference for APIEndpoint
         """
         res = metadata.create_or_update(data=endpoint_request)
-        entity_ref = metadata.get_entity_reference(
-            entity=APIEndpoint, fqn=res.fullyQualifiedName
-        )
+        entity_ref = metadata.get_entity_reference(entity=APIEndpoint, fqn=res.fullyQualifiedName)
 
         assert res.id == entity_ref.id
 
@@ -406,16 +367,12 @@ class TestOMetaRestAPI:
         test get EntityReference for ApiService
         """
         res = metadata.create_or_update(data=service_request)
-        entity_ref = metadata.get_entity_reference(
-            entity=ApiService, fqn=res.fullyQualifiedName
-        )
+        entity_ref = metadata.get_entity_reference(entity=ApiService, fqn=res.fullyQualifiedName)
 
         assert res.id == entity_ref.id
 
     @pytest.mark.order(14)
-    def test_list_all_and_paginate_collections(
-        self, metadata, api_service, collection_request
-    ):
+    def test_list_all_and_paginate_collections(self, metadata, api_service, collection_request):
         """
         Validate generator utility to fetch all APICollections
         """
@@ -430,15 +387,11 @@ class TestOMetaRestAPI:
         entity_list = metadata.list_entities(entity=APICollection, limit=2)
         assert len(entity_list.entities) == 2
         if entity_list.after:
-            after_entity_list = metadata.list_entities(
-                entity=APICollection, limit=2, after=entity_list.after
-            )
+            after_entity_list = metadata.list_entities(entity=APICollection, limit=2, after=entity_list.after)
             assert len(after_entity_list.entities) == 2
 
     @pytest.mark.order(15)
-    def test_list_api_collections(
-        self, metadata, api_service, api_collection, collection_request
-    ):
+    def test_list_api_collections(self, metadata, api_service, api_collection, collection_request):
         """
         We can list all our APICollections
         """
@@ -489,9 +442,7 @@ class TestOMetaRestAPI:
         assert data
 
     @pytest.mark.order(18)
-    def test_update_api_collection(
-        self, metadata, api_collection, collection_request, rest_user, rest_owners
-    ):
+    def test_update_api_collection(self, metadata, api_collection, collection_request, rest_user, rest_owners):
         """
         Updating it properly changes its properties
         """
@@ -508,9 +459,7 @@ class TestOMetaRestAPI:
         assert res.owners.root[0].id == rest_user.id
 
     @pytest.mark.order(19)
-    def test_update_api_endpoint(
-        self, metadata, api_collection, endpoint_request, rest_user, rest_owners
-    ):
+    def test_update_api_endpoint(self, metadata, api_collection, endpoint_request, rest_user, rest_owners):
         """
         Updating it properly changes its properties
         """
@@ -527,9 +476,7 @@ class TestOMetaRestAPI:
         assert res.owners.root[0].id == rest_user.id
 
     @pytest.mark.order(20)
-    def test_update_api_service(
-        self, metadata, api_service, service_request, rest_user, rest_owners
-    ):
+    def test_update_api_service(self, metadata, api_service, service_request, rest_user, rest_owners):
         """
         Updating it properly changes its properties
         """

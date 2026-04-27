@@ -11,6 +11,7 @@
 """
 Singlestore source ingestion
 """
+
 from typing import Optional
 
 from sqlalchemy.dialects.mysql.base import ischema_names
@@ -42,13 +43,9 @@ class SinglestoreSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SingleStoreConnection = config.serviceConnection.root.config
         if not isinstance(connection, SingleStoreConnection):
-            raise InvalidSourceException(
-                f"Expected SingleStoreConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected SingleStoreConnection, but got {connection}")
         return cls(config, metadata)

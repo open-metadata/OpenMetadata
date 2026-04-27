@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """mlflow integration tests"""
+
 import logging
 import os
 import time
@@ -141,9 +142,7 @@ def create_data(mlflow_environment):
                 break
             except Exception:
                 if attempt < 4:
-                    logging.getLogger(__name__).warning(
-                        "Retry %d/5: S3 upload failed, retrying...", attempt + 1
-                    )
+                    logging.getLogger(__name__).warning("Retry %d/5: S3 upload failed, retrying...", attempt + 1)
                     time.sleep(5 * (attempt + 1))
                 else:
                     raise
@@ -193,9 +192,7 @@ def test_mlflow(ingest_mlflow, metadata, service):
     ml_models = metadata.list_all_entities(entity=MlModel)
 
     # Check we only get the same amount of models we should have ingested
-    filtered_ml_models = [
-        ml_model for ml_model in ml_models if ml_model.service.name == service.name.root
-    ]
+    filtered_ml_models = [ml_model for ml_model in ml_models if ml_model.service.name == service.name.root]
 
     assert len(filtered_ml_models) == 1
 

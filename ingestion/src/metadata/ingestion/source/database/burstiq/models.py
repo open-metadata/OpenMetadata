@@ -11,6 +11,7 @@
 """
 BurstIQ LifeGraph data models for dictionaries, attributes, and API responses
 """
+
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -54,17 +55,13 @@ class BurstIQAttribute(BaseModel):
         default_factory=list,
         description="Nested attributes for OBJECT_ARRAY and OBJECT types",
     )
-    referenceDictionaryName: Optional[str] = Field(
-        None, description="Referenced dictionary name for relationships"
-    )
+    referenceDictionaryName: Optional[str] = Field(None, description="Referenced dictionary name for relationships")
 
 
 class BurstIQIndex(BaseModel):
     """Model for BurstIQ dictionary index"""
 
-    attributes: List[str] = Field(
-        default_factory=list, description="List of attribute names in the index"
-    )
+    attributes: List[str] = Field(default_factory=list, description="List of attribute names in the index")
     type: str = Field(..., description="Index type (e.g., PRIMARY, UNIQUE, etc.)")
 
 
@@ -73,12 +70,8 @@ class BurstIQDictionary(BaseModel):
 
     name: str = Field(..., description="Dictionary name (table name)")
     description: Optional[str] = Field(None, description="Dictionary description")
-    attributes: List[BurstIQAttribute] = Field(
-        default_factory=list, description="List of attributes (columns)"
-    )
-    indexes: List[BurstIQIndex] = Field(
-        default_factory=list, description="List of indexes"
-    )
+    attributes: List[BurstIQAttribute] = Field(default_factory=list, description="List of attributes (columns)")
+    indexes: List[BurstIQIndex] = Field(default_factory=list, description="List of indexes")
 
     @property
     def table_name(self) -> str:
@@ -108,6 +101,4 @@ class BurstIQEdge(BaseModel):
     name: str = Field(..., description="Edge name")
     fromDictionary: str = Field(..., description="Source dictionary name")
     toDictionary: str = Field(..., description="Target dictionary name")
-    condition: List[BurstIQEdgeColumn] = Field(
-        default_factory=list, description="Column-to-column mappings"
-    )
+    condition: List[BurstIQEdgeColumn] = Field(default_factory=list, description="Column-to-column mappings")

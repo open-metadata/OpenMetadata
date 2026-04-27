@@ -332,6 +332,7 @@ export function useOntologyExplorer({
     relationTypes,
     settings,
     scope,
+    entityId,
     glossaryId,
     termGlossaryId,
     dataSource,
@@ -1190,9 +1191,9 @@ export function useOntologyExplorer({
       if (mode === 'data') {
         modelFiltersRef.current = filters;
         const nextFilters: GraphFilters = {
-          ...dataFiltersRef.current,
-          glossaryIds: filters.glossaryIds,
+          ...filters,
           viewMode: 'overview' satisfies GraphViewMode,
+          showCrossGlossaryOnly: false,
         };
         if (graphData) {
           dataModeInitialLoadUsesSpinnerRef.current = true;
@@ -1205,7 +1206,11 @@ export function useOntologyExplorer({
         setSelectedNode(null);
         setExpandedTermIds(new Set());
         setExplorationMode(mode);
-        setFilters(modelFiltersRef.current);
+        setFilters({
+          ...filters,
+          viewMode: modelFiltersRef.current.viewMode,
+          showCrossGlossaryOnly: modelFiltersRef.current.showCrossGlossaryOnly,
+        });
         setTermAssetCounts({});
       }
     },

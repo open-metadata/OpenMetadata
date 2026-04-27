@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Entity Utilities"""
+
 from enum import Enum
 from typing import Type
 
@@ -92,8 +93,6 @@ def service_class(service_type) -> Type:
         str
     """
     for service in ServiceClass:
-        if service_type.casefold() in {
-            key.casefold() for key in SERVICE_TYPE_MAP[service.value].__members__
-        }:
+        if service_type.casefold() in {key.casefold() for key in SERVICE_TYPE_MAP[service.value].__members__}:
             return service.value
     raise ValueError(f"Unsupported service type: {service_type}")

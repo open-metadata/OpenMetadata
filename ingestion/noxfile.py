@@ -11,6 +11,7 @@
 """
 Nox sessions for testing and formatting checks.
 """
+
 import os
 
 import nox
@@ -62,9 +63,7 @@ def lint(session):
     #   Some work is required to import plugins correctly
 
 
-@nox.session(
-    name="unit", reuse_venv=True, venv_backend="uv|venv", python=get_python_versions()
-)
+@nox.session(name="unit", reuse_venv=True, venv_backend="uv|venv", python=get_python_versions())
 def unit(session):
     session.install(".[all-dev-env, test-unit]")
     # TODO: we need to install pip so that spaCy can install its dependencies

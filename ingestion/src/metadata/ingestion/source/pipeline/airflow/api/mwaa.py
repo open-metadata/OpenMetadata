@@ -79,9 +79,7 @@ class MWAAClient:
                 try:
                     return json.loads(rest_api_response)
                 except json.JSONDecodeError:
-                    logger.warning(
-                        f"Failed to parse MWAA response as JSON: {rest_api_response}"
-                    )
+                    logger.warning(f"Failed to parse MWAA response as JSON: {rest_api_response}")
                     return {"raw_response": rest_api_response}
 
             return rest_api_response
@@ -116,8 +114,7 @@ class MWAAClient:
     def get_task_instances(self, dag_id: str, dag_run_id: str) -> Dict:
         """Get task instances for a specific DAG run"""
         return self._invoke_rest_api(
-            f"/dags/{quote(dag_id, safe='')}"
-            f"/dagRuns/{quote(dag_run_id, safe='')}/taskInstances"
+            f"/dags/{quote(dag_id, safe='')}/dagRuns/{quote(dag_run_id, safe='')}/taskInstances"
         )
 
     def _paginate(self, path: str, key: str, limit: int = 100) -> List[Dict]:
@@ -233,20 +230,13 @@ class MWAAClient:
             )
         return result
 
-    def get_task_instances_for_run(
-        self, dag_id: str, dag_run_id: str
-    ) -> List[AirflowApiTaskInstance]:
+    def get_task_instances_for_run(self, dag_id: str, dag_run_id: str) -> List[AirflowApiTaskInstance]:
         """Get task instances using existing model format"""
         try:
-            path = (
-                f"/dags/{quote(dag_id, safe='')}"
-                f"/dagRuns/{quote(dag_run_id, safe='')}/taskInstances"
-            )
+            path = f"/dags/{quote(dag_id, safe='')}/dagRuns/{quote(dag_run_id, safe='')}/taskInstances"
             instances_data = self._paginate(path, key="task_instances")
         except Exception as exc:
-            logger.warning(
-                f"Could not fetch task instances for {dag_id}/{dag_run_id}: {exc}"
-            )
+            logger.warning(f"Could not fetch task instances for {dag_id}/{dag_run_id}: {exc}")
             return []
 
         return [

@@ -12,6 +12,7 @@
 """
 Helper to manage readers' credentials functionalities
 """
+
 from metadata.generated.schema.security.credentials.gitCredentials import RepositoryName
 from metadata.readers.file.api_reader import ReadersCredentials
 from metadata.utils.logger import ingestion_logger
@@ -19,9 +20,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-def update_repository_name(
-    original: ReadersCredentials, name: str
-) -> ReadersCredentials:
+def update_repository_name(original: ReadersCredentials, name: str) -> ReadersCredentials:
     """
     Given an original set of credentials and a new repository name,
     return the updated credentials
@@ -32,9 +31,7 @@ def update_repository_name(
     return updated
 
 
-def get_credentials_from_url(
-    original: ReadersCredentials, url: str
-) -> ReadersCredentials:
+def get_credentials_from_url(original: ReadersCredentials, url: str) -> ReadersCredentials:
     """
     Given a default set of credentials and a git URL, check if the
     owner of the original credentials is part of the new URL.

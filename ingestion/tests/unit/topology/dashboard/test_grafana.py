@@ -77,9 +77,7 @@ MOCK_DATABASE_SERVICE = DatabaseService(
 EXAMPLE_DASHBOARD = LineageDashboard(
     id="7b3766b1-7eb4-4ad4-b7c8-15a8b16edfdd",
     name="test-dashboard-uid",
-    service=EntityReference(
-        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"
-    ),
+    service=EntityReference(id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"),
 )
 
 EXAMPLE_TABLE = [
@@ -280,9 +278,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     name=EntityName("test-dashboard-uid"),
     displayName="Test Dashboard",
     description=Markdown("Test dashboard description"),
-    sourceUrl=SourceUrl(
-        "https://grafana.example.com/d/test-dashboard-uid/test-dashboard"
-    ),
+    sourceUrl=SourceUrl("https://grafana.example.com/d/test-dashboard-uid/test-dashboard"),
     charts=[],
     service=FullyQualifiedEntityName("mock_grafana"),
     tags=[],  # Tags would be added if tag creation was mocked
@@ -295,9 +291,7 @@ EXPECTED_CHARTS = [
         displayName="User Activity",
         description=Markdown("Shows user activity over time"),
         chartType="Line",
-        sourceUrl=SourceUrl(
-            "https://grafana.example.com/d/test-dashboard-uid/test-dashboard?viewPanel=1"
-        ),
+        sourceUrl=SourceUrl("https://grafana.example.com/d/test-dashboard-uid/test-dashboard?viewPanel=1"),
         service=FullyQualifiedEntityName("mock_grafana"),
     ),
     CreateChartRequest(
@@ -305,9 +299,7 @@ EXPECTED_CHARTS = [
         displayName="Top Customers",
         description=None,
         chartType="Table",
-        sourceUrl=SourceUrl(
-            "https://grafana.example.com/d/test-dashboard-uid/test-dashboard?viewPanel=2"
-        ),
+        sourceUrl=SourceUrl("https://grafana.example.com/d/test-dashboard-uid/test-dashboard?viewPanel=2"),
         service=FullyQualifiedEntityName("mock_grafana"),
     ),
     CreateChartRequest(
@@ -315,9 +307,7 @@ EXPECTED_CHARTS = [
         displayName="Total Revenue",
         description=None,
         chartType="Text",
-        sourceUrl=SourceUrl(
-            "https://grafana.example.com/d/test-dashboard-uid/test-dashboard?viewPanel=3"
-        ),
+        sourceUrl=SourceUrl("https://grafana.example.com/d/test-dashboard-uid/test-dashboard?viewPanel=3"),
         service=FullyQualifiedEntityName("mock_grafana"),
     ),
 ]
@@ -328,9 +318,7 @@ class GrafanaUnitTest(TestCase):
     Implements the necessary unit tests for the Grafana Dashboard connector
     """
 
-    @patch(
-        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.grafana.connection.get_connection")
     def __init__(self, methodName, get_connection, test_connection) -> None:
         super().__init__(methodName)
@@ -364,9 +352,7 @@ class GrafanaUnitTest(TestCase):
         self.grafana.client.get_datasources.return_value = MOCK_DATASOURCES
 
         # Set up context
-        self.grafana.context.get().__dict__[
-            "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+        self.grafana.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
         self.grafana.context.get().__dict__["charts"] = []
 
     def test_prepare(self):
@@ -418,9 +404,7 @@ class GrafanaUnitTest(TestCase):
         """Test dashboard creation without folder"""
         dashboard_response = GrafanaDashboardResponse(
             dashboard=MOCK_DASHBOARD_RESPONSE.dashboard,
-            meta=GrafanaDashboardMeta(
-                **{**MOCK_DASHBOARD_RESPONSE.meta.model_dump(), "folderTitle": None}
-            ),
+            meta=GrafanaDashboardMeta(**{**MOCK_DASHBOARD_RESPONSE.meta.model_dump(), "folderTitle": None}),
         )
 
         results = list(self.grafana.yield_dashboard(dashboard_response))
@@ -479,11 +463,7 @@ class GrafanaUnitTest(TestCase):
         self.grafana.metadata.get_by_name = MagicMock(return_value=EXAMPLE_DASHBOARD)
 
         # Get lineage
-        lineage_results = list(
-            self.grafana.yield_dashboard_lineage_details(
-                MOCK_DASHBOARD_RESPONSE, "mock_postgres"
-            )
-        )
+        lineage_results = list(self.grafana.yield_dashboard_lineage_details(MOCK_DASHBOARD_RESPONSE, "mock_postgres"))
 
         # Should have lineage for panels with SQL queries (panels 1 and 2)
         # Panel 3 has Prometheus query which doesn't generate lineage
@@ -516,9 +496,7 @@ class GrafanaUnitTest(TestCase):
 
         # Test fallback to panel datasource
         target = GrafanaTarget()
-        panel = GrafanaPanel(
-            id=1, type="graph", title="Test", datasource="panel-datasource"
-        )
+        panel = GrafanaPanel(id=1, type="graph", title="Test", datasource="panel-datasource")
         result = self.grafana._extract_datasource_name(target, panel)
         self.assertEqual(result, "panel-datasource")
 
@@ -543,9 +521,7 @@ class GrafanaUnitTest(TestCase):
         """Test owner reference extraction"""
         # Mock the metadata API to return a user reference
         mock_owner = EntityReference(id=str(uuid.uuid4()), type="user")
-        self.grafana.metadata.get_reference_by_email = MagicMock(
-            return_value=mock_owner
-        )
+        self.grafana.metadata.get_reference_by_email = MagicMock(return_value=mock_owner)
 
         owner_ref = self.grafana.get_owner_ref(MOCK_DASHBOARD_RESPONSE)
         self.assertIsNotNone(owner_ref)
@@ -553,9 +529,7 @@ class GrafanaUnitTest(TestCase):
         # Test with no createdBy
         dashboard_response = GrafanaDashboardResponse(
             dashboard=MOCK_DASHBOARD_RESPONSE.dashboard,
-            meta=GrafanaDashboardMeta(
-                **{**MOCK_DASHBOARD_RESPONSE.meta.model_dump(), "createdBy": None}
-            ),
+            meta=GrafanaDashboardMeta(**{**MOCK_DASHBOARD_RESPONSE.meta.model_dump(), "createdBy": None}),
         )
         owner_ref = self.grafana.get_owner_ref(dashboard_response)
         self.assertIsNone(owner_ref)

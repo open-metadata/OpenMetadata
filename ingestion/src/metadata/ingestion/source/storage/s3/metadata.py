@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """S3 object store extraction metadata"""
+
 import json
 import secrets
 import traceback
@@ -97,9 +98,7 @@ class S3Source(StorageServiceSource):
         self.s3_reader = get_reader(config_source=S3Config(), client=self.s3_client)
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: S3Connection = config.serviceConnection.root.config
         if not isinstance(connection, S3Connection):
@@ -113,18 +112,14 @@ class S3Source(StorageServiceSource):
             bucket_name = bucket_response.name
             try:
                 # We always generate the parent container (the bucket)
-                yield self._generate_unstructured_container(
-                    bucket_response=bucket_response
-                )
+                yield self._generate_unstructured_container(bucket_response=bucket_response)
                 container_fqn = fqn._build(  # pylint: disable=protected-access
                     *(
                         self.context.get().objectstore_service,
                         self.context.get().container,
                     )
                 )
-                container_entity = self.metadata.get_by_name(
-                    entity=Container, fqn=container_fqn
-                )
+                container_entity = self.metadata.get_by_name(entity=Container, fqn=container_fqn)
                 self._bucket_cache[bucket_name] = container_entity
                 self._unstructured_container_cache[container_fqn] = (
                     container_entity.id.root,
@@ -135,17 +130,13 @@ class S3Source(StorageServiceSource):
                 )
                 manifest_entries = self._resolve_manifest_entries(bucket_name)
                 if manifest_entries:
-                    expanded_entries = self.expand_entries(
-                        bucket_name=bucket_name, entries=manifest_entries
-                    )
+                    expanded_entries = self.expand_entries(bucket_name=bucket_name, entries=manifest_entries)
                     # Apply containerFilterPattern + default Spark-artifact
                     # excludes to the concrete paths *before* we attempt to
                     # list sample files / infer schema. Prevents Issue #24823
                     # where entries like ``_SUCCESS`` or user-excluded paths
                     # would still be processed.
-                    filtered_entries = self.filter_manifest_entries(
-                        bucket_name=bucket_name, entries=expanded_entries
-                    )
+                    filtered_entries = self.filter_manifest_entries(bucket_name=bucket_name, entries=expanded_entries)
                     yield from self._generate_structured_containers(
                         bucket_response=bucket_response,
                         entries=filtered_entries,
@@ -218,19 +209,12 @@ class S3Source(StorageServiceSource):
         """
         try:
             bucket_name, key = self._get_bucket_name_and_key(container_details.fullPath)
-            if (
-                container_details.leaf_container
-                and container_details.container_fqn
-                and bucket_name
-                and key
-            ):
+            if container_details.leaf_container and container_details.container_fqn and bucket_name and key:
                 tags = self.s3_client.get_object_tagging(Bucket=bucket_name, Key=key)
                 tags_list: List[S3Tag] = S3TagResponse.model_validate(tags).TagSet
                 for tag in tags_list:
                     yield from get_ometa_tag_and_classification(
-                        tag_fqn=FullyQualifiedEntityName(
-                            container_details.container_fqn
-                        ),
+                        tag_fqn=FullyQualifiedEntityName(container_details.container_fqn),
                         tags=[tag.Value],
                         classification_name=tag.Key,
                         tag_description="S3 TAG VALUE",
@@ -282,9 +266,7 @@ class S3Source(StorageServiceSource):
         if not metadata_entry.structureFormat:
             return None
 
-        sample_key = self._get_sample_file_path(
-            bucket_name=bucket_name, metadata_entry=metadata_entry
-        )
+        sample_key = self._get_sample_file_path(bucket_name=bucket_name, metadata_entry=metadata_entry)
         # if we have a sample file to fetch a schema from
         if sample_key:
             try:
@@ -292,9 +274,7 @@ class S3Source(StorageServiceSource):
                     container_name=bucket_name,
                     sample_key=sample_key,
                     metadata_entry=metadata_entry,
-                    config_source=S3Config(
-                        securityConfig=self.service_connection.awsConfig
-                    ),
+                    config_source=S3Config(securityConfig=self.service_connection.awsConfig),
                     client=self.s3_client,
                     session=self.session,
                 )
@@ -308,21 +288,15 @@ class S3Source(StorageServiceSource):
                 )
                 return None
             if columns:
-                prefix = (
-                    f"{KEY_SEPARATOR}{metadata_entry.dataPath.strip(KEY_SEPARATOR)}"
-                )
+                prefix = f"{KEY_SEPARATOR}{metadata_entry.dataPath.strip(KEY_SEPARATOR)}"
                 return S3ContainerDetails(
                     name=metadata_entry.dataPath.strip(KEY_SEPARATOR),
                     prefix=prefix,
                     creation_date=(
-                        bucket_response.creation_date.isoformat()
-                        if bucket_response.creation_date
-                        else None
+                        bucket_response.creation_date.isoformat() if bucket_response.creation_date else None
                     ),
                     file_formats=[container.FileFormat(metadata_entry.structureFormat)],
-                    data_model=ContainerDataModel(
-                        isPartitioned=metadata_entry.isPartitioned, columns=columns
-                    ),
+                    data_model=ContainerDataModel(isPartitioned=metadata_entry.isPartitioned, columns=columns),
                     parent=parent,
                     fullPath=self._get_full_path(bucket_name, prefix),
                     sourceUrl=self._get_object_source_url(
@@ -356,9 +330,7 @@ class S3Source(StorageServiceSource):
                 for key in candidate_keys:
                     metadata_entry_copy = deepcopy(metadata_entry)
                     metadata_entry_copy.dataPath = key.strip(KEY_SEPARATOR)
-                    structured_container: Optional[
-                        S3ContainerDetails
-                    ] = self._generate_container_details(
+                    structured_container: Optional[S3ContainerDetails] = self._generate_container_details(
                         bucket_response=bucket_response,
                         metadata_entry=metadata_entry_copy,
                         parent=parent,
@@ -383,9 +355,7 @@ class S3Source(StorageServiceSource):
                 f"and generating structured container"
             )
             if metadata_entry.depth == 0:
-                structured_container: Optional[
-                    S3ContainerDetails
-                ] = self._generate_container_details(
+                structured_container: Optional[S3ContainerDetails] = self._generate_container_details(
                     bucket_response=bucket_response,
                     metadata_entry=metadata_entry,
                     parent=parent,
@@ -438,14 +408,10 @@ class S3Source(StorageServiceSource):
                 fullPath=full_path + KEY_SEPARATOR + list_of_parent[i],
                 sourceUrl=self._get_object_source_url(
                     bucket_name=bucket_name,
-                    prefix=self._clean_path(
-                        full_path + KEY_SEPARATOR + list_of_parent[i]
-                    ),
+                    prefix=self._clean_path(full_path + KEY_SEPARATOR + list_of_parent[i]),
                 ),
             )
-            container_entity = self.metadata.get_by_name(
-                entity=Container, fqn=container_fqn
-            )
+            container_entity = self.metadata.get_by_name(entity=Container, fqn=container_fqn)
             full_path += KEY_SEPARATOR + list_of_parent[i]
             self._unstructured_container_cache[container_fqn] = (
                 container_entity.id.root,
@@ -474,13 +440,10 @@ class S3Source(StorageServiceSource):
         for key in candidate_keys:
             if self.is_valid_unstructured_file(metadata_entry.unstructuredFormats, key):
                 logger.info(
-                    f"Extracting metadata from path {key.strip(KEY_SEPARATOR)} "
-                    f"and generating unstructured container"
+                    f"Extracting metadata from path {key.strip(KEY_SEPARATOR)} and generating unstructured container"
                 )
                 list_of_parent = key.strip(KEY_SEPARATOR).split(KEY_SEPARATOR)
-                yield from self._yield_parents_of_unstructured_container(
-                    bucket_name, list_of_parent, parent
-                )
+                yield from self._yield_parents_of_unstructured_container(bucket_name, list_of_parent, parent)
                 parent_fqn = fqn._build(  # pylint: disable=protected-access
                     *(
                         self.context.get().objectstore_service,
@@ -508,9 +471,7 @@ class S3Source(StorageServiceSource):
                     fullPath=self._get_full_path(bucket_name, key),
                     sourceUrl=self._get_object_source_url(
                         bucket_name=bucket_name,
-                        prefix=self._clean_path(
-                            parent_path + KEY_SEPARATOR + list_of_parent[-1]
-                        ),
+                        prefix=self._clean_path(parent_path + KEY_SEPARATOR + list_of_parent[-1]),
                     ),
                 )
 
@@ -535,9 +496,7 @@ class S3Source(StorageServiceSource):
                     f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
                     f"and generating unstructured container"
                 )
-                prefix = (
-                    f"{KEY_SEPARATOR}{metadata_entry.dataPath.strip(KEY_SEPARATOR)}"
-                )
+                prefix = f"{KEY_SEPARATOR}{metadata_entry.dataPath.strip(KEY_SEPARATOR)}"
                 yield S3ContainerDetails(
                     name=metadata_entry.dataPath.strip(KEY_SEPARATOR),
                     prefix=prefix,
@@ -577,10 +536,7 @@ class S3Source(StorageServiceSource):
         results: List[S3BucketResponse] = []
         try:
             if self.service_connection.bucketNames:
-                return [
-                    S3BucketResponse(Name=bucket_name)
-                    for bucket_name in self.service_connection.bucketNames
-                ]
+                return [S3BucketResponse(Name=bucket_name) for bucket_name in self.service_connection.bucketNames]
             # No pagination required, as there is a hard 1000 limit on nr of buckets per aws account
             for bucket in self.s3_client.list_buckets().get("Buckets") or []:
                 if filter_by_container(
@@ -620,11 +576,7 @@ class S3Source(StorageServiceSource):
                             },
                             "Period": 60,
                             "Stat": "Average",
-                            "Unit": (
-                                "Bytes"
-                                if metric == S3Metric.BUCKET_SIZE_BYTES
-                                else "Count"
-                            ),
+                            "Unit": ("Bytes" if metric == S3Metric.BUCKET_SIZE_BYTES else "Count"),
                         },
                     },
                 ],
@@ -639,28 +591,16 @@ class S3Source(StorageServiceSource):
                     return int(first_metric["Values"][0])
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed fetching metric {metric.value} for bucket {bucket_name}, returning 0"
-            )
+            logger.warning(f"Failed fetching metric {metric.value} for bucket {bucket_name}, returning 0")
         return 0
 
-    def _generate_unstructured_container(
-        self, bucket_response: S3BucketResponse
-    ) -> S3ContainerDetails:
+    def _generate_unstructured_container(self, bucket_response: S3BucketResponse) -> S3ContainerDetails:
         return S3ContainerDetails(
             name=bucket_response.name,
             prefix=KEY_SEPARATOR,
-            creation_date=(
-                bucket_response.creation_date.isoformat()
-                if bucket_response.creation_date
-                else None
-            ),
-            number_of_objects=self._fetch_metric(
-                bucket_name=bucket_response.name, metric=S3Metric.NUMBER_OF_OBJECTS
-            ),
-            size=self._fetch_metric(
-                bucket_name=bucket_response.name, metric=S3Metric.BUCKET_SIZE_BYTES
-            ),
+            creation_date=(bucket_response.creation_date.isoformat() if bucket_response.creation_date else None),
+            number_of_objects=self._fetch_metric(bucket_name=bucket_response.name, metric=S3Metric.NUMBER_OF_OBJECTS),
+            size=self._fetch_metric(bucket_name=bucket_response.name, metric=S3Metric.BUCKET_SIZE_BYTES),
             file_formats=[],
             data_model=None,
             fullPath=self._get_full_path(bucket_name=bucket_response.name),
@@ -684,9 +624,7 @@ class S3Source(StorageServiceSource):
 
         return full_path
 
-    def _get_sample_file_path(
-        self, bucket_name: str, metadata_entry: MetadataEntry
-    ) -> Optional[str]:
+    def _get_sample_file_path(self, bucket_name: str, metadata_entry: MetadataEntry) -> Optional[str]:
         """
         Given a bucket and a metadata entry, returns the full path key to a
         file which can then be used to infer schema, or None if no suitable
@@ -731,20 +669,13 @@ class S3Source(StorageServiceSource):
 
             if candidate_keys:
                 result_key = secrets.choice(candidate_keys)
-                logger.info(
-                    f"File {result_key} was picked to infer data structure from."
-                )
+                logger.info(f"File {result_key} was picked to infer data structure from.")
                 return result_key
-            logger.warning(
-                f"No sample files found in {prefix} with "
-                f"{metadata_entry.structureFormat} extension"
-            )
+            logger.warning(f"No sample files found in {prefix} with {metadata_entry.structureFormat} extension")
             return None
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error when trying to list objects in S3 bucket {bucket_name} at prefix {prefix}"
-            )
+            logger.warning(f"Error when trying to list objects in S3 bucket {bucket_name} at prefix {prefix}")
             return None
 
     def get_aws_bucket_region(self, bucket_name: str) -> str:
@@ -766,17 +697,12 @@ class S3Source(StorageServiceSource):
         """
         try:
             # Check if custom console endpoint URL is configured (for external S3-compatible storage)
-            console_endpoint_url = getattr(
-                self.service_connection, "consoleEndpointURL", None
-            )
+            console_endpoint_url = getattr(self.service_connection, "consoleEndpointURL", None)
 
             # If no custom console endpoint, use AWS S3 console with region
             if not console_endpoint_url:
                 region = self.get_aws_bucket_region(bucket_name=bucket_name)
-                return (
-                    f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}"
-                    f"?region={region}&tab=objects"
-                )
+                return f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}?region={region}&tab=objects"
 
             # For external S3-compatible storage, user provides the full base path
             # (e.g., http://localhost:9001/browser/ for MinIO)
@@ -795,9 +721,7 @@ class S3Source(StorageServiceSource):
         """
         try:
             # Check if custom console endpoint URL is configured (for external S3-compatible storage)
-            console_endpoint_url = getattr(
-                self.service_connection, "consoleEndpointURL", None
-            )
+            console_endpoint_url = getattr(self.service_connection, "consoleEndpointURL", None)
 
             # If no custom console endpoint, use AWS S3 console with region
             if not console_endpoint_url:

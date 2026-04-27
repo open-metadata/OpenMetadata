@@ -11,6 +11,7 @@
 """
 Test that DatalakeSampler truncates oversized cell values during fetch_sample_data.
 """
+
 import sys
 from unittest.mock import Mock, patch
 from uuid import uuid4
@@ -124,9 +125,7 @@ class TestDatalakeSamplerTruncation:
     def test_oversized_body_is_truncated_to_limit(self, _):
         sample_data = _fetch_truncated_sample()
 
-        body_idx = next(
-            i for i, col in enumerate(sample_data.columns) if str(col.root) == "body"
-        )
+        body_idx = next(i for i, col in enumerate(sample_data.columns) if str(col.root) == "body")
         oversized_row = next(row for row in sample_data.rows if row[0] == "oversized")
         assert len(oversized_row[body_idx]) == SAMPLE_DATA_MAX_CELL_LENGTH
 
@@ -137,9 +136,7 @@ class TestDatalakeSamplerTruncation:
     def test_value_at_limit_is_not_truncated(self, _):
         sample_data = _fetch_truncated_sample()
 
-        body_idx = next(
-            i for i, col in enumerate(sample_data.columns) if str(col.root) == "body"
-        )
+        body_idx = next(i for i, col in enumerate(sample_data.columns) if str(col.root) == "body")
         at_limit_row = next(row for row in sample_data.rows if row[0] == "at_limit")
         assert len(at_limit_row[body_idx]) == SAMPLE_DATA_MAX_CELL_LENGTH
 
@@ -150,8 +147,6 @@ class TestDatalakeSamplerTruncation:
     def test_small_value_is_unchanged(self, _):
         sample_data = _fetch_truncated_sample()
 
-        body_idx = next(
-            i for i, col in enumerate(sample_data.columns) if str(col.root) == "body"
-        )
+        body_idx = next(i for i, col in enumerate(sample_data.columns) if str(col.root) == "body")
         small_row = next(row for row in sample_data.rows if row[0] == "small")
         assert small_row[body_idx] == SMALL_TEXT

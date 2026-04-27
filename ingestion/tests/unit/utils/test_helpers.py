@@ -11,6 +11,7 @@
 """
 Test helpers
 """
+
 import uuid
 from unittest import TestCase
 
@@ -58,9 +59,7 @@ class HelpersTest(TestCase):
         self.assertEqual(col, Column(name="foo", dataType=DataType.BIGINT))
         self.assertEqual(idx, 2)
 
-        not_found_col, not_found_idx = find_column_in_table_with_index(
-            column_name="random", table=table
-        )
+        not_found_col, not_found_idx = find_column_in_table_with_index(column_name="random", table=table)
         self.assertIsNone(not_found)
         self.assertIsNone(not_found_idx)
 

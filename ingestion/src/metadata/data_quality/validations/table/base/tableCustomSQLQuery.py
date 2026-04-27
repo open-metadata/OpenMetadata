@@ -56,7 +56,10 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         )
 
         operator = self.get_test_case_param_value(
-            self.test_case.parameterValues, "operator", str, "<="  # type: ignore
+            self.test_case.parameterValues,
+            "operator",
+            str,
+            "<=",  # type: ignore
         )
 
         threshold = self.get_test_case_param_value(
@@ -170,13 +173,9 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         """
         if test_passed:
             return self._calculate_passed_rows_success(operator, len_rows, row_count)
-        return self._calculate_passed_rows_failure(
-            operator, threshold, len_rows, row_count
-        )
+        return self._calculate_passed_rows_failure(operator, threshold, len_rows, row_count)
 
-    def _calculate_passed_rows_success(
-        self, operator: str, len_rows: int, row_count: int
-    ) -> tuple[int, int]:
+    def _calculate_passed_rows_success(self, operator: str, len_rows: int, row_count: int) -> tuple[int, int]:
         """Calculate passed/failed rows when test passed"""
         if operator in (">", ">="):
             passed_rows = len_rows
@@ -207,26 +206,20 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         failed_rows = row_count if row_count else len_rows
         return 0, max(0, failed_rows)
 
-    def _calculate_greater_than_failure(
-        self, len_rows: int, row_count: int
-    ) -> tuple[int, int]:
+    def _calculate_greater_than_failure(self, len_rows: int, row_count: int) -> tuple[int, int]:
         """Calculate rows for > or >= operator failure (expected more rows)"""
         passed_rows = len_rows
         failed_rows = (row_count - len_rows) if row_count else 0
         return max(0, passed_rows), max(0, failed_rows)
 
-    def _calculate_less_than_failure(
-        self, len_rows: int, row_count: int
-    ) -> tuple[int, int]:
+    def _calculate_less_than_failure(self, len_rows: int, row_count: int) -> tuple[int, int]:
         """Calculate rows for < or <= operator failure (expected fewer rows)"""
         failed_rows = len_rows
         passed_rows = row_count - failed_rows
 
         return max(0, passed_rows), max(0, failed_rows)
 
-    def _calculate_equal_failure(
-        self, threshold: int, len_rows: int, row_count: int
-    ) -> tuple[int, int]:
+    def _calculate_equal_failure(self, threshold: int, len_rows: int, row_count: int) -> tuple[int, int]:
         """Calculate rows for == operator failure (expected exact count)"""
         if row_count:
             if len_rows > threshold:

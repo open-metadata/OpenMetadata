@@ -81,9 +81,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
             )
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(
-            metric_values, test_params=test_params
-        )
+        result_message = self._format_result_message(metric_values, test_params=test_params)
         test_result_values = self._get_test_result_values(metric_values)
 
         return self.get_test_case_result_object(
@@ -132,9 +130,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
 
         return metrics
 
-    def _evaluate_test_condition(
-        self, metric_values: dict, test_params: Optional[dict] = None
-    ) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:
         """Evaluate the in-set test condition
 
         For in-set test, behavior depends on match_enum flag:
@@ -155,9 +151,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
                 - total_rows: int - total row count for reporting
         """
         if test_params is None:
-            raise ValueError(
-                "test_params is required for columnValuesToMatchRegex._evaluate_test_condition"
-            )
+            raise ValueError("test_params is required for columnValuesToMatchRegex._evaluate_test_condition")
         match_regex_count = metric_values[Metrics.regexCount.name]
         count = metric_values[Metrics.valuesCount.name]
         total_rows = metric_values.get(Metrics.rowCount.name)
@@ -217,9 +211,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         ]
 
     @abstractmethod
-    def _run_results(
-        self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs
-    ):
+    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):
         raise NotImplementedError
 
     @abstractmethod

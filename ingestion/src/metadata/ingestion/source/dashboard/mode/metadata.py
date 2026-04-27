@@ -67,15 +67,11 @@ class ModeSource(DashboardServiceSource):
         self.data_sources = self.client.get_all_data_sources(self.workspace_name)
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: ModeConnection = config.serviceConnection.root.config
         if not isinstance(connection, ModeConnection):
-            raise InvalidSourceException(
-                f"Expected ModeConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected ModeConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_dashboards_list(self) -> Optional[List[dict]]:
@@ -98,9 +94,7 @@ class ModeSource(DashboardServiceSource):
         """
         return dashboard
 
-    def yield_dashboard(
-        self, dashboard_details: dict
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def yield_dashboard(self, dashboard_details: dict) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         """
@@ -166,9 +160,7 @@ class ModeSource(DashboardServiceSource):
                     and database_name
                     and prefix_database_name.lower() != str(database_name).lower()
                 ):
-                    logger.debug(
-                        f"Database {database_name} does not match prefix {prefix_database_name}"
-                    )
+                    logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
                     continue
 
                 lineage_parser = LineageParser(
@@ -178,25 +170,16 @@ class ModeSource(DashboardServiceSource):
                 query_hash = lineage_parser.query_hash
                 for table in lineage_parser.source_tables:
                     database_schema_name, table = fqn.split(str(table))[-2:]
-                    database_schema_name = self.check_database_schema_name(
-                        database_schema_name
-                    )
+                    database_schema_name = self.check_database_schema_name(database_schema_name)
 
-                    if (
-                        prefix_table_name
-                        and table
-                        and prefix_table_name.lower() != str(table).lower()
-                    ):
-                        logger.debug(
-                            f"[{query_hash}] Table {table} does not match prefix {prefix_table_name}"
-                        )
+                    if prefix_table_name and table and prefix_table_name.lower() != str(table).lower():
+                        logger.debug(f"[{query_hash}] Table {table} does not match prefix {prefix_table_name}")
                         continue
 
                     if (
                         prefix_schema_name
                         and database_schema_name
-                        and prefix_schema_name.lower()
-                        != str(database_schema_name).lower()
+                        and prefix_schema_name.lower() != str(database_schema_name).lower()
                     ):
                         logger.debug(
                             f"[{query_hash}] Schema {database_schema_name} does not match prefix {prefix_schema_name}"
@@ -225,9 +208,7 @@ class ModeSource(DashboardServiceSource):
                         ),
                     )
                     for from_entity in from_entities or []:
-                        yield self._get_add_lineage_request(
-                            to_entity=to_entity, from_entity=from_entity
-                        )
+                        yield self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
@@ -237,9 +218,7 @@ class ModeSource(DashboardServiceSource):
                 )
             )
 
-    def yield_dashboard_chart(
-        self, dashboard_details: dict
-    ) -> Iterable[Either[CreateChartRequest]]:
+    def yield_dashboard_chart(self, dashboard_details: dict) -> Iterable[Either[CreateChartRequest]]:
         """Get chart method"""
         response_queries = self.client.get_all_queries(
             workspace_name=self.workspace_name,
@@ -266,9 +245,7 @@ class ModeSource(DashboardServiceSource):
                         )
                         continue
                     chart_path = chart[client.LINKS]["report_viz_web"][client.HREF]
-                    chart_url = (
-                        f"{clean_uri(self.service_connection.hostPort)}{chart_path}"
-                    )
+                    chart_url = f"{clean_uri(self.service_connection.hostPort)}{chart_path}"
                     chart_request = CreateChartRequest(
                         name=EntityName(chart.get(client.TOKEN)),
                         displayName=chart_name,
