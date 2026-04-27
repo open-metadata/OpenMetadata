@@ -124,8 +124,23 @@ public class MigrationUtil {
         JsonNode suggestionJson = JsonUtils.readTree(jsonStr);
 
         String suggestionId = suggestionJson.get("id").asText();
+        boolean alreadyExists = taskExists(handle, suggestionId);
 
-        if (taskExists(handle, suggestionId)) {
+        if (alreadyExists) {
+          String createdByUserId = null;
+          if (suggestionJson.has("createdBy")
+              && suggestionJson.get("createdBy").has("id")
+              && !suggestionJson.get("createdBy").get("id").isNull()) {
+            createdByUserId = suggestionJson.get("createdBy").get("id").asText();
+          }
+          ObjectNode aboutJson = JsonUtils.getObjectNode();
+          String entityLinkStr =
+              suggestionJson.has("entityLink") ? suggestionJson.get("entityLink").asText() : null;
+          if (entityLinkStr != null) {
+            setAboutFromEntityLink(aboutJson, entityLinkStr, suggestionJson);
+          }
+          insertTaskLinkRelationships(
+              handle, suggestionId, null, null, null, createdByUserId, aboutJson, connectionType);
           skipped++;
           continue;
         }
@@ -239,14 +254,21 @@ public class MigrationUtil {
    */
   public static void migrateThreadTasksToTaskEntity(Handle handle, ConnectionType connectionType) {
     LOG.info("Starting migration of thread-based tasks to task_entity");
-    if (!tableExists(handle, "thread_entity")) {
-      LOG.info("thread_entity table does not exist, skipping thread task migration");
+    String threadTable;
+    if (tableExists(handle, "thread_entity")) {
+      threadTable = "thread_entity";
+    } else if (tableExists(handle, "thread_entity_legacy")) {
+      threadTable = "thread_entity_legacy";
+    } else {
+      LOG.info(
+          "Neither thread_entity nor thread_entity_legacy exists, skipping thread task migration");
       return;
     }
     List<Map<String, Object>> threads =
         handle
             .createQuery(
-                "SELECT json FROM thread_entity WHERE type = 'Task' ORDER BY createdAt ASC")
+                String.format(
+                    "SELECT json FROM %s WHERE type = 'Task' ORDER BY createdAt ASC", threadTable))
             .mapToMap()
             .list();
 
@@ -267,11 +289,7 @@ public class MigrationUtil {
         JsonNode threadJson = JsonUtils.readTree(jsonStr);
 
         String threadId = threadJson.get("id").asText();
-
-        if (taskExists(handle, threadId)) {
-          skipped++;
-          continue;
-        }
+        boolean alreadyExists = taskExists(handle, threadId);
 
         JsonNode taskDetails = threadJson.get("task");
         if (taskDetails == null) {
@@ -293,6 +311,25 @@ public class MigrationUtil {
           entityLink = MessageParser.EntityLink.parse(aboutLink);
         } catch (Exception e) {
           LOG.warn("Cannot parse entityLink '{}', skipping thread {}", aboutLink, threadId);
+          skipped++;
+          continue;
+        }
+
+        if (alreadyExists) {
+          String createdByName =
+              threadJson.has("createdBy") ? threadJson.get("createdBy").asText() : "system";
+          String createdByUserId = lookupUserId(handle, createdByName);
+          ObjectNode aboutJson = JsonUtils.getObjectNode();
+          setAboutFromEntityLink(aboutJson, aboutLink, threadJson);
+          insertTaskLinkRelationships(
+              handle,
+              threadId,
+              taskDetails.has("assignees") ? taskDetails.get("assignees") : null,
+              taskDetails.has("reviewers") ? taskDetails.get("reviewers") : null,
+              taskDetails.has("watchers") ? taskDetails.get("watchers") : null,
+              createdByUserId,
+              aboutJson,
+              connectionType);
           skipped++;
           continue;
         }
@@ -1190,9 +1227,11 @@ public class MigrationUtil {
     String sql =
         connectionType == ConnectionType.POSTGRES
             ? "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
-                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) ON CONFLICT DO NOTHING"
-            : "INSERT IGNORE INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
-                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)";
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) "
+                + "ON CONFLICT (fromId, toId, relation) DO UPDATE SET toEntity = EXCLUDED.toEntity, fromEntity = EXCLUDED.fromEntity"
+            : "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) "
+                + "ON DUPLICATE KEY UPDATE toEntity = VALUES(toEntity), fromEntity = VALUES(fromEntity)";
     try {
       handle
           .createUpdate(sql)

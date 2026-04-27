@@ -59,6 +59,11 @@ class MigrationUtilTest {
   void migrateThreadTasksToTaskEntitySkipsWhenThreadTableIsMissing() {
     when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
         .thenThrow(new RuntimeException("missing table"));
+    when(handle
+            .createQuery("SELECT 1 FROM thread_entity_legacy LIMIT 1")
+            .mapTo(Integer.class)
+            .findFirst())
+        .thenThrow(new RuntimeException("missing table"));
 
     assertDoesNotThrow(() -> MigrationUtil.migrateThreadTasksToTaskEntity(handle, MYSQL));
 
@@ -68,6 +73,11 @@ class MigrationUtilTest {
   @Test
   void migrateThreadTasksToTaskEntitySkipsWhenThreadTableIsMissingPostgres() {
     when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
+        .thenThrow(new RuntimeException("missing table"));
+    when(handle
+            .createQuery("SELECT 1 FROM thread_entity_legacy LIMIT 1")
+            .mapTo(Integer.class)
+            .findFirst())
         .thenThrow(new RuntimeException("missing table"));
 
     assertDoesNotThrow(() -> MigrationUtil.migrateThreadTasksToTaskEntity(handle, POSTGRES));
