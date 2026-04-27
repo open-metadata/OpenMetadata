@@ -54,8 +54,12 @@ public class IndexResource {
         RAW_INDEX_HTML
             .replace("${basePath}", basePath)
             .replace("${sentryDsn}", System.getenv().getOrDefault("SENTRY_UI_DSN", ""))
-            .replace("${sentryEnvironment}", System.getenv().getOrDefault("SENTRY_ENVIRONMENT", "development"))
-            .replace("${clusterName}", System.getenv().getOrDefault("OPENMETADATA_CLUSTER_NAME", "openmetadata"))
+            .replace(
+                "${sentryEnvironment}",
+                System.getenv().getOrDefault("SENTRY_ENVIRONMENT", "development"))
+            .replace(
+                "${clusterName}",
+                System.getenv().getOrDefault("OPENMETADATA_CLUSTER_NAME", "openmetadata"))
             .replace("${appVersion}", new VersionResource().getCatalogVersion().getVersion());
 
     String basePathLine =
