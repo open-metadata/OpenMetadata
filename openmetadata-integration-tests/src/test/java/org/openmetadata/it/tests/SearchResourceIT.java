@@ -1991,18 +1991,18 @@ public class SearchResourceIT {
   }
 
   /**
-   * Default behavior is preserved: with no flags, querying {@code index=table} still returns the
-   * entity types that ES alias expansion previously surfaced (including columns).
+   * Opt-in: with {@code fetchChildAliases=true} the legacy ES alias expansion is restored, so a
+   * query for {@code index=table} surfaces both table and column hits.
    */
   @Test
-  void testFetchChildAliasesDefaultIncludesColumns(TestNamespace ns) throws Exception {
-    String unique = "fetchchild_def_" + ns.shortPrefix();
+  void testFetchChildAliasesTrueIncludesColumns(TestNamespace ns) throws Exception {
+    String unique = "fetchchild_true_" + ns.shortPrefix();
     Column uniqueColumn =
         new Column()
             .withName(unique + "_col")
             .withDataType(ColumnDataType.VARCHAR)
             .withDataLength(64);
-    createTestTableWithColumns(ns, ns.prefix("fetchchild_def_t"), List.of(uniqueColumn));
+    createTestTableWithColumns(ns, ns.prefix("fetchchild_true_t"), List.of(uniqueColumn));
 
     Awaitility.await()
         .atMost(60, TimeUnit.SECONDS)
@@ -2010,7 +2010,10 @@ public class SearchResourceIT {
         .until(
             () -> {
               HttpResponse<String> r =
-                  httpGetJson("/v1/search/query?q=" + unique + "&index=table&size=20");
+                  httpGetJson(
+                      "/v1/search/query?q="
+                          + unique
+                          + "&index=table&fetchChildAliases=true&size=20");
               if (r.statusCode() != 200) {
                 return false;
               }

@@ -65,9 +65,9 @@
       "default": false
     },
     "fetchChildAliases": {
-      "description": "If true, expand the requested index to also include the actual indexes of its child aliases declared in indexMapping.json. Defaults to true to preserve backward-compatible behavior.",
+      "description": "If true, expand the requested index to also include the actual indexes of its child aliases declared in indexMapping.json. Defaults to false so previews mirror the same scoping the UI sees in /search/query.",
       "type": "boolean",
-      "default": true
+      "default": false
     }
   }
 }
