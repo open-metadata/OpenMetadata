@@ -66,13 +66,21 @@
           "maxLength": 256,
           "pattern": "^[^;'\" ]+$"
         },
+        "columnName": {
+          "description": "Column on which the grant is applied. Requires tableName. Supported only by connectors that allow column-level grants; ignored otherwise.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^;'\" ]+$"
+        },
         "privilege": {
           "$ref": "#/definitions/privilege"
         }
       },
       "required": ["id", "principal", "databaseName", "privilege"],
       "dependencies": {
-        "tableName": ["schemaName"]
+        "tableName": ["schemaName"],
+        "columnName": ["tableName"]
       },
       "additionalProperties": false
     }
