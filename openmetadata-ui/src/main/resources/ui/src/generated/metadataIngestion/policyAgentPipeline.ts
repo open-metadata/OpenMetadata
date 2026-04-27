@@ -30,6 +30,11 @@ export interface PolicyAgentPipeline {
  */
 export interface Policy {
     /**
+     * Column on which the grant is applied. Requires tableName. Supported only by connectors
+     * that allow column-level grants; ignored otherwise.
+     */
+    columnName?: string;
+    /**
      * Database on which the grant is applied.
      */
     databaseName: string;
