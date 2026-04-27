@@ -143,7 +143,7 @@
     <snakeyaml.version>2.3</snakeyaml.version>
     <woodstox.version>5.4.0</woodstox.version>
     <slack.version>1.29.2</slack.version>
-    <spotless.version>2.41.1</spotless.version>
+    <spotless.version>2.46.0</spotless.version>
     <picocli.version>4.7.6</picocli.version>
     <logback-core.version>1.5.25</logback-core.version>
     <logback-classic.version>1.5.25</logback-classic.version>
