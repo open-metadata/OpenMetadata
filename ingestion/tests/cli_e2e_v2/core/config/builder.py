@@ -20,9 +20,12 @@ from typing import Any
 import yaml
 
 from .pipelines import (
+    AutoClassificationPipeline,
     PipelineOptions,
+    ProfilerPipeline,
     cli_subcommand_for,
     pipeline_identifier,
+    source_type_suffix_for,
 )
 from .server import ServerConfig
 
@@ -30,6 +33,15 @@ _FILTER_KEYS: tuple[str, ...] = (
     "databaseFilterPattern",
     "schemaFilterPattern",
     "tableFilterPattern",
+)
+
+# Pipelines that require a `processor` block in the rendered YAML.
+# OM's Profiler + AutoClassification workflows instantiate an ORM profiler
+# to compute column statistics / PII inference; without a processor entry,
+# workflow init crashes with `'NoneType' object has no attribute 'model_dump'`.
+_PIPELINES_NEEDING_PROCESSOR: tuple[type, ...] = (
+    ProfilerPipeline,
+    AutoClassificationPipeline,
 )
 
 
@@ -102,6 +114,19 @@ class WorkflowConfig:
                 dumped.setdefault(key, prior_cfg[key])
 
         new_doc["source"]["sourceConfig"]["config"] = dumped
+
+        # OM's `import_source_class` selects the connector class by
+        # splitting `source.type` on "-" and dispatching to metadata_source_class,
+        # lineage_source_class, or usage_source_class. The suffix must match
+        # the pipeline: e.g. "mysql-lineage" for a DatabaseLineage run.
+        base_connector = new_doc["source"]["type"].split("-", 1)[0]
+        new_doc["source"]["type"] = base_connector + source_type_suffix_for(options)
+
+        if isinstance(options, _PIPELINES_NEEDING_PROCESSOR):
+            new_doc["processor"] = {"type": "orm-profiler", "config": {}}
+        else:
+            new_doc.pop("processor", None)
+
         return WorkflowConfig(_doc=new_doc, _options=options)
 
     # --- filter overlay -------------------------------------------------

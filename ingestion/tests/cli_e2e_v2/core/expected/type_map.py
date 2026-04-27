@@ -16,12 +16,16 @@ from __future__ import annotations
 
 from sqlalchemy import (
     CHAR,
+    JSON,
+    TIMESTAMP,
     BigInteger,
     Boolean,
     Date,
     DateTime,
+    Enum,
     Float,
     Integer,
+    LargeBinary,
     Numeric,
     SmallInteger,
     String,
@@ -34,6 +38,15 @@ from metadata.generated.schema.entity.data.table import DataType
 TypeMap = dict[type, DataType]
 
 
+# CORE entries marked with (via MRO) are the ones that let dialect maps
+# DROP their equivalent `dialects.<x>.FOO` entry: mysql.JSON / mysql.ENUM /
+# mysql.BLOB / mysql.TIMESTAMP all inherit from these core classes, so the
+# MRO walk in `resolve_om_type` hits the core entry without needing a
+# dialect duplicate. Dialect-specific size variants (MEDIUMTEXT, LONGBLOB,
+# TINYINT, etc.) still need per-dialect entries — they extend PRIVATE
+# bases (`_StringType`, `_Binary`) that MRO skips past the public
+# `String` / `LargeBinary`, or they want a more-specific OM DataType than
+# the core parent yields.
 CORE_TYPE_MAP: TypeMap = {
     Integer:      DataType.INT,
     BigInteger:   DataType.BIGINT,
@@ -44,9 +57,13 @@ CORE_TYPE_MAP: TypeMap = {
     Date:         DataType.DATE,
     DateTime:     DataType.DATETIME,
     Time:         DataType.TIME,
+    TIMESTAMP:    DataType.TIMESTAMP,    # via MRO: mysql.TIMESTAMP, pg.TIMESTAMP
     Numeric:      DataType.DECIMAL,
     Float:        DataType.FLOAT,
-    Boolean:      DataType.BOOLEAN,  # dialect overrides (e.g. MySQL: TINYINT)
+    Boolean:      DataType.BOOLEAN,      # dialect overrides (e.g. MySQL: TINYINT)
+    Enum:         DataType.ENUM,         # via MRO: mysql.ENUM, pg.ENUM
+    JSON:         DataType.JSON,         # via MRO: mysql.JSON, pg.JSON
+    LargeBinary:  DataType.BLOB,         # via MRO: mysql.BLOB
 }
 
 

@@ -54,21 +54,28 @@ PipelineOptions = Union[
 
 @dataclass(frozen=True)
 class _PipelineSpec:
-    """CLI subcommand + artifact identifier for one pipeline class."""
+    """Per-pipeline dispatch.
+
+    source_type_suffix: appended to `source.type` in the rendered YAML so
+    OM's `import_source_class` routes to the right class. For lineage and
+    usage, OM looks up `<connector>-lineage` / `<connector>-usage` in the
+    connector's ServiceSpec; everything else uses the plain connector name.
+    """
 
     cli_subcommand: str
     identifier: str
+    source_type_suffix: str = ""
 
 
 # Single source of truth for per-pipeline dispatch. Adding a pipeline
 # touches exactly this dict plus the re-export above.
 _SPECS: dict[type, _PipelineSpec] = {
-    MetadataPipeline:           _PipelineSpec("ingest",   "metadata"),
-    ProfilerPipeline:           _PipelineSpec("profile",  "profiler"),
-    LineagePipeline:            _PipelineSpec("ingest",   "lineage"),
-    UsagePipeline:              _PipelineSpec("usage",    "usage"),
-    TestPipeline:               _PipelineSpec("test",     "test"),
-    AutoClassificationPipeline: _PipelineSpec("classify", "classify"),
+    MetadataPipeline:           _PipelineSpec("ingest",   "metadata", ""),
+    ProfilerPipeline:           _PipelineSpec("profile",  "profiler", ""),
+    LineagePipeline:            _PipelineSpec("ingest",   "lineage",  "-lineage"),
+    UsagePipeline:              _PipelineSpec("usage",    "usage",    "-usage"),
+    TestPipeline:               _PipelineSpec("test",     "test",     ""),
+    AutoClassificationPipeline: _PipelineSpec("classify", "classify", ""),
 }
 
 
@@ -82,6 +89,11 @@ def pipeline_identifier(options: PipelineOptions) -> str:
     return _SPECS[type(options)].identifier
 
 
+def source_type_suffix_for(options: PipelineOptions) -> str:
+    """Suffix to append to `source.type` for this pipeline (e.g. `-lineage`)."""
+    return _SPECS[type(options)].source_type_suffix
+
+
 __all__ = [
     "AutoClassificationPipeline",
     "LineagePipeline",
@@ -92,4 +104,5 @@ __all__ = [
     "UsagePipeline",
     "cli_subcommand_for",
     "pipeline_identifier",
+    "source_type_suffix_for",
 ]

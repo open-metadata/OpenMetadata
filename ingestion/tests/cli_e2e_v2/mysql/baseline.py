@@ -37,9 +37,10 @@ from sqlalchemy import (
     SmallInteger,
     Table,
     Time,
+    create_engine,
 )
 from sqlalchemy.dialects import mysql
-from sqlalchemy.engine import URL
+from sqlalchemy.engine import URL, Engine
 
 from ..core.config.env import Env
 from ..core.source.common_baseline import (
@@ -47,7 +48,7 @@ from ..core.source.common_baseline import (
     COMMON_TRANSACTION_ROWS,
     build_common_metadata,
 )
-from ..core.source.orchestrator import EnforcementPolicy
+from ..core.source.orchestrator import EnforcementMode, EnforcementPolicy
 from ..core.source.sql import (
     SqlSourceBaseline,
     StoredProcedureDefinition,
@@ -111,17 +112,16 @@ _ALL_TYPES_ROWS: list[dict[str, Any]] = [{"id": 1}, {"id": 2}, {"id": 3}]
 
 _MYSQL_CUSTOMERS_INSERT = """
 INSERT INTO e2e.customers
-    (id, first_name, last_name, full_name, email, phone, ssn,
+    (id, first_name, last_name, full_name, email,
      address, city, country, zipcode, date_of_birth, age,
      credit_score, status, is_active, bio, joined_date)
 VALUES
-    (:id, :first_name, :last_name, :full_name, :email, :phone, :ssn,
+    (:id, :first_name, :last_name, :full_name, :email,
      :address, :city, :country, :zipcode, :date_of_birth, :age,
      :credit_score, :status, :is_active, :bio, :joined_date)
 ON DUPLICATE KEY UPDATE
     first_name = VALUES(first_name), last_name = VALUES(last_name),
     full_name = VALUES(full_name), email = VALUES(email),
-    phone = VALUES(phone), ssn = VALUES(ssn),
     address = VALUES(address), city = VALUES(city),
     country = VALUES(country), zipcode = VALUES(zipcode),
     date_of_birth = VALUES(date_of_birth), age = VALUES(age),
@@ -188,6 +188,27 @@ _SP_ACTIVE_CUSTOMER_COUNT = StoredProcedureDefinition(
 )
 
 
+# A second SP exercising parameterized DML — covers a different code path
+# than the read-only `sp_active_customer_count`. The body intentionally
+# carries an UPDATE statement so OM's stored-procedure ingestion stores
+# DML text, not just SELECT text.
+_SP_UPDATE_CUSTOMER_STATUS = StoredProcedureDefinition(
+    schema="e2e",
+    name="sp_update_customer_status",
+    definition_sql="""
+        CREATE PROCEDURE e2e.sp_update_customer_status(
+            IN p_customer_id INT,
+            IN p_status VARCHAR(20)
+        )
+        BEGIN
+            UPDATE e2e.customers
+            SET status = p_status
+            WHERE id = p_customer_id;
+        END
+    """,
+)
+
+
 # -----------------------------------------------------------------------------
 # Top-level baseline
 # -----------------------------------------------------------------------------
@@ -221,7 +242,7 @@ MYSQL_BASELINE = SqlSourceBaseline(
         ),
     ],
     views=[_CUSTOMER_TXN_SUMMARY_VIEW],
-    stored_procedures=[_SP_ACTIVE_CUSTOMER_COUNT],
+    stored_procedures=[_SP_ACTIVE_CUSTOMER_COUNT, _SP_UPDATE_CUSTOMER_STATUS],
 )
 
 
@@ -231,22 +252,23 @@ MYSQL_BASELINE = SqlSourceBaseline(
 
 
 @lru_cache(maxsize=1)
-def get_policy() -> EnforcementPolicy:
-    """Lazy-build and cache the MySQL EnforcementPolicy.
+def get_admin_engine() -> Engine:
+    """Build (and cache) the SQLAlchemy engine bound to ADMIN credentials.
 
-    Uses ADMIN credentials (CREATE SCHEMA / CREATE TABLE / INSERT /
-    SELECT) — distinct from the ingest credentials `build_mysql_config`
-    uses for the CLI subprocess. The ingest user (`openmetadata_user`)
-    is a scoped service account and typically lacks DDL + broad SELECT
-    on user-created schemas like `e2e`.
+    Distinct from the ingest credentials `build_mysql_config` uses for the
+    CLI subprocess: the ingest user (`openmetadata_user`) is a scoped
+    service account and typically lacks DDL + broad SELECT on user-created
+    schemas like `e2e`. ADMIN credentials are the DBA-level pair the
+    enforcer needs for CREATE SCHEMA / CREATE TABLE / INSERT / SELECT.
+
+    Tests that need to mutate the source out-of-band (e.g. drop a table
+    to test mark-deleted; create a poisoned view to test error
+    containment) consume this helper directly — keeps engine construction
+    centralized so admin DSN never lives in two places.
 
     E2E_MYSQL_ADMIN_USER / E2E_MYSQL_ADMIN_PASSWORD default to
     `root` / `password` — matching the local Docker dev stack — so no
-    env plumbing is needed for local runs. Override via env var for
-    other environments.
-
-    URL.create handles URL-encoding so credentials containing
-    @ : / # % ? don't break the connection string.
+    env plumbing is needed for local runs.
     """
     user = Env("E2E_MYSQL_ADMIN_USER", default="root").get()
     password = Env("E2E_MYSQL_ADMIN_PASSWORD", default="password").get()
@@ -260,5 +282,15 @@ def get_policy() -> EnforcementPolicy:
         host=host,
         port=port,
     )
-    enforcer = MySqlEnforcer.from_url(url, MYSQL_BASELINE)
-    return EnforcementPolicy(enforcer=enforcer, mode="apply")
+    return create_engine(url)
+
+
+@lru_cache(maxsize=1)
+def get_policy() -> EnforcementPolicy:
+    """Lazy-build and cache the MySQL EnforcementPolicy.
+
+    Reuses `get_admin_engine` for engine construction so the admin DSN
+    has a single source of truth.
+    """
+    enforcer = MySqlEnforcer(get_admin_engine(), MYSQL_BASELINE)
+    return EnforcementPolicy(enforcer=enforcer, mode=EnforcementMode.APPLY)

@@ -16,26 +16,37 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Literal
+from enum import Enum
 
 from ..runner.errors import SourceBaselineDrift
-from .types import BaselineSpec, SourceBaselineEnforcer
+from .types import BaselineSpec, Diff, SourceBaselineEnforcer
 
 logger = logging.getLogger(__name__)
+
+
+class EnforcementMode(Enum):
+    """How a policy reconciles detected source-baseline drift.
+
+    Matches the style of `MatchMode` (also an enum) so the two
+    comparison-lifecycle modes in the framework share one idiom.
+    """
+
+    APPLY = "apply"            # drifts trigger enforcer.apply (mutates the source)
+    CHECK_ONLY = "check_only"  # drifts raise SourceBaselineDrift
 
 
 @dataclass(frozen=True)
 class EnforcementPolicy:
     """Binds an enforcer to a mode.
 
-    mode="apply":      drifts trigger enforcer.apply (mutates the source).
-                       Default for local Docker-backed connectors.
-    mode="check_only": drifts raise SourceBaselineDrift.
-                       Default for shared cloud sources — never mutate.
+    APPLY:      drifts trigger enforcer.apply (mutates the source).
+                Default for local Docker-backed connectors.
+    CHECK_ONLY: drifts raise SourceBaselineDrift.
+                Default for shared cloud sources — never mutate.
     """
 
     enforcer: SourceBaselineEnforcer
-    mode: Literal["apply", "check_only"] = "apply"
+    mode: EnforcementMode = EnforcementMode.APPLY
 
 
 def ensure_baseline(
@@ -51,9 +62,12 @@ def ensure_baseline(
 
     Otherwise: introspect → compare → apply or raise:
       - no drifts → log and return
-      - drifts + mode="check_only" → raise SourceBaselineDrift with drift list
-        and operator instructions (run `python -m ...source.apply --connector X`)
-      - drifts + mode="apply" → call enforcer.apply(drifts)
+      - drifts + CHECK_ONLY → raise SourceBaselineDrift listing each drift.
+        The exception message tells the operator to re-run locally with
+        APPLY against a dedicated database — the standalone apply CLI
+        considered in the v2 design was deferred to the first cloud
+        connector (see `project-cloud-baseline-recovery-deferred.md`).
+      - drifts + APPLY → call enforcer.apply(drifts)
     """
     if policy is None or expected is None:
         logger.warning(
@@ -69,19 +83,26 @@ def ensure_baseline(
         logger.info("[%s] source baseline in sync", connector_name)
         return
 
-    if policy.mode == "check_only":
-        lines = "\n".join(
-            f"  {d.path}: expected={d.expected!r}, actual={d.actual!r}" for d in drifts
-        )
+    if policy.mode is EnforcementMode.CHECK_ONLY:
         raise SourceBaselineDrift(
             f"[{connector_name}] baseline drift detected ({len(drifts)} items):\n"
-            f"{lines}\n\n"
+            f"{_render_drift_list(drifts)}\n\n"
             f"This connector runs in check_only mode — baselines must be applied "
             f"out-of-band (e.g., re-run the test suite locally against this source "
-            f"with mode='apply' on a dedicated DB). Contact the connector owner if unsure."
+            f"with EnforcementMode.APPLY on a dedicated DB). Contact the connector owner if unsure."
         )
 
     logger.info(
         "[%s] applying %d baseline drift fixes", connector_name, len(drifts)
     )
     policy.enforcer.apply(drifts)
+
+
+def _render_drift_list(drifts: list[Diff]) -> str:
+    """Inline renderer for a drift list inside the check-only error message.
+
+    Uses Diff's own `__str__` so source-side and OM-side error output share
+    the same `  path:\\n    expected: X\\n    actual: Y` shape — consistent
+    reading across both failure surfaces.
+    """
+    return "\n".join(str(d) for d in drifts)
