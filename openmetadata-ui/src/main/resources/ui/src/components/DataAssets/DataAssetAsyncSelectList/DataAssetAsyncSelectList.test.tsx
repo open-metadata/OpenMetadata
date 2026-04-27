@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
@@ -123,11 +122,8 @@ describe('DataAssetAsyncSelectList', () => {
       Promise.resolve(mockSearchAPIResponse.data)
     );
 
-    const { container } = render(<DataAssetAsyncSelectList />);
-
     await act(async () => {
-      const inputBox = container.querySelector('.ant-select-selector');
-      inputBox && userEvent.click(inputBox);
+      render(<DataAssetAsyncSelectList />);
     });
 
     expect(searchQuery).toHaveBeenCalledTimes(1);
@@ -143,13 +139,10 @@ describe('DataAssetAsyncSelectList', () => {
       return Promise.resolve(mockUserData.data);
     });
 
-    const { container } = render(
-      <DataAssetAsyncSelectList multiple searchIndex={SearchIndex.USER} />
-    );
-
     await act(async () => {
-      const inputBox = container.querySelector('.ant-select-selector');
-      inputBox && fireEvent.click(inputBox);
+      render(
+        <DataAssetAsyncSelectList multiple searchIndex={SearchIndex.USER} />
+      );
     });
 
     expect(searchQuery).toHaveBeenCalledTimes(1);
@@ -176,17 +169,14 @@ describe('DataAssetAsyncSelectList', () => {
       },
     ];
 
-    (searchQuery as jest.Mock).mockImplementationOnce(() =>
+    (searchQuery as jest.Mock).mockImplementation(() =>
       Promise.resolve(mockSearchAPIResponse.data)
     );
 
-    const { container } = render(
-      <DataAssetAsyncSelectList multiple onChange={mockOnChange} />
-    );
-
     await act(async () => {
-      const inputBox = container.querySelector('.ant-select-selector');
-      inputBox && userEvent.click(inputBox);
+      render(
+        <DataAssetAsyncSelectList multiple onChange={mockOnChange} />
+      );
     });
 
     expect(searchQuery).toHaveBeenCalledTimes(1);
@@ -213,7 +203,7 @@ describe('DataAssetAsyncSelectList', () => {
       render(<DataAssetAsyncSelectList multiple placeholder={placeholder} />);
     });
 
-    expect(screen.getByText(placeholder)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(placeholder)).toBeInTheDocument();
   });
 
   it("should render the default value when there's a default value and initial option", async () => {
@@ -280,13 +270,10 @@ describe('DataAssetAsyncSelectList', () => {
       return Promise.resolve(mockUserData.data);
     });
 
-    const { container } = render(
-      <DataAssetAsyncSelectList multiple searchIndex={SearchIndex.USER} />
-    );
-
     await act(async () => {
-      const inputBox = container.querySelector('.ant-select-selector');
-      inputBox && userEvent.click(inputBox);
+      render(
+        <DataAssetAsyncSelectList multiple searchIndex={SearchIndex.USER} />
+      );
     });
 
     expect(searchQuery).toHaveBeenCalledTimes(1);

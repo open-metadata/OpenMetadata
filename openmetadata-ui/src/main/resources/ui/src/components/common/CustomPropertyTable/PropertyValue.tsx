@@ -641,6 +641,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           if (isArray(value)) {
             initialOptions = value.map((item: EntityReference) => {
               return {
+                id: item.fullyQualifiedName ?? item.id ?? '',
                 displayName: getEntityName(item),
                 reference: item,
                 label: getEntityName(item),
@@ -654,6 +655,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           } else {
             initialOptions = [
               {
+                id: value?.fullyQualifiedName ?? value?.id ?? '',
                 displayName: getEntityName(value),
                 reference: value,
                 label: getEntityName(value),
@@ -688,9 +690,15 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
               onFinish={(values: {
-                entityReference: DataAssetOption | DataAssetOption[];
+                entityReference: DataAssetOption | DataAssetOption[] | null;
               }) => {
                 const { entityReference } = values;
+
+                if (!entityReference) {
+                  onInputSave(undefined);
+
+                  return;
+                }
 
                 if (Array.isArray(entityReference)) {
                   const references = entityReference

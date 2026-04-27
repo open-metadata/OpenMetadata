@@ -39,7 +39,7 @@ export interface DataAssetAsyncSelectListProps {
   defaultValue?: string[];
   initialOptions?: DataAssetOption[];
   searchIndex?: SearchIndex;
-  onChange?: (option: DataAssetOption | DataAssetOption[]) => void;
+  onChange?: (option: DataAssetOption | DataAssetOption[] | null) => void;
   filterFqns?: string[];
   queryFilter?: Record<string, unknown>;
 }

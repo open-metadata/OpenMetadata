@@ -16,7 +16,10 @@ import DataAssetAsyncSelectList from '../../../../DataAssets/DataAssetAsyncSelec
 import { DataAssetOption } from '../../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 
 const AsyncSelectWidget = ({ onChange, schema, ...props }: WidgetProps) => {
-  const handleChange = (value: DataAssetOption | DataAssetOption[]) => {
+  const handleChange = (value: DataAssetOption | DataAssetOption[] | null) => {
+    if (!value) {
+      return;
+    }
     if (Array.isArray(value)) {
       const data = value.map((item: DataAssetOption) => item.reference);
       onChange(data);
@@ -28,7 +31,11 @@ const AsyncSelectWidget = ({ onChange, schema, ...props }: WidgetProps) => {
 
   return (
     <DataAssetAsyncSelectList
-      defaultValue={props?.value?.fullyQualifiedName ?? ''}
+      defaultValue={
+        props?.value?.fullyQualifiedName
+          ? [props.value.fullyQualifiedName]
+          : undefined
+      }
       placeholder={schema.placeholder ?? ''}
       searchIndex={schema?.autoCompleteType ?? SearchIndex.TABLE}
       onChange={handleChange}

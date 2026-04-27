@@ -17,7 +17,6 @@ import {
   FC,
   Key,
   ReactNode,
-  UIEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -54,6 +53,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   value: selectedValue,
   filterFqns = [],
   queryFilter,
+  defaultValue,
   ...props
 }) => {
   const [paging, setPaging] = useState<Paging>({} as Paging);
@@ -61,12 +61,20 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   const [options, setOptions] = useState<DataAssetOption[]>(
     initialOptions ?? []
   );
-  const [selectedItems, setSelectedItems] = useState<string[]>(
-    initialOptions?.map((options) => options.value) ?? []
+  const [selectedItems, setSelectedItems] = useState<DataAssetOption[]>(
+    initialOptions ?? []
   );
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchValue, setSearchValue] = useState<string>('');
   const hasInitiallyLoaded = useRef(false);
+  // Tracks all options ever seen so selected items survive option list changes
+  const knownOptionsRef = useRef<Map<string, DataAssetOption>>(
+    new Map(initialOptions?.map((opt) => [opt.value, opt]) ?? [])
+  );
+  // Pending default values to resolve when options first load
+  const pendingDefaultValues = useRef<string[] | null>(
+    !initialOptions?.length && defaultValue?.length ? defaultValue : null
+  );
 
   const defaultQueryFilter = useMemo(
     () => ({ query: { bool: { must_not: [{ match: { isBot: true } }] } } }),
@@ -132,6 +140,18 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         setSearchValue(value);
         setPaging(res.paging);
         setCurrentPage(1);
+        // Track all loaded options so selection survives option list changes
+        res.data.forEach((opt) => knownOptionsRef.current.set(opt.value, opt));
+        // Resolve any pending default values on first load
+        if (pendingDefaultValues.current) {
+          const defaultItems = res.data.filter((opt) =>
+            pendingDefaultValues.current!.includes(opt.value)
+          );
+          if (defaultItems.length > 0) {
+            setSelectedItems(defaultItems);
+            pendingDefaultValues.current = null;
+          }
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -150,6 +170,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       setOptions((prev) => [...prev, ...res.data]);
       setPaging(res.paging);
       setCurrentPage((prev) => prev + 1);
+      res.data.forEach((opt) => knownOptionsRef.current.set(opt.value, opt));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -174,6 +195,12 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
     () => debounce(loadOptions, debounceTimeout),
     [loadOptions, debounceTimeout]
   );
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
 
   const handleSearchChange = useCallback(
     (value: string) => {
@@ -203,26 +230,51 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
 
   const handleItemCleared = useCallback(
     (key: Key) => {
-      const updatedSelection = selectedItems.filter((item) => item.id !== key);
+      const updatedSelection = selectedItems.filter(
+        (item) => item.id !== key
+      );
       setSelectedItems(updatedSelection);
-      onChange?.(multiple ? updatedSelection : updatedSelection[0]);
+      if (multiple) {
+        onChange?.(updatedSelection);
+      } else {
+        onChange?.(updatedSelection[0] ?? null);
+      }
     },
     [selectedItems, multiple, onChange]
   );
 
   useEffect(() => {
-    if (isString(selectedValue) || isArray(selectedValue)) {
-      const values = isArray(selectedValue) ? selectedValue : [selectedValue];
-      const items = values
-        .map((val) => filteredOptions.find((opt) => opt.value === val))
-        .filter(Boolean) as DataAssetOption[];
-      setSelectedItems(items);
-    } else if (selectedValue) {
-      setSelectedItems(
-        isArray(selectedValue) ? selectedValue : [selectedValue]
-      );
+    if (!selectedValue) {
+      return;
     }
-  }, [selectedValue, filteredOptions]);
+    if (isArray(selectedValue)) {
+      const arr = selectedValue as (string | DataAssetOption)[];
+      if (arr.length === 0) {
+        return;
+      }
+      if (isString(arr[0])) {
+        // Array of FQN strings
+        const items = (arr as string[])
+          .map((val) => knownOptionsRef.current.get(val))
+          .filter(Boolean) as DataAssetOption[];
+        if (items.length > 0) {
+          setSelectedItems(items);
+        }
+      } else {
+        // Array of DataAssetOption objects
+        setSelectedItems(arr as DataAssetOption[]);
+      }
+    } else if (isString(selectedValue)) {
+      // Single FQN string
+      const item = knownOptionsRef.current.get(selectedValue);
+      if (item) {
+        setSelectedItems([item]);
+      }
+    } else {
+      // Single DataAssetOption object
+      setSelectedItems([selectedValue as DataAssetOption]);
+    }
+  }, [selectedValue]);
 
   useEffect(() => {
     if (!hasInitiallyLoaded.current) {
@@ -231,66 +283,60 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
     }
   }, []);
 
-  const popoverRef = useRef<HTMLDivElement>(null);
-
-  const handlePopoverScroll = useCallback(
-    (e: UIEvent<HTMLDivElement>) => {
-      const { currentTarget } = e;
-      const scrollThreshold = 50;
-      const isNearBottom =
-        currentTarget.scrollHeight -
-          currentTarget.scrollTop -
-          currentTarget.clientHeight <
-        scrollThreshold;
-
-      if (isNearBottom && !isLoadingMore && options.length < paging.total) {
-        loadMoreOptions();
-      }
-    },
-    [isLoadingMore, options.length, paging.total, loadMoreOptions]
-  );
-
-  useEffect(() => {
-    const popoverElement = popoverRef.current;
-    if (popoverElement) {
-      popoverElement.addEventListener(
-        'scroll',
-        handlePopoverScroll as unknown as EventListener
-      );
-
-      return () => {
-        popoverElement.removeEventListener(
-          'scroll',
-          handlePopoverScroll as unknown as EventListener
-        );
-      };
-    }
-
-    return () => {};
-  }, [handlePopoverScroll]);
-
   const customPopoverClassName = useMemo(() => {
     return `data-asset-async-select-popover ${props.popoverClassName ?? ''}`;
   }, [props.popoverClassName]);
 
   useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const popover = document.querySelector(
-        '.data-asset-async-select-popover'
-      ) as HTMLDivElement;
-      if (popover && popover !== popoverRef.current) {
-        (popoverRef as React.MutableRefObject<HTMLDivElement | null>).current =
-          popover;
+    let currentPopover: HTMLDivElement | null = null;
+
+    const handleNativeScroll = (e: Event) => {
+      const target = e.currentTarget as HTMLDivElement;
+      const scrollThreshold = 50;
+      const isNearBottom =
+        target.scrollHeight - target.scrollTop - target.clientHeight <
+        scrollThreshold;
+
+      if (isNearBottom) {
+        loadMoreOptions();
       }
+    };
+
+    const tryAttachScroll = (popover: HTMLDivElement | null) => {
+      if (!popover || currentPopover === popover) {
+        return;
+      }
+      if (currentPopover) {
+        currentPopover.removeEventListener('scroll', handleNativeScroll);
+      }
+      currentPopover = popover;
+      popover.addEventListener('scroll', handleNativeScroll);
+    };
+
+    // Attach immediately if popover already exists
+    tryAttachScroll(
+      document.querySelector(
+        '.data-asset-async-select-popover'
+      ) as HTMLDivElement | null
+    );
+
+    const observer = new MutationObserver(() => {
+      tryAttachScroll(
+        document.querySelector(
+          '.data-asset-async-select-popover'
+        ) as HTMLDivElement | null
+      );
     });
 
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
+    observer.observe(document.body, { childList: true, subtree: true });
 
-    return () => observer.disconnect();
-  }, []);
+    return () => {
+      observer.disconnect();
+      if (currentPopover) {
+        currentPopover.removeEventListener('scroll', handleNativeScroll);
+      }
+    };
+  }, [loadMoreOptions]);
 
   return (
     <Autocomplete

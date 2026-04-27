@@ -39,7 +39,7 @@ import './schedule-interval-v1.less';
 import { StateValue } from './ScheduleInterval.interface';
 
 export interface ScheduleIntervalV1Props {
-  value?: string;
+  value?: string | null;
   onChange?: (value: string | null) => void;
   disabled?: boolean;
   includePeriodOptions?: string[];
@@ -160,7 +160,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
       const cronExp = getCron(newState);
       const updatedState = { ...newState, cron: cronExp };
       setState(updatedState);
-      onChange?.(cronExp);
+      onChange?.(cronExp ?? null);
     },
     [state, onChange]
   );
@@ -209,7 +209,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
       if (isEmpty(value)) {
         setSelectedSchedular(SchedularOptions.ON_DEMAND);
         setState((prev) => ({ ...prev, cron: null }));
-      } else {
+      } else if (value) {
         setSelectedSchedular(SchedularOptions.SCHEDULE);
         const newState = getStateValue(value, initialDefaultSchedule);
         setState(newState);
