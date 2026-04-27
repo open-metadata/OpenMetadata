@@ -18,7 +18,6 @@ import { ExtraInfo } from 'Models';
 import { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-icon.svg';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
@@ -237,17 +236,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           return null;
         }
 
-        if (source.entityType === EntityType.TABLE_COLUMN) {
-          return (
-            <span className="w-6 h-6 m-r-xs d-inline-flex items-center align-middle">
-              <ColumnIcon style={{ width: 22, height: 20 }} />
-            </span>
-          );
-        }
-
         return (
           <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
-            {searchClassBase.getEntityIcon(source.entityType ?? '')}
+            {searchClassBase.getEntityIcon(
+              source.entityType ?? '',
+              'text-link-color'
+            )}
           </span>
         );
       }
@@ -256,17 +250,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     }, [source, showEntityIcon]);
 
     const serviceIcon = useMemo(() => {
-      if (!entityIcon && source.entityType === EntityType.TABLE_COLUMN) {
-        return (
-          <ColumnIcon
-            className="text-link-color"
-            style={{ width: 42, height: 40 }}
-          />
-        );
-      }
-
       return searchClassBase.getServiceIcon(source);
-    }, [source, entityIcon]);
+    }, [source]);
 
     const entityLink = useMemo(
       () => searchClassBase.getEntityLink(source),
