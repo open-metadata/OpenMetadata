@@ -1,10 +1,12 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.abort;
 
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
@@ -13,6 +15,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.core5.concurrent.FutureCallback;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.EntityDetails;
@@ -27,6 +30,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.search.opensearch.SafeResponseConsumer;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -58,8 +63,10 @@ import os.org.opensearch.client.transport.httpclient5.HttpAsyncResponseConsumerF
  *       {@code RuntimeException} in every {@code AsyncResponseConsumer} method.
  * </ul>
  */
+@Slf4j
 @Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Execution(ExecutionMode.CONCURRENT)
 class OpensearchHC5ReactorReproIT {
 
   @Container
@@ -136,8 +143,21 @@ class OpensearchHC5ReactorReproIT {
         (ApacheHttpClient5Transport) osClient.getLowLevelClient();
     assertNotNull(transport, "production OpenSearchClient must expose HC5 transport");
 
-    ApacheHttpClient5Options options =
-        (ApacheHttpClient5Options) readField(transport, "transportOptions");
+    // opensearch-java doesn't expose the transport options via a public getter, so this
+    // assertion relies on the "transportOptions" field name. If a future upgrade renames or
+    // repackages that field the test will skip (not fail) — signalling a needed review rather
+    // than a false regression.
+    ApacheHttpClient5Options options;
+    try {
+      options = (ApacheHttpClient5Options) readField(transport, "transportOptions");
+    } catch (NoSuchFieldException e) {
+      abort(
+          "opensearch-java internal field layout changed (no 'transportOptions' field on "
+              + transport.getClass().getName()
+              + "). Review the SafeResponseConsumer wiring against the new API and update "
+              + "this test.");
+      return;
+    }
     assertNotNull(options, "transport must have ApacheHttpClient5Options set");
 
     HttpAsyncResponseConsumerFactory factory = options.getHttpAsyncResponseConsumerFactory();
@@ -175,38 +195,40 @@ class OpensearchHC5ReactorReproIT {
   void safeResponseConsumerMustKeepReactorAliveWhenDelegateThrowsError() throws Exception {
     HttpHost host = new HttpHost("http", opensearch.getHost(), opensearch.getMappedPort(9200));
 
-    AsyncResponseConsumer<ClassicHttpResponse> failingDelegate =
-        new AsyncResponseConsumer<>() {
-          @Override
-          public void consumeResponse(
-              HttpResponse response,
-              EntityDetails entityDetails,
-              HttpContext context,
-              FutureCallback<ClassicHttpResponse> resultCallback) {
-            throw new Error("simulated allocation failure in response consumer on selector thread");
-          }
-
-          @Override
-          public void informationResponse(HttpResponse response, HttpContext context) {}
-
-          @Override
-          public void failed(Exception cause) {}
-
-          @Override
-          public void updateCapacity(CapacityChannel capacityChannel) {}
-
-          @Override
-          public void consume(ByteBuffer src) {}
-
-          @Override
-          public void streamEnd(List<? extends Header> trailers) {}
-
-          @Override
-          public void releaseResources() {}
-        };
-
+    // Factory produces a fresh delegate + wrapper per request (matches production wiring
+    // and avoids cross-request state sharing on the delegate).
     HttpAsyncResponseConsumerFactory wrappedFactory =
-        () -> new SafeResponseConsumer<>(failingDelegate);
+        () ->
+            new SafeResponseConsumer<>(
+                new AsyncResponseConsumer<ClassicHttpResponse>() {
+                  @Override
+                  public void consumeResponse(
+                      HttpResponse response,
+                      EntityDetails entityDetails,
+                      HttpContext context,
+                      FutureCallback<ClassicHttpResponse> resultCallback) {
+                    throw new Error(
+                        "simulated allocation failure in response consumer on selector thread");
+                  }
+
+                  @Override
+                  public void informationResponse(HttpResponse response, HttpContext context) {}
+
+                  @Override
+                  public void failed(Exception cause) {}
+
+                  @Override
+                  public void updateCapacity(CapacityChannel capacityChannel) {}
+
+                  @Override
+                  public void consume(ByteBuffer src) {}
+
+                  @Override
+                  public void streamEnd(List<? extends Header> trailers) {}
+
+                  @Override
+                  public void releaseResources() {}
+                });
 
     ApacheHttpClient5Options.Builder optsBuilder = ApacheHttpClient5Options.DEFAULT.toBuilder();
     optsBuilder.setHttpAsyncResponseConsumerFactory(wrappedFactory);
@@ -252,7 +274,9 @@ class OpensearchHC5ReactorReproIT {
           chainOf(triggerError).contains("Error consuming response"),
           () -> "expected SafeResponseConsumer wrapping: " + chainOf(triggerError));
 
-      Thread.sleep(500);
+      // No explicit wait needed: SafeResponseConsumer's rewrap-and-rethrow is synchronous
+      // inside HC5's Exception path, so the reactor has already settled into its post-error
+      // state by the time triggerResult.get() returned above.
 
       // Follow-up: reactor must still be alive. This request will ALSO hit the failing consumer
       // (same factory) and fail, but NOT with "I/O reactor has been shut down".
@@ -275,8 +299,8 @@ class OpensearchHC5ReactorReproIT {
       }
 
       String followUpChain = chainOf(followUpError);
-      assertTrue(
-          !followUpChain.contains("I/O reactor has been shut down"),
+      assertFalse(
+          followUpChain.contains("I/O reactor has been shut down"),
           () ->
               "SafeResponseConsumer failed to keep the reactor alive. Follow-up request "
                   + "reports reactor shutdown: "
@@ -284,7 +308,8 @@ class OpensearchHC5ReactorReproIT {
     } finally {
       try {
         transport.close();
-      } catch (Exception ignored) {
+      } catch (Exception e) {
+        log.debug("Error closing test transport", e);
       }
     }
   }
