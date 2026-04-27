@@ -156,10 +156,14 @@ public class SearchRepository {
   @Getter private Map<String, IndexMapping> entityIndexMap;
 
   /**
-   * Staged index names being populated by an in-flight reindex, keyed by entity type. While an
-   * entry is present, live writes for that entity type are routed to the staged index instead of
-   * the canonical alias — so the writes survive the final alias swap that would otherwise promote
-   * a pre-snapshot index and drop the old one that held them.
+   * Staged index names being populated by an in-flight reindex, keyed by the canonical index name
+   * the alias normally points at (e.g. {@code openmetadata_table_search_index}). While an entry
+   * is present, every live write that resolves through {@link #getWriteIndexName(IndexMapping)}
+   * targets the staged index directly — so the writes survive the final alias swap that would
+   * otherwise promote a pre-snapshot index and drop the old one that held them.
+   *
+   * <p>Keying by canonical index name lets any write site route correctly even if it does not
+   * have the entity type in scope (deletes by FQN prefix, script updates, child propagation, …).
    */
   private final Map<String, String> activeStagedIndices = new ConcurrentHashMap<>();
 
@@ -503,17 +507,26 @@ public class SearchRepository {
   }
 
   /**
-   * Register a staged index as the live-write target for an entity type while a reindex populates
-   * it. Must be paired with {@link #unregisterStagedIndex(String, String)} once the alias swap is
-   * complete so writes go back through the canonical alias.
+   * Register a staged index as the live-write target for {@code entityType} while a reindex
+   * populates it. Must be paired with {@link #unregisterStagedIndex(String, String)} once the
+   * alias swap is complete so writes go back through the canonical alias.
    */
   public void registerStagedIndex(String entityType, String stagedIndex) {
     if (entityType == null || stagedIndex == null) {
       return;
     }
-    activeStagedIndices.put(entityType, stagedIndex);
+    String canonical = canonicalIndexFor(entityType);
+    if (canonical == null) {
+      LOG.warn(
+          "Cannot register staged index '{}' for entity '{}': no IndexMapping found",
+          stagedIndex,
+          entityType);
+      return;
+    }
+    activeStagedIndices.put(canonical, stagedIndex);
     LOG.info(
-        "Routing live writes for entity '{}' to staged index '{}' until reindex promotes it",
+        "Routing live writes for canonical index '{}' (entity '{}') to staged index '{}' until reindex promotes it",
+        canonical,
         entityType,
         stagedIndex);
   }
@@ -523,23 +536,58 @@ public class SearchRepository {
     if (entityType == null || stagedIndex == null) {
       return;
     }
-    if (activeStagedIndices.remove(entityType, stagedIndex)) {
+    String canonical = canonicalIndexFor(entityType);
+    if (canonical == null) {
+      return;
+    }
+    if (activeStagedIndices.remove(canonical, stagedIndex)) {
       LOG.info(
-          "Cleared staged-index routing for entity '{}' (was '{}')", entityType, stagedIndex);
+          "Cleared staged-index routing for canonical index '{}' (entity '{}', was '{}')",
+          canonical,
+          entityType,
+          stagedIndex);
     }
   }
 
+  private String canonicalIndexFor(String entityType) {
+    IndexMapping mapping = entityIndexMap.get(entityType);
+    return mapping != null ? mapping.getIndexName(clusterAlias) : null;
+  }
+
   /**
-   * Resolve the index name a live write should target for {@code entityType}. During a reindex
-   * this returns the staged index directly so the write survives the subsequent alias swap;
-   * otherwise it returns the canonical alias configured in {@link IndexMapping}.
+   * Centralized resolution of the index name a live write should target. Every write path that
+   * ultimately calls {@link IndexMapping#getIndexName(String)} should route through this method
+   * so it transparently picks up the staged index when a reindex is in flight. Returns the
+   * canonical index name when nothing is staged.
+   */
+  public String getWriteIndexName(IndexMapping indexMapping) {
+    if (indexMapping == null) {
+      return null;
+    }
+    String canonical = indexMapping.getIndexName(clusterAlias);
+    return routeToStagedIfActive(canonical);
+  }
+
+  /**
+   * Centralized routing for writes that already hold a resolved canonical index name (e.g. the
+   * caller resolved {@link IndexMapping#getIndexName(String)} earlier or holds an alias). If a
+   * reindex has registered a staged index for {@code canonicalIndexName}, returns the staged
+   * name; otherwise returns {@code canonicalIndexName} unchanged.
+   */
+  public String routeToStagedIfActive(String canonicalIndexName) {
+    if (canonicalIndexName == null) {
+      return null;
+    }
+    String staged = activeStagedIndices.get(canonicalIndexName);
+    return staged != null ? staged : canonicalIndexName;
+  }
+
+  /**
+   * Convenience for callers that have the entity type but not the {@link IndexMapping}.
+   * Equivalent to {@code getWriteIndexName(getIndexMapping(entityType))}.
    */
   public String resolveWriteIndex(String entityType, IndexMapping indexMapping) {
-    String staged = activeStagedIndices.get(entityType);
-    if (staged != null) {
-      return staged;
-    }
-    return indexMapping.getIndexName(clusterAlias);
+    return getWriteIndexName(indexMapping);
   }
 
   public String getIndexOrAliasName(String name) {
@@ -691,7 +739,7 @@ public class SearchRepository {
       IndexMapping indexMapping = entityIndexMap.get(entityType);
       SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
       String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
-      searchClient.createEntity(resolveWriteIndex(entityType, indexMapping), entityId, doc);
+      searchClient.createEntity(getWriteIndexName(indexMapping), entityId, doc);
 
       if (Entity.TABLE.equals(entityType)) {
         indexTableColumns((Table) entity);
@@ -742,8 +790,7 @@ public class SearchRepository {
 
     if (!docs.isEmpty()) {
       try {
-        searchClient.createEntities(
-            resolveWriteIndex(Entity.TABLE_COLUMN, columnIndexMapping), docs);
+        searchClient.createEntities(getWriteIndexName(columnIndexMapping), docs);
       } catch (Exception e) {
         LOG.error(
             "Issue bulk indexing columns for table [{}]: {}",
@@ -765,7 +812,7 @@ public class SearchRepository {
 
     try {
       searchClient.deleteEntityByFields(
-          List.of(columnIndexMapping.getIndexName(clusterAlias)),
+          List.of(getWriteIndexName(columnIndexMapping)),
           List.of(new ImmutablePair<>("table.id", table.getId().toString())));
     } catch (Exception e) {
       LOG.error(
@@ -868,7 +915,7 @@ public class SearchRepository {
 
       // Use updateChildren to efficiently update all columns for this table
       searchClient.updateChildren(
-          List.of(columnIndexMapping.getIndexName(clusterAlias)),
+          List.of(getWriteIndexName(columnIndexMapping)),
           new ImmutablePair<>("table.id", table.getId().toString()),
           new ImmutablePair<>(DEFAULT_UPDATE_SCRIPT, inheritedFields));
 
@@ -938,7 +985,7 @@ public class SearchRepository {
           return;
         }
 
-        searchClient.createEntities(resolveWriteIndex(entityType, indexMapping), docs);
+        searchClient.createEntities(getWriteIndexName(indexMapping), docs);
 
         if (Entity.TABLE.equals(entityType)) {
           indexColumnsForTables(entities);
@@ -957,7 +1004,7 @@ public class SearchRepository {
       return;
     }
 
-    String indexName = resolveWriteIndex(Entity.TABLE_COLUMN, columnIndexMapping);
+    String indexName = getWriteIndexName(columnIndexMapping);
     List<Map<String, String>> allColumnDocs = new ArrayList<>();
 
     for (EntityInterface entity : entities) {
@@ -1022,8 +1069,7 @@ public class SearchRepository {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
         SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
         String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
-        searchClient.createTimeSeriesEntity(
-            resolveWriteIndex(entityType, indexMapping), entityId, doc);
+        searchClient.createTimeSeriesEntity(getWriteIndexName(indexMapping), entityId, doc);
       } catch (Exception ie) {
         SearchIndexRetryQueue.enqueue(
             entityId,
@@ -1054,7 +1100,7 @@ public class SearchRepository {
             searchIndexFactory.buildIndex(entityType, entityTimeSeries);
         Map<String, Object> doc = elasticSearchIndex.buildSearchIndexDoc();
         searchClient.updateEntity(
-            resolveWriteIndex(entityType, indexMapping), entityId, doc, DEFAULT_UPDATE_SCRIPT);
+            getWriteIndexName(indexMapping), entityId, doc, DEFAULT_UPDATE_SCRIPT);
       } catch (RuntimeException e) {
         SearchIndexRetryQueue.enqueue(
             entityId,
@@ -1137,7 +1183,7 @@ public class SearchRepository {
                 doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
       }
 
-      searchClient.updateEntity(resolveWriteIndex(entityType, indexMapping), entityId, doc, scriptTxt);
+      searchClient.updateEntity(getWriteIndexName(indexMapping), entityId, doc, scriptTxt);
 
       if (Entity.TABLE.equals(entityType)) {
         try {
@@ -1212,7 +1258,7 @@ public class SearchRepository {
   public void bulkIndexPipelineExecutions(
       Pipeline pipeline, List<PipelineStatus> pipelineStatuses) {
     try {
-      String indexName = getIndexOrAliasName("pipeline_status_search_index");
+      String indexName = routeToStagedIfActive(getIndexOrAliasName("pipeline_status_search_index"));
       List<Map<String, String>> docsAndIds = new ArrayList<>();
       for (PipelineStatus pipelineStatus : pipelineStatuses) {
         PipelineExecutionIndex pipelineExecutionIndex =
@@ -1570,11 +1616,11 @@ public class SearchRepository {
       String domainId, IndexMapping indexMapping, Pair<String, Map<String, Object>> updates)
       throws IOException {
     searchClient.updateChildren(
-        List.of(indexMapping.getIndexName(clusterAlias)),
+        List.of(getWriteIndexName(indexMapping)),
         new ImmutablePair<>(PARENT_ID, domainId),
         updates);
     searchClient.updateChildren(
-        List.of(entityIndexMap.get(Entity.DATA_PRODUCT).getIndexName(clusterAlias)),
+        List.of(getWriteIndexName(entityIndexMap.get(Entity.DATA_PRODUCT))),
         new ImmutablePair<>(DOMAINS_ID, domainId),
         updates);
   }
@@ -1688,7 +1734,7 @@ public class SearchRepository {
   private void updateEntityCertificationInSearch(
       EntityInterface entity, AssetCertification certification) {
     IndexMapping indexMapping = entityIndexMap.get(entity.getEntityReference().getType());
-    String indexName = indexMapping.getIndexName(clusterAlias);
+    String indexName = getWriteIndexName(indexMapping);
     Map<String, Object> paramMap = new HashMap<>();
 
     if (certification != null && certification.getTagLabel() != null) {
@@ -1714,7 +1760,7 @@ public class SearchRepository {
       EntityInterface entity) {
 
     if (changeDescription != null && entityType.equalsIgnoreCase(Entity.PAGE)) {
-      String indexName = indexMapping.getIndexName(clusterAlias);
+      String indexName = getWriteIndexName(indexMapping);
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (field.getName().contains(PARENT)) {
           String oldParentFQN = entity.getName();
@@ -2111,7 +2157,7 @@ public class SearchRepository {
     Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
     try {
       IndexMapping indexMapping = getIndexMapping(entityType);
-      searchClient.deleteByScript(indexMapping.getIndexName(clusterAlias), scriptTxt, params);
+      searchClient.deleteByScript(getWriteIndexName(indexMapping), scriptTxt, params);
     } catch (Exception ie) {
       LOG.error("Issue deleting search document for entityType [{}]", entityType, ie);
     } finally {
@@ -2144,7 +2190,7 @@ public class SearchRepository {
     IndexMapping indexMapping = entityIndexMap.get(entityType);
     Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
     try {
-      searchClient.deleteEntity(resolveWriteIndex(entityType, indexMapping), entityId);
+      searchClient.deleteEntity(getWriteIndexName(indexMapping), entityId);
       deleteOrUpdateChildren(entity, indexMapping);
       if (Entity.TABLE.equals(entityType)) {
         deleteTableColumns((Table) entity);
@@ -2178,7 +2224,7 @@ public class SearchRepository {
       IndexMapping indexMapping = entityIndexMap.get(entityType);
       Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
       try {
-        searchClient.deleteEntityByFQNPrefix(resolveWriteIndex(entityType, indexMapping), fqn);
+        searchClient.deleteEntityByFQNPrefix(getWriteIndexName(indexMapping), fqn);
       } catch (Exception ie) {
         SearchIndexRetryQueue.enqueue(
             entity.getId() != null ? entity.getId().toString() : null,
@@ -2202,7 +2248,7 @@ public class SearchRepository {
       IndexMapping indexMapping = entityIndexMap.get(entityType);
       Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
       try {
-        searchClient.deleteEntity(resolveWriteIndex(entityType, indexMapping), entityId);
+        searchClient.deleteEntity(getWriteIndexName(indexMapping), entityId);
       } catch (Exception ie) {
         SearchIndexRetryQueue.enqueue(
             entityId,
@@ -2248,8 +2294,7 @@ public class SearchRepository {
     String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
     Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
     try {
-      searchClient.softDeleteOrRestoreEntity(
-          indexMapping.getIndexName(clusterAlias), entityId, scriptTxt);
+      searchClient.softDeleteOrRestoreEntity(getWriteIndexName(indexMapping), entityId, scriptTxt);
       softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
 
       if (Entity.TABLE.equals(entityType)) {
