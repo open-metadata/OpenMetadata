@@ -722,7 +722,7 @@ export function useGraphDataBuilder({
         const glossary = glossaries.find((g) => g.id === glossaryId);
         const name =
           terms[0].group ??
-          (glossary ? glossary.displayName || glossary.name : '');
+          (glossary ? glossary.name : '');
         const color = glossaryColorMap[glossaryId] ?? 'var(--color-gray-400)';
         const isComboDimmed = Boolean(
           searchGlossarySet && !searchGlossarySet.has(glossaryId)
