@@ -215,7 +215,7 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
   },
   {
     label: 'label.status',
-    key: EntityFields.GLOSSARY_TERM_STATUS,
+    key: EntityFields.ENTITY_STATUS,
   },
 ];
 

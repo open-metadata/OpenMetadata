@@ -26,9 +26,7 @@ from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.orm.types.custom_image import CustomImage
 
 
-def _get_unique_count_expressions(
-    col: Column, dialect: str
-) -> Tuple[ColumnElement, ColumnElement]:
+def _get_unique_count_expressions(col: Column, dialect: str) -> Tuple[ColumnElement, ColumnElement]:
     """
     Get dialect-specific expressions for unique count computation.
 
@@ -52,14 +50,10 @@ def _get_unique_count_expressions(
         # Avoid using these data types in new development work, and plan to modify applications that currently use them.
         # Use nvarchar(max), varchar(max), and varbinary(max) instead.
         # ref:https://learn.microsoft.com/en-us/sql/t-sql/data-types/ntext-text-and-image-transact-sql?view=sql-server-ver16
-        is_mssql_deprecated_datatype = isinstance(
-            col.type, (CustomImage, TEXT, NVARCHAR)
-        )
+        is_mssql_deprecated_datatype = isinstance(col.type, (CustomImage, TEXT, NVARCHAR))
         if is_mssql_deprecated_datatype:
             count_expr = CountFn(col)
-            group_by_expr = func.convert(
-                literal_column(cast_dict.get(type(col.type))), col
-            )
+            group_by_expr = func.convert(literal_column(cast_dict.get(type(col.type))), col)
             return group_by_expr, count_expr
         else:
             return col, col
@@ -81,9 +75,7 @@ def _unique_count_query(col, session, sample):
 
     Uses dialect-agnostic logic via _get_unique_count_expressions().
     """
-    group_by_expr, count_expr = _get_unique_count_expressions(
-        col, session.get_bind().dialect.name
-    )
+    group_by_expr, count_expr = _get_unique_count_expressions(col, session.get_bind().dialect.name)
 
     return (
         session.query(func.count(count_expr))
@@ -113,9 +105,7 @@ _unique_count_query_mapper[Dialects.Oracle] = _unique_count_query_oracle
 # ============================================================================
 
 
-def _unique_count_dimensional_cte(
-    col: Column, table, dimension_col: Column, dialect: str
-) -> Tuple[CTE, ColumnElement]:
+def _unique_count_dimensional_cte(col: Column, table, dimension_col: Column, dialect: str) -> Tuple[CTE, ColumnElement]:
     """
     Build CTE for dimensional unique count validation.
 
@@ -143,18 +133,14 @@ def _unique_count_dimensional_cte(
             dimension_col.label("dim_value"),
             group_by_expr.label("col_value"),
             func.count(count_expr).label("occurrence_count"),
-            func.count().label(
-                "row_count"
-            ),  # Total rows for this (dimension, value) pair
+            func.count().label("row_count"),  # Total rows for this (dimension, value) pair
         )
         .select_from(table)
         .group_by(dimension_col, group_by_expr)
     ).cte("value_counts")
 
     # Expression: Count values appearing exactly once per dimension
-    unique_count_expr = func.sum(
-        case((value_counts.c.occurrence_count == 1, 1), else_=0)
-    )
+    unique_count_expr = func.sum(case((value_counts.c.occurrence_count == 1, 1), else_=0))
 
     return value_counts, unique_count_expr
 

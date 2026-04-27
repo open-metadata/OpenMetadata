@@ -11,6 +11,7 @@
 """
 Integration tests for Table Rule Library Pandas Expression validator on Datalake (S3/MinIO)
 """
+
 from copy import deepcopy
 from typing import List
 
@@ -66,9 +67,7 @@ def table_rule_library_pandas_test_definition(metadata) -> TestDefinition:
     )
     yield test_def
     try:
-        test_cases = metadata.list_entities(
-            TestCase, fields=["*"], skip_on_failure=True
-        ).entities
+        test_cases = metadata.list_entities(TestCase, fields=["*"], skip_on_failure=True).entities
         for tc in test_cases:
             if tc.testDefinition and tc.testDefinition.name == test_def.name:
                 try:
@@ -136,9 +135,9 @@ class TestTableRuleLibraryPandas:
         workflow_config = deepcopy(TABLE_RULE_LIBRARY_DATA_QUALITY_CONFIG)
         service_name = ingestion_config["source"]["serviceName"]
         workflow_config["source"]["serviceName"] = service_name
-        workflow_config["source"]["sourceConfig"]["config"][
-            "entityFullyQualifiedName"
-        ] = f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
+        workflow_config["source"]["sourceConfig"]["config"]["entityFullyQualifiedName"] = (
+            f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
+        )
         workflow_config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
             {
                 "serviceName": service_name,
@@ -194,11 +193,9 @@ class TestTableRuleLibraryPandas:
             skip_on_failure=True,
             params={"entityLink": f"<#E::table::{table_fqn}>"},
         ).entities
-        test_case: TestCase = next(
-            (t for t in test_cases if t.name.root == test_case_name), None
-        )
+        test_case: TestCase = next((t for t in test_cases if t.name.root == test_case_name), None)
         assert test_case is not None, f"Test case {test_case_name} not found"
         assert test_case.testCaseResult is not None, "Test case result is None"
-        assert (
-            test_case.testCaseResult.testCaseStatus == expected_status
-        ), f"Expected {expected_status}, got {test_case.testCaseResult.testCaseStatus}"
+        assert test_case.testCaseResult.testCaseStatus == expected_status, (
+            f"Expected {expected_status}, got {test_case.testCaseResult.testCaseStatus}"
+        )

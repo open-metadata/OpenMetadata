@@ -1,6 +1,7 @@
 """
 Comprehensive unit tests for Dashboard entity with full mock coverage.
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -123,9 +124,7 @@ class TestDashboardEntity(unittest.TestCase):
 
         # Assert
         self.assertEqual(result.fullyQualifiedName, self.dashboard_fqn)
-        self.mock_ometa.get_by_name.assert_called_once_with(
-            entity=DashboardEntity, fqn=self.dashboard_fqn, fields=None
-        )
+        self.mock_ometa.get_by_name.assert_called_once_with(entity=DashboardEntity, fqn=self.dashboard_fqn, fields=None)
 
     def test_update_dashboard(self):
         """Test updating a dashboard"""
@@ -137,11 +136,7 @@ class TestDashboardEntity(unittest.TestCase):
 
         # Mock the get_by_id to return the current state
         current_entity = MagicMock(spec=type(dashboard_to_update))
-        current_entity.id = (
-            dashboard_to_update.id
-            if hasattr(dashboard_to_update, "id")
-            else UUID(self.entity_id)
-        )
+        current_entity.id = dashboard_to_update.id if hasattr(dashboard_to_update, "id") else UUID(self.entity_id)
         self.mock_ometa.get_by_id.return_value = current_entity
 
         # Mock the patch to return the updated entity
@@ -261,9 +256,7 @@ class TestDashboardEntity(unittest.TestCase):
     def _skip_test_error_handling_invalid_url(self):
         """Test error handling for invalid dashboard URL"""
         # Arrange
-        create_request = CreateDashboardRequest(
-            name="bad-dashboard", service="tableau", dashboardUrl="not-a-valid-url"
-        )
+        create_request = CreateDashboardRequest(name="bad-dashboard", service="tableau", dashboardUrl="not-a-valid-url")
 
         self.mock_ometa.create_or_update.side_effect = ValueError("Invalid URL format")
 

@@ -12,6 +12,7 @@
 """
 Abstract class for third party secrets' manager implementations
 """
+
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -38,9 +39,7 @@ class ExternalSecretsManager(SecretsManager, ABC):
     Abstract class for third party secrets' manager implementations
     """
 
-    def __init__(
-        self, provider: SecretsManagerProvider, loader: SecretsManagerClientLoader
-    ):
+    def __init__(self, provider: SecretsManagerProvider, loader: SecretsManagerClientLoader):
         self.provider = provider
         self.loader = loader
 

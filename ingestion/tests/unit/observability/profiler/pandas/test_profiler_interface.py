@@ -104,12 +104,8 @@ class PandasInterfaceTest(TestCase):
     ]
     root_dir = os.path.dirname(os.path.abspath(__file__))
     csv_dir = "../custom_csv"
-    df1 = pd.read_csv(
-        os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"), names=col_names
-    )
-    df2 = pd.read_csv(
-        os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"), names=col_names
-    )
+    df1 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"), names=col_names)
+    df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"), names=col_names)
 
     table_entity = Table(
         id=uuid4(),
@@ -210,30 +206,20 @@ class PandasInterfaceTest(TestCase):
 
         cls.table = User
         cls.metrics = get_default_metrics(Metrics, cls.table)
-        cls.static_metrics = [
-            metric for metric in cls.metrics if issubclass(metric, StaticMetric)
-        ]
-        cls.composed_metrics = [
-            metric for metric in cls.metrics if issubclass(metric, ComposedMetric)
-        ]
+        cls.static_metrics = [metric for metric in cls.metrics if issubclass(metric, StaticMetric)]
+        cls.composed_metrics = [metric for metric in cls.metrics if issubclass(metric, ComposedMetric)]
         cls.window_metrics = [
-            metric
-            for metric in cls.metrics
-            if issubclass(metric, StaticMetric) and metric.is_window_metric()
+            metric for metric in cls.metrics if issubclass(metric, StaticMetric) and metric.is_window_metric()
         ]
         cls.query_metrics = [
-            metric
-            for metric in cls.metrics
-            if issubclass(metric, QueryMetric) and metric.is_col_metric()
+            metric for metric in cls.metrics if issubclass(metric, QueryMetric) and metric.is_col_metric()
         ]
 
     def test_get_all_metrics(self):
         table_metrics = [
             ThreadPoolMetrics(
                 metrics=[
-                    metric
-                    for metric in self.metrics
-                    if (not metric.is_col_metric() and not metric.is_system_metrics())
+                    metric for metric in self.metrics if (not metric.is_col_metric() and not metric.is_system_metrics())
                 ],
                 metric_type=MetricTypes.Table,
                 column=None,
@@ -269,11 +255,7 @@ class PandasInterfaceTest(TestCase):
                 )
             window_metrics.append(
                 ThreadPoolMetrics(
-                    metrics=[
-                        metric
-                        for metric in self.window_metrics
-                        if metric.is_window_metric()
-                    ],
+                    metrics=[metric for metric in self.window_metrics if metric.is_window_metric()],
                     metric_type=MetricTypes.Window,
                     column=col,
                     table=self.table_entity,
@@ -298,22 +280,12 @@ class PandasInterfaceTest(TestCase):
             timestamp=Timestamp(int(datetime.now().timestamp())),
         )
 
-        profile_request = CreateTableProfileRequest(
-            tableProfile=table_profile, columnProfile=column_profile
-        )
+        profile_request = CreateTableProfileRequest(tableProfile=table_profile, columnProfile=column_profile)
 
         assert profile_request.tableProfile.columnCount == 10
         assert profile_request.tableProfile.rowCount == 6
-        name_column_profile = [
-            profile
-            for profile in profile_request.columnProfile
-            if profile.name == "name"
-        ][0]
-        age_column_profile = [
-            profile
-            for profile in profile_request.columnProfile
-            if profile.name == "age"
-        ][0]
+        name_column_profile = [profile for profile in profile_request.columnProfile if profile.name == "name"][0]
+        age_column_profile = [profile for profile in profile_request.columnProfile if profile.name == "age"][0]
         assert name_column_profile.nullCount == 2.0
         assert age_column_profile.median == 31.0
 
@@ -323,9 +295,7 @@ class PandasInterfaceTest(TestCase):
 
         table_metric = ThreadPoolMetrics(
             metrics=[
-                metric
-                for metric in self.metrics
-                if (not metric.is_col_metric() and not metric.is_system_metrics())
+                metric for metric in self.metrics if (not metric.is_col_metric() and not metric.is_system_metrics())
             ],
             metric_type=MetricTypes.Table,
             column=None,
@@ -344,9 +314,7 @@ class PandasInterfaceTest(TestCase):
         col = list(inspect(User).c)[1]  # name column
         column_metric = ThreadPoolMetrics(
             metrics=[
-                metric
-                for metric in self.static_metrics
-                if metric.is_col_metric() and not metric.is_window_metric()
+                metric for metric in self.static_metrics if metric.is_col_metric() and not metric.is_window_metric()
             ],
             metric_type=MetricTypes.Static,
             column=col,
@@ -364,9 +332,7 @@ class PandasInterfaceTest(TestCase):
 
         table_metric = ThreadPoolMetrics(
             metrics=[
-                metric
-                for metric in self.metrics
-                if (not metric.is_col_metric() and not metric.is_system_metrics())
+                metric for metric in self.metrics if (not metric.is_col_metric() and not metric.is_system_metrics())
             ],
             metric_type=MetricTypes.Table,
             column=None,
@@ -378,9 +344,7 @@ class PandasInterfaceTest(TestCase):
 
         static_metric_name = ThreadPoolMetrics(
             metrics=[
-                metric
-                for metric in self.static_metrics
-                if metric.is_col_metric() and not metric.is_window_metric()
+                metric for metric in self.static_metrics if metric.is_col_metric() and not metric.is_window_metric()
             ],
             metric_type=MetricTypes.Static,
             column=col_name,
@@ -389,9 +353,7 @@ class PandasInterfaceTest(TestCase):
 
         static_metric_age = ThreadPoolMetrics(
             metrics=[
-                metric
-                for metric in self.static_metrics
-                if metric.is_col_metric() and not metric.is_window_metric()
+                metric for metric in self.static_metrics if metric.is_col_metric() and not metric.is_window_metric()
             ],
             metric_type=MetricTypes.Static,
             column=col_age,
@@ -414,9 +376,7 @@ class PandasInterfaceTest(TestCase):
 
         table_metric = ThreadPoolMetrics(
             metrics=[
-                metric
-                for metric in self.metrics
-                if (not metric.is_col_metric() and not metric.is_system_metrics())
+                metric for metric in self.metrics if (not metric.is_col_metric() and not metric.is_system_metrics())
             ],
             metric_type=MetricTypes.Table,
             column=None,

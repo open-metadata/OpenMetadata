@@ -74,9 +74,7 @@ class BaseColumnValueMinToBeBetweenValidator(BaseTestValidator):
             )
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(
-            metric_values, test_params=test_params
-        )
+        result_message = self._format_result_message(metric_values, test_params=test_params)
         test_result_values = self._get_test_result_values(metric_values)
 
         return self.get_test_case_result_object(
@@ -121,9 +119,7 @@ class BaseColumnValueMinToBeBetweenValidator(BaseTestValidator):
             Metrics.min.name: Metrics.min,
         }
 
-    def _evaluate_test_condition(
-        self, metric_values: dict, test_params: dict
-    ) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: dict) -> TestEvaluation:
         """Evaluate the min-to-be-between test condition
 
         For min test, the condition passes if the min value is within the specified bounds.
@@ -171,9 +167,7 @@ class BaseColumnValueMinToBeBetweenValidator(BaseTestValidator):
             str: Formatted result message
         """
         if test_params is None:
-            raise ValueError(
-                "test_params is required for columnValueMinToBeBetween._format_result_message"
-            )
+            raise ValueError("test_params is required for columnValueMinToBeBetween._format_result_message")
 
         min_value = metric_values[Metrics.min.name]
         min_bound = test_params[self.MIN_BOUND]

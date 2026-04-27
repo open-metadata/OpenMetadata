@@ -13,7 +13,7 @@ authors = [
 ]
 license = {file = "LICENSE"}
 description = "Airflow REST APIs to create and manage DAGS"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "pendulum~=3.0",
     "apache-airflow>=2.2.2",
@@ -24,12 +24,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "black==22.3.0",
+    "ruff~=0.15.12",
     "pytest",
     "pylint",
     "pytest-cov",
-    "isort",
-    "pycln",
 ]
 
 [project.urls]
@@ -49,11 +47,19 @@ openmetadata_managed_apis = "openmetadata_managed_apis.plugin:RestApiPlugin"
 
 
 [tool.coverage.run]
-source = [
-    "env/lib/python3.9/site-packages/openmetadata_managed_apis"
-]
+source = ["openmetadata_managed_apis"]
 relative_files = true
 branch = true
+parallel = true
+
+# Remap installed-package paths back to the source tree so that
+# ``coverage combine`` (in a lightweight CI job without the package
+# installed) produces paths that resolve to the checkout.
+[tool.coverage.paths]
+openmetadata_managed_apis = [
+    "openmetadata_managed_apis",
+    "*/site-packages/openmetadata_managed_apis",
+]
 
 [tool.coverage.report]
 omit = [

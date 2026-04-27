@@ -11,6 +11,7 @@
 """
 Test Looker multi-repository support
 """
+
 import tempfile
 from pathlib import Path
 from unittest import TestCase
@@ -20,7 +21,7 @@ from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
 from metadata.ingestion.source.dashboard.looker.bulk_parser import BulkLkmlParser
-from metadata.ingestion.source.dashboard.looker.metadata import LookerSource
+from metadata.ingestion.source.dashboard.looker.metadata import LookerSource  # noqa: F401
 from metadata.readers.file.local import LocalReader
 
 
@@ -149,9 +150,7 @@ view: customers {
 
         self.assertEqual(parsed, expected)
 
-    @patch(
-        "metadata.ingestion.source.dashboard.looker.bulk_parser.BulkLkmlParser.__init__"
-    )
+    @patch("metadata.ingestion.source.dashboard.looker.bulk_parser.BulkLkmlParser.__init__")
     def test_bulk_parser_multiple_readers(self, mock_init):
         """Test BulkLkmlParser accepts multiple readers"""
         mock_init.return_value = None
@@ -184,9 +183,7 @@ view: customers {
         # Verify views from both repositories are cached
         self.assertIn("users", parser._views_cache, "View from repo1 should be cached")
         self.assertIn("orders", parser._views_cache, "View from repo2 should be cached")
-        self.assertIn(
-            "customers", parser._views_cache, "View from repo2 should be cached"
-        )
+        self.assertIn("customers", parser._views_cache, "View from repo2 should be cached")
 
         # Verify we can find views from both repos
         users_view = parser.find_view("users")
@@ -232,7 +229,7 @@ view: customers {
     @patch("metadata.ingestion.source.dashboard.looker.metadata._clone_repo")
     def test_init_repo_creates_multiple_lookml_repos(self, mock_clone):
         """Test __init_repo creates LookMLRepo objects for each repository"""
-        from metadata.ingestion.source.dashboard.looker.metadata import LookerSource
+        from metadata.ingestion.source.dashboard.looker.metadata import LookerSource  # noqa: F811
 
         # Create mock credentials
         github_creds = GitHubCredentials(
@@ -255,7 +252,7 @@ view: customers {
     @patch("metadata.ingestion.source.dashboard.looker.metadata._clone_repo")
     def test_init_repo_backward_compatibility_single_repo(self, mock_clone):
         """Test backward compatibility with single repository name"""
-        from metadata.ingestion.source.dashboard.looker.metadata import LookerSource
+        from metadata.ingestion.source.dashboard.looker.metadata import LookerSource  # noqa: F811
 
         # Create mock credentials with single repo
         github_creds = GitHubCredentials(
@@ -343,15 +340,11 @@ view: malformed {
         except Exception:
             parser_created = False
 
-        self.assertTrue(
-            parser_created, "Parser should handle malformed files gracefully"
-        )
+        self.assertTrue(parser_created, "Parser should handle malformed files gracefully")
 
         # Other valid views should still be parsed
         users_view = parser.find_view("users")
-        self.assertIsNotNone(
-            users_view, "Valid views should be parsed despite malformed files"
-        )
+        self.assertIsNotNone(users_view, "Valid views should be parsed despite malformed files")
 
     def test_integration_multiple_repos_end_to_end(self):
         """Integration test: Verify complete flow with multiple repositories"""
@@ -365,9 +358,7 @@ view: malformed {
         expected_views = ["users", "orders", "customers"]
         for view_name in expected_views:
             view = parser.find_view(view_name)
-            self.assertIsNotNone(
-                view, f"View {view_name} should be found in aggregated parser"
-            )
+            self.assertIsNotNone(view, f"View {view_name} should be found in aggregated parser")
 
         # Verify view count
         self.assertEqual(

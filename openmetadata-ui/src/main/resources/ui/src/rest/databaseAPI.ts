@@ -187,10 +187,13 @@ export const restoreDatabase = async (id: string) => {
   return response.data;
 };
 
-export const getDatabaseVersions = async (id: string) => {
+export const getDatabaseVersions = async (
+  id: string,
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
+) => {
   const url = `/databases/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url);
+  const response = await APIClient.get<EntityHistory>(url, { params });
 
   return response.data;
 };
@@ -203,10 +206,13 @@ export const getDatabaseVersionData = async (id: string, version: string) => {
   return response.data;
 };
 
-export const getDatabaseSchemaVersions = async (id: string) => {
+export const getDatabaseSchemaVersions = async (
+  id: string,
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
+) => {
   const url = `/databaseSchemas/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url);
+  const response = await APIClient.get<EntityHistory>(url, { params });
 
   return response.data;
 };

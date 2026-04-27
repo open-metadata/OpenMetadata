@@ -21,6 +21,7 @@ Memory-optimized:
 - Processes entries page-by-page, releasing each page before fetching the next
 - Stores only (table_name -> is_deleted) per schema, no Pydantic models or timestamps
 """
+
 import time
 from datetime import datetime, timezone
 from typing import Dict, Iterable, List, Optional
@@ -141,8 +142,7 @@ class BigQueryIncrementalTableProcessor:
                 if attempt < MAX_RETRIES - 1:
                     wait = RETRY_BASE_WAIT * (attempt + 1)
                     logger.warning(
-                        "Cloud Logging quota exceeded, retrying in %ds "
-                        "(attempt %d/%d)",
+                        "Cloud Logging quota exceeded, retrying in %ds (attempt %d/%d)",
                         wait,
                         attempt + 1,
                         MAX_RETRIES,
@@ -150,8 +150,7 @@ class BigQueryIncrementalTableProcessor:
                     time.sleep(wait)
                 else:
                     logger.error(
-                        "Cloud Logging quota exceeded after %d retries. "
-                        "Falling back to full extraction.",
+                        "Cloud Logging quota exceeded after %d retries. Falling back to full extraction.",
                         MAX_RETRIES,
                     )
                     self._query_failed = True
@@ -183,15 +182,10 @@ class BigQueryIncrementalTableProcessor:
         """
         end_date = datetime.now(timezone.utc)
         num_datasets = len(datasets) if datasets else 0
-        num_batches = (
-            (num_datasets + DATASET_BATCH_SIZE - 1) // DATASET_BATCH_SIZE
-            if num_datasets
-            else 1
-        )
+        num_batches = (num_datasets + DATASET_BATCH_SIZE - 1) // DATASET_BATCH_SIZE if num_datasets else 1
 
         logger.info(
-            "Querying Cloud Logging for project '%s': %d datasets in %d batch(es), "
-            "window [%s, %s)",
+            "Querying Cloud Logging for project '%s': %d datasets in %d batch(es), window [%s, %s)",
             project,
             num_datasets,
             num_batches,
@@ -203,9 +197,7 @@ class BigQueryIncrementalTableProcessor:
             logger.debug("No dataset filter — querying all datasets in project")
             self._fetch_batch(project, start_date, end_date, dataset_filter="")
         elif datasets:
-            for batch_idx, dataset_batch in enumerate(
-                _batch(datasets, DATASET_BATCH_SIZE), start=1
-            ):
+            for batch_idx, dataset_batch in enumerate(_batch(datasets, DATASET_BATCH_SIZE), start=1):
                 if self._query_failed:
                     logger.warning(
                         "Skipping remaining %d batch(es) due to prior failure",
@@ -221,9 +213,7 @@ class BigQueryIncrementalTableProcessor:
                 dataset_filter = _build_dataset_filter(dataset_batch)
                 self._fetch_batch(project, start_date, end_date, dataset_filter)
         else:
-            logger.info(
-                "No datasets to query after filtering for project '%s'", project
-            )
+            logger.info("No datasets to query after filtering for project '%s'", project)
 
     def get_deleted(self, schema_name: SchemaName) -> List[TableName]:
         return self._changed_tables_map.get_deleted(schema_name)

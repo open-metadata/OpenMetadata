@@ -12,6 +12,7 @@
 """
 This Processor is in charge of executing the test cases
 """
+
 import traceback
 from copy import deepcopy
 from typing import List, Optional
@@ -62,10 +63,8 @@ class TestCaseRunner(Processor):
         self.config = config
         self.metadata = metadata
 
-        self.processor_config: TestSuiteProcessorConfig = (
-            TestSuiteProcessorConfig.model_validate(
-                self.config.processor.model_dump().get("config")
-            )
+        self.processor_config: TestSuiteProcessorConfig = TestSuiteProcessorConfig.model_validate(
+            self.config.processor.model_dump().get("config")
         )
 
     @property
@@ -85,9 +84,7 @@ class TestCaseRunner(Processor):
             table_fqn=record.table.fullyQualifiedName.root,
         )
         openmetadata_test_cases = self.filter_for_om_test_cases(test_cases)
-        openmetadata_test_cases = self.filter_incompatible_test_cases(
-            record.table, openmetadata_test_cases
-        )
+        openmetadata_test_cases = self.filter_incompatible_test_cases(record.table, openmetadata_test_cases)
 
         self.config.source.serviceConnection = RootModel(record.service_connection)
         test_suite_runner = self.get_test_suite_runner(record.table)
@@ -106,9 +103,7 @@ class TestCaseRunner(Processor):
 
         return Either(right=TestCaseResults(test_results=test_results))
 
-    def get_test_cases(
-        self, test_cases: List[TestCase], table_fqn: str
-    ) -> List[TestCase]:
+    def get_test_cases(self, test_cases: List[TestCase], table_fqn: str) -> List[TestCase]:
         """
         Based on the test suite test cases that we already know, pick up
         the rest from the YAML config, compare and create the new ones
@@ -148,9 +143,7 @@ class TestCaseRunner(Processor):
         if not cli_test_cases_definitions:
             return test_cases
         test_cases = deepcopy(test_cases) or []
-        test_case_names = (
-            {test_case.name.root for test_case in test_cases} if test_cases else set()
-        )
+        test_case_names = {test_case.name.root for test_case in test_cases} if test_cases else set()
 
         # we'll check the test cases defined in the CLI config file and not present in the platform
         test_cases_to_create = [
@@ -165,9 +158,7 @@ class TestCaseRunner(Processor):
                 for cli_test_case_definition in cli_test_cases_definitions
                 if cli_test_case_definition.name in test_case_names
             ]
-            test_cases = self._update_test_cases(
-                test_cases_to_update, test_cases, table_fqn
-            )
+            test_cases = self._update_test_cases(test_cases_to_update, test_cases, table_fqn)
 
         if not test_cases_to_create:
             return test_cases
@@ -180,9 +171,7 @@ class TestCaseRunner(Processor):
                         name=test_case_to_create.name,
                         description=test_case_to_create.description,
                         displayName=test_case_to_create.displayName,
-                        testDefinition=FullyQualifiedEntityName(
-                            test_case_to_create.testDefinitionName
-                        ),
+                        testDefinition=FullyQualifiedEntityName(test_case_to_create.testDefinitionName),
                         entityLink=EntityLink(
                             entity_link.get_entity_link(
                                 Table,
@@ -191,9 +180,7 @@ class TestCaseRunner(Processor):
                             )
                         ),
                         parameterValues=(
-                            list(test_case_to_create.parameterValues)
-                            if test_case_to_create.parameterValues
-                            else None
+                            list(test_case_to_create.parameterValues) if test_case_to_create.parameterValues else None
                         ),
                         owners=None,
                         computePassedFailedRowCount=test_case_to_create.computePassedFailedRowCount,
@@ -201,9 +188,7 @@ class TestCaseRunner(Processor):
                 )
                 test_cases.append(test_case)
             except Exception as exc:
-                error = (
-                    f"Couldn't create test case name {test_case_to_create.name}: {exc}"
-                )
+                error = f"Couldn't create test case name {test_case_to_create.name}: {exc}"
                 logger.error(error)
                 logger.debug(traceback.format_exc())
                 self.status.failed(
@@ -227,9 +212,7 @@ class TestCaseRunner(Processor):
         Args:
             test_cases_to_update (List[TestCaseDefinition]): list of test case definitions
         """
-        test_cases_to_update_names = {
-            test_case_to_update.name for test_case_to_update in test_cases_to_update
-        }
+        test_cases_to_update_names = {test_case_to_update.name for test_case_to_update in test_cases_to_update}
         for indx, test_case in enumerate(deepcopy(test_cases)):
             if test_case.name.root in test_cases_to_update_names:
                 test_case_definition = next(
@@ -262,18 +245,12 @@ class TestCaseRunner(Processor):
         """
         om_test_cases: List[TestCase] = []
         for test_case in test_cases:
-            test_definition: TestDefinition = self.metadata.get_by_id(
-                TestDefinition, test_case.testDefinition.id
-            )
+            test_definition: TestDefinition = self.metadata.get_by_id(TestDefinition, test_case.testDefinition.id)
             if TestPlatform.OpenMetadata not in test_definition.testPlatforms:
-                logger.debug(
-                    f"Test case {test_case.name.root} is not an OpenMetadata test case."
-                )
+                logger.debug(f"Test case {test_case.name.root} is not an OpenMetadata test case.")
                 continue
             if not getattr(test_definition, "enabled", True):
-                logger.debug(
-                    f"Test case {test_case.name.root} is disabled. Skipping execution."
-                )
+                logger.debug(f"Test case {test_case.name.root} is disabled. Skipping execution.")
                 continue
             om_test_cases.append(test_case)
 
@@ -313,9 +290,7 @@ class TestCaseRunner(Processor):
     def close(self) -> None:
         """Nothing to close"""
 
-    def filter_incompatible_test_cases(
-        self, table: Table, test_cases: List[TestCase]
-    ) -> List[TestCase]:
+    def filter_incompatible_test_cases(self, table: Table, test_cases: List[TestCase]) -> List[TestCase]:
         """Filter out test cases that are defined for incompatible columns. An example of this is a
         test case that checks for a column value to be between two values, but the column is of type
         VARCHAR and not a numeric type. Incompatible test cases will be logged as failures.
@@ -351,6 +326,4 @@ class TestCaseRunner(Processor):
         return result
 
     def get_test_suite_runner(self, table: Table):
-        return BaseTestSuiteRunner(
-            self.config, self.metadata, table
-        ).get_data_quality_runner()
+        return BaseTestSuiteRunner(self.config, self.metadata, table).get_data_quality_runner()

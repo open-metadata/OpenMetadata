@@ -12,6 +12,7 @@
 """
 Avro parser tests
 """
+
 from unittest import TestCase
 
 from metadata.parsers.avro_parser import parse_avro_schema
@@ -592,9 +593,7 @@ class AvroParserTests(TestCase):
         Test nested schema
         """
         self.assertEqual(self.parsed_schema[0].name.root, "level")
-        self.assertEqual(
-            self.parsed_schema[0].description.root, "This is a first level record"
-        )
+        self.assertEqual(self.parsed_schema[0].description.root, "This is a first level record")
         self.assertEqual(self.parsed_schema[0].dataType.name, "RECORD")
 
     def test_second_level(self):
@@ -611,9 +610,7 @@ class AvroParserTests(TestCase):
         field_types = {str(field.dataType.name) for field in children}
         self.assertEqual(field_types, {"INT", "STRING", "ARRAY"})
 
-        field_descriptions = {
-            field.description.root if field.description else None for field in children
-        }
+        field_descriptions = {field.description.root if field.description else None for field in children}
         self.assertEqual(
             field_descriptions,
             {
@@ -631,9 +628,7 @@ class AvroParserTests(TestCase):
         children = level3_record.children
 
         self.assertEqual(level3_record.name.root, "lvl2_record")
-        self.assertEqual(
-            level3_record.description.root, "The field represents a level 2 record"
-        )
+        self.assertEqual(level3_record.description.root, "The field represents a level 2 record")
         self.assertEqual(level3_record.dataType.name, "RECORD")
 
         field_names = {str(field.name.root) for field in children}
@@ -645,9 +640,7 @@ class AvroParserTests(TestCase):
         field_types = {str(field.dataType.name) for field in children}
         self.assertEqual(field_types, {"STRING", "ARRAY"})
 
-        field_descriptions = {
-            field.description.root if field.description else None for field in children
-        }
+        field_descriptions = {field.description.root if field.description else None for field in children}
         self.assertEqual(field_descriptions, {None, "level 2 array"})
 
     def test_fourth_level(self):
@@ -691,12 +684,8 @@ class AvroParserTests(TestCase):
         """
         self.parse_schema_assert_without_child(ARRAY_OF_STR, "ARRAY<string>")
         self.parse_schema_assert_without_child(ARRAY_OF_ARRAY, "ARRAY<ARRAY<int>>")
-        self.parse_schema_assert_without_child(
-            ARRAY_OF_NESTED_ARRAY, "ARRAY<ARRAY<ARRAY<ARRAY<ARRAY<int>>>>>"
-        )
-        self.parse_schema_assert_one_child(
-            ARRAY_OF_ARRAY_OF_RECORD, "ARRAY<ARRAY<record>>"
-        )
+        self.parse_schema_assert_without_child(ARRAY_OF_NESTED_ARRAY, "ARRAY<ARRAY<ARRAY<ARRAY<ARRAY<int>>>>>")
+        self.parse_schema_assert_one_child(ARRAY_OF_ARRAY_OF_RECORD, "ARRAY<ARRAY<record>>")
         self.parse_schema_assert_one_child(
             ARRAY_OF_NESTED_ARRAY_WITH_CHILD,
             "ARRAY<ARRAY<ARRAY<ARRAY<ARRAY<record>>>>>",
@@ -707,23 +696,13 @@ class AvroParserTests(TestCase):
         Test union parsing
         """
         self.parse_schema_assert_without_child(UNION_EXAMPLE_1, "UNION<null,int>")
-        self.parse_schema_assert_without_child(
-            UNION_EXAMPLE_2, "UNION<null,int,string,boolean>"
-        )
+        self.parse_schema_assert_without_child(UNION_EXAMPLE_2, "UNION<null,int,string,boolean>")
         self.parse_schema_assert_one_child(UNION_EXAMPLE_3, "UNION<null,record>")
-        self.parse_schema_assert_without_child(
-            UNION_EXAMPLE_4, "UNION<null,record,record>"
-        )
+        self.parse_schema_assert_without_child(UNION_EXAMPLE_4, "UNION<null,record,record>")
         self.parse_schema_assert_without_child(UNION_OF_ARRAY, "UNION<null,ARRAY<int>>")
-        self.parse_schema_assert_without_child(
-            UNION_OF_STR_AND_RECORD, "UNION<string,record>"
-        )
-        self.parse_schema_assert_one_child(
-            UNION_OF_ARRAY_OF_RECORD, "UNION<null,ARRAY<record>>"
-        )
-        self.parse_schema_assert_without_child(
-            UNION_OF_ARRAY_OF_RECORD_1, "UNION<int,array>"
-        )
+        self.parse_schema_assert_without_child(UNION_OF_STR_AND_RECORD, "UNION<string,record>")
+        self.parse_schema_assert_one_child(UNION_OF_ARRAY_OF_RECORD, "UNION<null,ARRAY<record>>")
+        self.parse_schema_assert_without_child(UNION_OF_ARRAY_OF_RECORD_1, "UNION<int,array>")
 
     def test_nested_record_parsing(self):
         parsed_record_schema = parse_avro_schema(RECORD_INSIDE_RECORD)
@@ -737,12 +716,8 @@ class AvroParserTests(TestCase):
         self.assertEqual(parsed_record_schema[0].children[2].dataType.name, "RECORD")
 
         # test fields inside 2nd level record
-        self.assertEqual(
-            parsed_record_schema[0].children[2].children[0].name.root, "InnerRecord"
-        )
-        self.assertEqual(
-            parsed_record_schema[0].children[2].children[0].dataType.name, "RECORD"
-        )
+        self.assertEqual(parsed_record_schema[0].children[2].children[0].name.root, "InnerRecord")
+        self.assertEqual(parsed_record_schema[0].children[2].children[0].dataType.name, "RECORD")
         self.assertEqual(
             parsed_record_schema[0].children[2].children[0].children[1].name.root,
             "phoneNumbers",
@@ -757,22 +732,11 @@ class AvroParserTests(TestCase):
 
         # test that the recursive schema stops processing after 1st occurrence
         self.assertEqual(
-            parsed_recursive_schema[0]
-            .children[0]
-            .children[0]
-            .children[0]
-            .children[0]
-            .name.root,
+            parsed_recursive_schema[0].children[0].children[0].children[0].children[0].name.root,
             "RecursionIssueRecord",
         )
         self.assertEqual(
-            parsed_recursive_schema[0]
-            .children[0]
-            .children[0]
-            .children[0]
-            .children[0]
-            .children[2]
-            .name.root,
+            parsed_recursive_schema[0].children[0].children[0].children[0].children[0].children[2].name.root,
             "FieldCC",
         )
         self.assertEqual(
@@ -787,26 +751,14 @@ class AvroParserTests(TestCase):
             "RecursionIssueRecord",
         )
         self.assertIsNone(
-            parsed_recursive_schema[0]
-            .children[0]
-            .children[0]
-            .children[0]
-            .children[0]
-            .children[2]
-            .children[0]
-            .children
+            parsed_recursive_schema[0].children[0].children[0].children[0].children[0].children[2].children[0].children
         )
 
     def test_recursive_issue_parsing(self):
         recur_parsed_schema = parse_avro_schema(RECURSION_ISSUE_SAMPLE)
 
         self.assertEqual(
-            recur_parsed_schema[0]
-            .children[0]
-            .children[0]
-            .children[0]
-            .children[0]
-            .name.root,
+            recur_parsed_schema[0].children[0].children[0].children[0].children[0].name.root,
             "Item",
         )
         self.assertEqual(
@@ -814,12 +766,5 @@ class AvroParserTests(TestCase):
             "itemList",
         )
         self.assertIsNone(
-            recur_parsed_schema[0]
-            .children[0]
-            .children[0]
-            .children[0]
-            .children[0]
-            .children[0]
-            .children[0]
-            .children
+            recur_parsed_schema[0].children[0].children[0].children[0].children[0].children[0].children[0].children
         )

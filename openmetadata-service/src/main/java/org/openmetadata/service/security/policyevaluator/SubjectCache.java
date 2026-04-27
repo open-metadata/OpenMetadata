@@ -54,15 +54,14 @@ public class SubjectCache {
     }
   }
 
-  private static final LoadingCache<String, UserPoliciesContext> USER_POLICIES_CACHE =
+  private static volatile LoadingCache<String, UserPoliciesContext> USER_POLICIES_CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(10000)
           .expireAfterWrite(2, TimeUnit.MINUTES)
           .recordStats()
           .build(new UserPoliciesLoader());
 
-  // Cache for user context to avoid expensive database lookups on every authorization
-  private static final LoadingCache<String, User> USER_CONTEXT_CACHE =
+  private static volatile LoadingCache<String, User> USER_CONTEXT_CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(10000)
           .expireAfterWrite(15, TimeUnit.MINUTES)
@@ -70,6 +69,26 @@ public class SubjectCache {
           .build(new UserContextLoader());
 
   private SubjectCache() {}
+
+  /**
+   * Rebuild auth caches with configured max entries. TTLs are kept at their original values
+   * (2 min for policies, 15 min for user context) because they serve different freshness needs.
+   */
+  public static void initCaches(int maxEntries) {
+    USER_POLICIES_CACHE =
+        CacheBuilder.newBuilder()
+            .maximumSize(maxEntries)
+            .expireAfterWrite(2, TimeUnit.MINUTES)
+            .recordStats()
+            .build(new UserPoliciesLoader());
+    USER_CONTEXT_CACHE =
+        CacheBuilder.newBuilder()
+            .maximumSize(maxEntries)
+            .expireAfterWrite(15, TimeUnit.MINUTES)
+            .recordStats()
+            .build(new UserContextLoader());
+    LOG.info("Auth caches initialized: maxEntries={}", maxEntries);
+  }
 
   public static List<PolicyContext> getPolicies(String userName) {
     try {

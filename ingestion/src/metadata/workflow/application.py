@@ -11,6 +11,7 @@
 """
 Generic Workflow entrypoint to execute Applications
 """
+
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
@@ -46,9 +47,7 @@ class AppRunner(Step, ABC):
         metadata: OpenMetadata,
     ):
         self.app_config = config.appConfig.root if config.appConfig else None
-        self.private_config = (
-            config.appPrivateConfig.root if config.appPrivateConfig else None
-        )
+        self.private_config = config.appPrivateConfig.root if config.appPrivateConfig else None
         self.metadata = metadata
 
         super().__init__()
@@ -104,9 +103,7 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
         """
         runner_class = import_from_module(self.config.sourcePythonClass)
         if not issubclass(runner_class, AppRunner):
-            raise ValueError(
-                "We need a valid AppRunner to initialize the ApplicationWorkflow!"
-            )
+            raise ValueError("We need a valid AppRunner to initialize the ApplicationWorkflow!")
 
         try:
             self.runner = runner_class(
@@ -114,9 +111,7 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
                 metadata=self.metadata,
             )
         except Exception as exc:
-            logger.error(
-                f"Error trying to init the AppRunner [{self.config.sourcePythonClass}] due to [{exc}]"
-            )
+            logger.error(f"Error trying to init the AppRunner [{self.config.sourcePythonClass}] due to [{exc}]")
             raise exc
 
     def execute_internal(self) -> None:

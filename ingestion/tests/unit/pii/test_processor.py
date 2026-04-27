@@ -36,9 +36,7 @@ def workflow_config() -> OpenMetadataWorkflowConfig:
         source=Source(
             type="Postgres",
             sourceConfig=SourceConfig(
-                config=DatabaseServiceAutoClassificationPipeline(
-                    type=AutoClassificationConfigType.AutoClassification
-                )
+                config=DatabaseServiceAutoClassificationPipeline(type=AutoClassificationConfigType.AutoClassification)
             ),
         ),
         workflowConfig=WorkflowConfig.model_construct(),
@@ -48,9 +46,7 @@ def workflow_config() -> OpenMetadataWorkflowConfig:
 def group_column_tags_by_column(column_tags: List[ColumnTag]) -> Dict[str, Set[str]]:
     column_tags_by_column: Dict[str, Set[str]] = defaultdict(set)
     for column_tag in column_tags:
-        column_tags_by_column[column_tag.column_fqn].add(
-            column_tag.tag_label.tagFQN.root
-        )
+        column_tags_by_column[column_tag.column_fqn].add(column_tag.tag_label.tagFQN.root)
     return column_tags_by_column
 
 

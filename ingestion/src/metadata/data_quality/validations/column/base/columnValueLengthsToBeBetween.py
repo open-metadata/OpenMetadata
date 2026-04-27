@@ -94,9 +94,7 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
             row_count, failed_rows = None, None
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(
-            metric_values, test_params=test_params
-        )
+        result_message = self._format_result_message(metric_values, test_params=test_params)
         test_result_values = self._get_test_result_values(metric_values)
 
         return self.get_test_case_result_object(
@@ -141,9 +139,7 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
             Metrics.minLength.name: Metrics.minLength,
         }
 
-    def _evaluate_test_condition(
-        self, metric_values: dict, test_params: dict
-    ) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: dict) -> TestEvaluation:
         """Evaluate the max-to-be-between test condition
 
         For dimensional validation, computes row-level passed/failed counts.
@@ -202,9 +198,7 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
             str: Formatted result message
         """
         if test_params is None:
-            raise ValueError(
-                "test_params is required for columnValueLengthToBeBetween._format_result_message"
-            )
+            raise ValueError("test_params is required for columnValueLengthToBeBetween._format_result_message")
 
         min_length_value = metric_values[Metrics.minLength.name]
         max_length_value = metric_values[Metrics.maxLength.name]
@@ -267,9 +261,7 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
         raise NotImplementedError
 
     @abstractmethod
-    def compute_row_count(
-        self, column: Union[SQALikeColumn, Column], min_bound, max_bound
-    ):
+    def compute_row_count(self, column: Union[SQALikeColumn, Column], min_bound, max_bound):
         """Compute row count for the given column
 
         Args:

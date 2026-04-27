@@ -11,6 +11,7 @@
 """
 Tests for the connector scaffold CLI tool.
 """
+
 import argparse
 import json
 from unittest.mock import patch
@@ -309,9 +310,7 @@ class TestGenerateConnectionSchema:
 
 class TestGenerateTestConnectionJson:
     @staticmethod
-    def _make_profile(
-        name="test_db", service_type="database", capabilities=None
-    ) -> ConnectorProfile:
+    def _make_profile(name="test_db", service_type="database", capabilities=None) -> ConnectorProfile:
         p = ConnectorProfile()
         p.name = name
         p.service_type = service_type

@@ -11,6 +11,7 @@
 """
 Source connection handler for Grafana
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (

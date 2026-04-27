@@ -15,6 +15,7 @@ Dialect-specific GROUP BY / ORDER BY ordinal preservation tests
 Tests that verify integer ordinals in GROUP BY and ORDER BY clauses
 are preserved (not replaced with '?') across all supported SQL dialects.
 """
+
 from unittest import TestCase
 
 from ingestion.tests.unit.lineage.masker.helpers import assert_masked_query
@@ -726,20 +727,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         Hive: aggregations with GROUP BY ordinals.
         SqlGlot does not support Hive dialect.
         """
-        query = (
-            "SELECT department, COUNT(*) AS cnt "
-            "FROM employees "
-            "WHERE salary > 50000 "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
-        expected = (
-            "SELECT department, COUNT(*) AS cnt "
-            "FROM employees "
-            "WHERE salary > ? "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
+        query = "SELECT department, COUNT(*) AS cnt FROM employees WHERE salary > 50000 GROUP BY 1 ORDER BY 2 DESC"
+        expected = "SELECT department, COUNT(*) AS cnt FROM employees WHERE salary > ? GROUP BY 1 ORDER BY 2 DESC"
         dialect = Dialect.HIVE.value
         for parser in ("SqlFluff", "SqlParse"):
             assert_masked_query(query, expected, dialect, parser)
@@ -819,19 +808,9 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         TSQL: square-bracket identifiers with GROUP BY ordinals.
         """
         query = (
-            "SELECT [department], COUNT(*) AS cnt "
-            "FROM [employees] "
-            "WHERE [salary] > 50000 "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
+            "SELECT [department], COUNT(*) AS cnt FROM [employees] WHERE [salary] > 50000 GROUP BY 1 ORDER BY 2 DESC"
         )
-        expected = (
-            "SELECT [department], COUNT(*) AS cnt "
-            "FROM [employees] "
-            "WHERE [salary] > ? "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
+        expected = "SELECT [department], COUNT(*) AS cnt FROM [employees] WHERE [salary] > ? GROUP BY 1 ORDER BY 2 DESC"
         dialect = Dialect.TSQL.value
         for parser in ("SqlGlot", "SqlFluff", "SqlParse"):
             assert_masked_query(query, expected, dialect, parser)
@@ -864,20 +843,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         DuckDB: GROUP BY ordinals with ORDER BY.
         """
-        query = (
-            "SELECT region, AVG(score) AS avg_score "
-            "FROM results "
-            "WHERE score > 0 "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
-        expected = (
-            "SELECT region, AVG(score) AS avg_score "
-            "FROM results "
-            "WHERE score > ? "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
+        query = "SELECT region, AVG(score) AS avg_score FROM results WHERE score > 0 GROUP BY 1 ORDER BY 2 DESC"
+        expected = "SELECT region, AVG(score) AS avg_score FROM results WHERE score > ? GROUP BY 1 ORDER BY 2 DESC"
         dialect = Dialect.DUCKDB.value
         for parser in ("SqlGlot", "SqlFluff", "SqlParse"):
             assert_masked_query(query, expected, dialect, parser)
@@ -886,19 +853,9 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         SparkSQL: SUM aggregation with GROUP BY ordinals.
         """
-        query = (
-            "SELECT product, SUM(quantity) AS total_qty "
-            "FROM orders "
-            "WHERE quantity > 0 "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
+        query = "SELECT product, SUM(quantity) AS total_qty FROM orders WHERE quantity > 0 GROUP BY 1 ORDER BY 2 DESC"
         expected = (
-            "SELECT product, SUM(quantity) AS total_qty "
-            "FROM orders "
-            "WHERE quantity > ? "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
+            "SELECT product, SUM(quantity) AS total_qty FROM orders WHERE quantity > ? GROUP BY 1 ORDER BY 2 DESC"
         )
         dialect = Dialect.SPARKSQL.value
         for parser in ("SqlGlot", "SqlFluff", "SqlParse"):
@@ -940,11 +897,7 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
             "ORDER BY 1, 2"
         )
         expected = (
-            "SELECT year, month, COUNT(*) AS cnt "
-            "FROM events "
-            "WHERE year = ? AND month >= ? "
-            "GROUP BY 1, 2 "
-            "ORDER BY 1, 2"
+            "SELECT year, month, COUNT(*) AS cnt FROM events WHERE year = ? AND month >= ? GROUP BY 1, 2 ORDER BY 1, 2"
         )
         dialect = Dialect.ATHENA.value
         for parser in ("SqlGlot", "SqlFluff", "SqlParse"):
@@ -954,20 +907,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         Exasol: GROUP BY ordinals.
         """
-        query = (
-            "SELECT status, COUNT(*) AS cnt "
-            "FROM tickets "
-            "WHERE priority > 3 "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
-        expected = (
-            "SELECT status, COUNT(*) AS cnt "
-            "FROM tickets "
-            "WHERE priority > ? "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
+        query = "SELECT status, COUNT(*) AS cnt FROM tickets WHERE priority > 3 GROUP BY 1 ORDER BY 2 DESC"
+        expected = "SELECT status, COUNT(*) AS cnt FROM tickets WHERE priority > ? GROUP BY 1 ORDER BY 2 DESC"
         dialect = Dialect.EXASOL.value
         for parser in ("SqlGlot", "SqlFluff", "SqlParse"):
             assert_masked_query(query, expected, dialect, parser)
@@ -976,20 +917,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         Materialize: GROUP BY ordinals.
         """
-        query = (
-            "SELECT source, COUNT(*) AS cnt "
-            "FROM stream_data "
-            "WHERE value > 0 "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
-        expected = (
-            "SELECT source, COUNT(*) AS cnt "
-            "FROM stream_data "
-            "WHERE value > ? "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
+        query = "SELECT source, COUNT(*) AS cnt FROM stream_data WHERE value > 0 GROUP BY 1 ORDER BY 2 DESC"
+        expected = "SELECT source, COUNT(*) AS cnt FROM stream_data WHERE value > ? GROUP BY 1 ORDER BY 2 DESC"
         dialect = Dialect.MATERIALIZE.value
         for parser in ("SqlGlot", "SqlFluff", "SqlParse"):
             assert_masked_query(query, expected, dialect, parser)
@@ -998,20 +927,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         Teradata: GROUP BY ordinals.
         """
-        query = (
-            "SELECT region, SUM(sales) AS total_sales "
-            "FROM revenue "
-            "WHERE sales > 1000 "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
-        expected = (
-            "SELECT region, SUM(sales) AS total_sales "
-            "FROM revenue "
-            "WHERE sales > ? "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
+        query = "SELECT region, SUM(sales) AS total_sales FROM revenue WHERE sales > 1000 GROUP BY 1 ORDER BY 2 DESC"
+        expected = "SELECT region, SUM(sales) AS total_sales FROM revenue WHERE sales > ? GROUP BY 1 ORDER BY 2 DESC"
         dialect = Dialect.TERADATA.value
         for parser in ("SqlGlot", "SqlFluff", "SqlParse"):
             assert_masked_query(query, expected, dialect, parser)
@@ -1020,20 +937,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         Vertica: GROUP BY ordinals — SqlGlot does not support Vertica.
         """
-        query = (
-            "SELECT department, COUNT(*) AS cnt "
-            "FROM staff "
-            "WHERE hire_year > 2020 "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
-        expected = (
-            "SELECT department, COUNT(*) AS cnt "
-            "FROM staff "
-            "WHERE hire_year > ? "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
+        query = "SELECT department, COUNT(*) AS cnt FROM staff WHERE hire_year > 2020 GROUP BY 1 ORDER BY 2 DESC"
+        expected = "SELECT department, COUNT(*) AS cnt FROM staff WHERE hire_year > ? GROUP BY 1 ORDER BY 2 DESC"
         dialect = Dialect.VERTICA.value
         for parser in ("SqlFluff", "SqlParse"):
             assert_masked_query(query, expected, dialect, parser)
@@ -1042,20 +947,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         MariaDB: GROUP BY ordinals — SqlGlot does not support MariaDB.
         """
-        query = (
-            "SELECT category, COUNT(*) AS cnt "
-            "FROM products "
-            "WHERE price > 10 "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
-        expected = (
-            "SELECT category, COUNT(*) AS cnt "
-            "FROM products "
-            "WHERE price > ? "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
+        query = "SELECT category, COUNT(*) AS cnt FROM products WHERE price > 10 GROUP BY 1 ORDER BY 2 DESC"
+        expected = "SELECT category, COUNT(*) AS cnt FROM products WHERE price > ? GROUP BY 1 ORDER BY 2 DESC"
         dialect = Dialect.MARIADB.value
         for parser in ("SqlFluff", "SqlParse"):
             assert_masked_query(query, expected, dialect, parser)
@@ -1065,18 +958,10 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         DB2: GROUP BY ordinals — SqlGlot does not support DB2.
         """
         query = (
-            "SELECT department, AVG(salary) AS avg_sal "
-            "FROM employees "
-            "WHERE salary > 40000 "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
+            "SELECT department, AVG(salary) AS avg_sal FROM employees WHERE salary > 40000 GROUP BY 1 ORDER BY 2 DESC"
         )
         expected = (
-            "SELECT department, AVG(salary) AS avg_sal "
-            "FROM employees "
-            "WHERE salary > ? "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
+            "SELECT department, AVG(salary) AS avg_sal FROM employees WHERE salary > ? GROUP BY 1 ORDER BY 2 DESC"
         )
         dialect = Dialect.DB2.value
         for parser in ("SqlFluff", "SqlParse"):
@@ -1086,20 +971,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         Impala: GROUP BY ordinals — SqlGlot does not support Impala.
         """
-        query = (
-            "SELECT region, SUM(revenue) AS total "
-            "FROM sales "
-            "WHERE revenue > 0 "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
-        expected = (
-            "SELECT region, SUM(revenue) AS total "
-            "FROM sales "
-            "WHERE revenue > ? "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
+        query = "SELECT region, SUM(revenue) AS total FROM sales WHERE revenue > 0 GROUP BY 1 ORDER BY 2 DESC"
+        expected = "SELECT region, SUM(revenue) AS total FROM sales WHERE revenue > ? GROUP BY 1 ORDER BY 2 DESC"
         dialect = Dialect.IMPALA.value
         for parser in ("SqlFluff", "SqlParse"):
             assert_masked_query(query, expected, dialect, parser)
@@ -1114,20 +987,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         across ALL 24 dialects with SqlFluff and SqlParse (always supported),
         and additionally with SqlGlot where supported.
         """
-        query = (
-            "SELECT a, COUNT(*) "
-            "FROM t "
-            "WHERE x > 1 "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
-        expected = (
-            "SELECT a, COUNT(*) "
-            "FROM t "
-            "WHERE x > ? "
-            "GROUP BY 1 "
-            "ORDER BY 2 DESC"
-        )
+        query = "SELECT a, COUNT(*) FROM t WHERE x > 1 GROUP BY 1 ORDER BY 2 DESC"
+        expected = "SELECT a, COUNT(*) FROM t WHERE x > ? GROUP BY 1 ORDER BY 2 DESC"
 
         sqlglot_unsupported = {
             Dialect.DB2.value,

@@ -12,6 +12,7 @@
 """
 Test Sample behavior
 """
+
 import os
 from unittest import TestCase
 from unittest.mock import patch
@@ -21,23 +22,24 @@ from sqlalchemy import TEXT, Column, Integer, String, func
 from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
-from metadata.generated.schema.entity.data.table import (
-    ColumnName,
-    DataType,
-    ProfileSampleType,
-    Table,
-)
+from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import CustomTypes
 from metadata.profiler.processor.core import Profiler
-from metadata.sampler.models import SampleConfig
+from metadata.sampler.models import (
+    ProfileSampleConfig,
+    ProfileSampleConfigType,
+    SampleConfig,
+    StaticSamplingConfig,
+)
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
@@ -61,9 +63,7 @@ class SampleTest(TestCase):
     Run checks on different metrics
     """
 
-    db_path = os.path.join(
-        os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db"
-    )
+    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")
     sqlite_conn = SQLiteConnection(
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
@@ -111,7 +111,12 @@ class SampleTest(TestCase):
                 service_connection_config=cls.sqlite_conn,
                 ometa_client=None,
                 entity=None,
-                sample_config=SampleConfig(profileSample=50.0),
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(profileSample=50.0),
+                    )
+                ),
             )
         cls.dataset = cls.sampler.get_dataset()
         cls.sqa_profiler_interface = SQAProfilerInterface(
@@ -357,7 +362,12 @@ class SampleTest(TestCase):
                 service_connection_config=self.sqlite_conn,
                 ometa_client=None,
                 entity=None,
-                sample_config=SampleConfig(profileSample=50.0),
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(profileSample=50.0),
+                    )
+                ),
                 sample_query=stmt,
             )
         sample_data = sampler.fetch_sample_data()
@@ -375,16 +385,19 @@ class SampleTest(TestCase):
                 ometa_client=None,
                 entity=None,
                 sample_config=SampleConfig(
-                    profileSampleType=ProfileSampleType.PERCENTAGE,
-                    profileSample=100,
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=100,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    ),
                     randomizedSample=True,
                 ),
                 sample_data_count=5,
             )
 
-        with patch.object(
-            sampler, "get_sample_query", wraps=sampler.get_sample_query
-        ) as mock_gsq:
+        with patch.object(sampler, "get_sample_query", wraps=sampler.get_sample_query) as mock_gsq:
             sampler.fetch_sample_data()
             assert mock_gsq.called
 
@@ -397,16 +410,19 @@ class SampleTest(TestCase):
                 ometa_client=None,
                 entity=None,
                 sample_config=SampleConfig(
-                    profileSampleType=ProfileSampleType.PERCENTAGE,
-                    profileSample=100,
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=100,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    ),
                     randomizedSample=False,
                 ),
                 sample_data_count=5,
             )
 
-        with patch.object(
-            sampler, "get_sample_query", wraps=sampler.get_sample_query
-        ) as mock_gsq:
+        with patch.object(sampler, "get_sample_query", wraps=sampler.get_sample_query) as mock_gsq:
             sampler.fetch_sample_data()
             assert not mock_gsq.called
 
@@ -419,16 +435,19 @@ class SampleTest(TestCase):
                 ometa_client=None,
                 entity=None,
                 sample_config=SampleConfig(
-                    profileSampleType=ProfileSampleType.PERCENTAGE,
-                    profileSample=100,
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=100,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    ),
                     randomizedSample=None,
                 ),
                 sample_data_count=5,
             )
 
-        with patch.object(
-            sampler, "get_sample_query", wraps=sampler.get_sample_query
-        ) as mock_gsq:
+        with patch.object(sampler, "get_sample_query", wraps=sampler.get_sample_query) as mock_gsq:
             sampler.fetch_sample_data()
             assert not mock_gsq.called
 
@@ -441,17 +460,22 @@ class SampleTest(TestCase):
                 ometa_client=None,
                 entity=None,
                 sample_config=SampleConfig(
-                    profileSampleType=ProfileSampleType.PERCENTAGE,
-                    profileSample=100,
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=100,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    ),
                     randomizedSample=True,
                 ),
                 sample_data_count=5,
             )
 
         results = [sampler.fetch_sample_data().rows for _ in range(20)]
-        assert any(
-            results[i] != results[0] for i in range(1, len(results))
-        ), "Expected non-deterministic row ordering with randomizedSample=True"
+        assert any(results[i] != results[0] for i in range(1, len(results))), (
+            "Expected non-deterministic row ordering with randomizedSample=True"
+        )
 
     def test_randomized_false_produces_deterministic_rows(self, sampler_mock):
         """With randomizedSample=False at 100% PERCENTAGE, multiple
@@ -462,17 +486,22 @@ class SampleTest(TestCase):
                 ometa_client=None,
                 entity=None,
                 sample_config=SampleConfig(
-                    profileSampleType=ProfileSampleType.PERCENTAGE,
-                    profileSample=100,
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=100,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    ),
                     randomizedSample=False,
                 ),
                 sample_data_count=5,
             )
 
         results = [sampler.fetch_sample_data().rows for _ in range(5)]
-        assert all(
-            results[i] == results[0] for i in range(1, len(results))
-        ), "Expected deterministic row ordering with randomizedSample=False"
+        assert all(results[i] == results[0] for i in range(1, len(results))), (
+            "Expected deterministic row ordering with randomizedSample=False"
+        )
 
     @classmethod
     def tearDownClass(cls) -> None:

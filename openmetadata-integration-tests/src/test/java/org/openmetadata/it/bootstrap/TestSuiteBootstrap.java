@@ -129,10 +129,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static String databaseType;
   private static String searchType;
   private static boolean rdfEnabled;
+  private static String cacheProvider;
 
   private static JdbcDatabaseContainer<?> DATABASE_CONTAINER;
   private static GenericContainer<?> SEARCH_CONTAINER;
   private static GenericContainer<?> FUSEKI_CONTAINER;
+  private static GenericContainer<?> REDIS_CONTAINER;
   private static K3sContainer K3S_CONTAINER;
   private static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   private static Jdbi jdbi;
@@ -141,6 +143,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static int searchPort;
   private static String fusekiEndpoint;
   private static String kubeConfigYaml;
+  private static String redisUrl;
+
+  private static final String DEFAULT_REDIS_IMAGE = "redis:7-alpine";
+  private static final int REDIS_PORT = 6379;
 
   @Override
   public void launcherSessionOpened(LauncherSession session) {
@@ -153,11 +159,13 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     databaseType = System.getProperty("databaseType", "postgres");
     searchType = System.getProperty("searchType", "elasticsearch");
     rdfEnabled = Boolean.parseBoolean(System.getProperty("enableRdf", "false"));
+    cacheProvider = System.getProperty("cacheProvider", "none");
 
     LOG.info("=== TestSuiteBootstrap: Starting test infrastructure ===");
     LOG.info("Database type: {}", databaseType);
     LOG.info("Search type: {}", searchType);
     LOG.info("RDF enabled: {}", rdfEnabled);
+    LOG.info("Cache provider: {}", cacheProvider);
     boolean k8sEnabled = isK8sTestsRequested();
     LOG.info("K8s tests enabled: {}", k8sEnabled);
     long startTime = System.currentTimeMillis();
@@ -167,6 +175,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       startSearch();
       if (rdfEnabled) {
         startFuseki();
+      }
+      if (isRedisEnabled()) {
+        startRedis();
       }
       if (k8sEnabled) {
         startK3s();
@@ -179,6 +190,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       LOG.info("Search ({}): {}:{}", searchType, searchHost, searchPort);
       if (rdfEnabled) {
         LOG.info("Fuseki SPARQL: {}", fusekiEndpoint);
+      }
+      if (isRedisEnabled()) {
+        LOG.info("Redis: {}", redisUrl);
       }
       if (k8sEnabled) {
         LOG.info("K3s Kubernetes: enabled");
@@ -216,7 +230,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       mysql.withDatabaseName("openmetadata");
       mysql.withUsername("test");
       mysql.withPassword("test");
-      mysql.withCommand("mysqld", "--max_allowed_packet=" + mysqlMaxAllowedPacket);
+      mysql.withCommand(
+          "mysqld",
+          "--max_allowed_packet=" + mysqlMaxAllowedPacket,
+          // The tag list query (TagDAO.listAfter) joins three tables and sorts by tag.name,
+          // tag.id; under the parallel-tests fork the tag table grows large and the default
+          // 256KB sort_buffer_size overflows with "Out of sort memory" (#27649). 8MB is plenty
+          // for an integration-test workload and well under the 4GB overall limit.
+          "--sort_buffer_size=8M");
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
       mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=2g"));
@@ -264,7 +285,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "-c",
           "synchronous_commit=off",
           "-c",
-          "full_page_writes=off");
+          "full_page_writes=off",
+          // Bump work_mem for the same reason MySQL gets a larger sort_buffer above:
+          // TagDAO.listAfter joins three tables and sorts; default 4MB spills to temp files
+          // under load.
+          "-c",
+          "work_mem=32MB");
       postgres.withTmpFs(java.util.Map.of("/var/lib/postgresql/data", "rw,size=2g"));
       postgres.withCreateContainerCmdModifier(
           cmd ->
@@ -338,6 +364,58 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       searchPort = elasticsearch.getMappedPort(9200);
       LOG.info("Elasticsearch started: {}:{}", searchHost, searchPort);
     }
+  }
+
+  private void startRedis() {
+    String image = System.getProperty("redisImage", DEFAULT_REDIS_IMAGE);
+    LOG.info("Starting Redis container with image: {}", image);
+    REDIS_CONTAINER =
+        new GenericContainer<>(DockerImageName.parse(image))
+            .withExposedPorts(REDIS_PORT)
+            .withCommand(
+                "redis-server",
+                "--appendonly",
+                "no",
+                "--save",
+                "",
+                "--maxmemory",
+                "512mb",
+                "--maxmemory-policy",
+                "allkeys-lru")
+            .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(1)));
+    REDIS_CONTAINER.start();
+    redisUrl =
+        String.format(
+            "redis://%s:%d", REDIS_CONTAINER.getHost(), REDIS_CONTAINER.getMappedPort(REDIS_PORT));
+    LOG.info("Redis started: {}", redisUrl);
+  }
+
+  public static boolean isRedisEnabled() {
+    return "redis".equalsIgnoreCase(cacheProvider);
+  }
+
+  public static String getRedisUrl() {
+    return redisUrl;
+  }
+
+  private void configureCache(OpenMetadataApplicationConfig config) {
+    if (!isRedisEnabled()) {
+      return;
+    }
+    org.openmetadata.service.cache.CacheConfig cacheConfig = config.getCacheConfig();
+    cacheConfig.provider = org.openmetadata.service.cache.CacheConfig.Provider.redis;
+    cacheConfig.redis.url = redisUrl;
+    cacheConfig.redis.authType = org.openmetadata.service.cache.CacheConfig.AuthType.NONE;
+    cacheConfig.redis.keyspace = "om:it:" + System.currentTimeMillis();
+    cacheConfig.redis.commandTimeoutMs = 1000;
+    cacheConfig.entityTtlSeconds = 3600;
+    cacheConfig.relationshipTtlSeconds = 3600;
+    cacheConfig.tagTtlSeconds = 3600;
+    config.setCacheConfig(cacheConfig);
+    LOG.info(
+        "Configured Redis cache: url={} keyspace={}",
+        cacheConfig.redis.url,
+        cacheConfig.redis.keyspace);
   }
 
   private void startFuseki() {
@@ -451,6 +529,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
     configurePipelineServiceClient(config);
     configureRdf(config);
+    configureCache(config);
 
     IndexMappingLoader.init(getBaseSearchConfig());
 
@@ -716,6 +795,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       }
     } catch (Exception e) {
       LOG.warn("Error stopping Fuseki container", e);
+    }
+
+    try {
+      if (REDIS_CONTAINER != null) {
+        REDIS_CONTAINER.stop();
+      }
+    } catch (Exception e) {
+      LOG.warn("Error stopping Redis container", e);
     }
 
     try {

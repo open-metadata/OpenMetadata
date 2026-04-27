@@ -66,6 +66,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   tier,
   slashedMlModelName,
   versionList,
+  onLoadMore,
+  hasMore,
+  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -392,9 +395,12 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={version ?? ''}
         entityType={EntityType.MLMODEL}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
+        onLoadMore={onLoadMore}
       />
     </>
   );

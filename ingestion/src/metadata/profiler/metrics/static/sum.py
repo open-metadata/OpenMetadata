@@ -12,6 +12,7 @@
 """
 SUM Metric definition
 """
+
 from functools import partial
 from typing import TYPE_CHECKING, Callable, Optional
 
@@ -73,9 +74,7 @@ class Sum(StaticMetric):
             try:
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:
-                logger.debug(
-                    f"Error while computing min for column {self.col.name}: {err}"
-                )
+                logger.debug(f"Error while computing min for column {self.col.name}: {err}")
                 return None
         return computation.aggregate_accumulator(accumulator)
 
@@ -83,16 +82,12 @@ class Sum(StaticMetric):
         """Returns the logic to compute this metrics using Pandas"""
         return PandasComputation[Optional[float], Optional[float]](
             create_accumulator=lambda: None,
-            update_accumulator=lambda acc, df: Sum.update_accumulator(
-                acc, df, self.col
-            ),
+            update_accumulator=lambda acc, df: Sum.update_accumulator(acc, df, self.col),
             aggregate_accumulator=lambda acc: acc,
         )
 
     @staticmethod
-    def update_accumulator(
-        current_sum: Optional[float], df: "pd.DataFrame", column
-    ) -> Optional[float]:
+    def update_accumulator(current_sum: Optional[float], df: "pd.DataFrame", column) -> Optional[float]:
         """Computes one DataFrame chunk and updates the running maximum
 
         Maintains a single maximum value (not a list). Compares chunk's max

@@ -69,9 +69,7 @@ class TestLineageQueryIdentification(unittest.TestCase):
         for query_type, query_text, expected in test_cases:
             with self.subTest(query_type=query_type, query=query_text):
                 result = is_lineage_query(query_type, query_text)
-                self.assertEqual(
-                    result, expected, f"Failed for {query_type}: {query_text}"
-                )
+                self.assertEqual(result, expected, f"Failed for {query_type}: {query_text}")
 
 
 class TestQueryLineageProcessor(unittest.TestCase):
@@ -152,9 +150,7 @@ class TestQueryLineageProcessor(unittest.TestCase):
 
         # Mock that query is already processed
         with patch("metadata.utils.fqn.get_query_checksum", return_value="checksum123"):
-            self.mock_metadata.es_get_queries_with_lineage = Mock(
-                return_value={"checksum123"}
-            )
+            self.mock_metadata.es_get_queries_with_lineage = Mock(return_value={"checksum123"})
 
             # Process query
             query_lineage_processor(
@@ -344,12 +340,8 @@ class TestProcedureLineageProcessor(unittest.TestCase):
                 language="SQL",
             ),
             database=EntityReference(id=uuid.uuid4(), type="database", name="db"),
-            databaseSchema=EntityReference(
-                id=uuid.uuid4(), type="databaseSchema", name="schema"
-            ),
-            service=EntityReference(
-                id=uuid.uuid4(), type="databaseService", name="service"
-            ),
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema", name="schema"),
+            service=EntityReference(id=uuid.uuid4(), type="databaseService", name="service"),
         )
 
         # Create query by procedure
@@ -363,9 +355,7 @@ class TestProcedureLineageProcessor(unittest.TestCase):
             QUERY_DURATION=1.5,
         )
 
-        procedure_and_query = ProcedureAndQuery(
-            procedure=procedure, query_by_procedure=query_by_proc
-        )
+        procedure_and_query = ProcedureAndQuery(procedure=procedure, query_by_procedure=query_by_proc)
 
         # Mock lineage generation
         mock_lineage = Either(
@@ -375,9 +365,7 @@ class TestProcedureLineageProcessor(unittest.TestCase):
                     toEntity=EntityReference(id=uuid.uuid4(), type="table"),
                     lineageDetails=LineageDetails(
                         source=LineageSource.QueryLineage,
-                        pipeline=EntityReference(
-                            id=procedure.id, type="storedProcedure"
-                        ),
+                        pipeline=EntityReference(id=procedure.id, type="storedProcedure"),
                     ),
                 )
             )
@@ -421,12 +409,8 @@ class TestProcedureLineageProcessor(unittest.TestCase):
                 language="SQL",
             ),
             database=EntityReference(id=uuid.uuid4(), type="database", name="db"),
-            databaseSchema=EntityReference(
-                id=uuid.uuid4(), type="databaseSchema", name="schema"
-            ),
-            service=EntityReference(
-                id=uuid.uuid4(), type="databaseService", name="service"
-            ),
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema", name="schema"),
+            service=EntityReference(id=uuid.uuid4(), type="databaseService", name="service"),
         )
 
         query_by_proc = QueryByProcedure(
@@ -438,9 +422,7 @@ class TestProcedureLineageProcessor(unittest.TestCase):
             PROCEDURE_END_TIME=datetime.now(),
         )
 
-        procedure_and_query = ProcedureAndQuery(
-            procedure=procedure, query_by_procedure=query_by_proc
-        )
+        procedure_and_query = ProcedureAndQuery(procedure=procedure, query_by_procedure=query_by_proc)
 
         with patch(
             "metadata.ingestion.source.database.lineage_processors.get_lineage_by_query",
@@ -466,9 +448,7 @@ class TestProcedureLineageProcessor(unittest.TestCase):
                 )
 
                 # Verify graph was created for the procedure
-                self.assertIn(
-                    "service.db.schema.TempTableProc", self.procedure_graph_map
-                )
+                self.assertIn("service.db.schema.TempTableProc", self.procedure_graph_map)
 
 
 class TestChunkProcessing(unittest.TestCase):
@@ -486,9 +466,7 @@ class TestChunkProcessing(unittest.TestCase):
 
         def mock_processor(items, queue, *args):
             for item in items:
-                queue.put(
-                    Either(right=CreateQueryRequest(query=item.query, service="test"))
-                )
+                queue.put(Either(right=CreateQueryRequest(query=item.query, service="test")))
 
         # Process chunk
         result = process_chunk_in_subprocess(chunk, mock_processor, mock_queue)

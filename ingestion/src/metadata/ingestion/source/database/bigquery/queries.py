@@ -101,7 +101,7 @@ SELECT
   routine_definition as definition,
   external_language as language
 FROM `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.ROUTINES
-WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION')
+WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION', 'FUNCTION')
   AND routine_catalog = '{database_name}'
   AND routine_schema = '{schema_name}'
     """
@@ -114,7 +114,7 @@ SELECT
   routine_definition as definition,
   external_language as language
 FROM `{database_name}`.`region-{region}`.INFORMATION_SCHEMA.ROUTINES
-WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION')
+WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION', 'FUNCTION')
   AND routine_catalog = '{database_name}'
   AND routine_schema = '{schema_name}'
     """
@@ -269,9 +269,7 @@ class BigQueryQueryResult(BaseModel):
             )
         )
 
-        return TypeAdapter(List[BigQueryQueryResult]).validate_python(
-            [r._asdict() for r in rows]
-        )
+        return TypeAdapter(List[BigQueryQueryResult]).validate_python([r._asdict() for r in rows])
 
 
 JOBS = """

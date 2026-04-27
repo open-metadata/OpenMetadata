@@ -77,9 +77,7 @@ class SQARowSamplerMixin:
             query = self.runner._select_from_sample(*cols)
             query = query.filter(_filter)
 
-        self._inspection_query = str(
-            query.statement.compile(compile_kwargs={"literal_binds": True})
-        )
+        self._inspection_query = str(query.statement.compile(compile_kwargs={"literal_binds": True}))
 
         rows = query.limit(FAILED_ROW_SAMPLE_SIZE).all()
         return [col.name for col in cols], [list(row) for row in rows]
