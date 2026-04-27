@@ -45,12 +45,6 @@ RUN apt-get -qq update \
   && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
   && apt-get -qq purge -y \
        'imagemagick*' 'libmagick*' 'graphicsmagick*' \
-       imagemagick \
-       imagemagick-6-common \
-       imagemagick-6.q16 \
-       libmagickcore-6.q16-6 \
-       libmagickcore-6.q16-6-extra \
-       libmagickwand-6.q16-6 \
   && apt-get -qq autoremove -y --purge \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
