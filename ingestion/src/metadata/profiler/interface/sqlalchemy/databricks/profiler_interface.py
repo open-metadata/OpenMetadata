@@ -97,10 +97,32 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
     def __init__(self, service_connection_config, **kwargs):
         super().__init__(service_connection_config=service_connection_config, **kwargs)
         self.set_catalog(self.session)
-        from databricks.sqlalchemy._ddl import DatabricksStatementCompiler
+        self._patch_databricks_statement_compiler()
 
-        DatabricksStatementCompiler.visit_column = DatabricksProfilerInterface.visit_column
-        DatabricksStatementCompiler.visit_table = DatabricksProfilerInterface.visit_table
+    @staticmethod
+    def _patch_databricks_statement_compiler():
+        """Override visit_column/visit_table on the Databricks statement compiler.
+
+        Resolve the compiler via the public `DatabricksDialect.statement_compiler`
+        attribute rather than importing from `databricks.sqlalchemy._ddl`, which is a
+        private module that can move between databricks-sqlalchemy releases. Failures
+        are logged and swallowed so a packaging change cannot break profiler startup.
+        """
+        try:
+            from databricks.sqlalchemy import DatabricksDialect
+
+            statement_compiler = getattr(DatabricksDialect, "statement_compiler", None)
+            if statement_compiler is None:
+                logger.warning("DatabricksDialect.statement_compiler not found; skipping Databricks compiler patches.")
+                return
+            statement_compiler.visit_column = DatabricksProfilerInterface.visit_column
+            statement_compiler.visit_table = DatabricksProfilerInterface.visit_table
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Failed to patch Databricks statement compiler: %s. "
+                "Profiling will continue without struct/hyphen quoting overrides.",
+                exc,
+            )
 
     def _get_struct_columns(self, columns: List[OMColumn], parent: str):
         """Get struct columns"""
