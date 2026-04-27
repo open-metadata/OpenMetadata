@@ -11,6 +11,7 @@
 """
 Policy Agent Workflow Definition
 """
+from typing import Tuple
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.ingestion.api.steps import Source
@@ -26,9 +27,12 @@ class PolicyAgentWorkflow(IngestionWorkflow):
     Applies access grants against the source system.
     """
 
+    source: Source
+    steps: Tuple[()]
+
     def set_steps(self):
         self.source = self._get_source()
-        self.steps = tuple()  # type: ignore[assignment]
+        self.steps = ()
 
     def _get_source(self) -> Source:
         source_type = self.config.source.type.lower()
@@ -38,11 +42,11 @@ class PolicyAgentWorkflow(IngestionWorkflow):
             )
 
         source_class = self.import_source_class()
-        source: Source = source_class.create(
+        result: Source = source_class.create(
             self.config.source.model_dump(), self.metadata
         )
         logger.debug(f"Source type:{source_type},{source_class} configured")
-        source.prepare()
+        result.prepare()
         logger.debug(f"Source type:{source_type},{source_class} prepared")
 
-        return source
+        return result
