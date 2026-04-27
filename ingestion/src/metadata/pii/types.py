@@ -15,15 +15,18 @@ Entities in this alias must have the following attributes:
 - fullyQualifiedName: FullyQualifiedEntityName
 - id: entity ID
 - columns: List[Column]
+  - For Table: accessed via .columns
+  - For Container: accessed via .dataModel.columns (optional)
 
-Currently: Table only
+Currently: Table, Container
 Future expansion example:
-    from typing import Union
-    from metadata.generated.schema.entity.data.container import Container
     from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 
     ClassifiableEntityType = Union[Table, Container, DashboardDataModel]
 """
+from typing import Union
+
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Table
 
-ClassifiableEntityType = Table
+ClassifiableEntityType = Union[Table, Container]

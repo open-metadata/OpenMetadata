@@ -49,7 +49,6 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
-import { Thread } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { PageType } from '../../../generated/system/ui/page';
@@ -58,11 +57,14 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import {
+  AnnouncementEntity,
+  getActiveAnnouncements,
+} from '../../../rest/announcementsAPI';
+import {
   addDataProducts,
   patchDataProduct,
 } from '../../../rest/dataProductAPI';
 import { addDomains, patchDomains } from '../../../rest/domainAPI';
-import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
@@ -209,7 +211,8 @@ const DomainDetails = ({
   );
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
-  const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
+  const [activeAnnouncement, setActiveAnnouncement] =
+    useState<AnnouncementEntity>();
   const encodedFqn = getEncodedFqn(
     escapeESReservedCharacters(domain.fullyQualifiedName)
   );
@@ -449,7 +452,7 @@ const DomainDetails = ({
 
   const fetchActiveAnnouncement = async () => {
     try {
-      const announcements = await getActiveAnnouncement(
+      const announcements = await getActiveAnnouncements(
         getEntityFeedLink(EntityType.DOMAIN, domain.fullyQualifiedName ?? '')
       );
       if (isEmpty(announcements.data)) {
