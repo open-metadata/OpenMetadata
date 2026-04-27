@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.resources.version.VersionResource;
 import org.openmetadata.service.security.CspNonceHandler;
 
 @Slf4j
@@ -49,7 +50,14 @@ public class IndexResource {
   public static String getIndexFile(String basePath) {
     LOG.debug("IndexResource.getIndexFile called with basePath: [{}]", basePath);
 
-    String result = RAW_INDEX_HTML.replace("${basePath}", basePath);
+    String result =
+        RAW_INDEX_HTML
+            .replace("${basePath}", basePath)
+            .replace("${sentryDsn}", System.getenv().getOrDefault("SENTRY_UI_DSN", ""))
+            .replace("${sentryEnvironment}", System.getenv().getOrDefault("SENTRY_ENVIRONMENT", "development"))
+            .replace("${clusterName}", System.getenv().getOrDefault("OPENMETADATA_CLUSTER_NAME", "openmetadata"))
+            .replace("${appVersion}", new VersionResource().getCatalogVersion().getVersion());
+
     String basePathLine =
         result
             .lines()
