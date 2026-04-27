@@ -11,6 +11,7 @@
 """
 Postgres usage module
 """
+
 import traceback
 from datetime import datetime
 from typing import Iterable
@@ -89,9 +90,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
 
         except Exception as err:
             if query:
-                logger.debug(
-                    f"###### USAGE QUERY #######\n{query}\n##########################"
-                )
+                logger.debug(f"###### USAGE QUERY #######\n{query}\n##########################")
             logger.error(f"Source usage processing error - {err}")
             logger.debug(traceback.format_exc())
 

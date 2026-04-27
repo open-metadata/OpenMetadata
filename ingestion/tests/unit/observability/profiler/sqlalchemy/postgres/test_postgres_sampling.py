@@ -97,13 +97,8 @@ class SampleTest(TestCase):
             ),
         )
         query: CTE = sampler.get_sample_query()
-        expected_query = (
-            "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE bernoulli(50.0)"
-        )
-        assert (
-            expected_query.casefold()
-            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
-        )
+        expected_query = "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE bernoulli(50.0)"
+        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
 
     def test_sampling(self, sampler_mock):
         """
@@ -130,10 +125,7 @@ class SampleTest(TestCase):
             )
             query: CTE = sampler.get_sample_query()
         expected_query = f"SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE {sampling_method_type.value}(50.0)"
-        assert (
-            expected_query.casefold()
-            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
-        )
+        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
 
     def test_sampling_with_partition(self, sampler_mock):
         """
@@ -161,10 +153,6 @@ class SampleTest(TestCase):
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (
-            "SELECT users_1.id \nFROM users AS users_1 "
-            "TABLESAMPLE bernoulli(50.0) \nWHERE id IN ('1', '2')"
+            "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE bernoulli(50.0) \nWHERE id IN ('1', '2')"
         )
-        assert (
-            expected_query.casefold()
-            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
-        )
+        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()

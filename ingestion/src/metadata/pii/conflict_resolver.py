@@ -11,6 +11,7 @@
 """
 Conflict resolution for auto-classification tags.
 """
+
 from collections import defaultdict
 from typing import Dict, List
 
@@ -69,9 +70,7 @@ class ConflictResolver:
                 continue
 
             minimum_confidence = config.minimumConfidence or 0.0
-            tags_above_threshold = [
-                tag for tag in tags_in_classification if tag.score >= minimum_confidence
-            ]
+            tags_above_threshold = [tag for tag in tags_in_classification if tag.score >= minimum_confidence]
 
             if not tags_above_threshold:
                 logger.debug(
@@ -79,17 +78,11 @@ class ConflictResolver:
                 )
                 continue
 
-            logger.debug(
-                f"Classification {classification_name}: {len(tags_above_threshold)} tags above threshold"
-            )
+            logger.debug(f"Classification {classification_name}: {len(tags_above_threshold)} tags above threshold")
 
             if classification.mutuallyExclusive:
-                conflict_resolution = (
-                    config.conflictResolution or ConflictResolution.highest_confidence
-                )
-                winner = self._select_winner(
-                    tags_above_threshold, strategy=conflict_resolution
-                )
+                conflict_resolution = config.conflictResolution or ConflictResolution.highest_confidence
+                winner = self._select_winner(tags_above_threshold, strategy=conflict_resolution)
                 logger.info(
                     f"Classification {classification_name} (mutually exclusive): "
                     + f"Selected {winner.tag.fullyQualifiedName} with score {winner.score:.3f}"
@@ -104,9 +97,7 @@ class ConflictResolver:
 
         return resolved
 
-    def _select_winner(
-        self, tags: List[ScoredTag], strategy: ConflictResolution
-    ) -> ScoredTag:
+    def _select_winner(self, tags: List[ScoredTag], strategy: ConflictResolution) -> ScoredTag:
         """
         Select winning tag based on strategy.
 
@@ -125,9 +116,7 @@ class ConflictResolver:
 
         if strategy == ConflictResolution.highest_confidence:
             winner = max(tags, key=lambda t: (t.score, t.priority))
-            logger.debug(
-                f"Strategy: highest_confidence -> {winner.tag.fullyQualifiedName} (score={winner.score:.3f})"
-            )
+            logger.debug(f"Strategy: highest_confidence -> {winner.tag.fullyQualifiedName} (score={winner.score:.3f})")
             return winner
 
         elif strategy == ConflictResolution.highest_priority:
@@ -148,9 +137,7 @@ class ConflictResolver:
             winner = max(tags, key=get_depth)
             winner_fqn_str = winner.tag.fullyQualifiedName or "Unknown"
             depth = winner_fqn_str.count(".")
-            logger.debug(
-                f"Strategy: most_specific -> {winner_fqn_str} (depth={depth}, score={winner.score:.3f})"
-            )
+            logger.debug(f"Strategy: most_specific -> {winner_fqn_str} (depth={depth}, score={winner.score:.3f})")
             return winner
 
         else:

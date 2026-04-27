@@ -11,6 +11,7 @@
 """
 OpenMetadata base class for tests
 """
+
 import uuid
 from datetime import datetime
 from textwrap import dedent
@@ -18,7 +19,7 @@ from typing import TYPE_CHECKING, Any, List, Optional, Type
 
 if TYPE_CHECKING:
     from airflow import DAG
-    from airflow.operators.bash import BashOperator
+    from airflow.operators.bash import BashOperator  # noqa: F401
 
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -145,7 +146,7 @@ from metadata.ingestion.ometa.ometa_api import C, T
 from metadata.utils.dispatch import class_register
 
 TIER1_TAG: TagLabel = TagLabel(
-    tagFQN=TagFQN(f"Tier.Tier1"),
+    tagFQN=TagFQN(f"Tier.Tier1"),  # noqa: F541
     name="Tier1",
     source=TagSource.Classification,
     labelType=LabelType.Automated,
@@ -243,9 +244,7 @@ def _(name: EntityName) -> C:
     return CreatePipelineServiceRequest(
         name=name,
         serviceType=PipelineServiceType.CustomPipeline,
-        connection=PipelineConnection(
-            config=CustomPipelineConnection(type=CustomPipelineType.CustomPipeline)
-        ),
+        connection=PipelineConnection(config=CustomPipelineConnection(type=CustomPipelineType.CustomPipeline)),
     )
 
 
@@ -274,9 +273,7 @@ def _(name: EntityName) -> C:
         name=name,
         serviceType=DashboardServiceType.Looker,
         connection=DashboardConnection(
-            config=LookerConnection(
-                hostPort="http://hostPort", clientId="id", clientSecret="secret"
-            )
+            config=LookerConnection(hostPort="http://hostPort", clientId="id", clientSecret="secret")
         ),
     )
 
@@ -287,9 +284,7 @@ def _(name: EntityName) -> C:
     return CreateMessagingServiceRequest(
         name=name,
         serviceType=MessagingServiceType.Kafka,
-        connection=MessagingConnection(
-            config=KafkaConnection(bootstrapServers="localhost:9092")
-        ),
+        connection=MessagingConnection(config=KafkaConnection(bootstrapServers="localhost:9092")),
     )
 
 
@@ -299,9 +294,7 @@ def _(name: EntityName) -> C:
     return CreateStorageServiceRequest(
         name=name,
         serviceType=StorageServiceType.S3,
-        connection=StorageConnection(
-            config=S3Connection(awsConfig=AWSCredentials(awsRegion="us-east-2"))
-        ),
+        connection=StorageConnection(config=S3Connection(awsConfig=AWSCredentials(awsRegion="us-east-2"))),
     )
 
 
@@ -398,9 +391,7 @@ def _(reference: FullyQualifiedEntityName, name: EntityName) -> C:
     )
 
 
-def get_create_user_entity(
-    name: Optional[EntityName] = None, email: Optional[str] = None
-):
+def get_create_user_entity(name: Optional[EntityName] = None, email: Optional[str] = None):
     if not name:
         name = generate_name().root
     if not email:

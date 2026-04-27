@@ -30,7 +30,7 @@ secrets_manager_client_loader = enum_register()
 
 # pylint: disable=import-outside-toplevel
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.noop.value)
-def _() -> Optional["GCPCredentials"]:
+def _() -> Optional["GCPCredentials"]:  # noqa: F821
     from metadata.generated.schema.security.credentials.gcpCredentials import (
         GCPCredentials,
         gcpValues,
@@ -46,7 +46,7 @@ def _() -> Optional["GCPCredentials"]:
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.airflow.value)
-def _() -> Optional["GCPCredentials"]:
+def _() -> Optional["GCPCredentials"]:  # noqa: F821
     from airflow.configuration import conf
 
     from metadata.generated.schema.security.credentials.gcpCredentials import (
@@ -64,7 +64,7 @@ def _() -> Optional["GCPCredentials"]:
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.env.value)
-def _() -> Optional["GCPCredentials"]:
+def _() -> Optional["GCPCredentials"]:  # noqa: F821
     from metadata.generated.schema.security.credentials.gcpCredentials import (
         GCPCredentials,
         gcpValues,
@@ -100,9 +100,7 @@ class GCPSecretsManager(ExternalSecretsManager, ABC):
         # Build the resource name of the secret version.
 
         project_id = self.credentials.gcpConfig.projectId.root
-        secret_id = (
-            f"projects/{project_id}/secrets/{secret_id}/versions/{FIXED_VERSION_ID}"
-        )
+        secret_id = f"projects/{project_id}/secrets/{secret_id}/versions/{FIXED_VERSION_ID}"
 
         # Access the secret version.
         response = client.access_secret_version(request={"name": secret_id})
@@ -119,7 +117,7 @@ class GCPSecretsManager(ExternalSecretsManager, ABC):
         # snippet is showing how to access the secret material.
         return response.payload.data.decode("UTF-8")
 
-    def load_credentials(self) -> Optional["GCPCredentials"]:
+    def load_credentials(self) -> Optional["GCPCredentials"]:  # noqa: F821
         """Load the provider credentials based on the loader type"""
         try:
             loader_fn = secrets_manager_client_loader.registry.get(self.loader.value)

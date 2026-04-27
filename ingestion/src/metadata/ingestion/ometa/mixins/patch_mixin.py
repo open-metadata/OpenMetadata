@@ -193,10 +193,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             logger.debug(traceback.format_exc())
             if skip_on_failure:
                 entity_name = get_log_name(source)
-                logger.warning(
-                    f"Failed to update {entity_name}. The patch operation was skipped. "
-                    f"Reason: {exc}"
-                )
+                logger.warning(f"Failed to update {entity_name}. The patch operation was skipped. Reason: {exc}")
                 return None
             else:
                 entity_name = get_log_name(source)
@@ -238,9 +235,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                     fields=["testDefinition", "testSuite"],
                 )
             else:
-                instance: Optional[T] = self._fetch_entity_if_exists(
-                    entity=entity, entity_id=source.id
-                )
+                instance: Optional[T] = self._fetch_entity_if_exists(entity=entity, entity_id=source.id)
 
             if not instance:
                 return None
@@ -265,8 +260,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 logger.debug(traceback.format_exc())
                 entity_name = get_log_name(source)
                 logger.warning(
-                    f"Failed to patch description for {entity_name}. The patch operation was skipped. "
-                    f"Reason: {exc}"
+                    f"Failed to patch description for {entity_name}. The patch operation was skipped. Reason: {exc}"
                 )
                 return None
             else:
@@ -287,9 +281,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance: Table = self._fetch_entity_if_exists(
-            entity=Table, entity_id=table.id, fields=["tableConstraints"]
-        )
+        instance: Table = self._fetch_entity_if_exists(entity=Table, entity_id=table.id, fields=["tableConstraints"])
 
         if not instance:
             return None
@@ -315,7 +307,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             test_case_definition: test case definition to add
         """
         source: TestCase = self._fetch_entity_if_exists(
-            entity=TestCase, entity_id=test_case.id, fields=["testDefinition", "testSuite"]  # type: ignore
+            entity=TestCase,
+            entity_id=test_case.id,
+            fields=["testDefinition", "testSuite"],  # type: ignore
         )  # type: ignore
 
         if not source:
@@ -336,9 +330,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         entity: Type[T],
         source: T,
         tag_labels: List[TagLabel],
-        operation: Union[
-            PatchOperation.ADD, PatchOperation.REMOVE
-        ] = PatchOperation.ADD,
+        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,
         skip_on_failure: bool = True,
     ) -> Optional[T]:
         """
@@ -354,9 +346,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             Updated Entity
         """
         try:
-            instance: Optional[T] = self._fetch_entity_if_exists(
-                entity=entity, entity_id=source.id, fields=["tags"]
-            )
+            instance: Optional[T] = self._fetch_entity_if_exists(entity=entity, entity_id=source.id, fields=["tags"])
             if not instance:
                 return None
 
@@ -384,8 +374,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 logger.debug(traceback.format_exc())
                 entity_name = get_log_name(source)
                 logger.warning(
-                    f"Failed to patch tags for {entity_name}. The patch operation was skipped. "
-                    f"Reason: {exc}"
+                    f"Failed to patch tags for {entity_name}. The patch operation was skipped. Reason: {exc}"
                 )
                 return None
             else:
@@ -396,9 +385,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         entity: Type[T],
         source: T,
         tag_label: TagLabel,
-        operation: Union[
-            PatchOperation.ADD, PatchOperation.REMOVE
-        ] = PatchOperation.ADD,
+        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,
         skip_on_failure: bool = True,
     ) -> Optional[T]:
         """Will be deprecated in 1.3"""
@@ -431,9 +418,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance: Optional[T] = self._fetch_entity_if_exists(
-            entity=entity, entity_id=source.id, fields=["owners"]
-        )
+        instance: Optional[T] = self._fetch_entity_if_exists(entity=entity, entity_id=source.id, fields=["owners"])
 
         if not instance:
             return None
@@ -480,9 +465,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
     ) -> Optional[Container]:
         """Prepare Container destination with updated column tags"""
         if container.dataModel is None or instance.dataModel is None:
-            logger.warning(
-                f"Container {container.fullyQualifiedName.root} has no dataModel, skipping column tag patch"
-            )
+            logger.warning(f"Container {container.fullyQualifiedName.root} has no dataModel, skipping column tag patch")
             return None
 
         container.dataModel.columns = instance.dataModel.columns
@@ -500,26 +483,18 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
     ) -> Optional[ClassifiableEntityType]:
         """Prepare destination entity with updated column tags"""
         if isinstance(table, Table):
-            return self._prepare_table_destination(
-                table, instance, column_tags, operation
-            )
+            return self._prepare_table_destination(table, instance, column_tags, operation)
         if isinstance(table, Container):
-            return self._prepare_container_destination(
-                table, instance, column_tags, operation
-            )
+            return self._prepare_container_destination(table, instance, column_tags, operation)
 
-        logger.warning(
-            f"Unsupported entity type for column tag patching: {type(table).__name__}"
-        )
+        logger.warning(f"Unsupported entity type for column tag patching: {type(table).__name__}")
         return None
 
     def patch_column_tags(
         self,
         table: ClassifiableEntityType,
         column_tags: List[ColumnTag],
-        operation: Union[
-            PatchOperation.ADD, PatchOperation.REMOVE
-        ] = PatchOperation.ADD,
+        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,
     ) -> Optional[T]:
         """Given an Entity ID, JSON PATCH the tag of the column
 
@@ -533,23 +508,17 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         entity_type = type(table)
         fields = self._get_fields_for_entity(table)
 
-        instance = self._fetch_entity_if_exists(
-            entity=entity_type, entity_id=table.id, fields=fields
-        )
+        instance = self._fetch_entity_if_exists(entity=entity_type, entity_id=table.id, fields=fields)
 
         if not instance:
             return None
 
-        destination = self._prepare_destination_for_column_tags(
-            table, instance, column_tags, operation
-        )
+        destination = self._prepare_destination_for_column_tags(table, instance, column_tags, operation)
 
         if destination is None:
             return None
 
-        patched_entity = self.patch(
-            entity=entity_type, source=table, destination=destination
-        )
+        patched_entity = self.patch(entity=entity_type, source=table, destination=destination)
         if patched_entity is None:
             logger.debug(
                 f"Empty PATCH result. Either everything is up to date or the "
@@ -564,9 +533,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         table: Table,
         column_fqn: str,
         tag_label: TagLabel,
-        operation: Union[
-            PatchOperation.ADD, PatchOperation.REMOVE
-        ] = PatchOperation.ADD,
+        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,
     ) -> Optional[T]:
         """Will be deprecated in 1.3"""
         return self.patch_column_tags(
@@ -575,9 +542,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             operation=operation,
         )
 
-    @deprecated(
-        message="Use metadata.patch_column_descriptions instead", release="1.3.1"
-    )
+    @deprecated(message="Use metadata.patch_column_descriptions instead", release="1.3.1")
     def patch_column_description(
         self,
         table: Table,
@@ -598,11 +563,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         """
         return self.patch_column_descriptions(
             table=table,
-            column_descriptions=[
-                ColumnDescription(
-                    column_fqn=column_fqn, description=Markdown(description)
-                )
-            ],
+            column_descriptions=[ColumnDescription(column_fqn=column_fqn, description=Markdown(description))],
             force=force,
         )
 
@@ -622,9 +583,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance: Optional[Table] = self._fetch_entity_if_exists(
-            entity=Table, entity_id=table.id
-        )
+        instance: Optional[Table] = self._fetch_entity_if_exists(entity=Table, entity_id=table.id)
 
         if not instance or not column_descriptions:
             return None
@@ -647,9 +606,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
     def patch_automation_workflow_response(
         self,
         automation_workflow: AutomationWorkflow,
-        result: Union[
-            TestConnectionResult, ReverseIngestionResponse, QueryRunnerResponse
-        ],
+        result: Union[TestConnectionResult, ReverseIngestionResponse, QueryRunnerResponse],
         workflow_status: WorkflowStatus,
     ) -> None:
         """
@@ -669,9 +626,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             for operation_result in data["results"]:
                 operation_result["id"] = str(operation_result["id"])
         else:
-            result_data[PatchField.VALUE]["status"] = result_data[PatchField.VALUE][
-                "status"
-            ].value
+            result_data[PatchField.VALUE]["status"] = result_data[PatchField.VALUE]["status"].value
         status_data: Dict = {
             PatchField.PATH: PatchPath.STATUS,
             PatchField.OPERATION: PatchOperation.ADD,
@@ -694,9 +649,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 f"Error trying to PATCH status for automation workflow [{model_str(automation_workflow)}]: {exc}"
             )
 
-    def patch_life_cycle(
-        self, entity: Entity, life_cycle: LifeCycle
-    ) -> Optional[Entity]:
+    def patch_life_cycle(self, entity: Entity, life_cycle: LifeCycle) -> Optional[Entity]:
         """
         Patch life cycle data for a entity
 
@@ -706,14 +659,10 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         try:
             destination = entity.model_copy(deep=True)
             destination.lifeCycle = life_cycle
-            return self.patch(
-                entity=type(entity), source=entity, destination=destination
-            )
+            return self.patch(entity=type(entity), source=entity, destination=destination)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to Patch life cycle data for {entity.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Error trying to Patch life cycle data for {entity.fullyQualifiedName.root}: {exc}")
             return None
 
     def patch_domain(
@@ -732,9 +681,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance: Optional[T] = self._fetch_entity_if_exists(
-            entity=entity, entity_id=source.id, fields=["domains"]
-        )
+        instance: Optional[T] = self._fetch_entity_if_exists(entity=entity, entity_id=source.id, fields=["domains"])
 
         if not instance:
             return None
@@ -773,17 +720,13 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         instance = self.get_by_id(entity=entity, entity_id=entity_id)
 
         if not instance:
-            logger.warning(
-                f"Cannot find an instance of {entity.__name__} with the given ID."
-            )
+            logger.warning(f"Cannot find an instance of {entity.__name__} with the given ID.")
             return None
 
         # Get existing custom properties from extension
         existing_custom_properties = {}
         if hasattr(instance, "extension") and instance.extension:
-            if hasattr(instance.extension, "root") and isinstance(
-                instance.extension.root, dict
-            ):
+            if hasattr(instance.extension, "root") and isinstance(instance.extension.root, dict):
                 existing_custom_properties = instance.extension.root.copy()
 
         # Merge with new properties if not forcing
@@ -803,9 +746,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                     [
                         {
                             PatchField.OPERATION: (
-                                PatchOperation.REPLACE
-                                if existing_custom_properties
-                                else PatchOperation.ADD
+                                PatchOperation.REPLACE if existing_custom_properties else PatchOperation.ADD
                             ),
                             PatchField.PATH: "/extension",
                             PatchField.VALUE: final_properties,
@@ -816,8 +757,6 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             return entity(**res)
 
         except Exception as exc:
-            logger.error(
-                f"Error trying to PATCH custom properties for {entity.__name__}: {entity_id} - {exc}"
-            )
+            logger.error(f"Error trying to PATCH custom properties for {entity.__name__}: {entity_id} - {exc}")
             logger.debug(traceback.format_exc())
             return None

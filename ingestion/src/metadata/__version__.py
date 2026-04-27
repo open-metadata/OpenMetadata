@@ -40,9 +40,7 @@ def get_client_version_from_string(raw_version: str) -> str:
     try:
         return re.match(r"\d+.\d+.\d+.\d+", raw_version).group(0)
     except AttributeError as err:
-        raise VersionParsingException(
-            f"Can't extract client version from {raw_version}: {err}"
-        )
+        raise VersionParsingException(f"Can't extract client version from {raw_version}: {err}")
 
 
 def get_server_version_from_string(raw_version: str) -> str:
@@ -55,9 +53,7 @@ def get_server_version_from_string(raw_version: str) -> str:
     try:
         return re.match(r"\d+.\d+.\d+", raw_version).group(0)
     except AttributeError as err:
-        raise VersionParsingException(
-            f"Can't extract server version from {raw_version}: {err}"
-        )
+        raise VersionParsingException(f"Can't extract server version from {raw_version}: {err}")
 
 
 def get_client_version() -> str:
@@ -94,7 +90,4 @@ def match_versions(version1: str, version2: str) -> bool:
     server_semver = parse(version1)
     client_semver = parse(version2)
 
-    return (
-        server_semver.major == client_semver.major
-        and server_semver.minor == client_semver.minor
-    )
+    return server_semver.major == client_semver.major and server_semver.minor == client_semver.minor

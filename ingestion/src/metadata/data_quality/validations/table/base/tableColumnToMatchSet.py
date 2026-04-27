@@ -60,14 +60,12 @@ class BaseTableColumnToMatchSetValidator(BaseTestValidator):
             )
 
         expected_names = self.get_test_case_param_value(
-            self.test_case.parameterValues, "columnNames", str  # type: ignore
+            self.test_case.parameterValues,
+            "columnNames",
+            str,  # type: ignore
         )
 
-        expected_names = (
-            [item.strip() for item in expected_names.split(",")]
-            if expected_names
-            else []
-        )
+        expected_names = [item.strip() for item in expected_names.split(",")] if expected_names else []
 
         ordered = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore

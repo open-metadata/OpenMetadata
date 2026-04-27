@@ -11,6 +11,7 @@
 """
 Sampling Models
 """
+
 from enum import Enum
 from typing import Any, List, Optional, Union
 
@@ -109,9 +110,7 @@ class TableConfig(BaseProfileConfig):
     randomizedSample: Optional[bool] = False
 
     @classmethod
-    def from_database_and_schema_config(
-        cls, config: "DatabaseAndSchemaConfig", table_fqn: str
-    ):
+    def from_database_and_schema_config(cls, config: "DatabaseAndSchemaConfig", table_fqn: str):
         table_config = TableConfig(
             fullyQualifiedName=table_fqn,
             profileSample=config.profileSample,
@@ -133,9 +132,7 @@ class SampleData(BaseModel):
     """TableData wrapper to handle ephemeral SampleData"""
 
     data: Annotated[TableData, Field(None, description="Table Sample Data")]
-    store: Annotated[
-        bool, Field(False, description="Is the sample data should be stored or not")
-    ]
+    store: Annotated[bool, Field(False, description="Is the sample data should be stored or not")]
 
 
 class SamplerResponse(ConfigModel):
@@ -164,9 +161,7 @@ class SamplerResponse(ConfigModel):
     def __str__(self):
         """Return the entity name being processed"""
         entity_type = type(self.entity).__name__
-        entity_name = (
-            self.entity.name.root if hasattr(self.entity, "name") else "Unknown"
-        )
+        entity_name = self.entity.name.root if hasattr(self.entity, "name") else "Unknown"
         return f"{entity_type} [{entity_name}]"
 
 

@@ -12,6 +12,7 @@
 """
 Validator for column value stddev to be between test case
 """
+
 from typing import List, Optional
 
 from sqlalchemy import Column
@@ -32,9 +33,7 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class ColumnValueStdDevToBeBetweenValidator(
-    BaseColumnValueStdDevToBeBetweenValidator, SQAValidatorMixin
-):
+class ColumnValueStdDevToBeBetweenValidator(BaseColumnValueStdDevToBeBetweenValidator, SQAValidatorMixin):
     """Validator for column value stddev to be between test case"""
 
     def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
@@ -93,17 +92,11 @@ class ColumnValueStdDevToBeBetweenValidator(
                 Metrics.stddev.name: stddev_expr,
             }
 
-            failed_count_builder = (
-                lambda cte, row_count_expr: self._get_validation_checker(
-                    test_params
-                ).build_agg_level_violation_sqa(
-                    [getattr(cte.c, Metrics.stddev.name)], row_count_expr
-                )
-            )
+            failed_count_builder = lambda cte, row_count_expr: self._get_validation_checker(
+                test_params
+            ).build_agg_level_violation_sqa([getattr(cte.c, Metrics.stddev.name)], row_count_expr)
 
-            normalized_dimension = self._get_normalized_dimension_expression(
-                dimension_col
-            )
+            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
             result_rows = self._run_dimensional_validation_query(
                 source=self.runner.dataset,
@@ -113,9 +106,7 @@ class ColumnValueStdDevToBeBetweenValidator(
                 top_n=top_n,
             )
 
-            return self._process_dimension_rows(
-                result_rows, dimension_col.name, metrics_to_compute, test_params
-            )
+            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

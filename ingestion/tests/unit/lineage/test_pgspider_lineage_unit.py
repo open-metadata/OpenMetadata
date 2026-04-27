@@ -37,33 +37,23 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-mock_multi_tenant_file_path = (
-    Path(__file__).parent / "../resources/datasets/pgspider_multi_tenant_tables.json"
-)
+mock_multi_tenant_file_path = Path(__file__).parent / "../resources/datasets/pgspider_multi_tenant_tables.json"
 with open(mock_multi_tenant_file_path, encoding="utf-8") as file:
     mock_multi_tenant_data: dict = json.load(file)
 
-mock_child_file_path = (
-    Path(__file__).parent / "../resources/datasets/pgspider_child_tables.json"
-)
+mock_child_file_path = Path(__file__).parent / "../resources/datasets/pgspider_child_tables.json"
 with open(mock_child_file_path, encoding="utf-8") as file:
     mock_child_data = json.load(file)
 
 EXPECTED_PGSPIDER_DETAILS_1 = [
     AddLineageRequest(
         edge=EntitiesEdge(
-            fromEntity=EntityReference(
-                id="e3e1649a-97f4-4849-bc02-d8d67eab9722", type="table"
-            ),
-            toEntity=EntityReference(
-                id="b3f7df8e-50de-4555-a497-c7e170f4de8e", type="table"
-            ),
+            fromEntity=EntityReference(id="e3e1649a-97f4-4849-bc02-d8d67eab9722", type="table"),
+            toEntity=EntityReference(id="b3f7df8e-50de-4555-a497-c7e170f4de8e", type="table"),
             lineageDetails=LineageDetails(
                 columnsLineage=[
                     ColumnLineage(
-                        fromColumns=[
-                            "local_pgspider1.pgspider.public.test1__post_svr__0.id"
-                        ],
+                        fromColumns=["local_pgspider1.pgspider.public.test1__post_svr__0.id"],
                         toColumn="local_pgspider1.pgspider.public.test1.id",
                     )
                 ]
@@ -72,18 +62,12 @@ EXPECTED_PGSPIDER_DETAILS_1 = [
     ),
     AddLineageRequest(
         edge=EntitiesEdge(
-            fromEntity=EntityReference(
-                id="02f020df-ef8c-4156-9d02-a2ff40b9649b", type="table"
-            ),
-            toEntity=EntityReference(
-                id="b3f7df8e-50de-4555-a497-c7e170f4de8e", type="table"
-            ),
+            fromEntity=EntityReference(id="02f020df-ef8c-4156-9d02-a2ff40b9649b", type="table"),
+            toEntity=EntityReference(id="b3f7df8e-50de-4555-a497-c7e170f4de8e", type="table"),
             lineageDetails=LineageDetails(
                 columnsLineage=[
                     ColumnLineage(
-                        fromColumns=[
-                            "local_pgspider1.pgspider.public.test1__post_svr__1.id"
-                        ],
+                        fromColumns=["local_pgspider1.pgspider.public.test1__post_svr__1.id"],
                         toColumn="local_pgspider1.pgspider.public.test1.id",
                     )
                 ]
@@ -92,30 +76,20 @@ EXPECTED_PGSPIDER_DETAILS_1 = [
     ),
     AddLineageRequest(
         edge=EntitiesEdge(
-            fromEntity=EntityReference(
-                id="57ba2523-5424-467f-992a-afe29dc7e23d", type="table"
-            ),
-            toEntity=EntityReference(
-                id="a68492cc-af89-4031-8b8e-bc31f2cedcd5", type="table"
-            ),
+            fromEntity=EntityReference(id="57ba2523-5424-467f-992a-afe29dc7e23d", type="table"),
+            toEntity=EntityReference(id="a68492cc-af89-4031-8b8e-bc31f2cedcd5", type="table"),
             lineageDetails=LineageDetails(
                 columnsLineage=[
                     ColumnLineage(
-                        fromColumns=[
-                            "local_pgspider1.pgspider.public.test2__post_svr__0.a"
-                        ],
+                        fromColumns=["local_pgspider1.pgspider.public.test2__post_svr__0.a"],
                         toColumn="local_pgspider1.pgspider.public.test2.a",
                     ),
                     ColumnLineage(
-                        fromColumns=[
-                            "local_pgspider1.pgspider.public.test2__post_svr__0.b"
-                        ],
+                        fromColumns=["local_pgspider1.pgspider.public.test2__post_svr__0.b"],
                         toColumn="local_pgspider1.pgspider.public.test2.b",
                     ),
                     ColumnLineage(
-                        fromColumns=[
-                            "local_pgspider1.pgspider.public.test2__post_svr__0.c"
-                        ],
+                        fromColumns=["local_pgspider1.pgspider.public.test2__post_svr__0.c"],
                         toColumn="local_pgspider1.pgspider.public.test2.c",
                     ),
                 ]
@@ -127,18 +101,12 @@ EXPECTED_PGSPIDER_DETAILS_1 = [
 EXPECTED_PGSPIDER_DETAILS_2 = [
     AddLineageRequest(
         edge=EntitiesEdge(
-            fromEntity=EntityReference(
-                id="e3e1649a-97f4-4849-bc02-d8d67eab9722", type="table"
-            ),
-            toEntity=EntityReference(
-                id="b3f7df8e-50de-4555-a497-c7e170f4de8e", type="table"
-            ),
+            fromEntity=EntityReference(id="e3e1649a-97f4-4849-bc02-d8d67eab9722", type="table"),
+            toEntity=EntityReference(id="b3f7df8e-50de-4555-a497-c7e170f4de8e", type="table"),
             lineageDetails=LineageDetails(
                 columnsLineage=[
                     ColumnLineage(
-                        fromColumns=[
-                            "local_pgspider1.pgspider.public.test1__post_svr__0.id"
-                        ],
+                        fromColumns=["local_pgspider1.pgspider.public.test1__post_svr__0.id"],
                         toColumn="local_pgspider1.pgspider.public.test1.id",
                     )
                 ]
@@ -147,18 +115,12 @@ EXPECTED_PGSPIDER_DETAILS_2 = [
     ),
     AddLineageRequest(
         edge=EntitiesEdge(
-            fromEntity=EntityReference(
-                id="02f020df-ef8c-4156-9d02-a2ff40b9649b", type="table"
-            ),
-            toEntity=EntityReference(
-                id="b3f7df8e-50de-4555-a497-c7e170f4de8e", type="table"
-            ),
+            fromEntity=EntityReference(id="02f020df-ef8c-4156-9d02-a2ff40b9649b", type="table"),
+            toEntity=EntityReference(id="b3f7df8e-50de-4555-a497-c7e170f4de8e", type="table"),
             lineageDetails=LineageDetails(
                 columnsLineage=[
                     ColumnLineage(
-                        fromColumns=[
-                            "local_pgspider1.pgspider.public.test1__post_svr__1.id"
-                        ],
+                        fromColumns=["local_pgspider1.pgspider.public.test1__post_svr__1.id"],
                         toColumn="local_pgspider1.pgspider.public.test1.id",
                     )
                 ]
@@ -167,24 +129,16 @@ EXPECTED_PGSPIDER_DETAILS_2 = [
     ),
     AddLineageRequest(
         edge=EntitiesEdge(
-            fromEntity=EntityReference(
-                id="57ba2523-5424-467f-992a-afe29dc7e23d", type="table"
-            ),
-            toEntity=EntityReference(
-                id="a68492cc-af89-4031-8b8e-bc31f2cedcd5", type="table"
-            ),
+            fromEntity=EntityReference(id="57ba2523-5424-467f-992a-afe29dc7e23d", type="table"),
+            toEntity=EntityReference(id="a68492cc-af89-4031-8b8e-bc31f2cedcd5", type="table"),
             lineageDetails=LineageDetails(
                 columnsLineage=[
                     ColumnLineage(
-                        fromColumns=[
-                            "local_pgspider1.pgspider.public.test2__post_svr__0.a"
-                        ],
+                        fromColumns=["local_pgspider1.pgspider.public.test2__post_svr__0.a"],
                         toColumn="local_pgspider1.pgspider.public.test2.a",
                     ),
                     ColumnLineage(
-                        fromColumns=[
-                            "local_pgspider1.pgspider.public.test2__post_svr__0.b"
-                        ],
+                        fromColumns=["local_pgspider1.pgspider.public.test2__post_svr__0.b"],
                         toColumn="local_pgspider1.pgspider.public.test2.b",
                     ),
                 ]
@@ -196,41 +150,23 @@ EXPECTED_PGSPIDER_DETAILS_2 = [
 EXPECTED_PGSPIDER_DETAILS_3 = [
     AddLineageRequest(
         edge=EntitiesEdge(
-            fromEntity=EntityReference(
-                id="e3e1649a-97f4-4849-bc02-d8d67eab9722", type="table"
-            ),
-            toEntity=EntityReference(
-                id="b3f7df8e-50de-4555-a497-c7e170f4de8e", type="table"
-            ),
-            lineageDetails=LineageDetails(
-                sqlQuery=None, columnsLineage=[], pipeline=None
-            ),
+            fromEntity=EntityReference(id="e3e1649a-97f4-4849-bc02-d8d67eab9722", type="table"),
+            toEntity=EntityReference(id="b3f7df8e-50de-4555-a497-c7e170f4de8e", type="table"),
+            lineageDetails=LineageDetails(sqlQuery=None, columnsLineage=[], pipeline=None),
         ),
     ),
     AddLineageRequest(
         edge=EntitiesEdge(
-            fromEntity=EntityReference(
-                id="02f020df-ef8c-4156-9d02-a2ff40b9649b", type="table"
-            ),
-            toEntity=EntityReference(
-                id="b3f7df8e-50de-4555-a497-c7e170f4de8e", type="table"
-            ),
-            lineageDetails=LineageDetails(
-                sqlQuery=None, columnsLineage=[], pipeline=None
-            ),
+            fromEntity=EntityReference(id="02f020df-ef8c-4156-9d02-a2ff40b9649b", type="table"),
+            toEntity=EntityReference(id="b3f7df8e-50de-4555-a497-c7e170f4de8e", type="table"),
+            lineageDetails=LineageDetails(sqlQuery=None, columnsLineage=[], pipeline=None),
         ),
     ),
     AddLineageRequest(
         edge=EntitiesEdge(
-            fromEntity=EntityReference(
-                id="57ba2523-5424-467f-992a-afe29dc7e23d", type="table"
-            ),
-            toEntity=EntityReference(
-                id="a68492cc-af89-4031-8b8e-bc31f2cedcd5", type="table"
-            ),
-            lineageDetails=LineageDetails(
-                sqlQuery=None, columnsLineage=[], pipeline=None
-            ),
+            fromEntity=EntityReference(id="57ba2523-5424-467f-992a-afe29dc7e23d", type="table"),
+            toEntity=EntityReference(id="a68492cc-af89-4031-8b8e-bc31f2cedcd5", type="table"),
+            lineageDetails=LineageDetails(sqlQuery=None, columnsLineage=[], pipeline=None),
         ),
     ),
 ]
@@ -587,18 +523,14 @@ class PGSpiderLineageUnitTests(TestCase):
     def __init__(self, methodName) -> None:
         super().__init__(methodName)
         config = OpenMetadataWorkflowConfig.model_validate(mock_pgspider_config)
-        with patch(
-            "metadata.ingestion.source.database.postgres.lineage.PostgresLineageSource.test_connection"
-        ):
+        with patch("metadata.ingestion.source.database.postgres.lineage.PostgresLineageSource.test_connection"):
             self.postgres = PostgresLineageSource.create(
                 mock_pgspider_config["source"],
                 config.workflowConfig.openMetadataServerConfig,
             )
         print(type(self.postgres))
 
-    @patch(
-        "metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables"
-    )
+    @patch("metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables")
     def test_next_record_1(self, multi_tenant_tables):
         """
         Verify normal case:
@@ -615,9 +547,7 @@ class PGSpiderLineageUnitTests(TestCase):
             patch(
                 "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
             ) as source_entities,
-            patch(
-                "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
-            ) as child_tables,
+            patch("metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables") as child_tables,
         ):
             child_tables.side_effect = mock_child_data
             source_entities.side_effect = table_entities_1
@@ -632,14 +562,10 @@ class PGSpiderLineageUnitTests(TestCase):
                     requests.append(record)
 
             """Validate each AddLineageRequest"""
-            for _, (expected, original) in enumerate(
-                zip(EXPECTED_PGSPIDER_DETAILS_1, requests)
-            ):
+            for _, (expected, original) in enumerate(zip(EXPECTED_PGSPIDER_DETAILS_1, requests)):
                 self.assertEqual(expected, original)
 
-    @patch(
-        "metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables"
-    )
+    @patch("metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables")
     def test_next_record_2(self, multi_tenant_tables):
         """
         Verify normal case:
@@ -656,9 +582,7 @@ class PGSpiderLineageUnitTests(TestCase):
             patch(
                 "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
             ) as source_entities,
-            patch(
-                "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
-            ) as child_tables,
+            patch("metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables") as child_tables,
         ):
             child_tables.side_effect = mock_child_data
             source_entities.side_effect = table_entities_2
@@ -673,14 +597,10 @@ class PGSpiderLineageUnitTests(TestCase):
                     requests.append(record)
 
             """Validate each AddLineageRequest"""
-            for _, (expected, original) in enumerate(
-                zip(EXPECTED_PGSPIDER_DETAILS_2, requests)
-            ):
+            for _, (expected, original) in enumerate(zip(EXPECTED_PGSPIDER_DETAILS_2, requests)):
                 self.assertEqual(expected, original)
 
-    @patch(
-        "metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables"
-    )
+    @patch("metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables")
     def test_next_record_3(self, multi_tenant_tables):
         """
         Verify normal case:
@@ -697,9 +617,7 @@ class PGSpiderLineageUnitTests(TestCase):
             patch(
                 "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
             ) as source_entities,
-            patch(
-                "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
-            ) as child_tables,
+            patch("metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables") as child_tables,
         ):
             child_tables.side_effect = mock_child_data
             source_entities.side_effect = table_entities_3
@@ -714,14 +632,10 @@ class PGSpiderLineageUnitTests(TestCase):
                     requests.append(record)
 
             """Validate each AddLineageRequest"""
-            for _, (expected, original) in enumerate(
-                zip(EXPECTED_PGSPIDER_DETAILS_3, requests)
-            ):
+            for _, (expected, original) in enumerate(zip(EXPECTED_PGSPIDER_DETAILS_3, requests)):
                 self.assertEqual(expected, original)
 
-    @patch(
-        "metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables"
-    )
+    @patch("metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables")
     def test_next_record_4(self, multi_tenant_tables):
         """
         Verify abnormal case:
@@ -737,9 +651,7 @@ class PGSpiderLineageUnitTests(TestCase):
             patch(
                 "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
             ) as source_entities,
-            patch(
-                "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
-            ) as child_tables,
+            patch("metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables") as child_tables,
         ):
             child_tables.return_value = mock_child_data
             source_entities.return_value = []
@@ -756,9 +668,7 @@ class PGSpiderLineageUnitTests(TestCase):
             """Validate number of AddLineageRequest"""
             self.assertEqual(0, len(requests))
 
-    @patch(
-        "metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables"
-    )
+    @patch("metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables")
     def test_next_record_5(self, multi_tenant_tables):
         """
         Verify abnormal case:
@@ -774,10 +684,8 @@ class PGSpiderLineageUnitTests(TestCase):
         with (
             patch(
                 "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
-            ) as source_entities,
-            patch(
-                "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
-            ) as child_tables,
+            ) as source_entities,  # noqa: F841
+            patch("metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables") as child_tables,
         ):
             child_tables.return_value = []
 
@@ -793,9 +701,7 @@ class PGSpiderLineageUnitTests(TestCase):
             """Validate number of AddLineageRequest"""
             self.assertEqual(0, len(requests))
 
-    @patch(
-        "metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables"
-    )
+    @patch("metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables")
     def test_next_record_6(self, multi_tenant_tables):
         """
         Verify abnormal case:
@@ -812,9 +718,7 @@ class PGSpiderLineageUnitTests(TestCase):
             patch(
                 "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
             ) as source_entities,
-            patch(
-                "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
-            ) as child_tables,
+            patch("metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables") as child_tables,
         ):
             child_tables.side_effect = mock_child_data
             source_entities.return_value = []

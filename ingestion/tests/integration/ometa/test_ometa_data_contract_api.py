@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API DataContract test
 """
+
 import time
 import uuid
 from datetime import datetime
@@ -74,9 +75,7 @@ def test_schema(metadata, test_database):
 
     yield schema
 
-    metadata.delete(
-        entity=DatabaseSchema, entity_id=schema.id, recursive=True, hard_delete=True
-    )
+    metadata.delete(entity=DatabaseSchema, entity_id=schema.id, recursive=True, hard_delete=True)
 
 
 @pytest.fixture(scope="module")
@@ -140,9 +139,7 @@ class TestOMetaDataContractAPI:
         """
         contract = metadata.create_or_update(data=data_contract_request)
 
-        res = metadata.get_by_name(
-            entity=DataContract, fqn=contract.fullyQualifiedName.root
-        )
+        res = metadata.get_by_name(entity=DataContract, fqn=contract.fullyQualifiedName.root)
         assert res.name == data_contract_request.name
         assert res.description == data_contract_request.description
         assert res.entityStatus == data_contract_request.entityStatus
@@ -205,13 +202,9 @@ class TestOMetaDataContractAPI:
         assert all_results is not None
         assert len(all_results) >= 1
 
-        metadata.delete(
-            entity=DataContract, entity_id=created_contract.id, hard_delete=True
-        )
+        metadata.delete(entity=DataContract, entity_id=created_contract.id, hard_delete=True)
 
-    def test_update_data_contract_status(
-        self, metadata, test_table, data_contract_request
-    ):
+    def test_update_data_contract_status(self, metadata, test_table, data_contract_request):
         """
         We can update DataContract status
         """
@@ -230,21 +223,15 @@ class TestOMetaDataContractAPI:
         assert updated_contract.entityStatus == EntityStatus.Approved
         assert updated_contract.id == created_contract.id
 
-        metadata.delete(
-            entity=DataContract, entity_id=updated_contract.id, hard_delete=True
-        )
+        metadata.delete(entity=DataContract, entity_id=updated_contract.id, hard_delete=True)
 
-    def test_get_data_contract_by_entity_id(
-        self, metadata, test_table, data_contract_request
-    ):
+    def test_get_data_contract_by_entity_id(self, metadata, test_table, data_contract_request):
         """
         We can fetch DataContract by entity ID
         """
         created_contract = metadata.create_or_update(data=data_contract_request)
 
-        res = metadata.get_data_contract_by_entity_id(
-            entity_id=test_table.id, entity_type="table"
-        )
+        res = metadata.get_data_contract_by_entity_id(entity_id=test_table.id, entity_type="table")
 
         # The contract was created with entity=EntityReference(id=test_table.id),
         # so the backend must return it when queried by that entity ID.
@@ -252,35 +239,23 @@ class TestOMetaDataContractAPI:
         assert isinstance(res, DataContract)
         assert res.id == created_contract.id
 
-        metadata.delete(
-            entity=DataContract, entity_id=created_contract.id, hard_delete=True
-        )
+        metadata.delete(entity=DataContract, entity_id=created_contract.id, hard_delete=True)
 
-    def test_validate_data_contract_by_entity_id(
-        self, metadata, test_table, data_contract_request
-    ):
+    def test_validate_data_contract_by_entity_id(self, metadata, test_table, data_contract_request):
         created_contract = metadata.create_or_update(data=data_contract_request)
 
-        res = metadata.validate_data_contract_by_entity_id(
-            entity_id=test_table.id, entity_type="table"
-        )
+        res = metadata.validate_data_contract_by_entity_id(entity_id=test_table.id, entity_type="table")
 
         assert res is None or isinstance(res, DataContractResult)
 
-        metadata.delete(
-            entity=DataContract, entity_id=created_contract.id, hard_delete=True
-        )
+        metadata.delete(entity=DataContract, entity_id=created_contract.id, hard_delete=True)
 
     def test_delete_data_contract_results_before(self, metadata, data_contract_request):
         created_contract = metadata.create_or_update(data=data_contract_request)
 
         # Call delete endpoint
         timestamp = int(datetime.now().timestamp() * 1000)
-        res = metadata.delete_data_contract_results_before(
-            created_contract.id, timestamp
-        )
+        res = metadata.delete_data_contract_results_before(created_contract.id, timestamp)
         assert type(res) is bool
 
-        metadata.delete(
-            entity=DataContract, entity_id=created_contract.id, hard_delete=True
-        )
+        metadata.delete(entity=DataContract, entity_id=created_contract.id, hard_delete=True)

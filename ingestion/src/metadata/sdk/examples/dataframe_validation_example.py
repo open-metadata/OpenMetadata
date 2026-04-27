@@ -21,6 +21,7 @@ Installation:
     For reading from S3 datalakes:
         pip install 'openmetadata-ingestion[pandas,datalake-s3]'
 """
+
 # pyright: reportUnknownVariableType=false, reportAttributeAccessIssue=false, reportUnknownMemberType=false
 # pyright: reportUnusedCallResult=false
 # pylint: disable=W5001
@@ -67,9 +68,7 @@ def basic_validation_example():
 
     if result.success:
         print("✓ All validations passed!")
-        print(
-            f"  Executed {result.total_tests} tests in {result.execution_time_ms:.2f}ms"
-        )
+        print(f"  Executed {result.total_tests} tests in {result.execution_time_ms:.2f}ms")
     else:
         print("✗ Validation failed")
         for failure in result.failures:
@@ -136,9 +135,7 @@ def integrating_with_openmetadata_example():
 
     # Instantiate validator and load the executable test suite for a table
     validator = DataFrameValidator()
-    validator.add_openmetadata_table_tests(
-        "DbService.database_name.schema_name.dwh_table"
-    )
+    validator.add_openmetadata_table_tests("DbService.database_name.schema_name.dwh_table")
 
     result = validator.validate(df)
     print(f"Validation: {'PASSED' if result.success else 'FAILED'}")
@@ -156,9 +153,7 @@ def processing_big_data_with_chunks_example():
     configure(host="http://localhost:8585/api", jwt_token="your jwt token")
 
     validator = DataFrameValidator()
-    validator.add_openmetadata_table_tests(
-        "DbService.database_name.schema_name.dwh_table"
-    )
+    validator.add_openmetadata_table_tests("DbService.database_name.schema_name.dwh_table")
 
     def load_df_to_destination(_df: pd.DataFrame, _result: ValidationResult):
         """Loads data into destination."""

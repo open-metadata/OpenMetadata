@@ -37,10 +37,7 @@ def calculate_passed_failed_rows(
 
             return max(0, passed_rows), max(0, failed_rows)
     else:
-
-        raise NotImplementedError(
-            "Use test_row_count_logic_with_total.py for total row count tests"
-        )
+        raise NotImplementedError("Use test_row_count_logic_with_total.py for total row count tests")
 
 
 class TestPassedFailedRowCalculation(unittest.TestCase):

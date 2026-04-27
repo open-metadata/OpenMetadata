@@ -25,17 +25,13 @@ from metadata.data_quality.validations.table.base.tableColumnCountToEqual import
 )
 
 
-class TableColumnCountToEqualValidator(
-    BaseTableColumnCountToEqualValidator, SQAValidatorMixin
-):
+class TableColumnCountToEqualValidator(BaseTableColumnCountToEqualValidator, SQAValidatorMixin):
     """Validator for table column count to be equal test case"""
 
     def _run_results(self) -> Optional[int]:
         """compute result of the test case"""
         count = len(inspect(self.runner.table).c)
         if not count:
-            raise ValueError(
-                f"Column Count for test case {self.test_case.name} returned None"
-            )
+            raise ValueError(f"Column Count for test case {self.test_case.name} returned None")
 
         return count

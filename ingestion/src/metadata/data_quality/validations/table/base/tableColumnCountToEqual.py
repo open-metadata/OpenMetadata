@@ -55,7 +55,9 @@ class BaseTableColumnCountToEqualValidator(BaseTestValidator):
             )
 
         expected_count = self.get_test_case_param_value(
-            self.test_case.parameterValues, "columnCount", int  # type: ignore
+            self.test_case.parameterValues,
+            "columnCount",
+            int,  # type: ignore
         )
 
         return self.get_test_case_result_object(
