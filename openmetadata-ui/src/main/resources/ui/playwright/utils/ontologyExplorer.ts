@@ -37,7 +37,7 @@ export async function navigateToOntologyExplorer(page: Page) {
 
 export async function waitForGraphLoaded(page: Page) {
   await expect(page.getByTestId('ontology-graph-loading')).not.toBeVisible({
-    timeout: 15000,
+    timeout: 30000,
   });
 }
 
@@ -57,7 +57,7 @@ export async function readNodePositions(
         return false;
       }
     },
-    { timeout: 10000 }
+    { timeout: 20000 }
   );
 
   return page

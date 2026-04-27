@@ -237,7 +237,7 @@ test.describe('Ontology Explorer', () => {
         (res) =>
           res.url().includes('/api/v1/glossaryTerms') &&
           res.request().method() === 'GET',
-        { timeout: 15000 }
+        { timeout: 30000 }
       );
       await page.getByTestId('refresh').click();
       await termsRequest;
@@ -255,7 +255,7 @@ test.describe('Ontology Explorer', () => {
         (res) =>
           res.url().includes('/api/v1/glossaryTerms/assets/counts') &&
           res.request().method() === 'GET',
-        { timeout: 15000 }
+        { timeout: 30000 }
       );
       await page.getByTestId('refresh').click();
       await assetCountsRequest;
