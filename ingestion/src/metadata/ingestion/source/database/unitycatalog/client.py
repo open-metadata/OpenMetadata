@@ -82,7 +82,7 @@ class UnityCatalogClient(DatabricksClient):
             try:
                 response = raw_response.json()
             except json.JSONDecodeError as json_err:
-                logger.error(  # noqa: TRY400
+                logger.error(
                     f"Failed to parse JSON response for table lineage {table_name}. "
                     f"Status code: {raw_response.status_code}, "
                     f"Raw response: {raw_response.text}"
@@ -93,7 +93,7 @@ class UnityCatalogClient(DatabricksClient):
                 return LineageTableStreams(**response)
 
         except Exception as exc:
-            logger.error(f"Unexpected error while fetching table lineage for {table_name}: {exc}")  # noqa: TRY400
+            logger.error(f"Unexpected error while fetching table lineage for {table_name}: {exc}")
             logger.debug(traceback.format_exc())
 
         return LineageTableStreams()

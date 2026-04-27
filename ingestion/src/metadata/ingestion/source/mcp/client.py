@@ -146,7 +146,7 @@ class StdioTransport:
         try:
             response = json.loads(line)
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse MCP response: {e}")  # noqa: TRY400
+            logger.error(f"Failed to parse MCP response: {e}")
             return
         msg_id = response.get("id")
         if msg_id is None:
@@ -168,7 +168,7 @@ class StdioTransport:
                     self._handle_response_line(line)
             except Exception as e:
                 if self._running:
-                    logger.error(f"Error reading from MCP server: {e}")  # noqa: TRY400
+                    logger.error(f"Error reading from MCP server: {e}")
                 break
 
     def _drain_stderr(self) -> None:
@@ -287,7 +287,7 @@ class HttpTransport:
                 timeout=self.timeout,
             )
         except Exception as e:
-            logger.error(f"Failed to send notification '{method}': {e}")  # noqa: TRY400
+            logger.error(f"Failed to send notification '{method}': {e}")
 
     def send_request(self, method: str, params: Optional[Dict] = None) -> Dict[str, Any]:  # noqa: UP006, UP045
         """Send a JSON-RPC request via HTTP POST"""
@@ -469,7 +469,7 @@ def parse_claude_desktop_config(config_path: str, config: Optional[Dict] = None)
             with open(path, "r", encoding="utf-8") as f:  # noqa: PTH123
                 config = json.load(f)
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse config file {config_path}: {e}")  # noqa: TRY400
+            logger.error(f"Failed to parse config file {config_path}: {e}")
             return []
 
     servers = []
@@ -514,7 +514,7 @@ def parse_vscode_config(config_path: str, config: Optional[Dict] = None) -> List
             with open(path, "r", encoding="utf-8") as f:  # noqa: PTH123
                 config = json.load(f)
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse VS Code settings {config_path}: {e}")  # noqa: TRY400
+            logger.error(f"Failed to parse VS Code settings {config_path}: {e}")
             return []
 
     servers = []

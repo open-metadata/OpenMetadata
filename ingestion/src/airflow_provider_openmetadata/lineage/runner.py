@@ -418,10 +418,10 @@ class AirflowLineageRunner:
             return pipeline_statuses  # noqa: TRY300
 
         except Exception as e:
-            logger.error(f"Error collecting pipeline status via API: {e}")  # noqa: TRY400
+            logger.error(f"Error collecting pipeline status via API: {e}")
             import traceback  # noqa: PLC0415
 
-            logger.error(f"Traceback: {traceback.format_exc()}")  # noqa: TRY400
+            logger.error(f"Traceback: {traceback.format_exc()}")
             raise
 
     def get_all_pipeline_status(self) -> List[PipelineStatus]:  # noqa: UP006

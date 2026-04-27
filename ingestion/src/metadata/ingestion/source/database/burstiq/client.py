@@ -109,7 +109,7 @@ class BurstIQClient:
                 logger.info(f"Customer: {customer_name}, SDZ: {sdz_name}")
 
         except Exception as exc:
-            logger.error(f"Authentication failed: {exc}")  # noqa: TRY400
+            logger.error(f"Authentication failed: {exc}")
             logger.debug(traceback.format_exc())
             raise Exception("Failed to authenticate with BurstIQ") from exc  # noqa: TRY002
 
@@ -188,20 +188,20 @@ class BurstIQClient:
             return json_data  # noqa: TRY300
 
         except requests.exceptions.Timeout as exc:
-            logger.error(f"Request timeout after {API_TIMEOUT}s for {url}: {exc}")  # noqa: TRY400
+            logger.error(f"Request timeout after {API_TIMEOUT}s for {url}: {exc}")
             logger.debug(traceback.format_exc())
             raise ConnectionError(
                 f"BurstIQ API request timed out after {API_TIMEOUT}s for {url}. "
                 "Please check your network connection and BurstIQ API availability."
             ) from exc
         except requests.exceptions.ConnectionError as exc:
-            logger.error(f"Connection error for {url}: {exc}")  # noqa: TRY400
+            logger.error(f"Connection error for {url}: {exc}")
             logger.debug(traceback.format_exc())
             raise ConnectionError(
                 f"Failed to connect to BurstIQ API at {url}. Please verify the API URL and network connectivity."
             ) from exc
         except Exception as exc:
-            logger.error(f"API request failed for {url}: {exc}")  # noqa: TRY400
+            logger.error(f"API request failed for {url}: {exc}")
             logger.debug(traceback.format_exc())
             raise
 

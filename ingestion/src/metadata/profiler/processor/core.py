@@ -542,7 +542,7 @@ class Profiler(Generic[TMetric]):
 
         except ValidationError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Cannot transform profiler results to TableProfile: {err}")  # noqa: TRY400
+            logger.error(f"Cannot transform profiler results to TableProfile: {err}")
             raise err  # noqa: TRY201
 
     @property

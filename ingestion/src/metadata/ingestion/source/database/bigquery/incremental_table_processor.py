@@ -149,13 +149,13 @@ class BigQueryIncrementalTableProcessor:
                     )
                     time.sleep(wait)
                 else:
-                    logger.error(  # noqa: TRY400
+                    logger.error(
                         "Cloud Logging quota exceeded after %d retries. Falling back to full extraction.",
                         MAX_RETRIES,
                     )
                     self._query_failed = True
             except Exception as exc:
-                logger.error("Failed to query Cloud Logging: %s", exc)  # noqa: TRY400
+                logger.error("Failed to query Cloud Logging: %s", exc)
                 self._query_failed = True
                 return
 

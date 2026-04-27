@@ -71,7 +71,7 @@ class WorkflowFactory:
         except Exception as exc:
             msg = f"Failed to generate workflow [{self.airflow_pipeline.name.root}] verify config is correct: {exc}"
             logger.debug(traceback.format_exc())
-            logger.error(msg)  # noqa: TRY400
+            logger.error(msg)
             raise WorkflowCreationError(msg) from exc
         return workflow
 

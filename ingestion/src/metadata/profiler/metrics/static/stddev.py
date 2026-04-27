@@ -151,7 +151,7 @@ class StdDev(StaticMetric):
             try:
                 accumulator = computation.update_accumulator(accumulator, df)
             except MemoryError:
-                logger.error(  # noqa: TRY400
+                logger.error(
                     f"Unable to compute 'Standard Deviation' for {self.col.name} due to memory constraints."
                     f"We recommend using a smaller sample size or partitionning."
                 )

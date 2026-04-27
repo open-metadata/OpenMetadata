@@ -105,7 +105,7 @@ def get_kubernetes_client() -> Optional[client.CoreV1Api]:  # noqa: UP045
             )
             return None
     except Exception as unexpected_error:  # noqa: B025
-        logger.error(f"Unexpected error initializing Kubernetes client: {unexpected_error}")  # noqa: TRY400
+        logger.error(f"Unexpected error initializing Kubernetes client: {unexpected_error}")
         return None
 
 
@@ -178,7 +178,7 @@ def find_main_pod(
         return None  # noqa: TRY300
 
     except Exception as e:
-        logger.error(f"Failed to find main pod for job {job_name}: {e}")  # noqa: TRY400
+        logger.error(f"Failed to find main pod for job {job_name}: {e}")
         return None
 
 
@@ -314,7 +314,7 @@ def get_main_pod_description(k8s_client: client.CoreV1Api, main_pod: V1Pod, name
         return description if description_parts else None  # noqa: TRY300
 
     except Exception as e:
-        logger.error(f"Failed to get pod description: {e}")  # noqa: TRY400
+        logger.error(f"Failed to get pod description: {e}")
         return None
 
 
@@ -463,7 +463,7 @@ def gather_failure_diagnostics(
 
     except Exception as e:
         # Catch-all for any unexpected errors - diagnostics should never break the exit handler
-        logger.error(f"Unexpected error while gathering diagnostics: {e}")  # noqa: TRY400
+        logger.error(f"Unexpected error while gathering diagnostics: {e}")
         return FailureDiagnostics()
 
 
@@ -499,7 +499,7 @@ def update_pipeline_status_with_diagnostics(
             logger.warning(f"Failed to update pipeline status with diagnostics: {e}")
 
     except Exception as e:
-        logger.error(f"Failed to create pod diagnostics: {e}")  # noqa: TRY400
+        logger.error(f"Failed to create pod diagnostics: {e}")
 
 
 def main():
@@ -571,14 +571,14 @@ def main():
                 update_pipeline_status_with_diagnostics(pipeline_status, diagnostics)
             except Exception as e:
                 # Log the error but continue - diagnostics should never prevent status updates
-                logger.error(f"Failed to gather or add diagnostics, continuing with status update: {e}")  # noqa: TRY400
+                logger.error(f"Failed to gather or add diagnostics, continuing with status update: {e}")
 
         # Send updated status to OpenMetadata - this is the critical operation that must succeed
         try:
             metadata.create_or_update_pipeline_status(workflow_config.ingestionPipelineFQN, pipeline_status)
             logger.info(f"Successfully updated pipeline status to {pipeline_status.pipelineState.value}")
         except Exception as e:
-            logger.error(f"CRITICAL: Failed to send pipeline status update to OpenMetadata: {e}")  # noqa: TRY400
+            logger.error(f"CRITICAL: Failed to send pipeline status update to OpenMetadata: {e}")
             raise
     else:
         logger.info("Missing required fields - not updating pipeline status")
@@ -589,5 +589,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        logger.error(f"Exit handler failed: {e}")  # noqa: TRY400
+        logger.error(f"Exit handler failed: {e}")
         raise

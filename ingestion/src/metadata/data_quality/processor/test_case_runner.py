@@ -189,7 +189,7 @@ class TestCaseRunner(Processor):
                 test_cases.append(test_case)
             except Exception as exc:
                 error = f"Couldn't create test case name {test_case_to_create.name}: {exc}"
-                logger.error(error)  # noqa: TRY400
+                logger.error(error)
                 logger.debug(traceback.format_exc())
                 self.status.failed(
                     StackTraceError(
@@ -267,7 +267,7 @@ class TestCaseRunner(Processor):
         except Exception as exc:
             error = f"Could not run test case {test_case.name.root}: {exc}"
             logger.debug(traceback.format_exc())
-            logger.error(error)  # noqa: TRY400
+            logger.error(error)
             self.status.failed(
                 StackTraceError(
                     name=test_case.name.root,

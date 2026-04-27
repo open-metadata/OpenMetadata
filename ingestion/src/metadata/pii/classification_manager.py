@@ -75,7 +75,7 @@ class ClassificationManager:
                 )
             )
         except Exception as exc:
-            logger.error(f"Failed to fetch classifications: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to fetch classifications: {exc}")
             return []
 
         for classification in classifications:
@@ -151,7 +151,7 @@ class ClassificationManager:
                     candidate_tags.append(tag)
 
             except Exception as exc:
-                logger.error(f"Failed to fetch tags for classification {classification_name}: {exc}")  # noqa: TRY400
+                logger.error(f"Failed to fetch tags for classification {classification_name}: {exc}")
                 continue
 
         logger.info(

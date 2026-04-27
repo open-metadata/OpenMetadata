@@ -266,8 +266,8 @@ def process_chunk_in_subprocess(chunk, processor_fn, queue, *args):
         time.sleep(0.1)
         return True  # noqa: TRY300
     except Exception as e:
-        logger.error(f"Error processing chunk in subprocess: {e}")  # noqa: TRY400
-        logger.error(traceback.format_exc())  # noqa: TRY400
+        logger.error(f"Error processing chunk in subprocess: {e}")
+        logger.error(traceback.format_exc())
         return False
 
 

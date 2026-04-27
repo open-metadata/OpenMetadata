@@ -198,7 +198,7 @@ class McpSource(Source):
             yield Either(right=create_request)
 
         except Exception as exc:
-            logger.error(f"Failed to process MCP server '{server.name}': {exc}")  # noqa: TRY400
+            logger.error(f"Failed to process MCP server '{server.name}': {exc}")
             yield Either(
                 left=StackTraceError(
                     name=server.name,

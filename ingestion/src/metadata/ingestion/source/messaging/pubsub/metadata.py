@@ -133,7 +133,7 @@ class PubsubSource(MessagingServiceSource):
                     logger.warning(f"Failed to get metadata for topic {topic_name}: {err}")
         except GoogleAPIError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to list topics from Pub/Sub: {err}")  # noqa: TRY400
+            logger.error(f"Failed to list topics from Pub/Sub: {err}")
 
     def get_topic_name(self, topic_details: BrokerTopicDetails) -> str:
         return topic_details.topic_name
@@ -204,10 +204,10 @@ class PubsubSource(MessagingServiceSource):
                     )
                 except Exception as err:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Failed to get subscription {sub_path}: {err}")  # noqa: TRY400
+                    logger.error(f"Failed to get subscription {sub_path}: {err}")
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to list subscriptions for {topic_name}: {err}")  # noqa: TRY400
+            logger.error(f"Failed to list subscriptions for {topic_name}: {err}")
         return subscriptions
 
     def _get_schema_info(self, schema_name: str) -> Optional[PubSubSchemaInfo]:  # noqa: UP045
@@ -227,7 +227,7 @@ class PubsubSource(MessagingServiceSource):
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get schema {schema_name}: {err}")  # noqa: TRY400
+            logger.error(f"Failed to get schema {schema_name}: {err}")
         return None
 
     def yield_topic(self, topic_details: BrokerTopicDetails) -> Iterable[Either[CreateTopicRequest]]:
@@ -345,7 +345,7 @@ class PubsubSource(MessagingServiceSource):
                 return load_parser_fn(topic_name, schema_text)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to parse schema for {topic_name}: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to parse schema for {topic_name}: {exc}")
         return None
 
     def yield_topic_sample_data(self, topic_details: BrokerTopicDetails) -> Iterable[Either[OMetaTopicSampleData]]:

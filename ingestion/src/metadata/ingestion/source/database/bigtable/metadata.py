@@ -107,7 +107,7 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
             return list(self.instances[project_id].keys())
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to list BigTable instances in project {project_id}: {err}")  # noqa: TRY400
+            logger.error(f"Failed to list BigTable instances in project {project_id}: {err}")
             raise
 
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
@@ -127,7 +127,7 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
         except Exception as err:
             logger.debug(traceback.format_exc())
             # add context to the error message
-            logger.error(f"Failed to list BigTable table names in {project_id}.{schema_name}: {err}")  # noqa: TRY400
+            logger.error(f"Failed to list BigTable table names in {project_id}.{schema_name}: {err}")
         return []
 
     def get_table_constraints(self, db_name: str, schema_name: str, table_name: str) -> List[TableConstraint]:  # noqa: UP006
@@ -172,7 +172,7 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
                 )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to get source url: {exc}")
         return None
 
     @staticmethod

@@ -121,7 +121,7 @@ def parse_databricks_native_query_source(
                 raise Exception(parser.query_parsing_failure_reason)  # noqa: TRY002, TRY301
         except Exception as parser_exc:
             hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
-            logger.error(  # noqa: TRY400
+            logger.error(
                 f"{hash_prefix}LineageParser failed parsing query with error {parser_query[:200]} ",
                 exc_info=parser_exc,
             )

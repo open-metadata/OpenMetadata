@@ -137,7 +137,7 @@ class HexQueryFetcher:
             logger.info(f"Querying {db_service.name.root} for Hex queries...")
             self._fetch_from_single_service(db_service, db_service_prefix)
         except Exception as e:
-            logger.error(f"Error fetching Hex queries from {db_service.name.root}: {e}")  # noqa: TRY400
+            logger.error(f"Error fetching Hex queries from {db_service.name.root}: {e}")
             logger.debug(traceback.format_exc())
 
         return self._project_lineage_map
@@ -197,7 +197,7 @@ class HexQueryFetcher:
                 )
 
         except Exception as e:
-            logger.error(f"Error fetching from service {db_service.name.root}: {e}")  # noqa: TRY400
+            logger.error(f"Error fetching from service {db_service.name.root}: {e}")
             logger.debug(traceback.format_exc())
 
     def _create_engine_for_service(self, connection_config) -> Optional[Engine]:  # noqa: UP045
@@ -219,7 +219,7 @@ class HexQueryFetcher:
 
         except Exception as e:
             connection_type = connection_config.type.value if connection_config else "Unknown"
-            logger.error(f"Error creating engine for {connection_type}: {e}")  # noqa: TRY400
+            logger.error(f"Error creating engine for {connection_type}: {e}")
             logger.debug(traceback.format_exc())
             return None
 
@@ -279,7 +279,7 @@ class HexQueryFetcher:
             logger.info(f"Found {len(results)} Hex queries in {warehouse_type}")
 
         except Exception as e:
-            logger.error(f"Error executing Hex query on {warehouse_type}: {e}")  # noqa: TRY400
+            logger.error(f"Error executing Hex query on {warehouse_type}: {e}")
             logger.debug(traceback.format_exc())
 
         return results

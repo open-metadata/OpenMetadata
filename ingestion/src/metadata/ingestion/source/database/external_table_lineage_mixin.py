@@ -86,7 +86,7 @@ class ExternalTableLineageMixin(ABC):  # noqa: B024
                         )
                     )
             except Exception as exc:
-                logger.error(f"Failed to yield external table lineage due to - {exc}")  # noqa: TRY400
+                logger.error(f"Failed to yield external table lineage due to - {exc}")
                 logger.debug(traceback.format_exc())
 
     def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> Optional[str]:  # noqa: UP045

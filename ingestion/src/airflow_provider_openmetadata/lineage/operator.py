@@ -82,5 +82,5 @@ class OpenMetadataLineageOperator(BaseOperator):
             runner.execute()
         except Exception as err:
             logger.info(traceback.format_exc())
-            logger.error(f"Error executing the lineage runner - {err}")  # noqa: TRY400
+            logger.error(f"Error executing the lineage runner - {err}")
             raise err  # noqa: TRY201

@@ -654,7 +654,7 @@ class OpenMetadata(
                 try:
                     entities.append(entity(**elmt))
                 except Exception as exc:
-                    logger.error(f"Error creating entity [{entity.__name__}]. Failed with exception {exc}")  # noqa: TRY400
+                    logger.error(f"Error creating entity [{entity.__name__}]. Failed with exception {exc}")
                     logger.debug(f"Can't create [{entity.__name__}] from [{elmt}]. Skipping.")
                     continue
         else:

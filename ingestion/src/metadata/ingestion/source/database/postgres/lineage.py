@@ -102,8 +102,8 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
                         )
                     except Exception as err:
                         logger.debug(traceback.format_exc())
-                        logger.error(str(err))  # noqa: TRY400
+                        logger.error(str(err))
                 logger.info(f"Processed {row_count} query log entries for lineage")
         except Exception as err:
-            logger.error(f"Source usage processing error - {err}")  # noqa: TRY400
+            logger.error(f"Source usage processing error - {err}")
             logger.debug(traceback.format_exc())

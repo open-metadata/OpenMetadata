@@ -85,7 +85,7 @@ class MWAAClient:
             return rest_api_response  # noqa: TRY300
 
         except Exception as e:
-            logger.error(f"MWAA REST API call failed for {path}: {e}")  # noqa: TRY400
+            logger.error(f"MWAA REST API call failed for {path}: {e}")
             logger.debug(traceback.format_exc())
             raise
 

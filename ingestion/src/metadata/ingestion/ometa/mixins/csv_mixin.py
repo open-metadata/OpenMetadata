@@ -49,7 +49,7 @@ class CSVMixin:
                 return response.get("data", "")
             return getattr(response, "text", "")
         except APIError as err:
-            logger.error(f"Failed to export CSV for {entity.__name__} '{name}': {err}")  # noqa: TRY400
+            logger.error(f"Failed to export CSV for {entity.__name__} '{name}': {err}")
             raise
 
     def export_csv_async(self, entity: Type[T], name: str) -> str:  # noqa: UP006
@@ -73,7 +73,7 @@ class CSVMixin:
                 return response.get("jobId", "")
             return getattr(response, "text", str(response))
         except APIError as err:
-            logger.error(f"Failed to start async CSV export for {entity.__name__} '{name}': {err}")  # noqa: TRY400
+            logger.error(f"Failed to start async CSV export for {entity.__name__} '{name}': {err}")
             raise
 
     def import_csv(self, entity: Type[T], name: str, csv_data: str, dry_run: bool = False) -> Dict:  # noqa: UP006
@@ -107,7 +107,7 @@ class CSVMixin:
                 return {"message": response}
             return {"message": getattr(response, "text", "")}
         except APIError as err:
-            logger.error(f"Failed to import CSV for {entity.__name__} '{name}': {err}")  # noqa: TRY400
+            logger.error(f"Failed to import CSV for {entity.__name__} '{name}': {err}")
             raise
 
     def import_csv_async(self, entity: Type[T], name: str, csv_data: str, dry_run: bool = False) -> str:  # noqa: UP006
@@ -139,7 +139,7 @@ class CSVMixin:
                 return response.get("jobId", "")
             return getattr(response, "text", str(response))
         except APIError as err:
-            logger.error(f"Failed to start async CSV import for {entity.__name__} '{name}': {err}")  # noqa: TRY400
+            logger.error(f"Failed to start async CSV import for {entity.__name__} '{name}': {err}")
             raise
 
     def _get_csv_endpoint(self, entity: Type[T]) -> str:  # noqa: UP006

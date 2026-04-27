@@ -296,7 +296,7 @@ class TopologyRunnerMixin(Generic[C]):
             yield from stage_fn(node_entity) or []
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error running stage processor: {exc}")  # noqa: TRY400
+            logger.error(f"Error running stage processor: {exc}")
 
     def _process_stage(self, stage: NodeStage, node_entity: Any, child_nodes: List[TopologyNode]) -> Iterable[Entity]:  # noqa: UP006
         """

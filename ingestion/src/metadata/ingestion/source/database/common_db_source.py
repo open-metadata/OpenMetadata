@@ -179,7 +179,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         try:
             self.engine.dispose()
         except Exception as exc:  # pylint: disable=broad-except
-            logger.error(f"Failed to dispose engine: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to dispose engine: {exc}")
         self.engine = None
         self.connection_obj = None
 

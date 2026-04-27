@@ -131,7 +131,7 @@ class DatalakeSource(DatabaseServiceSource):
                     yield database_name
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Error trying to connect to database {database_name}: {exc}")  # noqa: TRY400
+                    logger.error(f"Error trying to connect to database {database_name}: {exc}")
 
     def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
         """

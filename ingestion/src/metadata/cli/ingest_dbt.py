@@ -332,6 +332,6 @@ def run_ingest_dbt(dbt_project_path: Path) -> None:
         logger.info("DBT artifacts ingestion completed successfully")
 
     except Exception as exc:
-        logger.error(f"Error during DBT artifacts ingestion: {exc}")  # noqa: TRY400
+        logger.error(f"Error during DBT artifacts ingestion: {exc}")
         logger.debug(traceback.format_exc())
         sys.exit(1)

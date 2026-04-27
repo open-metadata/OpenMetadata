@@ -446,7 +446,7 @@ class ESMixin(Generic[T]):
             return ESResponse.model_validate(response)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(  # noqa: TRY400
+            logger.error(
                 f"Elasticsearch query failed: {exc}. Query: {query_string}. "
                 "This may indicate issues with the Elasticsearch cluster, broken indexes, "
                 "or connectivity problems. Please check Elasticsearch cluster health and logs."

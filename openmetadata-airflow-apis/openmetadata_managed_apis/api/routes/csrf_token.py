@@ -91,7 +91,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
                 )
 
         except Exception as exc:
-            logger.error(f"Failed to get CSRF token: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to get CSRF token: {exc}")
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
                 error=f"Failed to retrieve CSRF token: {exc}",

@@ -106,7 +106,7 @@ class SagemakerSource(MlModelServiceSource):
                     )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch unified studio registered models list - {err}")  # noqa: TRY400
+            logger.error(f"Failed to fetch unified studio registered models list - {err}")
         return registered_models
 
     def get_mlmodels(  # pylint: disable=arguments-differ
@@ -122,7 +122,7 @@ class SagemakerSource(MlModelServiceSource):
                 args["NextToken"] = response.get("NextToken")
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch models list - {err}")  # noqa: TRY400
+            logger.error(f"Failed to fetch models list - {err}")
 
         # get unified studio registered models
         registered_models = self.list_registered_models()

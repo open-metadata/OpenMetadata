@@ -148,7 +148,7 @@ class MicrosoftFabricSource(CommonDbSourceService, MultiDBSource):
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Error trying to connect to database {new_database}: {exc}")  # noqa: TRY400
+                    logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
     def get_stored_procedures(self) -> Iterable[Any]:
         """List stored procedures to process"""

@@ -361,7 +361,7 @@ class GcsSource(StorageServiceSource):
                         )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch buckets list - {err}")  # noqa: TRY400
+            logger.error(f"Failed to fetch buckets list - {err}")
         return results
 
     def _get_time_interval(self, days: int = 2):
@@ -457,7 +457,7 @@ class GcsSource(StorageServiceSource):
             return f"https://console.cloud.google.com/storage/browser/{bucket.name}?project={bucket.project_id}"
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to get source url: {exc}")
         return None
 
     def _get_object_source_url(self, bucket: GCSBucketResponse, prefix: str, is_file: bool = False) -> Optional[str]:  # noqa: UP045
@@ -476,7 +476,7 @@ class GcsSource(StorageServiceSource):
                 return f"https://console.cloud.google.com/storage/browser/{bucket.name}/{clean_prefix}?project={bucket.project_id}"
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to get source url: {exc}")
         return None
 
     def _yield_parents_of_unstructured_container(

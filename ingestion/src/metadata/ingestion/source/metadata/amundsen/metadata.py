@@ -217,7 +217,7 @@ class AmundsenSource(Source):
                     yield Either(right=table)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Failed to create user entity [{user}]: {exc}")  # noqa: TRY400
+                logger.error(f"Failed to create user entity [{user}]: {exc}")
                 yield Either(
                     left=StackTraceError(
                         name=user.get("full_name") or "User",

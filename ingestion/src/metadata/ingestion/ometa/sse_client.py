@@ -108,11 +108,11 @@ class SSEClient:
                                     event_buffer.append(line)
 
             except httpx.HTTPStatusError as e:
-                self.logger.error(f"HTTP error: {e.response.status_code}")  # noqa: TRY400
+                self.logger.error(f"HTTP error: {e.response.status_code}")
                 raise
             except Exception as e:
                 retries += 1
-                self.logger.error(f"Connection error (retry {retries}/{self.max_retries}): {e}")  # noqa: TRY400
+                self.logger.error(f"Connection error (retry {retries}/{self.max_retries}): {e}")
 
                 if retries >= self.max_retries:
                     raise

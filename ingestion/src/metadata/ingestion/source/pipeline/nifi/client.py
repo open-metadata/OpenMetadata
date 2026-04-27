@@ -112,15 +112,15 @@ class NifiClient:
                     raise HTTPError(res.text)  # noqa: TRY301
 
             except HTTPError as err:
-                logger.error(f"Connection error retrieving the Bearer Token to access Nifi - {err}")  # noqa: TRY400
+                logger.error(f"Connection error retrieving the Bearer Token to access Nifi - {err}")
                 raise err  # noqa: TRY201
 
             except ValueError as err:
-                logger.error(f"Cannot pick up the token from token response - {err}")  # noqa: TRY400
+                logger.error(f"Cannot pick up the token from token response - {err}")
                 raise err  # noqa: TRY201
 
             except Exception as err:
-                logger.error(f"Fetching token failed due to - {err}")  # noqa: TRY400
+                logger.error(f"Fetching token failed due to - {err}")
                 logger.debug(traceback.format_exc())
                 raise err  # noqa: TRY201
 

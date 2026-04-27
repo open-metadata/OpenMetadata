@@ -546,7 +546,7 @@ class SnowflakeSource(
                     )
                 except Exception as inner_exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Failed to fetch tags due to [{inner_exc}]")  # noqa: TRY400
+                    logger.error(f"Failed to fetch tags due to [{inner_exc}]")
 
             for res in result:
                 row = list(res)
@@ -745,7 +745,7 @@ class SnowflakeSource(
                 return url
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to get source url: {exc}")
         return None
 
     def get_procedure_source_url(
@@ -776,7 +776,7 @@ class SnowflakeSource(
                 return url
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get procedure source url: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to get procedure source url: {exc}")
         return None
 
     def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
@@ -814,7 +814,7 @@ class SnowflakeSource(
                     yield stored_procedure
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error fetching stored procedures: {exc}")  # noqa: TRY400
+            logger.error(f"Error fetching stored procedures: {exc}")
 
     def get_stored_procedures(self) -> Iterable[SnowflakeStoredProcedure]:
         """List Snowflake stored procedures"""
@@ -849,7 +849,7 @@ class SnowflakeSource(
                 return rows[0]._mapping["body"] if rows else ""
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error fetching stored procedure definition: {exc}")  # noqa: TRY400
+            logger.error(f"Error fetching stored procedure definition: {exc}")
             return ""
 
     def yield_stored_procedure(

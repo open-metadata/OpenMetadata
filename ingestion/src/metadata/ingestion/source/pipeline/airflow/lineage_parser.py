@@ -347,7 +347,7 @@ def _(xlet: str) -> Optional[Dict[str, List[OMEntity]]]:  # noqa: UP006, UP045
 
         return {om_entity.key: [om_entity]}  # noqa: TRY300
     except Exception as exc:
-        logger.error(f"We could not parse the inlet/outlet information from [{xlet}] due to [{exc}]")  # noqa: TRY400
+        logger.error(f"We could not parse the inlet/outlet information from [{xlet}] due to [{exc}]")
         return None
 
 
@@ -425,8 +425,8 @@ def get_xlets_from_dag(dag: "DAG") -> List[XLets]:  # noqa: F821, UP006
 
         except Exception as exc:
             error_msg = f"Error while getting inlets and outlets for task - {task} - {exc}"
-            logger.error(error_msg)  # noqa: TRY400
-            logger.error(traceback.format_exc())  # noqa: TRY400
+            logger.error(error_msg)
+            logger.error(traceback.format_exc())
 
     # We expect to have the same keys in both inlets and outlets dicts
     # We will then iterate over the inlet keys to build the list of XLets

@@ -325,7 +325,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         try:
             result = self.metadata.bulk_create_or_update(entities=self.buffer, use_async=False)
         except Exception as exc:
-            logger.error(f"Failed to flush entities to bulk API: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to flush entities to bulk API: {exc}")
             logger.debug(traceback.format_exc())
             return Either(
                 left=StackTraceError(
@@ -487,7 +487,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             return role  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unexpected error creating role [{create_role}]: {exc}")  # noqa: TRY400
+            logger.error(f"Unexpected error creating role [{create_role}]: {exc}")
 
         return None
 
@@ -514,7 +514,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unexpected error creating team [{create_team}]: {exc}")  # noqa: TRY400
+            logger.error(f"Unexpected error creating team [{create_team}]: {exc}")
 
         return None
 
@@ -676,7 +676,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 logger.debug(f"Successfully ingested failed rows sample for {record.testCase.name.root}")
             except Exception:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Failed to ingest failed rows sample for {record.testCase.name.root}")  # noqa: TRY400
+                logger.error(f"Failed to ingest failed rows sample for {record.testCase.name.root}")
 
         if record.inspectionQuery is not None:
             try:
@@ -687,7 +687,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 logger.debug(f"Successfully ingested inspection query for {record.testCase.name.root}")
             except Exception:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Failed to ingest inspection query for {record.testCase.name.root}")  # noqa: TRY400
+                logger.error(f"Failed to ingest inspection query for {record.testCase.name.root}")
 
     @_run_dispatch.register
     def write_test_case_resolution_status(self, record: OMetaTestCaseResolutionStatus) -> TestCaseResolutionStatus:
@@ -1029,7 +1029,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                         )
                     )
             except Exception as exc:
-                logger.error(f"Error processing lifecycle for {record.entity_fqn}: {exc}")  # noqa: TRY400
+                logger.error(f"Error processing lifecycle for {record.entity_fqn}: {exc}")
                 logger.debug(traceback.format_exc())
                 error_count += 1
                 self.status.failed(

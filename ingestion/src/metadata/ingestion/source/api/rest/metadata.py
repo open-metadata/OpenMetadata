@@ -113,7 +113,7 @@ class RestSource(ApiServiceSource):
                     continue
                 yield RESTCollection(**collection)
         except Exception as err:
-            logger.error(f"Error while fetching collections from schema URL :{err}")  # noqa: TRY400
+            logger.error(f"Error while fetching collections from schema URL :{err}")
 
     def yield_api_collection(self, collection: RESTCollection) -> Iterable[Either[CreateAPICollectionRequest]]:
         """Method to return api collection Entities"""

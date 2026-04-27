@@ -96,7 +96,7 @@ class OMetaLogsMixin:
 
         except Exception as e:
             line_count = log_content.count("\n") + 1
-            logger.error(  # noqa: TRY400
+            logger.error(
                 f"Failed to send logs to S3 for pipeline {pipeline_fqn}: {e}. "
                 f"Log batch size: {len(log_content)} chars, "
                 f"Lines: {line_count}, "
@@ -169,7 +169,7 @@ class OMetaLogsMixin:
                     )
                     time.sleep(wait_time)
                 else:
-                    logger.error(  # noqa: TRY400
+                    logger.error(
                         f"Failed to send logs batch for pipeline {pipeline_fqn} after {max_retries + 1} attempts: {e}"
                     )
 
@@ -283,7 +283,7 @@ class OMetaLogsMixin:
                         decoded = base64.b64decode(log_data)
                         log_data = gzip.decompress(decoded).decode(UTF_8)
                     except Exception as e:
-                        logger.error(f"Failed to decompress logs: {e}")  # noqa: TRY400
+                        logger.error(f"Failed to decompress logs: {e}")
                         return None
 
                 return log_data
@@ -291,5 +291,5 @@ class OMetaLogsMixin:
             return None  # noqa: TRY300
 
         except Exception as e:
-            logger.error(f"Failed to retrieve logs from S3 for pipeline {pipeline_fqn}: {e}")  # noqa: TRY400
+            logger.error(f"Failed to retrieve logs from S3 for pipeline {pipeline_fqn}: {e}")
             return None

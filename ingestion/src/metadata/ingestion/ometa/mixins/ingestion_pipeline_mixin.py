@@ -139,5 +139,5 @@ class OMetaIngestionPipelineMixin:
             if pipeline and hasattr(pipeline, "id"):
                 return str(pipeline.id.root if hasattr(pipeline.id, "root") else pipeline.id)
         except Exception as e:
-            logger.error(f"Failed to extract pipeline ID from FQN {ingestion_pipeline_fqn}: {e}")  # noqa: TRY400
+            logger.error(f"Failed to extract pipeline ID from FQN {ingestion_pipeline_fqn}: {e}")
         return None

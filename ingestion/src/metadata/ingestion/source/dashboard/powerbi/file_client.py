@@ -128,7 +128,7 @@ def _get_datamodel_schema_list(path: str) -> Optional[List[DataModelSchema]]:  #
                 datamodel_schema_list.append(datamodel_schema)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error reading and mapping the datamodel schema file for {connection_file}: {exc}")  # noqa: TRY400
+            logger.error(f"Error reading and mapping the datamodel schema file for {connection_file}: {exc}")
     return datamodel_schema_list
 
 
@@ -151,7 +151,7 @@ def get_datamodel_schema_files_from_pbit(path: str) -> Optional[List[DataModelSc
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.error(f"Error extracting pbit files: {exc}")  # noqa: TRY400
+        logger.error(f"Error extracting pbit files: {exc}")
     return None
 
 
@@ -274,7 +274,7 @@ def _(config: LocalConfig):
         return get_datamodel_schema_files_from_pbit(path=config.path)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.error(f"Error getting pbit files from local: {exc}")  # noqa: TRY400
+        logger.error(f"Error getting pbit files from local: {exc}")
     return None
 
 

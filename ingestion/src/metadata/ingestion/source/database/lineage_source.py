@@ -214,7 +214,7 @@ class LineageSource(QueryParserSource, ABC):
             try:
                 yield from process_queue_items()
             except Exception as exc:
-                logger.error(f"Error processing queue: {exc}")  # noqa: TRY400
+                logger.error(f"Error processing queue: {exc}")
                 logger.debug(traceback.format_exc())
 
             # Check for completed or timed-out processes
@@ -271,7 +271,7 @@ class LineageSource(QueryParserSource, ABC):
         try:
             yield from process_queue_items()
         except Exception as exc:
-            logger.error(f"Error processing queue: {exc}")  # noqa: TRY400
+            logger.error(f"Error processing queue: {exc}")
             logger.debug(traceback.format_exc())
 
         logger.info(

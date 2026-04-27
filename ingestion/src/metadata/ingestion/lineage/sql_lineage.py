@@ -251,7 +251,7 @@ def search_table_entities(
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error searching for table entities for service [{service_name}]: {exc}")  # noqa: TRY400
+            logger.error(f"Error searching for table entities for service [{service_name}]: {exc}")
 
     return None
 
@@ -345,7 +345,7 @@ def handle_udf_column_lineage(
         column_lineage_original.update(result)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.error(f"Error handling UDF column lineage: {exc}")  # noqa: TRY400
+        logger.error(f"Error handling UDF column lineage: {exc}")
 
 
 @functools.lru_cache(maxsize=1000)
@@ -526,7 +526,7 @@ def get_source_table_names(
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.error(f"Error getting source table names for table [{source_table}]: {exc}")  # noqa: TRY400
+        logger.error(f"Error getting source table names for table [{source_table}]: {exc}")
 
 
 def get_table_entities_from_query(
@@ -1052,7 +1052,7 @@ def _get_lineage_for_path(
             )
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.error(f"Error fetching table entities [{from_fqn} -> {to_fqn}]: {exc}")  # noqa: TRY400
+        logger.error(f"Error fetching table entities [{from_fqn} -> {to_fqn}]: {exc}")
     return None
 
 
@@ -1104,7 +1104,7 @@ def _process_sequence(
                 table_chain = [str(node).replace(f"{DEFAULT_SCHEMA_NAME}.", "")]
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error creating lineage for node [{node}]: {exc}")  # noqa: TRY400
+            logger.error(f"Error creating lineage for node [{node}]: {exc}")
 
 
 @calculate_execution_time(context="GetPathsFromSubtree")

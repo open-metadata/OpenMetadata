@@ -307,7 +307,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Error trying to connect to database {new_database}: {exc}")  # noqa: TRY400
+                    logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
     def process_additional_table_constraints(self, column: dict, table_constraints: List[TableConstraint]) -> None:  # noqa: UP006
         """

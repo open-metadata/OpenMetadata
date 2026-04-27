@@ -128,7 +128,7 @@ class DagDeployer:
             dag_file = import_path(str(dag_py_file))
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to import dag_file [{dag_py_file}]: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to import dag_file [{dag_py_file}]: {exc}")
             raise exc  # noqa: TRY201
 
         if dag_file is None:
@@ -166,7 +166,7 @@ class DagDeployer:
             except Exception as exc:
                 msg = f"Workflow [{self.dag_id}] failed to refresh due to [{exc}]"
                 logger.debug(traceback.format_exc())
-                logger.error(msg)  # noqa: TRY400
+                logger.error(msg)
                 return ApiResponse.server_error({f"message": msg})  # noqa: F541
 
         scan_dags_job_background()

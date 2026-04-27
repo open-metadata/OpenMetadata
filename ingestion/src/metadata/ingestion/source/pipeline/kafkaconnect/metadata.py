@@ -213,7 +213,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to find database service by hostname: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to find database service by hostname: {exc}")
             return None
 
     def find_messaging_service_by_brokers(self, brokers: str) -> Optional[str]:  # noqa: UP045
@@ -264,7 +264,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to find messaging service by brokers: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to find messaging service by brokers: {exc}")
             return None
 
     def get_service_from_connector_config(
@@ -593,7 +593,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get dataset entity {exc}")  # noqa: TRY400
+            logger.error(f"Unable to get dataset entity {exc}")
 
         return None
 
@@ -900,7 +900,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to build column lineage: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to build column lineage: {exc}")
 
         return None
 
@@ -975,7 +975,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to search topics by prefix: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to search topics by prefix: {exc}")
 
         return topics_found
 
@@ -1028,7 +1028,7 @@ class KafkaconnectSource(PipelineServiceSource):
             logger.warning(f"Invalid regex pattern '{topics_regex}': {exc}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to search topics by regex: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to search topics by regex: {exc}")
 
         return topics_found
 
@@ -1644,7 +1644,7 @@ class KafkaconnectSource(PipelineServiceSource):
             yield from self.client.get_connector_list()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get pipeline list due to : {exc}")  # noqa: TRY400
+            logger.error(f"Failed to get pipeline list due to : {exc}")
 
     def get_pipeline_name(self, pipeline_details: KafkaConnectPipelineDetails) -> str:
         """
@@ -1654,7 +1654,7 @@ class KafkaconnectSource(PipelineServiceSource):
             return pipeline_details.name
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get pipeline name to : {exc}")  # noqa: TRY400
+            logger.error(f"Failed to get pipeline name to : {exc}")
 
         return None
 

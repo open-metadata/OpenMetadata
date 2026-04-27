@@ -118,4 +118,4 @@ class TrinoUsageSource(TrinoQueryParserSource, UsageSource):
                         )
                     )
                 logger.debug(traceback.format_exc())
-                logger.error(f"Source usage processing error: {exc}")  # noqa: TRY400
+                logger.error(f"Source usage processing error: {exc}")

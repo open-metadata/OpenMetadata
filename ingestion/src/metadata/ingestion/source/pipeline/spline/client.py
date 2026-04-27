@@ -56,7 +56,7 @@ class SplineClient:
             except Exception as exe:
                 pipelines.pageNum += 1
                 logger.debug(traceback.format_exc())
-                logger.error(f"failed to fetch pipeline list due to: {exe}")  # noqa: TRY400
+                logger.error(f"failed to fetch pipeline list due to: {exe}")
 
     def get_pipelines(self) -> Optional[ExecutionEvents]:  # noqa: UP045
         """
@@ -70,7 +70,7 @@ class SplineClient:
                 yield from self._paginate_pipelines(pipelines)
         except Exception as exe:
             logger.debug(traceback.format_exc())
-            logger.error(f"failed to fetch pipeline list due to: {exe}")  # noqa: TRY400
+            logger.error(f"failed to fetch pipeline list due to: {exe}")
 
     def get_pipelines_test_connection(self) -> Optional[ExecutionEvents]:  # noqa: UP045
         """
@@ -89,7 +89,7 @@ class SplineClient:
                 return ExecutionDetail(**response)
         except Exception as exe:
             logger.debug(traceback.format_exc())
-            logger.error(f"failed to fetch pipeline list due to: {exe}")  # noqa: TRY400
+            logger.error(f"failed to fetch pipeline list due to: {exe}")
 
         return None
 
@@ -103,6 +103,6 @@ class SplineClient:
                 return AttributeDetail(**response)
         except Exception as exe:
             logger.debug(traceback.format_exc())
-            logger.error(f"failed to fetch pipeline list due to: {exe}")  # noqa: TRY400
+            logger.error(f"failed to fetch pipeline list due to: {exe}")
 
         return None

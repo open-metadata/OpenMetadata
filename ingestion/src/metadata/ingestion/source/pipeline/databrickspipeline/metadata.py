@@ -122,7 +122,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 yield DataBrickPipelineDetails(**workflow)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get jobs list due to : {exc}")  # noqa: TRY400
+            logger.error(f"Failed to get jobs list due to : {exc}")
 
         # Fetch DLT pipelines directly (new)
         try:
@@ -146,7 +146,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             return pipeline_details.settings.name if pipeline_details.settings else None  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get pipeline name due to : {exc}")  # noqa: TRY400
+            logger.error(f"Failed to get pipeline name due to : {exc}")
 
         return None
 
@@ -684,7 +684,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 for idx, path in enumerate(notebook_paths):
                     logger.info(f"   {idx + 1}. {path}")
             except Exception as exc:
-                logger.error(f"✗ Failed to fetch pipeline config for {pipeline_id}: {exc}")  # noqa: TRY400
+                logger.error(f"✗ Failed to fetch pipeline config for {pipeline_id}: {exc}")
                 logger.debug(traceback.format_exc())
                 logger.info("=" * 80)
                 return
@@ -889,7 +889,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                             logger.warning(f"   ✗ Table '{dep.table_name}' not found")
 
                             except Exception as exc:
-                                logger.error(f"   ✗ Failed to process topic {topic_name}: {exc}")  # noqa: TRY400
+                                logger.error(f"   ✗ Failed to process topic {topic_name}: {exc}")
                                 logger.debug(traceback.format_exc())
                                 continue
 
@@ -1032,7 +1032,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                             logger.warning(f"   ✗ Target table '{dep.table_name}' not found")
 
                                 except Exception as exc:
-                                    logger.error(  # noqa: TRY400
+                                    logger.error(
                                         f"   ✗ Failed to process dependency {source_table_name} -> {dep.table_name}: {exc}"
                                     )
                                     logger.debug(traceback.format_exc())
@@ -1040,7 +1040,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
                     logger.info(f"\n✓ Lineage edges created for this notebook: {lineage_created}")
                 except Exception as exc:
-                    logger.error(f"✗ Failed to process notebook {lib_path}: {exc}")  # noqa: TRY400
+                    logger.error(f"✗ Failed to process notebook {lib_path}: {exc}")
                     logger.debug(traceback.format_exc())
                     logger.info(f"   Continuing with next notebook...")  # noqa: F541
                     continue
@@ -1051,9 +1051,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
             logger.info("=" * 80)
 
         except Exception as exc:
-            logger.error(f"✗ Unexpected error in Kafka lineage extraction: {exc}")  # noqa: TRY400
-            logger.error(f"   Job ID: {pipeline_details.job_id}")  # noqa: TRY400
-            logger.error(  # noqa: TRY400
+            logger.error(f"✗ Unexpected error in Kafka lineage extraction: {exc}")
+            logger.error(f"   Job ID: {pipeline_details.job_id}")
+            logger.error(
                 f"   Pipeline ID: {pipeline_details.pipeline_id if hasattr(pipeline_details, 'pipeline_id') else 'N/A'}"
             )
             logger.debug(traceback.format_exc())

@@ -197,7 +197,7 @@ class BurstiqLineageSource(Source):
             logger.info("Lineage extraction complete")
 
         except Exception as exc:
-            logger.error(f"Lineage extraction failed: {exc}")  # noqa: TRY400
+            logger.error(f"Lineage extraction failed: {exc}")
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(

@@ -615,7 +615,7 @@ def create_test_case_parameter_definitions(dbt_test):
             return test_case_param_definition  # noqa: RET504
     except Exception as err:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
-        logger.error(f"Failed to capture tests case parameter definitions for node: {dbt_test} {err}")  # noqa: TRY400
+        logger.error(f"Failed to capture tests case parameter definitions for node: {dbt_test} {err}")
     return None
 
 
@@ -649,7 +649,7 @@ def create_test_case_parameter_values(dbt_test):
             return test_case_param_values  # noqa: RET504
     except Exception as err:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
-        logger.error(f"Failed to capture tests case parameter values for node: {dbt_test} {err}")  # noqa: TRY400
+        logger.error(f"Failed to capture tests case parameter values for node: {dbt_test} {err}")
     return None
 
 

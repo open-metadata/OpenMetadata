@@ -202,7 +202,7 @@ class PresidioRecognizerFactory:
         try:
             predefined_class = getattr(predefined_recognizers, config.name.value)
         except AttributeError:
-            logger.error(f"Recognizer {config.name} not found")  # noqa: TRY400
+            logger.error(f"Recognizer {config.name} not found")
             return None
 
         args = {}

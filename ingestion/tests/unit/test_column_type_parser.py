@@ -92,7 +92,7 @@ try:
     ) as f:
         EXPECTED_OUTPUT = json.loads(f.read())["data"]
 except Exception as exc:
-    logging.error(exc)  # noqa: TRY400
+    logging.error(exc)
 
 
 class ColumnTypeParseTest(TestCase):

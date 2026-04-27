@@ -180,6 +180,12 @@ ignore = [
 
     # ── Tryceratops nits ──
     "TRY003",   # long exception messages  — community consensus: skip
+    "TRY400",   # use logger.exception over logger.error in except — the
+                # codebase intentionally logs `logger.debug(traceback.format_exc())`
+                # separately from the summary log line, splitting traceback
+                # (debug-only) from the user-facing summary so production
+                # log levels can filter independently. Forcing
+                # `logger.exception` would conflate the two.
 
     # ── Perflint unavoidable cases ──
     "PERF203",  # try inside for-loop      — sometimes the only correct shape (row-by-row)
@@ -211,6 +217,9 @@ ignore = [
 # Each path listed twice — once relative to `ingestion/` (cwd for `make
 # py_format_check`) and once with the `ingestion/` prefix (cwd is repo root
 # for pre-commit hooks). Same pattern as `extend-exclude` above.
+# `S101` (assert in test) is forward-looking — flake8-bandit (`S`) is not
+# yet selected; the rule is no-op today but the entry stays so when `S`
+# lands in a later stage tests don't immediately error out.
 "tests/**/*.py" = ["S101", "PLR2004", "PLC0415"]
 "ingestion/tests/**/*.py" = ["S101", "PLR2004", "PLC0415"]
 # Auto-generated from JSON Schema — never edit, never lint.
@@ -262,11 +271,6 @@ exclude = [
 # 3.12 is verified separately by the unit-test matrix in py-tests.yml.
 # Keep this in sync with `requires-python` above.
 pythonVersion = "3.10"
-# Pin platform analysis to Linux so the baseline file (generated against
-# CI's Ubuntu runner) matches results from any developer machine. Without
-# this, macOS arm64 analyzers resolve some stubs differently and produce
-# column-shifted error positions that don't match the committed baseline.
-pythonPlatform = "Linux"
 
 # Existing violations are grandfathered via .basedpyright/baseline.json
 # (regenerate with `basedpyright -p ingestion/pyproject.toml --writebaseline`

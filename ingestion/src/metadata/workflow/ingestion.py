@@ -168,7 +168,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                 raise exc  # noqa: TRY201
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(  # noqa: TRY400
+                logger.error(
                     f"Unknown error getting service connection for service name [{service_name}]"
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
@@ -205,5 +205,5 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             if source_type.startswith(CUSTOM_CONNECTOR_PREFIX):
                 raise e  # noqa: TRY201
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to import source of type '{source_type}'")  # noqa: TRY400
+            logger.error(f"Failed to import source of type '{source_type}'")
             raise MissingPluginException(source_type)  # noqa: B904

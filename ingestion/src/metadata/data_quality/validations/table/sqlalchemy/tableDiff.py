@@ -211,7 +211,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             )
             return result  # noqa: RET504
         except UnsupportedDialectError as e:
-            logger.error(f"[Data Diff]: Unsupported dialect: {e}")  # noqa: TRY400
+            logger.error(f"[Data Diff]: Unsupported dialect: {e}")
             result = TestCaseResult(
                 timestamp=self.execution_date,  # type: ignore
                 testCaseStatus=TestCaseStatus.Aborted,
@@ -219,7 +219,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             )
             return result  # noqa: RET504
         except Exception as e:
-            logger.error(f"Unexpected error while running the table diff test: {str(e)}\n{traceback.format_exc()}")  # noqa: RUF010, TRY400
+            logger.error(f"Unexpected error while running the table diff test: {str(e)}\n{traceback.format_exc()}")  # noqa: RUF010
             result = TestCaseResult(
                 timestamp=self.execution_date,  # type: ignore
                 testCaseStatus=TestCaseStatus.Aborted,
@@ -755,5 +755,5 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             row = self.runner.select_first_from_table(row_count.fn())
             return row._asdict().get(Metrics.rowCount.name)
         except Exception as e:
-            logger.error(f"Error getting row count: {e}")  # noqa: TRY400
+            logger.error(f"Error getting row count: {e}")
             return None

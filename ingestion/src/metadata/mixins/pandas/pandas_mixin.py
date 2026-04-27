@@ -147,7 +147,7 @@ class PandasInterfaceMixin:
                     for df in dfs():
                         yield df.sample(frac=percentage / 100)
                 except Exception as exc:
-                    logger.error(f"Error sampling dataframes based on percentage {static.profileSample}: {exc}")  # noqa: TRY400
+                    logger.error(f"Error sampling dataframes based on percentage {static.profileSample}: {exc}")
             elif static and static.profileSampleType == ProfileSampleType.ROWS:
                 try:
                     rows = static.profileSample or 0
@@ -161,7 +161,7 @@ class PandasInterfaceMixin:
                         if streamed_rows >= rows:
                             break
                 except Exception as exc:
-                    logger.error(f"Error sampling dataframes based on rows {static.profileSample}: {exc}")  # noqa: TRY400
+                    logger.error(f"Error sampling dataframes based on rows {static.profileSample}: {exc}")
             else:
                 logger.warning("Sample type not recognized. Returning un-sampled dataframes.")
                 yield from dfs()

@@ -548,7 +548,7 @@ class S3Source(StorageServiceSource):
                     results.append(S3BucketResponse.model_validate(bucket))
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch buckets list - {err}")  # noqa: TRY400
+            logger.error(f"Failed to fetch buckets list - {err}")
         return results
 
     def _fetch_metric(self, bucket_name: str, metric: S3Metric) -> float:
@@ -688,7 +688,7 @@ class S3Source(StorageServiceSource):
             region = region_resp.get("LocationConstraint")
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get the region for bucket: {bucket_name}")  # noqa: TRY400
+            logger.error(f"Unable to get the region for bucket: {bucket_name}")
         return region or self.service_connection.awsConfig.awsRegion
 
     def _get_bucket_source_url(self, bucket_name: str) -> Optional[str]:  # noqa: UP045
@@ -712,7 +712,7 @@ class S3Source(StorageServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to get source url: {exc}")
         return None
 
     def _get_object_source_url(self, bucket_name: str, prefix: str) -> Optional[str]:  # noqa: UP045
@@ -740,7 +740,7 @@ class S3Source(StorageServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to get source url: {exc}")
         return None
 
     def _load_metadata_file(self, bucket_name: str) -> Optional[StorageContainerConfig]:  # noqa: UP045

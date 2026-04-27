@@ -127,7 +127,7 @@ class HexSource(DashboardServiceSource):
                             )
 
                     except Exception as e:
-                        logger.error(f"Error fetching lineage from prefix {db_service_prefix}: {e}")  # noqa: TRY400
+                        logger.error(f"Error fetching lineage from prefix {db_service_prefix}: {e}")
                         logger.debug(traceback.format_exc())
 
                 logger.info(f"Total Hex projects with lineage: {len(self.hex_project_lineage)}")
@@ -300,7 +300,7 @@ class HexSource(DashboardServiceSource):
 
                 except Exception as e:
                     table_fqn = table_entity.fullyQualifiedName.root if table_entity else "Unknown"
-                    logger.error(f"Error creating lineage for table {table_fqn}: {e}")  # noqa: TRY400
+                    logger.error(f"Error creating lineage for table {table_fqn}: {e}")
                     yield Either(
                         left=StackTraceError(
                             name="Lineage",
@@ -310,7 +310,7 @@ class HexSource(DashboardServiceSource):
                     )
 
         except Exception as exc:
-            logger.error(f"Error building lineage for dashboard {dashboard_details.id}: {exc}")  # noqa: TRY400
+            logger.error(f"Error building lineage for dashboard {dashboard_details.id}: {exc}")
             yield Either(
                 left=StackTraceError(
                     name="Dashboard Lineage",

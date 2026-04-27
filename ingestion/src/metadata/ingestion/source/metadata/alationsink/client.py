@@ -181,7 +181,7 @@ class AlationSinkClient:
                 return req
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to write entity: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to write entity: {exc}")
         return None
 
     def write_entities(self, ds_id: int, create_requests: Any) -> Optional[Any]:  # noqa: UP045
@@ -204,5 +204,5 @@ class AlationSinkClient:
             return req  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to write entities: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to write entities: {exc}")
         return None

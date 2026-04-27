@@ -65,8 +65,8 @@ def failure_callback(context: Dict[str, str]) -> None:  # noqa: UP006
             )
 
     except Exception as exc:  # pylint: disable=broad-except
-        logging.error(traceback.format_exc())  # noqa: TRY400
-        logging.error("Lineage Callback exception %s", exc)  # noqa: TRY400
+        logging.error(traceback.format_exc())
+        logging.error("Lineage Callback exception %s", exc)
 
 
 def success_callback(context: Dict[str, str]) -> None:  # noqa: UP006
@@ -102,5 +102,5 @@ def success_callback(context: Dict[str, str]) -> None:  # noqa: UP006
         )
 
     except Exception as exc:  # pylint: disable=broad-except
-        logging.error(traceback.format_exc())  # noqa: TRY400
-        logging.error("Lineage Callback exception %s", exc)  # noqa: TRY400
+        logging.error(traceback.format_exc())
+        logging.error("Lineage Callback exception %s", exc)

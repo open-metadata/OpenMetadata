@@ -226,7 +226,7 @@ def get_view_definition(self, connection: Connection, view_name: str, schema: st
 
         return view_definition  # noqa: TRY300
     except Exception as err:
-        logger.error(f"Could not get view definition for view [{full_view_name}]: {err}")  # noqa: TRY400
+        logger.error(f"Could not get view definition for view [{full_view_name}]: {err}")
 
 
 TrinoDialect._get_columns = _get_columns  # pylint: disable=protected-access

@@ -116,7 +116,7 @@ class QuicksightSource(DashboardServiceSource):
                 entity_response = listing_method(copied_def_args)
                 entity_summary_list.extend(entity_response[entity_key])
             except Exception as err:
-                logger.error(f"Pagination Failed with error: {err}")  # noqa: TRY400
+                logger.error(f"Pagination Failed with error: {err}")
                 logger.debug(traceback.format_exc())
                 break
         return entity_summary_list

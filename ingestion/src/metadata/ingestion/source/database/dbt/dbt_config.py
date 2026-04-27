@@ -571,7 +571,7 @@ def _(config: DbtGcsConfig):
         try:
             set_google_credentials(gcp_credentials=config.dbtSecurityConfig, single_project=True)
         except (ValueError, GoogleAuthError) as cred_exc:
-            logger.error(  # noqa: TRY400
+            logger.error(
                 f"Failed to set Google Cloud credentials: {str(cred_exc)}. "  # noqa: RUF010
                 "Please ensure your credentials are properly formatted and valid."
             )
@@ -582,7 +582,7 @@ def _(config: DbtGcsConfig):
         try:
             client = storage.Client()
         except DefaultCredentialsError as client_exc:
-            logger.error(  # noqa: TRY400
+            logger.error(
                 f"Failed to create Google Cloud Storage client: {str(client_exc)}. "  # noqa: RUF010
                 "Please ensure you have valid credentials configured."
             )
@@ -594,7 +594,7 @@ def _(config: DbtGcsConfig):
             try:
                 buckets = client.list_buckets()
             except Exception as bucket_exc:
-                logger.error(f"Failed to list GCS buckets: {str(bucket_exc)}")  # noqa: RUF010, TRY400
+                logger.error(f"Failed to list GCS buckets: {str(bucket_exc)}")  # noqa: RUF010
                 raise DBTConfigException(
                     "Unable to list GCS buckets. Please check your permissions and credentials."
                 ) from bucket_exc
@@ -602,7 +602,7 @@ def _(config: DbtGcsConfig):
             try:
                 buckets = [client.get_bucket(bucket_name)]
             except Exception as bucket_exc:
-                logger.error(f"Failed to access GCS bucket {bucket_name}: {str(bucket_exc)}")  # noqa: RUF010, TRY400
+                logger.error(f"Failed to access GCS bucket {bucket_name}: {str(bucket_exc)}")  # noqa: RUF010
                 raise DBTConfigException(
                     f"Unable to access GCS bucket {bucket_name}."
                     "Please verify the bucket exists and you have proper permissions."
@@ -632,7 +632,7 @@ def _(config: DbtGcsConfig):
             except DBTConfigException:
                 raise
             except Exception as blob_exc:
-                logger.error(f"Failed to process blobs in bucket {bucket.name}: {str(blob_exc)}")  # noqa: RUF010, TRY400
+                logger.error(f"Failed to process blobs in bucket {bucket.name}: {str(blob_exc)}")  # noqa: RUF010
                 logger.debug(traceback.format_exc())
 
     except DBTConfigException:
@@ -652,7 +652,7 @@ def _(config: DbtAzureConfig):
         try:
             client = AzureClient(config.dbtSecurityConfig).create_blob_client()
         except ClientAuthenticationError as auth_exc:
-            logger.error(  # noqa: TRY400
+            logger.error(
                 f"Failed to authenticate with Azure: {str(auth_exc)}. "  # noqa: RUF010
                 "Please check your Azure credentials and permissions."
             )
@@ -660,7 +660,7 @@ def _(config: DbtAzureConfig):
                 "Azure authentication failed. Please verify your credentials and permissions."
             ) from auth_exc
         except AzureError as azure_exc:
-            logger.error(f"Failed to create Azure client: {str(azure_exc)}")  # noqa: RUF010, TRY400
+            logger.error(f"Failed to create Azure client: {str(azure_exc)}")  # noqa: RUF010
             raise DBTConfigException(
                 "Failed to initialize Azure client. Please check your Azure configuration."
             ) from azure_exc
@@ -718,7 +718,7 @@ def _(config: DbtAzureConfig):
             except DBTConfigException:
                 raise
             except Exception as exc:
-                logger.error(f"Failed to process blobs in container {container_name}: {str(exc)}")  # noqa: RUF010, TRY400
+                logger.error(f"Failed to process blobs in container {container_name}: {str(exc)}")  # noqa: RUF010
                 logger.debug(traceback.format_exc())
 
     except DBTConfigException:

@@ -77,7 +77,7 @@ class OMetaSearchIndexMixin:
             self.client.post(f"{self.get_suffix(App)}/trigger/SearchIndexingApplication")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error trying to reindex the search index: {exc}")  # noqa: TRY400
+            logger.error(f"Error trying to reindex the search index: {exc}")
             raise exc  # noqa: TRY201
 
     def is_reindex_app_running(self) -> bool:

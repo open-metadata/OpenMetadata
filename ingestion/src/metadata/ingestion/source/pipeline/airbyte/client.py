@@ -259,7 +259,7 @@ class AirbyteCloudClient(AirbyteClient):
             return access_token, token_data.get("expires_in", 180)
 
         except requests.exceptions.RequestException as exc:
-            logger.error(f"Failed to fetch OAuth token: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to fetch OAuth token: {exc}")
             raise APIError({"message": f"OAuth token fetch failed: {exc}"}) from exc
 
     def _get_oauth_token(self):

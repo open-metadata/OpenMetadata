@@ -118,7 +118,7 @@ class SigmaApiClient:
                         workbooks.extend(result.entries)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.error(f"Error fetching Dashboards: {exc}")  # noqa: TRY400
+            logger.error(f"Error fetching Dashboards: {exc}")
         return workbooks
 
     def get_dashboard_detail(self, workbook_id: str) -> Optional[WorkbookDetails]:  # noqa: UP045
@@ -131,7 +131,7 @@ class SigmaApiClient:
                 return result
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.error(f"Error fetching Dashboard details for for workbook {workbook_id}: {exc}")  # noqa: TRY400
+            logger.error(f"Error fetching Dashboard details for for workbook {workbook_id}: {exc}")
         return None
 
     def get_owner_detail(self, owner_id: str) -> Optional[OwnerDetails]:  # noqa: UP045

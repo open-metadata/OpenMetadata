@@ -82,7 +82,7 @@ class ElasticsearchSource(SearchServiceSource):
                         "Skipping this index. This may indicate a corrupted or inaccessible index."
                     )
         except Exception as exc:
-            logger.error(  # noqa: TRY400
+            logger.error(
                 f"Failed to retrieve index list from Elasticsearch: {exc}. "
                 "Please check your Elasticsearch connection and cluster health."
             )
@@ -153,7 +153,7 @@ class ElasticsearchSource(SearchServiceSource):
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(  # noqa: TRY400
+                logger.error(
                     f"Failed to retrieve sample data from Elasticsearch index "
                     f"'{self.context.get().search_index}': {exc}. "
                     "This may indicate a broken or corrupted index. "
@@ -198,7 +198,7 @@ class ElasticsearchSource(SearchServiceSource):
                     self.register_record(search_index_request=search_index_template_request)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Could not include index templates due to {exc}")  # noqa: TRY400
+            logger.error(f"Could not include index templates due to {exc}")
 
     def close(self):
         try:

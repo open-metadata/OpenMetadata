@@ -95,7 +95,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                         yield from self.process_table_query()
 
         except Exception as err:
-            logger.error(f"Source usage processing error - {err}")  # noqa: TRY400
+            logger.error(f"Source usage processing error - {err}")
             logger.debug(traceback.format_exc())
 
     @staticmethod

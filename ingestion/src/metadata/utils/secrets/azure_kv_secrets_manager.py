@@ -111,7 +111,7 @@ class AzureKVSecretsManager(ExternalSecretsManager, ABC):
             return secret.value  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")  # noqa: TRY400
+            logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")
             raise exc  # noqa: TRY201
 
     def load_credentials(self) -> Optional["AzureCredentials"]:  # noqa: F821

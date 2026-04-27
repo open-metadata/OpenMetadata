@@ -380,7 +380,7 @@ class LookerSource(DashboardServiceSource):
             project: Project = self.client.project(project_id=project_name)
             return get_credentials_from_url(original=self.repository_credentials, url=project.git_remote_url)
         except Exception as err:
-            logger.error(f"Error trying to build project credentials - [{err}]. We'll use the default ones.")  # noqa: TRY400
+            logger.error(f"Error trying to build project credentials - [{err}]. We'll use the default ones.")
             return self.repository_credentials
 
     @property
@@ -430,7 +430,7 @@ class LookerSource(DashboardServiceSource):
 
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Unexpected error fetching LookML models - {err}")  # noqa: TRY400
+                logger.error(f"Unexpected error fetching LookML models - {err}")
 
     def fetch_lookml_explores(self, all_lookml_models: Sequence[LookmlModel]) -> Iterable[LookmlModelExplore]:
         """
@@ -1180,7 +1180,7 @@ class LookerSource(DashboardServiceSource):
             return list(self.client.all_dashboards(fields=",".join(LIST_DASHBOARD_FIELDS)))
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Wild error trying to obtain dashboard list {err}")  # noqa: TRY400
+            logger.error(f"Wild error trying to obtain dashboard list {err}")
             # If we cannot list the dashboards, let's blow up
             raise err  # noqa: TRY201
 
@@ -1647,7 +1647,7 @@ class LookerSource(DashboardServiceSource):
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error getting chart description: {err}")  # noqa: TRY400
+            logger.error(f"Error getting chart description: {err}")
             return None
 
     def yield_dashboard_usage(  # pylint: disable=W0221

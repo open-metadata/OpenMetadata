@@ -115,7 +115,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
             # pylint: enable=import-outside-toplevel
         except ModuleNotFoundError as err:
             logger.debug(traceback.format_exc())
-            logger.error(  # noqa: TRY400
+            logger.error(
                 "Cannot import BaseEstimator, please install sklearn plugin: "
                 "pip install openmetadata-ingestion[sklearn], %s",
                 err,

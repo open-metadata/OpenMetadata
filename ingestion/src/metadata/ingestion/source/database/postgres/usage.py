@@ -74,7 +74,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                         )
                     except Exception as err:
                         logger.debug(traceback.format_exc())
-                        logger.error(str(err))  # noqa: TRY400
+                        logger.error(str(err))
             logger.info(f"Processed {row_count} query log entries for usage")
             if queries:
                 yield TableQueries(queries=queries)
@@ -91,7 +91,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
         except Exception as err:
             if query:
                 logger.debug(f"###### USAGE QUERY #######\n{query}\n##########################")
-            logger.error(f"Source usage processing error - {err}")  # noqa: TRY400
+            logger.error(f"Source usage processing error - {err}")
             logger.debug(traceback.format_exc())
 
     def get_filters(self) -> str:

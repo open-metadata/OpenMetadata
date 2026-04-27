@@ -64,7 +64,7 @@ class DSVDataFrameReader(DataFrameReader):
                 updated_chunk_list.append(pd.DataFrame(columns=parsed_columns, data=values_list))
             return updated_chunk_list  # noqa: TRY300
         except Exception as exc:
-            logger.error(f"Error reformating the data: {exc}")  # noqa: TRY400
+            logger.error(f"Error reformating the data: {exc}")
             logger.debug(traceback.format_exc())
             logger.debug("Only parsing column data from csv since csv data can't be parsed")
             return [pd.DataFrame(columns=parsed_columns)]

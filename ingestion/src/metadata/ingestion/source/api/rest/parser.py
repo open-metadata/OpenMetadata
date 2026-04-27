@@ -55,12 +55,12 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:  # noqa: UP006
         try:
             return json.loads(content)
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse as JSON despite content-type: {e}")  # noqa: TRY400
+            logger.error(f"Failed to parse as JSON despite content-type: {e}")
     elif "yaml" in content_type or "yml" in content_type:
         try:
             return yaml.safe_load(content)
         except yaml.YAMLError as e:
-            logger.error(f"Failed to parse as YAML despite content-type: {e}")  # noqa: TRY400
+            logger.error(f"Failed to parse as YAML despite content-type: {e}")
 
     # If content-type is not definitive or parsing failed, try both formats
 
@@ -80,7 +80,7 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:  # noqa: UP006
         logger.debug("Successfully parsed OpenAPI schema as YAML")
         return parsed  # noqa: TRY300
     except yaml.YAMLError as e:
-        logger.error(f"Failed to parse as YAML: {e}")  # noqa: TRY400
+        logger.error(f"Failed to parse as YAML: {e}")
 
     # If both formats fail, raise an error
     raise OpenAPIParseError(

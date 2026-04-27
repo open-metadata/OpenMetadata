@@ -388,7 +388,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                     else:
                         logger.warning(f"Table not found: {table_fqn}")
         except Exception as exc:
-            logger.error(f"Failed to extract pipeline observability data: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to extract pipeline observability data: {exc}")
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(

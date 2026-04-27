@@ -136,7 +136,7 @@ def _test_connection_steps_automation_workflow(
                 )
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(f"{step.name}-{err}")  # noqa: TRY400
+                logger.error(f"{step.name}-{err}")
                 test_connection_result.steps.append(
                     TestConnectionStepResult(
                         name=step.name,
@@ -169,7 +169,7 @@ def _test_connection_steps_automation_workflow(
         )
 
     except Exception as err:
-        logger.error(f"Wild error happened while testing the connection in the workflow - {err}")  # noqa: TRY400
+        logger.error(f"Wild error happened while testing the connection in the workflow - {err}")
         logger.debug(traceback.format_exc())
         test_connection_result.lastUpdatedAt = datetime.now().timestamp()
         metadata.create_or_update(
@@ -207,7 +207,7 @@ def _test_connection_steps_during_ingestion(
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"{step.name}-{err}")  # noqa: TRY400
+            logger.error(f"{step.name}-{err}")
             test_connection_result.steps.append(
                 TestConnectionStepResult(
                     name=step.name,

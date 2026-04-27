@@ -113,7 +113,7 @@ class AlationsinkSource(Source):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to create datasource request for {model_str(om_database.name)}: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to create datasource request for {model_str(om_database.name)}: {exc}")
         return None
 
     def create_schema_request(
@@ -132,7 +132,7 @@ class AlationsinkSource(Source):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to create schema request for {model_str(om_schema.name)}: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to create schema request for {model_str(om_schema.name)}: {exc}")
         return None
 
     def create_table_request(
@@ -153,7 +153,7 @@ class AlationsinkSource(Source):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to create table request for {model_str(om_table.name)}: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to create table request for {model_str(om_table.name)}: {exc}")
         return None
 
     def _update_foreign_key(
@@ -249,7 +249,7 @@ class AlationsinkSource(Source):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to create column request for {model_str(om_column.name)}: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to create column request for {model_str(om_column.name)}: {exc}")
         return None
 
     def ingest_columns(self, alation_datasource_id: int, schema_name: str, om_table: Table):
@@ -273,7 +273,7 @@ class AlationsinkSource(Source):
                 self.alation_sink_client.write_entities(alation_datasource_id, create_requests)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to ingest columns for table [{model_str(om_table.name)}]: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to ingest columns for table [{model_str(om_table.name)}]: {exc}")
 
     def ingest_tables(self, alation_datasource_id: int, om_schema: DatabaseSchema):
         """
@@ -319,7 +319,7 @@ class AlationsinkSource(Source):
                         )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to ingest tables for schema [{model_str(om_schema.name)}]: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to ingest tables for schema [{model_str(om_schema.name)}]: {exc}")
 
     def ingest_schemas(self, alation_datasource_id: int, om_database: Database):
         """
@@ -350,7 +350,7 @@ class AlationsinkSource(Source):
                         self.ingest_tables(alation_datasource_id, om_schema)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to ingest schemas for database [{model_str(om_database.name)}]: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to ingest schemas for database [{model_str(om_database.name)}]: {exc}")
 
     def _iter(self, *_, **__) -> Iterable[Either[Entity]]:
 

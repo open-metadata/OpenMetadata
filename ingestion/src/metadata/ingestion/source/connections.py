@@ -57,7 +57,7 @@ def _get_connection_class_from_spec(
                 connection_class = import_connection_class(service_type, connection_type.value.lower())
                 return connection_class  # noqa: RET504
         except Exception:
-            logger.error(f"Error importing connection class for {connection_type.value}")  # noqa: TRY400
+            logger.error(f"Error importing connection class for {connection_type.value}")
             logger.debug(traceback.format_exc())
     return None
 

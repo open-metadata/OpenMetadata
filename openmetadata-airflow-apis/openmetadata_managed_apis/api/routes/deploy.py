@@ -76,7 +76,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
         except ValidationError as err:
             logger.debug(traceback.format_exc())
-            logger.error(  # noqa: TRY400
+            logger.error(
                 f"Request Validation Error parsing payload [{json_request}]. IngestionPipeline expected: {err}"
             )
             return ApiResponse.error(
@@ -86,7 +86,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Internal error deploying [{json_request}] due to [{exc}] ")  # noqa: TRY400
+            logger.error(f"Internal error deploying [{json_request}] due to [{exc}] ")
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
                 error=f"Internal error while deploying due to [{exc}] ",

@@ -143,7 +143,7 @@ class WorkflowStatusMixin:
                 )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unhandled error trying to update Ingestion Pipeline status [{err}]")  # noqa: TRY400
+            logger.error(f"Unhandled error trying to update Ingestion Pipeline status [{err}]")
 
     def raise_from_status(self, raise_warnings=False):
         """

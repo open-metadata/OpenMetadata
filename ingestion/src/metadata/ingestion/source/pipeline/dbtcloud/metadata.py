@@ -332,7 +332,7 @@ class DbtcloudSource(PipelineServiceSource):
             yield from self.client.get_jobs()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get pipeline list due to : {exc}")  # noqa: TRY400
+            logger.error(f"Failed to get pipeline list due to : {exc}")
 
     def get_pipeline_name(self, pipeline_details: DBTJob) -> str:
         """
@@ -342,7 +342,7 @@ class DbtcloudSource(PipelineServiceSource):
             return pipeline_details.name
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get pipeline name due to : {exc}")  # noqa: TRY400
+            logger.error(f"Failed to get pipeline name due to : {exc}")
 
         return None
 
@@ -470,7 +470,7 @@ class DbtcloudSource(PipelineServiceSource):
             yield table_pipeline_map
 
         except Exception as exc:
-            logger.error(f"Failed to extract pipeline observability data: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to extract pipeline observability data: {exc}")
             logger.debug(traceback.format_exc())
 
     def yield_pipeline_status(self, pipeline_details: DBTJob) -> Iterable[Either[OMetaPipelineStatus]]:

@@ -89,7 +89,7 @@ class ThirdQuartile(StaticMetric, PercentilMixin):
             try:
                 df = pd.concat([df[self.col.name] for df in dfs])
             except MemoryError:
-                logger.error(  # noqa: TRY400
+                logger.error(
                     f"Unable to compute Median for {self.col.name} due to memory constraints."
                     f"We recommend using a smaller sample size or partitioning."
                 )

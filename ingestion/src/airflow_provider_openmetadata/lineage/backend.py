@@ -101,5 +101,5 @@ class OpenMetadataLineageBackend(LineageBackend):
             runner.execute()
 
         except Exception as exc:  # pylint: disable=broad-except
-            operator.log.error(traceback.format_exc())  # noqa: TRY400
-            operator.log.error(exc)  # noqa: TRY400
+            operator.log.error(traceback.format_exc())
+            operator.log.error(exc)

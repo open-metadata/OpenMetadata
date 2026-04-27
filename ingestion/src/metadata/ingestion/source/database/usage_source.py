@@ -160,7 +160,7 @@ class UsageSource(QueryParserSource, ABC):
                         )
                     )
                 logger.debug(traceback.format_exc())
-                logger.error(f"Source usage processing error: {exc}")  # noqa: TRY400
+                logger.error(f"Source usage processing error: {exc}")
 
     def _iter(self, *_, **__) -> Iterable[Either[TableQuery]]:
         for table_queries in self.get_table_query():

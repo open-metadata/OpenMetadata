@@ -467,12 +467,12 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                             session.rollback()
                             time.sleep(backoff)
                             continue
-                        logger.error(f"Max retries ({max_retries}) exceeded for disconnection")  # noqa: TRY400
+                        logger.error(f"Max retries ({max_retries}) exceeded for disconnection")
                     error = (
                         f"{metric_func.column if metric_func.column is not None else metric_func.table.__tablename__} "
                         f"metric_type.value: {exc}"
                     )
-                    logger.error(error)  # noqa: TRY400
+                    logger.error(error)
                     self.status.failed_profiler(error, traceback.format_exc())
                     break
                 finally:
@@ -534,7 +534,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 except concurrent.futures.TimeoutError as exc:
                     pool.shutdown39(wait=True, cancel_futures=True)
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Operation was cancelled due to TimeoutError - {exc}")  # noqa: TRY400
+                    logger.error(f"Operation was cancelled due to TimeoutError - {exc}")
                     raise concurrent.futures.TimeoutError  # noqa: B904
                 except KeyboardInterrupt:
                     pool.shutdown39(wait=True, cancel_futures=True)

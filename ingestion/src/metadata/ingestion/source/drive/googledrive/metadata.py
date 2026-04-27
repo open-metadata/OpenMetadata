@@ -200,7 +200,7 @@ class GoogleDriveSource(DriveServiceSource):
             self._fetch_all_files()
 
         except Exception as e:
-            logger.error(f"Error fetching directories: {e}")  # noqa: TRY400
+            logger.error(f"Error fetching directories: {e}")
             logger.debug(traceback.format_exc())
 
     def _fetch_all_files(self) -> None:
@@ -258,7 +258,7 @@ class GoogleDriveSource(DriveServiceSource):
                     logger.debug(f"Directory '{dir_name}' has {len(files)} files")
 
         except Exception as e:
-            logger.error(f"Error fetching all files: {e}")  # noqa: TRY400
+            logger.error(f"Error fetching all files: {e}")
             logger.debug(traceback.format_exc())
             self._files_by_parent_cache = {}
 
@@ -363,7 +363,7 @@ class GoogleDriveSource(DriveServiceSource):
                     break
 
         except Exception as e:
-            logger.error(f"Error fetching drive items: {e}")  # noqa: TRY400
+            logger.error(f"Error fetching drive items: {e}")
             logger.debug(traceback.format_exc())
 
     def _fetch_files(self, directory_id: Optional[str] = None) -> Iterable[GoogleDriveFile]:  # noqa: UP045
@@ -430,7 +430,7 @@ class GoogleDriveSource(DriveServiceSource):
                     break
 
         except Exception as e:
-            logger.error(f"Error fetching spreadsheets: {e}")  # noqa: TRY400
+            logger.error(f"Error fetching spreadsheets: {e}")
             logger.debug(traceback.format_exc())
 
     def get_directory_names(self) -> Iterable[str]:
@@ -495,7 +495,7 @@ class GoogleDriveSource(DriveServiceSource):
                         logger.debug(f"Directory '{directory_info.name}' filtered out by directoryFilterPattern")
 
         except Exception as e:
-            logger.error(f"Error getting directory names: {e}")  # noqa: TRY400
+            logger.error(f"Error getting directory names: {e}")
             logger.debug(traceback.format_exc())
 
     def get_file_names(self) -> Iterable[str]:
@@ -592,7 +592,7 @@ class GoogleDriveSource(DriveServiceSource):
             yield Either(right=request)
 
         except Exception as exc:
-            logger.error(f"Error creating directory request for {directory_id}: {exc}")  # noqa: TRY400
+            logger.error(f"Error creating directory request for {directory_id}: {exc}")
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(
@@ -714,7 +714,7 @@ class GoogleDriveSource(DriveServiceSource):
                                 logger.debug(f"Root file '{file_info.name}' filtered out by fileFilterPattern")
 
                         except Exception as file_exc:
-                            logger.error(f"Error processing root file {file_info.name}: {file_exc}")  # noqa: TRY400
+                            logger.error(f"Error processing root file {file_info.name}: {file_exc}")
                             yield Either(
                                 left=StackTraceError(
                                     name=file_info.name,
@@ -759,7 +759,7 @@ class GoogleDriveSource(DriveServiceSource):
                         logger.debug(f"File '{file_info.name}' filtered out by fileFilterPattern")
 
                 except Exception as file_exc:
-                    logger.error(f"Error processing file {file_info.name}: {file_exc}")  # noqa: TRY400
+                    logger.error(f"Error processing file {file_info.name}: {file_exc}")
                     yield Either(
                         left=StackTraceError(
                             name=file_info.name,
@@ -769,7 +769,7 @@ class GoogleDriveSource(DriveServiceSource):
                     )
 
         except Exception as exc:
-            logger.error(f"Error processing files in directory {directory_id}: {exc}")  # noqa: TRY400
+            logger.error(f"Error processing files in directory {directory_id}: {exc}")
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(
@@ -801,7 +801,7 @@ class GoogleDriveSource(DriveServiceSource):
 
         except Exception as exc:
             title = spreadsheet_details.properties.title if spreadsheet_details.properties else "Unknown"
-            logger.error(f"Error creating spreadsheet request for {title}: {exc}")  # noqa: TRY400
+            logger.error(f"Error creating spreadsheet request for {title}: {exc}")
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(
@@ -890,7 +890,7 @@ class GoogleDriveSource(DriveServiceSource):
                 self.register_record_worksheet(request)
                 yield Either(right=request)
             except Exception as exc:
-                logger.error(f"Error creating worksheet request for {worksheet.name or 'Unknown'}: {exc}")  # noqa: TRY400
+                logger.error(f"Error creating worksheet request for {worksheet.name or 'Unknown'}: {exc}")
                 logger.debug(traceback.format_exc())
                 yield Either(
                     left=StackTraceError(
@@ -921,7 +921,7 @@ class GoogleDriveSource(DriveServiceSource):
                 self.client.close()
 
         except Exception as e:
-            logger.error(f"Error closing Google Drive source: {e}")  # noqa: TRY400
+            logger.error(f"Error closing Google Drive source: {e}")
             logger.debug(traceback.format_exc())
 
     def _normalize_rows_to_headers(self, data_rows: List[List], headers: List[str]) -> List[List]:  # noqa: UP006
@@ -989,6 +989,6 @@ class GoogleDriveSource(DriveServiceSource):
             return inferred_columns  # noqa: TRY300
 
         except Exception as exc:
-            logger.error(f"Error fetching columns for sheet '{sheet_title}': {exc}")  # noqa: TRY400
+            logger.error(f"Error fetching columns for sheet '{sheet_title}': {exc}")
             logger.debug(traceback.format_exc())
             return []

@@ -134,7 +134,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
         except Exception as exc:
             name = f"{metric_func.column if metric_func.column is not None else metric_func.table}"
             error = f"{name} metric_type.value: {exc}"
-            logger.error(error)  # noqa: TRY400
+            logger.error(error)
             self.status.failed_profiler(error, traceback.format_exc())
             row = None
         if metric_func.column is not None:

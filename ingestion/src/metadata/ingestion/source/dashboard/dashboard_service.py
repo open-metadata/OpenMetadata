@@ -325,7 +325,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                     yield self._get_add_lineage_request(to_entity=dashboard_entity, from_entity=datamodel_entity)
                 except Exception as err:
                     logger.debug(traceback.format_exc())
-                    logger.error(  # noqa: TRY400
+                    logger.error(
                         f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"  # noqa: RUF010
                     )
 

@@ -189,7 +189,7 @@ class KafkaConnectClient:
                     "kafka_cluster_id": "confluent-managed",
                 }
             except Exception as exc:
-                logger.error(f"Failed to connect to Confluent Cloud: {exc}")  # noqa: TRY400
+                logger.error(f"Failed to connect to Confluent Cloud: {exc}")
                 raise
 
         return self.client.get_cluster_info()
@@ -223,7 +223,7 @@ class KafkaConnectClient:
             return self.get_connectors_list(expand=expand, pattern=pattern, state=state)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get connectors list {exc}")  # noqa: TRY400
+            logger.error(f"Unable to get connectors list {exc}")
 
         return None
 
@@ -235,7 +235,7 @@ class KafkaConnectClient:
             return self.client.list_connector_plugins()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get connector plugins  {exc}")  # noqa: TRY400
+            logger.error(f"Unable to get connector plugins  {exc}")
 
     def get_connector_config(self, connector: str) -> Optional[dict]:  # noqa: UP045
         """
@@ -269,7 +269,7 @@ class KafkaConnectClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get connector configuration details {exc}")  # noqa: TRY400
+            logger.error(f"Unable to get connector configuration details {exc}")
 
         return None
 
@@ -319,7 +319,7 @@ class KafkaConnectClient:
 
         except (KeyError, AttributeError, ValueError) as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to extract column mappings: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to extract column mappings: {exc}")
 
         return None
 
@@ -366,7 +366,7 @@ class KafkaConnectClient:
                     return topics  # noqa: RET504
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get connector Topics {exc}")  # noqa: TRY400
+            logger.error(f"Unable to get connector Topics {exc}")
 
         return None
 
@@ -391,6 +391,6 @@ class KafkaConnectClient:
                         yield connector_details
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get connector information {exc}")  # noqa: TRY400
+            logger.error(f"Unable to get connector information {exc}")
 
         return None

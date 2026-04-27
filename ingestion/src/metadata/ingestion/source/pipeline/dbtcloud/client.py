@@ -120,7 +120,7 @@ class DBTCloudClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(  # noqa: TRY400
+            logger.error(
                 f"Failed to get job info for project_id: `{project_id}`, "
                 f"environment_id: `{environment_id}` or job_id: `{job_id}` : {exc}"
             )
@@ -173,7 +173,7 @@ class DBTCloudClient:
                 yield from self._get_jobs()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get job info :{exc}")  # noqa: TRY400
+            logger.error(f"Unable to get job info :{exc}")
 
     def get_latest_successful_run_id(self, job_id: int) -> Optional[int]:  # noqa: UP045
         """
@@ -250,7 +250,7 @@ class DBTCloudClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get run info :{exc}")  # noqa: TRY400
+            logger.error(f"Unable to get run info :{exc}")
 
     def get_models_with_lineage(
         self, job_id: int, run_id: int
@@ -277,5 +277,5 @@ class DBTCloudClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get models with lineage info: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to get models with lineage info: {exc}")
         return None, None, None

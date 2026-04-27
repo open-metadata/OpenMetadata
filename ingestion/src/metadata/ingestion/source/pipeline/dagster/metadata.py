@@ -336,7 +336,7 @@ class DagsterSource(PipelineServiceSource):
                     yield job
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(  # noqa: TRY400
+            logger.error(
                 f"Unable to get pipelines list\n"
                 f"Please check if dagster is running correctly and is in good state: {exc}"
             )

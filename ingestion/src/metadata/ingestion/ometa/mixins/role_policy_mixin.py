@@ -237,7 +237,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error trying to PATCH policies for Role [{model_str(entity_id)}]: {exc}")  # noqa: TRY400
+            logger.error(f"Error trying to PATCH policies for Role [{model_str(entity_id)}]: {exc}")
 
         return None
 
@@ -376,6 +376,6 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error trying to PATCH description for Role [{model_str(entity_id)}]: {exc}")  # noqa: TRY400
+            logger.error(f"Error trying to PATCH description for Role [{model_str(entity_id)}]: {exc}")
 
         return None

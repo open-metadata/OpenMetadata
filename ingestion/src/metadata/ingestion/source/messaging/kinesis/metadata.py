@@ -99,7 +99,7 @@ class KinesisSource(MessagingServiceSource):
                     args.ExclusiveStartStreamName = all_topics[-1]
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Failed to fetch kinesis stream - {err}")  # noqa: TRY400
+                logger.error(f"Failed to fetch kinesis stream - {err}")
         return all_topics
 
     def get_topic_list(self) -> Iterable[BrokerTopicDetails]:
@@ -116,7 +116,7 @@ class KinesisSource(MessagingServiceSource):
                 )
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Failed to yield kinesis topic - {err}")  # noqa: TRY400
+                logger.error(f"Failed to yield kinesis topic - {err}")
 
     def yield_topic(self, topic_details: BrokerTopicDetails) -> Iterable[Either[CreateTopicRequest]]:
         """Method to yield the create topic request"""

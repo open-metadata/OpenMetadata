@@ -175,7 +175,7 @@ def get_tag_label(
 
     except Exception as err:
         logger.debug(traceback.format_exc())
-        logger.error(f"Error processing tag label: {err}")  # noqa: TRY400
+        logger.error(f"Error processing tag label: {err}")
     return None
 
 
@@ -209,5 +209,5 @@ def get_tag_labels(
 
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Error processing tag labels: {err}")  # noqa: TRY400
+                logger.error(f"Error processing tag labels: {err}")
     return tag_labels_list or None

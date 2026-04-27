@@ -71,7 +71,7 @@ class DynamodbSource(CommonNoSQLSource):
             return [TableNameAndType(name=table.name) for table in tables]
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to list DynamoDB table names: {err}")  # noqa: TRY400
+            logger.error(f"Failed to list DynamoDB table names: {err}")
         return []
 
     def get_table_columns_dict(self, schema_name: str, table_name: str) -> Union[List[Dict], Dict]:  # noqa: UP006, UP007
@@ -117,5 +117,5 @@ class DynamodbSource(CommonNoSQLSource):
                 )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to get source url: {exc}")
         return None

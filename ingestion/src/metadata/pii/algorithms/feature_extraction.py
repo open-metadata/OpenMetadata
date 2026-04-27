@@ -75,7 +75,7 @@ def extract_pii_tags(
                 pii_entity = PIITag[result.entity_type]
                 entity_scores[pii_entity] += result.score
             except KeyError:
-                logging.error(f"Unrecognized PII entity type: {result.entity_type}.")  # noqa: TRY400
+                logging.error(f"Unrecognized PII entity type: {result.entity_type}.")
 
     # normalize the scores if the batch is not empty
     if len(texts):

@@ -151,7 +151,7 @@ class OMetaLineageMixin(Generic[T]):
         except APIError as err:
             logger.debug(traceback.format_exc())
             error = f"Error {err.status_code} trying to PUT lineage for {data.model_dump_json()}: {str(err)}"  # noqa: RUF010
-            logger.error(error)  # noqa: TRY400
+            logger.error(error)
             return {"error": error}
 
         from_entity_lineage = self.get_lineage_by_id(data.edge.fromEntity.type, str(data.edge.fromEntity.id.root))
@@ -302,7 +302,7 @@ class OMetaLineageMixin(Generic[T]):
             )
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error {err.status_code} trying to DELETE linage for {edge}")  # noqa: TRY400
+            logger.error(f"Error {err.status_code} trying to DELETE linage for {edge}")
 
     @functools.lru_cache(maxsize=LRU_CACHE_SIZE)  # noqa: B019
     def delete_lineage_by_source(self, entity_type: str, entity_id: str, source: str) -> None:
@@ -313,7 +313,7 @@ class OMetaLineageMixin(Generic[T]):
             self.client.delete(f"{self.get_suffix(AddLineageRequest)}/{entity_type}/{entity_id}/type/{source}")
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error {err.status_code} trying to DELETE linage for {entity_id} of type {source}")  # noqa: TRY400
+            logger.error(f"Error {err.status_code} trying to DELETE linage for {entity_id} of type {source}")
 
     def add_lineage_by_query(
         self,

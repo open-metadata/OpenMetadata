@@ -394,7 +394,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 )
 
         except Exception as exc:
-            logger.error(f"Error listing tables for {dataset_ref}: {exc}")  # noqa: TRY400
+            logger.error(f"Error listing tables for {dataset_ref}: {exc}")
             raise
 
     def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
@@ -862,7 +862,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     yield project_id
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Error trying to connect to database {project_id}: {exc}")  # noqa: TRY400
+                    logger.error(f"Error trying to connect to database {project_id}: {exc}")
 
     def get_schema_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector

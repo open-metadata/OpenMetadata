@@ -147,7 +147,7 @@ class SftpSource(DriveServiceSource):
             self._fetch_all_files()
 
         except Exception as e:
-            logger.error(f"Error fetching directories: {e}")  # noqa: TRY400
+            logger.error(f"Error fetching directories: {e}")
             logger.debug(traceback.format_exc())
 
     def _fetch_directories_recursive(
@@ -258,7 +258,7 @@ class SftpSource(DriveServiceSource):
             logger.debug(f"Cached {total_files} files across {len(files_by_parent)} directories")
 
         except Exception as e:
-            logger.error(f"Error fetching all files: {e}")  # noqa: TRY400
+            logger.error(f"Error fetching all files: {e}")
             logger.debug(traceback.format_exc())
             self._files_by_parent_cache = {}
 
@@ -345,7 +345,7 @@ class SftpSource(DriveServiceSource):
                         logger.debug(f"Directory '{directory_info.name}' filtered out by directoryFilterPattern")
 
         except Exception as e:
-            logger.error(f"Error getting directory names: {e}")  # noqa: TRY400
+            logger.error(f"Error getting directory names: {e}")
             logger.debug(traceback.format_exc())
 
     def get_file_names(self) -> Iterable[str]:
@@ -412,7 +412,7 @@ class SftpSource(DriveServiceSource):
             yield Either(right=request)
 
         except Exception as exc:
-            logger.error(f"Error creating directory request for {directory_path}: {exc}")  # noqa: TRY400
+            logger.error(f"Error creating directory request for {directory_path}: {exc}")
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(
@@ -519,7 +519,7 @@ class SftpSource(DriveServiceSource):
                                 logger.debug(f"Root file '{file_info.name}' filtered out")
 
                         except Exception as file_exc:
-                            logger.error(f"Error processing root file {file_info.name}: {file_exc}")  # noqa: TRY400
+                            logger.error(f"Error processing root file {file_info.name}: {file_exc}")
                             yield Either(
                                 left=StackTraceError(
                                     name=file_info.name,
@@ -597,7 +597,7 @@ class SftpSource(DriveServiceSource):
                         logger.debug(f"File '{file_info.name}' filtered out by fileFilterPattern")
 
                 except Exception as file_exc:
-                    logger.error(f"Error processing file {file_info.name}: {file_exc}")  # noqa: TRY400
+                    logger.error(f"Error processing file {file_info.name}: {file_exc}")
                     yield Either(
                         left=StackTraceError(
                             name=file_info.name,
@@ -607,7 +607,7 @@ class SftpSource(DriveServiceSource):
                     )
 
         except Exception as exc:
-            logger.error(f"Error processing files in directory {directory_path}: {exc}")  # noqa: TRY400
+            logger.error(f"Error processing files in directory {directory_path}: {exc}")
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(
@@ -650,7 +650,7 @@ class SftpSource(DriveServiceSource):
                 self.client.close()
 
         except Exception as e:
-            logger.error(f"Error closing SFTP source: {e}")  # noqa: TRY400
+            logger.error(f"Error closing SFTP source: {e}")
             logger.debug(traceback.format_exc())
 
     def _is_csv_file(self, filename: str) -> bool:
@@ -696,7 +696,7 @@ class SftpSource(DriveServiceSource):
             else:
                 logger.warning(f"Could not find file entity to ingest sample data: {file_fqn}")
         except Exception as e:
-            logger.error(f"Failed to ingest sample data for file {file_name}: {e}")  # noqa: TRY400
+            logger.error(f"Failed to ingest sample data for file {file_name}: {e}")
             logger.debug(traceback.format_exc())
 
     def _get_csv_separator(self, filename: str) -> str:
@@ -773,6 +773,6 @@ class SftpSource(DriveServiceSource):
             return columns, sample_data  # noqa: TRY300
 
         except Exception as e:
-            logger.error(f"Failed to extract CSV schema from {file_path}: {e}")  # noqa: TRY400
+            logger.error(f"Failed to extract CSV schema from {file_path}: {e}")
             logger.debug(traceback.format_exc())
             return None, None

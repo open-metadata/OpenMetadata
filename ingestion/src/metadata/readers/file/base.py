@@ -54,7 +54,7 @@ class Reader(ABC):
             return self._get_tree()
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error getting file tree [{err}]")  # noqa: TRY400
+            logger.error(f"Error getting file tree [{err}]")
         return None
 
     def download(self, path: str, local_file_path: str, **kwargs):  # noqa: B027

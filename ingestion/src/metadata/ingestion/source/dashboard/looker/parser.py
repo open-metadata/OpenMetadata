@@ -100,12 +100,12 @@ class LkmlParser:
 
         except ReadException as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error trying to read the file [{path}]: {err}")  # noqa: TRY400
+            logger.error(f"Error trying to read the file [{path}]: {err}")
         except ValidationError as err:
-            logger.error(f"Validation error building the .lkml file from [{path}]: {err}")  # noqa: TRY400
+            logger.error(f"Validation error building the .lkml file from [{path}]: {err}")
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unknown error building the .lkml file from [{path}]: {err}")  # noqa: TRY400
+            logger.error(f"Unknown error building the .lkml file from [{path}]: {err}")
 
         return None
 

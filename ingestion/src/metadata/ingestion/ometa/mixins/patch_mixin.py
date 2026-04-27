@@ -645,7 +645,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(  # noqa: TRY400
+            logger.error(
                 f"Error trying to PATCH status for automation workflow [{model_str(automation_workflow)}]: {exc}"
             )
 
@@ -757,6 +757,6 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             return entity(**res)
 
         except Exception as exc:
-            logger.error(f"Error trying to PATCH custom properties for {entity.__name__}: {entity_id} - {exc}")  # noqa: TRY400
+            logger.error(f"Error trying to PATCH custom properties for {entity.__name__}: {entity_id} - {exc}")
             logger.debug(traceback.format_exc())
             return None

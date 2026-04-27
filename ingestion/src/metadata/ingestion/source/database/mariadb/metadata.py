@@ -85,7 +85,7 @@ class MariadbSource(CommonDbSourceService):
                 yield stored_procedure
             except Exception as exc:
                 error = f"Error parsing Stored Procedure payload: {exc}"
-                logger.error(error)  # noqa: TRY400
+                logger.error(error)
                 self.status.failed(
                     error=StackTraceError(
                         name=row._asdict().get("procedure_name", "UNKNOWN"),

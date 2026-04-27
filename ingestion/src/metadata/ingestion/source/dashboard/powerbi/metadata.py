@@ -1489,7 +1489,7 @@ class PowerbiSource(DashboardServiceSource):
                     if column.lower() == child_column.name.root.lower():
                         return child_column.fullyQualifiedName.root
         except Exception as exc:
-            logger.error(  # noqa: TRY400
+            logger.error(
                 f"Error to get downstream data_model_column_fqn for data_model_entity="
                 f"{data_model_entity.name.root}, table_name={table_name}, column={column}: {exc}"
             )
@@ -1525,7 +1525,7 @@ class PowerbiSource(DashboardServiceSource):
             return column_lineage  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(  # noqa: TRY400
+            logger.error(
                 "Error while creating column lineage between dataset = "
                 f"{datamodel_entity.name.root} and upstream dataset = "
                 f"{upstream_dataset_entity.name.root}: {exc}"

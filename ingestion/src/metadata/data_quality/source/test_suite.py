@@ -146,7 +146,7 @@ class TestSuiteSource(Source):
 
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(  # noqa: TRY400
+                logger.error(
                     f"Error getting service connection for service name [{service_name}]"
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )

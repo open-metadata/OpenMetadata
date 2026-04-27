@@ -1007,7 +1007,7 @@ class AirflowSource(PipelineServiceSource):
             yield table_pipeline_map
 
         except Exception as exc:
-            logger.error(f"Failed to extract pipeline observability data for {pipeline_details.dag_id}: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to extract pipeline observability data for {pipeline_details.dag_id}: {exc}")
             logger.debug(traceback.format_exc())
 
     def close(self):

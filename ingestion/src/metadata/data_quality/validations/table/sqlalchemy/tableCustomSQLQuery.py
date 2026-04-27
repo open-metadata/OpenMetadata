@@ -386,10 +386,10 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
                 result.failedRowsSample = self.fetch_failed_rows_sample()
             except Exception:
                 logger.debug(traceback.format_exc())
-                logger.error("Failed to fetch failed rows sample")  # noqa: TRY400
+                logger.error("Failed to fetch failed rows sample")
 
             try:
                 result.inspectionQuery = self.get_inspection_query()
             except Exception:
                 logger.debug(traceback.format_exc())
-                logger.error("Failed to get inspection query")  # noqa: TRY400
+                logger.error("Failed to get inspection query")

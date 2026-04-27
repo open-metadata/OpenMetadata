@@ -228,7 +228,7 @@ class OpensearchSource(SearchServiceSource):
                     self.register_record(search_index_request=search_index_template_request)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Could not include index templates due to {exc}")  # noqa: TRY400
+            logger.error(f"Could not include index templates due to {exc}")
 
     def close(self):
         """

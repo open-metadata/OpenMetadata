@@ -178,7 +178,7 @@ class DatabricksClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(exc)  # noqa: TRY400
+            logger.error(exc)
 
     def is_query_valid(self, row) -> bool:
         query_text = row.get("query_text")
@@ -226,7 +226,7 @@ class DatabricksClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(exc)  # noqa: TRY400
+            logger.error(exc)
 
     def get_job_runs(self, job_id) -> List[dict]:  # noqa: UP006
         """
@@ -264,7 +264,7 @@ class DatabricksClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(exc)  # noqa: TRY400
+            logger.error(exc)
 
     def get_table_lineage(self, entity_id: str) -> List[dict[str, str]]:  # noqa: UP006
         """
@@ -280,7 +280,7 @@ class DatabricksClient:
 
         except Exception as exc:
             logger.debug(f"Error getting table lineage for {entity_id} due to {traceback.format_exc()}")
-            logger.error(exc)  # noqa: TRY400
+            logger.error(exc)
         return []
 
     def get_column_lineage(self, entity_id: str, TableKey: Tuple[str, str]) -> List[Tuple[str, str]]:  # noqa: N803, UP006
@@ -296,7 +296,7 @@ class DatabricksClient:
 
         except Exception as exc:
             logger.debug(f"Error getting column lineage for table {TableKey} due to {traceback.format_exc()}")
-            logger.error(exc)  # noqa: TRY400
+            logger.error(exc)
         return []
 
     def run_lineage_query(self, query: str) -> List[dict]:  # noqa: UP006
@@ -310,7 +310,7 @@ class DatabricksClient:
 
         except Exception as exc:
             logger.debug(f"Error caching table lineage due to {traceback.format_exc()}")
-            logger.error(exc)  # noqa: TRY400
+            logger.error(exc)
         return []
 
     def cache_lineage(self):

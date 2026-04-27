@@ -79,7 +79,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
         except ValidationError as err:
             msg = f"Request Validation Error parsing payload: {err}"
             logger.debug(traceback.format_exc())
-            logger.error(msg)  # noqa: TRY400
+            logger.error(msg)
             return ApiResponse.error(
                 status=ApiResponse.STATUS_BAD_REQUEST,
                 error=msg,
@@ -88,7 +88,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
         except Exception as exc:
             msg = f"Error running automation workflow due to [{exc}] "
             logger.debug(traceback.format_exc())
-            logger.error(msg)  # noqa: TRY400
+            logger.error(msg)
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
                 error=msg,

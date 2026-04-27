@@ -191,7 +191,7 @@ class _CustomSecretStr(SecretStr):
             try:
                 return SecretsManagerFactory().get_secrets_manager().get_string_value(secret_id)
             except Exception as exc:
-                logger.error(f"Secret value [{secret_id}] not present in the configured secrets manager: {exc}")  # noqa: TRY400
+                logger.error(f"Secret value [{secret_id}] not present in the configured secrets manager: {exc}")
         return self._secret_value
 
 

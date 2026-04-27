@@ -32,7 +32,7 @@ def health_response():
     except Exception as exc:
         msg = f"Error obtaining Airflow REST status due to [{exc}] "
         logger.debug(traceback.format_exc())
-        logger.error(msg)  # noqa: TRY400
+        logger.error(msg)
         return ApiResponse.error(
             status=ApiResponse.STATUS_BAD_REQUEST,
             error=msg,

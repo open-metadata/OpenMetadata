@@ -2241,7 +2241,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 yield Either(right=OMetaUserProfile(user=user_metadata, teams=teams, roles=roles))
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error ingesting users: {exc}")  # noqa: TRY400
+            logger.error(f"Error ingesting users: {exc}")
 
     def ingest_profiles(self) -> Iterable[Either[OMetaTableProfileSampleData]]:
         """Iterate over all the profile data and ingest them"""
@@ -2584,7 +2584,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 yield from self.create_database(service_name, db_idx)
 
         except Exception as e:
-            logger.error(f"Failed to create database service {service_name}: {e}")  # noqa: TRY400
+            logger.error(f"Failed to create database service {service_name}: {e}")
 
     def process_service_batch(self) -> None:
         """Process a batch of services.
@@ -2654,7 +2654,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 yield from self.create_schema(database_fqn, schema_idx)
 
         except Exception as e:
-            logger.error(f"Failed to create database {db_name}: {e}")  # noqa: TRY400
+            logger.error(f"Failed to create database {db_name}: {e}")
 
     def create_schema(self, database_fqn: str, schema_idx: int) -> None:
         """Create a schema.
@@ -2674,7 +2674,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             yield from self.create_table(schema_name)
 
         except Exception as e:
-            logger.error(f"Failed to create schema {schema_name}: {e}")  # noqa: TRY400
+            logger.error(f"Failed to create schema {schema_name}: {e}")
 
     def create_table(self, schema_fqn: str) -> None:
         """Create a batch of tables for a schema.

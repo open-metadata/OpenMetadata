@@ -98,4 +98,4 @@ def _clone_repo(
         logger.info(f"repo {repo_name} cloned to {path}")
     except Exception as exc:
         sanitized_msg = sanitize_url_credentials(str(exc))
-        logger.error(f"_clone_repo: ERROR {sanitized_msg}")  # noqa: TRY400
+        logger.error(f"_clone_repo: ERROR {sanitized_msg}")

@@ -227,7 +227,7 @@ class REST:
             try:
                 return self._one_request(method, url, opts, retry)
             except LimitsException as exc:
-                logger.error(f"Feature limit exceeded for {url}")  # noqa: TRY400
+                logger.error(f"Feature limit exceeded for {url}")
                 self._limits_reached.add(path)
                 raise exc  # noqa: TRY201
             except RetryException:
@@ -241,7 +241,7 @@ class REST:
                 time.sleep(retry_wait)
                 retry -= 1
                 if retry == 0:
-                    logger.error(f"No more retries left for {url}")  # noqa: TRY400
+                    logger.error(f"No more retries left for {url}")
                     traceback.format_exc()
         return None
 

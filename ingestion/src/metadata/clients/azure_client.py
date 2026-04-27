@@ -51,7 +51,7 @@ class AzureClient:
                 logger.info("Using Default Azure Credentials")
                 return DefaultAzureCredential()
         except Exception as e:
-            logger.error(f"Error creating Azure Client: {e}")  # noqa: TRY400
+            logger.error(f"Error creating Azure Client: {e}")
             raise e  # noqa: TRY201
 
     def create_blob_client(self):
@@ -66,7 +66,7 @@ class AzureClient:
                 )
             raise ValueError("Account Name is required to create Blob Service Client")  # noqa: TRY301
         except Exception as e:
-            logger.error(f"Error creating Blob Service Client: {e}")  # noqa: TRY400
+            logger.error(f"Error creating Blob Service Client: {e}")
             raise e  # noqa: TRY201
 
     def create_secret_client(self):
@@ -81,5 +81,5 @@ class AzureClient:
                 )
             raise ValueError("Vault Name is required to create a Secret Client")  # noqa: TRY301
         except Exception as e:
-            logger.error(f"Error creating Secret Client: {e}")  # noqa: TRY400
+            logger.error(f"Error creating Secret Client: {e}")
             raise e  # noqa: TRY201

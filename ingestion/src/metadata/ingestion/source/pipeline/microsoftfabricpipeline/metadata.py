@@ -135,7 +135,7 @@ class MicrosoftFabricPipelineSource(PipelineServiceSource):
             yield from self.client.get_pipelines()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get pipeline list due to: {exc}")  # noqa: TRY400
+            logger.error(f"Failed to get pipeline list due to: {exc}")
 
     def get_pipeline_name(self, pipeline_details: FabricPipeline) -> str:
         """Get Pipeline Name"""

@@ -52,6 +52,6 @@ def parse_es_index_mapping(mapping: dict) -> Optional[List[SearchIndexField]]:  
             )
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
-        logger.error(f"Unable to parse the index properties: {exc}")  # noqa: TRY400
+        logger.error(f"Unable to parse the index properties: {exc}")
 
     return field_models

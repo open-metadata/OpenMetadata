@@ -328,7 +328,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             return maybe_pipeline  # noqa: TRY300
 
         except Exception as exc:
-            logger.error(f"Error trying to get or create the Ingestion Pipeline due to [{exc}]")  # noqa: TRY400
+            logger.error(f"Error trying to get or create the Ingestion Pipeline due to [{exc}]")
             return None
 
     def _get_ingestion_pipeline_service(self) -> Optional[T]:  # noqa: UP045
@@ -381,7 +381,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Wild exception reporting status - {exc}")  # noqa: TRY400
+            logger.error(f"Wild exception reporting status - {exc}")
 
     def _is_debug_enabled(self) -> bool:
         return (

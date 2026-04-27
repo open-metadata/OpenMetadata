@@ -179,7 +179,7 @@ def memory_limit(
 
             except MemoryLimitExceeded:
                 peak_mb = monitor.peak_memory / BYTES_PER_MB
-                logger.error(  # noqa: TRY400
+                logger.error(
                     f"{context_str}Function {fn.__name__}() exceeded memory limit of {max_memory_mb}MB. "
                     f"Peak usage: {peak_mb:.2f}MB"
                 )

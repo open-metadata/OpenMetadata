@@ -665,7 +665,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
                 )
 
         except Exception as exc:
-            logger.error(f"table failed to create: {table}")  # noqa: TRY400
+            logger.error(f"table failed to create: {table}")
             error_name = table_name or (table.get("id") if isinstance(table, dict) else "unknown")
             yield Either(
                 left=StackTraceError(
@@ -767,7 +767,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
 
             except HTTPError as exc:
                 # append http error to table description if it can't be found
-                logger.error(f"table_uri: {table_uri}")  # noqa: TRY400
+                logger.error(f"table_uri: {table_uri}")
                 self.report_description.append(str(exc))
                 name_index = table_uri.rindex("/")
                 table_name = table_uri[name_index + 1 :]
@@ -824,7 +824,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
             for entity in table_entities:
                 yield self.create_lineage_request("table", "dashboard", entity, dashboard_entity)
         except Exception as exc:
-            logger.error(f"report failed to create: {report}")  # noqa: TRY400
+            logger.error(f"report failed to create: {report}")
             yield Either(
                 left=StackTraceError(
                     name=report_name,
@@ -869,7 +869,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
             for entity in output_entities:
                 yield self.create_lineage_request("dashboard", "table", dashboard_entity, entity)
         except Exception as exc:
-            logger.error(f"dataflow failed to create: {data_flow}")  # noqa: TRY400
+            logger.error(f"dataflow failed to create: {data_flow}")
             yield Either(
                 left=StackTraceError(
                     name=data_flow_id,

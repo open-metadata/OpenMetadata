@@ -302,7 +302,7 @@ class StreamableLogHandler(logging.Handler):
                 time.sleep(1.0)
 
             except Exception as e:
-                logger.error(f"Error in log shipping worker: {e}")  # noqa: TRY400
+                logger.error(f"Error in log shipping worker: {e}")
                 # Continue processing to avoid blocking
 
         # Final cleanup - drain ALL remaining items from the queue
@@ -381,7 +381,7 @@ class StreamableLogHandler(logging.Handler):
 
         except Exception as e:
             # Any error, fallback to local logging
-            logger.error(f"Error in emit: {e}")  # noqa: TRY400
+            logger.error(f"Error in emit: {e}")
             try:  # noqa: SIM105
                 self.fallback_handler.emit(record)
             except Exception:

@@ -376,7 +376,7 @@ class GrafanaSource(DashboardServiceSource):
         except Exception as exc:
             hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
             logger.debug(f"{hash_prefix}Error processing panel lineage: {exc}")
-            logger.error(traceback.format_exc())  # noqa: TRY400
+            logger.error(traceback.format_exc())
 
     def _extract_datasource_name(self, target: GrafanaTarget, panel: GrafanaPanel) -> Optional[str]:  # noqa: UP045
         """Extract datasource name from target or panel"""

@@ -111,7 +111,7 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
                 metadata=self.metadata,
             )
         except Exception as exc:
-            logger.error(f"Error trying to init the AppRunner [{self.config.sourcePythonClass}] due to [{exc}]")  # noqa: TRY400
+            logger.error(f"Error trying to init the AppRunner [{self.config.sourcePythonClass}] due to [{exc}]")
             raise exc  # noqa: TRY201
 
     def execute_internal(self) -> None:

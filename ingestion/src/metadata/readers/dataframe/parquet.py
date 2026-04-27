@@ -118,7 +118,7 @@ class ParquetDataFrameReader(DataFrameReader):
                 df = parquet_file.read().to_pandas()
                 yield from dataframe_to_chunks(df)
             except Exception as fallback_exc:
-                logger.error(f"Failed to read parquet file: {fallback_exc}")  # noqa: TRY400
+                logger.error(f"Failed to read parquet file: {fallback_exc}")
                 raise fallback_exc  # noqa: TRY201
 
     @singledispatchmethod

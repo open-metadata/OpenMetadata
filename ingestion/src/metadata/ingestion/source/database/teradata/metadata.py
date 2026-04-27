@@ -95,7 +95,7 @@ class TeradataSource(CommonDbSourceService):
                         continue
                     yield stored_procedure
                 except Exception as exc:
-                    logger.error(f"Error parsing Stored Procedure row: {row}")  # noqa: TRY400
+                    logger.error(f"Error parsing Stored Procedure row: {row}")
                     self.status.failed(
                         error=StackTraceError(
                             name=row._asdict().get("name", "UNKNOWN"),

@@ -228,7 +228,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     col_info["system_data_type"] = sub_rows["data_type"]
                     col_info["is_complex"] = True
                 except (DatabaseError, KeyError) as err:
-                    logger.error(  # noqa: TRY400
+                    logger.error(
                         f"Failed to fetch complex-type details for column {col_name} in table {table_name}: {err}"
                     )
                     logger.debug(traceback.format_exc())
@@ -451,7 +451,7 @@ def get_table_type(self, connection, database, schema, table):
                 # get type of table
                 return row_dict.get("data_type")
     except DatabaseError as err:
-        logger.error(f"Failed to fetch table type for table {table} due to: {err}")  # noqa: TRY400
+        logger.error(f"Failed to fetch table type for table {table} due to: {err}")
     return  # noqa: RET502
 
 
@@ -688,7 +688,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     self.populate_tags_cache(database_name=new_catalog)
                     yield new_catalog
                 except Exception as exc:
-                    logger.error(traceback.format_exc())  # noqa: TRY400
+                    logger.error(traceback.format_exc())
                     logger.warning(f"Error trying to process database {new_catalog}: {exc}")
 
     def get_raw_database_schema_names(self) -> Iterable[str]:

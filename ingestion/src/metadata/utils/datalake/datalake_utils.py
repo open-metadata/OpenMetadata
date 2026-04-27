@@ -76,14 +76,14 @@ def fetch_dataframe_generator(
                 )
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(  # noqa: TRY400
+                logger.error(
                     f"Error fetching file [{bucket_name}/{key}] using "
                     f"[{config_source.__class__.__name__}] due to: [{err}]"
                 )
                 raise err  # noqa: TRY201
     except Exception as err:
         logger.debug(traceback.format_exc())
-        logger.error(  # noqa: TRY400
+        logger.error(
             f"Error fetching file [{bucket_name}/{key}] using [{config_source.__class__.__name__}] due to: [{err}]"
         )
         # Here we need to blow things up. Without the dataframe we cannot move forward
@@ -132,13 +132,13 @@ def fetch_dataframe_first_chunk(
                 return dataframes  # noqa: TRY300
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(  # noqa: TRY400
+                logger.error(
                     f"Error fetching first chunk of file [{bucket_name}/{key}] using "
                     f"[{config_source.__class__.__name__}] due to: [{err}]"
                 )
     except Exception as err:
         logger.debug(traceback.format_exc())
-        logger.error(  # noqa: TRY400
+        logger.error(
             f"Error fetching first chunk of file [{bucket_name}/{key}] using "
             f"[{config_source.__class__.__name__}] due to: [{err}]"
         )

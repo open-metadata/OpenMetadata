@@ -483,7 +483,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 return table_url  # noqa: RET504
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")  # noqa: TRY400
+            logger.error(f"Unable to get source url: {exc}")
         return None
 
     def close(self):
