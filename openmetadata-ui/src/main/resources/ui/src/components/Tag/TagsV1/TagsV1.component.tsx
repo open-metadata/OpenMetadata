@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, useTheme } from '@mui/material';
+import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
@@ -53,7 +53,6 @@ const TagsV1 = ({
   newLook,
   entityFqn,
 }: TagsV1Props) => {
-  const theme = useTheme();
   const color = useMemo(
     () => (isVersionPage ? undefined : tag.style?.color),
     [tag]
@@ -185,30 +184,14 @@ const TagsV1 = ({
         data-testid="tag-redirect-link"
         to={redirectLink}>
         <TagChip
-          icon={
-            <AutomatedTag
-              color={theme.palette.allShades.brand[900]}
-              width={16}
-            />
-          }
+          icon={<AutomatedTag color="#194185" width={16} />}
           label={tagName || ''}
           labelDataTestId={`tag-${tag.tagFQN}`}
-          sx={{
-            pl: 1.5,
-            color: theme.palette.allShades.brand[900],
-            borderColor: theme.palette.allShades.brand[100],
-            backgroundColor: theme.palette.allShades.brand[50],
-            '&::before': {
-              display: 'none',
-            },
-            '&:hover': {
-              backgroundColor: theme.palette.allShades.brand[50],
-            },
-          }}
+          variant="brand-soft"
         />
       </Link>
     ),
-    [tagName, tag, redirectLink, theme]
+    [tagName, tag, redirectLink]
   );
 
   const tagChip = useMemo(
@@ -291,13 +274,11 @@ const TagsV1 = ({
     return (
       <Tooltip
         arrow
-        enterDelay={500}
+        containerClassName="tags-tooltip"
+        delay={500}
         placement="top"
-        slotProps={{
-          tooltip: { className: 'tags-tooltip' },
-        }}
         title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}>
-        {automatedTagChip}
+        <TooltipTrigger>{automatedTagChip}</TooltipTrigger>
       </Tooltip>
     );
   }
@@ -309,13 +290,11 @@ const TagsV1 = ({
       ) : (
         <Tooltip
           arrow
-          enterDelay={500}
+          containerClassName="tags-tooltip"
+          delay={500}
           placement="top"
-          slotProps={{
-            tooltip: { className: 'tags-tooltip' },
-          }}
           title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}>
-          {tagChip}
+          <TooltipTrigger>{tagChip}</TooltipTrigger>
         </Tooltip>
       )}
     </>

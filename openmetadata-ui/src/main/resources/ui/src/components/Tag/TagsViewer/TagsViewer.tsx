@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip as MuiTooltip } from '@mui/material';
+import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { Button, Popover, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
@@ -59,37 +59,31 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         const redirectLink = getTagRedirectLink(tag);
 
         return (
-          <MuiTooltip
-            enterDelay={500}
+          <Tooltip
+            delay={500}
             key={tag.tagFQN}
-            placement="bottom-start"
-            slotProps={{
-              tooltip: {
-                sx: {
-                  bgcolor: 'common.black',
-                  color: 'common.white',
-                },
-              },
-            }}
+            placement="bottom start"
             title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
-            <Link
-              className={classNames(
-                'w-full',
-                { 'diff-added tw-mx-1': tag?.added },
-                { 'diff-removed': tag?.removed }
-              )}
-              data-testid="tag-redirect-link"
-              to={redirectLink}>
-              <TagChip
-                data-testid="tags"
-                label={tagName}
-                labelDataTestId={`tag-${tag.tagFQN}`}
-                size="large"
-                tagColor={tag.style?.color}
-                variant="blueGray"
-              />
-            </Link>
-          </MuiTooltip>
+            <TooltipTrigger>
+              <Link
+                className={classNames(
+                  'w-full',
+                  { 'diff-added tw-mx-1': tag?.added },
+                  { 'diff-removed': tag?.removed }
+                )}
+                data-testid="tag-redirect-link"
+                to={redirectLink}>
+                <TagChip
+                  data-testid="tags"
+                  label={tagName}
+                  labelDataTestId={`tag-${tag.tagFQN}`}
+                  size="large"
+                  tagColor={tag.style?.color}
+                  variant="blueGray"
+                />
+              </Link>
+            </TooltipTrigger>
+          </Tooltip>
         );
       }
 

@@ -11,23 +11,48 @@
  *  limitations under the License.
  */
 
-import { Chip, ChipProps as MuiChipProps, SxProps, Theme } from '@mui/material';
-import { Tag01, XClose } from '@untitledui/icons';
-import { FC, ReactElement } from 'react';
+import { Tag01, X as XClose } from '@untitledui/icons';
+import classNames from 'classnames';
+import { CSSProperties, FC, MouseEventHandler, ReactElement } from 'react';
+import './tag-chip.less';
 
-export interface TagChipProps extends Omit<MuiChipProps, 'variant' | 'color'> {
+export type TagChipSize = 'small' | 'medium' | 'large';
+export type TagChipVariant = 'filled' | 'outlined' | 'blueGray' | 'brand-soft';
+
+export interface TagChipProps {
   label: string;
   icon?: ReactElement;
-  onDelete?: (e: Event) => void;
-  size?: 'small' | 'medium' | 'large';
-  variant?: 'filled' | 'outlined' | 'blueGray';
-  tagColor?: string; // For the colored bar indicator
-  sx?: SxProps<Theme>;
+  onDelete?: (e: React.SyntheticEvent) => void;
+  size?: TagChipSize;
+  variant?: TagChipVariant;
+  /** Optional left color bar (3px wide, 70% height). */
+  tagColor?: string;
+  /** Cap on outer chip width — string ('200px') or number (px). */
   maxWidth?: string | number;
   showEllipsis?: boolean;
   showIcon?: boolean;
+  className?: string;
+  /** Inline style on the chip root (use for one-off overrides). */
+  style?: CSSProperties;
+  /** Extra className applied to the inner label span. */
+  labelClassName?: string;
+  /** data-testid for the inner label span (back-compat). */
   labelDataTestId?: string;
+  'data-testid'?: string;
+  onClick?: MouseEventHandler<HTMLDivElement>;
 }
+
+const ICON_SIZE_BY_CHIP_SIZE: Record<TagChipSize, number> = {
+  small: 12,
+  medium: 13,
+  large: 14,
+};
+
+const DELETE_ICON_SIZE_BY_CHIP_SIZE: Record<TagChipSize, number> = {
+  small: 12,
+  medium: 14,
+  large: 16,
+};
 
 const TagChip: FC<TagChipProps> = ({
   label,
@@ -36,86 +61,69 @@ const TagChip: FC<TagChipProps> = ({
   size = 'small',
   variant = 'blueGray',
   tagColor,
-  sx,
   maxWidth,
   showEllipsis = true,
   showIcon = true,
+  className,
+  style,
+  labelClassName,
   labelDataTestId,
-  ...otherProps
+  'data-testid': dataTestId,
+  onClick,
 }) => {
-  const defaultIcon = showIcon ? (
-    <Tag01 size={size === 'small' ? 12 : size === 'large' ? 14 : 13} />
-  ) : undefined;
-  const chipIcon = icon !== undefined ? icon : defaultIcon;
+  const resolvedIcon = icon ? (
+    icon
+  ) : showIcon ? (
+    <Tag01 size={ICON_SIZE_BY_CHIP_SIZE[size]} />
+  ) : null;
 
-  const ellipsisStyles = showEllipsis
-    ? {
-        '& .MuiChip-label': {
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          display: 'block',
-        },
-      }
-    : {};
-
-  const colorBarStyles = tagColor
-    ? {
-        position: 'relative' as const,
-        paddingLeft: '12px',
-        '&::before': {
-          content: '""',
-          position: 'absolute' as const,
-          left: 0,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: '3px',
-          height: '70%',
-          backgroundColor: tagColor,
-          borderRadius: '2px 0 0 2px',
-        },
-      }
-    : {};
-
-  const heightStyles =
-    size === 'small'
-      ? { height: 24 }
-      : size === 'medium'
-      ? { height: 28 }
-      : size === 'large'
-      ? { height: 30 }
-      : {};
-
-  // Custom delete icon with appropriate sizing
-  const deleteIcon = onDelete ? (
-    <XClose size={size === 'small' ? 12 : size === 'large' ? 16 : 14} />
-  ) : undefined;
+  const handleDeleteClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    onDelete?.(event);
+  };
 
   return (
-    <Chip
-      {...otherProps}
-      deleteIcon={deleteIcon}
-      icon={chipIcon}
-      label={label}
-      size={size}
-      slotProps={{
-        label: labelDataTestId ? { 'data-testid': labelDataTestId } : undefined,
-      }}
-      sx={{
-        maxWidth,
-        minWidth: 0,
-        ...ellipsisStyles,
-        ...colorBarStyles,
-        ...heightStyles,
-        '& .MuiChip-icon': {
-          flexShrink: 0,
-          marginLeft: 0,
+    <div
+      className={classNames(
+        'tag-chip',
+        `tag-chip--size-${size}`,
+        `tag-chip--variant-${variant}`,
+        {
+          'tag-chip--has-color-bar': Boolean(tagColor),
+          'tag-chip--has-ellipsis': showEllipsis,
         },
-        ...sx,
-      }}
-      variant={variant as 'filled' | 'outlined'}
-      onDelete={onDelete}
-    />
+        className
+      )}
+      data-testid={dataTestId}
+      style={{ ...(maxWidth !== undefined ? { maxWidth } : null), ...style }}
+      onClick={onClick}>
+      {tagColor && (
+        <span
+          aria-hidden="true"
+          className="tag-chip__color-bar"
+          style={{ backgroundColor: tagColor }}
+        />
+      )}
+      {resolvedIcon && (
+        <span aria-hidden="true" className="tag-chip__icon">
+          {resolvedIcon}
+        </span>
+      )}
+      <span
+        className={classNames('tag-chip__label', labelClassName)}
+        data-testid={labelDataTestId}>
+        {label}
+      </span>
+      {onDelete && (
+        <button
+          aria-label="Remove"
+          className="tag-chip__delete"
+          type="button"
+          onClick={handleDeleteClick}>
+          <XClose size={DELETE_ICON_SIZE_BY_CHIP_SIZE[size]} />
+        </button>
+      )}
+    </div>
   );
 };
 

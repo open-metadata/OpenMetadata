@@ -101,12 +101,7 @@ const TagsCell = ({ tags, chipSize = 'small' }: TagsCellProps) => {
               label={tag.name || tag.tagFQN || ''}
               showEllipsis={false}
               size={chipSize}
-              sx={{
-                flexShrink: 0,
-                '& .MuiChip-label': {
-                  whiteSpace: 'nowrap',
-                },
-              }}
+              style={{ flexShrink: 0 }}
             />
           ))}
         </Box>
