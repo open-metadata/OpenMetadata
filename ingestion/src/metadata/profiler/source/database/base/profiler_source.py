@@ -130,8 +130,6 @@ class ProfilerSource(ProfilerSourceInterface):
         ):
             if hasattr(config_copy, "database"):
                 config_copy.database = database.name.root  # type: ignore
-            if hasattr(config_copy, "catalog"):
-                config_copy.catalog = database.name.root  # type: ignore
 
         # we know we'll only be working with DatabaseConnection, we cast the type to satisfy type checker
         config_copy = cast(DatabaseConnection, config_copy)
