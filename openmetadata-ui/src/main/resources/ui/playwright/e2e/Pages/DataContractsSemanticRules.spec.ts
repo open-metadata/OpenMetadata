@@ -177,7 +177,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await addOwner({
         page,
-        owner: user2.responseData.displayName,
+        owner: user2.getUserDisplayName(),
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
@@ -210,7 +210,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        user.responseData.displayName,
+        user.getUserDisplayName(),
         true
       );
 
@@ -235,7 +235,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await updateOwner({
         page,
-        owner: user.responseData.displayName,
+        owner: user.getUserDisplayName(),
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
@@ -281,7 +281,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await addOwner({
         page,
-        owner: user2.responseData.displayName,
+        owner: user2.getUserDisplayName(),
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
@@ -314,7 +314,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        user.responseData.displayName,
+        user.getUserDisplayName(),
         true
       );
 
@@ -340,7 +340,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await updateOwner({
         page,
-        owner: user.responseData.displayName,
+        owner: user.getUserDisplayName(),
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
@@ -385,7 +385,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await addOwner({
         page,
-        owner: user2.responseData.displayName,
+        owner: user2.getUserDisplayName(),
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
@@ -418,7 +418,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        user.responseData.displayName,
+        user.getUserDisplayName(),
         true
       );
 
@@ -443,7 +443,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await updateOwner({
         page,
-        owner: user.responseData.displayName,
+        owner: user.getUserDisplayName(),
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
@@ -527,7 +527,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
     await test.step('Should Passed since entity has owner', async () => {
       await addOwner({
         page,
-        owner: user2.responseData.displayName,
+        owner: user2.getUserDisplayName(),
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
@@ -609,7 +609,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
     await test.step('Should Failed since entity has owner', async () => {
       await addOwner({
         page,
-        owner: user2.responseData.displayName,
+        owner: user2.getUserDisplayName(),
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
