@@ -696,7 +696,7 @@ class SftpSource(DriveServiceSource):
             else:
                 logger.warning(f"Could not find file entity to ingest sample data: {file_fqn}")
         except Exception as e:
-            logger.warning(f"Failed to ingest sample data for file {file_name}: {e}")
+            logger.error(f"Failed to ingest sample data for file {file_name}: {e}")
             logger.debug(traceback.format_exc())
 
     def _get_csv_separator(self, filename: str) -> str:
@@ -773,6 +773,6 @@ class SftpSource(DriveServiceSource):
             return columns, sample_data
 
         except Exception as e:
-            logger.warning(f"Failed to extract CSV schema from {file_path}: {e}")
+            logger.error(f"Failed to extract CSV schema from {file_path}: {e}")
             logger.debug(traceback.format_exc())
             return None, None
