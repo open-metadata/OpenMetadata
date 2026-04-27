@@ -84,7 +84,7 @@ ATHENA_TAG = "ATHENA TAG"
 ATHENA_TAG_CLASSIFICATION = "ATHENA TAG CLASSIFICATION"
 
 ICEBERG_TABLE_TYPE = "ICEBERG"
-PROPERTY_NAME_INVALID_CHARS_PATTERN = re.compile(r"[^A-Za-z0-9_]")
+PROPERTY_NAME_INVALID_CHARS_PATTERN = re.compile(r"[^A-Za-z0-9_.\-]")
 PROPERTY_NAME_REPLACEMENT = "__"
 PROPERTY_NAME_MAX_LENGTH = 256
 
@@ -383,6 +383,8 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
     def get_table_extensions(
         self, table_name: str, table_type: Optional[TableType] = None
     ) -> Optional[Dict[str, str]]:
+        if not getattr(self.source_config,"includeCustomProperties",False):
+            return None
         if not self._string_property_type_ref:
             return None
         if table_type != TableType.Iceberg:
