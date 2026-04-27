@@ -165,6 +165,7 @@ const IncidentManagerDetailPage = ({
   }, [
     feedCount.openTaskCount,
     testCaseClassBase.showSqlQueryTab,
+    testCaseClassBase.showRcaTab,
     testCase?.dimensionColumns,
   ]);
 
@@ -192,6 +193,9 @@ const IncidentManagerDetailPage = ({
       });
       testCaseClassBase.setShowSqlQueryTab(
         !isUndefined(response.inspectionQuery)
+      );
+      testCaseClassBase.setShowRcaTab(
+        !isUndefined(response.testCaseResult?.rcaExplanation)
       );
       if (isVersionPage) {
         const versionResponse = await getTestCaseVersionList(response.id ?? '');
@@ -380,6 +384,7 @@ const IncidentManagerDetailPage = ({
     return () => {
       reset();
       testCaseClassBase.setShowSqlQueryTab(false);
+      testCaseClassBase.setShowRcaTab(false);
     };
   }, [testCaseFQN, hasViewPermission]);
 

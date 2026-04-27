@@ -1,0 +1,124 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# OpenMetadata DQ Workflow with AI-powered Root Cause Analysis (RCA)
+#
+# Feature: Issue #26659 — When a Data Quality check fails, an AI agent
+# analyses the failing rows and produces a human-readable explanation that
+# is stored in TestCaseResult.rcaExplanation and displayed in the UI.
+#
+# HOW TO ENABLE RCA
+# ─────────────────
+# 1. Add `aiConfig` to the `processor.config` section (see below).
+# 2. On each Test Case entity in the OpenMetadata UI, toggle the
+#    "Enable RCA Analysis" flag to true.  Only test cases with that
+#    flag set will trigger the AI analysis when they fail.
+# 3. The LLM provider SDK must be installed in the ingestion environment:
+#      pip install openai        # for provider: "openai" or "azure_openai"
+#      pip install anthropic     # for provider: "anthropic"
+#
+# SECURITY NOTE
+# ─────────────
+# Never hard-code API keys.  Reference environment variables via the
+# ${ENV_VAR} syntax; the ingestion framework resolves them at runtime.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ─── Example 1: OpenAI ───────────────────────────────────────────────────────
+source:
+  type: TestSuite
+  serviceName: my_postgres_service
+  sourceConfig:
+    config:
+      type: TestSuite
+      # Run DQ checks only against this table (basic test suite)
+      entityFullyQualifiedName: my_postgres_service.prod_db.public.orders
+
+processor:
+  type: orm-test-runner
+  config:
+    # ── AI Root Cause Analysis configuration ──────────────────────────────
+    # Remove this block entirely to disable RCA (zero impact on behaviour).
+    aiConfig:
+      # Supported providers: "openai" | "azure_openai" | "anthropic"
+      provider: "openai"
+
+      # API key — always use an environment variable reference
+      apiKey: "${OPENAI_API_KEY}"
+
+      # Model name as understood by the chosen provider
+      model: "gpt-4o-mini"
+
+      # Optional: maximum tokens in the LLM response (default: 500)
+      maxTokens: 600
+
+      # Optional: HTTP timeout in seconds before we give up and skip RCA
+      # (default: 30).  Keep this short so pipeline latency is bounded.
+      timeoutSeconds: 30
+
+    # ── Optional: define or update test cases from YAML ───────────────────
+    testCases:
+      - name: orders_amount_not_null
+        testDefinitionName: columnValuesToBeNotNull
+        columnName: amount
+        computePassedFailedRowCount: true
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: INFO   # DEBUG | INFO | WARN | ERROR
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "${OPENMETADATA_JWT_TOKEN}"
+
+---
+# ─── Example 2: Anthropic Claude ─────────────────────────────────────────────
+# Identical workflow structure; only aiConfig changes.
+#
+# source: ... (same as above)
+#
+# processor:
+#   type: orm-test-runner
+#   config:
+#     aiConfig:
+#       provider: "anthropic"
+#       apiKey: "${ANTHROPIC_API_KEY}"
+#       model: "claude-3-haiku-20240307"
+#       maxTokens: 600
+#       timeoutSeconds: 30
+#
+# ─── Example 3: Azure OpenAI ─────────────────────────────────────────────────
+#
+# processor:
+#   type: orm-test-runner
+#   config:
+#     aiConfig:
+#       provider: "azure_openai"
+#       apiKey: "${AZURE_OPENAI_API_KEY}"
+#       model: "gpt-4o-mini"          # deployment name in Azure
+#       baseUrl: "${AZURE_OPENAI_ENDPOINT}"   # e.g. https://my-org.openai.azure.com/
+#       maxTokens: 600
+#       timeoutSeconds: 30
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# FIELD REFERENCE
+# ─────────────────────────────────────────────────────────────────────────────
+# provider          (required) LLM provider. One of:
+#                     "openai", "azure_openai", "anthropic"
+# apiKey            (required) API authentication key.
+#                     Always use ${ENV_VAR} rather than a literal value.
+# model             (required) Model / deployment name for the provider.
+# baseUrl           (optional) Only needed for azure_openai.
+#                     Format: https://<resource>.openai.azure.com/
+# maxTokens         (optional, default 500) Token budget for the LLM reply.
+# timeoutSeconds    (optional, default 30)  HTTP timeout before RCA is skipped.
+#
+# PER-TEST-CASE OPT-IN
+# ─────────────────────────────────────────────────────────────────────────────
+# Even when aiConfig is present, RCA only runs for individual test cases
+# where "Enable RCA Analysis" is toggled ON in the OpenMetadata UI (the
+# `enableRcaAnalysis` boolean flag on the TestCase entity).
+# This lets you enable AI analysis selectively on high-value checks without
+# paying LLM costs for every failing check in the suite.
+# ─────────────────────────────────────────────────────────────────────────────

@@ -16,6 +16,7 @@ Base source for the data quality used to instantiate a data quality runner with 
 from copy import deepcopy
 from typing import Optional, cast
 
+from metadata.data_quality.api.models import TestSuiteProcessorConfig
 from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.runner.core import DataTestsRunner
@@ -65,6 +66,15 @@ class BaseTestSuiteRunner:
 
         self.source_config = TestSuitePipeline.model_validate(config.source.sourceConfig.config)
         self.ometa_client = ometa_client
+
+        # Parse ai_config from the processor block (optional — default None).
+        # Following the same pattern as TestCaseRunner.processor_config.
+        _processor_config = TestSuiteProcessorConfig.model_validate(
+            (config.processor.model_dump().get("config") or {})
+            if config.processor
+            else {}
+        )
+        self.ai_config = _processor_config.aiConfig
 
     @property
     def interface(self) -> Optional[TestSuiteInterface]:
@@ -145,6 +155,7 @@ class BaseTestSuiteRunner:
             sampler=sampler_interface,
             table_entity=self.entity,
             validator_builder=self.validator_builder_class,
+            ai_config=self.ai_config,
         )
         return self.interface
 

@@ -17,6 +17,8 @@ supporting sqlalchemy abstraction layer
 from abc import ABC, abstractmethod
 from typing import Optional, Set, Type
 
+from metadata.data_quality.rca.models import AiConfig
+
 from metadata.data_quality.api.models import TestCaseResultResponse
 from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
@@ -50,6 +52,7 @@ class TestSuiteInterface(ABC):
         sampler: SamplerInterface,
         table_entity: Table,
         validator_builder: Type[ValidatorBuilder],
+        ai_config: Optional[AiConfig] = None,
     ):
         """Required attribute for the interface"""
         self.ometa_client = ometa_client
@@ -57,6 +60,7 @@ class TestSuiteInterface(ABC):
         self.table_entity = table_entity
         self.sampler = sampler
         self.validator_builder_class = validator_builder
+        self.ai_config = ai_config
 
     @classmethod
     def create(
@@ -126,6 +130,7 @@ class TestSuiteInterface(ABC):
             test_result = validator.run_validation()
             response = TestCaseResultResponse(testCaseResult=test_result, testCase=test_case)
             validator.result_with_failed_samples(response)
+            self._run_rca_analysis(response, test_case)
             return response
         except Exception as err:
             message = f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
@@ -138,6 +143,65 @@ class TestSuiteInterface(ABC):
                     message,
                     [],
                 ),
+            )
+
+    def _run_rca_analysis(
+        self,
+        response: TestCaseResultResponse,
+        test_case: TestCase,
+    ) -> None:
+        """Run AI-powered root cause analysis on a failed test case result.
+
+        Attaches ``rcaExplanation`` and ``rcaGeneratedAt`` to
+        ``response.testCaseResult`` when all guards pass.
+
+        Silently skips when:
+          - ``self.ai_config`` is None (feature not configured)
+          - test result status is not Failed
+          - ``test_case.enableRcaAnalysis`` is False or unset
+
+        Never raises -- any exception is caught and logged at WARNING.
+        """
+        try:
+            # Guard 1 -- feature must be explicitly configured
+            if self.ai_config is None:
+                return
+
+            # Guard 2 -- only analyse failures
+            if (
+                response.testCaseResult is None
+                or response.testCaseResult.testCaseStatus != TestCaseStatus.Failed
+            ):
+                return
+
+            # Guard 3 -- per-test-case opt-in flag (mirrors computePassedFailedRowCount pattern)
+            if not getattr(test_case, "enableRcaAnalysis", False):
+                return
+
+            # All guards passed -- run the agent.
+            # Imports are lazy to avoid circular imports and keep the module
+            # importable even when the openai/anthropic SDKs are not installed.
+            from metadata.data_quality.rca.rca_agent import (  # pylint: disable=import-outside-toplevel
+                DQRcaAgent,
+            )
+            from metadata.data_quality.rca.signal_builder import (  # pylint: disable=import-outside-toplevel
+                SignalBuilder,
+            )
+
+            signal = SignalBuilder.build(response)
+            rca_result = DQRcaAgent(self.ai_config).analyze(signal)
+
+            if rca_result is not None:
+                response.testCaseResult.rcaExplanation = rca_result.explanation
+                response.testCaseResult.rcaGeneratedAt = rca_result.generated_at
+                logger.debug(
+                    f"RCA analysis completed for test case '{test_case.name}'"
+                )
+
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning(
+                f"RCA analysis skipped for test case"
+                f" '{getattr(test_case, 'name', 'unknown')}': {exc}"
             )
 
     def _get_table_config(self):
