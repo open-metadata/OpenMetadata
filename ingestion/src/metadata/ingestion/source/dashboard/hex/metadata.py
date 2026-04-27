@@ -11,6 +11,7 @@
 """
 Hex source module with direct warehouse query support for lineage
 """
+
 import traceback
 from typing import Dict, Iterable, Optional
 
@@ -87,9 +88,7 @@ class HexSource(DashboardServiceSource):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: HexConnection = config.serviceConnection.root.config
         if not isinstance(connection, HexConnection):
-            raise InvalidSourceException(
-                f"Expected HexConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected HexConnection, but got {connection}")
         return cls(config, metadata)
 
     def prepare(self):
@@ -98,17 +97,13 @@ class HexSource(DashboardServiceSource):
         if self.query_fetcher:
             db_service_prefixes = self.get_db_service_prefixes()
             if db_service_prefixes:
-                logger.info(
-                    f"Fetching Hex lineage using {len(db_service_prefixes)} database service prefixes"
-                )
+                logger.info(f"Fetching Hex lineage using {len(db_service_prefixes)} database service prefixes")
 
                 for db_service_prefix in db_service_prefixes:
                     try:
                         logger.info(f"Processing service prefix: {db_service_prefix}")
-                        projects_data_from_warehouse = (
-                            self.query_fetcher.fetch_hex_queries_from_service_prefix(
-                                db_service_prefix
-                            )
+                        projects_data_from_warehouse = self.query_fetcher.fetch_hex_queries_from_service_prefix(
+                            db_service_prefix
                         )
 
                         # Store or merge data for each Hex project found in this warehouse
@@ -121,14 +116,10 @@ class HexSource(DashboardServiceSource):
                                 self.hex_project_lineage[project_id] = project_data
                             else:
                                 # Project already exists - merge new data
-                                existing_project_data = self.hex_project_lineage[
-                                    project_id
-                                ]
+                                existing_project_data = self.hex_project_lineage[project_id]
 
                                 # Add new tables (duplicates are automatically handled by add_tables method)
-                                existing_project_data.add_tables(
-                                    project_data.upstream_tables
-                                )
+                                existing_project_data.add_tables(project_data.upstream_tables)
 
                             logger.debug(
                                 f"Found lineage for project {project_id}: "
@@ -136,14 +127,10 @@ class HexSource(DashboardServiceSource):
                             )
 
                     except Exception as e:
-                        logger.error(
-                            f"Error fetching lineage from prefix {db_service_prefix}: {e}"
-                        )
+                        logger.error(f"Error fetching lineage from prefix {db_service_prefix}: {e}")
                         logger.debug(traceback.format_exc())
 
-                logger.info(
-                    f"Total Hex projects with lineage: {len(self.hex_project_lineage)}"
-                )
+                logger.info(f"Total Hex projects with lineage: {len(self.hex_project_lineage)}")
 
     def get_dashboards_list(self):
         """
@@ -160,9 +147,7 @@ class HexSource(DashboardServiceSource):
         """Get dashboard details - in Hex, we already have all details from list API"""
         return dashboard
 
-    def get_owner_ref(
-        self, dashboard_details: Project
-    ) -> Optional[EntityReferenceList]:
+    def get_owner_ref(self, dashboard_details: Project) -> Optional[EntityReferenceList]:
         """
         Get owner from email
         """
@@ -182,9 +167,7 @@ class HexSource(DashboardServiceSource):
             logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
-    def yield_tags(
-        self, dashboard_details: Project
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tags(self, dashboard_details: Project) -> Iterable[Either[OMetaTagAndClassification]]:
         """Create classification and tags for dashboard"""
         tags = self._extract_tags_from_project(dashboard_details)
         if tags and self.source_config.includeTags:
@@ -216,7 +199,6 @@ class HexSource(DashboardServiceSource):
     def _get_dashboard_tags(self, dashboard_details):
         """Get tag labels for dashboard"""
         if self.source_config.includeTags:
-
             tags = self._extract_tags_from_project(dashboard_details)
 
             if tags:
@@ -229,19 +211,13 @@ class HexSource(DashboardServiceSource):
 
         return None
 
-    def yield_dashboard(
-        self, dashboard_details: Project
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def yield_dashboard(self, dashboard_details: Project) -> Iterable[Either[CreateDashboardRequest]]:
         """Method to Get Dashboard Entity"""
         try:
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.id),
                 displayName=dashboard_details.title,
-                description=(
-                    Markdown(dashboard_details.description)
-                    if dashboard_details.description
-                    else None
-                ),
+                description=(Markdown(dashboard_details.description) if dashboard_details.description else None),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -314,24 +290,16 @@ class HexSource(DashboardServiceSource):
                     # Create lineage from table to dashboard
                     lineage_request = AddLineageRequest(
                         edge=EntitiesEdge(
-                            fromEntity=EntityReference(
-                                id=table_entity.id, type="table"
-                            ),
+                            fromEntity=EntityReference(id=table_entity.id, type="table"),
                             toEntity=EntityReference(id=dashboard.id, type="dashboard"),
                         )
                     )
 
                     yield Either(right=lineage_request)
-                    logger.debug(
-                        f"Added lineage: {table_entity.fullyQualifiedName.root} -> {dashboard_fqn}"
-                    )
+                    logger.debug(f"Added lineage: {table_entity.fullyQualifiedName.root} -> {dashboard_fqn}")
 
                 except Exception as e:
-                    table_fqn = (
-                        table_entity.fullyQualifiedName.root
-                        if table_entity
-                        else "Unknown"
-                    )
+                    table_fqn = table_entity.fullyQualifiedName.root if table_entity else "Unknown"
                     logger.error(f"Error creating lineage for table {table_fqn}: {e}")
                     yield Either(
                         left=StackTraceError(
@@ -342,9 +310,7 @@ class HexSource(DashboardServiceSource):
                     )
 
         except Exception as exc:
-            logger.error(
-                f"Error building lineage for dashboard {dashboard_details.id}: {exc}"
-            )
+            logger.error(f"Error building lineage for dashboard {dashboard_details.id}: {exc}")
             yield Either(
                 left=StackTraceError(
                     name="Dashboard Lineage",
@@ -353,9 +319,7 @@ class HexSource(DashboardServiceSource):
                 )
             )
 
-    def yield_dashboard_chart(
-        self, dashboard_details: Project
-    ) -> Iterable[Either[CreateChartRequest]]:
+    def yield_dashboard_chart(self, dashboard_details: Project) -> Iterable[Either[CreateChartRequest]]:
         """
         Hex projects don't have separate charts - they are integrated within the project.
         Return empty iterator as we only ingest dashboards.

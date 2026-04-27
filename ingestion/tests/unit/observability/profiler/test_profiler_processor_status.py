@@ -94,9 +94,7 @@ class TestProfilerProcessorStatus(TestCase):
             table=Users,
         )
 
-        self.sqa_profiler_interface._get_metric_fn = {
-            MetricTypes.Table.value: Mock(return_value={"rowCount": 10})
-        }
+        self.sqa_profiler_interface._get_metric_fn = {MetricTypes.Table.value: Mock(return_value={"rowCount": 10})}
 
         self.sqa_profiler_interface.compute_metrics_in_thread(mock_metric)
 
@@ -113,16 +111,12 @@ class TestProfilerProcessorStatus(TestCase):
             table=Users,
         )
 
-        self.sqa_profiler_interface._get_metric_fn = {
-            MetricTypes.Static.value: Mock(return_value={"nullCount": 0})
-        }
+        self.sqa_profiler_interface._get_metric_fn = {MetricTypes.Static.value: Mock(return_value={"nullCount": 0})}
 
         self.sqa_profiler_interface.compute_metrics_in_thread(mock_metric)
 
         self.assertEqual(len(self.sqa_profiler_interface.status.records), 1)
-        self.assertEqual(
-            self.sqa_profiler_interface.status.records[0], "users.name__Static"
-        )
+        self.assertEqual(self.sqa_profiler_interface.status.records[0], "users.name__Static")
 
     def test_multiple_metric_groups_report_separate_statuses(self):
         """Verify each metric group reports a separate status entry."""
@@ -226,9 +220,7 @@ class TestProfilerProcessorStatus(TestCase):
         self.sqa_profiler_interface.compute_metrics_in_thread(mock_metric)
 
         self.assertEqual(len(self.sqa_profiler_interface.status.records), 1)
-        self.assertEqual(
-            self.sqa_profiler_interface.status.records[0], "users.id__Window"
-        )
+        self.assertEqual(self.sqa_profiler_interface.status.records[0], "users.id__Window")
 
     def test_query_metric_reports_status(self):
         """Verify query metric execution reports status correctly."""
@@ -247,9 +239,7 @@ class TestProfilerProcessorStatus(TestCase):
         self.sqa_profiler_interface.compute_metrics_in_thread(mock_metric)
 
         self.assertEqual(len(self.sqa_profiler_interface.status.records), 1)
-        self.assertEqual(
-            self.sqa_profiler_interface.status.records[0], "users.name__Query"
-        )
+        self.assertEqual(self.sqa_profiler_interface.status.records[0], "users.name__Query")
 
     def test_mixed_success_and_failure_reports_both(self):
         """Verify mixed success and failure metrics report both statuses."""
@@ -278,9 +268,7 @@ class TestProfilerProcessorStatus(TestCase):
                 return {"nullCount": 0}
             raise Exception("Simulated failure")
 
-        self.sqa_profiler_interface._get_metric_fn = {
-            MetricTypes.Static.value: mock_static_metrics
-        }
+        self.sqa_profiler_interface._get_metric_fn = {MetricTypes.Static.value: mock_static_metrics}
 
         self.sqa_profiler_interface.compute_metrics_in_thread(success_metric)
 
@@ -293,6 +281,4 @@ class TestProfilerProcessorStatus(TestCase):
 
         self.assertEqual(len(self.sqa_profiler_interface.status.records), 1)
         self.assertEqual(len(self.sqa_profiler_interface.status.failures), 1)
-        self.assertEqual(
-            self.sqa_profiler_interface.status.records[0], "users.id__Static"
-        )
+        self.assertEqual(self.sqa_profiler_interface.status.records[0], "users.id__Static")

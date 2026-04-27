@@ -76,9 +76,7 @@ def _sample_data_exists() -> bool:
 
 pytestmark = [
     pytest.mark.skipif(not _om_reachable(), reason="OM not running at localhost:8585"),
-    pytest.mark.skipif(
-        not _sample_data_exists(), reason="Sample data tables not ingested"
-    ),
+    pytest.mark.skipif(not _sample_data_exists(), reason="Sample data tables not ingested"),
 ]
 
 
@@ -133,9 +131,7 @@ def _send_ol_event(
         "outputs": outputs,
     }
     resp = requests.post(OL_ENDPOINT, headers=AUTH_HEADERS, json=event, timeout=10)
-    assert (
-        resp.status_code == 200
-    ), f"OL endpoint returned {resp.status_code}: {resp.text}"
+    assert resp.status_code == 200, f"OL endpoint returned {resp.status_code}: {resp.text}"
     return resp.json()
 
 
@@ -181,35 +177,25 @@ class TestOpenLineageResolvesExistingTables:
         result = _send_ol_event(
             job_namespace="airflow_e2e_lineage",
             job_name="sample_transform",
-            inputs=[
-                {"namespace": "sample_data", "name": "ecommerce_db.shopify.raw_order"}
-            ],
-            outputs=[
-                {"namespace": "sample_data", "name": "ecommerce_db.shopify.fact_order"}
-            ],
+            inputs=[{"namespace": "sample_data", "name": "ecommerce_db.shopify.raw_order"}],
+            outputs=[{"namespace": "sample_data", "name": "ecommerce_db.shopify.fact_order"}],
         )
 
-        assert (
-            result["lineageEdgesCreated"] > 0
-        ), f"Expected lineage edges to be created, got: {json.dumps(result, indent=2)}"
+        assert result["lineageEdgesCreated"] > 0, (
+            f"Expected lineage edges to be created, got: {json.dumps(result, indent=2)}"
+        )
 
     def test_lineage_edge_has_openlineage_source(self, metadata, ensure_ol_settings):
         """Verify the created lineage edge has source=OpenLineage."""
         src_fqn = "sample_data.ecommerce_db.shopify.raw_order"
 
-        lineage = metadata.get_lineage_by_name(
-            entity=Table, fqn=src_fqn, up_depth=0, down_depth=3
-        )
+        lineage = metadata.get_lineage_by_name(entity=Table, fqn=src_fqn, up_depth=0, down_depth=3)
         downstream = lineage.get("downstreamEdges", [])
 
-        ol_edges = [
-            e
-            for e in downstream
-            if e.get("lineageDetails", {}).get("source") == "OpenLineage"
-        ]
+        ol_edges = [e for e in downstream if e.get("lineageDetails", {}).get("source") == "OpenLineage"]
         assert len(ol_edges) > 0, (
             f"Expected at least one OpenLineage-sourced edge from {src_fqn}, "
-            f"got sources: {[e.get('lineageDetails',{}).get('source') for e in downstream]}"
+            f"got sources: {[e.get('lineageDetails', {}).get('source') for e in downstream]}"
         )
 
     def test_lineage_references_existing_pipeline(self, metadata, ensure_ol_settings):
@@ -253,9 +239,7 @@ class TestOpenLineageResolvesExistingTables:
             )
         )
 
-        lineage = metadata.get_lineage_by_name(
-            entity=Table, fqn=src_fqn, up_depth=0, down_depth=3
-        )
+        lineage = metadata.get_lineage_by_name(entity=Table, fqn=src_fqn, up_depth=0, down_depth=3)
         ol_edges = [
             e
             for e in lineage.get("downstreamEdges", [])
@@ -273,12 +257,8 @@ class TestOpenLineageResolvesExistingTables:
         result = _send_ol_event(
             job_namespace="test",
             job_name="unknown_job",
-            inputs=[
-                {"namespace": "nonexistent_service", "name": "fake_schema.fake_table"}
-            ],
-            outputs=[
-                {"namespace": "nonexistent_service", "name": "fake_schema.fake_output"}
-            ],
+            inputs=[{"namespace": "nonexistent_service", "name": "fake_schema.fake_table"}],
+            outputs=[{"namespace": "nonexistent_service", "name": "fake_schema.fake_output"}],
         )
         assert result["lineageEdgesCreated"] == 0
 
@@ -303,15 +283,9 @@ class TestOpenLineageEventTypeFiltering:
             "producer": "test",
             "run": {"runId": str(uuid.uuid4())},
             "job": {"namespace": "test", "name": "start_test"},
-            "inputs": [
-                {"namespace": "sample_data", "name": "ecommerce_db.shopify.raw_order"}
-            ],
-            "outputs": [
-                {"namespace": "sample_data", "name": "ecommerce_db.shopify.fact_order"}
-            ],
+            "inputs": [{"namespace": "sample_data", "name": "ecommerce_db.shopify.raw_order"}],
+            "outputs": [{"namespace": "sample_data", "name": "ecommerce_db.shopify.fact_order"}],
         }
         resp = requests.post(OL_ENDPOINT, headers=AUTH_HEADERS, json=event, timeout=10)
         result = resp.json()
-        assert (
-            result["lineageEdgesCreated"] == 0
-        ), "START events should not create edges"
+        assert result["lineageEdgesCreated"] == 0, "START events should not create edges"

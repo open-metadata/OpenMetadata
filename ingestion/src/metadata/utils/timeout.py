@@ -12,6 +12,7 @@
 """
 Timeout utilities
 """
+
 import errno
 import functools
 import inspect
@@ -49,10 +50,7 @@ def timeout(seconds: int = TEN_MIN) -> Callable:
         @functools.wraps(fn)
         def inner(*args, **kwargs):
             # SIGALRM is not supported on Windows or sub-threads
-            if (
-                platform.system() != "Windows"
-                and threading.current_thread() == threading.main_thread()
-            ):
+            if platform.system() != "Windows" and threading.current_thread() == threading.main_thread():
                 signal.signal(signal.SIGALRM, _handle_timeout)
                 signal.alarm(seconds)
                 try:

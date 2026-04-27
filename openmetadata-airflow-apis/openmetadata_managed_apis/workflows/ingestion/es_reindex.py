@@ -11,7 +11,8 @@
 """
 ElasticSearch reindex DAG function builder
 """
-from airflow import DAG
+
+from airflow import DAG  # noqa: I001
 from openmetadata_managed_apis.workflows.ingestion.common import (
     ClientInitializationError,
     GetServiceException,

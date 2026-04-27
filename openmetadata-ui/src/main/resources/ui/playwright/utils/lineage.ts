@@ -511,7 +511,9 @@ export const applyPipelineFromModal = async (
   );
 
   await clickEdgeBetweenNodes(page, fromNode, toNode);
-  await page.getByTestId('add-pipeline').click();
+  const addPipelineBtn = page.getByTestId('add-pipeline');
+  await addPipelineBtn.waitFor({ state: 'visible' });
+  await addPipelineBtn.dispatchEvent('click');
 
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*`

@@ -12,6 +12,7 @@
 """
 Simple dictionary implementation for keys with TTL
 """
+
 from datetime import datetime
 from typing import Dict
 

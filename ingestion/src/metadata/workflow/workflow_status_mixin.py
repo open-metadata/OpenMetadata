@@ -11,6 +11,7 @@
 """
 Add methods to the workflows for updating the IngestionPipeline status
 """
+
 import traceback
 import uuid
 from datetime import datetime
@@ -87,9 +88,7 @@ class WorkflowStatusMixin:
             timestamp=Timestamp(self._start_ts),
         )  # type: ignore
 
-    def update_pipeline_status_metadata(
-        self, pipeline_status: PipelineStatus
-    ) -> PipelineStatus:
+    def update_pipeline_status_metadata(self, pipeline_status: PipelineStatus) -> PipelineStatus:
         """
         Update the pipeline status metadata with the context manager data.
         """
@@ -122,14 +121,10 @@ class WorkflowStatusMixin:
                     pipeline_status = self._new_pipeline_status(state)
                 else:
                     # if workflow is ended then update the end date in status
-                    pipeline_status.endDate = Timestamp(
-                        int(datetime.now().timestamp() * 1000)
-                    )
+                    pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
                     pipeline_status.pipelineState = state
 
-                pipeline_status.status = (
-                    ingestion_status if ingestion_status else pipeline_status.status
-                )
+                pipeline_status.status = ingestion_status if ingestion_status else pipeline_status.status
                 # committing configurations can be a burden on resources,
                 # we dump a subset to be mindful of the payload size
                 pipeline_status.config = Map(
@@ -146,9 +141,7 @@ class WorkflowStatusMixin:
                 )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unhandled error trying to update Ingestion Pipeline status [{err}]"
-            )
+            logger.error(f"Unhandled error trying to update Ingestion Pipeline status [{err}]")
 
     def raise_from_status(self, raise_warnings=False):
         """
@@ -177,9 +170,7 @@ class WorkflowStatusMixin:
             ]
         )
 
-    def send_progress_update(
-        self, update_type: ProgressUpdateType = ProgressUpdateType.PROCESSING
-    ) -> None:
+    def send_progress_update(self, update_type: ProgressUpdateType = ProgressUpdateType.PROCESSING) -> None:
         """
         Send a progress update to the OpenMetadata server via SSE endpoint.
         Called periodically during workflow execution.

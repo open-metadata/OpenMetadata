@@ -56,9 +56,7 @@ class ColumnValuesToBeInSetValidator(
 ):
     """Validator for column value to be in set test case"""
 
-    def _run_results(
-        self, metric: Metrics, column: SQALikeColumn, **kwargs
-    ) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: SQALikeColumn, **kwargs) -> Optional[int]:
         """compute result of the test case
 
         Args:
@@ -99,15 +97,13 @@ class ColumnValuesToBeInSetValidator(
         dimension_results = []
 
         try:
-            allowed_values = test_params[
-                BaseColumnValuesToBeInSetValidator.ALLOWED_VALUES
-            ]
+            allowed_values = test_params[BaseColumnValuesToBeInSetValidator.ALLOWED_VALUES]
             match_enum = test_params[BaseColumnValuesToBeInSetValidator.MATCH_ENUM]
 
             dfs = self.runner
-            count_in_set_impl = add_props(values=allowed_values)(
-                Metrics.countInSet.value
-            )(column).get_pandas_computation()
+            count_in_set_impl = add_props(values=allowed_values)(Metrics.countInSet.value)(
+                column
+            ).get_pandas_computation()
             row_count_impl = Metrics.rowCount().get_pandas_computation()
 
             dimension_aggregates = defaultdict(
@@ -124,27 +120,21 @@ class ColumnValuesToBeInSetValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    dimension_aggregates[dimension_value][
-                        Metrics.countInSet.name
-                    ] = count_in_set_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.countInSet.name],
-                        group_df,
+                    dimension_aggregates[dimension_value][Metrics.countInSet.name] = (
+                        count_in_set_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][Metrics.countInSet.name],
+                            group_df,
+                        )
                     )
-                    dimension_aggregates[dimension_value][
-                        Metrics.rowCount.name
-                    ] = row_count_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.rowCount.name] = row_count_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.rowCount.name],
                         group_df,
                     )
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                count_in_set = count_in_set_impl.aggregate_accumulator(
-                    agg[Metrics.countInSet.name]
-                )
-                row_count = row_count_impl.aggregate_accumulator(
-                    agg[Metrics.rowCount.name]
-                )
+                count_in_set = count_in_set_impl.aggregate_accumulator(agg[Metrics.countInSet.name])
+                row_count = row_count_impl.aggregate_accumulator(agg[Metrics.rowCount.name])
 
                 if match_enum:
                     failed_count = row_count - count_in_set

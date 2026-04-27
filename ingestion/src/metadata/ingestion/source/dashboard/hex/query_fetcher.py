@@ -55,12 +55,8 @@ class HexProjectLineage:
     """Lineage information for a Hex project - contains only what's needed for creating lineage"""
 
     project_id: str
-    upstream_tables: List[Table] = field(
-        default_factory=list
-    )  # Table entities referenced by the project
-    _table_ids_seen: set = field(
-        default_factory=set, init=False
-    )  # Track table IDs to prevent duplicates
+    upstream_tables: List[Table] = field(default_factory=list)  # Table entities referenced by the project
+    _table_ids_seen: set = field(default_factory=set, init=False)  # Track table IDs to prevent duplicates
 
     def add_table(self, table: Table) -> None:
         """Add a table if it hasn't been seen before"""
@@ -156,17 +152,13 @@ class HexQueryFetcher:
             DatabaseService entity if found, None otherwise
         """
         try:
-            service = self.metadata.get_by_name(
-                entity=DatabaseService, fqn=service_name
-            )
+            service = self.metadata.get_by_name(entity=DatabaseService, fqn=service_name)
             return service
         except Exception as e:
             logger.debug(f"Service not found with name {service_name}: {e}")
             return None
 
-    def _fetch_from_single_service(
-        self, db_service: DatabaseService, db_service_prefix: Optional[str] = None
-    ):
+    def _fetch_from_single_service(self, db_service: DatabaseService, db_service_prefix: Optional[str] = None):
         """
         Fetch Hex queries from a single database service
 
@@ -180,9 +172,7 @@ class HexQueryFetcher:
             # Get the service connection configuration
             service_connection = db_service.connection
             if not service_connection or not service_connection.config:
-                logger.warning(
-                    f"No connection configuration for service: {service_name}"
-                )
+                logger.warning(f"No connection configuration for service: {service_name}")
                 return
 
             # Extract warehouse type
@@ -192,12 +182,8 @@ class HexQueryFetcher:
             try:
                 engine = self._create_engine_for_service(service_connection.config)
                 if engine:
-                    queries = self._execute_hex_query(
-                        engine, warehouse_type, service_connection.config
-                    )
-                    self._process_query_results(
-                        queries, service_name, db_service_prefix
-                    )
+                    queries = self._execute_hex_query(engine, warehouse_type, service_connection.config)
+                    self._process_query_results(queries, service_name, db_service_prefix)
                 else:
                     logger.info(
                         f"Could not establish direct connection to {service_name}. "
@@ -231,16 +217,12 @@ class HexQueryFetcher:
             return get_ssl_connection(connection_config)
 
         except Exception as e:
-            connection_type = (
-                connection_config.type.value if connection_config else "Unknown"
-            )
+            connection_type = connection_config.type.value if connection_config else "Unknown"
             logger.error(f"Error creating engine for {connection_type}: {e}")
             logger.debug(traceback.format_exc())
             return None
 
-    def _execute_hex_query(
-        self, engine: Engine, warehouse_type: str, connection_config
-    ) -> List[Dict]:
+    def _execute_hex_query(self, engine: Engine, warehouse_type: str, connection_config) -> List[Dict]:
         """
         Execute Hex-specific query on the warehouse
 
@@ -266,16 +248,10 @@ class HexQueryFetcher:
             }
 
             # Add warehouse-specific parameters
-            if warehouse_type.lower() == "snowflake" and isinstance(
-                connection_config, SnowflakeConnection
-            ):
-                params["account_usage"] = (
-                    connection_config.accountUsageSchema or "SNOWFLAKE.ACCOUNT_USAGE"
-                )
+            if warehouse_type.lower() == "snowflake" and isinstance(connection_config, SnowflakeConnection):
+                params["account_usage"] = connection_config.accountUsageSchema or "SNOWFLAKE.ACCOUNT_USAGE"
 
-            elif warehouse_type.lower() == "bigquery" and isinstance(
-                connection_config, BigQueryConnection
-            ):
+            elif warehouse_type.lower() == "bigquery" and isinstance(connection_config, BigQueryConnection):
                 params["region"] = connection_config.usageLocation or "US"
 
             # Format and execute query
@@ -356,9 +332,7 @@ class HexQueryFetcher:
 
             # Initialize project lineage if needed
             if project_id not in self._project_lineage_map:
-                self._project_lineage_map[project_id] = HexProjectLineage(
-                    project_id=project_id
-                )
+                self._project_lineage_map[project_id] = HexProjectLineage(project_id=project_id)
 
             # Extract upstream tables from query and add them
             try:
@@ -400,9 +374,7 @@ class HexQueryFetcher:
 
         try:
             # Get the dialect for the service
-            db_service = self.metadata.get_by_name(
-                entity=DatabaseService, fqn=service_name
-            )
+            db_service = self.metadata.get_by_name(entity=DatabaseService, fqn=service_name)
 
             dialect = Dialect.ANSI
             if db_service and db_service.connection and db_service.connection.config:
@@ -439,25 +411,19 @@ class HexQueryFetcher:
                     if table_entities:
                         # Filter based on prefix constraints if needed
                         for table_entity in table_entities:
-                            if self._matches_prefix_constraints(
-                                table_entity, db_service_prefix
-                            ):
+                            if self._matches_prefix_constraints(table_entity, db_service_prefix):
                                 tables.append(table_entity)
 
             except Exception as parser_error:
                 hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
-                logger.debug(
-                    f"{hash_prefix}LineageParser failed, falling back to alternative method: {parser_error}"
-                )
+                logger.debug(f"{hash_prefix}LineageParser failed, falling back to alternative method: {parser_error}")
 
         except Exception as e:
             logger.debug(f"Error extracting tables from query: {e}")
 
         return tables
 
-    def _matches_prefix_constraints(
-        self, table: Table, db_service_prefix: Optional[str]
-    ) -> bool:
+    def _matches_prefix_constraints(self, table: Table, db_service_prefix: Optional[str]) -> bool:
         """
         Check if a table matches the constraints specified in the prefix
 

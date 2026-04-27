@@ -90,9 +90,7 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
 
 
 class MysqlUnitTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
@@ -102,25 +100,17 @@ class MysqlUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
-        self.mysql_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.mysql_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.mysql_source.context.get().__dict__["database"] = "test_db"
-        self.mysql_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.mysql_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     @patch("sqlalchemy.engine.base.Engine")
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection")
     def test_close_connection(self, engine, connection):
         connection.return_value = True
         self.mysql_source.close()
 
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection")
     def test_get_stored_procedures(self, connection):
         """Test fetching stored procedures"""
         connection.return_value = True
@@ -164,9 +154,7 @@ class MysqlUnitTest(TestCase):
 
         # Enable stored procedures in config
         self.mysql_source.source_config.includeStoredProcedures = True
-        self.mysql_source.source_config.storedProcedureFilterPattern = FilterPattern(
-            excludes=["exclude_procedure"]
-        )
+        self.mysql_source.source_config.storedProcedureFilterPattern = FilterPattern(excludes=["exclude_procedure"])
 
         # Get stored procedures
         stored_procedures = list(self.mysql_source.get_stored_procedures())

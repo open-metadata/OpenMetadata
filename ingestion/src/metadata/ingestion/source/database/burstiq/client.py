@@ -11,6 +11,7 @@
 """
 Client to interact with BurstIQ LifeGraph APIs
 """
+
 import traceback
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
@@ -77,9 +78,7 @@ class BurstIQClient:
 
         auth_server_url = getattr(self.config, "authServerUrl", AUTH_SERVER_BASE)
         client_id = getattr(self.config, "clientId", "burst")
-        token_url = (
-            f"{auth_server_url}/realms/{realm_name}/protocol/openid-connect/token"
-        )
+        token_url = f"{auth_server_url}/realms/{realm_name}/protocol/openid-connect/token"
 
         payload = {
             "client_id": client_id,
@@ -100,16 +99,12 @@ class BurstIQClient:
 
             token = TokenResponse.model_validate(response.json())
             self.access_token = token.access_token
-            self.token_expires_at = datetime.now() + timedelta(
-                seconds=token.expires_in - 60
-            )
+            self.token_expires_at = datetime.now() + timedelta(seconds=token.expires_in - 60)
 
             customer_name = getattr(self.config, "biqCustomerName", None)
             sdz_name = getattr(self.config, "biqSdzName", None)
 
-            logger.info(
-                f"Authentication successful. Token expires in {token.expires_in} seconds"
-            )
+            logger.info(f"Authentication successful. Token expires in {token.expires_in} seconds")
             if customer_name and sdz_name:
                 logger.info(f"Customer: {customer_name}, SDZ: {sdz_name}")
 
@@ -176,14 +171,10 @@ class BurstIQClient:
 
         try:
             start_time = time.time()
-            response = requests.request(
-                method, url, headers=headers, timeout=API_TIMEOUT, **kwargs
-            )
+            response = requests.request(method, url, headers=headers, timeout=API_TIMEOUT, **kwargs)
             elapsed_time = time.time() - start_time
 
-            logger.debug(
-                f"Request completed in {elapsed_time:.2f}s - Status: {response.status_code}"
-            )
+            logger.debug(f"Request completed in {elapsed_time:.2f}s - Status: {response.status_code}")
 
             response.raise_for_status()
 
@@ -207,8 +198,7 @@ class BurstIQClient:
             logger.error(f"Connection error for {url}: {exc}")
             logger.debug(traceback.format_exc())
             raise ConnectionError(
-                f"Failed to connect to BurstIQ API at {url}. "
-                "Please verify the API URL and network connectivity."
+                f"Failed to connect to BurstIQ API at {url}. Please verify the API URL and network connectivity."
             ) from exc
         except Exception as exc:
             logger.error(f"API request failed for {url}: {exc}")
@@ -289,9 +279,7 @@ class BurstIQClient:
         if skip:
             params["skip"] = skip
 
-        logger.info(
-            f"Fetching edges from BurstIQ (filters: name={name}, from={from_dictionary}, to={to_dictionary})"
-        )
+        logger.info(f"Fetching edges from BurstIQ (filters: name={name}, from={from_dictionary}, to={to_dictionary})")
         data = self._make_request("GET", "/api/metadata/edge", params=params)
 
         if data is None:
@@ -316,14 +304,10 @@ class BurstIQClient:
         if data is None:
             return {}
         metrics = SdzMetricsResponse.model_validate(data)
-        self._chain_metrics = {
-            name: chain.assets for name, chain in metrics.chainMetrics.items()
-        }
+        self._chain_metrics = {name: chain.assets for name, chain in metrics.chainMetrics.items()}
         return self._chain_metrics
 
-    def get_records_by_tql(
-        self, chain: str, limit: int, skip: int = 0
-    ) -> List[Dict[str, Any]]:
+    def get_records_by_tql(self, chain: str, limit: int, skip: int = 0) -> List[Dict[str, Any]]:
         """
         Fetch data records from a chain using TQL (Temporal Query Language).
 
@@ -338,9 +322,7 @@ class BurstIQClient:
         tql = f"FROM {chain} SKIP {skip} LIMIT {limit} SELECT data.*"
         logger.info(f"Fetching records for chain '{chain}' via TQL (limit={limit})")
         try:
-            raw = self._make_request(
-                "POST", "/api/graphchain/query", json={"query": tql}
-            )
+            raw = self._make_request("POST", "/api/graphchain/query", json={"query": tql})
         except Exception as exc:
             logger.warning(f"TQL query failed for chain '{chain}': {exc}")
             return []
@@ -348,11 +330,7 @@ class BurstIQClient:
         if not isinstance(raw, list):
             return []
 
-        records = [
-            TQLRecord.model_validate(item).to_record()
-            for item in raw
-            if isinstance(item, dict)
-        ]
+        records = [TQLRecord.model_validate(item).to_record() for item in raw if isinstance(item, dict)]
         logger.info(f"Fetched {len(records)} records for chain '{chain}'")
         return records
 

@@ -65,10 +65,10 @@ def dump_with_safe_jwt(ingestion_pipeline: IngestionPipeline) -> str:
     Then, the client will pick up the right secret when the workflow is triggered.
     """
     pipeline_json = ingestion_pipeline.model_dump(mode="json", exclude_defaults=False)
-    pipeline_json["openMetadataServerConnection"]["securityConfig"][
-        "jwtToken"
-    ] = ingestion_pipeline.openMetadataServerConnection.securityConfig.jwtToken.get_secret_value(
-        skip_secret_manager=True
+    pipeline_json["openMetadataServerConnection"]["securityConfig"]["jwtToken"] = (
+        ingestion_pipeline.openMetadataServerConnection.securityConfig.jwtToken.get_secret_value(
+            skip_secret_manager=True
+        )
     )
     return json.dumps(pipeline_json, ensure_ascii=True)
 
@@ -80,9 +80,7 @@ class DagDeployer:
     """
 
     def __init__(self, ingestion_pipeline: IngestionPipeline):
-        logger.info(
-            f"Received the following Airflow Configuration: {ingestion_pipeline.airflowConfig}"
-        )
+        logger.info(f"Received the following Airflow Configuration: {ingestion_pipeline.airflowConfig}")
         # we need to instantiate the secret manager in case secrets are passed
         SecretsManagerFactory(
             ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider,
@@ -91,9 +89,7 @@ class DagDeployer:
         self.ingestion_pipeline = ingestion_pipeline
         self.dag_id = clean_dag_id(self.ingestion_pipeline.name.root)
 
-    def store_airflow_pipeline_config(
-        self, dag_config_file_path: Path
-    ) -> Dict[str, str]:
+    def store_airflow_pipeline_config(self, dag_config_file_path: Path) -> Dict[str, str]:
         """
         Store the airflow pipeline config in a JSON file and
         return the path for the Jinja rendering.
@@ -165,23 +161,17 @@ class DagDeployer:
                         "Airflow version %s does not support dag.sync_to_db; relying on scheduler scan.",
                         airflow.__version__,
                     )
-                dag_model = (
-                    session.query(DagModel)
-                    .filter(DagModel.dag_id == self.dag_id)
-                    .first()
-                )
+                dag_model = session.query(DagModel).filter(DagModel.dag_id == self.dag_id).first()
                 logger.info("dag_model:" + str(dag_model))
             except Exception as exc:
                 msg = f"Workflow [{self.dag_id}] failed to refresh due to [{exc}]"
                 logger.debug(traceback.format_exc())
                 logger.error(msg)
-                return ApiResponse.server_error({f"message": msg})
+                return ApiResponse.server_error({f"message": msg})  # noqa: F541
 
         scan_dags_job_background()
 
-        return ApiResponse.success(
-            {"message": f"Workflow [{escape(self.dag_id)}] has been created"}
-        )
+        return ApiResponse.success({"message": f"Workflow [{escape(self.dag_id)}] has been created"})
 
     def deploy(self):
         """

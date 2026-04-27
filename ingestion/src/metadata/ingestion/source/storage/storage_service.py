@@ -11,6 +11,7 @@
 """
 Base class for ingesting Object Storage services
 """
+
 import json
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set, Tuple
@@ -107,9 +108,7 @@ class StorageServiceTopology(ServiceTopology):
     service -> container -> container -> container...
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -125,9 +124,7 @@ class StorageServiceTopology(ServiceTopology):
         post_process=["mark_containers_as_deleted"],
     )
 
-    container: Annotated[
-        TopologyNode, Field(description="Container Processing Node")
-    ] = TopologyNode(
+    container: Annotated[TopologyNode, Field(description="Container Processing Node")] = TopologyNode(
         producer="get_containers",
         stages=[
             NodeStage(
@@ -159,7 +156,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     config: WorkflowSource
     metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
-    service_connection: StorageConnection.model_fields["config"].annotation
+    service_connection: StorageConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = StorageServiceTopology()
     context = TopologyContextManager(topology)
@@ -177,9 +174,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.config = config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
-        self.source_config: StorageServiceMetadataPipeline = (
-            self.config.sourceConfig.config
-        )
+        self.source_config: StorageServiceMetadataPipeline = self.config.sourceConfig.config
         self.connection = get_connection(self.service_connection)
 
         # Flag the connection for the test connection
@@ -187,9 +182,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.test_connection()
 
         # Try to get the global manifest
-        self.global_manifest: Optional[
-            ManifestMetadataConfig
-        ] = self.get_manifest_file()
+        self.global_manifest: Optional[ManifestMetadataConfig] = self.get_manifest_file()
 
     @property
     def name(self) -> str:
@@ -304,9 +297,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def yield_create_container_requests(
-        self, container_details: Any
-    ) -> Iterable[Either[CreateContainerRequest]]:
+    def yield_create_container_requests(self, container_details: Any) -> Iterable[Either[CreateContainerRequest]]:
         """Generate the create container requests based on the received details"""
 
     def close(self):
@@ -318,16 +309,12 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     def prepare(self):
         """By default, nothing needs to be taken care of when loading the source"""
 
-    def yield_container_tags(
-        self, container_details: Any
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_container_tags(self, container_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each container
         """
 
-    def yield_tag_details(
-        self, container_details: Any
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag_details(self, container_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each container
         """
@@ -340,9 +327,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         the storage_source_state
         """
         parent_container = (
-            self.metadata.get_by_id(
-                entity=Container, entity_id=container_request.parent.id
-            ).fullyQualifiedName.root
+            self.metadata.get_by_id(entity=Container, entity_id=container_request.parent.id).fullyQualifiedName.root
             if container_request.parent
             else None
         )
@@ -357,9 +342,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.container_source_state.add(container_fqn)
 
     def test_connection(self) -> None:
-        test_connection_common(
-            self.metadata, self.connection_obj, self.service_connection
-        )
+        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def mark_containers_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the containers as deleted"""
@@ -373,11 +356,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             )
 
     def yield_create_request_objectstore_service(self, config: WorkflowSource):
-        yield Either(
-            right=self.metadata.get_create_service_from_source(
-                entity=StorageService, config=config
-            )
-        )
+        yield Either(right=self.metadata.get_create_service_from_source(entity=StorageService, config=config))
 
     @staticmethod
     def _manifest_entries_to_metadata_entries_by_container(
@@ -394,9 +373,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 structureFormat=entry.structureFormat,
                 isPartitioned=entry.isPartitioned,
                 partitionColumns=(
-                    [pc.model_dump() for pc in entry.partitionColumns]
-                    if entry.partitionColumns
-                    else None
+                    [pc.model_dump() for pc in entry.partitionColumns] if entry.partitionColumns else None
                 ),
                 separator=entry.separator,
                 depth=entry.depth,
@@ -492,9 +469,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             metadata_entry,
             session,
         )
-        partition_cols = self._partition_columns_to_table_columns(
-            metadata_entry.partitionColumns
-        )
+        partition_cols = self._partition_columns_to_table_columns(metadata_entry.partitionColumns)
         return partition_cols + (extracted_cols or [])
 
     def list_keys(self, bucket_name: str, prefix: str) -> Iterable[Tuple[str, int]]:
@@ -511,9 +486,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         return []
 
-    def expand_entry(
-        self, bucket_name: str, entry: MetadataEntry
-    ) -> Iterable[MetadataEntry]:
+    def expand_entry(self, bucket_name: str, entry: MetadataEntry) -> Iterable[MetadataEntry]:
         """Expand a manifest entry whose dataPath is a glob pattern into
         one or more concrete MetadataEntry objects (one per matched logical
         table, or one per matched file when unstructuredData is true).
@@ -528,11 +501,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         pattern = entry.dataPath
         static_prefix = extract_static_prefix(pattern)
         compiled_regex = pattern_to_regex(pattern)
-        exclude_paths = (
-            set(entry.excludePaths)
-            if entry.excludePaths is not None
-            else DEFAULT_EXCLUDE_PATHS
-        )
+        exclude_paths = set(entry.excludePaths) if entry.excludePaths is not None else DEFAULT_EXCLUDE_PATHS
         exclude_regexes = [pattern_to_regex(ep) for ep in (entry.excludePatterns or [])]
 
         matched: List[Tuple[str, int]] = []
@@ -604,18 +573,13 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                     for col in detected
                 ] or None
                 has_subdirs = any(
-                    KEY_SEPARATOR
-                    in k[len(table_root) :]
-                    .lstrip(KEY_SEPARATOR)
-                    .rsplit(KEY_SEPARATOR, 1)[0]
+                    KEY_SEPARATOR in k[len(table_root) :].lstrip(KEY_SEPARATOR).rsplit(KEY_SEPARATOR, 1)[0]
                     for k in file_keys
                     if k.startswith(table_root)
                 )
                 is_partitioned = bool(partition_columns) or has_subdirs
 
-            structure_format = entry.structureFormat or infer_structure_format(
-                file_keys[0]
-            )
+            structure_format = entry.structureFormat or infer_structure_format(file_keys[0])
             if not structure_format:
                 logger.warning(
                     f"Could not determine file format for '{container_name}' "
@@ -635,9 +599,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 unstructuredData=False,
             )
 
-    def expand_entries(
-        self, bucket_name: str, entries: List[MetadataEntry]
-    ) -> List[MetadataEntry]:
+    def expand_entries(self, bucket_name: str, entries: List[MetadataEntry]) -> List[MetadataEntry]:
         """Expand all entries whose dataPath is a glob. Literal paths pass
         through. Returns a concrete list safe to iterate multiple times.
 
@@ -663,9 +625,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                     self.status.warning(bucket_name, msg)
         return result
 
-    def filter_manifest_entries(
-        self, bucket_name: str, entries: List[MetadataEntry]
-    ) -> List[MetadataEntry]:
+    def filter_manifest_entries(self, bucket_name: str, entries: List[MetadataEntry]) -> List[MetadataEntry]:
         """Drop manifest entries whose ``dataPath`` should not become a
         container, applying:
 
@@ -707,8 +667,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             # 2. Pipeline-level containerFilterPattern against the dataPath.
             if pattern and filter_by_container(pattern, path):
                 logger.info(
-                    f"Skipping manifest entry '{path}' in bucket "
-                    f"'{bucket_name}' — filtered by containerFilterPattern."
+                    f"Skipping manifest entry '{path}' in bucket '{bucket_name}' — filtered by containerFilterPattern."
                 )
                 if hasattr(self, "status") and hasattr(self.status, "filter"):
                     self.status.filter(path, "containerFilterPattern excluded")

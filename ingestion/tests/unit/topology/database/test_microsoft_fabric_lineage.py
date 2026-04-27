@@ -11,6 +11,7 @@
 """
 Tests for Microsoft Fabric lineage and query parser
 """
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -94,19 +95,16 @@ class TestFabricLineageFilters:
 
     @pytest.fixture
     def lineage_source(self):
-        with patch(
-            "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-        ), patch(
-            "metadata.ingestion.source.database.microsoftfabric.connection.get_connection"
-        ) as mock_conn:
+        with (
+            patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"),
+            patch("metadata.ingestion.source.database.microsoftfabric.connection.get_connection") as mock_conn,
+        ):
             mock_conn.return_value = MagicMock()
             from metadata.ingestion.source.database.microsoftfabric.lineage import (
                 MicrosoftFabricLineageSource,
             )
 
-            source = MicrosoftFabricLineageSource.create(
-                MOCK_LINEAGE_CONFIG["source"], MagicMock()
-            )
+            source = MicrosoftFabricLineageSource.create(MOCK_LINEAGE_CONFIG["source"], MagicMock())
             return source
 
     def test_lineage_includes_select_into(self, lineage_source):

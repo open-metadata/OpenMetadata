@@ -21,58 +21,42 @@ def calculate_passed_failed_rows_with_total(
     len_rows = actual_rows
 
     if test_passed:
-
         if operator in (">", ">=", "=="):
-
             passed_rows = len_rows
             failed_rows = (row_count - len_rows) if row_count else 0
         elif operator in ("<", "<="):
-
             passed_rows = row_count if row_count else len_rows
             failed_rows = 0
         else:
-
             passed_rows = len_rows
             failed_rows = 0
     else:
-
         if operator in (">", ">="):
-
             passed_rows = len_rows
             failed_rows = (row_count - len_rows) if row_count else 0
         elif operator in ("<", "<="):
-
             if threshold <= 0:
-
                 if row_count:
                     failed_rows = row_count
                     passed_rows = 0
                 else:
-
                     failed_rows = max(len_rows, 1)
                     passed_rows = 0
             else:
-
                 failed_rows = max(0, len_rows - threshold)
                 passed_rows = (row_count - failed_rows) if row_count else threshold
         elif operator == "==":
-
             if row_count:
-
                 if len_rows > threshold:
-
                     failed_rows = len_rows - threshold
                     passed_rows = row_count - failed_rows
                 else:
-
                     failed_rows = row_count - len_rows
                     passed_rows = len_rows
             else:
-
                 failed_rows = abs(len_rows - threshold)
                 passed_rows = 0
         else:
-
             failed_rows = row_count if row_count else len_rows
             passed_rows = 0
 

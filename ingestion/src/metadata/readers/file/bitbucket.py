@@ -11,6 +11,7 @@
 """
 GitHub client to read files with token auth
 """
+
 import traceback
 from enum import Enum
 from typing import List

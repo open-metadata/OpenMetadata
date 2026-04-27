@@ -11,6 +11,7 @@
 """
 Client to interact with fivetran apis
 """
+
 import base64
 from typing import Iterable
 
@@ -29,9 +30,9 @@ logger = ingestion_logger()
 class FivetranClient:
     def __init__(self, config: FivetranConnection):
         self.config = config
-        api_token = base64.b64encode(
-            f"{config.apiKey}:{config.apiSecret.get_secret_value()}".encode("ascii")
-        ).decode("ascii")
+        api_token = base64.b64encode(f"{config.apiKey}:{config.apiSecret.get_secret_value()}".encode("ascii")).decode(
+            "ascii"
+        )
 
         verify_ssl = get_verify_ssl_fn(config.verifySSL)
         client_config: ClientConfig = ClientConfig(
@@ -51,9 +52,7 @@ class FivetranClient:
     def _get_data(self, path: str) -> dict:
         response = self.client.get(path)
         if response is None:
-            raise RuntimeError(
-                f"Fivetran API request failed for {path} — received None response"
-            )
+            raise RuntimeError(f"Fivetran API request failed for {path} — received None response")
         if not isinstance(response, dict):
             logger.warning(f"Unexpected response type for {path}: {type(response)}")
             return {}
@@ -67,9 +66,7 @@ class FivetranClient:
         data = self._get_data(f"{path}?limit={self.config.limit}")
         yield from data.get("items", [])
         while data.get("next_cursor"):
-            data = self._get_data(
-                f"{path}?limit={self.config.limit}&cursor={data['next_cursor']}"
-            )
+            data = self._get_data(f"{path}?limit={self.config.limit}&cursor={data['next_cursor']}")
             yield from data.get("items", [])
 
     def list_groups(self) -> Iterable[dict]:
@@ -90,10 +87,7 @@ class FivetranClient:
     def get_connector_sync_history(self, connector_id: str) -> Iterable[dict]:
         return self._run_paginator(f"/connectors/{connector_id}/sync-history")
 
-    def get_connector_column_lineage(
-        self, connector_id: str, schema_name: str, table_name: str
-    ) -> dict:
-        return self._get_data(
-            f"/connectors/{connector_id}/schemas/{schema_name}"
-            f"/tables/{table_name}/columns"
-        ).get("columns", {})
+    def get_connector_column_lineage(self, connector_id: str, schema_name: str, table_name: str) -> dict:
+        return self._get_data(f"/connectors/{connector_id}/schemas/{schema_name}/tables/{table_name}/columns").get(
+            "columns", {}
+        )
