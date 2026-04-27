@@ -401,7 +401,7 @@ dev = {
     "mypy-boto3-glue",
     "pre-commit",
     "pylint~=3.2.0",  # 3.3.0+ breaks our current linting
-    "basedpyright~=1.14",
+    "basedpyright~=1.39.0",
     # For publishing
     "twine",
     "build",

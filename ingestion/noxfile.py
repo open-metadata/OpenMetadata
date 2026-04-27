@@ -124,7 +124,13 @@ def unit_plugins(session, plugin):
 )
 def static_checks(session):
     install(session, ".[dev]")
-    session.run("basedpyright", "-p", "pyproject.toml")
+    session.run(
+        "basedpyright",
+        "-p",
+        "pyproject.toml",
+        "--baselinefile",
+        ".basedpyright/baseline.json",
+    )
 
 
 # ---------------------------------------------------------------------------

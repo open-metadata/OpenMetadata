@@ -280,40 +280,9 @@ exclude = [
   "src/metadata/__version__.py",
 ]
 
-# TODO: Remove the ignored paths little by little.
-ignore = [
-  "src/_openmetadata_testutils/*",
-  "src/airflow_provider_openmetadata/*",
-  "src/metadata/antlr/*",
-  "src/metadata/automations/*",
-  "src/metadata/cli/*",
-  "src/metadata/clients/*",
-  "src/metadata/config/*",
-  "src/metadata/data_insight/*",
-  "src/metadata/data_quality/*",
-  "src/metadata/examples/*",
-  "src/metadata/great_expectations/*",
-  "src/metadata/ingestion/*",
-  "src/metadata/mixins/*",
-  "src/metadata/parsers/*",
-  "src/metadata/pii/scanners/*",
-  "src/metadata/pii/*processor.py",
-  "src/metadata/profiler/*",
-  "src/metadata/sampler/*",
-  "src/metadata/readers/*",
-  "src/metadata/timer/*",
-  "src/metadata/utils/*",
-  "src/metadata/workflow/base.py",
-  "src/metadata/workflow/application.py",
-  "src/metadata/workflow/data_insight.py",
-  "src/metadata/workflow/data_quality.py",
-  "src/metadata/workflow/ingestion.py",
-  "src/metadata/workflow/metadata.py",
-  "src/metadata/workflow/profiler.py",
-  "src/metadata/workflow/usage.py",
-  "src/metadata/workflow/classification.py",
-  "src/metadata/workflow/workflow_status_mixin.py",
-]
+# Existing violations are grandfathered via .basedpyright/baseline.json
+# (regenerate with `basedpyright -p ingestion/pyproject.toml --writebaseline`
+# from the ingestion/ directory). New violations in any file fail CI.
 
 reportDeprecated = false
 reportMissingTypeStubs = false
