@@ -760,6 +760,10 @@ public class ElasticSearchClient implements SearchClient {
                             esConfig.getKeepAliveTimeoutSecs()));
               }
 
+              httpAsyncClientBuilder.evictExpiredConnections();
+              httpAsyncClientBuilder.evictIdleConnections(
+                  org.apache.hc.core5.util.TimeValue.ofSeconds(30));
+
               httpAsyncClientBuilder.useSystemProperties();
             });
 

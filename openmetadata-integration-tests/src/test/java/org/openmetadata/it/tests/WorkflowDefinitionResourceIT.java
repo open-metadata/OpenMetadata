@@ -6882,7 +6882,6 @@ public class WorkflowDefinitionResourceIT {
     String workflowName = "DataCompletenessWorkflow";
     OpenMetadataClient client = SdkClients.adminClient();
 
-    waitForWorkflowDeployment(client, workflowName);
     for (Table table : localTestTables) {
       waitForEntityIndexedInSearch(client, "table_search_index", table.getFullyQualifiedName());
     }
@@ -7000,7 +6999,7 @@ public class WorkflowDefinitionResourceIT {
   }
 
   private void waitForWorkflowDeployment(OpenMetadataClient client, String workflowName) {
-    await()
+    await("workflow '" + workflowName + "' to finish Flowable deployment")
         .atMost(Duration.ofSeconds(120))
         .pollDelay(Duration.ofSeconds(1))
         .pollInterval(Duration.ofSeconds(2))
@@ -7015,7 +7014,7 @@ public class WorkflowDefinitionResourceIT {
 
   private void waitForEntityIndexedInSearch(
       OpenMetadataClient client, String indexName, String entityFqn) {
-    await()
+    await("entity '" + entityFqn + "' to appear in " + indexName)
         .atMost(Duration.ofSeconds(120))
         .pollDelay(Duration.ofSeconds(1))
         .pollInterval(Duration.ofSeconds(2))
