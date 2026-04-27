@@ -230,6 +230,20 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   };
 
   const handleSortChange = (descriptor: SortDescriptor) => {
+    const isSameSort =
+      descriptor.column === sortDescriptor.column &&
+      descriptor.direction === sortDescriptor.direction;
+
+    if (isSameSort) {
+      setSortDescriptor({ column: '', direction: 'ascending' });
+      if (isApiSortingEnabled.current) {
+        isApiSortingEnabled.current = false;
+        fetchTestCases?.(undefined);
+      }
+
+      return;
+    }
+
     setSortDescriptor(descriptor);
 
     if (descriptor.column === 'lastRun' || descriptor.column === 'name') {
@@ -750,13 +764,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             {(record) => renderRow(record)}
           </Table.Body>
         </Table>
-        {isLoading && sortedData.length === 0 && (
-          <div className="tw:p-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton className="tw:mb-2" height={40} key={i} width="100%" />
-            ))}
-          </div>
-        )}
       </div>
       {pagingData && showPagination && <NextPrevious {...pagingData} />}
       {enableBulkActions && (
