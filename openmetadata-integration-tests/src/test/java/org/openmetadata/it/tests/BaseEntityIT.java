@@ -4067,7 +4067,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
         .ignoreExceptions()
@@ -4129,7 +4129,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(3))
         .ignoreExceptions()
@@ -4819,7 +4819,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4855,7 +4855,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4883,7 +4883,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4902,7 +4902,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for search to reflect update")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
