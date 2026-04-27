@@ -280,6 +280,13 @@ exclude = [
   "src/metadata/__version__.py",
 ]
 
+# Pin the analysis target to the lowest supported Python version so
+# basedpyright catches forward-incompatible code (e.g. tomllib usage,
+# PEP 695 generics) at type-check time. Runtime support across 3.10/3.11/
+# 3.12 is verified separately by the unit-test matrix in py-tests.yml.
+# Keep this in sync with `requires-python` above.
+pythonVersion = "3.10"
+
 # Existing violations are grandfathered via .basedpyright/baseline.json
 # (regenerate with `basedpyright -p ingestion/pyproject.toml --writebaseline`
 # from the ingestion/ directory). New violations in any file fail CI.
