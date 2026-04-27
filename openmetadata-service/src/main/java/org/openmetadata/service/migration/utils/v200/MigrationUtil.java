@@ -316,8 +316,7 @@ public class MigrationUtil {
         }
 
         if (alreadyExists) {
-          String createdByName =
-              threadJson.has("createdBy") ? threadJson.get("createdBy").asText() : "system";
+          String createdByName = threadJson.path("createdBy").asText("system");
           String createdByUserId = lookupUserId(handle, createdByName);
           ObjectNode aboutJson = JsonUtils.getObjectNode();
           setAboutFromEntityLink(aboutJson, aboutLink, threadJson);
