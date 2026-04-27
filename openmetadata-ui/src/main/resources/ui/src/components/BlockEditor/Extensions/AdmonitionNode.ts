@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { mergeAttributes, Node } from '@tiptap/core';
+import { ADMONITION_TYPES } from '../../../constants/BlockEditor.constants';
 
 const AdmonitionNode = Node.create({
   name: 'admonition',
@@ -22,8 +23,13 @@ const AdmonitionNode = Node.create({
     return {
       type: {
         default: 'note',
-        parseHTML: (element) =>
-          element.getAttribute('data-admonition') ?? 'note',
+        parseHTML: (element) => {
+          const type = element.dataset.admonition ?? 'note';
+
+          return (ADMONITION_TYPES as readonly string[]).includes(type)
+            ? type
+            : 'note';
+        },
         renderHTML: (attributes) => ({
           'data-admonition': attributes.type,
         }),
