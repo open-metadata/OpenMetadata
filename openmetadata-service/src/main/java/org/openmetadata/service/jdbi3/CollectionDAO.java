@@ -2600,6 +2600,16 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @SqlUpdate(
+        "DELETE FROM entity_relationship WHERE fromId = :fromId "
+            + "AND fromEntity = :fromEntity AND toEntity = :toEntity "
+            + "AND relation = :relation")
+    void deleteFrom(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
+    @SqlUpdate(
         "DELETE FROM entity_relationship WHERE toId IN (<toIds>) "
             + "AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity")
     void deleteToMany(
@@ -2653,16 +2663,29 @@ public interface CollectionDAO {
      * @param table The table name to check for entity existence. This must be a trusted,
      *     hard-coded string to prevent SQL injection.
      */
-    @SqlUpdate(
-        "DELETE FROM entity_relationship WHERE toEntity = :toEntity AND fromEntity = :fromEntity "
-            + "AND NOT EXISTS (SELECT 1 FROM <table> t WHERE t.id = entity_relationship.fromId)")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM entity_relationship WHERE toEntity = :toEntity AND fromEntity = :fromEntity "
+                + "AND NOT EXISTS (SELECT 1 FROM <table> t WHERE t.id = entity_relationship.fromId) "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM entity_relationship WHERE ctid IN ( "
+                + "  SELECT ctid FROM entity_relationship "
+                + "  WHERE toEntity = :toEntity AND fromEntity = :fromEntity "
+                + "  AND NOT EXISTS (SELECT 1 FROM <table> t WHERE t.id = entity_relationship.fromId) "
+                + "  LIMIT :limit "
+                + ")",
+        connectionType = POSTGRES)
     int deleteOrphanedRelationshipsInternal(
         @Bind("fromEntity") String fromEntity,
         @Bind("toEntity") String toEntity,
-        @Define("table") String table);
+        @Define("table") String table,
+        @Bind("limit") int limit);
 
     /**
-     * Safe wrapper for deleting orphaned relationships with table name validation.
+     * Safe wrapper for deleting orphaned relationships with table name validation and batching.
      *
      * @param table Table name to check. Validated against a strict allowlist.
      */
@@ -2671,7 +2694,15 @@ public interface CollectionDAO {
       if (!java.util.Set.of("test_case").contains(table)) {
         throw new IllegalArgumentException("Invalid table name for relationship cleanup: " + table);
       }
-      return deleteOrphanedRelationshipsInternal(fromEntity, toEntity, table);
+      int totalDeleted = 0;
+      int deletedInBatch;
+      int batchSize = 1000;
+      do {
+        deletedInBatch =
+            deleteOrphanedRelationshipsInternal(fromEntity, toEntity, table, batchSize);
+        totalDeleted += deletedInBatch;
+      } while (deletedInBatch > 0);
+      return totalDeleted;
     }
 
     // Batch deletion methods for improved performance

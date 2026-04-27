@@ -624,4 +624,16 @@ public class TestCaseResolutionStatusRepository
         .max((a, b) -> Long.compare(a.getTimestamp(), b.getTimestamp()))
         .orElse(records.get(records.size() - 1));
   }
+
+  public void deleteAllRelationshipsByTestCase(String testCaseFqn) {
+    EntityReference testCaseRef =
+        getEntityReferenceByName(Entity.TEST_CASE, testCaseFqn, Include.ALL);
+    daoCollection
+        .relationshipDAO()
+        .deleteFrom(
+            testCaseRef.getId(),
+            Entity.TEST_CASE,
+            Entity.TEST_CASE_RESOLUTION_STATUS,
+            Relationship.PARENT_OF.ordinal());
+  }
 }

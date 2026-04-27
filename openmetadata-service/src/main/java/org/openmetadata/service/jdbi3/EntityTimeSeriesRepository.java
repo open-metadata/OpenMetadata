@@ -396,12 +396,8 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       // soft deleted
       return;
     }
-    T entityRecord = getById(id);
-    if (entityRecord == null) {
-      return;
-    }
-    timeSeriesDao.deleteById(id);
-    if (shouldCleanupRelationshipsOnDelete()) {
+    int deleted = timeSeriesDao.deleteById(id);
+    if (deleted > 0 && shouldCleanupRelationshipsOnDelete()) {
       daoCollection.relationshipDAO().deleteAll(id, entityType);
     }
   }
