@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { SidebarItem, SIDEBAR_LIST_ITEMS } from '../constant/sidebar';
+import { SIDEBAR_LIST_ITEMS, SidebarItem } from '../constant/sidebar';
 import { PersonaClass } from '../support/persona/PersonaClass';
 
 const NAV_ITEMS = [
@@ -96,12 +96,18 @@ export const validateLeftSidebarWithHiddenItems = async (
 
         await page.click(`[data-testid="${items[0]}"]`);
       }
+      const isNested = Object.keys(SIDEBAR_LIST_ITEMS).includes(item);
+
       if (hiddenItems.includes(item)) {
         await expect(
           page.getByTestId(`app-bar-item-${item}`)
         ).not.toBeVisible();
-      } else {
+      } else if (isNested) {
         await expect(page.getByTestId(`app-bar-item-${item}`)).toBeVisible();
+      } else {
+        await expect(
+          page.getByTestId('left-sidebar').getByTestId(`app-bar-item-${item}`)
+        ).toBeVisible();
       }
     }
   }
