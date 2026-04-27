@@ -113,9 +113,7 @@ EXPECTED_SERVICE = [
             config=DeltaLakeConnection(
                 type="DeltaLake",
                 configSource=MetastoreConfig(
-                    connection=MetastoreHostPortConnection(
-                        metastoreHostPort="http://localhost:9083"
-                    )
+                    connection=MetastoreHostPortConnection(metastoreHostPort="http://localhost:9083")
                 ),
                 connectionArguments=None,
                 supportsMetadataExtraction=True,
@@ -175,9 +173,7 @@ class AmundsenUnitTest(TestCase):
     Amundsen Unit Test
     """
 
-    @patch(
-        "metadata.ingestion.source.metadata.amundsen.metadata.AmundsenSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.metadata.amundsen.metadata.AmundsenSource.test_connection")
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
@@ -193,9 +189,7 @@ class AmundsenUnitTest(TestCase):
             service_entity = self.amundsen.get_database_service(service_name)
             database_service_list.append(service_entity)
 
-        for _, (expected, original) in enumerate(
-            zip(EXPECTED_SERVICE, database_service_list)
-        ):
+        for _, (expected, original) in enumerate(zip(EXPECTED_SERVICE, database_service_list)):
             original.id = expected.id = "836ff98d-a241-4d06-832d-745f96ac88fc"
             original.href = expected.href = None
             original.owners = expected.owners = None

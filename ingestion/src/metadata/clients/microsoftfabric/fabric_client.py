@@ -14,6 +14,7 @@ Microsoft Fabric REST API Client
 Provides a unified REST client for Fabric APIs:
 - Fabric REST API (https://api.fabric.microsoft.com/v1)
 """
+
 import base64
 import json
 import traceback
@@ -108,9 +109,7 @@ class FabricClient:
 
     # ===== Item APIs =====
 
-    def get_workspace_items(
-        self, workspace_id: str, item_type: Optional[str] = None
-    ) -> List[FabricItem]:
+    def get_workspace_items(self, workspace_id: str, item_type: Optional[str] = None) -> List[FabricItem]:
         """
         List items in a workspace.
 
@@ -145,28 +144,20 @@ class FabricClient:
         """List Lakehouses in a workspace"""
         return self.get_workspace_items(workspace_id, "Lakehouse")
 
-    def get_warehouse_details(
-        self, workspace_id: str, warehouse_id: str
-    ) -> Optional[Dict[str, Any]]:
+    def get_warehouse_details(self, workspace_id: str, warehouse_id: str) -> Optional[Dict[str, Any]]:
         """Get detailed information about a specific warehouse"""
         try:
-            response = self.client.get(
-                f"/workspaces/{workspace_id}/warehouses/{warehouse_id}"
-            )
+            response = self.client.get(f"/workspaces/{workspace_id}/warehouses/{warehouse_id}")
             return response
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching warehouse details: {exc}")
             return None
 
-    def get_lakehouse_details(
-        self, workspace_id: str, lakehouse_id: str
-    ) -> Optional[Dict[str, Any]]:
+    def get_lakehouse_details(self, workspace_id: str, lakehouse_id: str) -> Optional[Dict[str, Any]]:
         """Get detailed information about a specific lakehouse"""
         try:
-            response = self.client.get(
-                f"/workspaces/{workspace_id}/lakehouses/{lakehouse_id}"
-            )
+            response = self.client.get(f"/workspaces/{workspace_id}/lakehouses/{lakehouse_id}")
             return response
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -179,9 +170,7 @@ class FabricClient:
         """List Data Pipelines in a workspace"""
         try:
             # Fabric API uses /items endpoint with type filter
-            response = self.client.get(
-                f"/workspaces/{workspace_id}/items", data={"type": "DataPipeline"}
-            )
+            response = self.client.get(f"/workspaces/{workspace_id}/items", data={"type": "DataPipeline"})
             pipelines = []
             for item in response.get("value", []):
                 try:
@@ -194,31 +183,23 @@ class FabricClient:
             logger.warning(f"Error fetching pipelines: {exc}")
             return []
 
-    def get_pipeline(
-        self, workspace_id: str, pipeline_id: str
-    ) -> Optional[FabricPipeline]:
+    def get_pipeline(self, workspace_id: str, pipeline_id: str) -> Optional[FabricPipeline]:
         """Get a specific pipeline"""
         try:
             # Fabric API uses /items/{itemId} endpoint
-            response = self.client.get(
-                f"/workspaces/{workspace_id}/items/{pipeline_id}"
-            )
+            response = self.client.get(f"/workspaces/{workspace_id}/items/{pipeline_id}")
             return FabricPipeline.model_validate(response)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching pipeline {pipeline_id}: {exc}")
             return None
 
-    def get_pipeline_runs(
-        self, workspace_id: str, pipeline_id: str
-    ) -> List[FabricPipelineRun]:
+    def get_pipeline_runs(self, workspace_id: str, pipeline_id: str) -> List[FabricPipelineRun]:
         """Get pipeline run history"""
         try:
             # Note: Fabric API might use /items/{itemId}/jobs/instances for runs
             # Keeping the old endpoint for now, may need adjustment based on API docs
-            response = self.client.get(
-                f"/workspaces/{workspace_id}/items/{pipeline_id}/jobs/instances"
-            )
+            response = self.client.get(f"/workspaces/{workspace_id}/items/{pipeline_id}/jobs/instances")
             runs = []
             for item in response.get("value", []):
                 try:
@@ -241,9 +222,7 @@ class FabricClient:
         """
         try:
             # Fabric API uses /items/{itemId}/getDefinition endpoint
-            response = self.client.post(
-                f"/workspaces/{workspace_id}/items/{pipeline_id}/getDefinition"
-            )
+            response = self.client.post(f"/workspaces/{workspace_id}/items/{pipeline_id}/getDefinition")
             activities = []
             # The definition contains a "definition" object with "parts" array
             # Each part may contain the pipeline JSON with activities
@@ -256,13 +235,9 @@ class FabricClient:
                     if payload:
                         try:
                             pipeline_content = json.loads(base64.b64decode(payload))
-                            for activity_data in pipeline_content.get(
-                                "properties", {}
-                            ).get("activities", []):
+                            for activity_data in pipeline_content.get("properties", {}).get("activities", []):
                                 try:
-                                    activities.append(
-                                        FabricActivity.model_validate(activity_data)
-                                    )
+                                    activities.append(FabricActivity.model_validate(activity_data))
                                 except Exception as exc:
                                     logger.warning(f"Error parsing activity: {exc}")
                         except Exception as exc:
@@ -297,19 +272,13 @@ class FabricClient:
             # Use the run's start/end time to define the query range
             # Add buffer to ensure we capture all activity runs
             if run.start_time and run.end_time:
-                last_updated_after = (run.start_time - timedelta(hours=1)).strftime(
-                    "%Y-%m-%dT%H:%M:%SZ"
-                )
-                last_updated_before = (run.end_time + timedelta(hours=1)).strftime(
-                    "%Y-%m-%dT%H:%M:%SZ"
-                )
+                last_updated_after = (run.start_time - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+                last_updated_before = (run.end_time + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
             else:
                 from datetime import datetime, timezone
 
                 now = datetime.now(timezone.utc)
-                last_updated_after = (now - timedelta(days=7)).strftime(
-                    "%Y-%m-%dT%H:%M:%SZ"
-                )
+                last_updated_after = (now - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
                 last_updated_before = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
             request_body = {

@@ -6,8 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.time.Duration;
 import java.util.Map;
 import org.awaitility.Awaitility;
@@ -22,27 +21,34 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
-import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.type.ClassificationLanguage;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.PredefinedRecognizer;
 import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabelMetadata;
 import org.openmetadata.schema.type.TagLabelRecognizerMetadata;
+import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.DatabaseServices;
 import org.openmetadata.sdk.fluent.Databases;
+import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 
 @ExtendWith(TestNamespaceExtension.class)
 @Execution(ExecutionMode.SAME_THREAD)
@@ -54,6 +60,14 @@ public class TagRecognizerFeedbackIT {
   protected static void setupWorkflow() {
     org.openmetadata.service.governance.workflows.WorkflowHandler workflowHandler =
         org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance();
+    WorkflowDefinitionRepository workflowDefinitionRepository =
+        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+    org.openmetadata.schema.governance.workflows.WorkflowDefinition workflowDefinition =
+        workflowDefinitionRepository.findByName("RecognizerFeedbackReviewWorkflow", Include.ALL);
+
+    // Force redeploy to ensure latest approval listener wiring (Task entity cutover) is active,
+    // even when the database already has an older deployed process definition.
+    workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, "admin");
     workflowHandler.resumeWorkflow("RecognizerFeedbackReviewWorkflow");
 
     Awaitility.await("Wait for workflow to be ready")
@@ -202,73 +216,123 @@ public class TagRecognizerFeedbackIT {
     return submitRecognizerFeedback(entityLink, tagFQN, client);
   }
 
-  private Thread waitForRecognizerFeedbackTask(String tagFQN) {
+  private Task waitForRecognizerFeedbackTask(String tagFQN) {
     return waitForRecognizerFeedbackTask(tagFQN, TIMEOUT_MINUTES);
   }
 
-  public Thread waitForRecognizerFeedbackTask(String tagFQN, long timeoutMinutes) {
-    String entityLink = new MessageParser.EntityLink(Entity.TAG, tagFQN).getLinkString();
-    String url =
-        "/v1/feed?limit=100&type=Task&taskStatus=Open&entityLink="
-            + URLEncoder.encode(entityLink, StandardCharsets.UTF_8);
+  public Task waitForRecognizerFeedbackTask(String tagFQN, long timeoutMinutes) {
+    Map<String, String> filterParams =
+        Map.of(
+            "limit", "100",
+            "status", TaskEntityStatus.Open.value(),
+            "type", TaskEntityType.DataQualityReview.value());
 
     try {
-      Awaitility.await(String.format("Wait for Task to be Created for Tag: '%s'", tagFQN))
+      Awaitility.await(String.format("Wait for Task entity to be created for Tag: '%s'", tagFQN))
           .pollInterval(Duration.ofSeconds(POLL_INTERVAL_SECONDS))
           .atMost(Duration.ofMinutes(timeoutMinutes))
           .ignoreExceptions()
           .until(
               () -> {
-                FeedResourceIT.ThreadList response =
-                    SdkClients.adminClient()
-                        .getHttpClient()
-                        .execute(HttpMethod.GET, url, null, FeedResourceIT.ThreadList.class);
-                return response.getData() != null && !response.getData().isEmpty();
+                try {
+                  ListResponse<Task> response =
+                      SdkClients.adminClient().tasks().listWithFilters(filterParams);
+                  return response.getData() != null
+                      && response.getData().stream()
+                          .anyMatch(task -> isRecognizerFeedbackTaskForTag(task, tagFQN));
+                } catch (Exception e) {
+                  return false;
+                }
               });
 
-      FeedResourceIT.ThreadList response =
-          SdkClients.adminClient()
-              .getHttpClient()
-              .execute(HttpMethod.GET, url, null, FeedResourceIT.ThreadList.class);
+      ListResponse<Task> response = SdkClients.adminClient().tasks().listWithFilters(filterParams);
 
-      if (response.getData() != null && !response.getData().isEmpty()) {
-        return response.getData().get(0);
+      if (response.getData() != null) {
+        return response.getData().stream()
+            .filter(task -> isRecognizerFeedbackTaskForTag(task, tagFQN))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        String.format(
+                            "No recognizer feedback task found in task list for tag '%s'",
+                            tagFQN)));
       }
     } catch (org.awaitility.core.ConditionTimeoutException e) {
       throw new RuntimeException(
           String.format(
-              "Timeout waiting for recognizer feedback task for tag '%s' after %d minutes",
+              "Timeout waiting for recognizer feedback task entity for tag '%s' after %d minutes",
               tagFQN, timeoutMinutes),
           e);
     } catch (Exception e) {
       throw new RuntimeException(
-          String.format("Failed to get recognizer feedback task for tag '%s'", tagFQN), e);
+          String.format("Failed to get recognizer feedback task entity for tag '%s'", tagFQN), e);
     }
 
     throw new RuntimeException(
         String.format("No recognizer feedback task found for tag '%s'", tagFQN));
   }
 
-  private void resolveRecognizerFeedbackTask(Thread thread) {
-    String url =
-        "/v1/feed/tasks/"
-            + thread.getTask().getId().toString()
-            + "/resolve?description="
-            + thread.getId().toString();
-    SdkClients.user2Client()
-        .getHttpClient()
-        .executeForString(HttpMethod.PUT, url, Map.of("newValue", "approved"));
+  private boolean isRecognizerFeedbackTaskForTag(Task task, String tagFQN) {
+    if (task == null || task.getType() != TaskEntityType.DataQualityReview) {
+      return false;
+    }
+    RecognizerFeedback feedback = getTaskPayloadFeedback(task);
+    return feedback != null && tagFQN.equals(feedback.getTagFQN());
   }
 
-  private void rejectRecognizerFeedbackTask(Thread thread) {
-    String url =
-        "/v1/feed/tasks/"
-            + thread.getTask().getId().toString()
-            + "/close?description="
-            + thread.getId().toString();
-    SdkClients.user2Client()
-        .getHttpClient()
-        .executeForString(HttpMethod.PUT, url, Map.of("comment", "closed"));
+  private RecognizerFeedback getTaskPayloadFeedback(Task task) {
+    if (task == null || task.getPayload() == null) {
+      return null;
+    }
+    try {
+      Map<String, Object> payload =
+          JsonUtils.convertValue(task.getPayload(), new TypeReference<Map<String, Object>>() {});
+      if (payload == null || payload.get("feedback") == null) {
+        return null;
+      }
+      return JsonUtils.convertValue(payload.get("feedback"), RecognizerFeedback.class);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private TagLabelRecognizerMetadata getTaskPayloadRecognizer(Task task) {
+    if (task == null || task.getPayload() == null) {
+      return null;
+    }
+    try {
+      Map<String, Object> payload =
+          JsonUtils.convertValue(task.getPayload(), new TypeReference<Map<String, Object>>() {});
+      if (payload == null || payload.get("recognizer") == null) {
+        return null;
+      }
+      return JsonUtils.convertValue(payload.get("recognizer"), TagLabelRecognizerMetadata.class);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private void resolveRecognizerFeedbackTask(Task task) {
+    ResolveTask resolveTask =
+        new ResolveTask().withResolutionType(TaskResolutionType.Approved).withNewValue("approved");
+    try {
+      SdkClients.user2Client().tasks().resolve(task.getId().toString(), resolveTask);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to resolve recognizer feedback task", e);
+    }
+  }
+
+  private void rejectRecognizerFeedbackTask(Task task) {
+    ResolveTask resolveTask =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Rejected)
+            .withComment("Rejected by reviewer");
+    try {
+      SdkClients.user2Client().tasks().resolve(task.getId().toString(), resolveTask);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to reject recognizer feedback task", e);
+    }
   }
 
   private Recognizer getNameRecognizer() {
@@ -299,13 +363,13 @@ public class TagRecognizerFeedbackIT {
     org.openmetadata.schema.type.RecognizerFeedback feedback =
         submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName());
 
-    Thread task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
+    Task task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
 
     assertNotNull(task, "Task should be created for tag with reviewer");
-    assertEquals(
-        org.openmetadata.schema.type.TaskType.RecognizerFeedbackApproval, task.getTask().getType());
-    assertNotNull(task.getTask().getFeedback(), "Task should contain feedback details");
-    assertEquals(feedback.getEntityLink(), task.getTask().getFeedback().getEntityLink());
+    assertEquals(TaskEntityType.DataQualityReview, task.getType());
+    RecognizerFeedback payloadFeedback = getTaskPayloadFeedback(task);
+    assertNotNull(payloadFeedback, "Task payload should contain feedback details");
+    assertEquals(feedback.getEntityLink(), payloadFeedback.getEntityLink());
   }
 
   @RetryingTest(3)
@@ -459,8 +523,7 @@ public class TagRecognizerFeedbackIT {
     String entityLink = "<#E::table::" + table.getFullyQualifiedName() + "::columns::test_column>";
     submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName());
 
-    org.openmetadata.schema.entity.feed.Thread task =
-        waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
+    Task task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
     assertNotNull(task);
 
     resolveRecognizerFeedbackTask(task);
@@ -518,7 +581,7 @@ public class TagRecognizerFeedbackIT {
 
     submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName());
 
-    Thread task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
+    Task task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
 
     rejectRecognizerFeedbackTask(task);
 
@@ -571,13 +634,11 @@ public class TagRecognizerFeedbackIT {
 
     submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName());
 
-    Thread task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
+    Task task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
 
     assertNotNull(task, "Task should be created");
-    assertNotNull(task.getTask(), "Task details should be present");
-    assertNotNull(task.getTask().getRecognizer(), "Task should include recognizer metadata");
-
-    TagLabelRecognizerMetadata taskRecognizer = task.getTask().getRecognizer();
+    TagLabelRecognizerMetadata taskRecognizer = getTaskPayloadRecognizer(task);
+    assertNotNull(taskRecognizer, "Task should include recognizer metadata in payload");
     assertEquals(
         recognizerMetadata.getRecognizerId(),
         taskRecognizer.getRecognizerId(),

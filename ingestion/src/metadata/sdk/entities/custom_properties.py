@@ -1,4 +1,5 @@
 """Typed helpers for custom property updates."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -24,9 +25,7 @@ class CustomPropertyUpdater(Generic[TEntity]):
     is_fqn: bool = False
     properties: Dict[str, Any] = field(default_factory=dict)
     clear_all_flag: bool = False
-    _client_override: Optional[OMetaClient] = field(
-        default=None, init=False, repr=False
-    )
+    _client_override: Optional[OMetaClient] = field(default=None, init=False, repr=False)
 
     @staticmethod
     def _get_client() -> OMetaClient:
@@ -40,9 +39,7 @@ class CustomPropertyUpdater(Generic[TEntity]):
         self.properties[key] = value
         return self
 
-    def with_properties(
-        self, properties: Dict[str, Any]
-    ) -> "CustomPropertyUpdater[TEntity]":
+    def with_properties(self, properties: Dict[str, Any]) -> "CustomPropertyUpdater[TEntity]":
         """Set multiple custom property values in one call."""
         self.properties.update(properties)
         return self
@@ -105,18 +102,14 @@ class CustomProperties:
     """Factory helpers for custom property updates."""
 
     @staticmethod
-    def update(
-        entity_type: Type[TEntity], identifier: Union[UuidLike, UUID]
-    ) -> CustomPropertyUpdater[TEntity]:
+    def update(entity_type: Type[TEntity], identifier: Union[UuidLike, UUID]) -> CustomPropertyUpdater[TEntity]:
         """Create an updater targeting the provided entity identifier."""
         root = getattr(identifier, "root", None)
         identifier_str = str(root) if root is not None else str(identifier)
         return CustomPropertyUpdater(entity_type, identifier_str, is_fqn=False)
 
     @staticmethod
-    def update_by_name(
-        entity_type: Type[TEntity], fqn: str
-    ) -> CustomPropertyUpdater[TEntity]:
+    def update_by_name(entity_type: Type[TEntity], fqn: str) -> CustomPropertyUpdater[TEntity]:
         """Create an updater referencing an entity by FQN."""
         return CustomPropertyUpdater(entity_type, fqn, is_fqn=True)
 

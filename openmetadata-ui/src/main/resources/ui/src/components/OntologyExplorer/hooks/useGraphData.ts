@@ -150,6 +150,7 @@ export function useGraphDataBuilder({
   expandedTermIds,
   clickedEdgeId,
   nodePositions,
+  glossaries,
   glossaryColorMap,
   layoutType,
   hierarchyCombos = [],
@@ -718,7 +719,10 @@ export function useGraphDataBuilder({
         if (terms.length === 0) {
           return;
         }
-        const name = terms[0].group ?? glossaryId;
+        const glossary = glossaries.find((g) => g.id === glossaryId);
+        const name =
+          terms[0].group ??
+          (glossary ? glossary.displayName || glossary.name : '');
         const color = glossaryColorMap[glossaryId] ?? 'var(--color-gray-400)';
         const isComboDimmed = Boolean(
           searchGlossarySet && !searchGlossarySet.has(glossaryId)
@@ -752,6 +756,7 @@ export function useGraphDataBuilder({
     explorationMode,
     hierarchyCombos,
     graphSearchHighlight,
+    glossaries,
   ]);
 
   const assetToTermMap = useMemo(() => {

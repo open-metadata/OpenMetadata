@@ -33,6 +33,7 @@ Example:
         return db.query(f"SELECT * FROM users WHERE id = {user_id}")
     ```
 """
+
 from functools import wraps
 from threading import RLock
 from typing import (
@@ -141,9 +142,7 @@ class DependencyContainer:
             return f"Type[{inner_type.__name__}]"
         return dependency_type.__name__
 
-    def register(
-        self, dependency_type: Type[Any], dependency: Callable[[], Any]
-    ) -> None:
+    def register(self, dependency_type: Type[Any], dependency: Callable[[], Any]) -> None:
         """
         Register a dependency with the container.
 
@@ -160,9 +159,7 @@ class DependencyContainer:
         with self._lock:
             self._dependencies[self.get_key(dependency_type)] = dependency
 
-    def override(
-        self, dependency_type: Type[Any], dependency: Callable[[], Any]
-    ) -> None:
+    def override(self, dependency_type: Type[Any], dependency: Callable[[], Any]) -> None:
         """
         Override a dependency with a new implementation.
 
@@ -216,9 +213,9 @@ class DependencyContainer:
             ```
         """
         with self._lock:
-            factory = self._overrides.get(
+            factory = self._overrides.get(self.get_key(dependency_type)) or self._dependencies.get(
                 self.get_key(dependency_type)
-            ) or self._dependencies.get(self.get_key(dependency_type))
+            )
             if factory is None:
                 return None
             return factory()
@@ -253,8 +250,7 @@ class DependencyContainer:
             ```"""
         with self._lock:
             return (
-                self.get_key(dependency_type) in self._overrides
-                or self.get_key(dependency_type) in self._dependencies
+                self.get_key(dependency_type) in self._overrides or self.get_key(dependency_type) in self._dependencies
             )
 
 

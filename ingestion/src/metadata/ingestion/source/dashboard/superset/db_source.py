@@ -87,9 +87,7 @@ class SupersetDBSource(SupersetSourceMixin):
         try:
             with self.engine.connect() as conn:
                 if isinstance(self.service_connection.connection, MysqlConnection):
-                    charts = conn.execute(
-                        text(FETCH_ALL_CHARTS.replace('"', "`"))
-                    ).all()
+                    charts = conn.execute(text(FETCH_ALL_CHARTS.replace('"', "`"))).all()
                 else:
                     charts = conn.execute(text(FETCH_ALL_CHARTS)).all()
             for chart in charts:
@@ -103,15 +101,11 @@ class SupersetDBSource(SupersetSourceMixin):
         try:
             if table_id:
                 with self.engine.connect() as conn:
-                    col_list = conn.execute(
-                        text(FETCH_COLUMN), {"table_id": table_id}
-                    ).all()
+                    col_list = conn.execute(text(FETCH_COLUMN), {"table_id": table_id}).all()
                 return [FetchColumn(**dict(col._mapping)) for col in col_list]
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to fetch column name list for table: [{table_id} due to - {err}]"
-            )
+            logger.warning(f"Failed to fetch column name list for table: [{table_id} due to - {err}]")
         return []
 
     def get_dashboards_list(self) -> Iterable[FetchDashboard]:
@@ -120,19 +114,13 @@ class SupersetDBSource(SupersetSourceMixin):
         """
         if not self.source_config.includeOwners:
             logger.debug("Skipping owner information as includeOwners is False")
-        query = (
-            FETCH_DASHBOARDS
-            if self.source_config.includeDraftDashboard
-            else FETCH_PUBLISHED_DASHBOARDS
-        )
+        query = FETCH_DASHBOARDS if self.source_config.includeDraftDashboard else FETCH_PUBLISHED_DASHBOARDS
         with self.engine.connect() as conn:
             dashboards = conn.execute(text(query)).all()
         for dashboard in dashboards:
             yield FetchDashboard(**dict(dashboard._mapping))
 
-    def yield_dashboard(
-        self, dashboard_details: FetchDashboard
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def yield_dashboard(self, dashboard_details: FetchDashboard) -> Iterable[Either[CreateDashboardRequest]]:
         """Method to Get Dashboard Entity"""
         try:
             dashboard_request = CreateDashboardRequest(
@@ -169,18 +157,10 @@ class SupersetDBSource(SupersetSourceMixin):
                 )
             )
 
-    def _get_datasource_fqn_for_lineage(
-        self, chart_json: FetchChart, db_service_prefix: Optional[str]
-    ):
-        return (
-            self._get_datasource_fqn(db_service_prefix, chart_json)
-            if chart_json.table_name
-            else None
-        )
+    def _get_datasource_fqn_for_lineage(self, chart_json: FetchChart, db_service_prefix: Optional[str]):
+        return self._get_datasource_fqn(db_service_prefix, chart_json) if chart_json.table_name else None
 
-    def yield_dashboard_chart(
-        self, dashboard_details: FetchDashboard
-    ) -> Iterable[Either[CreateChartRequest]]:
+    def yield_dashboard_chart(self, dashboard_details: FetchDashboard) -> Iterable[Either[CreateChartRequest]]:
         """
         Method to fetch charts linked to dashboard
         """
@@ -188,19 +168,13 @@ class SupersetDBSource(SupersetSourceMixin):
             try:
                 chart_json = self.all_charts.get(chart_id)
                 if not chart_json:
-                    logger.warning(
-                        f"chart details for id: {chart_id} not found, skipped"
-                    )
+                    logger.warning(f"chart details for id: {chart_id} not found, skipped")
 
                     continue
                 chart_request = CreateChartRequest(
                     name=EntityName(str(chart_json.id)),
                     displayName=chart_json.slice_name,
-                    description=(
-                        Markdown(chart_json.description)
-                        if chart_json.description
-                        else None
-                    ),
+                    description=(Markdown(chart_json.description) if chart_json.description else None),
                     chartType=get_standard_chart_type(chart_json.viz_type),
                     sourceUrl=SourceUrl(
                         f"{clean_uri(self.service_connection.hostPort)}/explore/?slice_id={chart_json.id}"
@@ -218,9 +192,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     )
                 )
 
-    def _get_database_name(
-        self, sqa_str: str, db_service_entity: DatabaseService
-    ) -> Optional[str]:
+    def _get_database_name(self, sqa_str: str, db_service_entity: DatabaseService) -> Optional[str]:
         default_db_name = None
         if sqa_str:
             sqa_url = make_url(sqa_str)
@@ -228,9 +200,7 @@ class SupersetDBSource(SupersetSourceMixin):
 
         return get_database_name_for_lineage(db_service_entity, default_db_name)
 
-    def _get_datasource_fqn(
-        self, db_service_prefix: Optional[str], chart_json: FetchChart
-    ) -> Optional[str]:
+    def _get_datasource_fqn(self, db_service_prefix: Optional[str], chart_json: FetchChart) -> Optional[str]:
         try:
             (
                 db_service_name,
@@ -241,21 +211,11 @@ class SupersetDBSource(SupersetSourceMixin):
 
             database_name = None
             if db_service_name:
-                db_service_entity = self.metadata.get_by_name(
-                    entity=DatabaseService, fqn=db_service_name
-                )
-                database_name = self._get_database_name(
-                    chart_json.sqlalchemy_uri, db_service_entity
-                )
+                db_service_entity = self.metadata.get_by_name(entity=DatabaseService, fqn=db_service_name)
+                database_name = self._get_database_name(chart_json.sqlalchemy_uri, db_service_entity)
 
-            if (
-                prefix_database_name
-                and database_name
-                and prefix_database_name.lower() != database_name.lower()
-            ):
-                logger.debug(
-                    f"Database {database_name} does not match prefix {prefix_database_name}"
-                )
+            if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
+                logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
                 return None
 
             if (
@@ -263,9 +223,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 and chart_json.table_schema
                 and prefix_schema_name.lower() != chart_json.table_schema.lower()
             ):
-                logger.debug(
-                    f"Schema {chart_json.table_schema} does not match prefix {prefix_schema_name}"
-                )
+                logger.debug(f"Schema {chart_json.table_schema} does not match prefix {prefix_schema_name}")
                 return None
 
             if (
@@ -273,9 +231,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 and chart_json.table_name
                 and prefix_table_name.lower() != chart_json.table_name.lower()
             ):
-                logger.debug(
-                    f"Table {chart_json.table_name} does not match prefix {prefix_table_name}"
-                )
+                logger.debug(f"Table {chart_json.table_name} does not match prefix {prefix_table_name}")
                 return None
 
             return build_es_fqn_search_string(
@@ -286,36 +242,24 @@ class SupersetDBSource(SupersetSourceMixin):
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to fetch Datasource with id [{chart_json.table_name}]: {err}"
-            )
+            logger.warning(f"Failed to fetch Datasource with id [{chart_json.table_name}]: {err}")
         return None
 
-    def yield_datamodel(
-        self, dashboard_details: FetchDashboard
-    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+    def yield_datamodel(self, dashboard_details: FetchDashboard) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         if self.source_config.includeDataModels:
             for chart_id in self._get_charts_of_dashboard(dashboard_details):
                 chart_json = self.all_charts.get(chart_id)
                 if not chart_json or not chart_json.datasource_id:
-                    logger.warning(
-                        f"chart details for id: {chart_id} not found, skipped"
-                    )
+                    logger.warning(f"chart details for id: {chart_id} not found, skipped")
                     continue
-                if filter_by_datamodel(
-                    self.source_config.dataModelFilterPattern, chart_json.table_name
-                ):
-                    self.status.filter(
-                        chart_json.table_name, "Data model filtered out."
-                    )
+                if filter_by_datamodel(self.source_config.dataModelFilterPattern, chart_json.table_name):
+                    self.status.filter(chart_json.table_name, "Data model filtered out.")
                 col_names = self.get_column_list(chart_json.table_id)
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(str(chart_json.datasource_id)),
                         displayName=chart_json.table_name,
-                        service=FullyQualifiedEntityName(
-                            self.context.get().dashboard_service
-                        ),
+                        service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                         columns=self.get_column_info(col_names),
                         dataModelType=DataModelType.SupersetDataModel.value,
                     )

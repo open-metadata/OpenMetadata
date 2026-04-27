@@ -14,6 +14,7 @@ Test Suite Workflow Source
 
 The main goal is to get the configured table from the API.
 """
+
 import itertools
 import traceback
 from typing import Dict, Iterable, List, Optional, cast
@@ -74,9 +75,7 @@ class TestSuiteSource(Source):
         self.source_config: TestSuitePipeline = self.config.source.sourceConfig.config
 
         # Build at runtime - if not informed in the yaml - the service connection map
-        self.service_connection_map: Dict[
-            str, DatabaseConnection
-        ] = self._load_yaml_service_connections()
+        self.service_connection_map: Dict[str, DatabaseConnection] = self._load_yaml_service_connections()
 
         self.test_connection()
 
@@ -89,10 +88,7 @@ class TestSuiteSource(Source):
         service_connections = self.source_config.serviceConnections
         if not service_connections:
             return {}
-        return {
-            conn.serviceName: cast(DatabaseConnection, conn.serviceConnection.root)
-            for conn in service_connections
-        }
+        return {conn.serviceName: cast(DatabaseConnection, conn.serviceConnection.root) for conn in service_connections}
 
     def _get_table_entity(self) -> Optional[Table]:
         """given an entity fqn return the table entity
@@ -105,9 +101,7 @@ class TestSuiteSource(Source):
             logger.debug("No entity FQN provided, skipping table entity retrieval")
             return None
 
-        logger.info(
-            f"Retrieving table entity for FQN: {self.source_config.entityFullyQualifiedName.root}"
-        )
+        logger.info(f"Retrieving table entity for FQN: {self.source_config.entityFullyQualifiedName.root}")
         table: Table = self.metadata.get_by_name(
             entity=Table,
             fqn=self.source_config.entityFullyQualifiedName.root,
@@ -128,9 +122,7 @@ class TestSuiteSource(Source):
 
         if service_name not in self.service_connection_map:
             try:
-                service: DatabaseService = self.metadata.get_by_name(
-                    DatabaseService, service_name
-                )
+                service: DatabaseService = self.metadata.get_by_name(DatabaseService, service_name)
                 if not service:
                     raise ConnectionError(
                         f"Could not retrieve service with name `{service_name}`. "
@@ -148,9 +140,7 @@ class TestSuiteSource(Source):
                 # Remove this when the issue above is fixed and empty secrets migrated
                 source_config_class = type(service.connection)
                 dumped_config = service.connection.model_dump()
-                service_connection_clean = source_config_class.model_validate(
-                    dumped_config
-                )
+                service_connection_clean = source_config_class.model_validate(dumped_config)
 
                 self.service_connection_map[service_name] = service_connection_clean
 
@@ -166,9 +156,7 @@ class TestSuiteSource(Source):
         self._apply_service_connection_modifiers(service_connection)
         return service_connection
 
-    def _apply_service_connection_modifiers(
-        self, service_connection: DatabaseConnection
-    ) -> None:
+    def _apply_service_connection_modifiers(self, service_connection: DatabaseConnection) -> None:
         """Apply service-specific connection modifications.
 
         Args:
@@ -204,9 +192,7 @@ class TestSuiteSource(Source):
         )
         test_cases = cast(List[TestCase], test_cases)  # satisfy type checker
         if self.source_config.testCases is not None:
-            test_cases = [
-                t for t in test_cases if t.name in self.source_config.testCases
-            ]
+            test_cases = [t for t in test_cases if t.name in self.source_config.testCases]
         return test_cases
 
     def prepare(self):
@@ -221,13 +207,9 @@ class TestSuiteSource(Source):
         if table:
             source_type = table.serviceType.value.lower()
             if source_type.startswith(CUSTOM_CONNECTOR_PREFIX):
-                logger.warning(
-                    "Data quality tests might not work as expected with custom sources"
-                )
+                logger.warning("Data quality tests might not work as expected with custom sources")
             else:
-                import_source_class(
-                    service_type=ServiceType.Database, source_type=source_type
-                )
+                import_source_class(service_type=ServiceType.Database, source_type=source_type)
             yield from self._process_table_suite(table)
 
         # Logical test suites won't have a table, we'll need to group the execution by tests
@@ -239,9 +221,7 @@ class TestSuiteSource(Source):
         Check that the table has the proper test suite built in
         """
         try:
-            service_connection: DatabaseConnection = self._get_table_service_connection(
-                table
-            )
+            service_connection: DatabaseConnection = self._get_table_service_connection(table)
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
@@ -254,9 +234,7 @@ class TestSuiteSource(Source):
         # If there is no executable test suite yet for the table, we'll need to create one
         # Then, the suite won't have yet any tests
         if not table.testSuite or table.testSuite.id.root is None:
-            logger.info(
-                f"Creating new test suite for table {table.name.root} as no executable test suite exists"
-            )
+            logger.info(f"Creating new test suite for table {table.name.root} as no executable test suite exists")
             executable_test_suite = CreateTestSuiteRequest(
                 name=fqn.build(
                     None,
@@ -304,12 +282,8 @@ class TestSuiteSource(Source):
 
     def _process_logical_suite(self):
         """Process logical test suite, collect all test cases and yield them in batches by table"""
-        logger.info(
-            f"Processing logical test suite for service name: {self.config.source.serviceName}"
-        )
-        test_suite = self.metadata.get_by_name(
-            entity=TestSuite, fqn=self.config.source.serviceName
-        )
+        logger.info(f"Processing logical test suite for service name: {self.config.source.serviceName}")
+        test_suite = self.metadata.get_by_name(entity=TestSuite, fqn=self.config.source.serviceName)
         if test_suite is None:
             yield Either(
                 left=StackTraceError(
@@ -322,13 +296,9 @@ class TestSuiteSource(Source):
 
         logger.info(f"Found test suite: {test_suite.name.root}")
         test_cases: List[TestCase] = self._get_test_cases_from_test_suite(test_suite)
-        grouped_by_table = itertools.groupby(
-            test_cases, key=lambda t: entity_link.get_table_fqn(t.entityLink.root)
-        )
+        grouped_by_table = itertools.groupby(test_cases, key=lambda t: entity_link.get_table_fqn(t.entityLink.root))
         for table_fqn, group in grouped_by_table:
-            table_entity: Table = self.metadata.get_by_name(
-                Table, table_fqn, fields=["tableProfilerConfig"]
-            )
+            table_entity: Table = self.metadata.get_by_name(Table, table_fqn, fields=["tableProfilerConfig"])
             if table_entity is None:
                 yield Either(
                     left=StackTraceError(
@@ -339,9 +309,7 @@ class TestSuiteSource(Source):
                 continue
 
             try:
-                service_connection: DatabaseConnection = (
-                    self._get_table_service_connection(table_entity)
-                )
+                service_connection: DatabaseConnection = self._get_table_service_connection(table_entity)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(

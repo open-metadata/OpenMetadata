@@ -12,6 +12,7 @@
 """
 Test Profiler behavior
 """
+
 import os
 from concurrent.futures import TimeoutError
 from datetime import datetime
@@ -72,9 +73,7 @@ class ProfilerTest(TestCase):
     Run checks on different metrics
     """
 
-    db_path = os.path.join(
-        os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db"
-    )
+    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")
     sqlite_conn = SQLiteConnection(
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
@@ -117,9 +116,7 @@ class ProfilerTest(TestCase):
             entity=table_entity,
         )
 
-    sqa_profiler_interface = SQAProfilerInterface(
-        sqlite_conn, None, table_entity, None, sampler, 5, 43200
-    )
+    sqa_profiler_interface = SQAProfilerInterface(sqlite_conn, None, table_entity, None, sampler, 5, 43200)
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -139,9 +136,7 @@ class ProfilerTest(TestCase):
         """
         Check our pre-cooked profiler
         """
-        simple = DefaultProfiler(
-            profiler_interface=self.sqa_profiler_interface, metrics_registry=Metrics
-        )
+        simple = DefaultProfiler(profiler_interface=self.sqa_profiler_interface, metrics_registry=Metrics)
         simple.compute_metrics()
 
         profile = simple.get_profile()
@@ -150,11 +145,7 @@ class ProfilerTest(TestCase):
         assert profile.tableProfile.columnCount == 5
 
         age_profile = next(
-            (
-                col_profile
-                for col_profile in profile.columnProfile
-                if col_profile.name == "age"
-            ),
+            (col_profile for col_profile in profile.columnProfile if col_profile.name == "age"),
             None,
         )
 
@@ -243,9 +234,7 @@ class ProfilerTest(TestCase):
 
         profiler._check_profile_and_handle(
             CreateTableProfileRequest(
-                tableProfile=TableProfile(
-                    timestamp=Timestamp(int(datetime.now().timestamp())), columnCount=10
-                )
+                tableProfile=TableProfile(timestamp=Timestamp(int(datetime.now().timestamp())), columnCount=10)
             )
         )
 
@@ -296,9 +285,7 @@ class ProfilerTest(TestCase):
             0,
         )
 
-        simple = DefaultProfiler(
-            profiler_interface=sqa_profiler_interface, metrics_registry=Metrics
-        )
+        simple = DefaultProfiler(profiler_interface=sqa_profiler_interface, metrics_registry=Metrics)
 
         with pytest.raises(TimeoutError):
             simple.compute_metrics()
@@ -307,33 +294,18 @@ class ProfilerTest(TestCase):
         """check getc column metrics"""
         metric_filter = ["mean", "min", "max", "firstQuartile"]
         custom_metric_filter = ["custom_metric"]
-        self.sqa_profiler_interface.table_entity.tableProfilerConfig = (
-            TableProfilerConfig(
-                includeColumns=[
-                    ColumnProfilerConfig(columnName="id", metrics=metric_filter)
-                ]
-            )
+        self.sqa_profiler_interface.table_entity.tableProfilerConfig = TableProfilerConfig(
+            includeColumns=[ColumnProfilerConfig(columnName="id", metrics=metric_filter)]
         )  # type: ignore
 
-        default_profiler = DefaultProfiler(
-            profiler_interface=self.sqa_profiler_interface, metrics_registry=Metrics
-        )
+        default_profiler = DefaultProfiler(profiler_interface=self.sqa_profiler_interface, metrics_registry=Metrics)
 
         column_metrics = default_profiler._prepare_column_metrics()
         for metric in column_metrics:
-            if (
-                metric.metric_type is not MetricTypes.Table
-                and metric.column.name == "id"
-            ):
+            if metric.metric_type is not MetricTypes.Table and metric.column.name == "id":
+                assert all(metric_filter.count(m.name()) for m in metric.metrics if not isinstance(m, CustomMetric))
                 assert all(
-                    metric_filter.count(m.name())
-                    for m in metric.metrics
-                    if not isinstance(m, CustomMetric)
-                )
-                assert all(
-                    custom_metric_filter.count(m.name.root)
-                    for m in metric.metrics
-                    if isinstance(m, CustomMetric)
+                    custom_metric_filter.count(m.name.root) for m in metric.metrics if isinstance(m, CustomMetric)
                 )
 
     @classmethod

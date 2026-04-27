@@ -12,6 +12,7 @@
 """
 Validate how we are reading ingestion configs
 """
+
 import os
 from pathlib import Path
 from unittest import TestCase, mock
@@ -40,20 +41,14 @@ class TestIngestionFileLoad(TestCase):
 
         self.assertEqual(config_dict["source"]["serviceName"], "bigquery_my-project-id")
         self.assertEqual(
-            config_dict["source"]["sourceConfig"]["config"]["databaseFilterPattern"][
-                "includes"
-            ][0],
+            config_dict["source"]["sourceConfig"]["config"]["databaseFilterPattern"]["includes"][0],
             "my-project-id",
         )
         self.assertEqual(
-            config_dict["source"]["serviceConnection"]["config"]["credentials"][
-                "gcpConfig"
-            ],
+            config_dict["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"],
             "/random/path",
         )
         self.assertEqual(
-            config_dict["workflowConfig"]["openMetadataServerConfig"]["securityConfig"][
-                "jwtToken"
-            ],
+            config_dict["workflowConfig"]["openMetadataServerConfig"]["securityConfig"]["jwtToken"],
             "jwt-token",
         )

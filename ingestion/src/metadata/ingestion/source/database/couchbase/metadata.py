@@ -11,6 +11,7 @@
 """
 Couchbase source methods.
 """
+
 import re
 import traceback
 from typing import Dict, Iterable, List, Optional
@@ -52,15 +53,11 @@ class CouchbaseSource(CommonNoSQLSource):
         self.index_condition_map = {}
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: CouchbaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, CouchbaseConnection):
-            raise InvalidSourceException(
-                f"Expected CouchbaseConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected CouchbaseConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_database_names(self) -> Iterable[str]:
@@ -86,33 +83,22 @@ class CouchbaseSource(CommonNoSQLSource):
         try:
             bucket = self.couchbase.bucket(database_name)
             collection_manager = bucket.collections()
-            self.context.get().scope_dict = {
-                scope.name: scope for scope in collection_manager.get_all_scopes()
-            }
+            self.context.get().scope_dict = {scope.name: scope for scope in collection_manager.get_all_scopes()}
             return [scopes.name for scopes in collection_manager.get_all_scopes()]
         except Exception as exp:
-            logger.debug(
-                f"Failed to list scope for bucket names [{database_name}]: {exp}"
-            )
+            logger.debug(f"Failed to list scope for bucket names [{database_name}]: {exp}")
             logger.debug(traceback.format_exc())
         return []
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Method to get list of table names available within schema db
         """
         try:
             scope_object = self.context.get().scope_dict.get(schema_name)
-            return [
-                TableNameAndType(name=collection.name)
-                for collection in scope_object.collections
-            ]
+            return [TableNameAndType(name=collection.name) for collection in scope_object.collections]
         except Exception as exp:
-            logger.debug(
-                f"Failed to list collection names for scope [{schema_name}]: {exp}"
-            )
+            logger.debug(f"Failed to list collection names for scope [{schema_name}]: {exp}")
             logger.debug(traceback.format_exc())
         return []
 
@@ -149,9 +135,7 @@ class CouchbaseSource(CommonNoSQLSource):
                             condition = f"AND {index_obj.indexes.condition}"
                         index_condition.add(f"({key} is not missing {condition})")
         if index_condition:
-            self.index_condition_map[
-                (bucket_name, schema_name)
-            ] = "WHERE " + " OR ".join(index_condition)
+            self.index_condition_map[(bucket_name, schema_name)] = "WHERE " + " OR ".join(index_condition)
             return self.index_condition_map[(bucket_name, schema_name)]
 
         self.index_condition_map[(bucket_name, schema_name)] = ""
@@ -176,7 +160,7 @@ class CouchbaseSource(CommonNoSQLSource):
             )
             query_iter = self.couchbase.query(query_coln)
             return list(query_iter.rows())
-        except QueryIndexNotFoundException as exp:
+        except QueryIndexNotFoundException as exp:  # noqa: F841
             logger.warning(
                 f"Fetching columns failed for [`{database_name}`.`{schema_name}`.`{table_name}`],"
                 " check if the index is created for the table or data exists in the table"

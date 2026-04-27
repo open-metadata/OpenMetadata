@@ -110,9 +110,7 @@ MOCK_DATABASE = Database(
     fullyQualifiedName="test_fabric_service.test_warehouse",
     displayName="test_warehouse",
     description="",
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"
-    ),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"),
 )
 
 MOCK_DATABASE_SCHEMA = DatabaseSchema(
@@ -260,9 +258,7 @@ EXPECTED_TABLE = [
         tablePartition=None,
         tableProfilerConfig=None,
         owners=None,
-        databaseSchema=FullyQualifiedEntityName(
-            "test_fabric_service.test_warehouse.dbo"
-        ),
+        databaseSchema=FullyQualifiedEntityName("test_fabric_service.test_warehouse.dbo"),
         tags=None,
         schemaDefinition=None,
         retentionPeriod=None,
@@ -281,12 +277,8 @@ class MicrosoftFabricUnitTest(TestCase):
     Unit tests for Microsoft Fabric Database connector
     """
 
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-    )
-    @patch(
-        "metadata.ingestion.source.database.microsoftfabric.connection.get_connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
+    @patch("metadata.ingestion.source.database.microsoftfabric.connection.get_connection")
     def __init__(
         self,
         methodName,
@@ -302,66 +294,39 @@ class MicrosoftFabricUnitTest(TestCase):
             mock_fabric_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.fabric_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.fabric_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.thread_id = self.fabric_source.context.get_current_thread_id()
         self.fabric_source._inspector_map[self.thread_id] = types.SimpleNamespace()
-        self.fabric_source._inspector_map[
-            self.thread_id
-        ].get_columns = (
+        self.fabric_source._inspector_map[self.thread_id].get_columns = (
             lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
         )
-        self.fabric_source._inspector_map[
-            self.thread_id
-        ].get_pk_constraint = lambda table_name, schema_name: []
-        self.fabric_source._inspector_map[
-            self.thread_id
-        ].get_unique_constraints = lambda table_name, schema_name: []
-        self.fabric_source._inspector_map[
-            self.thread_id
-        ].get_foreign_keys = lambda table_name, schema_name: []
+        self.fabric_source._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema_name: []
+        self.fabric_source._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
+        self.fabric_source._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
 
     def test_yield_database(self):
         """Test database yielding"""
-        results = [
-            either.right
-            for either in self.fabric_source.yield_database(MOCK_DATABASE.name.root)
-        ]
+        results = [either.right for either in self.fabric_source.yield_database(MOCK_DATABASE.name.root)]
         self.assertEqual(EXPECTED_DATABASE, results)
 
-        self.fabric_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.fabric_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.fabric_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     def test_yield_schema(self):
         """Test schema yielding"""
         self.fabric_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
-        results = [
-            either.right
-            for either in self.fabric_source.yield_database_schema(
-                MOCK_DATABASE_SCHEMA.name.root
-            )
-        ]
+        results = [either.right for either in self.fabric_source.yield_database_schema(MOCK_DATABASE_SCHEMA.name.root)]
         self.assertEqual(EXPECTED_DATABASE_SCHEMA, results)
 
-        self.fabric_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.fabric_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_table(self):
         """Test table yielding"""
         self.fabric_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.fabric_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.fabric_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
-        results = [
-            either.right
-            for either in self.fabric_source.yield_table(("sample_table", "Regular"))
-        ]
+        results = [either.right for either in self.fabric_source.yield_table(("sample_table", "Regular"))]
         self.assertEqual(EXPECTED_TABLE, results)
 
 
@@ -394,9 +359,7 @@ class MicrosoftFabricConnectionTest(TestCase):
 
         # Verify connection string contains expected parameters
         self.assertIn("Driver={ODBC Driver 18 for SQL Server}", connection_string)
-        self.assertIn(
-            "Server=test.datawarehouse.fabric.microsoft.com", connection_string
-        )
+        self.assertIn("Server=test.datawarehouse.fabric.microsoft.com", connection_string)
         self.assertIn("Database=test_warehouse", connection_string)
         self.assertIn("Encrypt=yes", connection_string)
 
@@ -421,6 +384,4 @@ class MicrosoftFabricConnectionTest(TestCase):
         connection_string = connection_url.query.get("odbc_connect")
 
         # Should not have Database parameter when not specified
-        self.assertIn(
-            "Server=test.datawarehouse.fabric.microsoft.com", connection_string
-        )
+        self.assertIn("Server=test.datawarehouse.fabric.microsoft.com", connection_string)

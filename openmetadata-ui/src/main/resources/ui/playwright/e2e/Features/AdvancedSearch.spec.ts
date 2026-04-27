@@ -31,19 +31,26 @@ import { redirectToHomePage } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
-const user = new UserClass();
-const table = new TableClass(undefined, 'Regular');
+let user: UserClass;
+let table: TableClass;
 let glossaryEntity: Glossary;
-const table1 = new TableClass();
-const table2 = new TableClass();
-const topic1 = new TopicClass();
-const topic2 = new TopicClass();
+let table1: TableClass;
+let table2: TableClass;
+let topic1: TopicClass;
+let topic2: TopicClass;
 
 test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
   let searchCriteria: Record<string, Array<string>> = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
+
+    user = new UserClass();
+    table = new TableClass(undefined, 'Regular');
+    table1 = new TableClass();
+    table2 = new TableClass();
+    topic1 = new TopicClass();
+    topic2 = new TopicClass();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
@@ -226,32 +233,36 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
         table2.entityResponseData.columns[3].name,
       ],
       'displayName.keyword': [
-        table1.entityResponseData.displayName,
-        table2.entityResponseData.displayName,
+        table1.entityResponseData.displayName ?? '',
+        table2.entityResponseData.displayName ?? '',
       ],
       serviceType: [
-        table1.serviceResponseData.serviceType,
-        topic1.serviceResponseData.serviceType,
+        table1.serviceResponseData.serviceType ?? '',
+        topic1.serviceResponseData.serviceType ?? '',
       ],
       'messageSchema.schemaFields.name.keyword': [
-        topic1.entityResponseData?.messageSchema.schemaFields[0].name,
-        topic2.entityResponseData?.messageSchema.schemaFields[1].name,
+        topic1.entityResponseData?.messageSchema?.schemaFields?.[0].name ?? '',
+        topic2.entityResponseData?.messageSchema?.schemaFields?.[1].name ?? '',
       ],
       'dataModel.columns.name.keyword': [
-        EntityDataClass.container1.entityResponseData.dataModel.columns[0].name,
-        EntityDataClass.container2.entityResponseData.dataModel.columns[1].name,
+        EntityDataClass.container1.entityResponseData?.dataModel?.columns?.[0]
+          .name ?? '',
+        EntityDataClass.container2.entityResponseData?.dataModel?.columns?.[1]
+          .name ?? '',
       ],
       dataModelType: [
-        EntityDataClass.dashboard1.dataModelResponseData.dataModelType,
-        EntityDataClass.dashboard2.dataModelResponseData.dataModelType,
+        EntityDataClass.dashboard1.dataModelResponseData.dataModelType ?? '',
+        EntityDataClass.dashboard2.dataModelResponseData.dataModelType ?? '',
       ],
       'fields.name.keyword': [
-        EntityDataClass.searchIndex1.entityResponseData.fields[1].name,
-        EntityDataClass.searchIndex2.entityResponseData.fields[3].name,
+        EntityDataClass.searchIndex1.entityResponseData?.fields?.[1].name ?? '',
+        EntityDataClass.searchIndex2.entityResponseData?.fields?.[3].name ?? '',
       ],
       'tasks.displayName.keyword': [
-        EntityDataClass.pipeline1.entityResponseData.tasks[0].displayName,
-        EntityDataClass.pipeline2.entityResponseData.tasks[1].displayName,
+        EntityDataClass.pipeline1.entityResponseData?.tasks?.[0]?.displayName ??
+          '',
+        EntityDataClass.pipeline2.entityResponseData?.tasks?.[1]?.displayName ??
+          '',
       ],
       'domains.displayName.keyword': [
         EntityDataClass.domain1.responseData.displayName,
@@ -259,15 +270,15 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
       ],
       'responseSchema.schemaFields.name.keyword': [
         EntityDataClass.apiCollection1.apiEndpointResponseData.responseSchema
-          .schemaFields[0].name,
+          ?.schemaFields[0].name ?? '',
         EntityDataClass.apiCollection2.apiEndpointResponseData.responseSchema
-          .schemaFields[1].name,
+          ?.schemaFields[1].name ?? '',
       ],
       'requestSchema.schemaFields.name.keyword': [
         EntityDataClass.apiCollection1.apiEndpointResponseData.requestSchema
-          .schemaFields[0].name,
+          ?.schemaFields[0].name ?? '',
         EntityDataClass.apiCollection2.apiEndpointResponseData.requestSchema
-          .schemaFields[1].name,
+          ?.schemaFields[1].name ?? '',
       ],
       'name.keyword': [
         table1.entityResponseData.name,
@@ -277,10 +288,6 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
         EntityDataClass.dashboardDataModel1.entityResponseData.project,
         EntityDataClass.dashboardDataModel2.entityResponseData.project,
       ],
-      entityStatus: ['Approved', 'In Review'],
-      // Some common field value search criteria are causing problems in not equal filter tests
-      // TODO: Refactor the advanced search tests so that these fields can be added back
-      // tableType: [table.entity.tableType, 'MaterializedView'],
       'charts.displayName.keyword': [
         EntityDataClass.dashboard1.chartsResponseData.displayName,
         EntityDataClass.dashboard2.chartsResponseData.displayName,

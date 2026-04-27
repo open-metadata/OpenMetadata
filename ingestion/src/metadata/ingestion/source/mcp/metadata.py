@@ -140,9 +140,7 @@ class McpSource(Source):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection: McpConnection = (
-            self.config.serviceConnection.root.config
-        )
+        self.service_connection: McpConnection = self.config.serviceConnection.root.config
         self.source_config = self.config.sourceConfig.config
 
         self.connection_manager = get_connection(self.service_connection)
@@ -150,15 +148,11 @@ class McpSource(Source):
         self.test_connection()
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: McpConnection = config.serviceConnection.root.config
         if not isinstance(connection, McpConnection):
-            raise InvalidSourceException(
-                f"Expected McpConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected McpConnection, but got {connection}")
         return cls(config, metadata)
 
     def prepare(self):
@@ -187,9 +181,7 @@ class McpSource(Source):
 
         return filter_by_server(filter_pattern, server_name)
 
-    def _process_server(
-        self, server: ClientServerInfo
-    ) -> Iterable[Either[CreateMcpServerRequest]]:
+    def _process_server(self, server: ClientServerInfo) -> Iterable[Either[CreateMcpServerRequest]]:
         """Process a single MCP server and yield CreateMcpServerRequest request"""
         client: Optional[McpClient] = None
         try:
@@ -237,9 +229,7 @@ class McpSource(Source):
         client.initialize()
         return client
 
-    def _fetch_server_metadata(
-        self, client: McpClient, server: ClientServerInfo
-    ) -> None:
+    def _fetch_server_metadata(self, client: McpClient, server: ClientServerInfo) -> None:
         """Fetch tools, resources, and prompts from the server"""
         if self.service_connection.fetchTools:
             try:
@@ -251,28 +241,20 @@ class McpSource(Source):
         if self.service_connection.fetchResources:
             try:
                 client.list_resources()
-                logger.debug(
-                    f"Fetched {len(server.resources)} resources from '{server.name}'"
-                )
+                logger.debug(f"Fetched {len(server.resources)} resources from '{server.name}'")
             except McpProtocolError as e:
                 logger.warning(f"Could not fetch resources from '{server.name}': {e}")
 
         if self.service_connection.fetchPrompts:
             try:
                 client.list_prompts()
-                logger.debug(
-                    f"Fetched {len(server.prompts)} prompts from '{server.name}'"
-                )
+                logger.debug(f"Fetched {len(server.prompts)} prompts from '{server.name}'")
             except McpProtocolError as e:
                 logger.warning(f"Could not fetch prompts from '{server.name}': {e}")
 
-    def _build_create_request(
-        self, server: ClientServerInfo, error: Optional[str] = None
-    ) -> CreateMcpServerRequest:
+    def _build_create_request(self, server: ClientServerInfo, error: Optional[str] = None) -> CreateMcpServerRequest:
         """Build CreateMcpServerRequest request from server info"""
-        transport_type = TRANSPORT_TYPE_MAP.get(
-            server.transport.lower(), TransportType.Stdio
-        )
+        transport_type = TRANSPORT_TYPE_MAP.get(server.transport.lower(), TransportType.Stdio)
 
         server_type = infer_server_type(server.name)
 
@@ -300,9 +282,7 @@ class McpSource(Source):
             )
 
         tools = self._convert_tools(server.tools) if server.tools else None
-        resources = (
-            self._convert_resources(server.resources) if server.resources else None
-        )
+        resources = self._convert_resources(server.resources) if server.resources else None
         prompts = self._convert_prompts(server.prompts) if server.prompts else None
 
         description = f"MCP server: {server.name}"
@@ -321,11 +301,7 @@ class McpSource(Source):
             service=self.config.serviceName,
             serverType=server_type,
             transportType=transport_type,
-            protocolVersion=(
-                server.server_info.get("protocolVersion")
-                if server.server_info
-                else None
-            ),
+            protocolVersion=(server.server_info.get("protocolVersion") if server.server_info else None),
             serverInfo=server_info,
             connectionConfig=connection_config,
             capabilities=capabilities,
@@ -405,6 +381,4 @@ class McpSource(Source):
 
     def test_connection(self) -> None:
         """Test connection to MCP servers"""
-        test_connection_common(
-            self.metadata, self.connection_obj, self.service_connection
-        )
+        test_connection_common(self.metadata, self.connection_obj, self.service_connection)

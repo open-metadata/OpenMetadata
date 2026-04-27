@@ -11,6 +11,7 @@
 """
 Superset mixin module
 """
+
 import json
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple, Union
@@ -88,14 +89,10 @@ class SupersetSourceMixin(DashboardServiceSource):
         config = WorkflowSource.model_validate(config_dict)
         connection: SupersetConnection = config.serviceConnection.root.config
         if not isinstance(connection, SupersetConnection):
-            raise InvalidSourceException(
-                f"Expected SupersetConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected SupersetConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_dashboard_name(
-        self, dashboard: Union[FetchDashboard, DashboardResult]
-    ) -> Optional[str]:
+    def get_dashboard_name(self, dashboard: Union[FetchDashboard, DashboardResult]) -> Optional[str]:
         """
         Get Dashboard Name
         """
@@ -114,9 +111,7 @@ class SupersetSourceMixin(DashboardServiceSource):
             return self.metadata.get_reference_by_email(email)
         return None
 
-    def get_owner_ref(
-        self, dashboard_details: Union[DashboardResult, FetchDashboard]
-    ) -> Optional[EntityReferenceList]:
+    def get_owner_ref(self, dashboard_details: Union[DashboardResult, FetchDashboard]) -> Optional[EntityReferenceList]:
         try:
             if not self.source_config.includeOwners:
                 return None
@@ -160,9 +155,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                 ]
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to charts of dashboard {dashboard_details.id} due to {err}"
-            )
+            logger.warning(f"Failed to charts of dashboard {dashboard_details.id} due to {err}")
         return []
 
     def _is_table_to_table_lineage(self, columns: tuple, table: LineageTable) -> bool:
@@ -183,9 +176,7 @@ class SupersetSourceMixin(DashboardServiceSource):
 
         return True
 
-    def _append_value_to_dict_list(
-        self, input_dict: Dict[str, List[str]], dict_key: str, list_value: str
-    ) -> None:
+    def _append_value_to_dict_list(self, input_dict: Dict[str, List[str]], dict_key: str, list_value: str) -> None:
         if input_dict.get(dict_key):
             input_dict[dict_key].append(list_value)
         else:
@@ -202,9 +193,7 @@ class SupersetSourceMixin(DashboardServiceSource):
     ) -> Dict[str, List[str]]:
         result = {}
         table_to_table_lineage = [
-            _columns
-            for _columns in parser.column_lineage
-            if self._is_table_to_table_lineage(_columns, table)
+            _columns for _columns in parser.column_lineage if self._is_table_to_table_lineage(_columns, table)
         ]
 
         for columns in table_to_table_lineage:
@@ -212,9 +201,7 @@ class SupersetSourceMixin(DashboardServiceSource):
             to_column_name = columns[-1].raw_name
 
             if from_column_name != "*" and to_column_name != "*":
-                self._append_value_to_dict_list(
-                    result, to_column_name, from_column_name
-                )
+                self._append_value_to_dict_list(result, to_column_name, from_column_name)
 
             if from_column_name == "*" and to_column_name == "*":
                 for col_name in self._get_columns_list_for_lineage(chart):
@@ -222,9 +209,7 @@ class SupersetSourceMixin(DashboardServiceSource):
 
         return result
 
-    def _parse_lineage_from_dataset_sql(
-        self, chart_json: FetchChart
-    ) -> List[Tuple[FetchChart, Dict[str, List[str]]]]:
+    def _parse_lineage_from_dataset_sql(self, chart_json: FetchChart) -> List[Tuple[FetchChart, Dict[str, List[str]]]]:
         # Every SQL query in tables is a SQL statement SELECTING data.
         # To get lineage we 'simulate' INSERT INTO query into dummy table.
         result = []
@@ -237,9 +222,7 @@ class SupersetSourceMixin(DashboardServiceSource):
             table_name = table.raw_name
             table_schema = self._get_table_schema(table, chart_json)
 
-            column_mapping: Dict[str, List[str]] = self._create_column_lineage_mapping(
-                parser, table, chart_json
-            )
+            column_mapping: Dict[str, List[str]] = self._create_column_lineage_mapping(parser, table, chart_json)
 
             result.append(
                 (
@@ -264,9 +247,7 @@ class SupersetSourceMixin(DashboardServiceSource):
 
         for from_entity in from_entities:
             input_table, _column_lineage = from_entity
-            datasource_fqn = self._get_datasource_fqn_for_lineage(
-                input_table, db_service_prefix
-            )
+            datasource_fqn = self._get_datasource_fqn_for_lineage(input_table, db_service_prefix)
             from_entity = self.metadata.search_in_any_service(
                 entity_type=Table,
                 fqn_search_string=datasource_fqn,
@@ -299,15 +280,11 @@ class SupersetSourceMixin(DashboardServiceSource):
         if getattr(chart, "sql", None):
             result = self._parse_lineage_from_dataset_sql(chart)
         else:
-            result = [
-                (chart, {c: [c] for c in self._get_columns_list_for_lineage(chart)})
-            ]
+            result = [(chart, {c: [c] for c in self._get_columns_list_for_lineage(chart)})]
 
         return result
 
-    def _get_dashboard_data_model_entity(
-        self, chart: FetchChart
-    ) -> Optional[DashboardDataModel]:
+    def _get_dashboard_data_model_entity(self, chart: FetchChart) -> Optional[DashboardDataModel]:
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
@@ -329,19 +306,14 @@ class SupersetSourceMixin(DashboardServiceSource):
         """
         for chart_json in filter(
             None,
-            [
-                self.all_charts.get(chart_id)
-                for chart_id in self._get_charts_of_dashboard(dashboard_details)
-            ],
+            [self.all_charts.get(chart_id) for chart_id in self._get_charts_of_dashboard(dashboard_details)],
         ):
             try:
                 to_entity = self._get_dashboard_data_model_entity(chart_json)
 
                 if to_entity:
                     _input_tables = self._get_input_tables(chart_json)
-                    input_tables = self._enrich_raw_input_tables(
-                        _input_tables, to_entity, db_service_prefix
-                    )
+                    input_tables = self._enrich_raw_input_tables(_input_tables, to_entity, db_service_prefix)
                     for input_table in input_tables:
                         from_entity_table, column_lineage = input_table
 
@@ -362,9 +334,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                     )
                 )
 
-    def _get_datamodel(
-        self, datamodel: Union[SupersetDatasource, FetchChart]
-    ) -> Optional[DashboardDataModel]:
+    def _get_datamodel(self, datamodel: Union[SupersetDatasource, FetchChart]) -> Optional[DashboardDataModel]:
         """
         Get the datamodel entity for lineage
         """
@@ -408,9 +378,7 @@ class SupersetSourceMixin(DashboardServiceSource):
             return col_parse["children"]
         return []
 
-    def get_column_info(
-        self, data_source: List[Union[DataSourceResult, FetchColumn]]
-    ) -> Optional[List[Column]]:
+    def get_column_info(self, data_source: List[Union[DataSourceResult, FetchColumn]]) -> Optional[List[Column]]:
         """
         Args:
             data_source: DataSource

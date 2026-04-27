@@ -19,6 +19,7 @@ For migration, use TagProcessor instead:
     from metadata.pii.tag_processor import TagProcessor
     processor = TagProcessor(config, metadata, classification_filter=["PII"])
 """
+
 import warnings
 from typing import Any, Sequence
 
@@ -94,9 +95,7 @@ class PIIProcessor(AutoClassificationProcessor):
 
         return tag_label
 
-    def create_column_tag_labels(
-        self, column: Column, sample_data: Sequence[Any]
-    ) -> Sequence[TagLabel]:
+    def create_column_tag_labels(self, column: Column, sample_data: Sequence[Any]) -> Sequence[TagLabel]:
         """
         Create tags for the column based on the sample data.
         """
@@ -112,9 +111,7 @@ class PIIProcessor(AutoClassificationProcessor):
         )
 
         # Get the tags and confidence
-        scores = classifier.predict_scores(
-            sample_data, column_name=column.name.root, column_data_type=column.dataType
-        )
+        scores = classifier.predict_scores(sample_data, column_name=column.name.root, column_data_type=column.dataType)
 
         # Filter noise and cap at 1.0 (don't normalize to sum=1)
         scores = {k: min(v, 1.0) for k, v in scores.items() if v > self._tolerance}
@@ -122,9 +119,6 @@ class PIIProcessor(AutoClassificationProcessor):
         # winner is at most 1 tag
         winner = get_top_classes(scores, 1, self.confidence_threshold)
         tag_labels = [
-            self.build_tag_label(
-                tag, explain_recognition_results(result_capturer.recognizer_results)
-            )
-            for tag in winner
+            self.build_tag_label(tag, explain_recognition_results(result_capturer.recognizer_results)) for tag in winner
         ]
         return tag_labels

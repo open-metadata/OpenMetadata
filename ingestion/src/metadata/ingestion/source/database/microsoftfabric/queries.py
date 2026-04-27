@@ -11,6 +11,7 @@
 """
 SQL Queries for Microsoft Fabric metadata extraction
 """
+
 import textwrap
 
 # Query to get all databases (warehouses/lakehouses) in the Fabric workspace

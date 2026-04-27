@@ -13,6 +13,7 @@
 Main entrypoints to create and test connections
 for any source.
 """
+
 import traceback
 from typing import Any, Callable, Optional, Type
 
@@ -53,14 +54,10 @@ def _get_connection_class_from_spec(
         try:
             spec = BaseSpec.get_for_source(service_type, connection_type.value.lower())
             if getattr(spec, "connection_class", None):
-                connection_class = import_connection_class(
-                    service_type, connection_type.value.lower()
-                )
+                connection_class = import_connection_class(service_type, connection_type.value.lower())
                 return connection_class
         except Exception:
-            logger.error(
-                f"Error importing connection class for {connection_type.value}"
-            )
+            logger.error(f"Error importing connection class for {connection_type.value}")
             logger.debug(traceback.format_exc())
     return None
 
@@ -98,9 +95,7 @@ def get_connection_fn(connection: BaseModel) -> Callable:
     if connection_fn:
         return connection_fn
     # Fallback to default
-    return import_connection_fn(
-        connection=connection, function_name=GET_CONNECTION_FN_NAME
-    )
+    return import_connection_fn(connection=connection, function_name=GET_CONNECTION_FN_NAME)
 
 
 def get_test_connection_fn(connection: BaseModel) -> Callable:
@@ -111,9 +106,7 @@ def get_test_connection_fn(connection: BaseModel) -> Callable:
     if test_fn:
         return test_fn
     # Fallback to default
-    return import_connection_fn(
-        connection=connection, function_name=TEST_CONNECTION_FN_NAME
-    )
+    return import_connection_fn(connection=connection, function_name=TEST_CONNECTION_FN_NAME)
 
 
 def get_connection(connection: BaseModel) -> Any:

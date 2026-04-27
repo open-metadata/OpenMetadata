@@ -12,6 +12,7 @@
 """
 Datalake GCS Client
 """
+
 import os
 from copy import deepcopy
 from functools import partial
@@ -56,10 +57,8 @@ class DatalakeGcsClient(DatalakeBaseClient):
         if hasattr(config.securityConfig, "gcpConfig") and isinstance(
             config.securityConfig.gcpConfig.projectId, MultipleProjectId
         ):
-            gcs_config.securityConfig.gcpConfig.projectId = (
-                SingleProjectId.model_validate(
-                    gcs_config.securityConfig.gcpConfig.projectId.root[0]
-                )
+            gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.model_validate(
+                gcs_config.securityConfig.gcpConfig.projectId.root[0]
             )
 
         if not gcs_config.securityConfig:
@@ -84,9 +83,7 @@ class DatalakeGcsClient(DatalakeBaseClient):
         return client
 
     def get_database_names(self, service_connection):
-        project_id_list = (
-            service_connection.configSource.securityConfig.gcpConfig.projectId.root
-        )
+        project_id_list = service_connection.configSource.securityConfig.gcpConfig.projectId.root
 
         if not isinstance(project_id_list, list):
             project_id_list = [project_id_list]
@@ -98,9 +95,7 @@ class DatalakeGcsClient(DatalakeBaseClient):
         gcs_config = deepcopy(config)
 
         if hasattr(gcs_config.securityConfig, "gcpConfig"):
-            gcs_config.securityConfig.gcpConfig.projectId = (
-                SingleProjectId.model_validate(database_name)
-            )
+            gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.model_validate(database_name)
 
         self._client = self.get_gcs_client(gcs_config)
         self.update_temp_credentials_file_path_list()
@@ -124,20 +119,14 @@ class DatalakeGcsClient(DatalakeBaseClient):
             if skip_cold_storage:
                 storage_class = getattr(key, "storage_class", None)
                 if storage_class and storage_class in GCS_COLD_STORAGE_CLASSES:
-                    logger.debug(
-                        f"Skipping cold storage object: {key.name} "
-                        f"(storage_class: {storage_class})"
-                    )
+                    logger.debug(f"Skipping cold storage object: {key.name} (storage_class: {storage_class})")
                     continue
             yield key.name, key.size
 
     def close(self, service_connection):
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")
 
-        if (
-            isinstance(service_connection, GcpCredentialsValues)
-            and GOOGLE_CREDENTIALS in os.environ
-        ):
+        if isinstance(service_connection, GcpCredentialsValues) and GOOGLE_CREDENTIALS in os.environ:
             del os.environ[GOOGLE_CREDENTIALS]
             for temp_file_path in self._temp_credentials_file_path_list:
                 if os.path.exists(temp_file_path):

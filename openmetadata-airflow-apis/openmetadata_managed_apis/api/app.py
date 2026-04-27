@@ -25,11 +25,7 @@ def get_blueprint() -> Blueprint:
     blueprint = Blueprint("airflow_api", __name__, url_prefix=REST_API_ENDPOINT)
 
     routes = Path(dirname(__file__)) / "routes"
-    modules = [
-        str(elem.absolute())
-        for elem in routes.glob("*.py")
-        if elem.is_file() and elem.stem != "__init__"
-    ]
+    modules = [str(elem.absolute()) for elem in routes.glob("*.py") if elem.is_file() and elem.stem != "__init__"]
 
     # Force import routes to load endpoints
     for file in modules:

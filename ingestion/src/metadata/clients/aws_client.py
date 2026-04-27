@@ -85,9 +85,7 @@ class AWSAssumeRoleCredentialWrapper(BaseModel):
         populate_by_name = True
 
 
-AWSAssumeRoleCredentialFormat = TypeVar(
-    "AWSAssumeRoleCredentialFormat", AWSAssumeRoleCredentialWrapper, Dict
-)
+AWSAssumeRoleCredentialFormat = TypeVar("AWSAssumeRoleCredentialFormat", AWSAssumeRoleCredentialWrapper, Dict)
 
 
 class AWSClient:
@@ -105,20 +103,15 @@ class AWSClient:
             region = self.config.awsRegion
             if region not in VALID_AWS_REGIONS:
                 msg = f"Invalid AWS Region: '{region}'."
-                if any(
-                    region.startswith(r) and len(region) == len(r) + 1
-                    for r in VALID_AWS_REGIONS
-                ):
+                if any(region.startswith(r) and len(region) == len(r) + 1 for r in VALID_AWS_REGIONS):
                     msg += " This looks like an availability zone rather than a region."
-                msg += f" Expected one of:" f" {', '.join(sorted(VALID_AWS_REGIONS))}"
+                msg += f" Expected one of: {', '.join(sorted(VALID_AWS_REGIONS))}"
                 raise ValueError(msg)
 
     @staticmethod
     def get_assume_role_config(
         config: AWSCredentials,
-        return_type: Type[
-            AWSAssumeRoleCredentialFormat
-        ] = AWSAssumeRoleCredentialWrapper,
+        return_type: Type[AWSAssumeRoleCredentialFormat] = AWSAssumeRoleCredentialWrapper,
     ) -> Optional[AWSAssumeRoleCredentialFormat]:
         """
         Get temporary credentials from assumed role
@@ -144,8 +137,8 @@ class AWSClient:
             )
 
         if resp:
-            credentials: AWSAssumeRoleCredentialResponse = (
-                AWSAssumeRoleCredentialResponse(**resp.get("Credentials", {}))
+            credentials: AWSAssumeRoleCredentialResponse = AWSAssumeRoleCredentialResponse(
+                **resp.get("Credentials", {})
             )
             creds_wrapper = AWSAssumeRoleCredentialWrapper(
                 accessKeyId=credentials.AccessKeyId,
@@ -181,17 +174,11 @@ class AWSClient:
             )
             session = get_session()
             session._credentials = refreshable_creds  # pylint: disable=protected-access
-            return Session(
-                botocore_session=session, region_name=aws_region, profile_name=profile
-            )
+            return Session(botocore_session=session, region_name=aws_region, profile_name=profile)
 
         return Session(
             aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=(
-                aws_secret_access_key.get_secret_value()
-                if aws_secret_access_key
-                else None
-            ),
+            aws_secret_access_key=(aws_secret_access_key.get_secret_value() if aws_secret_access_key else None),
             aws_session_token=aws_session_token,
             region_name=aws_region,
             profile_name=profile,
@@ -205,9 +192,7 @@ class AWSClient:
                 None,
                 self.config.awsRegion,
                 self.config.profileName,
-                refresh_using=partial(
-                    AWSClient.get_assume_role_config, self.config, Dict
-                ),
+                refresh_using=partial(AWSClient.get_assume_role_config, self.config, Dict),
             )
 
         return AWSClient._get_session(
@@ -224,9 +209,7 @@ class AWSClient:
             logger.debug(f"Getting AWS client for service [{service_name}]")
             session = self.create_session()
             if self.config.endPointURL is not None:
-                return session.client(
-                    service_name=service_name, endpoint_url=str(self.config.endPointURL)
-                )
+                return session.client(service_name=service_name, endpoint_url=str(self.config.endPointURL))
             return session.client(service_name=service_name)
 
         logger.debug(f"Getting AWS default client for service [{service_name}]")
@@ -236,9 +219,7 @@ class AWSClient:
     def get_resource(self, service_name: str) -> Any:
         session = self.create_session()
         if self.config.endPointURL is not None:
-            return session.resource(
-                service_name=service_name, endpoint_url=str(self.config.endPointURL)
-            )
+            return session.resource(service_name=service_name, endpoint_url=str(self.config.endPointURL))
         return session.resource(service_name=service_name)
 
     def get_rds_client(self):

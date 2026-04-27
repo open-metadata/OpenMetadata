@@ -11,6 +11,7 @@
 """
 Workflow definition for the Data Quality
 """
+
 from typing import Optional, Tuple
 
 from metadata.data_quality.processor.test_case_runner import TestCaseRunner
@@ -78,8 +79,6 @@ class TestSuiteWorkflow(IngestionWorkflow):
             fqn=fqn.build(
                 metadata=None,
                 entity_type=TestSuite,
-                table_fqn=model_str(
-                    self.config.source.sourceConfig.config.entityFullyQualifiedName
-                ),
+                table_fqn=model_str(self.config.source.sourceConfig.config.entityFullyQualifiedName),
             ),
         )

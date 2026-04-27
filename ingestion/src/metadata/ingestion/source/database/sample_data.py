@@ -11,6 +11,7 @@
 """
 Sample Data source ingestion
 """
+
 # pylint: disable=too-many-lines,too-many-statements
 import json
 import random
@@ -203,10 +204,7 @@ TABLES_PER_SCHEMA = 10
 COLUMNS_PER_TABLE = 200
 NUM_THREADS = 10
 BATCH_SIZE = 10
-COLUMNS = [
-    Column(name=f"column_{i}", dataType=DataType.STRING)
-    for i in range(COLUMNS_PER_TABLE)
-]
+COLUMNS = [Column(name=f"column_{i}", dataType=DataType.STRING) for i in range(COLUMNS_PER_TABLE)]
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
 
@@ -246,9 +244,7 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
     return TableKey(schema=row["schema"], table_name=row["table_name"])
 
 
-class SampleDataSource(
-    Source
-):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """
     Loads JSON data and prepares the required
     python objects to be sent to the Sink.
@@ -261,13 +257,9 @@ class SampleDataSource(
         self.metadata = metadata
         self.list_policies = []
 
-        sample_data_folder = self.service_connection.connectionOptions.root.get(
-            "sampleDataFolder"
-        )
+        sample_data_folder = self.service_connection.connectionOptions.root.get("sampleDataFolder")
         if not sample_data_folder:
-            raise InvalidSampleDataException(
-                "Cannot get sampleDataFolder from connection options"
-            )
+            raise InvalidSampleDataException("Cannot get sampleDataFolder from connection options")
         self.glue_database_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/glue/database_service.json",
@@ -815,15 +807,11 @@ class SampleDataSource(
 
             # Check if service already exists
             try:
-                self.drive_service = self.metadata.get_by_name(
-                    entity=DriveService, fqn=self.drive_service_json["name"]
-                )
+                self.drive_service = self.metadata.get_by_name(entity=DriveService, fqn=self.drive_service_json["name"])
                 logger.info(f"Drive service already exists: {self.drive_service.name}")
             except Exception:
                 # Create the service using direct API call
-                drive_service_request = CreateDriveServiceRequest(
-                    **self.drive_service_json
-                )
+                drive_service_request = CreateDriveServiceRequest(**self.drive_service_json)
 
                 # Use the direct API endpoint
                 resp = self.metadata.client.put(
@@ -873,16 +861,12 @@ class SampleDataSource(
             self.has_drive_data = False
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: CustomDatabaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, CustomDatabaseConnection):
-            raise InvalidSourceException(
-                f"Expected CustomDatabaseConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected CustomDatabaseConnection, but got {connection}")
         return cls(config, metadata)
 
     def prepare(self):
@@ -967,20 +951,14 @@ class SampleDataSource(
                     # Create the data contract request
                     table_fqn = contract_data.pop("tableFQN", None)
                     contract_data["entity"] = {
-                        "id": self.metadata.get_by_name(
-                            entity=Table, fqn=table_fqn
-                        ).id.root,
+                        "id": self.metadata.get_by_name(entity=Table, fqn=table_fqn).id.root,
                         "type": "table",
                     }
-                    quality_expectations = contract_data.pop(
-                        "qualityExpectations", None
-                    )
+                    quality_expectations = contract_data.pop("qualityExpectations", None)
                     if quality_expectations:
                         contract_data["qualityExpectations"] = [
                             {
-                                "id": self.metadata.get_by_name(
-                                    entity=TestCase, fqn=expectation, fields=["*"]
-                                ).id.root,
+                                "id": self.metadata.get_by_name(entity=TestCase, fqn=expectation, fields=["*"]).id.root,
                                 "type": "testCase",
                             }
                             for expectation in quality_expectations
@@ -992,9 +970,7 @@ class SampleDataSource(
                     yield from self._ingest_data_contract_results(table_fqn)
 
                 except ValidationError as err:
-                    logger.warning(
-                        f"Failed to create data contract {contract_data.get('name', 'unknown')}: {err}"
-                    )
+                    logger.warning(f"Failed to create data contract {contract_data.get('name', 'unknown')}: {err}")
                     yield Either(
                         left=StackTraceError(
                             name="DataContract",
@@ -1031,9 +1007,7 @@ class SampleDataSource(
         try:
             # Find contract results by name
             contract_results_data = None
-            for contract_result in self.data_contract_results.get(
-                "dataContractResults", []
-            ):
+            for contract_result in self.data_contract_results.get("dataContractResults", []):
                 if contract_result.get("table_fqn") == table_fqn:
                     contract_results_data = contract_result
                     break
@@ -1045,9 +1019,7 @@ class SampleDataSource(
             table_fqn = contract_results_data.pop("table_fqn")
             contract_fqn = contract_results_data.pop("dataContractFQN")
             try:
-                contract = self.metadata.get_by_name(
-                    entity=DataContract, fqn=contract_fqn
-                )
+                contract = self.metadata.get_by_name(entity=DataContract, fqn=contract_fqn)
                 if not contract:
                     logger.warning(f"Could not find data contract {contract_fqn}")
                     return
@@ -1056,14 +1028,10 @@ class SampleDataSource(
                 return
 
             # Create results with timestamps going back in time (similar to test case results)
-            for days, result_data in enumerate(
-                contract_results_data.get("results", [])
-            ):
+            for days, result_data in enumerate(contract_results_data.get("results", [])):
                 try:
                     # Generate timestamp going back in days
-                    timestamp = Timestamp(
-                        int((datetime.now() - timedelta(days=days)).timestamp() * 1000)
-                    )
+                    timestamp = Timestamp(int((datetime.now() - timedelta(days=days)).timestamp() * 1000))
 
                     # Create the DataContractResult with generated timestamp and contract FQN
                     result = DataContractResult(
@@ -1080,13 +1048,9 @@ class SampleDataSource(
                     yield Either(right=result)
 
                 except ValidationError as err:
-                    logger.warning(
-                        f"Failed to create data contract result for {table_fqn}: {err}"
-                    )
+                    logger.warning(f"Failed to create data contract result for {table_fqn}: {err}")
                 except Exception as err:
-                    logger.warning(
-                        f"Unexpected error creating data contract result for {table_fqn}: {err}"
-                    )
+                    logger.warning(f"Unexpected error creating data contract result for {table_fqn}: {err}")
 
         except Exception as err:
             logger.warning(f"Failed to ingest results for contract {table_fqn}: {err}")
@@ -1095,9 +1059,7 @@ class SampleDataSource(
         """
         Modify column descriptions to include the table name
         """
-        table: Table = self.metadata.get_by_name(
-            entity=Table, fqn="mysql_sample.default.posts_db.Tags"
-        )
+        table: Table = self.metadata.get_by_name(entity=Table, fqn="mysql_sample.default.posts_db.Tags")
         col_desc_list = []
         for column in table.columns:
             column.description = f"{table.name} - {column.name}"
@@ -1115,9 +1077,7 @@ class SampleDataSource(
         self.metadata.patch_column_descriptions(
             table=table,
             column_descriptions=[
-                ColumnDescription(
-                    column_fqn=column.fullyQualifiedName.root, description=None
-                )
+                ColumnDescription(column_fqn=column.fullyQualifiedName.root, description=None)
                 for column in table.columns
             ],
         )
@@ -1131,9 +1091,7 @@ class SampleDataSource(
         Ingest sample teams
         """
         for team in self.teams["teams"]:
-            team_to_ingest = CreateTeamRequest(
-                name=team["name"], teamType=team["teamType"]
-            )
+            team_to_ingest = CreateTeamRequest(name=team["name"], teamType=team["teamType"])
             if team["parent"] is not None:
                 parent_list_id = []
                 for parent in team["parent"]:
@@ -1156,9 +1114,7 @@ class SampleDataSource(
 
     def ingest_drives(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Drive data"""
-        logger.info(
-            f"Starting drive ingestion, has_drive_data: {getattr(self, 'has_drive_data', False)}"
-        )
+        logger.info(f"Starting drive ingestion, has_drive_data: {getattr(self, 'has_drive_data', False)}")
         if not getattr(self, "has_drive_data", False):
             logger.warning("No drive data to ingest")
             return
@@ -1187,9 +1143,7 @@ class SampleDataSource(
             if directory_data.get("parent"):
                 parent_name = directory_data["parent"]
                 if parent_name in directory_refs:
-                    directory_request.parent = FullyQualifiedEntityName(
-                        root=directory_refs[parent_name]
-                    )
+                    directory_request.parent = FullyQualifiedEntityName(root=directory_refs[parent_name])
                 else:
                     directory_request.parent = FullyQualifiedEntityName(
                         f"{self.drive_service.fullyQualifiedName.root}.{parent_name}"
@@ -1197,14 +1151,10 @@ class SampleDataSource(
 
             # Use direct API call instead of yielding since suffix mapping is missing
             try:
-                resp = self.metadata.client.put(
-                    path="/drives/directories", data=directory_request.model_dump_json()
-                )
+                resp = self.metadata.client.put(path="/drives/directories", data=directory_request.model_dump_json())
                 logger.debug(f"Created directory: {directory_data['name']}")
             except Exception as e:
-                logger.warning(
-                    f"Failed to create directory {directory_data['name']}: {e}"
-                )
+                logger.warning(f"Failed to create directory {directory_data['name']}: {e}")
 
             # Store the FQN for later reference
             # Build FQN manually since Directory FQN builder is not implemented
@@ -1222,11 +1172,7 @@ class SampleDataSource(
                 displayName=file_data.get("displayName"),
                 description=file_data.get("description"),
                 service=self.drive_service.fullyQualifiedName.root,
-                directory=(
-                    directory_refs.get(file_data["directory"])
-                    if file_data.get("directory")
-                    else None
-                ),
+                directory=(directory_refs.get(file_data["directory"]) if file_data.get("directory") else None),
                 fileType=file_data.get("fileType"),
                 mimeType=file_data.get("mimeType"),
                 fileExtension=file_data.get("fileExtension"),
@@ -1244,9 +1190,7 @@ class SampleDataSource(
 
             # Use direct API call instead of yielding since suffix mapping is missing
             try:
-                resp = self.metadata.client.put(
-                    path="/drives/files", data=file_request.model_dump_json()
-                )
+                resp = self.metadata.client.put(path="/drives/files", data=file_request.model_dump_json())
                 logger.debug(f"Created file: {file_data['name']}")
             except Exception as e:
                 logger.warning(f"Failed to create file {file_data['name']}: {e}")
@@ -1281,17 +1225,13 @@ class SampleDataSource(
                 )
                 logger.debug(f"Created spreadsheet: {spreadsheet_data['name']}")
             except Exception as e:
-                logger.warning(
-                    f"Failed to create spreadsheet {spreadsheet_data['name']}: {e}"
-                )
+                logger.warning(f"Failed to create spreadsheet {spreadsheet_data['name']}: {e}")
 
             # Store FQN for worksheet references
             # Build FQN manually - spreadsheets use simple FQN without directory path
             spreadsheet_fqn = f"{self.drive_service.fullyQualifiedName.root}.{spreadsheet_data['name']}"
             spreadsheet_refs[spreadsheet_data["name"]] = spreadsheet_fqn
-            logger.debug(
-                f"Stored spreadsheet ref: {spreadsheet_data['name']} -> {spreadsheet_fqn}"
-            )
+            logger.debug(f"Stored spreadsheet ref: {spreadsheet_data['name']} -> {spreadsheet_fqn}")
 
         # Create worksheets
         for worksheet_data in self.worksheets:
@@ -1301,9 +1241,7 @@ class SampleDataSource(
             )
 
             if not spreadsheet_fqn:
-                logger.warning(
-                    f"Spreadsheet {worksheet_data['spreadsheet']} not found in refs"
-                )
+                logger.warning(f"Spreadsheet {worksheet_data['spreadsheet']} not found in refs")
                 continue
 
             worksheet_request = CreateWorksheetRequest(
@@ -1318,14 +1256,12 @@ class SampleDataSource(
 
             # Use direct API call instead of yielding since suffix mapping is missing
             try:
-                resp = self.metadata.client.put(
+                resp = self.metadata.client.put(  # noqa: F841
                     path="/drives/worksheets", data=worksheet_request.model_dump_json()
                 )
                 logger.debug(f"Created worksheet: {worksheet_data['name']}")
             except Exception as e:
-                logger.warning(
-                    f"Failed to create worksheet {worksheet_data['name']}: {e}"
-                )
+                logger.warning(f"Failed to create worksheet {worksheet_data['name']}: {e}")
 
     def ingest_mysql(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Data for mysql database source including ER diagrams metadata"""
@@ -1345,9 +1281,7 @@ class SampleDataSource(
             database_name=db.name.root,
         )
 
-        database_object = self.metadata.get_by_name(
-            entity=Database, fqn=database_entity
-        )
+        database_object = self.metadata.get_by_name(entity=Database, fqn=database_entity)
         schema = CreateDatabaseSchemaRequest(
             name=self.mysql_database_schema["name"],
             database=database_object.fullyQualifiedName,
@@ -1363,9 +1297,7 @@ class SampleDataSource(
             schema_name=schema.name.root,
         )
 
-        database_schema_object = self.metadata.get_by_name(
-            entity=DatabaseSchema, fqn=database_schema_entity
-        )
+        database_schema_object = self.metadata.get_by_name(entity=DatabaseSchema, fqn=database_schema_entity)
 
         for table in self.mysql_tables["tables"]:
             table_request = CreateTableRequest(
@@ -1395,9 +1327,7 @@ class SampleDataSource(
             service_name=self.postgres_database_service.fullyQualifiedName.root,
             database_name=db.name.root,
         )
-        database_object = self.metadata.get_by_name(
-            entity=Database, fqn=database_entity
-        )
+        database_object = self.metadata.get_by_name(entity=Database, fqn=database_entity)
 
         schema = CreateDatabaseSchemaRequest(
             name=self.postgres_database_schema["name"],
@@ -1413,9 +1343,7 @@ class SampleDataSource(
             database_name=db.name.root,
             schema_name=schema.name.root,
         )
-        database_schema_object = self.metadata.get_by_name(
-            entity=DatabaseSchema, fqn=database_schema_entity
-        )
+        database_schema_object = self.metadata.get_by_name(entity=DatabaseSchema, fqn=database_schema_entity)
 
         for table in self.postgres_tables["tables"]:
             table_request = CreateTableRequest(
@@ -1431,9 +1359,7 @@ class SampleDataSource(
         """Apply dbt DataModel metadata to postgres jaffle_shop tables"""
         for dm in self.postgres_dbt_data_models["dataModels"]:
             try:
-                table_entity = self.metadata.get_by_name(
-                    entity=Table, fqn=dm["tableFqn"]
-                )
+                table_entity = self.metadata.get_by_name(entity=Table, fqn=dm["tableFqn"])
                 if not table_entity:
                     continue
                 data_model = DataModel(
@@ -1447,9 +1373,7 @@ class SampleDataSource(
                     dbtSourceProject=dm.get("dbtSourceProject"),
                     columns=[Column(**col) for col in dm.get("columns", [])],
                 )
-                yield Either(
-                    right=DataModelLink(table_entity=table_entity, datamodel=data_model)
-                )
+                yield Either(right=DataModelLink(table_entity=table_entity, datamodel=data_model))
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
@@ -1478,9 +1402,7 @@ class SampleDataSource(
             database_name=db.name.root,
         )
 
-        database_object = self.metadata.get_by_name(
-            entity=Database, fqn=database_entity
-        )
+        database_object = self.metadata.get_by_name(entity=Database, fqn=database_entity)
         schema = CreateDatabaseSchemaRequest(
             name=self.glue_database_schema["name"],
             description=self.glue_database_schema["description"],
@@ -1497,9 +1419,7 @@ class SampleDataSource(
             schema_name=schema.name.root,
         )
 
-        database_schema_object = self.metadata.get_by_name(
-            entity=DatabaseSchema, fqn=database_schema_entity
-        )
+        database_schema_object = self.metadata.get_by_name(entity=DatabaseSchema, fqn=database_schema_entity)
 
         for table in self.glue_tables["tables"]:
             table_request = CreateTableRequest(
@@ -1521,9 +1441,7 @@ class SampleDataSource(
             schema_name=self.database_schema["name"],
         )
 
-        database_schema_object = self.metadata.get_by_name(
-            entity=DatabaseSchema, fqn=database_schema_entity
-        )
+        database_schema_object = self.metadata.get_by_name(entity=DatabaseSchema, fqn=database_schema_entity)
 
         for table in self.glue_tables["tables"]:
             table_request = CreateTableRequest(
@@ -1543,9 +1461,7 @@ class SampleDataSource(
         db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
-            service=FullyQualifiedEntityName(
-                self.database_service.fullyQualifiedName.root
-            ),
+            service=FullyQualifiedEntityName(self.database_service.fullyQualifiedName.root),
         )
         yield Either(right=db)
 
@@ -1556,9 +1472,7 @@ class SampleDataSource(
             database_name=db.name.root,
         )
 
-        database_object = self.metadata.get_by_name(
-            entity=Database, fqn=database_entity
-        )
+        database_object = self.metadata.get_by_name(entity=Database, fqn=database_entity)
 
         schema = CreateDatabaseSchemaRequest(
             name=self.database_schema["name"],
@@ -1576,9 +1490,7 @@ class SampleDataSource(
             schema_name=schema.name.root,
         )
 
-        database_schema_object = self.metadata.get_by_name(
-            entity=DatabaseSchema, fqn=database_schema_entity
-        )
+        database_schema_object = self.metadata.get_by_name(entity=DatabaseSchema, fqn=database_schema_entity)
 
         resp = self.metadata.list_entities(entity=User, limit=5)
         self.user_entity = resp.entities
@@ -1603,9 +1515,7 @@ class SampleDataSource(
         """Ingest Sample Tables Sample Data"""
         db_fqn = f"sample_data.{self.database['name']}"
         db = self.metadata.get_by_name(entity=Database, fqn=db_fqn)
-        schema = self.metadata.get_by_name(
-            entity=DatabaseSchema, fqn=f"{db_fqn}.{self.database_schema['name']}"
-        )
+        schema = self.metadata.get_by_name(entity=DatabaseSchema, fqn=f"{db_fqn}.{self.database_schema['name']}")
         for table in self.tables["tables"]:
             if table.get("sampleData"):
                 table_fqn = fqn.build(
@@ -1656,20 +1566,12 @@ class SampleDataSource(
                     )
 
                     destination = table_entity.model_copy(deep=True)
-                    destination.certification = AssetCertification.model_validate(
-                        table["certification"]
-                    )
+                    destination.certification = AssetCertification.model_validate(table["certification"])
 
-                    self.metadata.patch(
-                        entity=Table, source=table_entity, destination=destination
-                    )
-                    logger.debug(
-                        f"Patched certification for {table_entity.fullyQualifiedName.root}"
-                    )
+                    self.metadata.patch(entity=Table, source=table_entity, destination=destination)
+                    logger.debug(f"Patched certification for {table_entity.fullyQualifiedName.root}")
                 except Exception as exc:
-                    logger.warning(
-                        f"Failed to patch certification for {table.get('name')}: {exc}"
-                    )
+                    logger.warning(f"Failed to patch certification for {table.get('name')}: {exc}")
 
     def ingest_stored_procedures(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Stored Procedures"""
@@ -1677,9 +1579,7 @@ class SampleDataSource(
         db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
-            service=FullyQualifiedEntityName(
-                self.database_service.fullyQualifiedName.root
-            ),
+            service=FullyQualifiedEntityName(self.database_service.fullyQualifiedName.root),
         )
         yield Either(right=db)
 
@@ -1690,9 +1590,7 @@ class SampleDataSource(
             database_name=db.name.root,
         )
 
-        database_object = self.metadata.get_by_name(
-            entity=Database, fqn=database_entity
-        )
+        database_object = self.metadata.get_by_name(entity=Database, fqn=database_entity)
 
         schema = CreateDatabaseSchemaRequest(
             name=self.database_schema["name"],
@@ -1710,9 +1608,7 @@ class SampleDataSource(
             schema_name=schema.name.root,
         )
 
-        database_schema_object = self.metadata.get_by_name(
-            entity=DatabaseSchema, fqn=database_schema_entity
-        )
+        database_schema_object = self.metadata.get_by_name(entity=DatabaseSchema, fqn=database_schema_entity)
 
         resp = self.metadata.list_entities(entity=User, limit=5)
         self.user_entity = resp.entities
@@ -1721,9 +1617,7 @@ class SampleDataSource(
             stored_procedure = CreateStoredProcedureRequest(
                 name=stored_procedure["name"],
                 description=stored_procedure["description"],
-                storedProcedureCode=StoredProcedureCode(
-                    **stored_procedure["storedProcedureCode"]
-                ),
+                storedProcedureCode=StoredProcedureCode(**stored_procedure["storedProcedureCode"]),
                 databaseSchema=database_schema_object.fullyQualifiedName,
                 tags=stored_procedure["tags"],
                 sourceUrl=stored_procedure.get("sourceUrl"),
@@ -1733,15 +1627,11 @@ class SampleDataSource(
 
         # Create table and stored procedure lineage
         for lineage_entities in self.stored_procedures["lineage"]:
-            from_table = self.metadata.get_by_name(
-                entity=Table, fqn=lineage_entities["from_table_fqn"]
-            )
+            from_table = self.metadata.get_by_name(entity=Table, fqn=lineage_entities["from_table_fqn"])
             stored_procedure_entity = self.metadata.get_by_name(
                 entity=StoredProcedure, fqn=lineage_entities["stored_procedure_fqn"]
             )
-            to_table = self.metadata.get_by_name(
-                entity=Table, fqn=lineage_entities["to_table_fqn"]
-            )
+            to_table = self.metadata.get_by_name(entity=Table, fqn=lineage_entities["to_table_fqn"])
             yield Either(
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
@@ -1762,9 +1652,7 @@ class SampleDataSource(
         Ingest Sample Topics
         """
         for topic in self.topics["topics"]:
-            topic["service"] = EntityReference(
-                id=self.kafka_service.id, type="messagingService"
-            )
+            topic["service"] = EntityReference(id=self.kafka_service.id, type="messagingService")
             create_topic = CreateTopicRequest(
                 name=topic["name"],
                 description=topic["description"],
@@ -1781,9 +1669,7 @@ class SampleDataSource(
                 schema_type = topic["schemaType"].lower()
                 load_parser_fn = schema_parser_config_registry.registry.get(schema_type)
                 if not load_parser_fn:
-                    raise InvalidSchemaTypeException(
-                        f"Cannot find {schema_type} in parser providers registry."
-                    )
+                    raise InvalidSchemaTypeException(f"Cannot find {schema_type} in parser providers registry.")
                 schema_fields = load_parser_fn(topic["name"], topic["schemaText"])
 
                 create_topic.messageSchema = TopicSchema(
@@ -1813,9 +1699,7 @@ class SampleDataSource(
         """Ingest Sample SearchIndexes"""
 
         for search_index in self.search_indexes["searchIndexes"]:
-            search_index["service"] = EntityReference(
-                id=self.search_service.id, type="searchService"
-            )
+            search_index["service"] = EntityReference(id=self.search_service.id, type="searchService")
             create_search_index = CreateSearchIndexRequest(
                 name=search_index["name"],
                 description=search_index["description"],
@@ -1845,9 +1729,7 @@ class SampleDataSource(
                 yield Either(right=data_model_ev)
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unexpected exception ingesting chart [{data_model}]: {err}"
-                )
+                logger.warning(f"Unexpected exception ingesting chart [{data_model}]: {err}")
 
         for chart in self.looker_charts:
             try:
@@ -1879,32 +1761,20 @@ class SampleDataSource(
                 yield Either(right=dashboard_ev)
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unexpected exception ingesting dashboard [{dashboard}]: {err}"
-                )
+                logger.warning(f"Unexpected exception ingesting dashboard [{dashboard}]: {err}")
 
-        orders_view = self.metadata.get_by_name(
-            entity=DashboardDataModel, fqn="sample_looker.model.orders_view"
-        )
+        orders_view = self.metadata.get_by_name(entity=DashboardDataModel, fqn="sample_looker.model.orders_view")
         operations_view = self.metadata.get_by_name(
             entity=DashboardDataModel, fqn="sample_looker.model.operations_view"
         )
-        orders_explore = self.metadata.get_by_name(
-            entity=DashboardDataModel, fqn="sample_looker.model.orders"
-        )
-        orders_dashboard = self.metadata.get_by_name(
-            entity=Dashboard, fqn="sample_looker.orders"
-        )
+        orders_explore = self.metadata.get_by_name(entity=DashboardDataModel, fqn="sample_looker.model.orders")
+        orders_dashboard = self.metadata.get_by_name(entity=Dashboard, fqn="sample_looker.orders")
 
         yield Either(
             right=AddLineageRequest(
                 edge=EntitiesEdge(
-                    fromEntity=EntityReference(
-                        id=orders_view.id.root, type="dashboardDataModel"
-                    ),
-                    toEntity=EntityReference(
-                        id=orders_explore.id.root, type="dashboardDataModel"
-                    ),
+                    fromEntity=EntityReference(id=orders_view.id.root, type="dashboardDataModel"),
+                    toEntity=EntityReference(id=orders_explore.id.root, type="dashboardDataModel"),
                 )
             )
         )
@@ -1912,12 +1782,8 @@ class SampleDataSource(
         yield Either(
             right=AddLineageRequest(
                 edge=EntitiesEdge(
-                    fromEntity=EntityReference(
-                        id=operations_view.id.root, type="dashboardDataModel"
-                    ),
-                    toEntity=EntityReference(
-                        id=orders_explore.id.root, type="dashboardDataModel"
-                    ),
+                    fromEntity=EntityReference(id=operations_view.id.root, type="dashboardDataModel"),
+                    toEntity=EntityReference(id=orders_explore.id.root, type="dashboardDataModel"),
                 )
             )
         )
@@ -1925,12 +1791,8 @@ class SampleDataSource(
         yield Either(
             right=AddLineageRequest(
                 edge=EntitiesEdge(
-                    fromEntity=EntityReference(
-                        id=orders_explore.id.root, type="dashboardDataModel"
-                    ),
-                    toEntity=EntityReference(
-                        id=orders_dashboard.id.root, type="dashboard"
-                    ),
+                    fromEntity=EntityReference(id=orders_explore.id.root, type="dashboardDataModel"),
+                    toEntity=EntityReference(id=orders_dashboard.id.root, type="dashboard"),
                 )
             )
         )
@@ -1967,9 +1829,7 @@ class SampleDataSource(
                 yield Either(right=data_model_ev)
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unexpected exception ingesting chart [{data_model}]: {err}"
-                )
+                logger.warning(f"Unexpected exception ingesting chart [{data_model}]: {err}")
 
     def ingest_dashboards(self) -> Iterable[Either[CreateDashboardRequest]]:
         for dashboard in self.dashboards["dashboards"]:
@@ -1989,9 +1849,7 @@ class SampleDataSource(
         for pipeline in self.pipelines["pipelines"]:
             owners = None
             if pipeline.get("owner"):
-                owners = self.metadata.get_reference_by_email(
-                    email=pipeline.get("owners")
-                )
+                owners = self.metadata.get_reference_by_email(email=pipeline.get("owners"))
 
             # Determine which service to use
             service_name = pipeline.get("service")
@@ -2020,28 +1878,19 @@ class SampleDataSource(
                 to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata)
                 if not from_entity_ref or not to_entity_ref:
                     logger.warning(
-                        f"Skipping lineage edge from [{edge['from']['fqn']}] to [{edge['to']['fqn']}]: "
-                        "entity not found"
+                        f"Skipping lineage edge from [{edge['from']['fqn']}] to [{edge['to']['fqn']}]: entity not found"
                     )
                     continue
-                edge_entity_ref = get_lineage_entity_ref(
-                    edge["edge_meta"], self.metadata
-                )
+                edge_entity_ref = get_lineage_entity_ref(edge["edge_meta"], self.metadata)
                 lineage_details = None
-                if (
-                    edge_entity_ref
-                    or edge.get("sql_query")
-                    or edge.get("temp_lineage_tables")
-                ):
+                if edge_entity_ref or edge.get("sql_query") or edge.get("temp_lineage_tables"):
                     temp_tables = None
                     if edge.get("temp_lineage_tables"):
                         from metadata.generated.schema.type.entityLineage import (
                             TempLineageTable,
                         )
 
-                        temp_tables = [
-                            TempLineageTable(**t) for t in edge["temp_lineage_tables"]
-                        ]
+                        temp_tables = [TempLineageTable(**t) for t in edge["temp_lineage_tables"]]
                     lineage_details = LineageDetails(
                         pipeline=edge_entity_ref if edge_entity_ref else None,
                         sqlQuery=edge.get("sql_query"),
@@ -2116,9 +1965,7 @@ class SampleDataSource(
                 status["endTime"] = new_timestamp + random.randint(600000, 16200000)
 
             if not status.get("executionId"):
-                random_suffix = "".join(
-                    random.choices(string.ascii_lowercase + string.digits, k=6)
-                )
+                random_suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
                 status["executionId"] = f"run_{index + 1:03d}_{random_suffix}"
 
             yield Either(
@@ -2143,17 +1990,11 @@ class SampleDataSource(
                 for obs_data in table_data.get("pipelineObservability", []):
                     pipeline_fqn = obs_data.get("pipeline")
                     if isinstance(pipeline_fqn, str):
-                        pipeline = self.metadata.get_by_name(
-                            entity=Pipeline, fqn=pipeline_fqn
-                        )
+                        pipeline = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
                         if pipeline:
                             pipeline_obs = PipelineObservability(
                                 pipeline=EntityReference(
-                                    id=(
-                                        pipeline.id.root
-                                        if hasattr(pipeline.id, "root")
-                                        else pipeline.id
-                                    ),
+                                    id=(pipeline.id.root if hasattr(pipeline.id, "root") else pipeline.id),
                                     type="pipeline",
                                     fullyQualifiedName=(
                                         pipeline.fullyQualifiedName.root
@@ -2170,9 +2011,7 @@ class SampleDataSource(
                             pipeline_observability_list.append(pipeline_obs)
 
                 if pipeline_observability_list:
-                    self.metadata.add_pipeline_observability(
-                        table.id, pipeline_observability_list
-                    )
+                    self.metadata.add_pipeline_observability(table.id, pipeline_observability_list)
 
             except Exception as exc:
                 yield Either(
@@ -2190,9 +2029,7 @@ class SampleDataSource(
             FeatureSource(
                 name=source["name"],
                 dataType=source["dataType"],
-                dataSource=self.metadata.get_entity_reference(
-                    entity=Table, fqn=source["dataSource"]
-                ),
+                dataSource=self.metadata.get_entity_reference(entity=Table, fqn=source["dataSource"]),
             )
             for source in feature.get("featureSources", [])
         ]
@@ -2229,9 +2066,7 @@ class SampleDataSource(
                 dashboard = self.metadata.get_by_name(entity=Dashboard, fqn=mlmodel_fqn)
 
                 if not dashboard:
-                    raise InvalidSampleDataException(
-                        f"Cannot find {mlmodel_fqn} in Sample Dashboards"
-                    )
+                    raise InvalidSampleDataException(f"Cannot find {mlmodel_fqn} in Sample Dashboards")
 
                 model_ev = CreateMlModelRequest(
                     name=model["name"],
@@ -2280,9 +2115,7 @@ class SampleDataSource(
                 dashboard = self.metadata.get_by_name(entity=Dashboard, fqn=mlmodel_fqn)
 
                 if not dashboard:
-                    raise InvalidSampleDataException(
-                        f"Cannot find {mlmodel_fqn} in Sample Dashboards"
-                    )
+                    raise InvalidSampleDataException(f"Cannot find {mlmodel_fqn} in Sample Dashboards")
 
                 # SageMaker connector only extracts: name, algorithm, mlStore, service
                 model_ev = CreateMlModelRequest(
@@ -2316,22 +2149,16 @@ class SampleDataSource(
                 parent_container_fqn = container.get("parent")
                 parent_container = None
                 if parent_container_fqn:
-                    parent_container = self.metadata.get_by_name(
-                        entity=Container, fqn=parent_container_fqn
-                    )
+                    parent_container = self.metadata.get_by_name(entity=Container, fqn=parent_container_fqn)
                     if not parent_container:
-                        raise InvalidSampleDataException(
-                            f"Cannot find {parent_container_fqn} in Sample Containers"
-                        )
+                        raise InvalidSampleDataException(f"Cannot find {parent_container_fqn} in Sample Containers")
 
                 container_request = CreateContainerRequest(
                     name=container["name"],
                     displayName=container["displayName"],
                     description=container["description"],
                     parent=(
-                        EntityReference(id=parent_container.id, type="container")
-                        if parent_container_fqn
-                        else None
+                        EntityReference(id=parent_container.id, type="container") if parent_container_fqn else None
                     ),
                     prefix=container["prefix"],
                     dataModel=container.get("dataModel"),
@@ -2347,10 +2174,7 @@ class SampleDataSource(
 
         # Create a very nested container structure:
         try:
-            long_base_name = (
-                "".join(random.choice(string.ascii_letters) for _ in range(100))
-                + "{suffix}"
-            )
+            long_base_name = "".join(random.choice(string.ascii_letters) for _ in range(100)) + "{suffix}"
             for base_name in ("deep_nested_container_{suffix}", long_base_name):
                 parent_container_fqns = []
                 # We cannot go deeper than this
@@ -2371,11 +2195,7 @@ class SampleDataSource(
                         right=CreateContainerRequest(
                             name=name,
                             parent=(
-                                EntityReference(
-                                    id=parent_container.id, type="container"
-                                )
-                                if parent_container
-                                else None
+                                EntityReference(id=parent_container.id, type="container") if parent_container else None
                             ),
                             service=self.storage_service.fullyQualifiedName,
                         )
@@ -2418,9 +2238,7 @@ class SampleDataSource(
                     email=user["email"],
                 )
 
-                yield Either(
-                    right=OMetaUserProfile(user=user_metadata, teams=teams, roles=roles)
-                )
+                yield Either(right=OMetaUserProfile(user=user_metadata, teams=teams, roles=roles))
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Error ingesting users: {exc}")
@@ -2443,24 +2261,12 @@ class SampleDataSource(
                                 createDateTime=profile.get("createDateTime"),
                                 sizeInByte=profile.get("sizeInByte"),
                                 customMetrics=profile.get("customMetrics"),
-                                timestamp=Timestamp(
-                                    int(
-                                        (
-                                            datetime.now() - timedelta(days=days)
-                                        ).timestamp()
-                                        * 1000
-                                    )
-                                ),
+                                timestamp=Timestamp(int((datetime.now() - timedelta(days=days)).timestamp() * 1000)),
                             ),
                             columnProfile=[
                                 ColumnProfile(
                                     timestamp=Timestamp(
-                                        int(
-                                            (
-                                                datetime.now() - timedelta(days=days)
-                                            ).timestamp()
-                                            * 1000
-                                        )
+                                        int((datetime.now() - timedelta(days=days)).timestamp() * 1000)
                                     ),
                                     **col_profile,
                                 )
@@ -2523,16 +2329,12 @@ class SampleDataSource(
                 if test_case:
                     test_cases.append(test_case)
 
-            yield Either(
-                right=OMetaLogicalTestSuiteSample(
-                    test_suite=test_suite, test_cases=test_cases
-                )
-            )
+            yield Either(right=OMetaLogicalTestSuiteSample(test_suite=test_suite, test_cases=test_cases))
 
     def ingest_test_case(self) -> Iterable[Either[OMetaTestCaseSample]]:
         """Ingest test cases"""
         for test_suite in self.tests_suites["tests"]:
-            suite = self.metadata.get_by_name(
+            suite = self.metadata.get_by_name(  # noqa: F841
                 fqn=test_suite["testSuiteName"], entity=TestSuite
             )
             for test_case in test_suite["testCases"]:
@@ -2543,8 +2345,7 @@ class SampleDataSource(
                         testDefinition=test_case["testDefinitionName"],
                         entityLink=test_case["entityLink"],
                         parameterValues=[
-                            TestCaseParameterValue(**param_values)
-                            for param_values in test_case["parameterValues"]
+                            TestCaseParameterValue(**param_values) for param_values in test_case["parameterValues"]
                         ],
                         useDynamicAssertion=test_case.get("useDynamicAssertion", False),
                     )  # type: ignore
@@ -2565,17 +2366,13 @@ class SampleDataSource(
                 for _, resolutions in test_case["resolutions"].items():
                     for resolution in resolutions:
                         create_test_case_resolution = CreateTestCaseResolutionStatus(
-                            testCaseResolutionStatusType=resolution[
-                                "testCaseResolutionStatusType"
-                            ],
+                            testCaseResolutionStatusType=resolution["testCaseResolutionStatusType"],
                             testCaseReference=test_case_fqn,
                             severity=resolution["severity"],
                         )
 
                         if resolution["testCaseResolutionStatusType"] == "Assigned":
-                            user: User = self.metadata.get_by_name(
-                                User, fqn=resolution["assignee"]
-                            )
+                            user: User = self.metadata.get_by_name(User, fqn=resolution["assignee"])
                             create_test_case_resolution.testCaseResolutionStatusDetails = Assigned(
                                 assignee=EntityReference(
                                     id=user.id.root,
@@ -2585,9 +2382,7 @@ class SampleDataSource(
                                 )
                             )
                         if resolution["testCaseResolutionStatusType"] == "Resolved":
-                            user: User = self.metadata.get_by_name(
-                                User, fqn=resolution["resolver"]
-                            )
+                            user: User = self.metadata.get_by_name(User, fqn=resolution["resolver"])
                             create_test_case_resolution.testCaseResolutionStatusDetails = Resolved(
                                 resolvedBy=EntityReference(
                                     id=user.id.root,
@@ -2595,24 +2390,18 @@ class SampleDataSource(
                                     name=user.name.root,
                                     fullyQualifiedName=user.fullyQualifiedName.root,
                                 ),
-                                testCaseFailureReason=random.choice(
-                                    list(TestCaseFailureReasonType)
-                                ),
+                                testCaseFailureReason=random.choice(list(TestCaseFailureReasonType)),
                                 testCaseFailureComment="Resolution comment",
                             )
 
                         yield Either(
-                            right=OMetaTestCaseResolutionStatus(
-                                test_case_resolution=create_test_case_resolution
-                            )
+                            right=OMetaTestCaseResolutionStatus(test_case_resolution=create_test_case_resolution)
                         )
 
     def ingest_test_case_results(self) -> Iterable[Either[OMetaTestCaseResultsSample]]:
         """Iterate over all the testSuite and testCase and ingest them"""
         for test_case_results in self.tests_case_results["testCaseResults"]:
-            table_fqn = test_case_results.get(
-                "tableFqn", "sample_data.ecommerce_db.shopify.dim_address"
-            )
+            table_fqn = test_case_results.get("tableFqn", "sample_data.ecommerce_db.shopify.dim_address")
             case = self.metadata.get_by_name(
                 TestCase,
                 f"{table_fqn}.{test_case_results['name']}",
@@ -2622,17 +2411,11 @@ class SampleDataSource(
                 for days, result in enumerate(test_case_results["results"]):
                     test_case_result_req = OMetaTestCaseResultsSample(
                         test_case_results=TestCaseResult(
-                            timestamp=Timestamp(
-                                int(
-                                    (datetime.now() - timedelta(days=days)).timestamp()
-                                    * 1000
-                                )
-                            ),
+                            timestamp=Timestamp(int((datetime.now() - timedelta(days=days)).timestamp() * 1000)),
                             testCaseStatus=result["testCaseStatus"],
                             result=result["result"],
                             testResultValue=[
-                                TestResultValue.model_validate(res_value)
-                                for res_value in result["testResultValues"]
+                                TestResultValue.model_validate(res_value) for res_value in result["testResultValues"]
                             ],
                             minBound=result.get("minBound"),
                             maxBound=result.get("maxBound"),
@@ -2647,9 +2430,7 @@ class SampleDataSource(
                         rows=test_case_results["failedRowsSample"]["rows"],
                         columns=test_case_results["failedRowsSample"]["columns"],
                     ),
-                    validate=test_case_results["failedRowsSample"].get(
-                        "validate", True
-                    ),
+                    validate=test_case_results["failedRowsSample"].get("validate", True),
                 )
             if test_case_results.get("inspectionQuery"):
                 self.metadata.ingest_inspection_query(
@@ -2665,10 +2446,7 @@ class SampleDataSource(
             i = 0
             for report_datum in report_data:
                 if report_type == ReportDataType.rawCostAnalysisReportData.value:
-                    start_ts = int(
-                        (datetime.now(timezone.utc) - timedelta(days=60)).timestamp()
-                        * 1000
-                    )
+                    start_ts = int((datetime.now(timezone.utc) - timedelta(days=60)).timestamp() * 1000)
                     end_ts = int(datetime.now(timezone.utc).timestamp() * 1000)
                     tmstp = random.randint(start_ts, end_ts)
                     report_datum["data"]["lifeCycle"]["accessed"]["timestamp"] = tmstp
@@ -2676,11 +2454,7 @@ class SampleDataSource(
                     record=ReportData(
                         id=report_datum["id"],
                         reportDataType=report_datum["reportDataType"],
-                        timestamp=Timestamp(
-                            root=int(
-                                (datetime.now() - timedelta(days=i)).timestamp() * 1000
-                            )
-                        ),
+                        timestamp=Timestamp(root=int((datetime.now() - timedelta(days=i)).timestamp() * 1000)),
                         data=report_datum["data"],
                     )
                 )
@@ -2696,8 +2470,7 @@ class SampleDataSource(
                 timestamp=Timestamp(
                     int(
                         datetime_to_timestamp(
-                            datetime_value=datetime.now()
-                            - timedelta(days=life_cycle["created"]["days"]),
+                            datetime_value=datetime.now() - timedelta(days=life_cycle["created"]["days"]),
                             milliseconds=True,
                         )
                     )
@@ -2709,8 +2482,7 @@ class SampleDataSource(
                 timestamp=Timestamp(
                     int(
                         datetime_to_timestamp(
-                            datetime_value=datetime.now()
-                            - timedelta(days=life_cycle["updated"]["days"]),
+                            datetime_value=datetime.now() - timedelta(days=life_cycle["updated"]["days"]),
                             milliseconds=True,
                         )
                     ),
@@ -2722,8 +2494,7 @@ class SampleDataSource(
                 timestamp=Timestamp(
                     int(
                         datetime_to_timestamp(
-                            datetime_value=datetime.now()
-                            - timedelta(days=life_cycle["accessed"]["days"]),
+                            datetime_value=datetime.now() - timedelta(days=life_cycle["accessed"]["days"]),
                             milliseconds=True,
                         )
                     ),
@@ -2732,19 +2503,13 @@ class SampleDataSource(
             )
 
             if life_cycle["created"].get("accessedBy"):
-                life_cycle_data.created.accessedBy = self.get_accessed_by(
-                    life_cycle["created"]["accessedBy"]["name"]
-                )
+                life_cycle_data.created.accessedBy = self.get_accessed_by(life_cycle["created"]["accessedBy"]["name"])
 
             if life_cycle["updated"].get("accessedBy"):
-                life_cycle_data.updated.accessedBy = self.get_accessed_by(
-                    life_cycle["updated"]["accessedBy"]["name"]
-                )
+                life_cycle_data.updated.accessedBy = self.get_accessed_by(life_cycle["updated"]["accessedBy"]["name"])
 
             if life_cycle["accessed"].get("accessedBy"):
-                life_cycle_data.accessed.accessedBy = self.get_accessed_by(
-                    life_cycle["accessed"]["accessedBy"]["name"]
-                )
+                life_cycle_data.accessed.accessedBy = self.get_accessed_by(life_cycle["accessed"]["accessedBy"]["name"])
 
             life_cycle_request = OMetaLifeCycleData(
                 entity=Table,
@@ -2813,7 +2578,7 @@ class SampleDataSource(
             )
 
             logger.info(f"Created database service {service_name} ({NUM_SERVICES})")
-            tasks = []
+            tasks = []  # noqa: F841
             # Create databases sequentially
             for db_idx in range(DATABASES_PER_SERVICE):
                 yield from self.create_database(service_name, db_idx)
@@ -2829,7 +2594,7 @@ class SampleDataSource(
             end_idx: End index of service batch
         """
 
-        services_per_thread = NUM_SERVICES // NUM_THREADS
+        services_per_thread = NUM_SERVICES // NUM_THREADS  # noqa: F841
         # Create tasks for each thread
         for service_idx in range(NUM_SERVICES):
             yield from self.create_database_service(service_idx)
@@ -2846,9 +2611,7 @@ class SampleDataSource(
                 params={"database": "openmetadata-0.openmetadata-db-0"},
             ).entities
         )
-        destination_table = self.metadata.get_by_name(
-            Table, "mysql_sample.default.posts_db.Tags"
-        )
+        destination_table = self.metadata.get_by_name(Table, "mysql_sample.default.posts_db.Tags")
 
         for source_table in source_table_list:
             yield Either(
@@ -2860,8 +2623,7 @@ class SampleDataSource(
                             columnsLineage=[
                                 ColumnLineage(
                                     fromColumns=[
-                                        from_column.fullyQualifiedName.root
-                                        for from_column in source_table.columns
+                                        from_column.fullyQualifiedName.root for from_column in source_table.columns
                                     ][:5],
                                     toColumn=to_column.fullyQualifiedName.root,
                                 )
@@ -2883,9 +2645,7 @@ class SampleDataSource(
 
         try:
             # Create with minimal required fields
-            db_request = Either(
-                right=CreateDatabaseRequest(name=db_name, service=service_name)
-            )
+            db_request = Either(right=CreateDatabaseRequest(name=db_name, service=service_name))
             yield db_request
             database_fqn = f"{service_name}.{db_name}"
 
@@ -2907,11 +2667,7 @@ class SampleDataSource(
 
         try:
             # Create with minimal required fields
-            schema_request = Either(
-                right=CreateDatabaseSchemaRequest(
-                    name=schema_name, database=database_fqn
-                )
-            )
+            schema_request = Either(right=CreateDatabaseSchemaRequest(name=schema_name, database=database_fqn))
             yield schema_request
             schema_name = f"{database_fqn}.{schema_name}"
             # Create tables sequentially to avoid overwhelming the API
@@ -2938,15 +2694,11 @@ class SampleDataSource(
                         name=table_name,
                         databaseSchema=schema_fqn,
                         columns=COLUMNS,
-                        description=random.choice(
-                            [f"This is {table_name} description.", None]
-                        ),
+                        description=random.choice([f"This is {table_name} description.", None]),
                         owners=(
                             random.choice(
                                 [
-                                    EntityReferenceList(
-                                        [EntityReference(id=owner.id, type="user")]
-                                    ),
+                                    EntityReferenceList([EntityReference(id=owner.id, type="user")]),
                                     None,
                                 ]
                             )

@@ -62,9 +62,7 @@ class TestRedshiftServerlessDetection(unittest.TestCase):
         """Set up test fixtures"""
         self.mock_engine = MagicMock(spec=Engine)
         self.mock_connection = MagicMock()
-        self.mock_engine.connect.return_value.__enter__.return_value = (
-            self.mock_connection
-        )
+        self.mock_engine.connect.return_value.__enter__.return_value = self.mock_connection
 
     def test_detect_serverless_when_stl_not_accessible(self):
         """Test detection of Redshift Serverless when STL tables are not accessible (InsufficientPrivilege error)"""
@@ -81,9 +79,7 @@ class TestRedshiftServerlessDetection(unittest.TestCase):
     def test_detect_serverless_generic_error(self):
         """Test detection of Redshift Serverless on generic STL access error"""
         # Mock generic error for STL query
-        self.mock_connection.execute.side_effect = ProgrammingError(
-            'relation "stl_query" does not exist', {}, None
-        )
+        self.mock_connection.execute.side_effect = ProgrammingError('relation "stl_query" does not exist', {}, None)
 
         result = get_redshift_instance_type(self.mock_engine)
 
@@ -160,9 +156,7 @@ class TestRedshiftServerlessDetection(unittest.TestCase):
         self.assertIn("{result_limit}", statement)
         self.assertIn("{filters}", statement)
 
-    @patch(
-        "metadata.ingestion.source.database.redshift.usage.get_redshift_instance_type"
-    )
+    @patch("metadata.ingestion.source.database.redshift.usage.get_redshift_instance_type")
     def test_usage_source_serverless_filter_validation(self, mock_get_instance_type):
         """Test that Serverless usage source uses correct filters with 'query_text' column"""
         from metadata.ingestion.source.database.redshift.usage import (
@@ -178,15 +172,11 @@ class TestRedshiftServerlessDetection(unittest.TestCase):
 
         # Simulate __init__ logic for filter and statement selection
         if usage_source.redshift_instance_type == RedshiftInstanceType.SERVERLESS:
-            usage_source.sql_stmt = REDSHIFT_SQL_STATEMENT_MAP[
-                RedshiftInstanceType.SERVERLESS
-            ]
+            usage_source.sql_stmt = REDSHIFT_SQL_STATEMENT_MAP[RedshiftInstanceType.SERVERLESS]
             usage_source.filters = RedshiftUsageSource.serverless_filters
 
         # Verify instance type
-        self.assertEqual(
-            usage_source.redshift_instance_type, RedshiftInstanceType.SERVERLESS
-        )
+        self.assertEqual(usage_source.redshift_instance_type, RedshiftInstanceType.SERVERLESS)
 
         # Verify SQL statement
         self.assertEqual(
@@ -206,9 +196,7 @@ class TestRedshiftServerlessDetection(unittest.TestCase):
             usage_source.filters,
         )
 
-    @patch(
-        "metadata.ingestion.source.database.redshift.lineage.get_redshift_instance_type"
-    )
+    @patch("metadata.ingestion.source.database.redshift.lineage.get_redshift_instance_type")
     def test_lineage_source_serverless_filter_validation(self, mock_get_instance_type):
         """Test that Serverless lineage source uses correct filters with 'query_text' column"""
         from metadata.ingestion.source.database.redshift.lineage import (
@@ -224,15 +212,11 @@ class TestRedshiftServerlessDetection(unittest.TestCase):
 
         # Simulate __init__ logic for filter and statement selection
         if lineage_source.redshift_instance_type == RedshiftInstanceType.SERVERLESS:
-            lineage_source.sql_stmt = REDSHIFT_SQL_STATEMENT_MAP[
-                RedshiftInstanceType.SERVERLESS
-            ]
+            lineage_source.sql_stmt = REDSHIFT_SQL_STATEMENT_MAP[RedshiftInstanceType.SERVERLESS]
             lineage_source.filters = RedshiftLineageSource.serverless_filters
 
         # Verify instance type
-        self.assertEqual(
-            lineage_source.redshift_instance_type, RedshiftInstanceType.SERVERLESS
-        )
+        self.assertEqual(lineage_source.redshift_instance_type, RedshiftInstanceType.SERVERLESS)
 
         # Verify SQL statement
         self.assertEqual(

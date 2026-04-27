@@ -11,6 +11,7 @@
 """
 Delete methods
 """
+
 import traceback
 from typing import Dict, Iterable, List, Optional, Type
 
@@ -77,11 +78,7 @@ def delete_entity_by_name(
         for entity_name in entity_names:
             entity = metadata.get_by_name(entity=entity_type, fqn=entity_name)
             if entity:
-                yield Either(
-                    right=DeleteEntity(
-                        entity=entity, mark_deleted_entities=mark_deleted_entity
-                    )
-                )
+                yield Either(right=DeleteEntity(entity=entity, mark_deleted_entities=mark_deleted_entity))
     except Exception as exc:
         yield Either(
             left=StackTraceError(

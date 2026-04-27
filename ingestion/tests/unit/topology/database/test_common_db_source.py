@@ -40,9 +40,7 @@ from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 def source():
     """Create a mock CommonDbSourceService with the minimal context needed."""
     mock_source = MagicMock()
-    mock_source._prepare_foreign_constraints = (
-        CommonDbSourceService._prepare_foreign_constraints.__get__(mock_source)
-    )
+    mock_source._prepare_foreign_constraints = CommonDbSourceService._prepare_foreign_constraints.__get__(mock_source)
 
     context = MagicMock()
     context.database_service = "test_service"
@@ -70,12 +68,15 @@ class TestPrepareForeignConstraintsReferredSchema:
         mock_referred_table.columns = MOCK_COLUMNS
         source.metadata.get_by_name.return_value = mock_referred_table
 
-        with patch(
-            "metadata.ingestion.source.database.common_db_source.fqn._build",
-            return_value="test_service.test_db.other_schema.orders.order_id",
-        ), patch(
-            "metadata.ingestion.source.database.common_db_source.get_relationship_type",
-            return_value=None,
+        with (
+            patch(
+                "metadata.ingestion.source.database.common_db_source.fqn._build",
+                return_value="test_service.test_db.other_schema.orders.order_id",
+            ),
+            patch(
+                "metadata.ingestion.source.database.common_db_source.get_relationship_type",
+                return_value=None,
+            ),
         ):
             result = source._prepare_foreign_constraints(
                 supports_database=False,
@@ -105,12 +106,15 @@ class TestPrepareForeignConstraintsReferredSchema:
         mock_referred_table.columns = MOCK_COLUMNS
         source.metadata.get_by_name.return_value = mock_referred_table
 
-        with patch(
-            "metadata.ingestion.source.database.common_db_source.fqn._build",
-            return_value="test_service.test_db.public.orders.order_id",
-        ), patch(
-            "metadata.ingestion.source.database.common_db_source.get_relationship_type",
-            return_value=None,
+        with (
+            patch(
+                "metadata.ingestion.source.database.common_db_source.fqn._build",
+                return_value="test_service.test_db.public.orders.order_id",
+            ),
+            patch(
+                "metadata.ingestion.source.database.common_db_source.get_relationship_type",
+                return_value=None,
+            ),
         ):
             result = source._prepare_foreign_constraints(
                 supports_database=False,
@@ -140,12 +144,15 @@ class TestPrepareForeignConstraintsReferredSchema:
         mock_referred_table.columns = MOCK_COLUMNS
         source.metadata.get_by_name.return_value = mock_referred_table
 
-        with patch(
-            "metadata.ingestion.source.database.common_db_source.fqn._build",
-            return_value="test_service.test_db.public.orders.order_id",
-        ), patch(
-            "metadata.ingestion.source.database.common_db_source.get_relationship_type",
-            return_value=None,
+        with (
+            patch(
+                "metadata.ingestion.source.database.common_db_source.fqn._build",
+                return_value="test_service.test_db.public.orders.order_id",
+            ),
+            patch(
+                "metadata.ingestion.source.database.common_db_source.get_relationship_type",
+                return_value=None,
+            ),
         ):
             result = source._prepare_foreign_constraints(
                 supports_database=False,
@@ -174,12 +181,15 @@ class TestPrepareForeignConstraintsReferredSchema:
         mock_referred_table.columns = MOCK_COLUMNS
         source.metadata.get_by_name.return_value = mock_referred_table
 
-        with patch(
-            "metadata.ingestion.source.database.common_db_source.fqn._build",
-            return_value="test_service.other_db.public.orders.order_id",
-        ), patch(
-            "metadata.ingestion.source.database.common_db_source.get_relationship_type",
-            return_value=None,
+        with (
+            patch(
+                "metadata.ingestion.source.database.common_db_source.fqn._build",
+                return_value="test_service.other_db.public.orders.order_id",
+            ),
+            patch(
+                "metadata.ingestion.source.database.common_db_source.get_relationship_type",
+                return_value=None,
+            ),
         ):
             result = source._prepare_foreign_constraints(
                 supports_database=True,
@@ -541,11 +551,7 @@ class TestExecuteDatabaseQueryEagerFetch:
         engine = create_engine("sqlite:///:memory:", poolclass=QueuePool)
         with engine.connect() as conn:
             conn.execute(text("CREATE TABLE dbs (id INTEGER PRIMARY KEY, name TEXT)"))
-            conn.execute(
-                text(
-                    "INSERT INTO dbs(id, name) VALUES (1, 'alpha'), (2, 'beta'), (3, 'gamma')"
-                )
-            )
+            conn.execute(text("INSERT INTO dbs(id, name) VALUES (1, 'alpha'), (2, 'beta'), (3, 'gamma')"))
             conn.commit()
         yield engine
         try:

@@ -12,6 +12,7 @@
 """
 Redshift E2E tests
 """
+
 from typing import List, Tuple
 
 import pytest
@@ -67,9 +68,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def tearDown(self) -> None:
         self.delete_table_and_view()
 
-    def assert_for_vanilla_ingestion(
-        self, source_status: Status, sink_status: Status
-    ) -> None:
+    def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
         self.assertEqual(len(source_status.failures), 0)
         self.assertEqual(len(source_status.warnings), 0)
         self.assertEqual(len(source_status.filtered), 1)
@@ -99,10 +98,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                     connection.execute(text(self.drop_table_query))
                 break
             except OperationalError as e:
-                if (
-                    "server closed the connection" in str(e)
-                    and attempt < max_retries - 1
-                ):
+                if "server closed the connection" in str(e) and attempt < max_retries - 1:
                     continue
                 raise
 

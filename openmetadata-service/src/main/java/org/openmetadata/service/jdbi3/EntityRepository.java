@@ -174,7 +174,6 @@ import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -198,7 +197,6 @@ import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabelMetadata;
 import org.openmetadata.schema.type.TaskType;
@@ -3905,6 +3903,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("patchApplyJson")) {
       updated = JsonUtils.applyPatch(original, patch, entityClass);
     }
+
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
 
@@ -6860,22 +6859,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public SuggestionRepository.SuggestionWorkflow getSuggestionWorkflow(EntityInterface entity) {
-    return new SuggestionRepository.SuggestionWorkflow(entity);
-  }
-
-  public EntityInterface applySuggestion(
-      EntityInterface entity, String childFQN, Suggestion suggestion) {
-    return entity;
-  }
-
-  /**
-   * Bring in the necessary fields required to have all the information before applying a suggestion
-   */
-  public String getSuggestionFields(Suggestion suggestion) {
-    return suggestion.getType() == SuggestionType.SuggestTagLabel ? "tags" : "";
-  }
-
   public final void validateTaskThread(ThreadContext threadContext) {
     ThreadType threadType = threadContext.getThread().getType();
     if (threadType != ThreadType.Task) {
@@ -9193,7 +9176,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       variables.put(UPDATED_BY_VARIABLE, user);
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
       boolean workflowSuccess =
-          workflowHandler.resolveTask(
+          workflowHandler.resolveLegacyThreadTask(
               taskId, workflowHandler.transformToNodeVariables(taskId, variables));
 
       if (!workflowSuccess) {
@@ -9271,16 +9254,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  // Validate if a given column exists in the table
-  public static void validateColumn(Table table, String columnName) {
-    validateColumn(table, columnName, Boolean.TRUE);
+  public static void validateColumn(List<Column> columns, String columnName) {
+    validateColumn(columns, columnName, Boolean.TRUE);
   }
 
-  // Validate if a given column exists in the table with optional case sensitivity
-  public static void validateColumn(Table table, String columnName, Boolean caseSensitive) {
+  public static void validateColumn(
+      List<Column> columns, String columnName, Boolean caseSensitive) {
+    if (columns == null) {
+      throw new IllegalArgumentException("Columns list cannot be null");
+    }
     if (Boolean.FALSE.equals(caseSensitive)) {
       boolean validColumn =
-          table.getColumns().stream()
+          columns.stream()
               .filter(Objects::nonNull)
               .anyMatch(col -> col.getName().equalsIgnoreCase(columnName));
       if (!validColumn && !columnName.equalsIgnoreCase("all")) {
@@ -9288,13 +9273,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     } else {
       boolean validColumn =
-          table.getColumns().stream()
+          columns.stream()
               .filter(Objects::nonNull)
               .anyMatch(col -> col.getName().equals(columnName));
       if (!validColumn && !columnName.equalsIgnoreCase("all")) {
         throw new IllegalArgumentException("Invalid column name " + columnName);
       }
     }
+  }
+
+  public static void validateColumn(Table table, String columnName) {
+    validateColumn(table, columnName, Boolean.TRUE);
+  }
+
+  public static void validateColumn(Table table, String columnName, Boolean caseSensitive) {
+    validateColumn(table.getColumns(), columnName, caseSensitive);
   }
 
   protected void fetchAndSetFields(List<T> entities, Fields fields) {
@@ -9581,7 +9574,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     Map<String, Map<UUID, EntityReference>> refsByType = new HashMap<>();
     for (Entry<String, Set<UUID>> entry : idsByType.entrySet()) {
       List<EntityReference> refs =
-          Entity.getEntityReferencesByIds(entry.getKey(), new ArrayList<>(entry.getValue()), ALL);
+          Entity.getEntityReferencesByIds(
+              entry.getKey(), new ArrayList<>(entry.getValue()), NON_DELETED);
       refsByType.put(
           entry.getKey(),
           refs.stream()
@@ -9794,7 +9788,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ownerIdsByType.forEach(
         (entityType, ownerIds) -> {
           var ownerRefs =
-              Entity.getEntityReferencesByIds(entityType, new ArrayList<>(ownerIds), ALL);
+              Entity.getEntityReferencesByIds(entityType, new ArrayList<>(ownerIds), NON_DELETED);
           var refMap =
               ownerRefs.stream()
                   .collect(Collectors.toMap(EntityReference::getId, ref -> ref, (a, b) -> a));
@@ -9839,7 +9833,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .collect(Collectors.toList());
 
     Map<UUID, EntityReference> followerRefs =
-        Entity.getEntityReferencesByIds(USER, followerIds, ALL).stream()
+        Entity.getEntityReferencesByIds(USER, followerIds, NON_DELETED).stream()
             .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
 
     records.forEach(
@@ -9847,7 +9841,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
           UUID entityId = UUID.fromString(record.getToId());
           UUID followerId = UUID.fromString(record.getFromId());
           EntityReference followerRef = followerRefs.get(followerId);
-          followersMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(followerRef);
+          if (followerRef != null) {
+            followersMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(followerRef);
+          }
         });
 
     return followersMap;
@@ -9883,7 +9879,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     upVoterIds.values().forEach(allUserIds::addAll);
     downVoterIds.values().forEach(allUserIds::addAll);
     Map<UUID, EntityReference> userRefs =
-        Entity.getEntityReferencesByIds(Entity.USER, new ArrayList<>(allUserIds), ALL).stream()
+        Entity.getEntityReferencesByIds(Entity.USER, new ArrayList<>(allUserIds), NON_DELETED)
+            .stream()
             .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
 
     for (T entity : entities) {
@@ -10079,7 +10076,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     reviewerIdsByType.forEach(
         (entityType, reviewerIds) -> {
           var reviewerRefs =
-              Entity.getEntityReferencesByIds(entityType, new ArrayList<>(reviewerIds), ALL);
+              Entity.getEntityReferencesByIds(
+                  entityType, new ArrayList<>(reviewerIds), NON_DELETED);
           var refMap =
               reviewerRefs.stream()
                   .collect(Collectors.toMap(EntityReference::getId, ref -> ref, (a, b) -> a));
@@ -10154,23 +10152,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Cache UUID conversions to avoid repeated parsing
     Map<String, UUID> uuidCache = new HashMap<>();
 
-    // Collect all unique expert user IDs (with .distinct() to avoid duplicate fetches)
+    // findToBatch returns fromId=entity, toId=user — collect user IDs from toId
     List<UUID> expertIds =
         records.stream()
-            .map(record -> uuidCache.computeIfAbsent(record.getFromId(), UUID::fromString))
+            .map(record -> uuidCache.computeIfAbsent(record.getToId(), UUID::fromString))
             .distinct()
             .collect(Collectors.toList());
 
-    // Batch fetch all expert references
+    // Batch fetch all expert references, filtering out soft-deleted users
     Map<UUID, EntityReference> expertRefs =
-        Entity.getEntityReferencesByIds(USER, expertIds, ALL).stream()
+        Entity.getEntityReferencesByIds(USER, expertIds, NON_DELETED).stream()
             .collect(Collectors.toMap(EntityReference::getId, Function.identity(), (a, b) -> a));
 
-    // Group experts by entity (reuse cached UUIDs)
+    // Group experts by entity
     records.forEach(
         record -> {
-          UUID entityId = uuidCache.computeIfAbsent(record.getToId(), UUID::fromString);
-          UUID expertId = uuidCache.get(record.getFromId()); // Already cached above
+          UUID entityId = uuidCache.computeIfAbsent(record.getFromId(), UUID::fromString);
+          UUID expertId = uuidCache.get(record.getToId()); // Already cached above
           EntityReference expertRef = expertRefs.get(expertId);
           if (expertRef != null) {
             expertsMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(expertRef);

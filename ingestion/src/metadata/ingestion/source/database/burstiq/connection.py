@@ -11,6 +11,7 @@
 """
 Source connection handler for BurstIQ
 """
+
 import hashlib
 from typing import Dict, Optional
 
