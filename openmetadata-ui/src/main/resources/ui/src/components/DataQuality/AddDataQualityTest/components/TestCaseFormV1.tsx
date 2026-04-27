@@ -65,8 +65,8 @@ import { SearchIndex } from '../../../../enums/search.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import {
-  FluffyType as ConfigType,
   CreateIngestionPipeline,
+  FluffyType as ConfigType,
   PipelineType,
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
