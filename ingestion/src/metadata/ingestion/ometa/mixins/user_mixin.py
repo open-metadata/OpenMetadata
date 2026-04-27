@@ -13,6 +13,7 @@ Mixin class containing User specific methods
 
 To be used by OpenMetadata class
 """
+
 import json
 import traceback
 from functools import lru_cache
@@ -43,10 +44,7 @@ class OMetaUserMixin:
 
     @staticmethod
     def email_search_query_es(entity: Type[T]) -> str:
-        return (
-            "/search/query?q=email.keyword:{email}&from={from_}&size={size}&index="
-            + ES_INDEX_MAP[entity.__name__]
-        )
+        return "/search/query?q=email.keyword:{email}&from={from_}&size={size}&index=" + ES_INDEX_MAP[entity.__name__]
 
     @staticmethod
     def name_search_query_es(entity: Type[T], name: str, from_: int, size: int) -> str:
@@ -92,12 +90,8 @@ class OMetaUserMixin:
             fields: Optional field list to pass to ES request
         """
         if email:
-            query_string = self.email_search_query_es(entity=entity).format(
-                email=email, from_=from_count, size=size
-            )
-            return self.get_entity_from_es(
-                entity=entity, query_string=query_string, fields=fields
-            )
+            query_string = self.email_search_query_es(entity=entity).format(email=email, from_=from_count, size=size)
+            return self.get_entity_from_es(entity=entity, query_string=query_string, fields=fields)
 
         return None
 
@@ -119,12 +113,8 @@ class OMetaUserMixin:
             fields: Optional field list to pass to ES request
         """
         if name:
-            query_string = self.name_search_query_es(
-                entity=entity, name=name, from_=from_count, size=size
-            )
-            return self.get_entity_from_es(
-                entity=entity, query_string=query_string, fields=fields
-            )
+            query_string = self.name_search_query_es(entity=entity, name=name, from_=from_count, size=size)
+            return self.get_entity_from_es(entity=entity, query_string=query_string, fields=fields)
 
         return None
 
@@ -139,9 +129,7 @@ class OMetaUserMixin:
         """
         Get a User or Team Entity Reference by searching by its mail
         """
-        maybe_user = self._search_by_email(
-            entity=User, email=email, from_count=from_count, size=size, fields=fields
-        )
+        maybe_user = self._search_by_email(entity=User, email=email, from_count=from_count, size=size, fields=fields)
         if maybe_user:
             return EntityReferenceList(
                 root=[
@@ -154,9 +142,7 @@ class OMetaUserMixin:
                 ]
             )
 
-        maybe_team = self._search_by_email(
-            entity=Team, email=email, from_count=from_count, size=size, fields=fields
-        )
+        maybe_team = self._search_by_email(entity=Team, email=email, from_count=from_count, size=size, fields=fields)
         if maybe_team:
             return EntityReferenceList(
                 root=[
@@ -231,10 +217,7 @@ class OMetaUserMixin:
                 )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to resolve owner reference for '{name}' due to: {err}. "
-                "Skipping owner assignment."
-            )
+            logger.warning(f"Failed to resolve owner reference for '{name}' due to: {err}. Skipping owner assignment.")
 
         return None
 

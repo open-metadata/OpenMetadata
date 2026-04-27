@@ -11,6 +11,7 @@
 """
 Mixin class with common Stored Procedures logic aimed at lineage.
 """
+
 import json
 import traceback
 from abc import ABC, abstractmethod
@@ -87,11 +88,8 @@ class StoredProcedureLineageMixin(ABC):
         for row in results:
             try:
                 query_by_procedure = QueryByProcedure.model_validate(row._asdict())
-                query_by_procedure.procedure_name = (
-                    query_by_procedure.procedure_name
-                    or get_procedure_name_from_call(
-                        query_text=query_by_procedure.procedure_text,
-                    )
+                query_by_procedure.procedure_name = query_by_procedure.procedure_name or get_procedure_name_from_call(
+                    query_text=query_by_procedure.procedure_text,
                 )
                 yield query_by_procedure
             except Exception as exc:
@@ -111,17 +109,7 @@ class StoredProcedureLineageMixin(ABC):
             "query": {
                 "bool": {
                     "must": [
-                        {
-                            "bool": {
-                                "should": [
-                                    {
-                                        "term": {
-                                            "service.name.keyword": self.service_name
-                                        }
-                                    }
-                                ]
-                            }
-                        },
+                        {"bool": {"should": [{"term": {"service.name.keyword": self.service_name}}]}},
                         {"bool": {"should": [{"term": {"deleted": False}}]}},
                     ]
                 }
@@ -139,12 +127,7 @@ class StoredProcedureLineageMixin(ABC):
         queries_count_per_procedure = defaultdict(int)
 
         # Get the filtered list of stored procedure to process
-        for procedure in (
-            self.metadata.paginate_es(
-                entity=StoredProcedure, query_filter=query_filter, size=10
-            )
-            or []
-        ):
+        for procedure in self.metadata.paginate_es(entity=StoredProcedure, query_filter=query_filter, size=10) or []:
             if procedure:
                 if (
                     filter_by_database(
@@ -182,12 +165,8 @@ class StoredProcedureLineageMixin(ABC):
                     query_by_procedure=query_by_procedure,
                 )
 
-        logger.info(
-            f"Count of queries executed for stored procedures: {sum(queries_count_per_procedure.values())}"
-        )
-        logger.info(
-            f"Count of queries per stored procedure: {pprint_format_object(dict(queries_count_per_procedure))}"
-        )
+        logger.info(f"Count of queries executed for stored procedures: {sum(queries_count_per_procedure.values())}")
+        logger.info(f"Count of queries per stored procedure: {pprint_format_object(dict(queries_count_per_procedure))}")
 
     def yield_procedure_lineage(
         self,
@@ -196,9 +175,7 @@ class StoredProcedureLineageMixin(ABC):
         logger.info("Processing Lineage for Stored Procedures")
         producer_fn = self.procedure_lineage_producer
         processor_fn = procedure_lineage_processor
-        dialect = ConnectionTypeDialectMapper.dialect_of(
-            self.service_connection.type.value
-        )
+        dialect = ConnectionTypeDialectMapper.dialect_of(self.service_connection.type.value)
         args = (
             self.metadata,
             self.service_name,

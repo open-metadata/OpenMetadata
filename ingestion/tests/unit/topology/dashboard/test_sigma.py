@@ -83,9 +83,7 @@ MOCK_DATABASE_SCHEMA_DEFAULT = "<default>"
 EXAMPLE_DASHBOARD = LineageDashboard(
     id="7b3766b1-7eb4-4ad4-b7c8-15a8b16edfdd",
     name="lineage_dashboard",
-    service=EntityReference(
-        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"
-    ),
+    service=EntityReference(id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"),
 )
 
 EXAMPLE_TABLE = [
@@ -212,9 +210,7 @@ MOCK_DATA_MODEL = DashboardDataModel(
 MOCK_TABLE_ENTITY = Table(
     id="550e8400-e29b-41d4-a716-446655440002",
     name="test_table",
-    fullyQualifiedName=FullyQualifiedEntityName(
-        "mock_mysql.test_database.test_schema.test_table"
-    ),
+    fullyQualifiedName=FullyQualifiedEntityName("mock_mysql.test_database.test_schema.test_table"),
     columns=[],
 )
 
@@ -240,9 +236,7 @@ class SigmaUnitTest(TestCase):
     Domo Dashboard Unit Test
     """
 
-    @patch(
-        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.sigma.connection.get_connection")
     def __init__(self, methodName, get_connection, test_connection) -> None:
         super().__init__(methodName)
@@ -254,23 +248,14 @@ class SigmaUnitTest(TestCase):
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.sigma.client = SimpleNamespace()
-        self.sigma.context.get().__dict__[
-            "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+        self.sigma.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     def test_dashboard_name(self):
-        assert (
-            self.sigma.get_dashboard_name(MOCK_DASHBOARD_DETAILS)
-            == MOCK_DASHBOARD_DETAILS.name
-        )
+        assert self.sigma.get_dashboard_name(MOCK_DASHBOARD_DETAILS) == MOCK_DASHBOARD_DETAILS.name
 
     def test_check_database_schema_name(self):
-        self.assertEqual(
-            self.sigma.check_database_schema_name(MOCK_DATABASE_SCHEMA), "my_schema"
-        )
-        self.assertIsNone(
-            self.sigma.check_database_schema_name(MOCK_DATABASE_SCHEMA_DEFAULT)
-        )
+        self.assertEqual(self.sigma.check_database_schema_name(MOCK_DATABASE_SCHEMA), "my_schema")
+        self.assertIsNone(self.sigma.check_database_schema_name(MOCK_DATABASE_SCHEMA_DEFAULT))
 
     def test_yield_dashboard(self):
         """
@@ -339,25 +324,17 @@ class SigmaUnitTest(TestCase):
         Test query-based lineage when queries are available
         """
         # Setup mocks
-        self.sigma.client.get_workbook_queries = (
-            lambda *_: MOCK_WORKBOOK_QUERIES_RESPONSE
-        )
-        self.sigma.data_models = [
-            Elements(elementId="1a", name="chart1", columns=["col1"])
-        ]
+        self.sigma.client.get_workbook_queries = lambda *_: MOCK_WORKBOOK_QUERIES_RESPONSE
+        self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"])]
 
         # Mock metadata methods
         self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
         self.sigma.metadata.get_by_name = MagicMock(return_value=MOCK_DATABASE_SERVICE)
-        self.sigma.metadata.search_in_any_service = MagicMock(
-            return_value=MOCK_TABLE_ENTITY
-        )
+        self.sigma.metadata.search_in_any_service = MagicMock(return_value=MOCK_TABLE_ENTITY)
 
         # Execute
         results = list(
-            self.sigma.yield_dashboard_lineage_details(
-                MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql"
-            )
+            self.sigma.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
         )
 
         # Verify lineage was created - results are Either objects
@@ -372,21 +349,15 @@ class SigmaUnitTest(TestCase):
         # Setup mocks - no queries available
         self.sigma.client.get_workbook_queries = lambda *_: None
         self.sigma.client.get_lineage_details = lambda *_: [MOCK_NODE_DETAILS]
-        self.sigma.data_models = [
-            Elements(elementId="1a", name="chart1", columns=["col1"])
-        ]
+        self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"])]
 
         # Mock metadata methods
         self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
-        self.sigma._get_table_entity_from_node = MagicMock(
-            return_value=MOCK_TABLE_ENTITY
-        )
+        self.sigma._get_table_entity_from_node = MagicMock(return_value=MOCK_TABLE_ENTITY)
 
         # Execute
-        results = list(
-            self.sigma.yield_dashboard_lineage_details(
-                MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql"
-            )
+        results = list(  # noqa: F841
+            self.sigma.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
         )
 
         # Verify file-based lineage was used
@@ -402,17 +373,13 @@ class SigmaUnitTest(TestCase):
 
         self.sigma.client.get_workbook_queries = lambda *_: queries_response
         self.sigma.client.get_lineage_details = lambda *_: None
-        self.sigma.data_models = [
-            Elements(elementId="1a", name="chart1", columns=["col1"])
-        ]
+        self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"])]
 
         # Mock metadata methods
         self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
 
         # Execute
-        results = list(
-            self.sigma.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS)
-        )
+        results = list(self.sigma.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS))
 
         # Verify file-based lineage was attempted (get_lineage_details called)
         # but no lineage created since get_lineage_details returns None

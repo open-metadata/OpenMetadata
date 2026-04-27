@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 import importlib
 import sys
 from pathlib import Path
@@ -87,9 +88,7 @@ def _get_ibmi_connection_args(connection: Db2Connection) -> Dict[str, Any]:
         try:
             args["port"] = int(port_str)
         except ValueError:
-            raise ValueError(
-                f"Invalid port in hostPort '{host_port}'. Expected format: 'hostname:port'"
-            )
+            raise ValueError(f"Invalid port in hostPort '{host_port}'. Expected format: 'hostname:port'")
     return args
 
 

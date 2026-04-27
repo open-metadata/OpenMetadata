@@ -33,9 +33,7 @@ class TestCircuitBreaker(unittest.TestCase):
     """Test the circuit breaker implementation"""
 
     def setUp(self):
-        self.breaker = CircuitBreaker(
-            failure_threshold=3, recovery_timeout=1, success_threshold=2
-        )
+        self.breaker = CircuitBreaker(failure_threshold=3, recovery_timeout=1, success_threshold=2)
 
     def test_initial_state_is_closed(self):
         """Test that circuit breaker starts in CLOSED state"""
@@ -118,9 +116,7 @@ class TestStreamableLogHandler(unittest.TestCase):
         self.mock_metadata.config.host_port = "http://localhost:8585"
         self.mock_metadata.config.auth_token = "test-token"
         # Mock the _auth_header method
-        self.mock_metadata._auth_header = Mock(
-            return_value={"Authorization": "Bearer test-token"}
-        )
+        self.mock_metadata._auth_header = Mock(return_value={"Authorization": "Bearer test-token"})
 
         self.pipeline_fqn = "test.pipeline"
         self.run_id = uuid4()
@@ -652,9 +648,7 @@ class TestStreamableLoggingSetup(unittest.TestCase):
 
         metadata_logger = logging.getLogger(METADATA_LOGGER)
         # Remove any mock handlers
-        metadata_logger.handlers = [
-            h for h in metadata_logger.handlers if not isinstance(h, Mock)
-        ]
+        metadata_logger.handlers = [h for h in metadata_logger.handlers if not isinstance(h, Mock)]
 
         # Also clean up the manager
         StreamableLogHandlerManager._instance = None
@@ -662,9 +656,7 @@ class TestStreamableLoggingSetup(unittest.TestCase):
     @patch("logging.getLogger")
     @patch("metadata.utils.streamable_logger.logger")
     @patch("metadata.utils.streamable_logger.StreamableLogHandler")
-    def test_setup_with_valid_config(
-        self, mock_handler_class, mock_logger, mock_get_logger
-    ):
+    def test_setup_with_valid_config(self, mock_handler_class, mock_logger, mock_get_logger):
         """Test setup with valid configuration"""
         mock_metadata = Mock(spec=OpenMetadata)
         mock_metadata.config = Mock()
@@ -739,9 +731,7 @@ class TestStreamableLoggingSetup(unittest.TestCase):
     @patch("logging.getLogger")
     @patch("metadata.utils.streamable_logger.logger")
     @patch("metadata.utils.streamable_logger.StreamableLogHandler")
-    def test_cleanup_removes_handler(
-        self, mock_handler_class, mock_logger, mock_get_logger
-    ):
+    def test_cleanup_removes_handler(self, mock_handler_class, mock_logger, mock_get_logger):
         """Test that cleanup properly removes the handler"""
         mock_metadata = Mock(spec=OpenMetadata)
         mock_metadata.config = Mock()
@@ -756,7 +746,7 @@ class TestStreamableLoggingSetup(unittest.TestCase):
         mock_get_logger.return_value = mock_metadata_logger
 
         # Setup
-        handler = setup_streamable_logging_for_workflow(
+        handler = setup_streamable_logging_for_workflow(  # noqa: F841
             metadata=mock_metadata,
             pipeline_fqn="test.pipeline",
             run_id=uuid4(),
@@ -772,9 +762,7 @@ class TestStreamableLoggingSetup(unittest.TestCase):
     @patch("logging.getLogger")
     @patch("metadata.utils.streamable_logger.logger")
     @patch("metadata.utils.streamable_logger.StreamableLogHandler")
-    def test_setup_replaces_existing_handler(
-        self, mock_handler_class, mock_logger, mock_get_logger
-    ):
+    def test_setup_replaces_existing_handler(self, mock_handler_class, mock_logger, mock_get_logger):
         """Test that setup properly replaces existing handler"""
         mock_metadata = Mock(spec=OpenMetadata)
         mock_metadata.config = Mock()
@@ -791,7 +779,7 @@ class TestStreamableLoggingSetup(unittest.TestCase):
         mock_get_logger.return_value = mock_metadata_logger
 
         # First setup
-        handler1 = setup_streamable_logging_for_workflow(
+        handler1 = setup_streamable_logging_for_workflow(  # noqa: F841
             metadata=mock_metadata,
             pipeline_fqn="test.pipeline1",
             run_id=uuid4(),
@@ -799,7 +787,7 @@ class TestStreamableLoggingSetup(unittest.TestCase):
         )
 
         # Second setup should close first handler
-        handler2 = setup_streamable_logging_for_workflow(
+        handler2 = setup_streamable_logging_for_workflow(  # noqa: F841
             metadata=mock_metadata,
             pipeline_fqn="test.pipeline2",
             run_id=uuid4(),
@@ -815,9 +803,7 @@ class TestStreamableLoggingSetup(unittest.TestCase):
     @patch("logging.getLogger")
     @patch("metadata.utils.streamable_logger.logger")
     @patch("metadata.utils.streamable_logger.StreamableLogHandler")
-    def test_cleanup_flushes_before_closing(
-        self, mock_handler_class, mock_logger, mock_get_logger
-    ):
+    def test_cleanup_flushes_before_closing(self, mock_handler_class, mock_logger, mock_get_logger):
         """Test that cleanup calls flush before closing handler"""
         mock_metadata = Mock(spec=OpenMetadata)
         mock_metadata.config = Mock()

@@ -22,9 +22,7 @@ logger = utils_logger()
 NAME_PATTERN = r"(?<=call)(.*)(?=\()|(?<=begin)(.*)(?=\()|(?<=begin)(.*)(?=;\s*end)"
 
 
-def get_procedure_name_from_call(
-    query_text: str, sensitive_match: bool = False
-) -> Optional[str]:
+def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False) -> Optional[str]:
     """
     In the query text we'll have:
     - `CALL db.schema.procedure_name(...)`,
@@ -36,9 +34,7 @@ def get_procedure_name_from_call(
     We'll return the lowered procedure name
     """
 
-    res = re.search(
-        NAME_PATTERN, query_text, re.IGNORECASE if not sensitive_match else None
-    )
+    res = re.search(NAME_PATTERN, query_text, re.IGNORECASE if not sensitive_match else None)
     if not res:
         return None
 
@@ -51,7 +47,5 @@ def get_procedure_name_from_call(
             .split(".")[-1]
         )
     except Exception as exc:
-        logger.warning(
-            f"Error trying to get the procedure name in [{query_text}] due to [{exc}]"
-        )
+        logger.warning(f"Error trying to get the procedure name in [{query_text}] due to [{exc}]")
         return None

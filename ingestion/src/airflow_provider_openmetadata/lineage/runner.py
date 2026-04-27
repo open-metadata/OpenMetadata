@@ -103,7 +103,7 @@ class AirflowLineageRunner:
         self,
         metadata: OpenMetadata,
         service_name: str,
-        dag: "DAG",
+        dag: "DAG",  # noqa: F821
         xlets: Optional[List[XLets]] = None,
         only_keep_dag_lineage: bool = False,
         max_status: int = 10,
@@ -126,23 +126,17 @@ class AirflowLineageRunner:
         except Exception:
             # Fallback: try alternate section
             try:
-                self.host_port = conf.get(
-                    "webserver" if IS_AIRFLOW_3_OR_HIGHER else "api", "base_url"
-                )
+                self.host_port = conf.get("webserver" if IS_AIRFLOW_3_OR_HIGHER else "api", "base_url")
             except Exception:
                 # If base_url is not configured in either section, use environment variable or default
-                self.host_port = os.getenv(
-                    "AIRFLOW_WEBSERVER_BASE_URL", "http://localhost:8080"
-                )
+                self.host_port = os.getenv("AIRFLOW_WEBSERVER_BASE_URL", "http://localhost:8080")
 
     def get_or_create_pipeline_service(self) -> PipelineService:
         """
         Fetch the Pipeline Service from OM. If it does not exist,
         create it.
         """
-        service_entity: PipelineService = self.metadata.get_by_name(
-            entity=PipelineService, fqn=self.service_name
-        )
+        service_entity: PipelineService = self.metadata.get_by_name(entity=PipelineService, fqn=self.service_name)
 
         if service_entity:
             return service_entity
@@ -165,7 +159,7 @@ class AirflowLineageRunner:
 
         return pipeline_service
 
-    def get_task_url(self, task: "Operator"):
+    def get_task_url(self, task: "Operator"):  # noqa: F821
         if IS_AIRFLOW_3_OR_HIGHER:
             return f"{clean_uri(self.host_port)}/dags/{quote(self.dag.dag_id)}/tasks/{quote(task.task_id)}"
         return (
@@ -186,16 +180,12 @@ class AirflowLineageRunner:
                 taskType=task.task_type,
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
-                downstreamTasks=list(task.downstream_task_ids)
-                if task.downstream_task_ids
-                else None,
+                downstreamTasks=list(task.downstream_task_ids) if task.downstream_task_ids else None,
             )
             for task in self.dag.tasks or []
         ]
 
-    def create_or_update_pipeline_entity(
-        self, pipeline_service: PipelineService
-    ) -> Pipeline:
+    def create_or_update_pipeline_entity(self, pipeline_service: PipelineService) -> Pipeline:
         """
         Create the Pipeline Entity if it does not exist, or PATCH it
         if there have been changes.
@@ -222,9 +212,7 @@ class AirflowLineageRunner:
             service=pipeline_service.fullyQualifiedName,
         )
 
-        create_entity_request_hash = generate_source_hash(
-            create_request=pipeline_request
-        )
+        create_entity_request_hash = generate_source_hash(create_request=pipeline_request)
         pipeline_request.sourceHash = create_entity_request_hash
 
         if pipeline is None:
@@ -283,14 +271,10 @@ class AirflowLineageRunner:
                     else:
                         logger.warning("JWT response did not contain access_token")
                 else:
-                    logger.warning(
-                        f"Failed to get JWT token (status {auth_response.status_code})"
-                    )
+                    logger.warning(f"Failed to get JWT token (status {auth_response.status_code})")
                     logger.warning(f"JWT response: {auth_response.text[:200]}")
             except Exception as auth_error:
-                logger.warning(
-                    f"JWT authentication failed with exception: {auth_error}"
-                )
+                logger.warning(f"JWT authentication failed with exception: {auth_error}")
                 import traceback
 
                 logger.warning(f"Auth traceback: {traceback.format_exc()}")
@@ -306,9 +290,7 @@ class AirflowLineageRunner:
                 # Fallback to basic auth
                 import base64
 
-                credentials = base64.b64encode(
-                    f"{airflow_username}:{airflow_password}".encode()
-                ).decode()
+                credentials = base64.b64encode(f"{airflow_username}:{airflow_password}".encode()).decode()
                 headers = {
                     "Content-Type": "application/json",
                     "Authorization": f"Basic {credentials}",
@@ -328,9 +310,7 @@ class AirflowLineageRunner:
 
             logger.info(f"DAG runs API response status: {response.status_code}")
             if response.status_code != 200:
-                logger.error(
-                    f"Failed to fetch DAG runs: {response.status_code} - {response.text[:500]}"
-                )
+                logger.error(f"Failed to fetch DAG runs: {response.status_code} - {response.text[:500]}")
                 return []
 
             dag_runs_data = response.json().get("dag_runs", [])
@@ -341,9 +321,7 @@ class AirflowLineageRunner:
 
             logger.info(f"Found {len(dag_runs_data)} DAG runs via API")
             for dag_run in dag_runs_data:
-                logger.info(
-                    f"  - DAG run: {dag_run.get('dag_run_id')} state={dag_run.get('state')}"
-                )
+                logger.info(f"  - DAG run: {dag_run.get('dag_run_id')} state={dag_run.get('state')}")
 
             pipeline_statuses = []
 
@@ -354,15 +332,13 @@ class AirflowLineageRunner:
                     continue
 
                 # Fetch task instances for this DAG run
-                task_instances_url = f"{self.host_port}/api/v2/dags/{self.dag.dag_id}/dagRuns/{dag_run_id}/taskInstances"
+                task_instances_url = (
+                    f"{self.host_port}/api/v2/dags/{self.dag.dag_id}/dagRuns/{dag_run_id}/taskInstances"
+                )
                 logger.info(f"Fetching task instances from: {task_instances_url}")
-                ti_response = requests.get(
-                    task_instances_url, headers=headers, timeout=10
-                )
+                ti_response = requests.get(task_instances_url, headers=headers, timeout=10)
 
-                logger.info(
-                    f"Task instances API response status: {ti_response.status_code}"
-                )
+                logger.info(f"Task instances API response status: {ti_response.status_code}")
                 if ti_response.status_code != 200:
                     logger.error(
                         f"Failed to fetch task instances for {dag_run_id}: {ti_response.status_code} - {ti_response.text[:300]}"
@@ -374,35 +350,27 @@ class AirflowLineageRunner:
                     logger.warning(f"No task instances found for DAG run {dag_run_id}")
                     continue
 
-                logger.info(
-                    f"Found {len(task_instances_data)} task instances for run {dag_run_id}"
-                )
+                logger.info(f"Found {len(task_instances_data)} task instances for run {dag_run_id}")
 
                 # Build TaskStatus list from API response
                 task_status_list = []
                 for ti in task_instances_data:
                     task_state = ti.get("state", "pending")
-                    execution_status = STATUS_MAP.get(
-                        task_state, StatusType.Pending.value
-                    )
+                    execution_status = STATUS_MAP.get(task_state, StatusType.Pending.value)
 
                     # Parse timestamps
                     start_time = None
                     end_time = None
                     if ti.get("start_date"):
                         try:
-                            start_dt = datetime.fromisoformat(
-                                ti["start_date"].replace("Z", "+00:00")
-                            )
+                            start_dt = datetime.fromisoformat(ti["start_date"].replace("Z", "+00:00"))
                             start_time = datetime_to_ts(start_dt)
                         except Exception:
                             pass
 
                     if ti.get("end_date"):
                         try:
-                            end_dt = datetime.fromisoformat(
-                                ti["end_date"].replace("Z", "+00:00")
-                            )
+                            end_dt = datetime.fromisoformat(ti["end_date"].replace("Z", "+00:00"))
                             end_time = datetime_to_ts(end_dt)
                         except Exception:
                             pass
@@ -419,10 +387,7 @@ class AirflowLineageRunner:
 
                 # Determine overall DAG run status
                 task_states = [ti.get("state") for ti in task_instances_data]
-                if any(
-                    s in ["pending", "queued", "scheduled", "running"]
-                    for s in task_states
-                ):
+                if any(s in ["pending", "queued", "scheduled", "running"] for s in task_states):
                     dag_status = StatusType.Pending.value
                 elif any(s == "failed" for s in task_states):
                     dag_status = StatusType.Failed.value
@@ -430,15 +395,11 @@ class AirflowLineageRunner:
                     dag_status = StatusType.Successful.value
 
                 # Parse execution date
-                execution_date_str = dag_run.get("logical_date") or dag_run.get(
-                    "execution_date"
-                )
+                execution_date_str = dag_run.get("logical_date") or dag_run.get("execution_date")
                 execution_timestamp = None
                 if execution_date_str:
                     try:
-                        exec_dt = datetime.fromisoformat(
-                            execution_date_str.replace("Z", "+00:00")
-                        )
+                        exec_dt = datetime.fromisoformat(execution_date_str.replace("Z", "+00:00"))
                         execution_timestamp = datetime_to_ts(exec_dt)
                     except Exception:
                         pass
@@ -453,9 +414,7 @@ class AirflowLineageRunner:
                     f"Created pipeline status for run {dag_run_id}: {len(task_status_list)} tasks, status={dag_status}"
                 )
 
-            logger.info(
-                f"Successfully collected {len(pipeline_statuses)} pipeline statuses via REST API"
-            )
+            logger.info(f"Successfully collected {len(pipeline_statuses)} pipeline statuses via REST API")
             return pipeline_statuses
 
         except Exception as e:
@@ -474,37 +433,25 @@ class AirflowLineageRunner:
         the original behaviour. In Airflow 3.x we use the REST API
         to fetch status information.
         """
-        logger.info(
-            f"get_all_pipeline_status called. IS_AIRFLOW_3_OR_HIGHER={IS_AIRFLOW_3_OR_HIGHER}"
-        )
+        logger.info(f"get_all_pipeline_status called. IS_AIRFLOW_3_OR_HIGHER={IS_AIRFLOW_3_OR_HIGHER}")
 
         if not IS_AIRFLOW_3_OR_HIGHER:
             # Airflow 2.x path - rely on get_task_instances()
-            grouped_ti: List[List["TaskInstance"]] = [
-                list(value)
-                for _, value in groupby(
-                    self.dag.get_task_instances(), key=lambda ti: ti.run_id
-                )
+            grouped_ti: List[List["TaskInstance"]] = [  # noqa: F821
+                list(value) for _, value in groupby(self.dag.get_task_instances(), key=lambda ti: ti.run_id)
             ]
             grouped_ti.reverse()
 
-            return [
-                self.get_pipeline_status(task_instances)
-                for task_instances in grouped_ti[: self.max_status]
-            ]
+            return [self.get_pipeline_status(task_instances) for task_instances in grouped_ti[: self.max_status]]
 
         # Airflow 3.x - try REST API first, fall back to DB access
         try:
             pipeline_statuses = self.get_pipeline_status_via_api()
             if pipeline_statuses:
                 return pipeline_statuses
-            logger.info(
-                "REST API returned no statuses, trying direct DB access as fallback"
-            )
+            logger.info("REST API returned no statuses, trying direct DB access as fallback")
         except Exception as e:
-            logger.warning(
-                f"Failed to get status via REST API: {e}, trying DB access as fallback"
-            )
+            logger.warning(f"Failed to get status via REST API: {e}, trying DB access as fallback")
 
         # Fallback to direct DB access (will likely fail in Airflow 3.x)
         try:
@@ -515,9 +462,7 @@ class AirflowLineageRunner:
                 logger.info("No DAG runs found for status collection")
                 return []
 
-            recent_runs = sorted(
-                dag_runs, key=lambda r: r.execution_date, reverse=True
-            )[: self.max_status]
+            recent_runs = sorted(dag_runs, key=lambda r: r.execution_date, reverse=True)[: self.max_status]
 
             pipeline_statuses = []
             for dag_run in recent_runs:
@@ -529,10 +474,7 @@ class AirflowLineageRunner:
 
         except RuntimeError as e:
             if "Direct database access" in str(e):
-                logger.warning(
-                    "Direct database access not allowed in Airflow 3.x. "
-                    "Pipeline status collection skipped."
-                )
+                logger.warning("Direct database access not allowed in Airflow 3.x. Pipeline status collection skipped.")
                 return []
             raise
         except Exception as e:
@@ -540,15 +482,14 @@ class AirflowLineageRunner:
             return []
 
     @staticmethod
-    def get_dag_status_from_task_instances(task_instances: List["TaskInstance"]) -> str:
+    def get_dag_status_from_task_instances(task_instances: List["TaskInstance"]) -> str:  # noqa: F821
         """
         If any task is in pending state, then return pending.
         If any task is in failed state, return failed.
         Otherwise, return Success.
         """
         task_statuses = [
-            STATUS_MAP.get(task_instance.state, StatusType.Pending.value)
-            for task_instance in task_instances
+            STATUS_MAP.get(task_instance.state, StatusType.Pending.value) for task_instance in task_instances
         ]
         if any(status == StatusType.Pending.value for status in task_statuses):
             return StatusType.Pending.value
@@ -558,7 +499,8 @@ class AirflowLineageRunner:
         return StatusType.Successful.value
 
     def get_pipeline_status(
-        self, task_instances: List["TaskInstance"]
+        self,
+        task_instances: List["TaskInstance"],  # noqa: F821
     ) -> PipelineStatus:
         """
         Given the task instances for a run, prep the PipelineStatus
@@ -567,9 +509,7 @@ class AirflowLineageRunner:
         task_status = [
             TaskStatus(
                 name=task_instance.task_id,
-                executionStatus=STATUS_MAP.get(
-                    task_instance.state, StatusType.Pending.value
-                ),
+                executionStatus=STATUS_MAP.get(task_instance.state, StatusType.Pending.value),
                 startTime=datetime_to_ts(task_instance.start_date),
                 endTime=datetime_to_ts(task_instance.end_date),
                 logLink=task_instance.log_url,
@@ -578,10 +518,7 @@ class AirflowLineageRunner:
         ]
 
         # Airflow 3.x uses logical_date instead of execution_date
-        execution_date = (
-            getattr(task_instances[0], "logical_date", None)
-            or task_instances[0].execution_date
-        )
+        execution_date = getattr(task_instances[0], "logical_date", None) or task_instances[0].execution_date
 
         return PipelineStatus(
             # Use any of the task execution dates for the status execution date
@@ -598,9 +535,7 @@ class AirflowLineageRunner:
         pipeline_status_list = self.get_all_pipeline_status()
 
         for status in pipeline_status_list:
-            self.metadata.add_pipeline_status(
-                fqn=pipeline.fullyQualifiedName.root, status=status
-            )
+            self.metadata.add_pipeline_status(fqn=pipeline.fullyQualifiedName.root, status=status)
 
     def add_lineage(self, pipeline: Pipeline, xlets: XLets) -> None:
         """
@@ -608,34 +543,24 @@ class AirflowLineageRunner:
         """
 
         lineage_details = LineageDetails(
-            pipeline=EntityReference(
-                id=pipeline.id, type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__]
-            )
+            pipeline=EntityReference(id=pipeline.id, type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__])
         )
 
         for from_xlet in xlets.inlets or []:
-            from_entity: Optional[Table] = self.metadata.get_by_name(
-                entity=from_xlet.entity, fqn=from_xlet.fqn
-            )
+            from_entity: Optional[Table] = self.metadata.get_by_name(entity=from_xlet.entity, fqn=from_xlet.fqn)
             if from_entity:
                 for to_xlet in xlets.outlets or []:
-                    to_entity: Optional[Table] = self.metadata.get_by_name(
-                        entity=to_xlet.entity, fqn=to_xlet.fqn
-                    )
+                    to_entity: Optional[Table] = self.metadata.get_by_name(entity=to_xlet.entity, fqn=to_xlet.fqn)
                     if to_entity:
                         lineage = AddLineageRequest(
                             edge=EntitiesEdge(
                                 fromEntity=EntityReference(
                                     id=from_entity.id,
-                                    type=ENTITY_REFERENCE_TYPE_MAP[
-                                        from_xlet.entity.__name__
-                                    ],
+                                    type=ENTITY_REFERENCE_TYPE_MAP[from_xlet.entity.__name__],
                                 ),
                                 toEntity=EntityReference(
                                     id=to_entity.id,
-                                    type=ENTITY_REFERENCE_TYPE_MAP[
-                                        to_xlet.entity.__name__
-                                    ],
+                                    type=ENTITY_REFERENCE_TYPE_MAP[to_xlet.entity.__name__],
                                 ),
                                 lineageDetails=lineage_details,
                             )
@@ -670,8 +595,7 @@ class AirflowLineageRunner:
                 (
                     SimpleEdge(fqn=node["fullyQualifiedName"], id=node["id"])
                     for node in lineage_data.get("nodes") or []
-                    if node["id"] == upstream_edge["fromEntity"]
-                    and node["type"] == "table"
+                    if node["id"] == upstream_edge["fromEntity"] and node["type"] == "table"
                 ),
                 None,
             )
@@ -682,8 +606,7 @@ class AirflowLineageRunner:
                 (
                     SimpleEdge(fqn=node["fullyQualifiedName"], id=node["id"])
                     for node in lineage_data.get("nodes") or []
-                    if node["id"] == downstream_edge["toEntity"]
-                    and node["type"] == "table"
+                    if node["id"] == downstream_edge["toEntity"] and node["type"] == "table"
                 ),
                 None,
             )
@@ -694,9 +617,7 @@ class AirflowLineageRunner:
             if edge.fqn not in (inlet.fqn for inlet in xlets.inlets):
                 logger.info(f"Removing upstream edge with {edge.fqn}")
                 edge_to_remove = EntitiesEdge(
-                    fromEntity=EntityReference(
-                        id=edge.id, type=ENTITY_REFERENCE_TYPE_MAP[Table.__name__]
-                    ),
+                    fromEntity=EntityReference(id=edge.id, type=ENTITY_REFERENCE_TYPE_MAP[Table.__name__]),
                     toEntity=EntityReference(
                         id=pipeline.id,
                         type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__],
@@ -712,9 +633,7 @@ class AirflowLineageRunner:
                         id=pipeline.id,
                         type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__],
                     ),
-                    toEntity=EntityReference(
-                        id=edge.id, type=ENTITY_REFERENCE_TYPE_MAP[Table.__name__]
-                    ),
+                    toEntity=EntityReference(id=edge.id, type=ENTITY_REFERENCE_TYPE_MAP[Table.__name__]),
                 )
                 self.metadata.delete_lineage_edge(edge=edge_to_remove)
 
@@ -733,7 +652,5 @@ class AirflowLineageRunner:
             logger.info(f"Got some xlet data. Processing lineage for {xlet}")
             self.add_lineage(pipeline, xlet)
             if self.only_keep_dag_lineage:
-                logger.info(
-                    "`only_keep_dag_lineage` is set to True. Cleaning lineage not in inlets or outlets..."
-                )
+                logger.info("`only_keep_dag_lineage` is set to True. Cleaning lineage not in inlets or outlets...")
                 self.clean_lineage(pipeline, xlet)

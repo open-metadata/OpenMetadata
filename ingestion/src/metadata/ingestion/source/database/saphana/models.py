@@ -11,6 +11,7 @@
 """
 SAP Hana lineage module
 """
+
 from enum import Enum
 from typing import Optional
 
@@ -41,9 +42,7 @@ class ViewType(Enum):
 class SapHanaLineageModel(BaseModel):
     """SAP Hana Lineage model from _SYS_REPO.ACTIVE_OBJECT"""
 
-    package_id: Annotated[
-        str, Field(..., description="Package ID that hosts the model code")
-    ]
+    package_id: Annotated[str, Field(..., description="Package ID that hosts the model code")]
     object_name: Annotated[str, Field(..., description="View Name")]
     object_suffix: Annotated[ViewType, Field(..., description="View Type")]
     cdata: Annotated[str, Field(..., description="XML representation of the model")]

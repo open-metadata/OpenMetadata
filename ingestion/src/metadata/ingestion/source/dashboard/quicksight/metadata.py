@@ -98,15 +98,11 @@ class QuicksightSource(DashboardServiceSource):
         }
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: QuickSightConnection = config.serviceConnection.root.config
         if not isinstance(connection, QuickSightConnection):
-            raise InvalidSourceException(
-                f"Expected QuickSightConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected QuickSightConnection, but got {connection}")
         return cls(config, metadata)
 
     def _check_pagination(self, listing_method, entity_key) -> Optional[List]:
@@ -137,14 +133,10 @@ class QuicksightSource(DashboardServiceSource):
             listing_method=list_dashboards_func,
             entity_key="DashboardSummaryList",
         )
-        dashboard_set = {
-            dashboard["DashboardId"] for dashboard in dashboard_summary_list
-        }
+        dashboard_set = {dashboard["DashboardId"] for dashboard in dashboard_summary_list}
         dashboards = [
             DashboardResp(
-                **self.client.describe_dashboard(
-                    AwsAccountId=self.aws_account_id, DashboardId=dashboard_id
-                )
+                **self.client.describe_dashboard(AwsAccountId=self.aws_account_id, DashboardId=dashboard_id)
             ).Dashboard
             for dashboard_id in dashboard_set
         ]
@@ -162,9 +154,7 @@ class QuicksightSource(DashboardServiceSource):
         """
         return dashboard
 
-    def yield_dashboard(
-        self, dashboard_details: DashboardDetail
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def yield_dashboard(self, dashboard_details: DashboardDetail) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         """
@@ -194,9 +184,7 @@ class QuicksightSource(DashboardServiceSource):
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
 
-    def yield_dashboard_chart(
-        self, dashboard_details: DashboardDetail
-    ) -> Iterable[Either[CreateChartRequest]]:
+    def yield_dashboard_chart(self, dashboard_details: DashboardDetail) -> Iterable[Either[CreateChartRequest]]:
         """Get chart method"""
         # Each dashboard is guaranteed to have at least one sheet, which represents
         # a chart in the context of QuickSight
@@ -204,9 +192,7 @@ class QuicksightSource(DashboardServiceSource):
         if dashboard_details.Version:
             for chart in dashboard_details.Version.Charts or []:
                 try:
-                    if filter_by_chart(
-                        self.source_config.chartFilterPattern, chart.Name
-                    ):
+                    if filter_by_chart(self.source_config.chartFilterPattern, chart.Name):
                         self.status.filter(chart.Name, "Chart Pattern not allowed")
                         continue
 
@@ -219,9 +205,7 @@ class QuicksightSource(DashboardServiceSource):
                         displayName=chart.Name,
                         chartType=ChartType.Other.value,
                         sourceUrl=SourceUrl(self.dashboard_url),
-                        service=FullyQualifiedEntityName(
-                            self.context.get().dashboard_service
-                        ),
+                        service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                     )
                     yield Either(right=chart_request)
                     self.register_record_chart(chart_request=chart_request)
@@ -237,22 +221,16 @@ class QuicksightSource(DashboardServiceSource):
     def _get_database_service(self, db_service_name: str):
         return self.metadata.get_by_name(DatabaseService, db_service_name)
 
-    def _describe_data_sets(
-        self, dataset_id, dashboard_details: DashboardDetail
-    ) -> tuple:
+    def _describe_data_sets(self, dataset_id, dashboard_details: DashboardDetail) -> tuple:
         """call botocore's describe api for datasets"""
         try:
-            dataset_response = self.client.describe_data_set(
-                AwsAccountId=self.aws_account_id, DataSetId=dataset_id
-            )
+            dataset_response = self.client.describe_data_set(AwsAccountId=self.aws_account_id, DataSetId=dataset_id)
             dataset = dataset_response["DataSet"]
             dataset_name = dataset.get("Name", dataset_id)
             physical_tables = list(dataset.get("PhysicalTableMap", {}).values())
             return dataset_name, physical_tables
         except Exception as err:
-            logger.info(
-                f"Cannot parse lineage from the dashboard: {dashboard_details.Name} to dataset due to: {err}"
-            )
+            logger.info(f"Cannot parse lineage from the dashboard: {dashboard_details.Name} to dataset due to: {err}")
             return dataset_id, []
 
     def _yield_lineage_from_query(
@@ -271,9 +249,7 @@ class QuicksightSource(DashboardServiceSource):
             prefix_table_name,
         ) = self.parse_db_service_prefix(db_service_prefix)
         if db_service_prefix:
-            db_service_entity = self.metadata.get_by_name(
-                entity=DatabaseService, fqn=db_service_name
-            )
+            db_service_entity = self.metadata.get_by_name(entity=DatabaseService, fqn=db_service_name)
         sql_query = data_source_resp.data_source_resp.query
         source_database_names = []
         try:
@@ -289,33 +265,21 @@ class QuicksightSource(DashboardServiceSource):
             lineage_parser = LineageParser(
                 sql_query,
                 (
-                    ConnectionTypeDialectMapper.dialect_of(
-                        db_service_entity.serviceType.value
-                    )
+                    ConnectionTypeDialectMapper.dialect_of(db_service_entity.serviceType.value)
                     if db_service_entity
                     else Dialect.ANSI
                 ),
                 parser_type=self.get_query_parser_type(),
             )
             query_hash = lineage_parser.query_hash
-            lineage_details = LineageDetails(
-                source=LineageSource.DashboardLineage, sqlQuery=sql_query
-            )
+            lineage_details = LineageDetails(source=LineageSource.DashboardLineage, sqlQuery=sql_query)
             for db_name in source_database_names:
-                if (
-                    prefix_database_name
-                    and db_name
-                    and prefix_database_name.lower() != str(db_name).lower()
-                ):
-                    logger.debug(
-                        f"[{query_hash}] Database {db_name} does not match prefix {prefix_database_name}"
-                    )
+                if prefix_database_name and db_name and prefix_database_name.lower() != str(db_name).lower():
+                    logger.debug(f"[{query_hash}] Database {db_name} does not match prefix {prefix_database_name}")
                     continue
                 for table in lineage_parser.source_tables:
                     database_schema_name, table = fqn.split(str(table))[-2:]
-                    database_schema_name = self.check_database_schema_name(
-                        database_schema_name
-                    )
+                    database_schema_name = self.check_database_schema_name(database_schema_name)
 
                     if (
                         prefix_schema_name
@@ -327,14 +291,8 @@ class QuicksightSource(DashboardServiceSource):
                         )
                         continue
 
-                    if (
-                        prefix_table_name
-                        and table
-                        and prefix_table_name.lower() != table.lower()
-                    ):
-                        logger.debug(
-                            f"[{query_hash}] Table {table} does not match prefix {prefix_table_name}"
-                        )
+                    if prefix_table_name and table and prefix_table_name.lower() != table.lower():
+                        logger.debug(f"[{query_hash}] Table {table} does not match prefix {prefix_table_name}")
                         continue
 
                     fqn_search_string = build_es_fqn_search_string(
@@ -350,12 +308,8 @@ class QuicksightSource(DashboardServiceSource):
                     )
                     for from_entity in from_entities or []:
                         if from_entity is not None and data_model_entity is not None:
-                            columns = [
-                                col.name.root for col in data_model_entity.columns
-                            ]
-                            column_lineage = self._get_column_lineage(
-                                from_entity, data_model_entity, columns
-                            )
+                            columns = [col.name.root for col in data_model_entity.columns]
+                            column_lineage = self._get_column_lineage(from_entity, data_model_entity, columns)
                             lineage_details.columnsLineage = column_lineage
                             yield Either(
                                 right=AddLineageRequest(
@@ -393,19 +347,9 @@ class QuicksightSource(DashboardServiceSource):
             if data_source_resp and data_source_resp.DataSourceParameters:
                 data_source_dict = data_source_resp.DataSourceParameters
                 for s3_param in data_source_dict.keys() or []:
-                    bucket_name = (
-                        data_source_dict[s3_param]
-                        .get("ManifestFileLocation", {})
-                        .get("Bucket")
-                    )
-                    key_name = (
-                        data_source_dict[s3_param]
-                        .get("ManifestFileLocation", {})
-                        .get("Key")
-                    )
-                    containers = self.metadata.es_search_container_by_path(
-                        full_path=f"s3://{bucket_name}/{key_name}"
-                    )
+                    bucket_name = data_source_dict[s3_param].get("ManifestFileLocation", {}).get("Bucket")
+                    key_name = data_source_dict[s3_param].get("ManifestFileLocation", {}).get("Key")
+                    containers = self.metadata.es_search_container_by_path(full_path=f"s3://{bucket_name}/{key_name}")
                     for container in containers or []:
                         if container is not None and data_model_entity is not None:
                             storage_entity = EntityReference(
@@ -450,38 +394,20 @@ class QuicksightSource(DashboardServiceSource):
             schema_name = data_source_resp.data_source_resp.schema_name
             table_name = data_source_resp.data_source_resp.table_name
 
-            if (
-                prefix_schema_name
-                and schema_name
-                and prefix_schema_name.lower() != schema_name.lower()
-            ):
-                logger.debug(
-                    f"Schema {schema_name} does not match prefix {prefix_schema_name}"
-                )
+            if prefix_schema_name and schema_name and prefix_schema_name.lower() != schema_name.lower():
+                logger.debug(f"Schema {schema_name} does not match prefix {prefix_schema_name}")
                 return
 
-            if (
-                prefix_table_name
-                and table_name
-                and prefix_table_name.lower() != table_name.lower()
-            ):
-                logger.debug(
-                    f"Table {table_name} does not match prefix {prefix_table_name}"
-                )
+            if prefix_table_name and table_name and prefix_table_name.lower() != table_name.lower():
+                logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")
                 return
 
             if data_source_resp and data_source_resp.DataSourceParameters:
                 data_source_dict = data_source_resp.DataSourceParameters
                 for db in data_source_dict.keys() or []:
                     database_name = data_source_dict[db].get("Database")
-                    if (
-                        prefix_database_name
-                        and database_name
-                        and prefix_database_name.lower() != database_name.lower()
-                    ):
-                        logger.debug(
-                            f"Database {database_name} does not match prefix {prefix_database_name}"
-                        )
+                    if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
+                        logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
                         continue
 
                     fqn_search_string = build_es_fqn_search_string(
@@ -496,9 +422,7 @@ class QuicksightSource(DashboardServiceSource):
                     )
                     if from_entity is not None and data_model_entity is not None:
                         columns = [col.name.root for col in data_model_entity.columns]
-                        column_lineage = self._get_column_lineage(
-                            from_entity, data_model_entity, columns
-                        )
+                        column_lineage = self._get_column_lineage(from_entity, data_model_entity, columns)
                         yield self._get_add_lineage_request(
                             to_entity=data_model_entity,
                             from_entity=from_entity,
@@ -543,21 +467,15 @@ class QuicksightSource(DashboardServiceSource):
                     if datamodel.dataset_id is not None
                     else datamodel.DataSource.DataSourceId
                 )
-                if isinstance(
-                    datamodel.DataSource.data_source_resp, DataSourceRespQuery
-                ):
+                if isinstance(datamodel.DataSource.data_source_resp, DataSourceRespQuery):
                     yield from self._yield_lineage_from_query(
                         data_model_entity,
                         datamodel.DataSource,
                         dashboard_details,
                         db_service_prefix,
                     )
-                elif isinstance(
-                    datamodel.DataSource.data_source_resp, DataSourceRespS3
-                ):
-                    yield from self._yield_lineage_from_s3(
-                        data_model_entity, datamodel.DataSource, dashboard_details
-                    )
+                elif isinstance(datamodel.DataSource.data_source_resp, DataSourceRespS3):
+                    yield from self._yield_lineage_from_s3(data_model_entity, datamodel.DataSource, dashboard_details)
                 elif isinstance(datamodel.DataSource.data_source_resp, DataSourceResp):
                     yield from self._yield_lineage_from_table(
                         data_model_entity,
@@ -613,35 +531,23 @@ class QuicksightSource(DashboardServiceSource):
             }
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error while processing datamodels for dashboard: {dashboard_details.Name}: {exc}"
-            )
+            logger.warning(f"Error while processing datamodels for dashboard: {dashboard_details.Name}: {exc}")
 
         for dataset_id in dataset_ids or []:
-            dataset_name, data_source_list = self._describe_data_sets(
-                dataset_id, dashboard_details
-            )
+            dataset_name, data_source_list = self._describe_data_sets(dataset_id, dashboard_details)
             for data_source in data_source_list:
                 try:
                     if data_source.get("RelationalTable"):
-                        data_source_resp = DataSourceResp(
-                            **data_source["RelationalTable"]
-                        )
+                        data_source_resp = DataSourceResp(**data_source["RelationalTable"])
                     elif data_source.get("CustomSql"):
-                        data_source_resp = DataSourceRespQuery(
-                            **data_source["CustomSql"]
-                        )
+                        data_source_resp = DataSourceRespQuery(**data_source["CustomSql"])
                     elif data_source.get("S3Source"):
                         data_source_resp = DataSourceRespS3(**data_source["S3Source"])
                     else:
-                        raise KeyError(
-                            f"We currently don't support data sources: {list(data_source.keys())}"
-                        )
+                        raise KeyError(f"We currently don't support data sources: {list(data_source.keys())}")
                 except (KeyError, ValidationError) as err:
                     data_source_resp = None
-                    logger.info(
-                        f"Error while processing datamodels for dashboard {dashboard_details.Name}: {err}"
-                    )
+                    logger.info(f"Error while processing datamodels for dashboard {dashboard_details.Name}: {err}")
                     continue
                 if data_source_resp:
                     try:
@@ -664,9 +570,7 @@ class QuicksightSource(DashboardServiceSource):
                                     DataSourceId=data_source_id,
                                 )
                             )
-                            desribed_source.DataSource.data_source_resp = (
-                                data_source_resp
-                            )
+                            desribed_source.DataSource.data_source_resp = data_source_resp
                             desribed_source.dataset_id = dataset_id
                             desribed_source.dataset_name = dataset_name
                             data_models.append(desribed_source)
@@ -676,24 +580,16 @@ class QuicksightSource(DashboardServiceSource):
                         )
         return data_models
 
-    def yield_datamodel(
-        self, dashboard_details: DashboardDetail
-    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+    def yield_datamodel(self, dashboard_details: DashboardDetail) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         """
         Method to ingest the Datasets as DataModels from Quicksight.
         Each QuickSight dataset produces a separate DataModel entity,
         identified by dataset_id rather than datasource_id.
         """
-        self.data_models: List[
-            DescribeDataSourceResponse
-        ] = self._get_dashboard_datamodels(dashboard_details)
+        self.data_models: List[DescribeDataSourceResponse] = self._get_dashboard_datamodels(dashboard_details)
         dataset_groups: dict[str, List[DescribeDataSourceResponse]] = defaultdict(list)
         for data_model in self.data_models:
-            key = (
-                data_model.dataset_id
-                if data_model.dataset_id is not None
-                else data_model.DataSource.DataSourceId
-            )
+            key = data_model.dataset_id if data_model.dataset_id is not None else data_model.DataSource.DataSourceId
             dataset_groups[key].append(data_model)
         for dataset_id, models in dataset_groups.items():
             try:
@@ -709,9 +605,7 @@ class QuicksightSource(DashboardServiceSource):
                 data_model_request = CreateDashboardDataModelRequest(
                     name=EntityName(dataset_id),
                     displayName=display_name,
-                    service=FullyQualifiedEntityName(
-                        self.context.get().dashboard_service
-                    ),
+                    service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                     dataModelType=DataModelType.QuickSightDataModel.value,
                     serviceType=self.service_connection.type.value,
                     columns=columns,

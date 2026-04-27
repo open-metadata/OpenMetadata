@@ -12,7 +12,6 @@
 SQL Queries used during ingestion
 """
 
-
 COCKROACH_GET_TABLE_NAMES = """
     SELECT 
     c.relname AS table_name,

@@ -56,15 +56,10 @@ class TestDatabricksProfilerInterface(unittest.TestCase):
     def test_visit_column_nesting(self, mock_visit_column_super):
         # Mock the response of the super class method
         mock_visit_column_super.return_value = "`db`.`schema`.`table`.`col.u.m.n`"
-        assert (
-            self.profiler.visit_column(MagicMock())
-            == "`db`.`schema`.`table`.`col`.`u`.`m`.`n`"
-        )
+        assert self.profiler.visit_column(MagicMock()) == "`db`.`schema`.`table`.`col`.`u`.`m`.`n`"
 
         mock_visit_column_super.return_value = "`db`.`schema`.`table`.`col.1`"
-        assert (
-            self.profiler.visit_column(MagicMock()) == "`db`.`schema`.`table`.`col`.`1`"
-        )
+        assert self.profiler.visit_column(MagicMock()) == "`db`.`schema`.`table`.`col`.`1`"
 
         mock_visit_column_super.return_value = "`table`.`1.2`"
         assert self.profiler.visit_column(MagicMock()) == "`table`.`1`.`2`"

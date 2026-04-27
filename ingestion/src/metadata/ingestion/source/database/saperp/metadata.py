@@ -11,6 +11,7 @@
 """
 SAP ERP source module
 """
+
 import traceback
 from typing import Iterable, List, Optional, Tuple
 
@@ -68,15 +69,11 @@ class SaperpSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SapErpConnection = config.serviceConnection.root.config
         if not isinstance(connection, SapErpConnection):
-            raise InvalidSourceException(
-                f"Expected SapErpConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected SapErpConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
@@ -93,9 +90,9 @@ class SaperpSource(CommonDbSourceService):
             try:
                 table_name = table.tabname
                 table_type = TABLE_TYPE_MAP.get(table.tabclass, TableType.Regular)
-                if (
-                    table_type == TableType.Regular and self.source_config.includeTables
-                ) or (table_type == TableType.View and self.source_config.includeViews):
+                if (table_type == TableType.Regular and self.source_config.includeTables) or (
+                    table_type == TableType.View and self.source_config.includeViews
+                ):
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
@@ -107,11 +104,7 @@ class SaperpSource(CommonDbSourceService):
                     )
                     if filter_by_table(
                         self.source_config.tableFilterPattern,
-                        (
-                            table_fqn
-                            if self.source_config.useFqnForFiltering
-                            else table_name
-                        ),
+                        (table_fqn if self.source_config.useFqnForFiltering else table_name),
                     ):
                         self.status.filter(
                             table_fqn,
@@ -122,9 +115,7 @@ class SaperpSource(CommonDbSourceService):
 
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unable to process table information for table: {str(table_name)} - {err}"
-                )
+                logger.warning(f"Unable to process table information for table: {str(table_name)} - {err}")
 
     def _check_col_length(  # pylint: disable=arguments-differ
         self, datatype: str, col_length: Optional[str], col_decimals: Optional[str]
@@ -142,9 +133,7 @@ class SaperpSource(CommonDbSourceService):
             logger.warning(f"Failed to fetch column length: {exc}")
         return None, None
 
-    def _get_table_constraints(
-        self, columns: Optional[List[Column]]
-    ) -> TableConstraintsModel:
+    def _get_table_constraints(self, columns: Optional[List[Column]]) -> TableConstraintsModel:
         """
         Method to get the table constraints
         """
@@ -154,11 +143,7 @@ class SaperpSource(CommonDbSourceService):
             # check if we have multiple primary keys and add them to the TableConstraints
             for column in columns or []:
                 if column.keyflag:
-                    pk_columns.append(
-                        clean_up_starting_ending_double_quotes_in_string(
-                            column.fieldname
-                        )
-                    )
+                    pk_columns.append(clean_up_starting_ending_double_quotes_in_string(column.fieldname))
             if len(pk_columns) > 1:
                 table_constraints.append(
                     TableConstraint(
@@ -166,9 +151,7 @@ class SaperpSource(CommonDbSourceService):
                         columns=pk_columns,
                     )
                 )
-                return TableConstraintsModel(
-                    table_constraints=table_constraints or None, pk_columns=pk_columns
-                )
+                return TableConstraintsModel(table_constraints=table_constraints or None, pk_columns=pk_columns)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch table constraints: {exc}")
@@ -221,16 +204,12 @@ class SaperpSource(CommonDbSourceService):
                     col_decimals=sap_column.decimals,
                 )
                 column_name = (
-                    f"{sap_column.fieldname}({sap_column.precfield})"
-                    if sap_column.precfield
-                    else sap_column.fieldname
+                    f"{sap_column.fieldname}({sap_column.precfield})" if sap_column.precfield else sap_column.fieldname
                 )
                 if sap_column.datatype is None:
                     column_type = DataType.UNKNOWN.name
                     data_type_display = column_type.lower()
-                    logger.warning(
-                        f"Unknown type {repr(sap_column.datatype)}: {sap_column.fieldname}"
-                    )
+                    logger.warning(f"Unknown type {repr(sap_column.datatype)}: {sap_column.fieldname}")
                 data_type_display = self._get_display_datatype(
                     column_type,
                     col_data_length,
@@ -246,9 +225,7 @@ class SaperpSource(CommonDbSourceService):
                         if column_name
                         else " "
                     ),
-                    displayName=sap_column.scrtext_l
-                    if sap_column.scrtext_l
-                    else sap_column.fieldname,
+                    displayName=sap_column.scrtext_l if sap_column.scrtext_l else sap_column.fieldname,
                     description=sap_column.i_ddtext,
                     dataType=column_type,
                     dataTypeDisplay=data_type_display,
@@ -266,9 +243,7 @@ class SaperpSource(CommonDbSourceService):
                 om_columns.append(om_column)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unable to get column details for {sap_column.fieldname}: {exc}"
-                )
+                logger.warning(f"Unable to get column details for {sap_column.fieldname}: {exc}")
         return ColumnsAndConstraints(
             columns=om_columns,
             table_constraints=table_constraints_model.table_constraints,
@@ -283,10 +258,7 @@ class SaperpSource(CommonDbSourceService):
         """
         schema_name = self.context.get().database_schema
         try:
-
-            columns_and_constraints = self.get_columns_and_constraints(
-                table_name=table.tabname
-            )
+            columns_and_constraints = self.get_columns_and_constraints(table_name=table.tabname)
 
             table_request = CreateTableRequest(
                 name=EntityName(table.tabname),
@@ -312,11 +284,7 @@ class SaperpSource(CommonDbSourceService):
 
         except Exception as exc:
             error = f"Unexpected exception to yield table [{table.tabname}]: {exc}"
-            yield Either(
-                left=StackTraceError(
-                    name=table.tabname, error=error, stackTrace=traceback.format_exc()
-                )
-            )
+            yield Either(left=StackTraceError(name=table.tabname, error=error, stackTrace=traceback.format_exc()))
 
     def close(self):
         self.metadata.close()

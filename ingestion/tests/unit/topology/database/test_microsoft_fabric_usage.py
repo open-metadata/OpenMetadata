@@ -11,6 +11,7 @@
 """
 Tests for Microsoft Fabric usage
 """
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -57,19 +58,16 @@ class TestFabricUsageFilters:
 
     @pytest.fixture
     def usage_source(self):
-        with patch(
-            "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-        ), patch(
-            "metadata.ingestion.source.database.microsoftfabric.connection.get_connection"
-        ) as mock_conn:
+        with (
+            patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"),
+            patch("metadata.ingestion.source.database.microsoftfabric.connection.get_connection") as mock_conn,
+        ):
             mock_conn.return_value = MagicMock()
             from metadata.ingestion.source.database.microsoftfabric.usage import (
                 MicrosoftFabricUsageSource,
             )
 
-            source = MicrosoftFabricUsageSource.create(
-                MOCK_USAGE_CONFIG["source"], MagicMock()
-            )
+            source = MicrosoftFabricUsageSource.create(MOCK_USAGE_CONFIG["source"], MagicMock())
             return source
 
     def test_usage_excludes_create_procedure(self, usage_source):

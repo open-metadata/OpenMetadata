@@ -15,6 +15,7 @@ Azure) and the datalake connector. Centralised here so every connector
 that walks bucket trees can reuse the same sentinel-file detection and
 cold-storage filtering.
 """
+
 from typing import FrozenSet
 
 # -------------------------------------------------------------------

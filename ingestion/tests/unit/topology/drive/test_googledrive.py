@@ -13,6 +13,7 @@
 Real Integration Tests for Google Drive Source
 Tests actual method execution with mocked API responses
 """
+
 from typing import Dict, List
 from unittest.mock import MagicMock
 
@@ -213,9 +214,7 @@ class TestGoogleDriveRealMethods:
             nextPageToken=None,
         )
 
-        mock_client.drive_service.files.return_value.list.return_value.execute.return_value = (
-            mock_response.model_dump()
-        )
+        mock_client.drive_service.files.return_value.list.return_value.execute.return_value = mock_response.model_dump()
 
         # Execute the real method
         source._fetch_all_files()
@@ -304,10 +303,7 @@ class TestGoogleDriveRealMethods:
         assert directory_request.name.root == "Test Directory"
         assert directory_request.displayName == "Test Directory"
         assert directory_request.description.root == "Test directory for unit tests"
-        assert (
-            directory_request.sourceUrl.root
-            == "https://drive.google.com/drive/folders/dir_001"
-        )
+        assert directory_request.sourceUrl.root == "https://drive.google.com/drive/folders/dir_001"
 
     def test_yield_file_real_execution(self, googledrive_source):
         """Test yield_file method execution"""
@@ -342,10 +338,7 @@ class TestGoogleDriveRealMethods:
         assert file_request.displayName == "test_document.pdf"
         assert file_request.mimeType == "application/pdf"
         assert file_request.size == 1024000
-        assert (
-            str(file_request.webViewLink)
-            == "https://drive.google.com/file/d/file_001/view"
-        )
+        assert str(file_request.webViewLink) == "https://drive.google.com/file/d/file_001/view"
 
     def test_get_spreadsheets_list_real_execution(self, googledrive_source):
         """Test get_spreadsheets_list method execution"""
@@ -372,9 +365,7 @@ class TestGoogleDriveRealMethods:
             nextPageToken=None,
         )
 
-        mock_client.drive_service.files.return_value.list.return_value.execute.return_value = (
-            mock_response.model_dump()
-        )
+        mock_client.drive_service.files.return_value.list.return_value.execute.return_value = mock_response.model_dump()
 
         # Execute the real method
         result_generator = source.get_spreadsheets_list()
@@ -434,9 +425,7 @@ class TestGoogleDriveRealMethods:
         result = source.get_spreadsheet_details(test_spreadsheet)
 
         # Verify the method was called correctly
-        mock_client.sheets_service.spreadsheets.return_value.get.assert_called_with(
-            spreadsheetId="sheet_001"
-        )
+        mock_client.sheets_service.spreadsheets.return_value.get.assert_called_with(spreadsheetId="sheet_001")
 
         # Verify result
         assert isinstance(result, GoogleSheetsSpreadsheetDetails)
@@ -475,10 +464,7 @@ class TestGoogleDriveRealMethods:
         assert spreadsheet_request.name.root == "sheet_001"
         assert spreadsheet_request.displayName == "Test Spreadsheet"
         assert spreadsheet_request.description.root == "Test spreadsheet for unit tests"
-        assert (
-            spreadsheet_request.sourceUrl.root
-            == "https://docs.google.com/spreadsheets/d/sheet_001/edit"
-        )
+        assert spreadsheet_request.sourceUrl.root == "https://docs.google.com/spreadsheets/d/sheet_001/edit"
 
     def test_yield_worksheet_real_execution(self, googledrive_source):
         """Test yield_worksheet method execution"""
@@ -565,9 +551,7 @@ class TestGoogleDriveRealMethods:
             empty_files.model_dump(),  # Files response
         ]
 
-        mock_client.drive_service.files.return_value.list.return_value.execute.side_effect = (
-            responses
-        )
+        mock_client.drive_service.files.return_value.list.return_value.execute.side_effect = responses
 
         # Execute the real method
         source._fetch_directories()
@@ -596,9 +580,7 @@ class TestGoogleDriveRealMethods:
         source, mock_client = googledrive_source
 
         # Mock an exception from the client
-        mock_client.drive_service.files.return_value.list.return_value.execute.side_effect = Exception(
-            "API Error"
-        )
+        mock_client.drive_service.files.return_value.list.return_value.execute.side_effect = Exception("API Error")
 
         # Execute the real method - should not raise exception
         source._fetch_directories()
@@ -640,7 +622,7 @@ class TestGoogleDriveRealMethods:
 
         # Execute the real method for a directory with files (this triggers root file processing)
         result_generator = source.yield_file("dir_001")
-        results = list(result_generator)
+        results = list(result_generator)  # noqa: F841
 
         # Verify root files were processed (flag should be set after first call)
         assert source._root_files_processed is True

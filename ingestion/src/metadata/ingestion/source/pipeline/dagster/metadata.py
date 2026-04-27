@@ -11,6 +11,7 @@
 """
 Dagster source to extract metadata from OM UI
 """
+
 import traceback
 from typing import Dict, Iterable, List, Optional
 
@@ -81,22 +82,16 @@ class DagsterSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DagsterConnection = config.serviceConnection.root.config
         if not isinstance(connection, DagsterConnection):
-            raise InvalidSourceException(
-                f"Expected DagsterConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected DagsterConnection, but got {connection}")
         return cls(config, metadata)
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
-        self.strip_asset_key_prefix_length = (
-            self.service_connection.stripAssetKeyPrefixLength or 0
-        )
+        self.strip_asset_key_prefix_length = self.service_connection.stripAssetKeyPrefixLength or 0
 
     def _get_downstream_tasks(self, job: SolidHandle) -> Optional[List[str]]:
         """Method to get downstream tasks"""
@@ -123,33 +118,23 @@ class DagsterSource(PipelineServiceSource):
                         name=job.handleID,
                         displayName=job.handleID,
                         downstreamTasks=self._get_downstream_tasks(job=job),
-                        sourceUrl=self.get_source_url(
-                            pipeline_name=pipeline_name, task_name=job.handleID
-                        ),
+                        sourceUrl=self.get_source_url(pipeline_name=pipeline_name, task_name=job.handleID),
                     )
                     task_list.append(task)
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Error to fetch tasks for {pipeline_name}:{job}: {exc}"
-                    )
+                    logger.warning(f"Error to fetch tasks for {pipeline_name}:{job}: {exc}")
 
         return task_list or None
 
-    def yield_pipeline(
-        self, pipeline_details: DagsterPipeline
-    ) -> Iterable[Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details: DagsterPipeline) -> Iterable[Either[CreatePipelineRequest]]:
         """Convert a DAG into a Pipeline Entity"""
 
         try:
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(pipeline_details.id.replace(":", "")),
                 displayName=pipeline_details.name,
-                description=(
-                    Markdown(pipeline_details.description)
-                    if pipeline_details.description
-                    else None
-                ),
+                description=(Markdown(pipeline_details.description) if pipeline_details.description else None),
                 tasks=self._get_task_list(pipeline_name=pipeline_details.name),
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
                 tags=get_tag_labels(
@@ -158,9 +143,7 @@ class DagsterSource(PipelineServiceSource):
                     classification_name=DAGSTER_TAG_CATEGORY,
                     include_tags=self.source_config.includeTags,
                 ),
-                sourceUrl=self.get_source_url(
-                    pipeline_name=pipeline_details.name, task_name=None
-                ),
+                sourceUrl=self.get_source_url(pipeline_name=pipeline_details.name, task_name=None),
             )
             yield Either(right=pipeline_request)
             self.register_record(pipeline_request=pipeline_request)
@@ -173,9 +156,7 @@ class DagsterSource(PipelineServiceSource):
                 )
             )
 
-    def yield_tag(
-        self, pipeline_details: DagsterPipeline
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(self, pipeline_details: DagsterPipeline) -> Iterable[Either[OMetaTagAndClassification]]:
         yield from get_ometa_tag_and_classification(
             tags=[self.context.get().repository_name],
             classification_name=DAGSTER_TAG_CATEGORY,
@@ -184,28 +165,20 @@ class DagsterSource(PipelineServiceSource):
             include_tags=self.source_config.includeTags,
         )
 
-    def _get_task_status(
-        self, run: RunStepStats, task_name: str
-    ) -> Iterable[Either[OMetaPipelineStatus]]:
+    def _get_task_status(self, run: RunStepStats, task_name: str) -> Iterable[Either[OMetaPipelineStatus]]:
         """Prepare the OMetaPipelineStatus"""
         try:
             # Convert Dagster timestamps from seconds to milliseconds
             task_status = TaskStatus(
                 name=task_name,
-                executionStatus=STATUS_MAP.get(
-                    run.status.lower(), StatusType.Pending.value
-                ),
+                executionStatus=STATUS_MAP.get(run.status.lower(), StatusType.Pending.value),
                 startTime=int(run.startTime * 1000) if run.startTime else None,
                 endTime=int(run.endTime * 1000) if run.endTime else None,
             )
             pipeline_status = PipelineStatus(
                 taskStatus=[task_status],
-                executionStatus=STATUS_MAP.get(
-                    run.status.lower(), StatusType.Pending.value
-                ),
-                timestamp=Timestamp(int(run.startTime * 1000))
-                if run.startTime
-                else None,
+                executionStatus=STATUS_MAP.get(run.status.lower(), StatusType.Pending.value),
+                timestamp=Timestamp(int(run.startTime * 1000)) if run.startTime else None,
             )
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
@@ -227,9 +200,7 @@ class DagsterSource(PipelineServiceSource):
                 )
             )
 
-    def yield_pipeline_status(
-        self, pipeline_details: DagsterPipeline
-    ) -> Iterable[Either[OMetaPipelineStatus]]:
+    def yield_pipeline_status(self, pipeline_details: DagsterPipeline) -> Iterable[Either[OMetaPipelineStatus]]:
         """Yield the pipeline and task status"""
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
@@ -237,9 +208,7 @@ class DagsterSource(PipelineServiceSource):
             service_name=self.context.get().pipeline_service,
             pipeline_name=self.context.get().pipeline,
         )
-        pipeline_entity = self.metadata.get_by_name(
-            entity=Pipeline, fqn=pipeline_fqn, fields=["tasks"]
-        )
+        pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn, fields=["tasks"])
         for task in pipeline_entity.tasks or []:
             try:
                 runs = self.client.get_task_runs(
@@ -259,9 +228,7 @@ class DagsterSource(PipelineServiceSource):
                     )
                 )
 
-    def yield_pipeline_lineage_details(
-        self, pipeline_details: DagsterPipeline
-    ) -> Iterable[Either[AddLineageRequest]]:
+    def yield_pipeline_lineage_details(self, pipeline_details: DagsterPipeline) -> Iterable[Either[AddLineageRequest]]:
         """
         Extract lineage between pipeline and data assets.
         Based on Dagster assets and their dependencies.
@@ -274,9 +241,7 @@ class DagsterSource(PipelineServiceSource):
                 pipeline_name=self.context.get().pipeline,
             )
 
-            pipeline_entity = self.metadata.get_by_name(
-                entity=Pipeline, fqn=pipeline_fqn
-            )
+            pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
             if not pipeline_entity:
                 logger.warning(f"Pipeline entity not found for FQN: {pipeline_fqn}")
@@ -293,11 +258,7 @@ class DagsterSource(PipelineServiceSource):
 
             asset_by_key = {asset.assetKey.to_string(): asset for asset in assets}
 
-            pipeline_assets = [
-                asset
-                for asset in assets
-                if self._is_asset_in_pipeline(asset, pipeline_details.name)
-            ]
+            pipeline_assets = [asset for asset in assets if self._is_asset_in_pipeline(asset, pipeline_details.name)]
 
             lineage_details = LineageDetails(
                 pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
@@ -305,14 +266,10 @@ class DagsterSource(PipelineServiceSource):
             )
 
             for asset in pipeline_assets:
-                to_result = self._resolve_asset_to_table(
-                    asset, self.get_db_service_names() or ["*"]
-                )
+                to_result = self._resolve_asset_to_table(asset, self.get_db_service_names() or ["*"])
 
                 if not to_result.is_resolved:
-                    normalized_key = asset.assetKey.normalize(
-                        self.strip_asset_key_prefix_length
-                    ).to_string()
+                    normalized_key = asset.assetKey.normalize(self.strip_asset_key_prefix_length).to_string()
                     logger.debug(
                         f"Could not resolve table for asset: {asset.assetKey.to_string()} "
                         f"(normalized: {normalized_key})"
@@ -329,9 +286,7 @@ class DagsterSource(PipelineServiceSource):
                     if not dep_asset:
                         continue
 
-                    from_result = self._resolve_asset_to_table(
-                        dep_asset, self.get_db_service_names() or ["*"]
-                    )
+                    from_result = self._resolve_asset_to_table(dep_asset, self.get_db_service_names() or ["*"])
 
                     if not from_result.is_resolved:
                         continue
@@ -390,9 +345,7 @@ class DagsterSource(PipelineServiceSource):
     def get_pipeline_name(self, pipeline_details: DagsterPipeline) -> str:
         return pipeline_details.name
 
-    def get_source_url(
-        self, pipeline_name: str, task_name: Optional[str]
-    ) -> Optional[SourceUrl]:
+    def get_source_url(self, pipeline_name: str, task_name: Optional[str]) -> Optional[SourceUrl]:
         """
         Method to get source url for pipelines and tasks for dagster
         """
@@ -409,26 +362,20 @@ class DagsterSource(PipelineServiceSource):
             logger.warning(f"Error to get pipeline url: {exc}")
         return None
 
-    def _is_asset_in_pipeline(
-        self, asset: DagsterAssetNode, pipeline_name: str
-    ) -> bool:
+    def _is_asset_in_pipeline(self, asset: DagsterAssetNode, pipeline_name: str) -> bool:
         """Check if asset is associated with the given pipeline/job"""
         if not asset.jobs:
             return False
         return any(job.name == pipeline_name for job in asset.jobs)
 
-    def _resolve_asset_to_table(
-        self, asset: DagsterAssetNode, db_services: List[str]
-    ) -> TableResolutionResult:
+    def _resolve_asset_to_table(self, asset: DagsterAssetNode, db_services: List[str]) -> TableResolutionResult:
         """
         Resolve Dagster asset to OpenMetadata Table entity.
         Tries multiple strategies to parse asset key into database/schema/table.
 
         Returns: TableResolutionResult with table_fqn and table_entity (or None if not found)
         """
-        normalized_asset_key = asset.assetKey.normalize(
-            self.strip_asset_key_prefix_length
-        )
+        normalized_asset_key = asset.assetKey.normalize(self.strip_asset_key_prefix_length)
         asset_key_str = normalized_asset_key.to_string()
 
         parts = normalized_asset_key.path
@@ -468,18 +415,14 @@ class DagsterSource(PipelineServiceSource):
                 table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
 
                 if table_entity:
-                    return TableResolutionResult(
-                        table_fqn=table_fqn, table_entity=table_entity
-                    )
+                    return TableResolutionResult(table_fqn=table_fqn, table_entity=table_entity)
 
             except Exception as exc:
                 logger.debug(f"Failed to resolve for service {service_name}: {exc}")
 
         return TableResolutionResult()
 
-    def _parse_asset_from_materialization(
-        self, asset: DagsterAssetNode
-    ) -> Optional[Dict[str, str]]:
+    def _parse_asset_from_materialization(self, asset: DagsterAssetNode) -> Optional[Dict[str, str]]:
         """
         Extract table info from asset materialization metadata.
         """

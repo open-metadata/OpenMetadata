@@ -13,6 +13,7 @@
 Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
+
 from typing import Optional, cast
 
 import sqlalchemy
@@ -69,9 +70,7 @@ def check_if_should_quote_column_name(table_service_type) -> Optional[bool]:
     return None
 
 
-def build_orm_col(
-    idx: int, col: Column, table_service_type, *, _quote=None
-) -> sqlalchemy.Column:
+def build_orm_col(idx: int, col: Column, table_service_type, *, _quote=None) -> sqlalchemy.Column:
     """
     Cook the ORM column from our metadata instance
     information.
@@ -86,20 +85,16 @@ def build_orm_col(
     if _quote is not None:
         quote = _quote
     else:
-        quote = check_if_should_quote_column_name(
-            table_service_type
-        ) or check_snowflake_case_sensitive(table_service_type, col.name.root)
+        quote = check_if_should_quote_column_name(table_service_type) or check_snowflake_case_sensitive(
+            table_service_type, col.name.root
+        )
 
     return sqlalchemy.Column(
         name=str(col.name.root),
-        type_=converter_registry[table_service_type]().map_types(
-            col, table_service_type
-        ),
+        type_=converter_registry[table_service_type]().map_types(col, table_service_type),
         primary_key=not bool(idx),  # The first col seen is used as PK
         quote=quote,
-        key=str(
-            col.name.root
-        ).lower(),  # Add lowercase column name as key for snowflake case sensitive columns
+        key=str(col.name.root).lower(),  # Add lowercase column name as key for snowflake case sensitive columns
     )
 
 
@@ -122,9 +117,7 @@ def ometa_to_sqa_orm(
         can be left as None so that the global_metadata object is used.
     """
     _metadata = sqa_metadata_obj or Base.metadata
-    table.serviceType = cast(
-        databaseService.DatabaseServiceType, table.serviceType
-    )  # satisfy mypy
+    table.serviceType = cast(databaseService.DatabaseServiceType, table.serviceType)  # satisfy mypy
 
     # SQA 2.x raises a hard error if no primary key columns are found (was just a warning in 1.x).
     # Since build_orm_col assigns PK to the first column, we need at least one column.
@@ -138,20 +131,14 @@ def ometa_to_sqa_orm(
     orm_database_name = get_orm_database(table, metadata)
     # SQLite does not support schemas
     orm_schema_name = (
-        get_orm_schema(table, metadata)
-        if table.serviceType != databaseService.DatabaseServiceType.SQLite
-        else None
+        get_orm_schema(table, metadata) if table.serviceType != databaseService.DatabaseServiceType.SQLite else None
     )
-    orm_name = f"{orm_database_name}_{orm_schema_name}_{table.name.root}".replace(
-        ".", "_"
-    )
+    orm_name = f"{orm_database_name}_{orm_schema_name}_{table.name.root}".replace(".", "_")
 
     cols = {
-        (
-            col.name.root + "_"
-            if col.name.root in SQA_RESERVED_ATTRIBUTES
-            else col.name.root
-        ): build_orm_col(idx, col, table.serviceType)
+        (col.name.root + "_" if col.name.root in SQA_RESERVED_ATTRIBUTES else col.name.root): build_orm_col(
+            idx, col, table.serviceType
+        )
         for idx, col in enumerate(table.columns)
     }
 
@@ -164,10 +151,7 @@ def ometa_to_sqa_orm(
             "__table_args__": {
                 "schema": orm_schema_name,
                 "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
-                "quote": check_snowflake_case_sensitive(
-                    table.serviceType, table.name.root
-                )
-                or None,
+                "quote": check_snowflake_case_sensitive(table.serviceType, table.name.root) or None,
             },
             **cols,
             "metadata": _metadata,
@@ -194,9 +178,7 @@ def get_orm_schema(table: Table, metadata: OpenMetadata) -> str:
     :return: qualified schema name
     """
 
-    schema: DatabaseSchema = metadata.get_by_id(
-        entity=DatabaseSchema, entity_id=table.databaseSchema.id
-    )
+    schema: DatabaseSchema = metadata.get_by_id(entity=DatabaseSchema, entity_id=table.databaseSchema.id)
 
     return str(schema.name.root)
 
@@ -212,8 +194,6 @@ def get_orm_database(table: Table, metadata: OpenMetadata) -> str:
         str
     """
 
-    database: Database = metadata.get_by_id(
-        entity=Database, entity_id=table.database.id
-    )
+    database: Database = metadata.get_by_id(entity=Database, entity_id=table.database.id)
 
     return str(database.name.root)
