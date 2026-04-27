@@ -11,6 +11,7 @@
 """
 Test status callback
 """
+
 from datetime import datetime, timezone
 from unittest import TestCase
 
@@ -59,14 +60,10 @@ class TestStatusCallback(TestCase):
         """
         Prepare ingredients: Pipeline Entity
         """
-        create_service = get_create_service(
-            entity=PipelineService, name=cls.service_name
-        )
+        create_service = get_create_service(entity=PipelineService, name=cls.service_name)
         cls.metadata.create_or_update(create_service)
 
-        create_pipeline = get_create_entity(
-            entity=Pipeline, name=cls.pipeline_name, reference=cls.service_name.root
-        )
+        create_pipeline = get_create_entity(entity=Pipeline, name=cls.pipeline_name, reference=cls.service_name.root)
         cls.pipeline: Pipeline = cls.metadata.create_or_update(create_pipeline)
 
     @classmethod
@@ -75,11 +72,7 @@ class TestStatusCallback(TestCase):
         Clean up
         """
 
-        service_id = str(
-            cls.metadata.get_by_name(
-                entity=PipelineService, fqn=cls.service_name.root
-            ).id.root
-        )
+        service_id = str(cls.metadata.get_by_name(entity=PipelineService, fqn=cls.service_name.root).id.root)
 
         cls.metadata.delete(
             entity=PipelineService,
@@ -150,9 +143,7 @@ class TestStatusCallback(TestCase):
         )
 
         # DAG status is Pending since we only have the status of a single task
-        self.assertEqual(
-            StatusType.Pending, updated_pipeline.pipelineStatus.executionStatus
-        )
+        self.assertEqual(StatusType.Pending, updated_pipeline.pipelineStatus.executionStatus)
         self.assertEqual(
             StatusType.Successful,
             updated_pipeline.pipelineStatus.taskStatus[0].executionStatus,

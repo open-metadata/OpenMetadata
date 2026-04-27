@@ -12,6 +12,7 @@
 """
 Test DBT with CLI
 """
+
 from abc import abstractmethod
 from typing import List
 from unittest import TestCase
@@ -49,9 +50,7 @@ class CliDBTBase(TestCase):
         @pytest.mark.order(3)
         def test_entities(self) -> None:
             for table_fqn in self.fqn_dbt_tables():
-                table: Table = self.openmetadata.get_by_name(
-                    entity=Table, fqn=table_fqn, fields=["*"]
-                )
+                table: Table = self.openmetadata.get_by_name(entity=Table, fqn=table_fqn, fields=["*"])
                 data_model = table.dataModel
                 self.assertTrue(len(data_model.columns) > 0)
                 self.assertIsNotNone(data_model.rawSql)
@@ -105,13 +104,9 @@ class CliDBTBase(TestCase):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_for_vanilla_ingestion(
-            self, source_status: Status, sink_status: Status
-        ) -> None:
+        def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_for_dbt_ingestion(
-            self, source_status: Status, sink_status: Status
-        ) -> None:
+        def assert_for_dbt_ingestion(self, source_status: Status, sink_status: Status) -> None:
             raise NotImplementedError()

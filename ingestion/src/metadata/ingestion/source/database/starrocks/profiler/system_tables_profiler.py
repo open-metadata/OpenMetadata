@@ -15,6 +15,7 @@ Uses StarRocks system tables for efficient statistics gathering:
 - information_schema.tables: row count, data size, create/update time
 - _statistics_.column_statistics: column-level statistics (requires ANALYZE)
 """
+
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Type
 
@@ -115,9 +116,7 @@ class StarRocksStoredStatisticsSource(StoredStatisticsSource):
         super().__init__(**kwargs)
         self.stats_cache = LRUCache(capacity=LRU_CACHE_SIZE)
 
-    def get_column_statistics(
-        self, metric: List[Metric], schema: str, table_name: str, column: str
-    ) -> Dict[str, Any]:
+    def get_column_statistics(self, metric: List[Metric], schema: str, table_name: str, column: str) -> Dict[str, Any]:
         """Get column-level statistics from _statistics_.column_statistics"""
         table_stats = self._get_cached_stats(schema, table_name)
 
@@ -139,9 +138,7 @@ class StarRocksStoredStatisticsSource(StoredStatisticsSource):
 
         return result
 
-    def get_table_statistics(
-        self, metric: List[Metric], schema: str, table_name: str
-    ) -> Dict[str, Any]:
+    def get_table_statistics(self, metric: List[Metric], schema: str, table_name: str) -> Dict[str, Any]:
         """Get table-level statistics from information_schema.tables"""
         table_stats = self._get_cached_stats(schema, table_name)
         result = {}
@@ -193,9 +190,7 @@ class StarRocksStoredStatisticsSource(StoredStatisticsSource):
                         column_name=row.column_name,
                         row_count=row.row_count,
                         data_size=row.data_size,
-                        distinct_count=(
-                            int(row.distinct_count) if row.distinct_count else None
-                        ),
+                        distinct_count=(int(row.distinct_count) if row.distinct_count else None),
                         null_count=row.null_count,
                         min_value=row.min_value,
                         max_value=row.max_value,

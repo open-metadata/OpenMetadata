@@ -12,6 +12,7 @@
 """
 Module to define overriden dialect methods
 """
+
 from enum import Enum
 
 from sqlalchemy import and_, join, sql
@@ -22,9 +23,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-BASE_CLIDRIVER_URL = (
-    "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli"
-)
+BASE_CLIDRIVER_URL = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli"
 
 
 class DB2CLIDriverVersions(Enum):
@@ -42,9 +41,7 @@ class DB2CLIDriverVersions(Enum):
 
 
 @reflection.cache
-def get_columns_os390(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_columns_os390(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     """Override OS390Reflector.get_columns to handle empty/unrecognized types
     gracefully instead of emitting SAWarnings."""
     current_schema = self.denormalize_name(schema or self.default_schema_name)
@@ -83,10 +80,7 @@ def get_columns_os390(
             if not coltype:
                 logger.warning(f"Empty type for column '{r[0]}' - ingesting as UNKNOWN")
             else:
-                logger.warning(
-                    f"Did not recognize type '{coltype}' of column '{r[0]}'"
-                    " - ingesting as UNKNOWN"
-                )
+                logger.warning(f"Did not recognize type '{coltype}' of column '{r[0]}' - ingesting as UNKNOWN")
             coltype = sa_types.NULLTYPE
 
         sa_columns.append(
@@ -103,9 +97,7 @@ def get_columns_os390(
 
 
 @reflection.cache
-def get_unique_constraints(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_unique_constraints(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     """Small Method to override the Dialect default as it is not filtering properly the Schema and Table Name."""
     current_schema = self.denormalize_name(schema or self.default_schema_name)
     table_name = self.denormalize_name(table_name)
@@ -194,9 +186,7 @@ def install_clidriver(clidriver_version: str) -> None:
             clidriver_url = f"{BASE_CLIDRIVER_URL}/macarm64_odbc_cli.tar.gz"
         elif machine == "x86_64":  # Intel
             default_clidriver_url = f"{BASE_CLIDRIVER_URL}/macos64_odbc_cli.tar.gz"
-            clidriver_url = (
-                f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/macos64_odbc_cli.tar.gz"
-            )
+            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/macos64_odbc_cli.tar.gz"
     elif system == "linux":
         if is_64bits:
             default_clidriver_url = f"{BASE_CLIDRIVER_URL}/linuxx64_odbc_cli.tar.gz"
@@ -207,18 +197,12 @@ def install_clidriver(clidriver_version: str) -> None:
     elif system == "windows":
         if is_64bits:
             default_clidriver_url = f"{BASE_CLIDRIVER_URL}/ntx64_odbc_cli.zip"
-            clidriver_url = (
-                f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/ntx64_odbc_cli.zip"
-            )
+            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/ntx64_odbc_cli.zip"
         else:
             default_clidriver_url = f"{BASE_CLIDRIVER_URL}/nt32_odbc_cli.zip"
-            clidriver_url = (
-                f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/nt32_odbc_cli.zip"
-            )
+            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/nt32_odbc_cli.zip"
     else:
-        logger.error(
-            f"Unsupported operating system for db2 driver installation: {system}"
-        )
+        logger.error(f"Unsupported operating system for db2 driver installation: {system}")
         return None
 
     # set env variables for CLIDRIVER_VERSION and IBM_DB_INSTALLER_URL
@@ -233,9 +217,7 @@ def install_clidriver(clidriver_version: str) -> None:
     try:
         pkg_resources.get_distribution("ibm_db")
         # If we get here, ibm_db is installed, so uninstall it first
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "uninstall", "-y", "ibm_db"]
-        )
+        subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "ibm_db"])
     except pkg_resources.DistributionNotFound:
         # ibm_db is not installed, proceed with installation
         pass

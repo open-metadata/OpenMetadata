@@ -224,9 +224,7 @@ EXPECTED_COLUMN_VALUE = [
 
 
 class cockroachUnitTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
@@ -236,21 +234,13 @@ class cockroachUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
-        self.cockroach_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
-        self.cockroach_source.context.get().__dict__[
-            "database"
-        ] = MOCK_DATABASE.name.root
-        self.cockroach_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.cockroach_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.cockroach_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.cockroach_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_datatype(self):
         inspector = types.SimpleNamespace()
-        inspector.get_columns = (
-            lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
-        )
+        inspector.get_columns = lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
         inspector.get_pk_constraint = lambda table_name, schema_name: []
         inspector.get_unique_constraints = lambda table_name, schema_name: []
         inspector.get_foreign_keys = lambda table_name, schema_name: []
@@ -262,9 +252,7 @@ class cockroachUnitTest(TestCase):
             self.assertEqual(result[i], EXPECTED_COLUMN_VALUE[i])
 
     @patch("sqlalchemy.engine.base.Engine")
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection")
     def test_close_connection(self, engine, connection):
         connection.return_value = True
         self.cockroach_source.close()
@@ -280,37 +268,19 @@ class cockroachUnitTest(TestCase):
         See: https://www.cockroachlabs.com/docs/stable/hash-sharded-indexes
         """
         # These should be identified as hidden shard columns
-        self.assertTrue(
-            CockroachSource._is_hidden_shard_column("crdb_internal_id_shard_16")
-        )
-        self.assertTrue(
-            CockroachSource._is_hidden_shard_column("crdb_internal_user_id_shard_8")
-        )
-        self.assertTrue(
-            CockroachSource._is_hidden_shard_column(
-                "crdb_internal_my_column_name_shard_32"
-            )
-        )
-        self.assertTrue(
-            CockroachSource._is_hidden_shard_column(
-                "crdb_internal_start_time_end_time_shard_4"
-            )
-        )
+        self.assertTrue(CockroachSource._is_hidden_shard_column("crdb_internal_id_shard_16"))
+        self.assertTrue(CockroachSource._is_hidden_shard_column("crdb_internal_user_id_shard_8"))
+        self.assertTrue(CockroachSource._is_hidden_shard_column("crdb_internal_my_column_name_shard_32"))
+        self.assertTrue(CockroachSource._is_hidden_shard_column("crdb_internal_start_time_end_time_shard_4"))
 
         # These should NOT be identified as hidden shard columns
         self.assertFalse(CockroachSource._is_hidden_shard_column("id"))
         self.assertFalse(CockroachSource._is_hidden_shard_column("user_id"))
         self.assertFalse(CockroachSource._is_hidden_shard_column("crdb_internal"))
         self.assertFalse(CockroachSource._is_hidden_shard_column("crdb_internal_shard"))
-        self.assertFalse(
-            CockroachSource._is_hidden_shard_column("crdb_internal_id_shard")
-        )
-        self.assertFalse(
-            CockroachSource._is_hidden_shard_column("my_crdb_internal_id_shard_16")
-        )
-        self.assertFalse(
-            CockroachSource._is_hidden_shard_column("crdb_internal_id_shard_16_extra")
-        )
+        self.assertFalse(CockroachSource._is_hidden_shard_column("crdb_internal_id_shard"))
+        self.assertFalse(CockroachSource._is_hidden_shard_column("my_crdb_internal_id_shard_16"))
+        self.assertFalse(CockroachSource._is_hidden_shard_column("crdb_internal_id_shard_16_extra"))
 
     def test_hidden_shard_columns_filtered_from_pk_constraints(self):
         """
@@ -321,9 +291,7 @@ class cockroachUnitTest(TestCase):
         'Invalid column name found in table constraint' errors.
         """
         inspector = types.SimpleNamespace()
-        inspector.get_columns = (
-            lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
-        )
+        inspector.get_columns = lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
         # Simulate a primary key with both regular and hidden shard columns
         inspector.get_pk_constraint = lambda table_name, schema_name: {
             "constrained_columns": [
@@ -344,9 +312,7 @@ class cockroachUnitTest(TestCase):
         )
 
         # Find the column named 'username' and check its constraint
-        username_col = next(
-            (col for col in columns if col.name.root == "username"), None
-        )
+        username_col = next((col for col in columns if col.name.root == "username"), None)
         self.assertIsNotNone(username_col)
         # Since we now have only one pk_column after filtering, it should be a column-level constraint
         self.assertEqual(username_col.constraint, Constraint.PRIMARY_KEY)
@@ -359,9 +325,7 @@ class cockroachUnitTest(TestCase):
         resulting pk_columns list should be empty.
         """
         inspector = types.SimpleNamespace()
-        inspector.get_columns = (
-            lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
-        )
+        inspector.get_columns = lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
         # All primary key columns are hidden shard columns
         inspector.get_pk_constraint = lambda table_name, schema_name: {
             "constrained_columns": [
@@ -382,11 +346,7 @@ class cockroachUnitTest(TestCase):
         )
 
         # No table-level primary key constraint should be created
-        pk_constraints = [
-            tc
-            for tc in (table_constraints or [])
-            if tc.constraintType == ConstraintType.PRIMARY_KEY
-        ]
+        pk_constraints = [tc for tc in (table_constraints or []) if tc.constraintType == ConstraintType.PRIMARY_KEY]
         self.assertEqual(len(pk_constraints), 0)
 
         # No column should have PRIMARY_KEY constraint
@@ -402,9 +362,7 @@ class cockroachUnitTest(TestCase):
         constraint after filtering.
         """
         inspector = types.SimpleNamespace()
-        inspector.get_columns = (
-            lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
-        )
+        inspector.get_columns = lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
         # Simulate a composite primary key with hidden shard column
         inspector.get_pk_constraint = lambda table_name, schema_name: {
             "constrained_columns": [
@@ -426,10 +384,6 @@ class cockroachUnitTest(TestCase):
         )
 
         # Should have a table-level PRIMARY_KEY constraint with the two visible columns
-        pk_constraints = [
-            tc
-            for tc in (table_constraints or [])
-            if tc.constraintType == ConstraintType.PRIMARY_KEY
-        ]
+        pk_constraints = [tc for tc in (table_constraints or []) if tc.constraintType == ConstraintType.PRIMARY_KEY]
         self.assertEqual(len(pk_constraints), 1)
         self.assertEqual(pk_constraints[0].columns, ["username", "geom_c"])

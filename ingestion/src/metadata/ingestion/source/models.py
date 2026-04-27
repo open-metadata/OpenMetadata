@@ -11,6 +11,7 @@
 """
 Auxiliary pydantic models used during metadata ingestion
 """
+
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -24,6 +25,4 @@ class TableView(BaseModel):
     table_name: str = Field(..., description="Name of the table")
     schema_name: str = Field(..., description="Name of the schema")
     db_name: str = Field(..., description="Name of the Database")
-    view_definition: Optional[str] = Field(
-        None, description="Definition of the view in a specific SQL dialect"
-    )
+    view_definition: Optional[str] = Field(None, description="Definition of the view in a specific SQL dialect")

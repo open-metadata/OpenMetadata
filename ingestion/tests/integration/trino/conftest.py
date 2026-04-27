@@ -1,4 +1,4 @@
-import os.path
+import os.path  # noqa: I001
 import random
 import uuid
 from pathlib import Path
@@ -29,7 +29,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 
-from ..conftest import ingestion_config as base_ingestion_config
+from ..conftest import ingestion_config as base_ingestion_config  # noqa: F401
 
 
 class TrinoContainer(DbContainer):
@@ -73,7 +73,9 @@ class TrinoContainer(DbContainer):
         self._docker.client.images.remove(self._built_image)
 
     def get_connection_url(self) -> str:
-        return f"trino://{self.user}:@{self.get_container_host_ip()}:{self.get_exposed_port(self.port)}/?http_scheme=http"
+        return (
+            f"trino://{self.user}:@{self.get_container_host_ip()}:{self.get_exposed_port(self.port)}/?http_scheme=http"
+        )
 
     def build(self):
         docker_client = docker.from_env()
@@ -150,9 +152,7 @@ def trino_container(hive_metastore_container, minio_container, docker_network):
 @pytest.fixture(scope="package")
 def mysql_container(docker_network):
     container = (
-        MySqlContainer(
-            "mariadb:10.6.16", username="admin", password="admin", dbname="metastore_db"
-        )
+        MySqlContainer("mariadb:10.6.16", username="admin", password="admin", dbname="metastore_db")
         .with_network(docker_network)
         .with_network_aliases("mariadb")
     )
@@ -162,27 +162,27 @@ def mysql_container(docker_network):
 
 @pytest.fixture(scope="package")
 def hive_metastore_container(mysql_container, minio_container, docker_network):
-    with HiveMetaStoreContainer("bitsondatadev/hive-metastore:latest").with_network(
-        docker_network
-    ).with_network_aliases("metastore").with_env(
-        "METASTORE_DB_HOSTNAME", "mariadb"
-    ).with_env(
-        "METASTORE_DB_PORT", str(mysql_container.port)
-    ).with_env(
-        "JDBC_CONNECTION_URL",
-        f"jdbc:mysql://mariadb:{mysql_container.port}/{mysql_container.dbname}",
-    ).with_env(
-        "MINIO_ENDPOINT",
-        f"http://minio:{minio_container.port}",
-    ) as hive:
+    with (
+        HiveMetaStoreContainer("bitsondatadev/hive-metastore:latest")
+        .with_network(docker_network)
+        .with_network_aliases("metastore")
+        .with_env("METASTORE_DB_HOSTNAME", "mariadb")
+        .with_env("METASTORE_DB_PORT", str(mysql_container.port))
+        .with_env(
+            "JDBC_CONNECTION_URL",
+            f"jdbc:mysql://mariadb:{mysql_container.port}/{mysql_container.dbname}",
+        )
+        .with_env(
+            "MINIO_ENDPOINT",
+            f"http://minio:{minio_container.port}",
+        ) as hive
+    ):
         yield hive
 
 
 @pytest.fixture(scope="package")
 def minio_container(docker_network):
-    container = (
-        MinioContainer().with_network(docker_network).with_network_aliases("minio")
-    )
+    container = MinioContainer().with_network(docker_network).with_network_aliases("minio")
     with try_bind(container, container.port, container.port) as minio:
         client = minio.get_client()
         client.make_bucket("hive-warehouse")
@@ -191,9 +191,7 @@ def minio_container(docker_network):
 
 @pytest.fixture(scope="package")
 def create_test_data(trino_container):
-    engine = create_engine(
-        make_url(trino_container.get_connection_url()).set(database="minio")
-    )
+    engine = create_engine(make_url(trino_container.get_connection_url()).set(database="minio"))
 
     def _execute_with_connect(sql):
         with engine.connect() as conn:
@@ -205,9 +203,7 @@ def create_test_data(trino_container):
         "SELECT 1 FROM minio.information_schema.schemata LIMIT 1"
     ).fetchall()
 
-    _execute_with_connect(
-        "create schema minio.my_schema WITH (location = 's3a://hive-warehouse/')"
-    )
+    _execute_with_connect("create schema minio.my_schema WITH (location = 's3a://hive-warehouse/')")
     data_dir = os.path.dirname(__file__) + "/data"
     for file in os.listdir(data_dir):
         file_path = Path(os.path.join(data_dir, file))
@@ -219,9 +215,7 @@ def create_test_data(trino_container):
 
         sleep(1)
         _execute_with_connect("ANALYZE " + f'minio."my_schema"."{file_path.stem}"')
-    _execute_with_connect(
-        "CALL system.drop_stats(schema_name => 'my_schema', table_name => 'empty')"
-    )
+    _execute_with_connect("CALL system.drop_stats(schema_name => 'my_schema', table_name => 'empty')")
     return
 
 
@@ -273,9 +267,7 @@ def custom_insert(self, conn, keys: list[str], data_iter):
         try_num += 1
         stmt = insert(self.table).values(data)
         conn.execute(stmt)
-        rowcount = conn.execute(
-            text("SELECT COUNT(*) FROM " + f'"{self.schema}"."{self.name}"')
-        ).scalar()
+        rowcount = conn.execute(text("SELECT COUNT(*) FROM " + f'"{self.schema}"."{self.name}"')).scalar()
     return rowcount
 
 
@@ -287,8 +279,7 @@ def create_service_request(trino_container):
         connection=DatabaseConnection(
             config=TrinoConnection(
                 username=trino_container.user,
-                hostPort="localhost:"
-                + trino_container.get_exposed_port(trino_container.port),
+                hostPort="localhost:" + trino_container.get_exposed_port(trino_container.port),
                 catalog="minio",
                 connectionArguments={"http_scheme": "http"},
             )
@@ -297,7 +288,7 @@ def create_service_request(trino_container):
 
 
 @pytest.fixture(scope="module")
-def ingestion_config(db_service, sink_config, workflow_config, base_ingestion_config):
+def ingestion_config(db_service, sink_config, workflow_config, base_ingestion_config):  # noqa: F811
     base_ingestion_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
         "excludes": [
             "^information_schema$",

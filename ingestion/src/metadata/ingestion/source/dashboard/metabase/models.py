@@ -11,6 +11,7 @@
 """
 Metabase Models
 """
+
 import ast
 import json
 from typing import List, Optional
@@ -141,12 +142,7 @@ class MetabaseChart(BaseModel):
             # Strategy 3: More sophisticated quote replacement
             try:
                 # Handle None values and booleans
-                json_str = (
-                    v.replace("'", '"')
-                    .replace("None", "null")
-                    .replace("True", "true")
-                    .replace("False", "false")
-                )
+                json_str = v.replace("'", '"').replace("None", "null").replace("True", "true").replace("False", "false")
                 return json.loads(json_str)
             except json.JSONDecodeError:
                 pass

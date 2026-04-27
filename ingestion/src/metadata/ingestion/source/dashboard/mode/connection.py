@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from functools import partial
 from typing import Optional
 
@@ -49,11 +50,7 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    test_fn = {
-        "CheckDashboards": partial(
-            client.get_workspace, service_connection.workspaceName
-        )
-    }
+    test_fn = {"CheckDashboards": partial(client.get_workspace, service_connection.workspaceName)}
 
     return test_connection_steps(
         metadata=metadata,

@@ -12,6 +12,7 @@
 """
 Deltalake PySpark Client
 """
+
 import re
 import traceback
 from enum import Enum
@@ -69,9 +70,7 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
         from delta import configure_spark_with_delta_pip
 
         builder = (
-            pyspark.sql.SparkSession.builder.appName(
-                config.configSource.appName or "OpenMetadata"
-            )
+            pyspark.sql.SparkSession.builder.appName(config.configSource.appName or "OpenMetadata")
             .enableHiveSupport()
             .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
             .config(
@@ -136,25 +135,18 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
 
         return cls(spark_session=configure_spark_with_delta_pip(builder).getOrCreate())
 
-    def get_database_names(
-        self, service_connection: DeltaLakeConnection
-    ) -> Iterable[str]:
+    def get_database_names(self, service_connection: DeltaLakeConnection) -> Iterable[str]:
         """Returns the Database Names, based on the underlying client."""
         yield service_connection.databaseName or DEFAULT_DATABASE
 
-    def get_database_schema_names(
-        self, service_connection: DeltaLakeConnection
-    ) -> Iterable[str]:
+    def get_database_schema_names(self, service_connection: DeltaLakeConnection) -> Iterable[str]:
         """Returns the RAW database schema names, based on the underlying client."""
         for schema in self._spark.catalog.listDatabases():
             yield schema.name
 
-    def get_table_info(
-        self, service_connection: DeltaLakeConnection, schema_name: str
-    ) -> Iterable[TableInfo]:
+    def get_table_info(self, service_connection: DeltaLakeConnection, schema_name: str) -> Iterable[TableInfo]:
         """Returns the Tables name and type, based on the underlying client."""
         for table in self._spark.catalog.listTables(dbName=schema_name):
-
             if table.tableType == SparkTableType.TEMPORARY.value:
                 logger.debug(f"Skipping temporary table {table.name}")
                 continue
@@ -195,23 +187,15 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
         parsed_string = ColumnTypeParser._parse_datatype_string(row["data_type"])
 
         if parsed_string:
-            parsed_string["dataLength"] = self._check_col_length(
-                parsed_string["dataType"], row["data_type"]
-            )
+            parsed_string["dataLength"] = self._check_col_length(parsed_string["dataType"], row["data_type"])
             if row["data_type"] == "array":
                 array_data_type_display = self._get_display_data_type(row)
                 parsed_string["dataTypeDisplay"] = array_data_type_display
                 # Parse Primitive Datatype string
                 # if Datatype is Array(int) -> Parse int
-                parsed_string[
-                    "arrayDataType"
-                ] = ColumnTypeParser._parse_primitive_datatype_String(
-                    array_data_type_display[
-                        ARRAY_CHILD_START_INDEX:ARRAY_CHILD_END_INDEX
-                    ]
-                )[
-                    "dataType"
-                ]
+                parsed_string["arrayDataType"] = ColumnTypeParser._parse_primitive_datatype_String(
+                    array_data_type_display[ARRAY_CHILD_START_INDEX:ARRAY_CHILD_END_INDEX]
+                )["dataType"]
 
             column = Column(name=row["col_name"], **parsed_string)
         else:
@@ -219,10 +203,7 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
             charlen = re.search(r"\(([\d]+)\)", row["data_type"])
             if charlen:
                 charlen = int(charlen.group(1))
-            if (
-                col_type.upper() in {"CHAR", "VARCHAR", "VARBINARY", "BINARY"}
-                and charlen is None
-            ):
+            if col_type.upper() in {"CHAR", "VARCHAR", "VARBINARY", "BINARY"} and charlen is None:
                 charlen = 1
             column = Column(
                 name=row["col_name"],
@@ -235,14 +216,10 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
 
     def fetch_view_schema(self, view_name: str) -> Optional[Dict]:
         try:
-            describe_output = self._spark.sql(
-                f"describe extended {view_name}"
-            ).collect()
+            describe_output = self._spark.sql(f"describe extended {view_name}").collect()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unexpected exception to fetch view schema [{view_name}]: {exc}"
-            )
+            logger.warning(f"Unexpected exception to fetch view schema [{view_name}]: {exc}")
             return None
 
         view_detail = {}
@@ -266,9 +243,7 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
                 field_dict[field.name] = field
         except (AnalysisException, ParseException) as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unexpected exception getting columns for [{table_name}]: {exc}"
-            )
+            logger.warning(f"Unexpected exception getting columns for [{table_name}]: {exc}")
             return []
 
         parsed_columns: List[Column] = []

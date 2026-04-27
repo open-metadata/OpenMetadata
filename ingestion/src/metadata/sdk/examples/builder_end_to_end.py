@@ -8,6 +8,7 @@ SDK performs the actual operations.
 Run:
   python -m metadata.sdk.examples.builder_end_to_end
 """
+
 from __future__ import annotations
 
 import logging
@@ -115,9 +116,7 @@ class DatabaseServiceBuilderPy:
             raise ValueError("Service type is required")
         return CreateDatabaseServiceRequest(
             name=EntityName(self.name_val),
-            description=Markdown(self.description_val)
-            if self.description_val
-            else None,
+            description=Markdown(self.description_val) if self.description_val else None,
             serviceType=self.type_val,
             connection=self.connection_val,
             displayName=None,
@@ -159,9 +158,7 @@ class DatabaseBuilderPy:
             raise ValueError("Database service FQN is required")
         return CreateDatabaseRequest(
             name=EntityName(self.name_val),
-            description=Markdown(self.description_val)
-            if self.description_val
-            else None,
+            description=Markdown(self.description_val) if self.description_val else None,
             service=FullyQualifiedEntityName(self.service_fqn_val),
             displayName=None,
             tags=None,
@@ -207,9 +204,7 @@ class SchemaBuilderPy:
             raise ValueError("Database FQN is required")
         return CreateDatabaseSchemaRequest(
             name=EntityName(self.name_val),
-            description=Markdown(self.description_val)
-            if self.description_val
-            else None,
+            description=Markdown(self.description_val) if self.description_val else None,
             database=FullyQualifiedEntityName(self.database_fqn_val),
             displayName=None,
             owners=None,
@@ -248,9 +243,7 @@ class TableBuilderPy:
         self.schema_fqn_val = schema_fqn
         return self
 
-    def add_column(
-        self, name: str, dtype: ColumnDataType, *, length: Optional[int] = None
-    ) -> "TableBuilderPy":
+    def add_column(self, name: str, dtype: ColumnDataType, *, length: Optional[int] = None) -> "TableBuilderPy":
         """Add a column to the table."""
         col = Column(
             name=ColumnName(name),
@@ -284,9 +277,7 @@ class TableBuilderPy:
             raise ValueError("At least one column is required")
         return CreateTableRequest(
             name=EntityName(self.name_val),
-            description=Markdown(self.description_val)
-            if self.description_val
-            else None,
+            description=Markdown(self.description_val) if self.description_val else None,
             databaseSchema=FullyQualifiedEntityName(self.schema_fqn_val),
             columns=self.columns_val,
             displayName=None,
@@ -327,44 +318,18 @@ def main() -> None:
         DatabaseServiceBuilderPy()
         .name("mysql_prod")
         .description("Production MySQL")
-        .mysql_connection(
-            host_port="localhost:3306", username="om_user", database="prod"
-        )
+        .mysql_connection(host_port="localhost:3306", username="om_user", database="prod")
         .create()
     )
-    service_fqn = (
-        service.fullyQualifiedName.root
-        if service.fullyQualifiedName
-        else str(service.name.root)
-    )
+    service_fqn = service.fullyQualifiedName.root if service.fullyQualifiedName else str(service.name.root)
 
     # 2) Database (builder)
-    database = (
-        DatabaseBuilderPy()
-        .name("sales")
-        .description("Sales database")
-        .in_service(service_fqn)
-        .create()
-    )
-    database_fqn = (
-        database.fullyQualifiedName.root
-        if database.fullyQualifiedName
-        else str(database.name.root)
-    )
+    database = DatabaseBuilderPy().name("sales").description("Sales database").in_service(service_fqn).create()
+    database_fqn = database.fullyQualifiedName.root if database.fullyQualifiedName else str(database.name.root)
 
     # 3) Schema (builder)
-    schema = (
-        SchemaBuilderPy()
-        .name("public")
-        .description("Default schema")
-        .in_database(database_fqn)
-        .create()
-    )
-    schema_fqn = (
-        schema.fullyQualifiedName.root
-        if schema.fullyQualifiedName
-        else str(schema.name.root)
-    )
+    schema = SchemaBuilderPy().name("public").description("Default schema").in_database(database_fqn).create()
+    schema_fqn = schema.fullyQualifiedName.root if schema.fullyQualifiedName else str(schema.name.root)
 
     # 4) Table (builder)
     table = (
@@ -387,12 +352,7 @@ def main() -> None:
     glossary_name = "BusinessGlossary"  # adjust to your glossary
     csv_text = Glossaries.export_csv(glossary_name).execute()
     # dry run
-    _ = (
-        Glossaries.import_csv(glossary_name)
-        .set_dry_run(True)
-        .with_data(csv_text)
-        .execute()
-    )
+    _ = Glossaries.import_csv(glossary_name).set_dry_run(True).with_data(csv_text).execute()
     # apply
     _ = Glossaries.import_csv(glossary_name).with_data(csv_text).execute()
 

@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """Automations integration tests"""
+
 import json
 import logging
 import time
@@ -81,9 +82,7 @@ def _safe_create_or_update(metadata, data, retries=3):
 
 @pytest.fixture(scope="module")
 def mysql_container():
-    with get_mysql_container(
-        MySqlContainerConfigs(container_name=str(uuid.uuid4()))
-    ) as container:
+    with get_mysql_container(MySqlContainerConfigs(container_name=str(uuid.uuid4()))) as container:
         yield container
 
 
@@ -94,14 +93,10 @@ def metadata_ingestion_bot(metadata):
     Required for tests that need to see password fields.
     """
     ingestion_bot = metadata.get_by_name(entity=User, fqn="ingestion-bot")
-    ingestion_bot_auth = metadata.get_by_id(
-        entity=AuthenticationMechanism, entity_id=ingestion_bot.id
-    )
+    ingestion_bot_auth = metadata.get_by_id(entity=AuthenticationMechanism, entity_id=ingestion_bot.id)
 
     config = metadata.config.model_copy(deep=True)
-    config.securityConfig = OpenMetadataJWTClientConfig(
-        jwtToken=ingestion_bot_auth.config.JWTToken
-    )
+    config.securityConfig = OpenMetadataJWTClientConfig(jwtToken=ingestion_bot_auth.config.JWTToken)
 
     return OpenMetadata(config)
 
@@ -224,14 +219,10 @@ def tables(database_service, metadata):
         data=get_create_entity(entity=Database, reference=database_service.name.root)
     )
     db_schema: DatabaseSchema = metadata.create_or_update(
-        data=get_create_entity(
-            entity=DatabaseSchema, reference=database.fullyQualifiedName
-        )
+        data=get_create_entity(entity=DatabaseSchema, reference=database.fullyQualifiedName)
     )
     tables = [
-        metadata.create_or_update(
-            data=get_create_entity(entity=Table, reference=db_schema.fullyQualifiedName)
-        )
+        metadata.create_or_update(data=get_create_entity(entity=Table, reference=db_schema.fullyQualifiedName))
         for _ in range(10)
     ]
 
@@ -271,9 +262,7 @@ def create_glossary(metadata):
 
     def teardown():
         for glossary in glossaries:
-            _safe_delete(
-                metadata, entity=Glossary, entity_id=glossary.id, hard_delete=True
-            )
+            _safe_delete(metadata, entity=Glossary, entity_id=glossary.id, hard_delete=True)
 
     yield _create_glossary
 
@@ -318,9 +307,7 @@ def create_user(metadata, request):
     def _create_user(create_request=None):
         if create_request is None:
             user_name = generate_name()
-            create_request = CreateUserRequest(
-                name=user_name, email=f"{user_name.root}@test.com"
-            )
+            create_request = CreateUserRequest(name=user_name, email=f"{user_name.root}@test.com")
 
         user = metadata.create_or_update(data=create_request)
         users.append(user)
@@ -350,9 +337,7 @@ def create_database(metadata, request):
 
     def teardown():
         for database in databases:
-            _safe_delete(
-                metadata, entity=Database, entity_id=database.id, hard_delete=True
-            )
+            _safe_delete(metadata, entity=Database, entity_id=database.id, hard_delete=True)
 
     request.addfinalizer(teardown)
 
@@ -374,9 +359,7 @@ def create_dashboard(metadata, request):
 
     def teardown():
         for dashboard in dashboards:
-            _safe_delete(
-                metadata, entity=Dashboard, entity_id=dashboard.id, hard_delete=True
-            )
+            _safe_delete(metadata, entity=Dashboard, entity_id=dashboard.id, hard_delete=True)
 
     request.addfinalizer(teardown)
 
@@ -466,9 +449,7 @@ def create_pipeline(metadata, request):
 
     def teardown():
         for pipeline in pipelines:
-            _safe_delete(
-                metadata, entity=Pipeline, entity_id=pipeline.id, hard_delete=True
-            )
+            _safe_delete(metadata, entity=Pipeline, entity_id=pipeline.id, hard_delete=True)
 
     request.addfinalizer(teardown)
 
@@ -492,9 +473,7 @@ def create_container(metadata, request):
 
     def teardown():
         for container in containers:
-            _safe_delete(
-                metadata, entity=Container, entity_id=container.id, hard_delete=True
-            )
+            _safe_delete(metadata, entity=Container, entity_id=container.id, hard_delete=True)
 
     request.addfinalizer(teardown)
 
@@ -518,9 +497,7 @@ def create_mlmodel(metadata, request):
 
     def teardown():
         for mlmodel in mlmodels:
-            _safe_delete(
-                metadata, entity=MlModel, entity_id=mlmodel.id, hard_delete=True
-            )
+            _safe_delete(metadata, entity=MlModel, entity_id=mlmodel.id, hard_delete=True)
 
     request.addfinalizer(teardown)
 

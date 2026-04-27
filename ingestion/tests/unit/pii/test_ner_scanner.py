@@ -11,6 +11,7 @@
 """
 Test Column Name Scanner
 """
+
 from typing import Any
 
 import pytest
@@ -46,10 +47,7 @@ def test_scanner_sensitive(scanner):
         ).tag_fqn
         == "PII.Sensitive"
     )
-    assert (
-        scanner.scan(["im ok", "saratimithi@godesign.com", "not sensitive"]).tag_fqn
-        == "PII.Sensitive"
-    )
+    assert scanner.scan(["im ok", "saratimithi@godesign.com", "not sensitive"]).tag_fqn == "PII.Sensitive"
 
 
 def test_scanner_nonsensitive(scanner):
@@ -128,9 +126,7 @@ def test_scanner_with_lists(scanner):
 
     assert scanner.scan(["foo", "bar", "biz"]) is None
 
-    assert (
-        scanner.scan(["foo", "bar", "johndoe@example.com"]).tag_fqn == "PII.Sensitive"
-    )
+    assert scanner.scan(["foo", "bar", "johndoe@example.com"]).tag_fqn == "PII.Sensitive"
 
     assert (
         scanner.scan(

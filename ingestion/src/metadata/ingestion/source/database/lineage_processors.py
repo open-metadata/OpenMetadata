@@ -11,6 +11,7 @@
 """
 Mixin class with common Stored Procedures logic aimed at lineage.
 """
+
 import re
 import time
 import traceback
@@ -93,16 +94,12 @@ class ProcedureAndProcedureGraph(BaseModel):
 def is_lineage_query(query_type: str, query_text: str) -> bool:
     """Check if it's worth it to parse the query for lineage"""
 
-    logger.debug(
-        f"Validating query lineage for type [{query_type}] and text [{query_text}]"
-    )
+    logger.debug(f"Validating query lineage for type [{query_type}] and text [{query_text}]")
 
     if query_type in ("MERGE", "UPDATE", "CREATE_TABLE_AS_SELECT"):
         return True
 
-    if query_type == "INSERT" and re.search(
-        "^.*insert.*into.*select.*$", query_text.replace("\n", " "), re.IGNORECASE
-    ):
+    if query_type == "INSERT" and re.search("^.*insert.*into.*select.*$", query_text.replace("\n", " "), re.IGNORECASE):
         return True
 
     return False
@@ -126,9 +123,9 @@ def _yield_procedure_lineage(
     if enableTempTableLineage:
         if not procedure_graph_map.get(procedure.fullyQualifiedName.root):
             # Map to store the directed graph for each procedure with its FQN as key
-            procedure_graph_map[
-                procedure.fullyQualifiedName.root
-            ] = ProcedureAndProcedureGraph(procedure=procedure, graph=nx.DiGraph())
+            procedure_graph_map[procedure.fullyQualifiedName.root] = ProcedureAndProcedureGraph(
+                procedure=procedure, graph=nx.DiGraph()
+            )
 
         graph = procedure_graph_map.get(procedure.fullyQualifiedName.root).graph
 
@@ -241,9 +238,7 @@ def yield_procedure_query(
             query=SqlQuery(query_by_procedure.query_text),
             query_type=query_by_procedure.query_type,
             duration=query_by_procedure.query_duration,
-            queryDate=Timestamp(
-                root=datetime_to_timestamp(query_by_procedure.query_start_time, True)
-            ),
+            queryDate=Timestamp(root=datetime_to_timestamp(query_by_procedure.query_start_time, True)),
             triggeredBy=EntityReference(
                 id=procedure.id,
                 type="storedProcedure",

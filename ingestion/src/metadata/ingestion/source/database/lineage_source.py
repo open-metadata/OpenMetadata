@@ -11,6 +11,7 @@
 """
 Lineage Source Module
 """
+
 import csv
 import multiprocessing
 import os
@@ -111,21 +112,15 @@ class LineageSource(QueryParserSource, ABC):
         multiprocessing_supported = False
 
         if multiprocessing_supported:
-            max_processes = min(
-                multiprocessing.cpu_count(), 8
-            )  # Limit to 8 or available CPUs whichever minimum
-            logger.info(
-                f"Starting lineage processing with `{max_processes}` maximum processes"
-            )
+            max_processes = min(multiprocessing.cpu_count(), 8)  # Limit to 8 or available CPUs whichever minimum
+            logger.info(f"Starting lineage processing with `{max_processes}` maximum processes")
         else:
             logger.debug(
                 "Current process cannot spawn child processes. Lineage processing will"
                 " be performed in the same process with multithreading."
             )
             max_processes = max_threads
-            logger.info(
-                f"Starting lineage processing with `{max_processes}` maximum threads"
-            )
+            logger.info(f"Starting lineage processing with `{max_processes}` maximum threads")
 
         def chunk_generator():
             """Group items from producer into chunks of specified size."""
@@ -134,16 +129,12 @@ class LineageSource(QueryParserSource, ABC):
             for item in producer_fn():
                 temp_chunk.append(item)
                 if len(temp_chunk) >= chunk_size:
-                    logger.debug(
-                        f"Processing chunk {chunk_index}: size={len(temp_chunk)}"
-                    )
+                    logger.debug(f"Processing chunk {chunk_index}: size={len(temp_chunk)}")
                     yield temp_chunk
                     temp_chunk = []
                     chunk_index += 1
             if temp_chunk:
-                logger.debug(
-                    f"Processing final chunk {chunk_index}: size={len(temp_chunk)}"
-                )
+                logger.debug(f"Processing final chunk {chunk_index}: size={len(temp_chunk)}")
                 yield temp_chunk
 
         # Use appropriate queue type based on processing mode
@@ -231,19 +222,12 @@ class LineageSource(QueryParserSource, ABC):
             for process in active_processes:
                 if process.is_alive():
                     # Check if the process has timed out
-                    if (
-                        time.time() - process_start_times[process.name]
-                        > processor_timeout
-                    ):
+                    if time.time() - process_start_times[process.name] > processor_timeout:
                         if multiprocessing_supported:
-                            logger.warning(
-                                f"Process {process.name} timed out after {processor_timeout}s"
-                            )
+                            logger.warning(f"Process {process.name} timed out after {processor_timeout}s")
                             process.terminate()  # Force terminate the timed out process
                         else:
-                            logger.warning(
-                                f"Thread {process.name} timed out after {processor_timeout}s"
-                            )
+                            logger.warning(f"Thread {process.name} timed out after {processor_timeout}s")
                             active_timed_out_threads.append(process)
                         completed_chunks += 1
                     else:
@@ -259,16 +243,14 @@ class LineageSource(QueryParserSource, ABC):
                     )
 
             # check if any of the active_timed_out_threads are completed
-            active_timed_out_threads = [
-                thread for thread in active_timed_out_threads if thread.is_alive()
-            ]
+            active_timed_out_threads = [thread for thread in active_timed_out_threads if thread.is_alive()]
 
             # check if there are more than MAX_ACTIVE_TIMED_OUT_THREADS
             if len(active_timed_out_threads) > MAX_ACTIVE_TIMED_OUT_THREADS:
                 remaining_chunks = sum(1 for _ in chunk_iter)
                 logger.warning(
                     f"There are more than {MAX_ACTIVE_TIMED_OUT_THREADS} active timed out threads, "
-                    f"skipping remaining {remaining_chunks}/{completed_chunks+remaining_chunks} chunks. "
+                    f"skipping remaining {remaining_chunks}/{completed_chunks + remaining_chunks} chunks. "
                 )
                 break
 
@@ -293,7 +275,7 @@ class LineageSource(QueryParserSource, ABC):
             logger.debug(traceback.format_exc())
 
         logger.info(
-            f"Lineage processing completed with {completed_chunks}/{completed_chunks+remaining_chunks} chunks processed"
+            f"Lineage processing completed with {completed_chunks}/{completed_chunks + remaining_chunks} chunks processed"
         )
 
     def yield_table_queries_from_logs(self) -> Iterator[TableQuery]:
@@ -305,11 +287,7 @@ class LineageSource(QueryParserSource, ABC):
             if os.path.isfile(query_log_path):
                 file_paths = [query_log_path]
             elif os.path.isdir(query_log_path):
-                file_paths = [
-                    os.path.join(query_log_path, f)
-                    for f in os.listdir(query_log_path)
-                    if f.endswith(".csv")
-                ]
+                file_paths = [os.path.join(query_log_path, f) for f in os.listdir(query_log_path) if f.endswith(".csv")]
             else:
                 raise ValueError(f"{query_log_path} is neither a file nor a directory.")
 
@@ -355,9 +333,7 @@ class LineageSource(QueryParserSource, ABC):
                         )
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
-                        logger.warning(
-                            f"Error processing query_dict {query_dict}: {exc}"
-                        )
+                        logger.warning(f"Error processing query_dict {query_dict}: {exc}")
                 logger.info(f"Processed {row_count} query log entries for lineage")
 
     def get_table_query(self) -> Iterator[TableQuery]:
@@ -369,9 +345,7 @@ class LineageSource(QueryParserSource, ABC):
         if self.config.sourceConfig.config.queryLogFilePath:
             yield from self.yield_table_queries_from_logs()
         else:
-            logger.info(
-                f"Scanning query logs for {self.start.date()} - {self.end.date()}"
-            )
+            logger.info(f"Scanning query logs for {self.start.date()} - {self.end.date()}")
             yield from self.yield_table_query()
 
     def query_lineage_producer(self) -> Iterator[TableQuery]:
@@ -465,13 +439,9 @@ class LineageSource(QueryParserSource, ABC):
         """
         By default stored   procedure lineage is not supported.
         """
-        logger.info(
-            f"Processing Procedure Lineage not supported for {str(self.service_connection.type.value)}"
-        )
+        logger.info(f"Processing Procedure Lineage not supported for {str(self.service_connection.type.value)}")
 
-    def get_column_lineage(
-        self, from_table: Table, to_table: Table
-    ) -> List[ColumnLineage]:
+    def get_column_lineage(self, from_table: Table, to_table: Table) -> List[ColumnLineage]:
         """
         Get the column lineage from the fields
         """
@@ -482,9 +452,7 @@ class LineageSource(QueryParserSource, ABC):
                 from_column = get_column_fqn(table_entity=from_table, column=field)
                 to_column = get_column_fqn(table_entity=to_table, column=field)
                 if from_column and to_column:
-                    column_lineage.append(
-                        ColumnLineage(fromColumns=[from_column], toColumn=to_column)
-                    )
+                    column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))
 
             return column_lineage
         except Exception as exc:
@@ -505,12 +473,8 @@ class LineageSource(QueryParserSource, ABC):
             return Either(
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(
-                            id=Uuid(from_entity.id.root), type="table"
-                        ),
-                        toEntity=EntityReference(
-                            id=Uuid(to_entity.id.root), type="table"
-                        ),
+                        fromEntity=EntityReference(id=Uuid(from_entity.id.root), type="table"),
+                        toEntity=EntityReference(id=Uuid(to_entity.id.root), type="table"),
                         lineageDetails=LineageDetails(
                             source=Source.CrossDatabaseLineage,
                             columnsLineage=column_lineage,
@@ -526,9 +490,7 @@ class LineageSource(QueryParserSource, ABC):
         By default cross database lineage is not supported.
         """
 
-    def _iter(
-        self, *_, **__
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+    def _iter(self, *_, **__) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
         """
         Based on the query logs, prepare the lineage
         and send it to the sink
@@ -536,10 +498,7 @@ class LineageSource(QueryParserSource, ABC):
         if self.graph is None and self.source_config.enableTempTableLineage:
             # Create a directed graph
             self.graph = nx.DiGraph()
-        if (
-            self.procedure_graph_map is None
-            and self.source_config.enableTempTableLineage
-        ):
+        if self.procedure_graph_map is None and self.source_config.enableTempTableLineage:
             # Create a dictionary to store the directed graph for each procedure
             self.procedure_graph_map = {}
 
@@ -554,15 +513,10 @@ class LineageSource(QueryParserSource, ABC):
         if self.source_config.processQueryLineage:
             if hasattr(self.service_connection, "supportsLineageExtraction"):
                 yield from self.yield_query_lineage() or []
-                yield from get_lineage_by_graph(
-                    graph=self.graph, metadata=self.metadata
-                )
+                yield from get_lineage_by_graph(graph=self.graph, metadata=self.metadata)
             else:
                 logger.warning(
                     f"Lineage extraction is not supported for {str(self.service_connection.type.value)} connection"
                 )
-        if (
-            self.source_config.processCrossDatabaseLineage
-            and self.source_config.crossDatabaseServiceNames
-        ):
+        if self.source_config.processCrossDatabaseLineage and self.source_config.crossDatabaseServiceNames:
             yield from self.yield_cross_database_lineage() or []

@@ -145,10 +145,7 @@ def singlestore_engine():
         host = container.get_container_host_ip()
         port = int(container.get_exposed_port(SINGLESTORE_PORT))
         _wait_for_singlestore(host, port, timeout=180)
-        url = (
-            f"mysql+pymysql://root:{SINGLESTORE_ROOT_PASSWORD}"
-            f"@{host}:{port}/information_schema"
-        )
+        url = f"mysql+pymysql://root:{SINGLESTORE_ROOT_PASSWORD}@{host}:{port}/information_schema"
         engine = create_engine(url)
         with engine.connect() as conn:
             conn.execute(text("CREATE DATABASE IF NOT EXISTS test_db"))
@@ -162,9 +159,7 @@ def singlestore_engine():
                 )
             )
             values = ", ".join(f"({row[0]}, {row[1]}, '{row[2]}')" for row in TEST_ROWS)
-            conn.execute(
-                text(f"INSERT INTO test_data (id, value, category) VALUES {values}")
-            )
+            conn.execute(text(f"INSERT INTO test_data (id, value, category) VALUES {values}"))
             conn.commit()
         engine.dispose()
         engine = create_engine(url.replace("information_schema", "test_db"))
@@ -178,9 +173,7 @@ def session(singlestore_engine):
         yield session
 
 
-def _compile_with_session(
-    session, col_name, table_name, percentile, dimension_col=None
-):
+def _compile_with_session(session, col_name, table_name, percentile, dimension_col=None):
     fn = _build_fn(col_name, table_name, percentile, dimension_col)
     return fn.compile(
         dialect=session.get_bind().dialect,
@@ -195,59 +188,41 @@ class TestSingleStoreMedianFnExecution:
 
     def test_median_non_correlated(self, session):
         compiled = _compile_with_session(session, "value", "test_data", 0.50)
-        result = session.execute(
-            text(f"SELECT {compiled} AS median_val FROM test_data LIMIT 1")
-        ).scalar()
+        result = session.execute(text(f"SELECT {compiled} AS median_val FROM test_data LIMIT 1")).scalar()
         assert result is not None
         assert result == 75.0
 
     def test_first_quartile_non_correlated(self, session):
         compiled = _compile_with_session(session, "value", "test_data", 0.25)
-        result = session.execute(
-            text(f"SELECT {compiled} AS q1_val FROM test_data LIMIT 1")
-        ).scalar()
+        result = session.execute(text(f"SELECT {compiled} AS q1_val FROM test_data LIMIT 1")).scalar()
         assert result is not None
         assert result == 30.0
 
     def test_third_quartile_non_correlated(self, session):
         compiled = _compile_with_session(session, "value", "test_data", 0.75)
-        result = session.execute(
-            text(f"SELECT {compiled} AS q3_val FROM test_data LIMIT 1")
-        ).scalar()
+        result = session.execute(text(f"SELECT {compiled} AS q3_val FROM test_data LIMIT 1")).scalar()
         assert result is not None
         assert result == 300.0
 
     def test_median_with_dimension_col(self, session):
-        compiled = _compile_with_session(
-            session, "value", "test_data", 0.50, "category"
-        )
+        compiled = _compile_with_session(session, "value", "test_data", 0.50, "category")
         # SingleStore Distributed rejects scalar subselects combined with
         # DISTINCT or ORDER BY. Query raw rows and deduplicate in Python.
-        results = session.execute(
-            text(f"SELECT category, {compiled} AS median_val FROM test_data")
-        ).fetchall()
+        results = session.execute(text(f"SELECT category, {compiled} AS median_val FROM test_data")).fetchall()
         medians = {row[0]: row[1] for row in results}
         assert medians["a"] == 30.0
         assert medians["b"] == 300.0
 
     def test_first_quartile_with_dimension_col(self, session):
-        compiled = _compile_with_session(
-            session, "value", "test_data", 0.25, "category"
-        )
-        results = session.execute(
-            text(f"SELECT category, {compiled} AS q1_val FROM test_data")
-        ).fetchall()
+        compiled = _compile_with_session(session, "value", "test_data", 0.25, "category")
+        results = session.execute(text(f"SELECT category, {compiled} AS q1_val FROM test_data")).fetchall()
         medians = {row[0]: row[1] for row in results}
         assert medians["a"] == 17.5
         assert medians["b"] == 175.0
 
     def test_third_quartile_with_dimension_col(self, session):
-        compiled = _compile_with_session(
-            session, "value", "test_data", 0.75, "category"
-        )
-        results = session.execute(
-            text(f"SELECT category, {compiled} AS q3_val FROM test_data")
-        ).fetchall()
+        compiled = _compile_with_session(session, "value", "test_data", 0.75, "category")
+        results = session.execute(text(f"SELECT category, {compiled} AS q3_val FROM test_data")).fetchall()
         medians = {row[0]: row[1] for row in results}
         assert medians["a"] == 42.5
         assert medians["b"] == 425.0

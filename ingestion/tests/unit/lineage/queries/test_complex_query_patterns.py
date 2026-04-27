@@ -1191,9 +1191,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("interaction_date", "customer_support"),
-                    TestColumnQualifierTuple(
-                        "last_interaction_date", "customer_360_view"
-                    ),
+                    TestColumnQualifierTuple("last_interaction_date", "customer_360_view"),
                 ),
                 (
                     TestColumnQualifierTuple("order_date", "orders"),
@@ -1201,9 +1199,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("*", "customer_support"),
-                    TestColumnQualifierTuple(
-                        "support_interactions", "customer_360_view"
-                    ),
+                    TestColumnQualifierTuple("support_interactions", "customer_360_view"),
                 ),
                 (
                     TestColumnQualifierTuple("*", "product_reviews"),
@@ -2008,21 +2004,15 @@ class TestComplexQueryPatterns:
                 # From orders
                 (
                     TestColumnQualifierTuple("customer_id", "orders"),
-                    TestColumnQualifierTuple(
-                        "customer_id", "unified_customer_activity"
-                    ),
+                    TestColumnQualifierTuple("customer_id", "unified_customer_activity"),
                 ),
                 (
                     TestColumnQualifierTuple("order_date", "orders"),
-                    TestColumnQualifierTuple(
-                        "activity_date", "unified_customer_activity"
-                    ),
+                    TestColumnQualifierTuple("activity_date", "unified_customer_activity"),
                 ),
                 (
                     TestColumnQualifierTuple("order_id", "orders"),
-                    TestColumnQualifierTuple(
-                        "reference_id", "unified_customer_activity"
-                    ),
+                    TestColumnQualifierTuple("reference_id", "unified_customer_activity"),
                 ),
                 (
                     TestColumnQualifierTuple("amount", "orders"),
@@ -2031,40 +2021,28 @@ class TestComplexQueryPatterns:
                 # From support_tickets
                 (
                     TestColumnQualifierTuple("customer_id", "support_tickets"),
-                    TestColumnQualifierTuple(
-                        "customer_id", "unified_customer_activity"
-                    ),
+                    TestColumnQualifierTuple("customer_id", "unified_customer_activity"),
                 ),
                 (
                     TestColumnQualifierTuple("ticket_date", "support_tickets"),
-                    TestColumnQualifierTuple(
-                        "activity_date", "unified_customer_activity"
-                    ),
+                    TestColumnQualifierTuple("activity_date", "unified_customer_activity"),
                 ),
                 (
                     TestColumnQualifierTuple("ticket_id", "support_tickets"),
-                    TestColumnQualifierTuple(
-                        "reference_id", "unified_customer_activity"
-                    ),
+                    TestColumnQualifierTuple("reference_id", "unified_customer_activity"),
                 ),
                 # From product_reviews
                 (
                     TestColumnQualifierTuple("customer_id", "product_reviews"),
-                    TestColumnQualifierTuple(
-                        "customer_id", "unified_customer_activity"
-                    ),
+                    TestColumnQualifierTuple("customer_id", "unified_customer_activity"),
                 ),
                 (
                     TestColumnQualifierTuple("review_date", "product_reviews"),
-                    TestColumnQualifierTuple(
-                        "activity_date", "unified_customer_activity"
-                    ),
+                    TestColumnQualifierTuple("activity_date", "unified_customer_activity"),
                 ),
                 (
                     TestColumnQualifierTuple("review_id", "product_reviews"),
-                    TestColumnQualifierTuple(
-                        "reference_id", "unified_customer_activity"
-                    ),
+                    TestColumnQualifierTuple("reference_id", "unified_customer_activity"),
                 ),
                 (
                     TestColumnQualifierTuple("rating", "product_reviews"),
@@ -2370,9 +2348,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("category", "products"),
-                    TestColumnQualifierTuple(
-                        "product_category", "customer_activity_log"
-                    ),
+                    TestColumnQualifierTuple("product_category", "customer_activity_log"),
                 ),
                 (
                     TestColumnQualifierTuple("quantity", "order_items"),
@@ -2384,9 +2360,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("order_date", "orders"),
-                    TestColumnQualifierTuple(
-                        "last_purchase_date", "customer_activity_log"
-                    ),
+                    TestColumnQualifierTuple("last_purchase_date", "customer_activity_log"),
                 ),
             ],
             dialect=Dialect.MYSQL.value,
@@ -2576,9 +2550,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("employee_name", "employees"),
-                    TestColumnQualifierTuple(
-                        "director_name", "employee_hierarchy_flat"
-                    ),
+                    TestColumnQualifierTuple("director_name", "employee_hierarchy_flat"),
                 ),
                 (
                     TestColumnQualifierTuple("employee_id", "employees"),
@@ -2655,9 +2627,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("quantity", "inventory"),
-                    TestColumnQualifierTuple(
-                        "inventory_quantity", "product_store_coverage"
-                    ),
+                    TestColumnQualifierTuple("inventory_quantity", "product_store_coverage"),
                 ),
                 (
                     TestColumnQualifierTuple("quantity", "sales"),
@@ -2971,15 +2941,11 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("amount", "transactions"),
-                    TestColumnQualifierTuple(
-                        "transaction_amount", "matched_transactions"
-                    ),
+                    TestColumnQualifierTuple("transaction_amount", "matched_transactions"),
                 ),
                 (
                     TestColumnQualifierTuple("discount_percent", "discounts"),
-                    TestColumnQualifierTuple(
-                        "discount_applied", "matched_transactions"
-                    ),
+                    TestColumnQualifierTuple("discount_applied", "matched_transactions"),
                 ),
                 (
                     TestColumnQualifierTuple("amount", "transactions"),
@@ -3057,39 +3023,27 @@ class TestComplexQueryPatterns:
             [
                 (
                     TestColumnQualifierTuple("customer_id", "customers"),
-                    TestColumnQualifierTuple(
-                        "customer_id", "customer_lifecycle_stages"
-                    ),
+                    TestColumnQualifierTuple("customer_id", "customer_lifecycle_stages"),
                 ),
                 (
                     TestColumnQualifierTuple("customer_name", "customers"),
-                    TestColumnQualifierTuple(
-                        "customer_name", "customer_lifecycle_stages"
-                    ),
+                    TestColumnQualifierTuple("customer_name", "customer_lifecycle_stages"),
                 ),
                 (
                     TestColumnQualifierTuple("registration_date", "customers"),
-                    TestColumnQualifierTuple(
-                        "registration_date", "customer_lifecycle_stages"
-                    ),
+                    TestColumnQualifierTuple("registration_date", "customer_lifecycle_stages"),
                 ),
                 (
                     TestColumnQualifierTuple("registration_date", "customers"),
-                    TestColumnQualifierTuple(
-                        "days_since_registration", "customer_lifecycle_stages"
-                    ),
+                    TestColumnQualifierTuple("days_since_registration", "customer_lifecycle_stages"),
                 ),
                 (
                     TestColumnQualifierTuple("last_login_date", "customers"),
-                    TestColumnQualifierTuple(
-                        "days_since_last_login", "customer_lifecycle_stages"
-                    ),
+                    TestColumnQualifierTuple("days_since_last_login", "customer_lifecycle_stages"),
                 ),
                 (
                     TestColumnQualifierTuple("last_login_date", "customers"),
-                    TestColumnQualifierTuple(
-                        "lifecycle_stage", "customer_lifecycle_stages"
-                    ),
+                    TestColumnQualifierTuple("lifecycle_stage", "customer_lifecycle_stages"),
                 ),
             ],
             dialect=Dialect.SNOWFLAKE.value,
@@ -3172,15 +3126,11 @@ class TestComplexQueryPatterns:
             [
                 (
                     TestColumnQualifierTuple("product_id", "sales"),
-                    TestColumnQualifierTuple(
-                        "product_id", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("product_id", "product_performance_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("product_name", "products"),
-                    TestColumnQualifierTuple(
-                        "product_name", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("product_name", "product_performance_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("category", "products"),
@@ -3188,51 +3138,35 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("sale_amount", "sales"),
-                    TestColumnQualifierTuple(
-                        "total_revenue", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("total_revenue", "product_performance_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("quantity", "sales"),
-                    TestColumnQualifierTuple(
-                        "total_units_sold", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("total_units_sold", "product_performance_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("sale_amount", "sales"),
-                    TestColumnQualifierTuple(
-                        "avg_selling_price", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("avg_selling_price", "product_performance_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("quantity", "sales"),
-                    TestColumnQualifierTuple(
-                        "avg_selling_price", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("avg_selling_price", "product_performance_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("sale_amount", "sales"),
-                    TestColumnQualifierTuple(
-                        "profit_margin", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("profit_margin", "product_performance_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("quantity", "sales"),
-                    TestColumnQualifierTuple(
-                        "profit_margin", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("profit_margin", "product_performance_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("cost_per_unit", "product_costs"),
-                    TestColumnQualifierTuple(
-                        "profit_margin", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("profit_margin", "product_performance_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("sale_amount", "sales"),
-                    TestColumnQualifierTuple(
-                        "performance_tier", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("performance_tier", "product_performance_summary"),
                 ),
             ],
             dialect=Dialect.POSTGRES.value,
@@ -3595,9 +3529,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("product_category", "sales_transactions"),
-                    TestColumnQualifierTuple(
-                        "product_category", "performance_dashboard"
-                    ),
+                    TestColumnQualifierTuple("product_category", "performance_dashboard"),
                 ),
                 (
                     TestColumnQualifierTuple("revenue", "sales_transactions"),
@@ -3605,9 +3537,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("revenue", "sales_transactions"),
-                    TestColumnQualifierTuple(
-                        "achievement_pct", "performance_dashboard"
-                    ),
+                    TestColumnQualifierTuple("achievement_pct", "performance_dashboard"),
                 ),
                 (
                     TestColumnQualifierTuple("quantity", "sales_transactions"),
@@ -3619,9 +3549,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("quota_amount", "sales_quotas"),
-                    TestColumnQualifierTuple(
-                        "achievement_pct", "performance_dashboard"
-                    ),
+                    TestColumnQualifierTuple("achievement_pct", "performance_dashboard"),
                 ),
                 (
                     TestColumnQualifierTuple("region_name", "regions"),
@@ -4054,9 +3982,7 @@ class TestComplexQueryPatterns:
                 # End-to-end lineages from source tables to final target
                 (
                     TestColumnQualifierTuple("customer_id", "sales_db.sales"),
-                    TestColumnQualifierTuple(
-                        "customer_id", "analytics.customer_insights"
-                    ),
+                    TestColumnQualifierTuple("customer_id", "analytics.customer_insights"),
                 ),
                 (
                     TestColumnQualifierTuple("segment", "crm_db.customer_profiles"),
@@ -4067,12 +3993,8 @@ class TestComplexQueryPatterns:
                     TestColumnQualifierTuple("country", "analytics.customer_insights"),
                 ),
                 (
-                    TestColumnQualifierTuple(
-                        "acquisition_channel", "crm_db.customer_profiles"
-                    ),
-                    TestColumnQualifierTuple(
-                        "acquisition_channel", "analytics.customer_insights"
-                    ),
+                    TestColumnQualifierTuple("acquisition_channel", "crm_db.customer_profiles"),
+                    TestColumnQualifierTuple("acquisition_channel", "analytics.customer_insights"),
                 ),
                 (
                     TestColumnQualifierTuple("category", "inventory_db.products"),
@@ -4085,39 +4007,27 @@ class TestComplexQueryPatterns:
                 # Aggregates
                 (
                     TestColumnQualifierTuple("quantity", "sales_db.sales"),
-                    TestColumnQualifierTuple(
-                        "total_quantity", "analytics.customer_insights"
-                    ),
+                    TestColumnQualifierTuple("total_quantity", "analytics.customer_insights"),
                 ),
                 (
                     TestColumnQualifierTuple("quantity", "sales_db.sales"),
-                    TestColumnQualifierTuple(
-                        "total_revenue", "analytics.customer_insights"
-                    ),
+                    TestColumnQualifierTuple("total_revenue", "analytics.customer_insights"),
                 ),
                 (
                     TestColumnQualifierTuple("unit_price", "sales_db.sales"),
-                    TestColumnQualifierTuple(
-                        "total_revenue", "analytics.customer_insights"
-                    ),
+                    TestColumnQualifierTuple("total_revenue", "analytics.customer_insights"),
                 ),
                 (
                     TestColumnQualifierTuple("quantity", "sales_db.sales"),
-                    TestColumnQualifierTuple(
-                        "total_profit", "analytics.customer_insights"
-                    ),
+                    TestColumnQualifierTuple("total_profit", "analytics.customer_insights"),
                 ),
                 (
                     TestColumnQualifierTuple("unit_price", "sales_db.sales"),
-                    TestColumnQualifierTuple(
-                        "total_profit", "analytics.customer_insights"
-                    ),
+                    TestColumnQualifierTuple("total_profit", "analytics.customer_insights"),
                 ),
                 (
                     TestColumnQualifierTuple("profit_margin", "inventory_db.products"),
-                    TestColumnQualifierTuple(
-                        "total_profit", "analytics.customer_insights"
-                    ),
+                    TestColumnQualifierTuple("total_profit", "analytics.customer_insights"),
                 ),
                 (
                     TestColumnQualifierTuple(
@@ -4126,9 +4036,7 @@ class TestComplexQueryPatterns:
                         is_subquery=True,
                         subquery="enriched_sales",
                     ),
-                    TestColumnQualifierTuple(
-                        "order_count", "analytics.customer_insights"
-                    ),
+                    TestColumnQualifierTuple("order_count", "analytics.customer_insights"),
                 ),
             ],
             dialect=Dialect.POSTGRES.value,
@@ -4208,9 +4116,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("transaction_date", "online_orders"),
-                    TestColumnQualifierTuple(
-                        "transaction_date", "unified_transactions"
-                    ),
+                    TestColumnQualifierTuple("transaction_date", "unified_transactions"),
                 ),
                 (
                     TestColumnQualifierTuple("payment_method", "online_orders"),
@@ -4235,9 +4141,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("sale_date", "pos_sales"),
-                    TestColumnQualifierTuple(
-                        "transaction_date", "unified_transactions"
-                    ),
+                    TestColumnQualifierTuple("transaction_date", "unified_transactions"),
                 ),
                 (
                     TestColumnQualifierTuple("payment_type", "pos_sales"),
@@ -4262,9 +4166,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("order_timestamp", "mobile_purchases"),
-                    TestColumnQualifierTuple(
-                        "transaction_date", "unified_transactions"
-                    ),
+                    TestColumnQualifierTuple("transaction_date", "unified_transactions"),
                 ),
                 (
                     TestColumnQualifierTuple("payment_mode", "mobile_purchases"),
@@ -4361,9 +4263,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("order_date", "pos_orders"),
-                    TestColumnQualifierTuple(
-                        "transaction_date", "unified_transactions"
-                    ),
+                    TestColumnQualifierTuple("transaction_date", "unified_transactions"),
                 ),
                 # From refunds
                 (
@@ -4380,9 +4280,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("refund_date", "refunds"),
-                    TestColumnQualifierTuple(
-                        "transaction_date", "unified_transactions"
-                    ),
+                    TestColumnQualifierTuple("transaction_date", "unified_transactions"),
                 ),
                 # From payments
                 (
@@ -4399,9 +4297,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("payment_date", "payments"),
-                    TestColumnQualifierTuple(
-                        "transaction_date", "unified_transactions"
-                    ),
+                    TestColumnQualifierTuple("transaction_date", "unified_transactions"),
                 ),
                 # From customer_credits
                 (
@@ -4418,9 +4314,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("credit_date", "customer_credits"),
-                    TestColumnQualifierTuple(
-                        "transaction_date", "unified_transactions"
-                    ),
+                    TestColumnQualifierTuple("transaction_date", "unified_transactions"),
                 ),
             ],
             dialect=Dialect.POSTGRES.value,
@@ -4483,9 +4377,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("session_duration", "web_sessions"),
-                    TestColumnQualifierTuple(
-                        "activity_duration", "customer_activity_log"
-                    ),
+                    TestColumnQualifierTuple("activity_duration", "customer_activity_log"),
                 ),
                 (
                     TestColumnQualifierTuple("session_date", "web_sessions"),
@@ -4506,9 +4398,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("visit_duration", "store_visits"),
-                    TestColumnQualifierTuple(
-                        "activity_duration", "customer_activity_log"
-                    ),
+                    TestColumnQualifierTuple("activity_duration", "customer_activity_log"),
                 ),
                 (
                     TestColumnQualifierTuple("visit_date", "store_visits"),
@@ -4668,9 +4558,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("quantity", "north_sales"),
-                    TestColumnQualifierTuple(
-                        "total_quantity", "regional_sales_summary"
-                    ),
+                    TestColumnQualifierTuple("total_quantity", "regional_sales_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("amount", "north_sales"),
@@ -4682,9 +4570,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("quantity", "south_sales"),
-                    TestColumnQualifierTuple(
-                        "total_quantity", "regional_sales_summary"
-                    ),
+                    TestColumnQualifierTuple("total_quantity", "regional_sales_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("amount", "south_sales"),
@@ -4696,9 +4582,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("quantity", "east_sales"),
-                    TestColumnQualifierTuple(
-                        "total_quantity", "regional_sales_summary"
-                    ),
+                    TestColumnQualifierTuple("total_quantity", "regional_sales_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("amount", "east_sales"),
@@ -4874,9 +4758,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("email", "customer_emails"),
-                    TestColumnQualifierTuple(
-                        "contact_value", "unique_customer_contacts"
-                    ),
+                    TestColumnQualifierTuple("contact_value", "unique_customer_contacts"),
                 ),
                 (
                     TestColumnQualifierTuple("customer_id", "customer_phones"),
@@ -4884,9 +4766,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("phone", "customer_phones"),
-                    TestColumnQualifierTuple(
-                        "contact_value", "unique_customer_contacts"
-                    ),
+                    TestColumnQualifierTuple("contact_value", "unique_customer_contacts"),
                 ),
             ],
             dialect=Dialect.MYSQL.value,
@@ -5095,21 +4975,15 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("customer_name", "customers"),
-                    TestColumnQualifierTuple(
-                        "customer_name", "customer_revenue_report"
-                    ),
+                    TestColumnQualifierTuple("customer_name", "customer_revenue_report"),
                 ),
                 (
                     TestColumnQualifierTuple("amount", "online_orders"),
-                    TestColumnQualifierTuple(
-                        "total_revenue", "customer_revenue_report"
-                    ),
+                    TestColumnQualifierTuple("total_revenue", "customer_revenue_report"),
                 ),
                 (
                     TestColumnQualifierTuple("amount", "store_sales"),
-                    TestColumnQualifierTuple(
-                        "total_revenue", "customer_revenue_report"
-                    ),
+                    TestColumnQualifierTuple("total_revenue", "customer_revenue_report"),
                 ),
             ],
             dialect=Dialect.MYSQL.value,
@@ -5370,9 +5244,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("purchase_date", "online_purchases"),
-                    TestColumnQualifierTuple(
-                        "transaction_date", "unified_transactions"
-                    ),
+                    TestColumnQualifierTuple("transaction_date", "unified_transactions"),
                 ),
                 (
                     TestColumnQualifierTuple("customer_id", "online_purchases"),
@@ -5389,9 +5261,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("sale_date", "store_sales"),
-                    TestColumnQualifierTuple(
-                        "transaction_date", "unified_transactions"
-                    ),
+                    TestColumnQualifierTuple("transaction_date", "unified_transactions"),
                 ),
                 (
                     TestColumnQualifierTuple("customer_id", "store_sales"),
@@ -5408,9 +5278,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("order_date", "mobile_orders"),
-                    TestColumnQualifierTuple(
-                        "transaction_date", "unified_transactions"
-                    ),
+                    TestColumnQualifierTuple("transaction_date", "unified_transactions"),
                 ),
                 (
                     TestColumnQualifierTuple("customer_id", "mobile_orders"),
@@ -5763,9 +5631,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("employee_name", "employees"),
-                    TestColumnQualifierTuple(
-                        "employee_name", "employee_hierarchy_flat"
-                    ),
+                    TestColumnQualifierTuple("employee_name", "employee_hierarchy_flat"),
                 ),
                 (
                     TestColumnQualifierTuple("manager_id", "employees"),
@@ -5821,15 +5687,11 @@ class TestComplexQueryPatterns:
             [
                 (
                     TestColumnQualifierTuple("customer_id", "crm_db.customers"),
-                    TestColumnQualifierTuple(
-                        "customer_id", "analytics_db.customer_metrics"
-                    ),
+                    TestColumnQualifierTuple("customer_id", "analytics_db.customer_metrics"),
                 ),
                 (
                     TestColumnQualifierTuple("customer_name", "crm_db.customers"),
-                    TestColumnQualifierTuple(
-                        "customer_name", "analytics_db.customer_metrics"
-                    ),
+                    TestColumnQualifierTuple("customer_name", "analytics_db.customer_metrics"),
                 ),
             ],
             dialect=Dialect.MYSQL.value,
@@ -6478,9 +6340,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("registration_date", "customers"),
-                    TestColumnQualifierTuple(
-                        "registration_date", "customer_order_facts"
-                    ),
+                    TestColumnQualifierTuple("registration_date", "customer_order_facts"),
                 ),
             ],
             dialect=Dialect.POSTGRES.value,
@@ -6734,9 +6594,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("customer_name", "dim_customer"),
-                    TestColumnQualifierTuple(
-                        "customer_name", "sales_fact_denormalized"
-                    ),
+                    TestColumnQualifierTuple("customer_name", "sales_fact_denormalized"),
                 ),
                 (
                     TestColumnQualifierTuple("segment", "dim_customer"),
@@ -6842,9 +6700,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("order_date", "orders"),
-                    TestColumnQualifierTuple(
-                        "activity_status", "customer_segmentation"
-                    ),
+                    TestColumnQualifierTuple("activity_status", "customer_segmentation"),
                 ),
             ],
             dialect=Dialect.POSTGRES.value,
@@ -6912,9 +6768,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("employee_name", "employees"),
-                    TestColumnQualifierTuple(
-                        "employee_name", "organizational_hierarchy"
-                    ),
+                    TestColumnQualifierTuple("employee_name", "organizational_hierarchy"),
                 ),
                 (
                     TestColumnQualifierTuple("manager_id", "employees"),
@@ -6926,9 +6780,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("employee_name", "employees"),
-                    TestColumnQualifierTuple(
-                        "hierarchy_path", "organizational_hierarchy"
-                    ),
+                    TestColumnQualifierTuple("hierarchy_path", "organizational_hierarchy"),
                 ),
             ],
             dialect=Dialect.POSTGRES.value,
@@ -6986,46 +6838,32 @@ class TestComplexQueryPatterns:
             [
                 (
                     TestColumnQualifierTuple("customer_id", "customers"),
-                    TestColumnQualifierTuple(
-                        "customer_id", "customer_favorite_products"
-                    ),
+                    TestColumnQualifierTuple("customer_id", "customer_favorite_products"),
                 ),
                 (
                     TestColumnQualifierTuple("customer_name", "customers"),
-                    TestColumnQualifierTuple(
-                        "customer_name", "customer_favorite_products"
-                    ),
+                    TestColumnQualifierTuple("customer_name", "customer_favorite_products"),
                 ),
                 # From LATERAL subquery alias 'tp'
                 (
                     TestColumnQualifierTuple("product_id", "tp"),
-                    TestColumnQualifierTuple(
-                        "product_id", "customer_favorite_products"
-                    ),
+                    TestColumnQualifierTuple("product_id", "customer_favorite_products"),
                 ),
                 (
                     TestColumnQualifierTuple("product_name", "tp"),
-                    TestColumnQualifierTuple(
-                        "product_name", "customer_favorite_products"
-                    ),
+                    TestColumnQualifierTuple("product_name", "customer_favorite_products"),
                 ),
                 (
                     TestColumnQualifierTuple("purchase_count", "tp"),
-                    TestColumnQualifierTuple(
-                        "purchase_count", "customer_favorite_products"
-                    ),
+                    TestColumnQualifierTuple("purchase_count", "customer_favorite_products"),
                 ),
                 (
                     TestColumnQualifierTuple("total_spent", "tp"),
-                    TestColumnQualifierTuple(
-                        "total_spent", "customer_favorite_products"
-                    ),
+                    TestColumnQualifierTuple("total_spent", "customer_favorite_products"),
                 ),
                 (
                     TestColumnQualifierTuple("product_rank", "tp"),
-                    TestColumnQualifierTuple(
-                        "product_rank", "customer_favorite_products"
-                    ),
+                    TestColumnQualifierTuple("product_rank", "customer_favorite_products"),
                 ),
             ],
             dialect=Dialect.POSTGRES.value,
@@ -7154,66 +6992,46 @@ class TestComplexQueryPatterns:
             [
                 (
                     TestColumnQualifierTuple("customer_id", "crm_db.customers"),
-                    TestColumnQualifierTuple(
-                        "customer_id", "analytics_db.unified_customer_view"
-                    ),
+                    TestColumnQualifierTuple("customer_id", "analytics_db.unified_customer_view"),
                 ),
                 (
                     TestColumnQualifierTuple("customer_name", "crm_db.customers"),
-                    TestColumnQualifierTuple(
-                        "customer_name", "analytics_db.unified_customer_view"
-                    ),
+                    TestColumnQualifierTuple("customer_name", "analytics_db.unified_customer_view"),
                 ),
                 (
                     TestColumnQualifierTuple("email", "crm_db.customers"),
-                    TestColumnQualifierTuple(
-                        "email", "analytics_db.unified_customer_view"
-                    ),
+                    TestColumnQualifierTuple("email", "analytics_db.unified_customer_view"),
                 ),
                 (
                     TestColumnQualifierTuple("phone", "crm_db.customers"),
-                    TestColumnQualifierTuple(
-                        "phone", "analytics_db.unified_customer_view"
-                    ),
+                    TestColumnQualifierTuple("phone", "analytics_db.unified_customer_view"),
                 ),
                 # From orders table
                 (
                     TestColumnQualifierTuple("order_id", "sales_db.orders"),
-                    TestColumnQualifierTuple(
-                        "total_orders", "analytics_db.unified_customer_view"
-                    ),
+                    TestColumnQualifierTuple("total_orders", "analytics_db.unified_customer_view"),
                 ),
                 (
                     TestColumnQualifierTuple("amount", "sales_db.orders"),
-                    TestColumnQualifierTuple(
-                        "total_revenue", "analytics_db.unified_customer_view"
-                    ),
+                    TestColumnQualifierTuple("total_revenue", "analytics_db.unified_customer_view"),
                 ),
                 (
                     TestColumnQualifierTuple("amount", "sales_db.orders"),
-                    TestColumnQualifierTuple(
-                        "avg_order_value", "analytics_db.unified_customer_view"
-                    ),
+                    TestColumnQualifierTuple("avg_order_value", "analytics_db.unified_customer_view"),
                 ),
                 # From tickets table
                 (
                     TestColumnQualifierTuple("ticket_id", "support_db.tickets"),
-                    TestColumnQualifierTuple(
-                        "support_tickets", "analytics_db.unified_customer_view"
-                    ),
+                    TestColumnQualifierTuple("support_tickets", "analytics_db.unified_customer_view"),
                 ),
                 # From reviews table
                 (
                     TestColumnQualifierTuple("review_id", "reviews_db.reviews"),
-                    TestColumnQualifierTuple(
-                        "product_reviews", "analytics_db.unified_customer_view"
-                    ),
+                    TestColumnQualifierTuple("product_reviews", "analytics_db.unified_customer_view"),
                 ),
                 (
                     TestColumnQualifierTuple("rating", "reviews_db.reviews"),
-                    TestColumnQualifierTuple(
-                        "avg_review_rating", "analytics_db.unified_customer_view"
-                    ),
+                    TestColumnQualifierTuple("avg_review_rating", "analytics_db.unified_customer_view"),
                 ),
             ],
             dialect=Dialect.MYSQL.value,
@@ -7289,15 +7107,11 @@ class TestComplexQueryPatterns:
             [
                 (
                     TestColumnQualifierTuple("product_id", "sales"),
-                    TestColumnQualifierTuple(
-                        "product_id", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("product_id", "product_performance_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("product_name", "products"),
-                    TestColumnQualifierTuple(
-                        "product_name", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("product_name", "product_performance_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("category", "products"),
@@ -7305,47 +7119,33 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("supplier_name", "suppliers"),
-                    TestColumnQualifierTuple(
-                        "supplier_name", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("supplier_name", "product_performance_summary"),
                 ),
                 # From sales table aggregations
                 (
                     TestColumnQualifierTuple("*", "sales"),
-                    TestColumnQualifierTuple(
-                        "transaction_count", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("transaction_count", "product_performance_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("quantity", "sales"),
-                    TestColumnQualifierTuple(
-                        "total_quantity", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("total_quantity", "product_performance_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("amount", "sales"),
-                    TestColumnQualifierTuple(
-                        "total_revenue", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("total_revenue", "product_performance_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("amount", "sales"),
-                    TestColumnQualifierTuple(
-                        "supplier_revenue", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("supplier_revenue", "product_performance_summary"),
                 ),
                 (
                     TestColumnQualifierTuple("amount", "sales"),
-                    TestColumnQualifierTuple(
-                        "supplier_revenue_share", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("supplier_revenue_share", "product_performance_summary"),
                 ),
                 # From CTE alias (no schema for CTE)
                 (
                     TestColumnQualifierTuple("*", "ranked_metrics"),
-                    TestColumnQualifierTuple(
-                        "supplier_product_count", "product_performance_summary"
-                    ),
+                    TestColumnQualifierTuple("supplier_product_count", "product_performance_summary"),
                 ),
             ],
             dialect=Dialect.SNOWFLAKE.value,
@@ -7754,9 +7554,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("category", "dim_product"),
-                    TestColumnQualifierTuple(
-                        "product_category", "v_sales_denormalized"
-                    ),
+                    TestColumnQualifierTuple("product_category", "v_sales_denormalized"),
                 ),
                 (
                     TestColumnQualifierTuple("customer_name", "dim_customer"),
@@ -7764,9 +7562,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("segment", "dim_customer"),
-                    TestColumnQualifierTuple(
-                        "customer_segment", "v_sales_denormalized"
-                    ),
+                    TestColumnQualifierTuple("customer_segment", "v_sales_denormalized"),
                 ),
                 (
                     TestColumnQualifierTuple("store_name", "dim_store"),
@@ -7839,9 +7635,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("customer_name", "customers"),
-                    TestColumnQualifierTuple(
-                        "customer_name", "v_customer_recent_orders"
-                    ),
+                    TestColumnQualifierTuple("customer_name", "v_customer_recent_orders"),
                 ),
                 (
                     TestColumnQualifierTuple("order_id", "recent"),
@@ -7954,9 +7748,7 @@ class TestComplexQueryPatterns:
                 ),
                 (
                     TestColumnQualifierTuple("customer_name", "crm_db.customers"),
-                    TestColumnQualifierTuple(
-                        "customer_name", "analytics.v_customer_360"
-                    ),
+                    TestColumnQualifierTuple("customer_name", "analytics.v_customer_360"),
                 ),
                 (
                     TestColumnQualifierTuple("email", "crm_db.customers"),
@@ -8362,27 +8154,19 @@ class TestComplexQueryPatterns:
             [
                 (
                     TestColumnQualifierTuple("employee_id", "employees"),
-                    TestColumnQualifierTuple(
-                        "employee_id", "employee_compensation_analysis"
-                    ),
+                    TestColumnQualifierTuple("employee_id", "employee_compensation_analysis"),
                 ),
                 (
                     TestColumnQualifierTuple("employee_name", "employees"),
-                    TestColumnQualifierTuple(
-                        "employee_name", "employee_compensation_analysis"
-                    ),
+                    TestColumnQualifierTuple("employee_name", "employee_compensation_analysis"),
                 ),
                 (
                     TestColumnQualifierTuple("department", "employees"),
-                    TestColumnQualifierTuple(
-                        "department", "employee_compensation_analysis"
-                    ),
+                    TestColumnQualifierTuple("department", "employee_compensation_analysis"),
                 ),
                 (
                     TestColumnQualifierTuple("salary", "employees"),
-                    TestColumnQualifierTuple(
-                        "salary", "employee_compensation_analysis"
-                    ),
+                    TestColumnQualifierTuple("salary", "employee_compensation_analysis"),
                 ),
             ],
             dialect=Dialect.SNOWFLAKE.value,
@@ -8483,21 +8267,15 @@ class TestComplexQueryPatterns:
             [
                 (
                     TestColumnQualifierTuple("product_id", "products"),
-                    TestColumnQualifierTuple(
-                        "product_id", "product_contribution_analysis"
-                    ),
+                    TestColumnQualifierTuple("product_id", "product_contribution_analysis"),
                 ),
                 (
                     TestColumnQualifierTuple("product_name", "products"),
-                    TestColumnQualifierTuple(
-                        "product_name", "product_contribution_analysis"
-                    ),
+                    TestColumnQualifierTuple("product_name", "product_contribution_analysis"),
                 ),
                 (
                     TestColumnQualifierTuple("category", "products"),
-                    TestColumnQualifierTuple(
-                        "category", "product_contribution_analysis"
-                    ),
+                    TestColumnQualifierTuple("category", "product_contribution_analysis"),
                 ),
             ],
             dialect=Dialect.SNOWFLAKE.value,
@@ -9007,15 +8785,11 @@ class TestComplexQueryPatterns:
             [
                 (
                     TestColumnQualifierTuple("customer_id", "crm_db.customers"),
-                    TestColumnQualifierTuple(
-                        "customer_id", "data_warehouse.customer_360"
-                    ),
+                    TestColumnQualifierTuple("customer_id", "data_warehouse.customer_360"),
                 ),
                 (
                     TestColumnQualifierTuple("customer_name", "crm_db.customers"),
-                    TestColumnQualifierTuple(
-                        "customer_name", "data_warehouse.customer_360"
-                    ),
+                    TestColumnQualifierTuple("customer_name", "data_warehouse.customer_360"),
                 ),
                 (
                     TestColumnQualifierTuple("email", "crm_db.customers"),
@@ -9230,9 +9004,7 @@ class TestComplexQueryPatterns:
                 # cumulative_revenue
                 (
                     TestColumnQualifierTuple("amount", "orders"),
-                    TestColumnQualifierTuple(
-                        "cumulative_revenue", "analytics_dashboard"
-                    ),
+                    TestColumnQualifierTuple("cumulative_revenue", "analytics_dashboard"),
                 ),
                 # revenue_7day_ma
                 (
@@ -9252,9 +9024,7 @@ class TestComplexQueryPatterns:
                 # overall_avg_rating
                 (
                     TestColumnQualifierTuple("rating", "reviews"),
-                    TestColumnQualifierTuple(
-                        "overall_avg_rating", "analytics_dashboard"
-                    ),
+                    TestColumnQualifierTuple("overall_avg_rating", "analytics_dashboard"),
                 ),
                 # total_cohorts
                 (
@@ -9268,9 +9038,7 @@ class TestComplexQueryPatterns:
                 # revenue_rank_all_time
                 (
                     TestColumnQualifierTuple("amount", "orders"),
-                    TestColumnQualifierTuple(
-                        "revenue_rank_all_time", "analytics_dashboard"
-                    ),
+                    TestColumnQualifierTuple("revenue_rank_all_time", "analytics_dashboard"),
                 ),
             ],
             dialect=Dialect.POSTGRES.value,
