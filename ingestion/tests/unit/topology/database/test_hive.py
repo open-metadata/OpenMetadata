@@ -1172,3 +1172,219 @@ class HiveSourceMetastoreValidationTest(TestCase):
         self.hive.service_connection.metastoreConnection = invalid_dict
         result = self.hive._get_validated_metastore_connection()
         self.assertIsNone(result)
+
+    # ---------------------------------------------------------------------------
+    # Tests for get_table_partition_details
+    # ---------------------------------------------------------------------------
+
+    def _make_describe_row(self, col_name, data_type="", comment=""):
+        """Helper: return a row tuple that mimics a DESCRIBE FORMATTED result."""
+        return (col_name, data_type, comment)
+
+    def _mock_engine_rows(self, rows):
+        """
+        Return a Mock engine whose connect().__enter__.execute() yields *rows*.
+        """
+        mock_conn = Mock()
+        mock_conn.execute.return_value = iter(rows)
+        mock_ctx = Mock()
+        mock_ctx.__enter__ = Mock(return_value=mock_conn)
+        mock_ctx.__exit__ = Mock(return_value=False)
+        mock_engine = Mock()
+        mock_engine.connect.return_value = mock_ctx
+        return mock_engine
+
+    def test_get_table_partition_details_basic(self):
+        """
+        Standard DESCRIBE FORMATTED output with one partition key.
+        Should return (True, TablePartition) with that key.
+        """
+        from metadata.generated.schema.entity.data.table import (
+            PartitionIntervalTypes,
+            TablePartition,
+        )
+
+        rows = [
+            self._make_describe_row("# col_name", "data_type", "comment"),
+            self._make_describe_row("id", "int"),
+            self._make_describe_row("name", "string"),
+            self._make_describe_row("dt", "string"),
+            self._make_describe_row(""),  # blank separator
+            self._make_describe_row("# Partition Information"),
+            self._make_describe_row("# col_name", "data_type", "comment"),
+            self._make_describe_row("dt", "string"),
+            self._make_describe_row(""),  # blank row — skipped, not a break
+            self._make_describe_row("# Detailed Table Information"),  # triggers break
+            self._make_describe_row("Database:", "default"),
+        ]
+
+        self.hive.service_connection.metastoreConnection = None
+        self.hive.engine = self._mock_engine_rows(rows)
+
+        is_partitioned, partition = self.hive.get_table_partition_details(
+            table_name="events",
+            schema_name="default",
+            inspector=Mock(),
+        )
+
+        self.assertTrue(is_partitioned)
+        self.assertIsNotNone(partition)
+        self.assertEqual(len(partition.columns), 1)
+        self.assertEqual(partition.columns[0].columnName, "dt")
+        self.assertEqual(
+            partition.columns[0].intervalType, PartitionIntervalTypes.COLUMN_VALUE
+        )
+
+    def test_get_table_partition_details_multiple_keys(self):
+        """
+        Table with two partition keys — both should be captured.
+        """
+        rows = [
+            self._make_describe_row("id", "int"),
+            self._make_describe_row(""),
+            self._make_describe_row("# Partition Information"),
+            self._make_describe_row("# col_name", "data_type", "comment"),
+            self._make_describe_row("year", "int"),
+            self._make_describe_row("month", "int"),
+            self._make_describe_row("# Detailed Table Information"),
+        ]
+
+        self.hive.service_connection.metastoreConnection = None
+        self.hive.engine = self._mock_engine_rows(rows)
+
+        is_partitioned, partition = self.hive.get_table_partition_details(
+            table_name="logs",
+            schema_name="analytics",
+            inspector=Mock(),
+        )
+
+        self.assertTrue(is_partitioned)
+        keys = [c.columnName for c in partition.columns]
+        self.assertEqual(keys, ["year", "month"])
+
+    def test_get_table_partition_details_no_partition_section(self):
+        """
+        Table without a '# Partition Information' section — not partitioned.
+        """
+        rows = [
+            self._make_describe_row("id", "int"),
+            self._make_describe_row("name", "string"),
+            self._make_describe_row("# Detailed Table Information"),
+            self._make_describe_row("Database:", "default"),
+        ]
+
+        self.hive.service_connection.metastoreConnection = None
+        self.hive.engine = self._mock_engine_rows(rows)
+
+        is_partitioned, partition = self.hive.get_table_partition_details(
+            table_name="users",
+            schema_name="default",
+            inspector=Mock(),
+        )
+
+        self.assertFalse(is_partitioned)
+        self.assertIsNone(partition)
+
+    def test_get_table_partition_details_blank_lines_between_keys(self):
+        """
+        Some Hive versions emit blank rows between partition key rows.
+        The parser must skip them and continue collecting keys, not break early.
+        """
+        rows = [
+            self._make_describe_row("id", "int"),
+            self._make_describe_row("# Partition Information"),
+            self._make_describe_row("# col_name", "data_type", "comment"),
+            self._make_describe_row("year", "int"),
+            self._make_describe_row(""),  # blank row between keys
+            self._make_describe_row("month", "int"),
+            self._make_describe_row("# Detailed Table Information"),
+        ]
+
+        self.hive.service_connection.metastoreConnection = None
+        self.hive.engine = self._mock_engine_rows(rows)
+
+        is_partitioned, partition = self.hive.get_table_partition_details(
+            table_name="logs",
+            schema_name="default",
+            inspector=Mock(),
+        )
+
+        self.assertTrue(is_partitioned)
+        keys = [c.columnName for c in partition.columns]
+        self.assertEqual(keys, ["year", "month"])
+
+    def test_get_table_partition_details_section_exit_bug(self):
+        """
+        Bug fix 2: parser must break on *any* new section header, not only
+        '# Detailed Table Information'.  Here '# Storage Information' follows
+        the partition block; rows after it must NOT be collected as partition keys.
+        """
+        rows = [
+            self._make_describe_row("id", "int"),
+            self._make_describe_row("# Partition Information"),
+            self._make_describe_row("# col_name", "data_type", "comment"),
+            self._make_describe_row("dt", "string"),
+            # A different section header — not "# Detailed"
+            self._make_describe_row("# Storage Information"),
+            self._make_describe_row("Location:", "hdfs://namenode/warehouse"),
+            self._make_describe_row("# Detailed Table Information"),
+            self._make_describe_row("Database:", "default"),
+        ]
+
+        self.hive.service_connection.metastoreConnection = None
+        self.hive.engine = self._mock_engine_rows(rows)
+
+        is_partitioned, partition = self.hive.get_table_partition_details(
+            table_name="events",
+            schema_name="default",
+            inspector=Mock(),
+        )
+
+        self.assertTrue(is_partitioned)
+        keys = [c.columnName for c in partition.columns]
+        # Only "dt" should be collected; "Location:" etc. must not appear
+        self.assertEqual(keys, ["dt"])
+
+    def test_get_table_partition_details_skips_metastore(self):
+        """
+        Bug fix 1: when a metastoreConnection is configured the engine is
+        MySQL/Postgres and won't understand DESCRIBE FORMATTED.
+        The method must return (False, None) immediately without touching the engine.
+        """
+        self.hive.service_connection.metastoreConnection = PostgresConnection(
+            hostPort="localhost:5432",
+            username="hive",
+            database="metastore",
+        )
+
+        mock_engine = Mock()
+        self.hive.engine = mock_engine
+
+        is_partitioned, partition = self.hive.get_table_partition_details(
+            table_name="events",
+            schema_name="default",
+            inspector=Mock(),
+        )
+
+        self.assertFalse(is_partitioned)
+        self.assertIsNone(partition)
+        # Engine must never be touched
+        mock_engine.connect.assert_not_called()
+
+    def test_get_table_partition_details_engine_error(self):
+        """
+        Engine raises an exception — method must swallow it and return (False, None).
+        """
+        mock_engine = Mock()
+        mock_engine.connect.side_effect = Exception("connection refused")
+        self.hive.service_connection.metastoreConnection = None
+        self.hive.engine = mock_engine
+
+        is_partitioned, partition = self.hive.get_table_partition_details(
+            table_name="broken",
+            schema_name="default",
+            inspector=Mock(),
+        )
+
+        self.assertFalse(is_partitioned)
+        self.assertIsNone(partition)

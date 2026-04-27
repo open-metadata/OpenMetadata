@@ -13,14 +13,19 @@ Hive source methods.
 """
 
 import traceback
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 from pydantic import ValidationError
 from pyhive.sqlalchemy_hive import HiveDialect
 from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import (
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
+    TablePartition,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
 )
@@ -153,3 +158,88 @@ class HiveSource(CommonDbSourceService):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None
+
+    def get_table_partition_details(
+        self,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
+    ) -> Tuple[bool, Optional[TablePartition]]:
+        """
+        Extract partition key columns from DESCRIBE FORMATTED output.
+
+        Returns (is_partitioned, TablePartition) where TablePartition lists all
+        partition key columns with COLUMN_VALUE interval type.
+
+        Bug fixes vs original PR:
+        1. Metastore compatibility: skip DESCRIBE FORMATTED when a metastore
+           connection is active — the engine is MySQL/Postgres and won't
+           understand Hive SQL.
+        2. Parser section exit: break on *any* new section header inside the
+           partition block (not just "# Detailed"), so rows from later sections
+           are never mistaken for partition keys.
+        """
+        # Bug fix 1: DESCRIBE FORMATTED only works against a live Hive engine.
+        # When metastoreConnection is configured, self.engine points at
+        # MySQL/Postgres — running HiveQL there will raise an error.
+        if self._get_validated_metastore_connection():
+            return False, None
+
+        # Sanitize identifiers: escape any backticks in names to prevent
+        # malformed HiveQL. Table/schema names come from the inspector but
+        # we guard defensively here.
+        safe_schema = schema_name.replace("`", "``")
+        safe_table = table_name.replace("`", "``")
+
+        partition_keys: List[str] = []
+        in_partition_section = False
+        try:
+            with self.engine.connect() as conn:
+                rows = conn.execute(
+                    text(
+                        f"DESCRIBE FORMATTED `{safe_schema}`.`{safe_table}`"
+                    )
+                )
+                for row in rows:
+                    col_name = row[0].strip() if row[0] else ""
+
+                    if col_name == "# Partition Information":
+                        in_partition_section = True
+                        continue
+
+                    if in_partition_section:
+                        # Any new top-level section header signals the end of
+                        # the partition block — exit immediately so we never
+                        # collect metadata rows (e.g. "Database:", "Location:")
+                        # as partition keys.
+                        # "# col_name" is the sub-header *within* the partition
+                        # block and must be skipped, not treated as an exit.
+                        if col_name.startswith("#") and col_name != "# col_name":
+                            break
+                        # Skip the "# col_name" sub-header and blank rows
+                        # (blank rows may appear between partition keys on some
+                        # Hive versions — skip rather than break so we don't
+                        # miss later keys).
+                        if not col_name or col_name.startswith("#"):
+                            continue
+                        partition_keys.append(col_name)
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to get partition details for {schema_name}.{table_name}: {exc}"
+            )
+
+        if not partition_keys:
+            return False, None
+
+        return True, TablePartition(
+            columns=[
+                PartitionColumnDetails(
+                    columnName=key,
+                    intervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                    interval=None,
+                )
+                for key in partition_keys
+            ]
+        )
