@@ -30,8 +30,8 @@ logger = cli_logger()
 
 def run_policy(config_path: Path) -> None:
     """
-    Run the policy agent workflow from a config path
-    to a JSON or YAML file
+    Run the policy agent workflow from a config
+    path to a JSON or YAML file
     :param config_path: Path to load JSON config
     """
 
