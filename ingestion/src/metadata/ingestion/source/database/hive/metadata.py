@@ -13,14 +13,19 @@ Hive source methods.
 """
 
 import traceback
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 from pydantic import ValidationError
 from pyhive.sqlalchemy_hive import HiveDialect
 from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import (
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
+    TablePartition,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
 )
@@ -153,3 +158,119 @@ class HiveSource(CommonDbSourceService):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None
+
+    def _build_metastore_partition_query(self, drivername: str) -> str:
+        def quote_identifier(name: str) -> str:
+            return f'"{name}"' if drivername == "hive+postgres" else name
+
+        return (
+            f"SELECT pk.{quote_identifier('PKEY_NAME')}"
+            f" FROM {quote_identifier('PARTITION_KEYS')} pk"
+            f" JOIN {quote_identifier('TBLS')} tbl ON pk.{quote_identifier('TBL_ID')} = tbl.{quote_identifier('TBL_ID')}"
+            f" JOIN {quote_identifier('DBS')} db ON tbl.{quote_identifier('DB_ID')} = db.{quote_identifier('DB_ID')}"
+            f" WHERE db.{quote_identifier('NAME')} = :schema AND tbl.{quote_identifier('TBL_NAME')} = :table_name"
+            f" ORDER BY pk.{quote_identifier('INTEGER_IDX')}"
+        )
+
+    def _get_partition_keys_from_metastore(
+        self, table_name: str, schema_name: str, drivername: str
+    ) -> List[str]:
+        query = self._build_metastore_partition_query(drivername)
+        result = self.connection.execute(
+            text(query),
+            {"table_name": table_name, "schema": schema_name},
+        )
+        return [row[0] for row in result if row and row[0]]
+
+    def _get_partition_keys_from_describe(
+        self, table_name: str, schema_name: str
+    ) -> List[str]:
+        partition_keys: List[str] = []
+        in_partition_section = False
+        identifier_preparer = self.engine.dialect.identifier_preparer
+        quoted_schema_name = identifier_preparer.quote_identifier(schema_name)
+        quoted_table_name = identifier_preparer.quote_identifier(table_name)
+        rows = self.connection.execute(
+            text(f"DESCRIBE FORMATTED {quoted_schema_name}.{quoted_table_name}")
+        )
+        for row in rows:
+            col_name = row[0].strip() if row[0] else ""
+            if col_name == "# Partition Information":
+                in_partition_section = True
+                continue
+            if in_partition_section:
+                if not col_name or col_name.startswith("# Detailed"):
+                    break
+                if col_name.startswith("#"):
+                    continue
+                partition_keys.append(col_name)
+
+        if partition_keys:
+            return partition_keys
+
+        try:
+            partitions = self.connection.execute(
+                text(f"SHOW PARTITIONS {quoted_schema_name}.{quoted_table_name}")
+            )
+        except Exception:
+            return []
+        first_partition = next((row[0] for row in partitions if row and row[0]), None)
+        if not first_partition:
+            return []
+
+        # Example: dt=2024-01-01/region=us -> ["dt", "region"]
+        keys: List[str] = []
+        for part in str(first_partition).split("/"):
+            if "=" in part:
+                key, _ = part.split("=", 1)
+                if key:
+                    keys.append(key)
+        return keys
+
+    def get_table_partition_details(  # pylint: disable=unused-argument
+        self,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
+    ) -> Tuple[bool, Optional[TablePartition]]:
+        """
+        Extract partition key columns for a table.
+
+        For ``hive+mysql`` and ``hive+postgres`` connections, this reads the
+        partition key metadata directly from the Hive metastore tables.
+        For other Hive drivers, it falls back to parsing
+        ``DESCRIBE FORMATTED`` output.
+
+        Returns ``(is_partitioned, TablePartition)`` where ``TablePartition``
+        lists all partition key columns with ``COLUMN_VALUE`` interval type.
+        """
+        try:
+            drivername = getattr(getattr(self.engine, "url", None), "drivername", "")
+            if drivername in {"hive+mysql", "hive+postgres"}:
+                partition_keys = self._get_partition_keys_from_metastore(
+                    table_name, schema_name, drivername
+                )
+            else:
+                partition_keys = self._get_partition_keys_from_describe(
+                    table_name, schema_name
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to get partition details for {schema_name}.{table_name}: {exc}"
+            )
+            return False, None
+
+        if not partition_keys:
+            return False, None
+
+        return True, TablePartition(
+            columns=[
+                PartitionColumnDetails(
+                    columnName=key,
+                    intervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                    interval=None,
+                )
+                for key in partition_keys
+            ]
+        )
