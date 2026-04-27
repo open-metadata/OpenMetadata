@@ -463,6 +463,12 @@ def _filter_latest_per_project(
     return filtered
 
 
+def _matches_configured_artifact_path(blob: str, config, config_attr: str) -> bool:
+    configured_path = getattr(config, config_attr, None)
+
+    return bool(configured_path) and clean_uri(blob) == clean_uri(configured_path)
+
+
 # pylint: disable=too-many-locals, too-many-branches
 def download_dbt_files(
     blob_grouped_by_directory: Dict, config, client, bucket_name: Optional[str]
@@ -489,18 +495,24 @@ def download_dbt_files(
                 if blob:
                     reader = get_reader(config_source=config, client=client)
                     blob_file_name = os.path.basename(blob)
-                    if DBT_MANIFEST_FILE_NAME == blob_file_name.lower():
-                        logger.debug(f"{DBT_MANIFEST_FILE_NAME} found in {key}")
+                    if _matches_configured_artifact_path(
+                        blob, config, "dbtManifestFilePath"
+                    ) or DBT_MANIFEST_FILE_NAME == blob_file_name.lower():
+                        logger.debug(f"{blob_file_name} found in {key}")
                         dbt_manifest = reader.read(path=blob, **kwargs)
-                    if DBT_CATALOG_FILE_NAME == blob_file_name.lower():
+                    if _matches_configured_artifact_path(
+                        blob, config, "dbtCatalogFilePath"
+                    ) or DBT_CATALOG_FILE_NAME == blob_file_name.lower():
                         try:
-                            logger.debug(f"{DBT_CATALOG_FILE_NAME} found in {key}")
+                            logger.debug(f"{blob_file_name} found in {key}")
                             dbt_catalog = reader.read(path=blob, **kwargs)
                         except Exception as exc:
                             logger.warning(
-                                f"{DBT_CATALOG_FILE_NAME} not found in {key}: {exc}"
+                                f"{blob_file_name} not found in {key}: {exc}"
                             )
-                    if DBT_RUN_RESULTS_FILE_NAME in blob_file_name.lower():
+                    if _matches_configured_artifact_path(
+                        blob, config, "dbtRunResultsFilePath"
+                    ) or DBT_RUN_RESULTS_FILE_NAME in blob_file_name.lower():
                         try:
                             logger.debug(f"{blob_file_name} found in {key}")
                             dbt_run_result = reader.read(path=blob, **kwargs)
@@ -510,8 +522,10 @@ def download_dbt_files(
                             logger.warning(
                                 f"{DBT_RUN_RESULTS_FILE_NAME} not found in {key}: {exc}"
                             )
-                    if DBT_SOURCES_FILE_NAME == blob_file_name.lower():
-                        logger.debug(f"{DBT_SOURCES_FILE_NAME} found in {key}")
+                    if _matches_configured_artifact_path(
+                        blob, config, "dbtSourcesFilePath"
+                    ) or DBT_SOURCES_FILE_NAME == blob_file_name.lower():
+                        logger.debug(f"{blob_file_name} found in {key}")
                         dbt_sources = reader.read(path=blob, **kwargs)
             if not dbt_manifest:
                 raise DBTConfigException(f"Manifest file not found at: {key}")

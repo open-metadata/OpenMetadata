@@ -3156,6 +3156,72 @@ class TestDownloadDbtFiles(TestCase):
             self.assertIsNotNone(result[0].dbt_sources)
 
 
+def test_download_dbt_files_uses_configured_local_artifact_names():
+    from metadata.ingestion.source.database.dbt.dbt_config import download_dbt_files
+
+    manifest_path = "/path/to/dbt/manifest.json.patched"
+    catalog_path = "/path/to/dbt/catalog.json.patched"
+
+    mock_reader = MagicMock()
+    mock_reader.read.side_effect = lambda path, **_: {
+        manifest_path: '{"nodes": {}, "sources": {}}',
+        catalog_path: '{"nodes": {}}',
+    }[path]
+
+    with patch(
+        "metadata.ingestion.source.database.dbt.dbt_config.get_reader",
+        return_value=mock_reader,
+    ):
+        result = list(
+            download_dbt_files(
+                blob_grouped_by_directory={
+                    "/path/to/dbt": [manifest_path, catalog_path]
+                },
+                config=SimpleNamespace(
+                    dbtManifestFilePath=manifest_path,
+                    dbtCatalogFilePath=catalog_path,
+                    dbtRunResultsFilePath=None,
+                    dbtSourcesFilePath=None,
+                ),
+                client=None,
+                bucket_name=None,
+            )
+        )
+
+    assert len(result) == 1
+    assert result[0].dbt_manifest == {"nodes": {}, "sources": {}}
+    assert result[0].dbt_catalog == {"nodes": {}}
+
+
+def test_get_dbt_details_reads_configured_local_artifact_names(tmp_path):
+    from metadata.generated.schema.metadataIngestion.dbtconfig.dbtLocalConfig import (
+        DbtLocalConfig,
+    )
+    from metadata.ingestion.source.database.dbt.dbt_config import get_dbt_details
+
+    manifest_path = tmp_path / "manifest.json.patched"
+    catalog_path = tmp_path / "catalog.json.patched"
+    manifest = {"nodes": {}, "sources": {}}
+    catalog = {"nodes": {}}
+
+    manifest_path.write_text(json.dumps(manifest))
+    catalog_path.write_text(json.dumps(catalog))
+
+    result = list(
+        get_dbt_details(
+            DbtLocalConfig(
+                dbtConfigType="local",
+                dbtManifestFilePath=str(manifest_path),
+                dbtCatalogFilePath=str(catalog_path),
+            )
+        )
+    )
+
+    assert len(result) == 1
+    assert result[0].dbt_manifest == manifest
+    assert result[0].dbt_catalog == catalog
+
+
 class TestGetLatestResult(TestCase):
     """
     Test _get_latest_result picks the most recent result by execute
