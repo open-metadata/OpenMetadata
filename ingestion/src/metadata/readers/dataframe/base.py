@@ -76,9 +76,7 @@ class DataFrameReader(ABC):
 
         self.reader = get_reader(config_source=config_source, client=client)
 
-    def _get_file_size_mb(
-        self, key: str, bucket_name: str, file_size: Optional[int] = None
-    ) -> float:
+    def _get_file_size_mb(self, key: str, bucket_name: str, file_size: Optional[int] = None) -> float:
         """
         Get file size in MB. Returns 0 if unable to determine.
         If file_size (bytes) is provided from listing metadata, uses that
@@ -97,9 +95,7 @@ class DataFrameReader(ABC):
                 return (blob.size or 0) / (1024 * 1024) if blob else 0
 
             elif isinstance(self.config_source, AzureConfig):
-                blob_client = self.client.get_blob_client(
-                    container=bucket_name, blob=key
-                )
+                blob_client = self.client.get_blob_client(container=bucket_name, blob=key)
                 props = blob_client.get_blob_properties()
                 return (props.size or 0) / (1024 * 1024)
 
@@ -128,9 +124,7 @@ class DataFrameReader(ABC):
         except Exception as err:
             raise DataFrameReadException(f"Error reading dataframe due to [{err}]")
 
-    def read_first_chunk(
-        self, *, key: str, bucket_name: str, **kwargs
-    ) -> DatalakeColumnWrapper:
+    def read_first_chunk(self, *, key: str, bucket_name: str, **kwargs) -> DatalakeColumnWrapper:
         """
         Returns only the first chunk of data. Used for schema inference
         without loading the entire file into memory.
@@ -154,9 +148,7 @@ class DataFrameReader(ABC):
 
             return DatalakeColumnWrapper(
                 columns=wrapper.columns,
-                dataframes=(lambda chunk=first_chunk: iter([chunk]))
-                if first_chunk is not None
-                else None,
+                dataframes=(lambda chunk=first_chunk: iter([chunk])) if first_chunk is not None else None,
                 raw_data=wrapper.raw_data,
             )
         except Exception as err:

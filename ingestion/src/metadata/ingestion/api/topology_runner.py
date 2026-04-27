@@ -12,6 +12,7 @@
 Mixin to be used by service sources to dynamically
 generate the _run based on their topology.
 """
+
 import math
 import time
 import traceback
@@ -105,9 +106,7 @@ class TopologyRunnerMixin(Generic[C]):
                 )
             )
 
-    def _multithread_process_node(
-        self, node: TopologyNode, threads: int
-    ) -> Iterable[Entity]:
+    def _multithread_process_node(self, node: TopologyNode, threads: int) -> Iterable[Entity]:
         """Multithread Processing of a Node with progress tracking"""
         child_nodes = self._get_child_nodes(node)
         entity_type_name = self._get_entity_type_for_node(node)
@@ -136,8 +135,7 @@ class TopologyRunnerMixin(Generic[C]):
         else:
             chunksize = int(math.ceil(node_entities_length / threads))
             chunks: list[list[Entity]] = [
-                node_entities[i : i + chunksize]
-                for i in range(0, node_entities_length, chunksize)
+                node_entities[i : i + chunksize] for i in range(0, node_entities_length, chunksize)
             ]
 
             with CustomThreadPoolExecutor(max_workers=threads) as pool:
@@ -190,9 +188,7 @@ class TopologyRunnerMixin(Generic[C]):
                 progress_tracker.add_to_total(entity_type_name, 1)
 
             for stage in node.stages:
-                yield from self._process_stage(
-                    stage=stage, node_entity=node_entity, child_nodes=child_nodes
-                )
+                yield from self._process_stage(stage=stage, node_entity=node_entity, child_nodes=child_nodes)
 
             # Once we are done processing all the stages,
             for stage in node.stages:
@@ -266,9 +262,7 @@ class TopologyRunnerMixin(Generic[C]):
 
             # For each stage, we get all the stage results and one by one yield them by adding them to the Queue.
             for stage in node.stages:
-                for stage_result in self._process_stage(
-                    stage=stage, node_entity=node_entity, child_nodes=child_nodes
-                ):
+                for stage_result in self._process_stage(stage=stage, node_entity=node_entity, child_nodes=child_nodes):
                     self.queue.put(stage_result)
 
             # After all the stages are done, we clear the context if needed.
@@ -293,15 +287,9 @@ class TopologyRunnerMixin(Generic[C]):
 
     def _get_child_nodes(self, node: TopologyNode) -> List[TopologyNode]:
         """Compute children nodes if any"""
-        return (
-            [get_topology_node(child, self.topology) for child in node.children]
-            if node.children
-            else []
-        )
+        return [get_topology_node(child, self.topology) for child in node.children] if node.children else []
 
-    def _run_stage_processor(
-        self, stage: NodeStage, node_entity: Any
-    ) -> Iterable[Entity]:
+    def _run_stage_processor(self, stage: NodeStage, node_entity: Any) -> Iterable[Entity]:
         """Run the stage processor"""
         try:
             stage_fn = getattr(self, stage.processor)
@@ -310,9 +298,7 @@ class TopologyRunnerMixin(Generic[C]):
             logger.debug(traceback.format_exc())
             logger.error(f"Error running stage processor: {exc}")
 
-    def _process_stage(
-        self, stage: NodeStage, node_entity: Any, child_nodes: List[TopologyNode]
-    ) -> Iterable[Entity]:
+    def _process_stage(self, stage: NodeStage, node_entity: Any, child_nodes: List[TopologyNode]) -> Iterable[Entity]:
         """
         For each entity produced in the Node Producer, iterate over all the Node's Stages and
         yield the assets to pass down the workflow.
@@ -325,17 +311,13 @@ class TopologyRunnerMixin(Generic[C]):
         operation_metrics = OperationMetricsState()
         stage_start = perf_counter()
 
-        for entity_request in (
-            self._run_stage_processor(stage=stage, node_entity=node_entity) or []
-        ):
+        for entity_request in self._run_stage_processor(stage=stage, node_entity=node_entity) or []:
             try:
                 # yield and make sure the data is updated
                 yield from self.sink_request(stage=stage, entity_request=entity_request)
             except ValueError as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unexpected value error when processing stage: [{stage}]: {err}"
-                )
+                logger.warning(f"Unexpected value error when processing stage: [{stage}]: {err}")
 
         if stage.cache_entities:
             self._init_cache_dict(stage=stage, child_nodes=child_nodes)
@@ -370,9 +352,7 @@ class TopologyRunnerMixin(Generic[C]):
                         )
                     )
 
-    def _init_cache_dict(
-        self, stage: NodeStage, child_nodes: List[TopologyNode]
-    ) -> None:
+    def _init_cache_dict(self, stage: NodeStage, child_nodes: List[TopologyNode]) -> None:
         """
         Method to call the API to fill the entities cache.
 
@@ -392,9 +372,7 @@ class TopologyRunnerMixin(Generic[C]):
                         entity_fqn=entity_fqn,
                     )
 
-    def get_fqn_source_hash_dict(
-        self, parent_type: Type[Entity], child_type: Type[Entity], entity_fqn: str
-    ) -> None:
+    def get_fqn_source_hash_dict(self, parent_type: Type[Entity], child_type: Type[Entity], entity_fqn: str) -> None:
         """
         Get all the entities and store them as fqn:sourceHash in a dict
         """
@@ -410,13 +388,9 @@ class TopologyRunnerMixin(Generic[C]):
         )
         for entity in entities_list:
             if entity.sourceHash:
-                self.cache[child_type][
-                    model_str(entity.fullyQualifiedName)
-                ] = entity.sourceHash
+                self.cache[child_type][model_str(entity.fullyQualifiedName)] = entity.sourceHash
             if entity.deleted:
-                self.deleted[child_type][
-                    model_str(entity.fullyQualifiedName)
-                ] = entity.sourceHash
+                self.deleted[child_type][model_str(entity.fullyQualifiedName)] = entity.sourceHash
 
     def _iter(self) -> Iterable[Either]:
         """
@@ -430,9 +404,7 @@ class TopologyRunnerMixin(Generic[C]):
         """
         yield from self.process_nodes(get_topology_root(self.topology))
 
-    def create_patch_request(
-        self, original_entity: Entity, create_request: C
-    ) -> PatchRequest:
+    def create_patch_request(self, original_entity: Entity, create_request: C) -> PatchRequest:
         """
         Method to get the PatchRequest object
         To be overridden by the process if any custom logic is to be applied
@@ -458,9 +430,7 @@ class TopologyRunnerMixin(Generic[C]):
         """
         entity = None
         entity_name = model_str(right.name)
-        entity_fqn = self.context.get().fqn_from_stage(
-            stage=stage, entity_name=entity_name
-        )
+        entity_fqn = self.context.get().fqn_from_stage(stage=stage, entity_name=entity_name)
 
         # If we don't want to write data in OM, we'll return what we fetch from the API.
         # This will be applicable for service entities since we do not want to overwrite the data
@@ -489,23 +459,14 @@ class TopologyRunnerMixin(Generic[C]):
 
             # if the entity was deleted, restore it first
             if is_deleted:
-                entity = self.metadata.get_by_name(
-                    entity=stage.type_, fqn=entity_fqn, fields=["*"], include="all"
-                )
+                entity = self.metadata.get_by_name(entity=stage.type_, fqn=entity_fqn, fields=["*"], include="all")
                 if entity:
-                    logger.debug(
-                        f"Restoring deleted {str(stage.type_.__name__)} '{entity_fqn}'"
-                    )
-                    restored_entity = self.metadata.restore(
-                        entity=stage.type_, entity_id=entity.id
-                    )
+                    logger.debug(f"Restoring deleted {str(stage.type_.__name__)} '{entity_fqn}'")
+                    restored_entity = self.metadata.restore(entity=stage.type_, entity_id=entity.id)
                     if restored_entity:
                         self.deleted[stage.type_].pop(entity_fqn, None)
                         # after restore, check if we need to patch for changes
-                        if (
-                            entity_source_hash != create_entity_request_hash
-                            or self.source_config.overrideMetadata
-                        ):
+                        if entity_source_hash != create_entity_request_hash or self.source_config.overrideMetadata:
                             patch_entity = self.create_patch_request(
                                 original_entity=restored_entity,
                                 create_request=entity_request.right,
@@ -515,19 +476,12 @@ class TopologyRunnerMixin(Generic[C]):
                             # entity restored with same hash, skip update
                             same_fingerprint = True
                     else:
-                        logger.warning(
-                            f"Failed to restore deleted {str(stage.type_.__name__)} '{entity_fqn}'"
-                        )
+                        logger.warning(f"Failed to restore deleted {str(stage.type_.__name__)} '{entity_fqn}'")
             # if the source hash is not present or different from new hash, update the entity
             # if overrideMetadata is true, we will always update the entity
-            elif (
-                entity_source_hash != create_entity_request_hash
-                or self.source_config.overrideMetadata
-            ):
+            elif entity_source_hash != create_entity_request_hash or self.source_config.overrideMetadata:
                 # the entity has changed, get the entity from server and make a patch request
-                entity = self.metadata.get_by_name(
-                    entity=stage.type_, fqn=entity_fqn, fields=["*"]
-                )
+                entity = self.metadata.get_by_name(entity=stage.type_, fqn=entity_fqn, fields=["*"])
 
                 # we return the entity for a patch update
                 if entity:
@@ -537,9 +491,7 @@ class TopologyRunnerMixin(Generic[C]):
                     entity_request.right = patch_entity
             else:
                 # nothing has changed on the source skip the API call
-                logger.debug(
-                    f"No changes detected for {str(stage.type_.__name__)} '{entity_fqn}'"
-                )
+                logger.debug(f"No changes detected for {str(stage.type_.__name__)} '{entity_fqn}'")
                 same_fingerprint = True
 
         if not same_fingerprint:
@@ -616,9 +568,7 @@ class TopologyRunnerMixin(Generic[C]):
 
         self.context.get().update_context_value(stage=stage, value=right)
 
-    def sink_request(
-        self, stage: NodeStage, entity_request: Either[C]
-    ) -> Iterable[Either[Entity]]:
+    def sink_request(self, stage: NodeStage, entity_request: Either[C]) -> Iterable[Either[Entity]]:
         """
         Validate that the entity was properly updated or retry if
         ack_sink is flagged.
@@ -642,9 +592,7 @@ class TopologyRunnerMixin(Generic[C]):
                 # We need to acknowledge that the Entity has been properly sent to the server
                 # to update the context
                 if stage.context:
-                    yield from self.yield_and_update_context(
-                        entity, stage=stage, entity_request=entity_request
-                    )
+                    yield from self.yield_and_update_context(entity, stage=stage, entity_request=entity_request)
 
                 else:
                     yield entity_request

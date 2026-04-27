@@ -12,6 +12,7 @@
 """
 Test Container sampler processor functionality
 """
+
 import uuid
 from unittest.mock import MagicMock, Mock, patch
 
@@ -93,9 +94,7 @@ def workflow_config():
             type="s3",
             serviceName="s3_service",
             sourceConfig=SourceConfig(
-                config=StorageServiceAutoClassificationPipeline(
-                    storeSampleData=True, sampleDataCount=50
-                ),
+                config=StorageServiceAutoClassificationPipeline(storeSampleData=True, sampleDataCount=50),
             ),
         ),
         processor=Processor(type="orm-profiler", config={}),
@@ -114,9 +113,7 @@ def workflow_config():
 
 
 @patch("metadata.sampler.processor.import_sampler_class")
-def test_sampler_processor_handles_container(
-    mock_import_sampler, container_entity, workflow_config
-):
+def test_sampler_processor_handles_container(mock_import_sampler, container_entity, workflow_config):
     """Test that SamplerProcessor can handle Container entities"""
 
     # Setup mocks
@@ -147,9 +144,7 @@ def test_sampler_processor_handles_container(
 
     # Create profiler source and entity
     profiler_source = MagicMock()
-    record = ProfilerSourceAndEntity.model_construct(
-        profiler_source=profiler_source, entity=container_entity
-    )
+    record = ProfilerSourceAndEntity.model_construct(profiler_source=profiler_source, entity=container_entity)
 
     # Process the container
     result = processor._run(record)
@@ -163,9 +158,7 @@ def test_sampler_processor_handles_container(
 
 
 @patch("metadata.sampler.processor.import_sampler_class")
-def test_sampler_processor_handles_table(
-    mock_import_sampler, table_entity, workflow_config
-):
+def test_sampler_processor_handles_table(mock_import_sampler, table_entity, workflow_config):
     """Test that SamplerProcessor still handles Table entities correctly"""
 
     # Setup mocks
@@ -192,9 +185,7 @@ def test_sampler_processor_handles_table(
     with patch("metadata.sampler.processor.get_context_entities") as mock_get_context:
         mock_get_context.return_value = (Mock(), Mock(), None)
 
-        with patch(
-            "metadata.sampler.processor.SamplerProcessor._copy_service_config"
-        ) as mock_copy_config:
+        with patch("metadata.sampler.processor.SamplerProcessor._copy_service_config") as mock_copy_config:
             mock_copy_config.return_value = {}
 
             processor = SamplerProcessor(
@@ -204,9 +195,7 @@ def test_sampler_processor_handles_table(
 
             # Create profiler source and entity
             profiler_source = MagicMock()
-            record = ProfilerSourceAndEntity.model_construct(
-                profiler_source=profiler_source, entity=table_entity
-            )
+            record = ProfilerSourceAndEntity.model_construct(profiler_source=profiler_source, entity=table_entity)
 
             # Process the table
             result = processor._run(record)
@@ -217,17 +206,13 @@ def test_sampler_processor_handles_table(
             assert result.right.entity == table_entity
 
 
-def test_sampler_processor_run_for_container_no_context_entities(
-    container_entity, workflow_config
-):
+def test_sampler_processor_run_for_container_no_context_entities(container_entity, workflow_config):
     """Test that _run_for_container doesn't require database/schema context"""
 
     with patch("metadata.sampler.processor.import_sampler_class") as mock_import:
         mock_sampler_class = MagicMock()
         mock_sampler_instance = MagicMock()
-        mock_sampler_instance.generate_sample_data.return_value = TableData(
-            columns=[], rows=[]
-        )
+        mock_sampler_instance.generate_sample_data.return_value = TableData(columns=[], rows=[])
         mock_sampler_class.create.return_value = mock_sampler_instance
         mock_import.return_value = mock_sampler_class
 
@@ -240,11 +225,9 @@ def test_sampler_processor_run_for_container_no_context_entities(
         )
 
         profiler_source = MagicMock()
-        record = ProfilerSourceAndEntity.model_construct(
-            profiler_source=profiler_source, entity=container_entity
-        )
+        record = ProfilerSourceAndEntity.model_construct(profiler_source=profiler_source, entity=container_entity)
 
-        result = processor._run_for_container(container_entity, record)
+        result = processor._run_for_container(container_entity, record)  # noqa: F841
 
         # Verify sampler was created with None for schema/database entities
         call_args = mock_sampler_class.create.call_args
@@ -270,9 +253,7 @@ def test_sampler_processor_unsupported_entity_type(workflow_config):
         )
 
         profiler_source = MagicMock()
-        record = ProfilerSourceAndEntity.model_construct(
-            profiler_source=profiler_source, entity=unsupported_entity
-        )
+        record = ProfilerSourceAndEntity.model_construct(profiler_source=profiler_source, entity=unsupported_entity)
 
         result = processor._run(record)
 
@@ -291,9 +272,7 @@ def test_sample_data_store_flag_respected(container_entity, workflow_config):
     with patch("metadata.sampler.processor.import_sampler_class") as mock_import:
         mock_sampler_class = MagicMock()
         mock_sampler_instance = MagicMock()
-        mock_sampler_instance.generate_sample_data.return_value = TableData(
-            columns=[], rows=[]
-        )
+        mock_sampler_instance.generate_sample_data.return_value = TableData(columns=[], rows=[])
         mock_sampler_class.create.return_value = mock_sampler_instance
         mock_import.return_value = mock_sampler_class
 
@@ -306,9 +285,7 @@ def test_sample_data_store_flag_respected(container_entity, workflow_config):
         )
 
         profiler_source = MagicMock()
-        record = ProfilerSourceAndEntity.model_construct(
-            profiler_source=profiler_source, entity=container_entity
-        )
+        record = ProfilerSourceAndEntity.model_construct(profiler_source=profiler_source, entity=container_entity)
 
         result = processor._run_for_container(container_entity, record)
 

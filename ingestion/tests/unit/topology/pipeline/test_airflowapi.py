@@ -74,12 +74,9 @@ def _make_source_and_dag(task_names=None):
     source.source_config = MagicMock()
     source.source_config.includeTags = True
 
-    source._get_dag_source_url = (
-        lambda dag_id: f"http://airflow.example.com:8080/dags/{dag_id}/grid"
-    )
+    source._get_dag_source_url = lambda dag_id: f"http://airflow.example.com:8080/dags/{dag_id}/grid"
     source._get_task_source_url = lambda dag_id, task_id: (
-        f"http://airflow.example.com:8080/taskinstance/list/"
-        f"?_flt_3_dag_id={dag_id}&_flt_3_task_id={task_id}"
+        f"http://airflow.example.com:8080/taskinstance/list/?_flt_3_dag_id={dag_id}&_flt_3_task_id={task_id}"
     )
     source._build_tasks = lambda details: AirflowApiSource._build_tasks(source, details)
     source.register_record = MagicMock()
@@ -131,10 +128,7 @@ class TestStatusMapping:
         assert STATUS_MAP["upstream_failed"] == StatusType.Failed.value
 
     def test_unknown_state_defaults(self):
-        assert (
-            STATUS_MAP.get("nonexistent", StatusType.Pending.value)
-            == StatusType.Pending.value
-        )
+        assert STATUS_MAP.get("nonexistent", StatusType.Pending.value) == StatusType.Pending.value
 
 
 # ── Models ───────────────────────────────────────────────────────────────
@@ -401,15 +395,11 @@ class TestPaginateTaskInstances:
         client, mock_rest = _make_client(mock_rest_cls)
 
         page1 = {
-            "task_instances": [
-                {"task_id": f"t_{i}", "state": "success"} for i in range(100)
-            ],
+            "task_instances": [{"task_id": f"t_{i}", "state": "success"} for i in range(100)],
             "total_entries": 150,
         }
         page2 = {
-            "task_instances": [
-                {"task_id": f"t_{i}", "state": "success"} for i in range(100, 150)
-            ],
+            "task_instances": [{"task_id": f"t_{i}", "state": "success"} for i in range(100, 150)],
             "total_entries": 150,
         }
         mock_rest.get.side_effect = [page1, page2]
@@ -736,17 +726,13 @@ class TestGetOwners:
     def test_resolves_single_owner(self):
         source = self._make_source()
         admin_ref = _make_entity_ref("admin")
-        source.metadata.get_reference_by_name.return_value = EntityReferenceList(
-            root=[admin_ref]
-        )
+        source.metadata.get_reference_by_name.return_value = EntityReferenceList(root=[admin_ref])
 
         result = AirflowApiSource.get_owners(source, ["admin"])
         assert result is not None
         assert len(result.root) == 1
         assert result.root[0].name == "admin"
-        source.metadata.get_reference_by_name.assert_called_once_with(
-            name="admin", is_owner=True
-        )
+        source.metadata.get_reference_by_name.assert_called_once_with(name="admin", is_owner=True)
 
     def test_resolves_multiple_owners(self):
         source = self._make_source()

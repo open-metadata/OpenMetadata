@@ -42,9 +42,7 @@ logger = test_suite_logger()
 SUM_SQUARES_KEY = "SUM_SQUARES"
 
 
-class ColumnValueStdDevToBeBetweenValidator(
-    BaseColumnValueStdDevToBeBetweenValidator, PandasValidatorMixin
-):
+class ColumnValueStdDevToBeBetweenValidator(BaseColumnValueStdDevToBeBetweenValidator, PandasValidatorMixin):
     """Validator for column value stddev to be between test case"""
 
     def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
@@ -110,30 +108,22 @@ class ColumnValueStdDevToBeBetweenValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    dimension_aggregates[dimension_value][
-                        Metrics.stddev.name
-                    ] = stddev_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.stddev.name] = stddev_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.stddev.name],
                         group_df,
                     )
 
-                    dimension_aggregates[dimension_value][
-                        DIMENSION_TOTAL_COUNT_KEY
-                    ] += row_count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][
-                            DIMENSION_TOTAL_COUNT_KEY
-                        ],
-                        group_df,
+                    dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY] += (
+                        row_count_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY],
+                            group_df,
+                        )
                     )
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                stddev_value = stddev_impl.aggregate_accumulator(
-                    agg[Metrics.stddev.name]
-                )
-                total_rows = row_count_impl.aggregate_accumulator(
-                    agg[DIMENSION_TOTAL_COUNT_KEY]
-                )
+                stddev_value = stddev_impl.aggregate_accumulator(agg[Metrics.stddev.name])
+                total_rows = row_count_impl.aggregate_accumulator(agg[DIMENSION_TOTAL_COUNT_KEY])
 
                 if stddev_value is None:
                     logger.warning(
@@ -144,11 +134,7 @@ class ColumnValueStdDevToBeBetweenValidator(
                     continue
 
                 # Statistical validator: when stddev fails, ALL rows in dimension fail
-                failed_count = (
-                    total_rows
-                    if checker.violates_pandas({Metrics.stddev.name: stddev_value})
-                    else 0
-                )
+                failed_count = total_rows if checker.violates_pandas({Metrics.stddev.name: stddev_value}) else 0
 
                 results_data.append(
                     {
@@ -171,9 +157,7 @@ class ColumnValueStdDevToBeBetweenValidator(
                     total_column=DIMENSION_TOTAL_COUNT_KEY,
                 )
 
-                def calculate_weighted_stddev(
-                    df_aggregated, others_mask, metric_column
-                ):
+                def calculate_weighted_stddev(df_aggregated, others_mask, metric_column):
                     """Calculate weighted stddev for Others using StdDev accumulator
 
                     For "Others" group, we recompute stddev from aggregated statistics
@@ -184,15 +168,9 @@ class ColumnValueStdDevToBeBetweenValidator(
                     """
                     result = df_aggregated[metric_column].copy()
                     if others_mask.any():
-                        others_sum = df_aggregated.loc[
-                            others_mask, Metrics.sum.name
-                        ].iloc[0]
-                        others_count = df_aggregated.loc[
-                            others_mask, Metrics.valuesCount.name
-                        ].iloc[0]
-                        others_sum_squares = df_aggregated.loc[
-                            others_mask, SUM_SQUARES_KEY
-                        ].iloc[0]
+                        others_sum = df_aggregated.loc[others_mask, Metrics.sum.name].iloc[0]
+                        others_count = df_aggregated.loc[others_mask, Metrics.valuesCount.name].iloc[0]
+                        others_sum_squares = df_aggregated.loc[others_mask, SUM_SQUARES_KEY].iloc[0]
 
                         accumulator = SumSumSquaresCount(
                             sum_value=others_sum,
@@ -217,9 +195,7 @@ class ColumnValueStdDevToBeBetweenValidator(
                         DIMENSION_TOTAL_COUNT_KEY: "sum",
                         DIMENSION_FAILED_COUNT_KEY: "sum",
                     },
-                    final_metric_calculators={
-                        Metrics.stddev.name: calculate_weighted_stddev
-                    },
+                    final_metric_calculators={Metrics.stddev.name: calculate_weighted_stddev},
                     exclude_from_final=[
                         Metrics.sum.name,
                         Metrics.valuesCount.name,

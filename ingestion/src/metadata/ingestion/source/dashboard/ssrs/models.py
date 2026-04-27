@@ -11,6 +11,7 @@
 """
 SSRS Models
 """
+
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field

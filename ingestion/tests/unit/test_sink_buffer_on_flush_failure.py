@@ -50,9 +50,7 @@ class TestBufferClearedOnFlushException:
     def test_buffer_cleared_after_flush_exception(self, sink):
         """Buffer must be empty after a failed flush so that stale entities
         do not accumulate in memory."""
-        sink.metadata.bulk_create_or_update = Mock(
-            side_effect=Exception("Connection refused")
-        )
+        sink.metadata.bulk_create_or_update = Mock(side_effect=Exception("Connection refused"))
 
         sink.write_create_request(_make_data_model("dm-1", "Model 1"))
         sink.write_create_request(_make_data_model("dm-2", "Model 2"))
@@ -63,9 +61,7 @@ class TestBufferClearedOnFlushException:
     def test_buffer_does_not_grow_across_failed_flushes(self, sink):
         """With continuous failures the buffer must stay bounded at
         batch_size, not grow linearly with total entities ingested."""
-        sink.metadata.bulk_create_or_update = Mock(
-            side_effect=Exception("Connection refused")
-        )
+        sink.metadata.bulk_create_or_update = Mock(side_effect=Exception("Connection refused"))
 
         # Three consecutive batches, all failing
         for i in range(9):
@@ -116,9 +112,7 @@ class TestBufferClearedOnFlushException:
     def test_dedup_tracking_cleared_after_flush_exception(self, sink):
         """buffered_entity_names must be cleared alongside the buffer so that
         a re-sent entity with the same name is not incorrectly rejected."""
-        sink.metadata.bulk_create_or_update = Mock(
-            side_effect=Exception("Connection refused")
-        )
+        sink.metadata.bulk_create_or_update = Mock(side_effect=Exception("Connection refused"))
 
         dm = _make_data_model("same-name", "Original Model")
         sink.write_create_request(dm)

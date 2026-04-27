@@ -116,9 +116,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
         self._table = self.sampler.raw_dataset
         self.create_session()
-        self.system_metrics_class = SystemMetricsRegistry.get(
-            self.session.get_bind().dialect
-        )
+        self.system_metrics_class = SystemMetricsRegistry.get(self.session.get_bind().dialect)
 
     def create_session(self):
         self.session_factory = self._session_factory()
@@ -140,26 +138,20 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             try:
                 user_count = int(self._thread_count)
             except (TypeError, ValueError):
-                logger.warning(
-                    "Provided threadCount is not an integer. Falling back to auto-calculation."
-                )
+                logger.warning("Provided threadCount is not an integer. Falling back to auto-calculation.")
                 user_count = None
 
             if user_count is not None:
                 clamped = max(1, min(MAX_THREADS, user_count))
                 if clamped != user_count:
-                    logger.debug(
-                        f"Clamped threadCount from {user_count} to {clamped} (allowed range 1-{MAX_THREADS})."
-                    )
+                    logger.debug(f"Clamped threadCount from {user_count} to {clamped} (allowed range 1-{MAX_THREADS}).")
                 return clamped
 
         # Auto-calculate based on task count
         task_counts = len(MetricFilter.filter_empty_metrics(metric_funcs))
         min_threads = min(MIN_THREADS, task_counts)
         calculated = min(MAX_THREADS, max(min_threads, (task_counts // 3) or 1))
-        logger.debug(
-            f"Calculated effective thread count: {calculated} for {task_counts} tasks."
-        )
+        logger.debug(f"Calculated effective thread count: {calculated} for {task_counts} tasks.")
 
         return int(calculated)
 
@@ -187,8 +179,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 *[
                     metric(column).fn()
                     for metric in metrics
-                    if not metric.is_window_metric()
-                    and metric not in {Sum, StdDev, Mean}
+                    if not metric.is_window_metric() and metric not in {Sum, StdDev, Mean}
                 ]
             )
             return row._asdict()
@@ -256,17 +247,11 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         """
         try:
             row = runner.select_first_from_sample(
-                *[
-                    metric(column).fn()
-                    for metric in metrics
-                    if not metric.is_window_metric()
-                ],
+                *[metric(column).fn() for metric in metrics if not metric.is_window_metric()],
             )
             return row._asdict()
         except (ProgrammingError, DBAPIError) as exc:
-            return self._programming_error_static_metric(
-                runner, column, exc, session, metrics
-            )
+            return self._programming_error_static_metric(runner, column, exc, session, metrics)
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
@@ -299,17 +284,11 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 return None
             if col_metric.metric_type == dict:
                 results = runner.select_all_from_query(metric_query)
-                data = {
-                    k: [result[k] for result in results] for k in results[0]._asdict()
-                }
+                data = {k: [result[k] for result in results] for k in results[0]._asdict()}
                 return {metric.name(): data}
             if isinstance(metric_query, Label):
                 # hotfix to handle transition of unique count implementation
-                sample_column = (
-                    sample.__table__.c[column.key]
-                    if hasattr(sample, "__table__")
-                    else sample.c[column.key]
-                )
+                sample_column = sample.__table__.c[column.key] if hasattr(sample, "__table__") else sample.c[column.key]
                 subquery = (
                     self.session.query(Count(sample_column).fn().label(column.name))
                     .select_from(sample)
@@ -325,8 +304,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             # if the query returns no results, we will get a ResourceClosedError from Druid
             if (
                 # pylint: disable=protected-access
-                runner._session.get_bind().dialect.name
-                != Dialects.Druid
+                runner._session.get_bind().dialect.name != Dialects.Druid
             ):
                 msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
                 handle_query_exception(msg, exc, session)
@@ -363,17 +341,13 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             if row:
                 return row._asdict()
         except ProgrammingError as exc:
-            logger.info(
-                f"Skipping metrics for {runner.table_name}.{column.name} due to {exc}"
-            )
+            logger.info(f"Skipping metrics for {runner.table_name}.{column.name} due to {exc}")
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         return None
 
-    def _compute_custom_metrics(
-        self, metrics: List[CustomMetric], runner, session, *args, **kwargs
-    ):
+    def _compute_custom_metrics(self, metrics: List[CustomMetric], runner, session, *args, **kwargs):
         """Compute custom metrics
 
         Args:
@@ -388,17 +362,11 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         for metric in metrics:
             try:
                 if not is_safe_sql_query(metric.expression):
-                    raise RuntimeError(
-                        f"SQL expression is not safe\n\n{metric.expression}"
-                    )
+                    raise RuntimeError(f"SQL expression is not safe\n\n{metric.expression}")
 
                 crs = session.execute(text(metric.expression))
-                row = (
-                    crs.scalar()
-                )  # raise MultipleResultsFound if more than one row is returned
-                custom_metrics.append(
-                    CustomMetricProfile(name=metric.name.root, value=row)
-                )
+                row = crs.scalar()  # raise MultipleResultsFound if more than one row is returned
+                custom_metrics.append(CustomMetricProfile(name=metric.name.root, value=row))
 
             except Exception as exc:
                 msg = f"Error trying to compute profile for {runner.table_name}.{metric.columnName}: {exc}"
@@ -426,9 +394,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        logger.debug(
-            f"No implementation found for {self.session.get_bind().dialect.name} for {metrics.name()} metric"
-        )
+        logger.debug(f"No implementation found for {self.session.get_bind().dialect.name} for {metrics.name()} metric")
         return []
 
     def _create_thread_safe_runner(self, session, column=None):
@@ -450,9 +416,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         metric_func: ThreadPoolMetrics,
     ):
         """Run metrics in processor worker"""
-        logger.debug(
-            f"Running profiler for {metric_func.table.__tablename__} on thread {threading.current_thread()}"
-        )
+        logger.debug(f"Running profiler for {metric_func.table.__tablename__} on thread {threading.current_thread()}")
         Session = self.session_factory  # pylint: disable=invalid-name
         max_retries = 3
         retry_count = 0
@@ -476,10 +440,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     if isinstance(row, dict):
                         row = self._validate_nulls(row)
                     if isinstance(row, list):
-                        row = [
-                            self._validate_nulls(r) if isinstance(r, dict) else r
-                            for r in row
-                        ]
+                        row = [self._validate_nulls(r) if isinstance(r, dict) else r for r in row]
 
                     # On success, log the scan and break out of the retry loop
                     if metric_func.column is not None:
@@ -488,9 +449,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                             f"{metric_func.table.__tablename__}.{column}__{metric_func.metric_type.value}"
                         )
                     else:
-                        self.status.scanned(
-                            f"{metric_func.table.__tablename__}__{metric_func.metric_type.value}"
-                        )
+                        self.status.scanned(f"{metric_func.table.__tablename__}__{metric_func.metric_type.value}")
                         column = None
 
                     return row, column, metric_func.metric_type.value
@@ -500,9 +459,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     if dialect.is_disconnect(exc, session.get_bind(), None):
                         retry_count += 1
                         if retry_count < max_retries:
-                            backoff = min(
-                                initial_backoff * (2 ** (retry_count - 1)), max_backoff
-                            )
+                            backoff = min(initial_backoff * (2 ** (retry_count - 1)), max_backoff)
                             logger.debug(
                                 f"Connection error detected, retrying ({retry_count}/{max_retries}) "
                                 f"after {backoff:.2f} seconds..."
@@ -510,9 +467,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                             session.rollback()
                             time.sleep(backoff)
                             continue
-                        logger.error(
-                            f"Max retries ({max_retries}) exceeded for disconnection"
-                        )
+                        logger.error(f"Max retries ({max_retries}) exceeded for disconnection")
                     error = (
                         f"{metric_func.column if metric_func.column is not None else metric_func.table.__tablename__} "
                         f"metric_type.value: {exc}"
@@ -532,9 +487,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         """Detect if we are computing NaNs and replace them with None"""
         for k, v in row.items():
             if isinstance(v, float) and math.isnan(v):
-                logger.warning(
-                    "NaN data detected and will be cast to null in OpenMetadata to maintain database parity"
-                )
+                logger.warning("NaN data detected and will be cast to null in OpenMetadata to maintain database parity")
                 row[k] = None
         return row
 
@@ -561,12 +514,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     continue
 
                 try:
-                    profile, column, metric_type = future.result(
-                        timeout=self.timeout_seconds
-                    )
-                    if metric_type != MetricTypes.System.value and not isinstance(
-                        profile, dict
-                    ):
+                    profile, column, metric_type = future.result(timeout=self.timeout_seconds)
+                    if metric_type != MetricTypes.System.value and not isinstance(profile, dict):
                         profile = dict()
                     if metric_type == MetricTypes.Table.value:
                         profile_results["table"].update(profile)
@@ -593,9 +542,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
         return profile_results
 
-    def get_composed_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict
-    ):
+    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: Dict):
         """Given a list of metrics, compute the given results
         and returns the values
 

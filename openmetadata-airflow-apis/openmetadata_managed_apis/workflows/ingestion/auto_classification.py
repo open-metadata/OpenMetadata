@@ -11,6 +11,7 @@
 """
 Auto Classification DAG function builder
 """
+
 import json
 
 from airflow import DAG
@@ -48,9 +49,7 @@ def auto_classification_workflow(
 
     set_operator_logger(workflow_config)
 
-    config = json.loads(
-        workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
-    )
+    config = json.loads(workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False))
     workflow = AutoClassificationWorkflow.create(config)
     execute_workflow(workflow, workflow_config)
 

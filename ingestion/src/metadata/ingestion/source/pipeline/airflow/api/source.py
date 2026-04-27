@@ -76,15 +76,11 @@ class AirflowApiSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ) -> "AirflowApiSource":
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None) -> "AirflowApiSource":
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AirflowConnection = config.serviceConnection.root.config
         if not isinstance(connection, AirflowConnection):
-            raise InvalidSourceException(
-                f"Expected AirflowConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected AirflowConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_pipelines_list(self) -> Iterable[AirflowApiDagDetails]:
@@ -94,32 +90,21 @@ class AirflowApiSource(PipelineServiceSource):
                 yield self.connection.build_dag_details(dag_data)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error building DAG details for {dag_data.get('dag_id')}: {exc}"
-                )
+                logger.warning(f"Error building DAG details for {dag_data.get('dag_id')}: {exc}")
 
     def get_pipeline_name(self, pipeline_details: AirflowApiDagDetails) -> str:
         return pipeline_details.dag_id
 
-    def get_pipeline_state(
-        self, pipeline_details: AirflowApiDagDetails
-    ) -> Optional[PipelineState]:
+    def get_pipeline_state(self, pipeline_details: AirflowApiDagDetails) -> Optional[PipelineState]:
         if pipeline_details.is_paused is None:
             return None
-        return (
-            PipelineState.Inactive
-            if pipeline_details.is_paused
-            else PipelineState.Active
-        )
+        return PipelineState.Inactive if pipeline_details.is_paused else PipelineState.Active
 
     def _get_task_source_url(self, dag_id: str, task_id: str) -> str:
         host = clean_uri(self.service_connection.hostPort)
         if self.connection.api_version == "v2":
             return f"{host}/dags/{quote(dag_id)}/tasks/{quote(task_id)}"
-        return (
-            f"{host}/taskinstance/list/"
-            f"?_flt_3_dag_id={quote(dag_id)}&_flt_3_task_id={quote(task_id)}"
-        )
+        return f"{host}/taskinstance/list/?_flt_3_dag_id={quote(dag_id)}&_flt_3_task_id={quote(task_id)}"
 
     def _get_dag_source_url(self, dag_id: str) -> str:
         host = clean_uri(self.service_connection.hostPort)
@@ -133,15 +118,11 @@ class AirflowApiSource(PipelineServiceSource):
         refs = EntityReferenceList(root=[])
         for owner_name in owners:
             try:
-                ref = self.metadata.get_reference_by_name(
-                    name=owner_name, is_owner=True
-                )
+                ref = self.metadata.get_reference_by_name(name=owner_name, is_owner=True)
                 if ref:
                     refs.root.extend(ref.root)
             except Exception as exc:
-                logger.warning(
-                    f"Error while getting details of user {owner_name} - {exc}"
-                )
+                logger.warning(f"Error while getting details of user {owner_name} - {exc}")
         return refs if refs.root else None
 
     def _build_tasks(self, dag_details: AirflowApiDagDetails) -> List[Task]:
@@ -149,9 +130,7 @@ class AirflowApiSource(PipelineServiceSource):
             Task(
                 name=task.task_id,
                 description=Markdown(task.doc_md) if task.doc_md else None,
-                sourceUrl=SourceUrl(
-                    self._get_task_source_url(dag_details.dag_id, task.task_id)
-                ),
+                sourceUrl=SourceUrl(self._get_task_source_url(dag_details.dag_id, task.task_id)),
                 downstreamTasks=task.downstream_task_ids or [],
                 startDate=task.start_date,
                 endDate=task.end_date,
@@ -160,26 +139,16 @@ class AirflowApiSource(PipelineServiceSource):
             for task in dag_details.tasks
         ]
 
-    def yield_pipeline(
-        self, pipeline_details: AirflowApiDagDetails
-    ) -> Iterable[Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details: AirflowApiDagDetails) -> Iterable[Either[CreatePipelineRequest]]:
         try:
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(pipeline_details.dag_id),
-                description=(
-                    Markdown(pipeline_details.description)
-                    if pipeline_details.description
-                    else None
-                ),
+                description=(Markdown(pipeline_details.description) if pipeline_details.description else None),
                 sourceUrl=SourceUrl(self._get_dag_source_url(pipeline_details.dag_id)),
                 state=self.get_pipeline_state(pipeline_details),
                 concurrency=pipeline_details.max_active_runs,
                 pipelineLocation=pipeline_details.fileloc,
-                startDate=(
-                    pipeline_details.start_date.isoformat()
-                    if pipeline_details.start_date
-                    else None
-                ),
+                startDate=(pipeline_details.start_date.isoformat() if pipeline_details.start_date else None),
                 tasks=self._build_tasks(pipeline_details),
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
                 owners=self.get_owners(pipeline_details.owners),
@@ -193,9 +162,7 @@ class AirflowApiSource(PipelineServiceSource):
             )
             yield Either(right=pipeline_request)
             self.register_record(pipeline_request=pipeline_request)
-            self.context.get().task_names = {
-                task.name for task in pipeline_request.tasks or []
-            }
+            self.context.get().task_names = {task.name for task in pipeline_request.tasks or []}
         except Exception as exc:
             self.context.get().task_names = set()
             yield Either(
@@ -206,29 +173,21 @@ class AirflowApiSource(PipelineServiceSource):
                 )
             )
 
-    def yield_pipeline_status(
-        self, pipeline_details: AirflowApiDagDetails
-    ) -> Iterable[Either[OMetaPipelineStatus]]:
+    def yield_pipeline_status(self, pipeline_details: AirflowApiDagDetails) -> Iterable[Either[OMetaPipelineStatus]]:
         try:
             num_status = self.service_connection.numberOfStatus or 10
-            dag_runs = self.connection.get_dag_runs(
-                pipeline_details.dag_id, limit=num_status
-            )
+            dag_runs = self.connection.get_dag_runs(pipeline_details.dag_id, limit=num_status)
 
             for dag_run in dag_runs:
                 if not dag_run.dag_run_id or not self.context.get().task_names:
                     continue
 
-                task_instances = self.connection.get_task_instances_for_run(
-                    pipeline_details.dag_id, dag_run.dag_run_id
-                )
+                task_instances = self.connection.get_task_instances_for_run(pipeline_details.dag_id, dag_run.dag_run_id)
 
                 task_statuses = [
                     TaskStatus(
                         name=ti.task_id,
-                        executionStatus=STATUS_MAP.get(
-                            ti.state, StatusType.Pending.value
-                        ),
+                        executionStatus=STATUS_MAP.get(ti.state, StatusType.Pending.value),
                         startTime=datetime_to_ts(ti.start_date),
                         endTime=datetime_to_ts(ti.end_date),
                     )
@@ -252,9 +211,7 @@ class AirflowApiSource(PipelineServiceSource):
                 pipeline_status = PipelineStatus(
                     executionId=dag_run.dag_run_id,
                     taskStatus=task_statuses,
-                    executionStatus=STATUS_MAP.get(
-                        dag_run.state, StatusType.Pending.value
-                    ),
+                    executionStatus=STATUS_MAP.get(dag_run.state, StatusType.Pending.value),
                     timestamp=Timestamp(timestamp),
                 )
                 pipeline_fqn = fqn.build(
@@ -283,9 +240,7 @@ class AirflowApiSource(PipelineServiceSource):
     ) -> Iterable[Either[AddLineageRequest]]:
         return []
 
-    def yield_tag(
-        self, pipeline_details: AirflowApiDagDetails
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(self, pipeline_details: AirflowApiDagDetails) -> Iterable[Either[OMetaTagAndClassification]]:
         yield from get_ometa_tag_and_classification(
             tags=pipeline_details.tags or [],
             classification_name=AIRFLOW_TAG_CATEGORY,

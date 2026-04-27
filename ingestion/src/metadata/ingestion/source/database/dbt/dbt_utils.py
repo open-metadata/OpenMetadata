@@ -11,6 +11,7 @@
 """
 DBT utils methods.
 """
+
 import re
 import traceback
 from datetime import datetime
@@ -62,9 +63,7 @@ def convert_java_to_python_format(java_format: str) -> str:
 
     python_format = java_format
     # Sort by length descending to replace longer patterns first
-    for java_pat, python_pat in sorted(
-        mappings.items(), key=lambda x: len(x[0]), reverse=True
-    ):
+    for java_pat, python_pat in sorted(mappings.items(), key=lambda x: len(x[0]), reverse=True):
         python_format = python_format.replace(java_pat, python_pat)
 
     return python_format
@@ -85,9 +84,7 @@ def validate_email_format(email: str) -> bool:
     return bool(re.match(pattern, email))
 
 
-def validate_date_time_format(
-    value: str, format_pattern: str, field_type: str
-) -> Tuple[bool, Optional[str]]:
+def validate_date_time_format(value: str, format_pattern: str, field_type: str) -> Tuple[bool, Optional[str]]:
     """
     Validate date/time value against configured format pattern.
 
@@ -112,9 +109,7 @@ def validate_date_time_format(
         return False, f"Validation error: {str(exc)}"
 
 
-def validate_enum_value(
-    value: Any, config: Optional[Dict]
-) -> Tuple[bool, Optional[str], Optional[Any]]:
+def validate_enum_value(value: Any, config: Optional[Dict]) -> Tuple[bool, Optional[str], Optional[Any]]:
     """
     Validate enum value against configured allowed values.
 
@@ -171,9 +166,7 @@ def validate_enum_value(
         return True, None, value  # Valid single value
 
 
-def validate_table_structure(
-    value: Any, config: Optional[Dict]
-) -> Tuple[bool, Optional[str]]:
+def validate_table_structure(value: Any, config: Optional[Dict]) -> Tuple[bool, Optional[str]]:
     """
     Validate table-cp structure against configuration.
 
@@ -280,9 +273,7 @@ def format_validation_error_message(
     Returns:
         Formatted error message
     """
-    base_msg = (
-        f"Validation failed for custom property '{field_name}' (type: {property_type})"
-    )
+    base_msg = f"Validation failed for custom property '{field_name}' (type: {property_type})"
 
     if error_detail:
         return f"{base_msg}: {error_detail}. Provided value: {value}"
@@ -354,11 +345,7 @@ def _validate_enum_type(
     if config and isinstance(config, dict):
         is_valid, error_msg, filtered_value = validate_enum_value(value, config)
         if is_valid:
-            converted_value = (
-                filtered_value
-                if isinstance(filtered_value, list)
-                else [str(filtered_value)]
-            )
+            converted_value = filtered_value if isinstance(filtered_value, list) else [str(filtered_value)]
             return True, error_msg, converted_value
         return False, error_msg, None
     # Fallback without config
@@ -474,9 +461,7 @@ def _validate_entity_reference_list_type(
     # Validate and convert each item in the list
     converted_list = []
     for idx, item in enumerate(value):
-        is_valid, error_msg, converted_item = _validate_entity_reference_type(
-            item, config, metadata
-        )
+        is_valid, error_msg, converted_item = _validate_entity_reference_type(item, config, metadata)
         if not is_valid:
             return False, f"Item {idx}: {error_msg}", None
         if converted_item:
@@ -488,21 +473,29 @@ def _validate_entity_reference_list_type(
 # Dictionary mapping of validators for each custom property type
 CUSTOM_PROPERTY_TYPE_VALIDATORS = {
     # Basic types - simple type checking with conversion
-    "string": lambda v, c, m=None: (True, None, str(v))
-    if isinstance(v, str)
-    else (False, f"Expected string, got {type(v).__name__}", None),
-    "integer": lambda v, c, m=None: (True, None, int(v))
-    if isinstance(v, int) and not isinstance(v, bool)
-    else (False, f"Expected integer, got {type(v).__name__}", None),
-    "number": lambda v, c, m=None: (True, None, float(v))
-    if isinstance(v, (int, float)) and not isinstance(v, bool)
-    else (False, f"Expected number, got {type(v).__name__}", None),
-    "markdown": lambda v, c, m=None: (True, None, str(v))
-    if isinstance(v, str)
-    else (False, f"Expected markdown string, got {type(v).__name__}", None),
-    "sqlQuery": lambda v, c, m=None: (True, None, str(v))
-    if isinstance(v, str)
-    else (False, f"Expected SQL query string, got {type(v).__name__}", None),
+    "string": lambda v, c, m=None: (
+        (True, None, str(v)) if isinstance(v, str) else (False, f"Expected string, got {type(v).__name__}", None)
+    ),
+    "integer": lambda v, c, m=None: (
+        (True, None, int(v))
+        if isinstance(v, int) and not isinstance(v, bool)
+        else (False, f"Expected integer, got {type(v).__name__}", None)
+    ),
+    "number": lambda v, c, m=None: (
+        (True, None, float(v))
+        if isinstance(v, (int, float)) and not isinstance(v, bool)
+        else (False, f"Expected number, got {type(v).__name__}", None)
+    ),
+    "markdown": lambda v, c, m=None: (
+        (True, None, str(v))
+        if isinstance(v, str)
+        else (False, f"Expected markdown string, got {type(v).__name__}", None)
+    ),
+    "sqlQuery": lambda v, c, m=None: (
+        (True, None, str(v))
+        if isinstance(v, str)
+        else (False, f"Expected SQL query string, got {type(v).__name__}", None)
+    ),
     # Types with format validation
     "email": _validate_email_type,
     "date-cp": _validate_date_time_type,
@@ -563,9 +556,7 @@ def validate_custom_property_value(
     # Run validation and conversion
     try:
         # All validators now return 3 values: (is_valid, error_msg, converted_value)
-        is_valid, error_msg, converted_value = validator(
-            value, property_config, metadata
-        )
+        is_valid, error_msg, converted_value = validator(value, property_config, metadata)
         return is_valid, error_msg, converted_value
     except Exception as exc:
         logger.debug(f"Validation exception for {property_name}: {exc}")
@@ -603,9 +594,7 @@ def create_test_case_parameter_definitions(dbt_test):
             return test_case_param_definition
     except Exception as err:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
-        logger.error(
-            f"Failed to capture tests case parameter definitions for node: {dbt_test} {err}"
-        )
+        logger.error(f"Failed to capture tests case parameter definitions for node: {dbt_test} {err}")
     return None
 
 
@@ -620,9 +609,7 @@ def create_test_case_parameter_values(dbt_test):
             dbt_test_values = ""
             if values:
                 dbt_test_values = ",".join(str(value) for value in values)
-            test_case_param_values = [
-                {"name": manifest_node.test_metadata.name, "value": dbt_test_values}
-            ]
+            test_case_param_values = [{"name": manifest_node.test_metadata.name, "value": dbt_test_values}]
             return test_case_param_values
         if hasattr(manifest_node, "freshness"):
             warn_after = manifest_node.freshness.warn_after
@@ -641,9 +628,7 @@ def create_test_case_parameter_values(dbt_test):
             return test_case_param_values
     except Exception as err:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
-        logger.error(
-            f"Failed to capture tests case parameter values for node: {dbt_test} {err}"
-        )
+        logger.error(f"Failed to capture tests case parameter values for node: {dbt_test} {err}")
     return None
 
 
@@ -759,9 +744,7 @@ def get_dbt_raw_query(mnode) -> Optional[str]:
     return None
 
 
-def check_or_create_test_suite(
-    metadata: OpenMetadata, test_entity_link: str
-) -> Union[TestSuite, EntityReference]:
+def check_or_create_test_suite(metadata: OpenMetadata, test_entity_link: str) -> Union[TestSuite, EntityReference]:
     """Check if test suite exists, if not create it
 
     Args:
@@ -792,11 +775,7 @@ def get_dbt_model_name(manifest_node) -> str:
     """
     Get the alias or name of the manifest node
     """
-    return (
-        manifest_node.alias
-        if hasattr(manifest_node, "alias") and manifest_node.alias
-        else manifest_node.name
-    )
+    return manifest_node.alias if hasattr(manifest_node, "alias") and manifest_node.alias else manifest_node.name
 
 
 def get_corrected_name(name: Optional[str]):
@@ -816,9 +795,7 @@ def get_data_model_path(manifest_node):
     datamodel_path = None
     if manifest_node.original_file_path:
         if hasattr(manifest_node, "root_path") and manifest_node.root_path:
-            datamodel_path = (
-                f"{manifest_node.root_path}/{manifest_node.original_file_path}"
-            )
+            datamodel_path = f"{manifest_node.root_path}/{manifest_node.original_file_path}"
         else:
             datamodel_path = manifest_node.original_file_path
     return datamodel_path
@@ -835,22 +812,14 @@ def get_snapshot_effective_schema_and_database(
     effective_schema: str = manifest_node.schema_
     effective_database: Optional[str] = manifest_node.database
     if hasattr(manifest_node, "config") and manifest_node.config:
-        if (
-            hasattr(manifest_node.config, "target_schema")
-            and manifest_node.config.target_schema
-        ):
+        if hasattr(manifest_node.config, "target_schema") and manifest_node.config.target_schema:
             effective_schema = manifest_node.config.target_schema
-        if (
-            hasattr(manifest_node.config, "target_database")
-            and manifest_node.config.target_database
-        ):
+        if hasattr(manifest_node.config, "target_database") and manifest_node.config.target_database:
             effective_database = manifest_node.config.target_database
     return SnapshotNodeLocation(schema_=effective_schema, database=effective_database)
 
 
-def find_entity_by_type_and_fqn(
-    metadata: OpenMetadata, entity_type: str, entity_fqn: str
-) -> Optional[Any]:
+def find_entity_by_type_and_fqn(metadata: OpenMetadata, entity_type: str, entity_fqn: str) -> Optional[Any]:
     """
     Search for entity by type and FQN.
 
@@ -923,9 +892,7 @@ def find_entity_by_type_and_fqn(
         return None
 
 
-def format_entity_reference(
-    entity: Any, entity_type: Optional[str] = None
-) -> Dict[str, Any]:
+def format_entity_reference(entity: Any, entity_type: Optional[str] = None) -> Dict[str, Any]:
     """
     Formats entity into entityReference structure for OpenMetadata.
     Extracts all Pydantic .root values to ensure JSON serializability.
@@ -940,9 +907,7 @@ def format_entity_reference(
     """
     # Extract ID (ensure string)
     if hasattr(entity, "id"):
-        entity_id = (
-            str(entity.id.root) if hasattr(entity.id, "root") else str(entity.id)
-        )
+        entity_id = str(entity.id.root) if hasattr(entity.id, "root") else str(entity.id)
     else:
         entity_id = str(entity.get("id", ""))
 
@@ -979,9 +944,7 @@ def format_entity_reference(
     description = ""
     if hasattr(entity, "description"):
         if hasattr(entity.description, "root"):
-            description = (
-                str(entity.description.root) if entity.description.root else ""
-            )
+            description = str(entity.description.root) if entity.description.root else ""
         elif entity.description:
             description = str(entity.description)
 
@@ -1020,16 +983,8 @@ def format_domain_reference(domain_entity: Any) -> Optional[Dict[str, Any]]:
     Formats domain into EntityReference structure
     """
     try:
-        domain_id = (
-            domain_entity.id.root
-            if hasattr(domain_entity.id, "root")
-            else str(domain_entity.id)
-        )
-        domain_name = (
-            domain_entity.name.root
-            if hasattr(domain_entity.name, "root")
-            else str(domain_entity.name)
-        )
+        domain_id = domain_entity.id.root if hasattr(domain_entity.id, "root") else str(domain_entity.id)
+        domain_name = domain_entity.name.root if hasattr(domain_entity.name, "root") else str(domain_entity.name)
         domain_fqn = (
             domain_entity.fullyQualifiedName.root
             if hasattr(domain_entity.fullyQualifiedName, "root")

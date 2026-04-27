@@ -11,6 +11,7 @@
 """
 Patch the Presidio recognizer results to make adapt them to specific use cases.
 """
+
 from typing import List, Protocol, Sequence
 
 from dateutil.parser import parse
@@ -28,10 +29,7 @@ class PresidioRecognizerResultPatcher(Protocol):
     For instance, Presidio yields URL false positive with email address.
     """
 
-    def __call__(
-        self, recognizer_results: Sequence[RecognizerResult], text: str
-    ) -> Sequence[RecognizerResult]:
-        ...
+    def __call__(self, recognizer_results: Sequence[RecognizerResult], text: str) -> Sequence[RecognizerResult]: ...
 
 
 def combine_patchers(
@@ -42,9 +40,7 @@ def combine_patchers(
     This allows us to apply multiple patches in sequence.
     """
 
-    def combined_patcher(
-        recognizer_results: Sequence[RecognizerResult], text: str
-    ) -> Sequence[RecognizerResult]:
+    def combined_patcher(recognizer_results: Sequence[RecognizerResult], text: str) -> Sequence[RecognizerResult]:
         for patcher in patchers:
             recognizer_results = patcher(recognizer_results, text)
         return recognizer_results
@@ -52,9 +48,7 @@ def combine_patchers(
     return combined_patcher
 
 
-def url_patcher(
-    recognizer_results: Sequence[RecognizerResult], text: str
-) -> Sequence[RecognizerResult]:
+def url_patcher(recognizer_results: Sequence[RecognizerResult], text: str) -> Sequence[RecognizerResult]:
     """
     Patch the recognizer result to remove URL false positive with email address.
     """
@@ -68,9 +62,7 @@ def url_patcher(
     return patched_result
 
 
-def date_time_patcher(
-    recognizer_results: Sequence[RecognizerResult], text: str
-) -> Sequence[RecognizerResult]:
+def date_time_patcher(recognizer_results: Sequence[RecognizerResult], text: str) -> Sequence[RecognizerResult]:
     """
     Patch the recognizer result to remove date time false positive with date.
     """
@@ -96,8 +88,6 @@ class ResultCapturingPatcher:
     def __init__(self) -> None:
         self.recognizer_results = []
 
-    def __call__(
-        self, recognizer_results: Sequence[RecognizerResult], text: str
-    ) -> Sequence[RecognizerResult]:
+    def __call__(self, recognizer_results: Sequence[RecognizerResult], text: str) -> Sequence[RecognizerResult]:
         self.recognizer_results.extend(recognizer_results)
         return recognizer_results

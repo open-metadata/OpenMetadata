@@ -12,6 +12,7 @@
 """
 Generic Delimiter-Separated-Values implementation
 """
+
 import csv
 import functools
 import traceback
@@ -49,9 +50,7 @@ class DSVDataFrameReader(DataFrameReader):
     from any source based on its init client.
     """
 
-    def _reformat_malformed_csv_data(
-        self, chunk_list: List, parsed_columns: List, separator: str
-    ):
+    def _reformat_malformed_csv_data(self, chunk_list: List, parsed_columns: List, separator: str):
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         try:
@@ -59,21 +58,15 @@ class DSVDataFrameReader(DataFrameReader):
             for chunk in chunk_list:
                 values_list = []
                 for value in chunk.values:
-                    single_row_value = list(
-                        csv.reader(StringIO(str(value[0])), delimiter=separator)
-                    )
+                    single_row_value = list(csv.reader(StringIO(str(value[0])), delimiter=separator))
                     if single_row_value:
                         values_list.append(single_row_value[0])
-                updated_chunk_list.append(
-                    pd.DataFrame(columns=parsed_columns, data=values_list)
-                )
+                updated_chunk_list.append(pd.DataFrame(columns=parsed_columns, data=values_list))
             return updated_chunk_list
         except Exception as exc:
             logger.error(f"Error reformating the data: {exc}")
             logger.debug(traceback.format_exc())
-            logger.debug(
-                "Only parsing column data from csv since csv data can't be parsed"
-            )
+            logger.debug("Only parsing column data from csv since csv data can't be parsed")
             return [pd.DataFrame(columns=parsed_columns)]
 
     def _fix_malformed_quoted_chunk(self, chunk_list: list, separator: str) -> list:
@@ -92,7 +85,7 @@ class DSVDataFrameReader(DataFrameReader):
 
         Returns the fixed chunk_list.
         """
-        import pandas as pd  # pylint: disable=import-outside-toplevel
+        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: F401
 
         if not chunk_list:
             return chunk_list
@@ -101,13 +94,9 @@ class DSVDataFrameReader(DataFrameReader):
         columns = list(first_chunk.columns)
 
         if len(columns) == 1 and separator in str(columns[0]):
-            parsed_columns = list(
-                csv.reader(StringIO(str(columns[0])), delimiter=separator)
-            )
+            parsed_columns = list(csv.reader(StringIO(str(columns[0])), delimiter=separator))
             if parsed_columns:
-                return self._reformat_malformed_csv_data(
-                    chunk_list, parsed_columns[0], separator
-                )
+                return self._reformat_malformed_csv_data(chunk_list, parsed_columns[0], separator)
         return chunk_list
 
     def __init__(
@@ -143,19 +132,13 @@ class DSVDataFrameReader(DataFrameReader):
                 escapechar="\\",
             ) as reader:
                 for chunks in reader:
-                    chunks = self._fix_malformed_quoted_chunk(
-                        chunk_list=[chunks], separator=self.separator
-                    )[0]
+                    chunks = self._fix_malformed_quoted_chunk(chunk_list=[chunks], separator=self.separator)[0]
                     yield chunks
 
-        return DatalakeColumnWrapper(
-            dataframes=chunk_generator, columns=None, raw_data=None
-        )
+        return DatalakeColumnWrapper(dataframes=chunk_generator, columns=None, raw_data=None)
 
     @singledispatchmethod
-    def _read_dsv_dispatch(
-        self, config_source: ConfigSource, key: str, bucket_name: str
-    ) -> DatalakeColumnWrapper:
+    def _read_dsv_dispatch(self, config_source: ConfigSource, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         raise FileFormatException(config_source=config_source, file_name=key)
 
     @_read_dsv_dispatch.register
@@ -189,17 +172,13 @@ class DSVDataFrameReader(DataFrameReader):
                     escapechar="\\",
                 ) as reader:
                     for chunks in reader:
-                        fixed = self._fix_malformed_quoted_chunk(
-                            chunk_list=[chunks], separator=self.separator
-                        )
+                        fixed = self._fix_malformed_quoted_chunk(chunk_list=[chunks], separator=self.separator)
                         if fixed:
                             yield fixed[0]
             finally:
                 response["Body"].close()
 
-        return DatalakeColumnWrapper(
-            dataframes=chunk_generator, columns=None, raw_data=None
-        )
+        return DatalakeColumnWrapper(dataframes=chunk_generator, columns=None, raw_data=None)
 
     @_read_dsv_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
@@ -232,9 +211,7 @@ class DSVDataFrameReader(DataFrameReader):
         return self.read_from_pandas(path=key, compression=compression)
 
     def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
-        return self._read_dsv_dispatch(
-            self.config_source, key=key, bucket_name=bucket_name
-        )
+        return self._read_dsv_dispatch(self.config_source, key=key, bucket_name=bucket_name)
 
 
 def get_dsv_reader_by_separator(separator: str) -> functools.partial:

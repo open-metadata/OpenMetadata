@@ -11,6 +11,7 @@
 """
 Test fivetran using the topology
 """
+
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -50,9 +51,7 @@ from metadata.ingestion.source.pipeline.fivetran.fivetran_log import (
 from metadata.ingestion.source.pipeline.fivetran.metadata import FivetranSource
 from metadata.ingestion.source.pipeline.fivetran.models import FivetranPipelineDetails
 
-mock_file_path = (
-    Path(__file__).parent.parent.parent / "resources/datasets/fivetran_dataset.json"
-)
+mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/fivetran_dataset.json"
 with open(mock_file_path) as file:
     mock_data: dict = json.load(file)
 
@@ -89,8 +88,7 @@ EXPECTED_FIVETRAN_DETAILS = FivetranPipelineDetails(
 )
 
 SOURCE_URL = SourceUrl(
-    "https://fivetran.com/dashboard/connectors/aiding_pointless/status"
-    "?groupId=wackiness_remote&service=postgres_rds"
+    "https://fivetran.com/dashboard/connectors/aiding_pointless/status?groupId=wackiness_remote&service=postgres_rds"
 )
 
 EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
@@ -143,9 +141,7 @@ MOCK_PIPELINE = Pipeline(
         Task(name=FIVETRAN_TASK_PROCESS, displayName="Process"),
         Task(name=FIVETRAN_TASK_LOAD, displayName="Load"),
     ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"),
 )
 
 
@@ -182,12 +178,8 @@ class TestParseSyncEvents:
         ts = [datetime(2026, 3, 20, 8, 0, i * 5, tzinfo=timezone.utc) for i in range(3)]
         syncs: dict = {}
         parse_sync_events([("sync-1", "sync_start", None, ts[0])], syncs)
-        parse_sync_events(
-            [("sync-1", "extract_summary", '{"status":"SUCCESS"}', ts[1])], syncs
-        )
-        parse_sync_events(
-            [("sync-1", "sync_end", '{"status":"SUCCESSFUL"}', ts[2])], syncs
-        )
+        parse_sync_events([("sync-1", "extract_summary", '{"status":"SUCCESS"}', ts[1])], syncs)
+        parse_sync_events([("sync-1", "sync_end", '{"status":"SUCCESSFUL"}', ts[2])], syncs)
         assert syncs["sync-1"]["sync_start_ts"] == ts[0]
         assert syncs["sync-1"]["extract_data"]["status"] == "SUCCESS"
         assert syncs["sync-1"]["sync_end_data"]["status"] == "SUCCESSFUL"
@@ -313,20 +305,17 @@ class TestSortAndLimitSyncs:
 
 @pytest.fixture()
 def fivetran_source():
-    with patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-    ), patch(
-        "metadata.ingestion.source.pipeline.fivetran.connection.get_connection"
-    ) as mock_client:
+    with (
+        patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"),
+        patch("metadata.ingestion.source.pipeline.fivetran.connection.get_connection") as mock_client,
+    ):
         config = OpenMetadataWorkflowConfig.model_validate(MOCK_FIVETRAN_CONFIG)
         source = FivetranSource.create(
             MOCK_FIVETRAN_CONFIG["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
         source.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        source.context.get().__dict__[
-            "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.root
+        source.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
 
         client = mock_client.return_value
         client.list_groups.return_value = [mock_data["group"]]
@@ -349,7 +338,7 @@ class TestFivetranSource:
 
     def test_pipeline_name(self, fivetran_source):
         source, _ = fivetran_source
-        expected = f'{mock_data["source"]["schema"]} <> {mock_data["group"]["name"]}'
+        expected = f"{mock_data['source']['schema']} <> {mock_data['group']['name']}"
         assert source.get_pipeline_name(EXPECTED_FIVETRAN_DETAILS) == expected
 
     def test_pipelines(self, fivetran_source):
@@ -365,16 +354,10 @@ class TestFivetranSource:
         assert pipeline.tasks[2].name == FIVETRAN_TASK_LOAD
 
     def test_schedule_interval(self, fivetran_source):
-        assert (
-            FivetranSource._get_schedule_interval(EXPECTED_FIVETRAN_DETAILS)
-            == "0 */6 * * *"
-        )
+        assert FivetranSource._get_schedule_interval(EXPECTED_FIVETRAN_DETAILS) == "0 */6 * * *"
 
     def test_pipeline_state_active(self, fivetran_source):
-        assert (
-            FivetranSource._get_pipeline_state(EXPECTED_FIVETRAN_DETAILS)
-            == PipelineState.Active
-        )
+        assert FivetranSource._get_pipeline_state(EXPECTED_FIVETRAN_DETAILS) == PipelineState.Active
 
     def test_pipeline_state_inactive(self, fivetran_source):
         details = FivetranPipelineDetails(
@@ -493,9 +476,7 @@ class TestFivetranStatus:
         ]
         statuses = list(source.yield_pipeline_status(EXPECTED_FIVETRAN_DETAILS))
         assert len(statuses) >= 2
-        assert (
-            statuses[0].right.pipeline_status.executionStatus == StatusType.Successful
-        )
+        assert statuses[0].right.pipeline_status.executionStatus == StatusType.Successful
         assert statuses[1].right.pipeline_status.executionStatus == StatusType.Failed
 
     def test_status_falls_back_to_historical(self, fivetran_source):
@@ -540,9 +521,7 @@ class TestFivetranStatus:
         source._resolve_log_source = Mock(return_value=Mock())
         statuses = list(source.yield_pipeline_status(EXPECTED_FIVETRAN_DETAILS))
         assert len(statuses) == 1
-        assert (
-            statuses[0].right.pipeline_status.executionStatus == StatusType.Successful
-        )
+        assert statuses[0].right.pipeline_status.executionStatus == StatusType.Successful
 
     @patch("metadata.ingestion.source.pipeline.fivetran.metadata.query_sync_logs")
     def test_status_db_failure_falls_back(self, mock_query_logs, fivetran_source):
@@ -557,15 +536,11 @@ class TestFivetranStatus:
             },
         ]
         statuses = list(source.yield_pipeline_status(EXPECTED_FIVETRAN_DETAILS))
-        assert (
-            statuses[0].right.pipeline_status.executionStatus == StatusType.Successful
-        )
+        assert statuses[0].right.pipeline_status.executionStatus == StatusType.Successful
 
 
 class TestFivetranLineage:
-    @patch(
-        "metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names"
-    )
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
     def test_skips_disabled_schemas(self, mock_get_services, fivetran_source):
         source, client = fivetran_source
         mock_get_services.return_value = ["pg"]
@@ -576,13 +551,9 @@ class TestFivetranLineage:
                 "tables": {"t": {"enabled": True}},
             }
         }
-        assert (
-            list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS)) == []
-        )
+        assert list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS)) == []
 
-    @patch(
-        "metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names"
-    )
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
     @patch("metadata.utils.fqn.build")
     def test_cross_service(self, mock_build, mock_get_services, fivetran_source):
         source, client = fivetran_source
@@ -621,21 +592,15 @@ class TestFivetranLineage:
                 "public": {
                     "enabled": True,
                     "name_in_destination": "pub",
-                    "tables": {
-                        "users": {"enabled": True, "name_in_destination": "users_dest"}
-                    },
+                    "tables": {"users": {"enabled": True, "name_in_destination": "users_dest"}},
                 }
             }
             client.get_connector_column_lineage.return_value = {}
-            result = list(
-                source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS)
-            )
+            result = list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS))
             assert len(result) == 1
             assert str(result[0].right.edge.fromEntity.id.root) == mock_src.id
 
-    @patch(
-        "metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names"
-    )
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
     @patch("metadata.utils.fqn.build")
     def test_skips_self_ref(self, mock_build, mock_get_services, fivetran_source):
         source, client = fivetran_source
@@ -648,31 +613,20 @@ class TestFivetranLineage:
 
         with patch.object(source, "metadata") as mock_metadata:
             mock_metadata.get_by_name = Mock(
-                side_effect=lambda entity, fqn: mock_table
-                if "orders" in str(fqn)
-                else None
+                side_effect=lambda entity, fqn: mock_table if "orders" in str(fqn) else None
             )
             client.get_connector_schema_details.return_value = {
                 "public": {
                     "enabled": True,
                     "name_in_destination": "public",
-                    "tables": {
-                        "orders": {"enabled": True, "name_in_destination": "orders"}
-                    },
+                    "tables": {"orders": {"enabled": True, "name_in_destination": "orders"}},
                 }
             }
             client.get_connector_column_lineage.return_value = {}
-            assert (
-                list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS))
-                == []
-            )
+            assert list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS)) == []
 
-    @patch(
-        "metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names"
-    )
-    @patch(
-        "metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names"
-    )
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names")
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
     @patch("metadata.utils.fqn.build")
     def test_messaging_lineage(self, mock_build, mock_db, mock_msg, fivetran_source):
         source, client = fivetran_source
@@ -688,11 +642,7 @@ class TestFivetranLineage:
         def build_se(*a, **kw):
             if kw.get("topic_name"):
                 return f"{kw['service_name']}.{kw['topic_name']}"
-            return ".".join(
-                str(v)
-                for v in [kw.get("service_name", ""), kw.get("table_name", "")]
-                if v
-            )
+            return ".".join(str(v) for v in [kw.get("service_name", ""), kw.get("table_name", "")] if v)
 
         mock_build.side_effect = build_se
 
@@ -712,9 +662,7 @@ class TestFivetranLineage:
                 "topics": {
                     "enabled": True,
                     "name_in_destination": "cc",
-                    "tables": {
-                        "TRADES": {"enabled": True, "name_in_destination": "TRADES"}
-                    },
+                    "tables": {"TRADES": {"enabled": True, "name_in_destination": "TRADES"}},
                 }
             }
             details = FivetranPipelineDetails(
@@ -737,13 +685,9 @@ class TestFivetranColumnLineage:
     @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_column_fqn")
     def test_happy_path(self, mock_fqn, fivetran_source):
         source, client = fivetran_source
-        client.get_connector_column_lineage.return_value = {
-            "src": {"enabled": True, "name_in_destination": "dst"}
-        }
+        client.get_connector_column_lineage.return_value = {"src": {"enabled": True, "name_in_destination": "dst"}}
         mock_fqn.side_effect = ["s.d.s.t.src", "s.d.s.t.dst"]
-        result = source._fetch_column_lineage(
-            EXPECTED_FIVETRAN_DETAILS, "test", "public", "users", Mock(), Mock()
-        )
+        result = source._fetch_column_lineage(EXPECTED_FIVETRAN_DETAILS, "test", "public", "users", Mock(), Mock())
         assert len(result) == 1
         assert isinstance(result[0], ColumnLineage)
 
@@ -754,20 +698,14 @@ class TestFivetranColumnLineage:
             None: {"enabled": True, "name_in_destination": "d"},
             "s": {"enabled": True, "name_in_destination": None},
         }
-        result = source._fetch_column_lineage(
-            EXPECTED_FIVETRAN_DETAILS, "test", "public", "users", Mock(), Mock()
-        )
+        result = source._fetch_column_lineage(EXPECTED_FIVETRAN_DETAILS, "test", "public", "users", Mock(), Mock())
         assert result == []
         mock_fqn.assert_not_called()
 
     @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_column_fqn")
     def test_skips_disabled(self, mock_fqn, fivetran_source):
         source, client = fivetran_source
-        client.get_connector_column_lineage.return_value = {
-            "col": {"enabled": False, "name_in_destination": "d"}
-        }
-        result = source._fetch_column_lineage(
-            EXPECTED_FIVETRAN_DETAILS, "test", "public", "users", Mock(), Mock()
-        )
+        client.get_connector_column_lineage.return_value = {"col": {"enabled": False, "name_in_destination": "d"}}
+        result = source._fetch_column_lineage(EXPECTED_FIVETRAN_DETAILS, "test", "public", "users", Mock(), Mock())
         assert result == []
         mock_fqn.assert_not_called()

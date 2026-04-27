@@ -11,6 +11,7 @@
 """
 Spline source processing utilities
 """
+
 import traceback
 from typing import Optional, Tuple
 
@@ -60,21 +61,11 @@ def parse_jdbc_url(url: str) -> Tuple[Optional[str], Optional[str], Optional[str
         tree = parser.jdbcUrl()
         schema_table = tree.schemaTable()
         if schema_table:
-            table = (
-                clean_name(schema_table.tableName().getText())
-                if schema_table.tableName()
-                else None
-            )
-            schema = (
-                clean_name(schema_table.schemaName().getText())
-                if schema_table.schemaName()
-                else None
-            )
+            table = clean_name(schema_table.tableName().getText()) if schema_table.tableName() else None
+            schema = clean_name(schema_table.schemaName().getText()) if schema_table.schemaName() else None
         else:
             table, schema = None, None
-        database = (
-            clean_name(tree.databaseName().getText()) if tree.databaseName() else None
-        )
+        database = clean_name(tree.databaseName().getText()) if tree.databaseName() else None
         if tree.DATABASE_TYPE() and tree.DATABASE_TYPE().getText() in MULTI_DB_SOURCE:
             return database, schema, table
 

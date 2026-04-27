@@ -12,6 +12,7 @@
 Extraction of PII features (from text, column names, and data types) to be used
 for the PII classification model.
 """
+
 import logging
 import re
 from collections import defaultdict
@@ -55,9 +56,7 @@ def extract_pii_tags(
     entity_scores: DefaultDict[PIITag, float] = defaultdict(float)
 
     if SUPPORTED_LANG not in analyzer.supported_languages:
-        raise ValueError(
-            f"The analyzer does not support {SUPPORTED_LANG}, which is required for this function."
-        )
+        raise ValueError(f"The analyzer does not support {SUPPORTED_LANG}, which is required for this function.")
 
     for text in texts:
         results = analyzer.analyze(

@@ -13,6 +13,7 @@ Handle FQN building and splitting logic.
 Filter information has been taken from the
 ES indexes definitions
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -135,9 +136,7 @@ def quote_name(name: str) -> str:
     raise ValueError("Invalid name " + name)
 
 
-def build(
-    metadata: Optional[OpenMetadata], entity_type: Type[T], **kwargs
-) -> Optional[str]:
+def build(metadata: Optional[OpenMetadata], entity_type: Type[T], **kwargs) -> Optional[str]:
     """
     Given an Entity T, build the FQN of that Entity
     based on its required pieces. For example,
@@ -169,15 +168,11 @@ def build(
     func = fqn_build_registry.registry.get(entity_type.__name__)
     try:
         if not func:
-            raise FQNBuildingException(
-                f"Invalid Entity Type {entity_type.__name__}. FQN builder not implemented."
-            )
+            raise FQNBuildingException(f"Invalid Entity Type {entity_type.__name__}. FQN builder not implemented.")
         return func(metadata, **kwargs)
     except Exception as e:
         logger.debug(traceback.format_exc())
-        raise FQNBuildingException(
-            f"Error building FQN for {entity_type.__name__}: {e}"
-        )
+        raise FQNBuildingException(f"Error building FQN for {entity_type.__name__}: {e}")
 
 
 @fqn_build_registry.add(Table)
@@ -279,9 +274,7 @@ def _(
             return str(entity.fullyQualifiedName.root)
 
     if not service_name or not database_name:
-        raise FQNBuildingException(
-            f"Args should be informed, but got service=`{service_name}`, db=`{database_name}``"
-        )
+        raise FQNBuildingException(f"Args should be informed, but got service=`{service_name}`, db=`{database_name}``")
 
     return _build(service_name, database_name)
 
@@ -322,9 +315,7 @@ def _(
     chart_name: str,
 ) -> str:
     if not service_name or not chart_name:
-        raise FQNBuildingException(
-            f"Args should be informed, but got service=`{service_name}`, chart=`{chart_name}``"
-        )
+        raise FQNBuildingException(f"Args should be informed, but got service=`{service_name}`, chart=`{chart_name}``")
     return _build(service_name, chart_name)
 
 
@@ -363,9 +354,7 @@ def _(
     entity: Optional[Topic] = None
 
     if not skip_es_search:
-        entity = search_topic_from_es(
-            metadata=metadata, service_name=service_name, topic_name=topic_name
-        )
+        entity = search_topic_from_es(metadata=metadata, service_name=service_name, topic_name=topic_name)
 
     # if entity not found in ES proceed to build FQN with database_name and schema_name
     if not entity and service_name and topic_name:
@@ -376,9 +365,7 @@ def _(
         return str(entity.fullyQualifiedName.root)
 
     if not all([service_name, topic_name]):
-        raise FQNBuildingException(
-            f"Args should be informed, but got service=`{service_name}`, topic=`{topic_name}``"
-        )
+        raise FQNBuildingException(f"Args should be informed, but got service=`{service_name}`, topic=`{topic_name}``")
 
     return None
 
@@ -410,9 +397,7 @@ def _(
             if parent_container.startswith(f"{service_name}."):
                 fqn = _build(parent_container, container_name, quote=False)
             else:
-                fqn = _build(
-                    service_name, parent_container, container_name, quote=False
-                )
+                fqn = _build(service_name, parent_container, container_name, quote=False)
         else:
             fqn = _build(service_name, container_name)
         return [fqn] if fetch_multiple_entities else fqn
@@ -632,9 +617,7 @@ def _(
     directory_path: List[str],
 ) -> str:
     if not service_name:
-        raise FQNBuildingException(
-            f"Service name should be informed, but got service=`{service_name}`"
-        )
+        raise FQNBuildingException(f"Service name should be informed, but got service=`{service_name}`")
 
     if not directory_path:
         raise FQNBuildingException("Directory path should not be empty")
@@ -651,9 +634,7 @@ def _(
     file_name: str,
 ) -> str:
     if not service_name or not file_name:
-        raise FQNBuildingException(
-            f"Args should be informed, but got service=`{service_name}`, file=`{file_name}`"
-        )
+        raise FQNBuildingException(f"Args should be informed, but got service=`{service_name}`, file=`{file_name}`")
     if not directory_path:
         raise FQNBuildingException("Directory path should not be empty")
     return _build(service_name, *directory_path, file_name)
@@ -702,9 +683,7 @@ def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
     # Handles table names with 4+ parts (e.g., BigQuery INFORMATION_SCHEMA:
     # `project-name.region-name.INFORMATION_SCHEMA.table_name`) by taking only
     # the last 3 segments (database, schema, table). Pads with None if fewer than 3.
-    full_details: List[Optional[str]] = ([None] * max(0, 3 - len(details))) + details[
-        -3:
-    ]
+    full_details: List[Optional[str]] = ([None] * max(0, 3 - len(details))) + details[-3:]
 
     database, database_schema, table = full_details
     return {"database": database, "database_schema": database_schema, "table": table}
@@ -721,9 +700,7 @@ def split_test_case_fqn(test_case_fqn: str) -> SplitTestCaseFqn:
     """
     details = split(test_case_fqn)
     if len(details) < 5:
-        raise ValueError(
-            f"{test_case_fqn} does not appear to be a valid test_case fqn "
-        )
+        raise ValueError(f"{test_case_fqn} does not appear to be a valid test_case fqn ")
     if len(details) != 6:
         details.insert(4, None)  # type: ignore
 
@@ -746,9 +723,7 @@ def split_test_case_fqn(test_case_fqn: str) -> SplitTestCaseFqn:
     )
 
 
-def build_es_fqn_search_string(
-    database_name: str, schema_name, service_name, table_name
-) -> str:
+def build_es_fqn_search_string(database_name: str, schema_name, service_name, table_name) -> str:
     """
     Builds FQN search string for ElasticSearch
 
@@ -762,12 +737,8 @@ def build_es_fqn_search_string(
         FQN search string
     """
     if not table_name:
-        raise FQNBuildingException(
-            f"Table Name should be informed, but got table=`{table_name}`"
-        )
-    fqn_search_string = _build(
-        service_name or "*", database_name or "*", schema_name or "*", table_name
-    )
+        raise FQNBuildingException(f"Table Name should be informed, but got table=`{table_name}`")
+    fqn_search_string = _build(service_name or "*", database_name or "*", schema_name or "*", table_name)
     return fqn_search_string
 
 
@@ -791,9 +762,7 @@ def search_database_schema_from_es(
     :return: entity / entities matching search criteria
     """
     if not schema_name:
-        raise FQNBuildingException(
-            f"Schema Name should be informed, but got schema_name=`{schema_name}`"
-        )
+        raise FQNBuildingException(f"Schema Name should be informed, but got schema_name=`{schema_name}`")
 
     fqn_search_string = _build(service_name or "*", database_name or "*", schema_name)
 
@@ -803,9 +772,7 @@ def search_database_schema_from_es(
         fields=fields,
     )
 
-    return get_entity_from_es_result(
-        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
-    )
+    return get_entity_from_es_result(entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities)
 
 
 def search_table_from_es(
@@ -817,9 +784,7 @@ def search_table_from_es(
     fetch_multiple_entities: bool = False,
     fields: Optional[str] = None,
 ):
-    fqn_search_string = build_es_fqn_search_string(
-        database_name, schema_name, service_name, table_name
-    )
+    fqn_search_string = build_es_fqn_search_string(database_name, schema_name, service_name, table_name)
 
     es_result = metadata.es_search_from_fqn(
         entity_type=Table,
@@ -827,9 +792,7 @@ def search_table_from_es(
         fields=fields,
     )
 
-    return get_entity_from_es_result(
-        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
-    )
+    return get_entity_from_es_result(entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities)
 
 
 def search_database_from_es(
@@ -844,9 +807,7 @@ def search_database_from_es(
     """
 
     if not database_name:
-        raise FQNBuildingException(
-            f"Database Name should be informed, but got database=`{database_name}`"
-        )
+        raise FQNBuildingException(f"Database Name should be informed, but got database=`{database_name}`")
 
     fqn_search_string = _build(service_name or "*", database_name)
 
@@ -856,9 +817,7 @@ def search_database_from_es(
         fields=fields,
     )
 
-    return get_entity_from_es_result(
-        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
-    )
+    return get_entity_from_es_result(entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities)
 
 
 def search_topic_from_es(
@@ -872,9 +831,7 @@ def search_topic_from_es(
     """
 
     if not topic_name:
-        raise FQNBuildingException(
-            f"Topic Name should be informed, but got topic=`{topic_name}`"
-        )
+        raise FQNBuildingException(f"Topic Name should be informed, but got topic=`{topic_name}`")
 
     fqn_search_string = _build(service_name or "*", topic_name)
 
@@ -884,9 +841,7 @@ def search_topic_from_es(
         fields=fields,
     )
 
-    return get_entity_from_es_result(
-        entity_list=es_result, fetch_multiple_entities=False
-    )
+    return get_entity_from_es_result(entity_list=es_result, fetch_multiple_entities=False)
 
 
 def search_container_from_es(
@@ -902,18 +857,14 @@ def search_container_from_es(
     """
 
     if not container_name:
-        raise FQNBuildingException(
-            f"Container Name should be informed, but got container=`{container_name}`"
-        )
+        raise FQNBuildingException(f"Container Name should be informed, but got container=`{container_name}`")
 
     if parent_container:
         # Check if parent_container already starts with service_name
         if service_name and parent_container.startswith(f"{service_name}."):
             fqn_search_string = _build(parent_container, container_name, quote=False)
         else:
-            fqn_search_string = _build(
-                service_name or "*", parent_container, container_name, quote=False
-            )
+            fqn_search_string = _build(service_name or "*", parent_container, container_name, quote=False)
     else:
         fqn_search_string = _build(service_name or "*", container_name)
 
@@ -923,9 +874,7 @@ def search_container_from_es(
         fields=fields,
     )
 
-    return get_entity_from_es_result(
-        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
-    )
+    return get_entity_from_es_result(entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities)
 
 
 def get_query_checksum(query: str) -> str:
@@ -972,9 +921,7 @@ def prefix_entity_for_wildcard_search(entity_type: Type[T], fqn: str) -> str:
     """
     slots = FQN_ENTITY_SLOTS.get(entity_type.__name__)
     if not slots:
-        raise FQNBuildingException(
-            f"Entity type {entity_type.__name__} not supported for wildcard search"
-        )
+        raise FQNBuildingException(f"Entity type {entity_type.__name__} not supported for wildcard search")
 
     parts = split(fqn)
     if len(parts) > slots:
