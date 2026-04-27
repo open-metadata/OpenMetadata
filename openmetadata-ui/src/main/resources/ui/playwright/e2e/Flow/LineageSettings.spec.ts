@@ -235,11 +235,14 @@ test.describe.serial('Lineage Settings Tests', () => {
       await performExpand(page, container, false, metric);
       await performExpand(page, topic, true, table);
 
+      await performZoomOut(page);
+
       await performCollapse(page, mlModel, false, [
         searchIndex,
         container,
         metric,
       ]);
+      await performZoomOut(page);
       await performCollapse(page, dashboard, true, [table, topic]);
     });
 
