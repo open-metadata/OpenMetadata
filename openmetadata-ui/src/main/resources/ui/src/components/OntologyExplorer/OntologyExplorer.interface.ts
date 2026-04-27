@@ -109,6 +109,7 @@ export interface OntologyGraphProps {
   nodePositions?: Record<string, { x: number; y: number }>;
   selectedNodeId?: string | null;
   expandedTermIds?: Set<string>;
+  glossaries: Glossary[];
   glossaryColorMap: Record<string, string>;
   dataSignature?: string;
   explorationMode?: ExplorationMode;
@@ -208,6 +209,7 @@ export interface BuildGraphDataProps {
   expandedTermIds?: Set<string>;
   clickedEdgeId: string | null;
   nodePositions?: Record<string, { x: number; y: number }>;
+  glossaries: Glossary[];
   glossaryColorMap: Record<string, string>;
   layoutType: LayoutEngineType;
   hierarchyCombos?: HierarchyComboInfo[];
