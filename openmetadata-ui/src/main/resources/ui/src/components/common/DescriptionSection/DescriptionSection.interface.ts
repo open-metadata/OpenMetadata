@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../../enums/entity.enum';
+import { ChangeSummaryEntry } from '../../../rest/changeSummaryAPI';
 
 export interface DescriptionSectionProps {
   description?: string;
@@ -19,4 +20,5 @@ export interface DescriptionSectionProps {
   entityFqn?: string;
   entityType: EntityType;
   hasPermission?: boolean;
+  changeSummaryEntry?: ChangeSummaryEntry;
 }

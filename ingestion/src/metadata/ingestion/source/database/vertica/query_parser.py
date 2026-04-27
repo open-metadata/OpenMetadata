@@ -11,6 +11,7 @@
 """
 Vertica usage module
 """
+
 from abc import ABC
 from typing import Iterable, Optional
 
@@ -45,16 +46,12 @@ class VerticaQueryParserSource(QueryParserSource, ABC):
     filters: str
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: VerticaConnection = config.serviceConnection.root.config
         if not isinstance(connection, VerticaConnection):
-            raise InvalidSourceException(
-                f"Expected VerticaConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected VerticaConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_table_query(self) -> Iterable[TableQuery]:

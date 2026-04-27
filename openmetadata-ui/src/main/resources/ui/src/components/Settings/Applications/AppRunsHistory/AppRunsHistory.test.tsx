@@ -31,6 +31,10 @@ import AppRunsHistory from './AppRunsHistory.component';
 const mockHandlePagingChange = jest.fn();
 const mockHandlePageChange = jest.fn();
 const mockHandlePageSizeChange = jest.fn();
+const mockSocket = {
+  on: jest.fn(),
+  off: jest.fn(),
+};
 let mockGetApplicationRuns = jest.fn().mockReturnValue({
   data: [mockApplicationData],
   paging: {
@@ -78,6 +82,12 @@ jest.mock('../../../../hooks/paging/usePaging', () => ({
 
 jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: 'mockFQN' }),
+}));
+
+jest.mock('../../../../context/WebSocketProvider/WebSocketProvider', () => ({
+  useWebSocketConnector: jest.fn().mockImplementation(() => ({
+    socket: mockSocket,
+  })),
 }));
 
 jest.mock('../../../../rest/applicationAPI', () => ({
@@ -155,8 +165,15 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../../constants/constants', () => ({
   NO_DATA_PLACEHOLDER: '--',
+  SOCKET_EVENTS: {
+    SEARCH_INDEX_JOB_BROADCAST_CHANNEL: 'searchIndexJobStatus',
+    RDF_INDEX_JOB_BROADCAST_CHANNEL: 'rdfIndexJobStatus',
+    DATA_INSIGHTS_JOB_BROADCAST_CHANNEL: 'dataInsightsJobStatus',
+    CACHE_WARMUP_JOB_BROADCAST_CHANNEL: 'cacheWarmupJobStatus',
+  },
   STATUS_LABEL: {
     [Status.Success]: 'Success',
+    [Status.Running]: 'Running',
   },
 }));
 
@@ -185,6 +202,19 @@ const mockProps3 = {
 };
 
 describe('AppRunsHistory', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetApplicationRuns = jest.fn().mockReturnValue({
+      data: [mockApplicationData],
+      paging: {
+        offset: 0,
+        total: 3,
+      },
+    });
+    mockSocket.on.mockClear();
+    mockSocket.off.mockClear();
+  });
+
   it('should contain all necessary elements based on mockProps1', async () => {
     render(<AppRunsHistory {...mockProps1} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
@@ -320,6 +350,21 @@ describe('AppRunsHistory', () => {
     expect(screen.getByText('Configure Save')).toBeInTheDocument();
   });
 
+  it('should disable config when schema is unavailable', async () => {
+    mockGetApplicationRuns.mockReturnValueOnce({
+      data: [],
+      paging: {
+        offset: 0,
+        total: 0,
+      },
+    });
+
+    render(<AppRunsHistory {...mockProps1} jsonSchema={undefined} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    expect(screen.getByTestId('app-historical-config')).toBeDisabled();
+  });
+
   it('should render the stop button when conditions are met', async () => {
     const mockRunRecordWithStopButton = {
       ...mockApplicationData,
@@ -375,5 +420,27 @@ describe('AppRunsHistory', () => {
 
     // Verify status is rendered
     expect(screen.getByText('Success')).toBeInTheDocument();
+  });
+
+  it('should subscribe to RDF websocket updates and update the matching run', async () => {
+    render(<AppRunsHistory {...mockProps1} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    const rdfCallback = mockSocket.on.mock.calls.find(
+      ([eventName]) => eventName === 'rdfIndexJobStatus'
+    )?.[1];
+
+    expect(rdfCallback).toBeInstanceOf(Function);
+
+    act(() => {
+      rdfCallback?.(
+        JSON.stringify({
+          ...mockApplicationData,
+          status: Status.Running,
+        })
+      );
+    });
+
+    expect(screen.getByText('Running')).toBeInTheDocument();
   });
 });

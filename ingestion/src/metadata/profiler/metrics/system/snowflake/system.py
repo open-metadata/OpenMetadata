@@ -65,12 +65,8 @@ def _parse_query(query: str) -> Optional[str]:
         # If we have `IDENTIFIER` type of queries coming from Stored Procedures, we'll need to further clean it up.
         identifier = match.group(2)
 
-        match_internal_identifier = re.match(
-            IDENTIFIER_PATTERN, identifier, re.IGNORECASE
-        )
-        internal_identifier = (
-            match_internal_identifier.group(2) if match_internal_identifier else None
-        )
+        match_internal_identifier = re.match(IDENTIFIER_PATTERN, identifier, re.IGNORECASE)
+        internal_identifier = match_internal_identifier.group(2) if match_internal_identifier else None
         if internal_identifier:
             return internal_identifier
 
@@ -102,9 +98,7 @@ class SnowflakeTableResovler:
         self.session = session
 
     def show_tables(self, db, schema, table):
-        return self.session.execute(
-            f'SHOW TABLES LIKE \'{table}\' IN SCHEMA "{db}"."{schema}" LIMIT 1;'
-        ).fetchone()
+        return self.session.execute(f'SHOW TABLES LIKE \'{table}\' IN SCHEMA "{db}"."{schema}" LIMIT 1;').fetchone()
 
     def table_exists(self, db, schema, table):
         """Return True if the table exists in Snowflake. Uses cache to store the results.
@@ -149,14 +143,10 @@ class SnowflakeTableResovler:
 
         """
         search_paths = []
-        if context_schema and self.table_exists(
-            context_database, context_schema, table_name
-        ):
+        if context_schema and self.table_exists(context_database, context_schema, table_name):
             search_paths += ".".join([context_database, context_schema, table_name])
             return context_database, context_schema, table_name
-        if context_schema != PUBLIC_SCHEMA and self.table_exists(
-            context_database, PUBLIC_SCHEMA, table_name
-        ):
+        if context_schema != PUBLIC_SCHEMA and self.table_exists(context_database, PUBLIC_SCHEMA, table_name):
             search_paths += ".".join([context_database, PUBLIC_SCHEMA, table_name])
             return context_database, PUBLIC_SCHEMA, table_name
         raise RuntimeError(
@@ -198,9 +188,7 @@ class SnowflakeTableResovler:
         if not table_name:
             raise RuntimeError("Could not extract the table name.")
         if not context_database and not database_identifier:
-            logger.debug(
-                f"Could not resolve database name. {identifier=}, {context_database=}"
-            )
+            logger.debug(f"Could not resolve database name. {identifier=}, {context_database=}")
             raise RuntimeError("Could not resolve database name.")
         if schema_identifier is not None:
             return (
@@ -221,9 +209,7 @@ class SnowflakeTableResovler:
                 if context_schema
                 else None
             ),
-            ".".join(
-                [database_identifier or context_database, PUBLIC_SCHEMA, table_name]
-            ),
+            ".".join([database_identifier or context_database, PUBLIC_SCHEMA, table_name]),
         )
         # If the schema is not explicitly provided in the query, we'll need to resolve it from OpenMetadata
         # by cascading the search from the context to the public schema.
@@ -266,9 +252,7 @@ def get_snowflake_system_queries(
         )
 
         if not all([database_name, schema_name, table_name]):
-            raise RuntimeError(
-                f"Could not extract the identifiers from the query [{query_log_entry.query_id}]."
-            )
+            raise RuntimeError(f"Could not extract the identifiers from the query [{query_log_entry.query_id}].")
 
         return SnowflakeQueryResult(
             query_id=query_log_entry.query_id,
@@ -294,9 +278,7 @@ def get_snowflake_system_queries(
 
 
 @register_system_metrics(PythonDialects.Snowflake)
-class SnowflakeSystemMetricsComputer(
-    SystemMetricsComputer, CacheProvider[SnowflakeQueryLogEntry]
-):
+class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[SnowflakeQueryLogEntry]):
     """Snowflake system metrics source"""
 
     def __init__(
@@ -324,9 +306,7 @@ class SnowflakeSystemMetricsComputer(
 
     def get_inserts(self) -> List[SystemProfile]:
         if self.is_dynamic_table:
-            return self._get_dynamic_table_system_profile(
-                "rows_inserted", DmlOperationType.INSERT
-            )
+            return self._get_dynamic_table_system_profile("rows_inserted", DmlOperationType.INSERT)
         return self.get_system_profile(
             self.database,
             self.schema,
@@ -346,9 +326,7 @@ class SnowflakeSystemMetricsComputer(
 
     def get_updates(self) -> List[SystemProfile]:
         if self.is_dynamic_table:
-            return self._get_dynamic_table_system_profile(
-                "rows_updated", DmlOperationType.UPDATE
-            )
+            return self._get_dynamic_table_system_profile("rows_updated", DmlOperationType.UPDATE)
         return self.get_system_profile(
             self.database,
             self.schema,
@@ -368,9 +346,7 @@ class SnowflakeSystemMetricsComputer(
 
     def get_deletes(self) -> List[SystemProfile]:
         if self.is_dynamic_table:
-            return self._get_dynamic_table_system_profile(
-                "rows_deleted", DmlOperationType.DELETE
-            )
+            return self._get_dynamic_table_system_profile("rows_deleted", DmlOperationType.DELETE)
         return self.get_system_profile(
             self.database,
             self.schema,
@@ -409,9 +385,7 @@ class SnowflakeSystemMetricsComputer(
         return TypeAdapter(List[SystemProfile]).validate_python(
             [
                 {
-                    "timestamp": datetime_to_timestamp(
-                        entry.start_time, milliseconds=True
-                    ),
+                    "timestamp": datetime_to_timestamp(entry.start_time, milliseconds=True),
                     "operation": operation,
                     "rowsAffected": getattr(entry, rows_affected_field) or 0,
                 }
@@ -457,13 +431,9 @@ class SnowflakeSystemMetricsComputer(
             ]
         )
 
-    def get_queries_by_operation(
-        self, table: str, operations: List[DatabaseDMLOperations]
-    ):
+    def get_queries_by_operation(self, table: str, operations: List[DatabaseDMLOperations]):
         ops = [op.value for op in operations]
-        yield from (
-            query for query in self.get_queries(table) if query.query_type in ops
-        )
+        yield from (query for query in self.get_queries(table) if query.query_type in ops)
 
     def get_queries(self, table: str) -> List[SnowflakeQueryResult]:
         queries = self.get_or_update_cache(

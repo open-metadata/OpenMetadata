@@ -4,6 +4,7 @@ Exercises follower management, restore/version flows, and metadata enrichment
 (tags, glossary terms, owners, domains, data products, CSV helpers) using the
 fluent SDK classes only.
 """
+
 from __future__ import annotations
 
 import time
@@ -219,9 +220,7 @@ def sdk_test_data():
         )
     except Exception as exc:  # pragma: no cover - environment dependent
         om.reset()
-        pytest.skip(
-            f"OpenMetadata server not reachable or misconfigured for SDK integration tests: {exc}"
-        )
+        pytest.skip(f"OpenMetadata server not reachable or misconfigured for SDK integration tests: {exc}")
 
     yield SimpleNamespace(
         service=service,
@@ -269,9 +268,7 @@ def test_table_name():
 
 
 class TestSDKIntegration:
-    def _create_basic_table(
-        self, sdk_test_data, test_table_name, name: str | None = None
-    ) -> Table:
+    def _create_basic_table(self, sdk_test_data, test_table_name, name: str | None = None) -> Table:
         table_name = name or test_table_name
         request = CreateTableRequest(
             name=table_name,
@@ -291,9 +288,7 @@ class TestSDKIntegration:
     def test_add_remove_followers(self, sdk_test_data, test_table_name) -> None:
         table = self._create_basic_table(sdk_test_data, test_table_name)
         try:
-            follower = sdk_test_data.ingestion_bot or _safe_retrieve_user(
-                "ingestion-bot"
-            )
+            follower = sdk_test_data.ingestion_bot or _safe_retrieve_user("ingestion-bot")
             if follower is None:
                 pytest.skip("ingestion-bot user not available")
 
@@ -302,9 +297,7 @@ class TestSDKIntegration:
             except Exception as exc:  # noqa: BLE001 - depends on server config
                 pytest.skip(f"Follower API not supported in this environment: {exc}")
 
-            table_with_followers = om.Tables.retrieve(
-                table.id.root, fields=["followers"]
-            )
+            table_with_followers = om.Tables.retrieve(table.id.root, fields=["followers"])
             assert _to_entity_list(table_with_followers.followers)
 
             om.Tables.remove_followers(str(table.id.root), [str(follower.id.root)])
@@ -326,9 +319,7 @@ class TestSDKIntegration:
                 id=sdk_test_data.team.id,
                 type="team",
                 name=_coerce_str(getattr(sdk_test_data.team, "name", None)),
-                fullyQualifiedName=_coerce_str(
-                    getattr(sdk_test_data.team, "fullyQualifiedName", None)
-                ),
+                fullyQualifiedName=_coerce_str(getattr(sdk_test_data.team, "fullyQualifiedName", None)),
             )
             working_table.owners = EntityReferenceList(root=[team_owner])
 
@@ -336,12 +327,8 @@ class TestSDKIntegration:
                 user_owner = EntityReference(
                     id=sdk_test_data.ingestion_bot.id,
                     type="user",
-                    name=_coerce_str(
-                        getattr(sdk_test_data.ingestion_bot, "name", None)
-                    ),
-                    fullyQualifiedName=_coerce_str(
-                        getattr(sdk_test_data.ingestion_bot, "fullyQualifiedName", None)
-                    ),
+                    name=_coerce_str(getattr(sdk_test_data.ingestion_bot, "name", None)),
+                    fullyQualifiedName=_coerce_str(getattr(sdk_test_data.ingestion_bot, "fullyQualifiedName", None)),
                 )
             else:
                 user_owner = None
@@ -355,9 +342,7 @@ class TestSDKIntegration:
                 ),
                 TagLabel(
                     tagFQN=getattr(
-                        getattr(
-                            sdk_test_data.glossary_term, "fullyQualifiedName", None
-                        ),
+                        getattr(sdk_test_data.glossary_term, "fullyQualifiedName", None),
                         "root",
                         "",
                     ),
@@ -373,9 +358,7 @@ class TestSDKIntegration:
                         id=sdk_test_data.domain.id,
                         type="domain",
                         name=_coerce_str(getattr(sdk_test_data.domain, "name", None)),
-                        fullyQualifiedName=_coerce_str(
-                            getattr(sdk_test_data.domain, "fullyQualifiedName", None)
-                        ),
+                        fullyQualifiedName=_coerce_str(getattr(sdk_test_data.domain, "fullyQualifiedName", None)),
                     )
                 ]
             )
@@ -385,14 +368,8 @@ class TestSDKIntegration:
                     EntityReference(
                         id=sdk_test_data.data_product.id,
                         type="dataProduct",
-                        name=_coerce_str(
-                            getattr(sdk_test_data.data_product, "name", None)
-                        ),
-                        fullyQualifiedName=_coerce_str(
-                            getattr(
-                                sdk_test_data.data_product, "fullyQualifiedName", None
-                            )
-                        ),
+                        name=_coerce_str(getattr(sdk_test_data.data_product, "name", None)),
+                        fullyQualifiedName=_coerce_str(getattr(sdk_test_data.data_product, "fullyQualifiedName", None)),
                     )
                 ]
             )
@@ -410,9 +387,7 @@ class TestSDKIntegration:
 
             tag_fqns = {_coerce_str(tag.tagFQN) for tag in enriched.tags or []}
             assert sdk_test_data.classification_tag_fqn in tag_fqns
-            assert (
-                _coerce_str(sdk_test_data.glossary_term.fullyQualifiedName) in tag_fqns
-            )
+            assert _coerce_str(sdk_test_data.glossary_term.fullyQualifiedName) in tag_fqns
 
             assert enriched.domains is not None
             assert len(enriched.domains.root) == 1
@@ -420,10 +395,7 @@ class TestSDKIntegration:
 
             assert enriched.dataProducts is not None
             assert len(enriched.dataProducts.root) == 1
-            assert (
-                enriched.dataProducts.root[0].id.root
-                == sdk_test_data.data_product.id.root
-            )
+            assert enriched.dataProducts.root[0].id.root == sdk_test_data.data_product.id.root
 
             exporter = om.Tables.export_csv(enriched.fullyQualifiedName.root)
             csv_data = exporter.execute()
@@ -510,12 +482,8 @@ class TestSDKIntegration:
             om.Tables.delete(str(table.id.root), hard_delete=True)
 
     def test_table_lineage_round_trip(self, sdk_test_data, test_table_name) -> None:
-        source = self._create_basic_table(
-            sdk_test_data, test_table_name, name=f"{test_table_name}_source"
-        )
-        target = self._create_basic_table(
-            sdk_test_data, test_table_name, name=f"{test_table_name}_target"
-        )
+        source = self._create_basic_table(sdk_test_data, test_table_name, name=f"{test_table_name}_source")
+        target = self._create_basic_table(sdk_test_data, test_table_name, name=f"{test_table_name}_target")
         try:
             Lineage.add_lineage(
                 from_entity_id=source.id.root,
@@ -532,18 +500,14 @@ class TestSDKIntegration:
                 downstream_depth=0,
             )
             assert lineage is not None
-            assert str(target.id.root) == _coerce_str(
-                getattr(lineage.entity, "id", None)
-            )
+            assert str(target.id.root) == _coerce_str(getattr(lineage.entity, "id", None))
             node_fqns = {
-                _coerce_str(getattr(node, "fullyQualifiedName", None))
-                for node in getattr(lineage, "nodes", []) or []
+                _coerce_str(getattr(node, "fullyQualifiedName", None)) for node in getattr(lineage, "nodes", []) or []
             }
             assert _coerce_str(source.fullyQualifiedName) in node_fqns
 
             upstream_ids = {
-                _coerce_str(getattr(edge, "fromEntity", None))
-                for edge in getattr(lineage, "upstreamEdges", []) or []
+                _coerce_str(getattr(edge, "fromEntity", None)) for edge in getattr(lineage, "upstreamEdges", []) or []
             }
             assert str(source.id.root) in upstream_ids
         finally:
@@ -551,16 +515,10 @@ class TestSDKIntegration:
             om.Tables.delete(str(source.id.root), hard_delete=True)
 
     def test_table_list_pagination(self, sdk_test_data, test_table_name) -> None:
-        first = self._create_basic_table(
-            sdk_test_data, test_table_name, name=f"{test_table_name}_p1"
-        )
-        second = self._create_basic_table(
-            sdk_test_data, test_table_name, name=f"{test_table_name}_p2"
-        )
+        first = self._create_basic_table(sdk_test_data, test_table_name, name=f"{test_table_name}_p1")
+        second = self._create_basic_table(sdk_test_data, test_table_name, name=f"{test_table_name}_p2")
         created_tables = [first, second]
-        filters = {
-            "databaseSchema": _coerce_str(sdk_test_data.schema.fullyQualifiedName)
-        }
+        filters = {"databaseSchema": _coerce_str(sdk_test_data.schema.fullyQualifiedName)}
         try:
             after = None
             seen = set()
@@ -575,9 +533,7 @@ class TestSDKIntegration:
                 assert isinstance(after, str)
                 assert after != ""
 
-            expected_fqns = {
-                _coerce_str(tbl.fullyQualifiedName) for tbl in created_tables
-            }
+            expected_fqns = {_coerce_str(tbl.fullyQualifiedName) for tbl in created_tables}
             assert expected_fqns.issubset(seen)
         finally:
             for tbl in created_tables:
@@ -640,9 +596,7 @@ class TestSDKIntegration:
                     description="Replacement SDK tag",
                 )
             )
-            replacement_fqn = (
-                f"{sdk_test_data.classification_name}.{replacement_tag_name}"
-            )
+            replacement_fqn = f"{sdk_test_data.classification_name}.{replacement_tag_name}"
             try:
                 working_table = initial.model_copy(deep=True)
                 working_table.tags = [
@@ -701,12 +655,8 @@ class TestSDKIntegration:
             om.Tables.delete(str(table.id.root), hard_delete=True)
 
     def test_delete_lineage(self, sdk_test_data, test_table_name) -> None:
-        source = self._create_basic_table(
-            sdk_test_data, test_table_name, name=f"{test_table_name}_del_src"
-        )
-        target = self._create_basic_table(
-            sdk_test_data, test_table_name, name=f"{test_table_name}_del_tgt"
-        )
+        source = self._create_basic_table(sdk_test_data, test_table_name, name=f"{test_table_name}_del_src")
+        target = self._create_basic_table(sdk_test_data, test_table_name, name=f"{test_table_name}_del_tgt")
         try:
             Lineage.add_lineage(
                 from_entity_id=source.id.root,
@@ -715,9 +665,7 @@ class TestSDKIntegration:
                 to_entity_type="table",
             )
 
-            lineage_before = Lineage.get_entity_lineage(
-                Table, target.id.root, upstream_depth=1, downstream_depth=0
-            )
+            lineage_before = Lineage.get_entity_lineage(Table, target.id.root, upstream_depth=1, downstream_depth=0)
             assert lineage_before is not None
             assert getattr(lineage_before, "upstreamEdges", None)
 
@@ -728,24 +676,18 @@ class TestSDKIntegration:
                 to_entity_type="table",
             )
 
-            lineage_after = Lineage.get_entity_lineage(
-                Table, target.id.root, upstream_depth=1, downstream_depth=0
-            )
+            lineage_after = Lineage.get_entity_lineage(Table, target.id.root, upstream_depth=1, downstream_depth=0)
             upstream_after = getattr(lineage_after, "upstreamEdges", None) or []
             assert len(upstream_after) == 0
         finally:
             om.Tables.delete(str(target.id.root), hard_delete=True)
             om.Tables.delete(str(source.id.root), hard_delete=True)
 
-    def test_custom_properties_with_pydantic_uuid(
-        self, sdk_test_data, test_table_name
-    ) -> None:
+    def test_custom_properties_with_pydantic_uuid(self, sdk_test_data, test_table_name) -> None:
         table = self._create_basic_table(sdk_test_data, test_table_name)
         try:
             updated = (
-                om.Tables.update_custom_properties(table.id)
-                .with_property("department", "Data Engineering")
-                .execute()
+                om.Tables.update_custom_properties(table.id).with_property("department", "Data Engineering").execute()
             )
             assert updated is not None
             ext = getattr(updated, "extension", None)
@@ -766,9 +708,7 @@ class TestSDKIntegration:
         finally:
             om.Tables.delete(str(table.id.root), hard_delete=True)
 
-    def test_get_versions_with_pydantic_uuid(
-        self, sdk_test_data, test_table_name
-    ) -> None:
+    def test_get_versions_with_pydantic_uuid(self, sdk_test_data, test_table_name) -> None:
         table = self._create_basic_table(sdk_test_data, test_table_name)
         try:
             modified = table.model_copy(deep=True)
@@ -795,8 +735,7 @@ class TestSDKIntegration:
             handler = logging.Handler()
             handler.emit = lambda record: (
                 errors_captured.append(record.getMessage())
-                if record.levelno >= logging.ERROR
-                and "json" in record.getMessage().lower()
+                if record.levelno >= logging.ERROR and "json" in record.getMessage().lower()
                 else None
             )
 
@@ -810,8 +749,6 @@ class TestSDKIntegration:
 
             assert isinstance(csv_content, str)
             assert csv_content.strip()
-            assert (
-                errors_captured == []
-            ), f"Unexpected JSON decode ERROR logs: {errors_captured}"
+            assert errors_captured == [], f"Unexpected JSON decode ERROR logs: {errors_captured}"
         finally:
             om.Tables.delete(str(table.id.root), hard_delete=True)

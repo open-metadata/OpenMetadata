@@ -12,6 +12,7 @@
 """
 Incremental Processor for Redshift
 """
+
 import re
 from datetime import datetime
 from typing import Dict, FrozenSet, Iterable, List, Optional, Tuple
@@ -58,27 +59,13 @@ DROP_VIEW = rf"^.*DROP\s+(EXTERNAL\s+|MATERIALIZED\s+)?VIEW\s+(IF\s+EXISTS\s+)?(
 COMMENT = rf"^.*COMMENT\s+ON\s+(TABLE|COLUMN|VIEW)\s+(?P<table>{TABLE_NAME_RE}).*$"
 
 # Named instances so _KW_TO_CANDIDATES can reference them without fragile indexing.
-_ALTER_TABLE_RE = RedshiftTableChangeQueryRegex(
-    regex=re.compile(ALTER_TABLE, re.IGNORECASE), deleted=False
-)
-_CREATE_TABLE_RE = RedshiftTableChangeQueryRegex(
-    regex=re.compile(CREATE_TABLE, re.IGNORECASE), deleted=False
-)
-_DROP_TABLE_RE = RedshiftTableChangeQueryRegex(
-    regex=re.compile(DROP_TABLE, re.IGNORECASE), deleted=True
-)
-_ALTER_VIEW_RE = RedshiftTableChangeQueryRegex(
-    regex=re.compile(ALTER_VIEW, re.IGNORECASE), deleted=False
-)
-_CREATE_VIEW_RE = RedshiftTableChangeQueryRegex(
-    regex=re.compile(CREATE_VIEW, re.IGNORECASE), deleted=False
-)
-_DROP_VIEW_RE = RedshiftTableChangeQueryRegex(
-    regex=re.compile(DROP_VIEW, re.IGNORECASE), deleted=True
-)
-_COMMENT_RE = RedshiftTableChangeQueryRegex(
-    regex=re.compile(COMMENT, re.IGNORECASE), deleted=False
-)
+_ALTER_TABLE_RE = RedshiftTableChangeQueryRegex(regex=re.compile(ALTER_TABLE, re.IGNORECASE), deleted=False)
+_CREATE_TABLE_RE = RedshiftTableChangeQueryRegex(regex=re.compile(CREATE_TABLE, re.IGNORECASE), deleted=False)
+_DROP_TABLE_RE = RedshiftTableChangeQueryRegex(regex=re.compile(DROP_TABLE, re.IGNORECASE), deleted=True)
+_ALTER_VIEW_RE = RedshiftTableChangeQueryRegex(regex=re.compile(ALTER_VIEW, re.IGNORECASE), deleted=False)
+_CREATE_VIEW_RE = RedshiftTableChangeQueryRegex(regex=re.compile(CREATE_VIEW, re.IGNORECASE), deleted=False)
+_DROP_VIEW_RE = RedshiftTableChangeQueryRegex(regex=re.compile(DROP_VIEW, re.IGNORECASE), deleted=True)
+_COMMENT_RE = RedshiftTableChangeQueryRegex(regex=re.compile(COMMENT, re.IGNORECASE), deleted=False)
 
 REGEX_LIST = [
     _ALTER_TABLE_RE,
@@ -126,9 +113,7 @@ class RedshiftIncrementalTableProcessor:
         self.default_schema = default_schema
 
     @classmethod
-    def create(
-        cls, connection: Connection, default_schema: SchemaName
-    ) -> "RedshiftIncrementalTableProcessor":
+    def create(cls, connection: Connection, default_schema: SchemaName) -> "RedshiftIncrementalTableProcessor":
         """Creates a new instance based on a connection and the default schema."""
         return cls(
             table_map=RedshiftTableMap.default(),
@@ -141,13 +126,7 @@ class RedshiftIncrementalTableProcessor:
     def _query_for_changes(self, database: str, start_date: datetime) -> Iterable[str]:
         """Queries the Redshift database for the Table Changes."""
         for row in (
-            self.connection.execute(
-                text(
-                    self.table_changes_query.format(
-                        database=database, start_date=start_date
-                    )
-                )
-            )
+            self.connection.execute(text(self.table_changes_query.format(database=database, start_date=start_date)))
             or []
         ):
             yield row[0]
@@ -162,9 +141,7 @@ class RedshiftIncrementalTableProcessor:
         """
         return statement.translate(_CLEAN_TABLE)
 
-    def _get_schema_and_table(
-        self, full_table_name: str, statement: str
-    ) -> Tuple[SchemaName, TableName]:
+    def _get_schema_and_table(self, full_table_name: str, statement: str) -> Tuple[SchemaName, TableName]:
         """From the full table name, retrieves the Schema and Table Name.
         If no Schema is present, falls back to the default schema."""
         full_table_name_as_list = full_table_name.split(".")
@@ -201,9 +178,7 @@ class RedshiftIncrementalTableProcessor:
 
             kw_match = _FIRST_KW_RE.search(statement)
             if kw_match:
-                candidates = _KW_TO_CANDIDATES.get(
-                    kw_match.group(1).upper(), self.regex_list
-                )
+                candidates = _KW_TO_CANDIDATES.get(kw_match.group(1).upper(), self.regex_list)
             else:
                 candidates = self.regex_list
 
@@ -214,9 +189,7 @@ class RedshiftIncrementalTableProcessor:
                     continue
 
                 match_found = True
-                schema, table_name = self._get_schema_and_table(
-                    match.group("table"), statement
-                )
+                schema, table_name = self._get_schema_and_table(match.group("table"), statement)
                 self.table_map.update(
                     schema,
                     RedshiftTable(name=table_name, deleted=possible_match.deleted),
@@ -226,9 +199,7 @@ class RedshiftIncrementalTableProcessor:
             if not match_found:
                 logger.debug("Match not found for %s", statement)
 
-    def get_deleted(
-        self, schema_name: Optional[SchemaName] = None
-    ) -> List[Tuple[SchemaName, TableName]]:
+    def get_deleted(self, schema_name: Optional[SchemaName] = None) -> List[Tuple[SchemaName, TableName]]:
         """Returns the deleted table names present in the table_map for a given schema."""
         return self.table_map.get_deleted(schema_name)
 

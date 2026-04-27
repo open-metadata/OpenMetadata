@@ -40,20 +40,14 @@ def parse_es_index_mapping(mapping: dict) -> Optional[List[SearchIndexField]]:
     try:
         properties = mapping.get("properties", {})
         for key, value in properties.items():
-            data_type = (
-                DataType(value.get("type").upper())
-                if value.get("type")
-                else DataType.OBJECT
-            )
+            data_type = DataType(value.get("type").upper()) if value.get("type") else DataType.OBJECT
             field_models.append(
                 SearchIndexField(
                     name=key,
                     dataType=data_type,
                     dataTypeDisplay=value.get("type"),
                     description=value.get("description"),
-                    children=parse_es_index_mapping(value)
-                    if value.get("properties")
-                    else None,
+                    children=parse_es_index_mapping(value) if value.get("properties") else None,
                 )
             )
     except Exception as exc:  # pylint: disable=broad-except

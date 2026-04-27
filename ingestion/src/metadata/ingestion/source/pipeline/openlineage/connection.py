@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional, Union
 
 from botocore.client import BaseClient
@@ -77,6 +78,7 @@ def _get_kafka_connection(broker: KafkaBrokerConfig) -> KafkaConsumer:
                     "ssl.key.location": broker.sslConfig.root.sslKey,
                 }
             )
+
         if broker.securityProtocol.value in (
             KafkaSecProtocol.SASL_PLAINTEXT.value,
             KafkaSecProtocol.SASL_SSL.value,
@@ -134,9 +136,7 @@ def test_connection(
         test_fn = {"CheckBrokerConnectivity": custom_executor}
 
     else:
-        raise SourceConnectionException(
-            f"Unsupported broker config type: {type(broker)}"
-        )
+        raise SourceConnectionException(f"Unsupported broker config type: {type(broker)}")
 
     return test_connection_steps(
         metadata=metadata,

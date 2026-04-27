@@ -1,6 +1,7 @@
 """
 Integration tests for SDK fluent API with plural entity classes
 """
+
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
@@ -43,18 +44,10 @@ class TestSDKFluentAPI:
         # Mock the client getter to return our mock
         with patch.object(Tables, "_get_client", return_value=self.mock_ometa):
             with patch.object(Users, "_get_client", return_value=self.mock_ometa):
-                with patch.object(
-                    Databases, "_get_client", return_value=self.mock_ometa
-                ):
-                    with patch.object(
-                        DatabaseSchemas, "_get_client", return_value=self.mock_ometa
-                    ):
-                        with patch.object(
-                            Teams, "_get_client", return_value=self.mock_ometa
-                        ):
-                            with patch.object(
-                                Glossaries, "_get_client", return_value=self.mock_ometa
-                            ):
+                with patch.object(Databases, "_get_client", return_value=self.mock_ometa):
+                    with patch.object(DatabaseSchemas, "_get_client", return_value=self.mock_ometa):
+                        with patch.object(Teams, "_get_client", return_value=self.mock_ometa):
+                            with patch.object(Glossaries, "_get_client", return_value=self.mock_ometa):
                                 with patch.object(
                                     GlossaryTerms,
                                     "_get_client",
@@ -366,13 +359,7 @@ class TestSDKEntityTypes:
 
         for entity_class in entities:
             # Check that entity_type method exists and returns a type
-            assert hasattr(
-                entity_class, "entity_type"
-            ), f"{entity_class.__name__} missing entity_type method"
+            assert hasattr(entity_class, "entity_type"), f"{entity_class.__name__} missing entity_type method"
             entity_type = entity_class.entity_type()
-            assert (
-                entity_type is not None
-            ), f"{entity_class.__name__}.entity_type() returned None"
-            assert isinstance(
-                entity_type, type
-            ), f"{entity_class.__name__}.entity_type() did not return a type"
+            assert entity_type is not None, f"{entity_class.__name__}.entity_type() returned None"
+            assert isinstance(entity_type, type), f"{entity_class.__name__}.entity_type() did not return a type"

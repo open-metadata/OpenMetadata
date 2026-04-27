@@ -118,6 +118,8 @@ export interface TestServiceConnectionConnection {
  *
  * Salesforce Connection Config
  *
+ * SAP SuccessFactors Connection Config
+ *
  * SingleStore Database Connection Config
  *
  * Snowflake Connection Config
@@ -178,6 +180,8 @@ export interface TestServiceConnectionConnection {
  *
  * IBM Informix Database Connection Config
  *
+ * IOMETE Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -219,6 +223,8 @@ export interface TestServiceConnectionConnection {
  *
  * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
  * create, deploy, and manage paginated reports
+ *
+ * SAP S/4HANA Connection Config for Embedded Analytics
  *
  * Kafka Connection Config
  *
@@ -358,6 +364,9 @@ export interface ConfigObject {
      * SSL Configuration details. Provide the CA certificate to validate the Informix server
      * certificate. Paste the PEM content directly or upload the certificate file.
      *
+     * CA certificate, client certificate, and private key for SSL validation. Required when
+     * verifySSL is 'validate'.
+     *
      * SSL Configuration for OpenMetadata Server
      */
     sslConfig?: SSLConfigObject;
@@ -408,9 +417,12 @@ export interface ConfigObject {
     /**
      * Client SSL verification. Make sure to configure the SSLConfig if enabled.
      *
+     * Client SSL verification.
+     *
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
      *
-     * Client SSL verification.
+     * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+     * validation, 'validate' to verify against a CA certificate.
      *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.
@@ -515,6 +527,8 @@ export interface ConfigObject {
      *
      * Host and port of the Informix service.
      *
+     * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
+     *
      * URL to the Looker instance.
      *
      * Host and Port of the Metabase instance.
@@ -548,6 +562,8 @@ export interface ConfigObject {
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      *
      * Host and Port of the Ssrs instance.
+     *
+     * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
      *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
@@ -597,6 +613,9 @@ export interface ConfigObject {
      *
      * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
      * are mapped as schemas.
+     *
+     * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
+     * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -769,6 +788,8 @@ export interface ConfigObject {
      *
      * Password to connect to Salesforce.
      *
+     * Password for BasicAuth authentication. Required when authType is BasicAuth.
+     *
      * Password to connect to SingleStore.
      *
      * Password to connect to Snowflake.
@@ -800,6 +821,8 @@ export interface ConfigObject {
      * Password to connect to BurstIQ.
      *
      * Password to connect to Informix.
+     *
+     * Password to connect to IOMETE.
      *
      * Password to connect to Metabase. Required for basic authentication.
      *
@@ -863,6 +886,11 @@ export interface ConfigObject {
      * Username to connect to Salesforce. This user should have privileges to read all the
      * metadata in Salesforce.
      *
+     * SAP SuccessFactors user login name. For BasicAuth: used as the credential username. For
+     * OAuth2Credentials: used as the SAML NameID — the user on whose behalf the token is
+     * requested. The user must exist in the SF system and be permitted to use the OAuth2
+     * application.
+     *
      * Username to connect to SingleStore. This user should have privileges to read all the
      * metadata in MySQL.
      *
@@ -921,6 +949,8 @@ export interface ConfigObject {
      * Username to connect to Informix. This user should have privileges to read all the
      * metadata in Informix.
      *
+     * Username to connect to IOMETE.
+     *
      * Username to connect to Metabase. Required for basic authentication.
      *
      * Username to connect to PowerBI report server.
@@ -952,6 +982,10 @@ export interface ConfigObject {
      *
      * Optional name to give to the schema in OpenMetadata. If left blank, we will use default
      * as the schema name
+     *
+     * IOMETE database to restrict metadata ingestion to (e.g. default, finance_db). This is an
+     * optional parameter; if left blank, OpenMetadata attempts to scan all databases in the
+     * catalog.
      */
     databaseSchema?: string;
     /**
@@ -977,9 +1011,14 @@ export interface ConfigObject {
      *
      * Choose Auth Configuration Type.
      *
+     * Choose how to authenticate with SAP SuccessFactors OData API.
+     *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
      * Types of methods used to authenticate to the tableau instance
+     *
+     * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
+     * SAP S/4HANA Cloud.
      *
      * Types of methods used to authenticate to the alation instance
      *
@@ -996,6 +1035,9 @@ export interface ConfigObject {
      * Presto catalog
      *
      * Catalog of the data source.
+     *
+     * Catalog of the data source (e.g. spark_catalog). This is an optional parameter; if left
+     * blank, OpenMetadata uses default catalog.
      */
     catalog?: string;
     /**
@@ -1198,6 +1240,58 @@ export interface ConfigObject {
      */
     sobjectNames?: string[];
     /**
+     * SAP SuccessFactors OData API version.
+     *
+     * Tableau API version. If not provided, the version will be used from the tableau server.
+     *
+     * Sigma API version.
+     *
+     * ThoughtSpot API version to use
+     *
+     * Airbyte API version.
+     *
+     * OpenMetadata server API version to use.
+     */
+    apiVersion?: string;
+    /**
+     * SAP SuccessFactors OData API base URL. For example: https://api4.successfactors.com
+     */
+    baseUrl?: string;
+    /**
+     * OAuth2 Client ID. Required when authType is OAuth2Credentials.
+     *
+     * Client ID for DOMO
+     *
+     * Azure Application (client) ID for service principal authentication.
+     *
+     * Azure Application (client) ID for Service Principal authentication.
+     *
+     * User's Client ID. This user should have privileges to read all the metadata in Looker.
+     *
+     * client_id for PowerBI.
+     *
+     * client_id for Sigma.
+     *
+     * Application (client) ID from Azure Active Directory
+     */
+    clientId?: string;
+    /**
+     * SAP SuccessFactors Company ID (tenant identifier). Required for all API calls.
+     */
+    companyId?: string;
+    /**
+     * PEM-encoded RSA private key used to sign SAML assertions for OAuth2 SAML Bearer flow.
+     * Required when authType is OAuth2Credentials.
+     *
+     * Connection to Snowflake instance via Private Key
+     */
+    privateKey?: string;
+    /**
+     * OAuth2 Token endpoint URL. Required when authType is OAuth2Credentials. For example:
+     * https://api4.successfactors.com/oauth/token
+     */
+    tokenUrl?: string;
+    /**
      * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
      * account is xyz1234.us-east-1.gcp
      *
@@ -1233,10 +1327,6 @@ export interface ConfigObject {
      * TRANSIENT tables.
      */
     includeTransientTables?: boolean;
-    /**
-     * Connection to Snowflake instance via Private Key
-     */
-    privateKey?: string;
     /**
      * Session query tag used to monitor usage on snowflake. To use a query tag snowflake user
      * should have enough privileges to alter the session.
@@ -1290,22 +1380,6 @@ export interface ConfigObject {
      * API Host to connect to DOMO instance
      */
     apiHost?: string;
-    /**
-     * Client ID for DOMO
-     *
-     * Azure Application (client) ID for service principal authentication.
-     *
-     * Azure Application (client) ID for Service Principal authentication.
-     *
-     * User's Client ID. This user should have privileges to read all the metadata in Looker.
-     *
-     * client_id for PowerBI.
-     *
-     * client_id for Sigma.
-     *
-     * Application (client) ID from Azure Active Directory
-     */
-    clientId?: string;
     /**
      * URL of your Domo instance, e.g., https://openmetadata.domo.com
      */
@@ -1458,6 +1532,11 @@ export interface ConfigObject {
      */
     biqSdzName?: string;
     /**
+     * BurstIQ system wallet ID sent as the biq_system_wallet_id header. Required for profiler
+     * data access.
+     */
+    biqSystemWalletId?: string;
+    /**
      * BurstIQ Keycloak realm name (e.g., 'ems' from https://auth.burstiq.com/realms/ems).
      */
     realmName?: string;
@@ -1466,6 +1545,14 @@ export interface ConfigObject {
      * variable.
      */
     serverName?: string;
+    /**
+     * IOMETE lakehouse cluster name to connect to.
+     */
+    cluster?: string;
+    /**
+     * IOMETE data plane name.
+     */
+    dataPlane?: string;
     /**
      * Regex exclude or include charts that matches the pattern.
      *
@@ -1526,18 +1613,6 @@ export interface ConfigObject {
      * Version of the Redash instance
      */
     redashVersion?: string;
-    /**
-     * Tableau API version. If not provided, the version will be used from the tableau server.
-     *
-     * Sigma API version.
-     *
-     * ThoughtSpot API version to use
-     *
-     * Airbyte API version.
-     *
-     * OpenMetadata server API version to use.
-     */
-    apiVersion?: string;
     /**
      * Proxy URL for the tableau server. If not provided, the hostPort will be used. This is
      * used to generate the dashboard & Chart URL.
@@ -1645,6 +1720,10 @@ export interface ConfigObject {
      * Type of token to use for authentication
      */
     tokenType?: TokenType;
+    /**
+     * SAP client number (Mandant), typically a 3-digit string (e.g. '100').
+     */
+    clientNumber?: string;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -1809,6 +1888,12 @@ export interface ConfigObject {
      * Event broker configuration. Choose between Kafka and Kinesis.
      */
     brokerConfig?: BrokerConfiguration;
+    /**
+     * Map OpenLineage dataset namespaces (or prefixes) to OpenMetadata database service names.
+     * Used when multiple services of the same type exist. Example: 'mysql://cluster-a:3306' ->
+     * 'mysql-cluster-a'.
+     */
+    namespaceToServiceMapping?: { [key: string]: string };
     /**
      * We support username/password or No Authentication
      */
@@ -2218,6 +2303,9 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only include/exclude dictionaries (tables) that matches the pattern.
  *
+ * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
+ * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
+ *
  * Regex exclude or include charts that matches the pattern.
  *
  * Regex to exclude or include dashboards that matches the pattern.
@@ -2378,6 +2466,13 @@ export enum AuthProvider {
  *
  * Access Token Auth Credentials
  *
+ * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
+ * SAP S/4HANA Cloud.
+ *
+ * Username and password credentials for SAP S/4HANA.
+ *
+ * OAuth 2.0 client credentials for SAP S/4HANA Cloud.
+ *
  * ThoughtSpot authentication configuration
  *
  * Types of methods used to authenticate to the alation instance
@@ -2415,11 +2510,15 @@ export interface AuthenticationType {
     /**
      * Service Principal Application ID created in your Databricks Account Console for OAuth
      * Machine-to-Machine authentication.
+     *
+     * OAuth 2.0 client ID registered in SAP.
      */
     clientId?: string;
     /**
      * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
      * secure OAuth2 authentication.
+     *
+     * OAuth 2.0 client secret.
      */
     clientSecret?: string;
     /**
@@ -2442,6 +2541,8 @@ export interface AuthenticationType {
      * Password for the Dremio Software user account.
      *
      * Password to access the service.
+     *
+     * Password to authenticate with SAP S/4HANA.
      *
      * Elastic Search Password for Login
      *
@@ -2494,6 +2595,8 @@ export interface AuthenticationType {
      *
      * Username to access the service.
      *
+     * Username to authenticate with SAP S/4HANA.
+     *
      * Elastic Search Username for Login
      *
      * Ranger user to authenticate to the API.
@@ -2509,6 +2612,14 @@ export interface AuthenticationType {
      * Personal Access Token Secret.
      */
     personalAccessTokenSecret?: string;
+    /**
+     * Authentication type identifier.
+     */
+    authType?: AuthType;
+    /**
+     * OAuth 2.0 token endpoint URL (e.g. /sap/bc/security/oauth2/token).
+     */
+    tokenEndpoint?: string;
     /**
      * Access Token for the API
      */
@@ -2575,6 +2686,14 @@ export interface AuthenticationType {
      * Passphrase for the private key (if encrypted)
      */
     privateKeyPassphrase?: string;
+}
+
+/**
+ * Authentication type identifier.
+ */
+export enum AuthType {
+    Basic = "basic",
+    Oauth2 = "oauth2",
 }
 
 /**
@@ -2830,10 +2949,16 @@ export enum CloudRegion {
 }
 
 /**
+ * Choose how to authenticate with SAP SuccessFactors OData API.
+ *
+ * Authentication type to connect to SAP SuccessFactors.
+ *
  * Database Authentication types not requiring config.
  */
 export enum NoConfigAuthenticationTypes {
+    BasicAuth = "BasicAuth",
     OAuth2 = "OAuth2",
+    OAuth2Credentials = "OAuth2Credentials",
 }
 
 /**
@@ -3043,6 +3168,9 @@ export enum KafkaSecurityProtocol {
  *
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.
+ *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
  *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
@@ -3385,6 +3513,7 @@ export interface ConfigConnection {
      */
     containerFilterPattern?:     FilterPattern;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Service Type
      */
@@ -3508,7 +3637,6 @@ export interface ConfigConnection {
     supportsDataDiff?:             boolean;
     supportsDBTExtraction?:        boolean;
     supportsLineageExtraction?:    boolean;
-    supportsProfiler?:             boolean;
     supportsQueryComment?:         boolean;
     supportsUsageExtraction?:      boolean;
     /**
@@ -3787,6 +3915,9 @@ export enum ConnectionScheme {
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.
  *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -3848,6 +3979,9 @@ export enum ConnectionType {
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
  *
  * Client SSL verification.
+ *
+ * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+ * validation, 'validate' to verify against a CA certificate.
  *
  * Flag to verify SSL Certificate for OpenMetadata Server.
  */
@@ -4345,6 +4479,7 @@ export interface S3Connection {
      */
     containerFilterPattern?:     FilterPattern;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Service Type
      */
@@ -4547,6 +4682,9 @@ export enum SpaceType {
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.
  *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -4690,6 +4828,8 @@ export enum TokenType {
  *
  * Grafana service type
  *
+ * SAP S/4HANA service type
+ *
  * Kafka service type
  *
  * Redpanda service type
@@ -4792,6 +4932,7 @@ export enum ConfigType {
     Hive = "Hive",
     Impala = "Impala",
     Informix = "Informix",
+    Iomete = "Iomete",
     Kafka = "Kafka",
     KafkaConnect = "KafkaConnect",
     Kinesis = "Kinesis",
@@ -4839,6 +4980,8 @@ export enum ConfigType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    SapS4Hana = "SapS4Hana",
+    SapSuccessFactors = "SapSuccessFactors",
     ServiceNow = "ServiceNow",
     SharePoint = "SharePoint",
     Sigma = "Sigma",

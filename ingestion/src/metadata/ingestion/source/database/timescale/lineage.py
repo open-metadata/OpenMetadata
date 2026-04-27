@@ -44,16 +44,12 @@ class TimescaleLineageSource(PostgresLineageSource):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         """Create TimescaleLineageSource"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection = config.serviceConnection.root.config
         if not isinstance(connection, (TimescaleConnection)):
-            raise InvalidSourceException(
-                f"Expected TimescaleConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected TimescaleConnection, but got {connection}")
         return cls(config, metadata)
 
     def __init__(self, config, metadata):
@@ -66,12 +62,8 @@ class TimescaleLineageSource(PostgresLineageSource):
         try:
             with self.engine.connect() as conn:
                 result = conn.execute(text(TIMESCALE_CHECK_EXTENSION)).first()
-            self.timescaledb_installed = (
-                result.timescaledb_installed if result else False
-            )
-            logger.info(
-                f"TimescaleDB extension installed for lineage: {self.timescaledb_installed}"
-            )
+            self.timescaledb_installed = result.timescaledb_installed if result else False
+            logger.info(f"TimescaleDB extension installed for lineage: {self.timescaledb_installed}")
         except Exception as exc:
             logger.warning(f"Could not check TimescaleDB extension: {exc}")
             self.timescaledb_installed = False
@@ -100,9 +92,7 @@ class TimescaleLineageSource(PostgresLineageSource):
         """
         try:
             with self.engine.connect() as conn:
-                results = conn.execute(
-                    text(TIMESCALE_GET_CONTINUOUS_AGGREGATE_DEFINITIONS)
-                ).all()
+                results = conn.execute(text(TIMESCALE_GET_CONTINUOUS_AGGREGATE_DEFINITIONS)).all()
 
             for row in results:
                 try:
@@ -113,15 +103,11 @@ class TimescaleLineageSource(PostgresLineageSource):
                         view_definition=row.view_definition,
                     )
 
-                    logger.debug(
-                        f"Extracted continuous aggregate view: {row.view_schema}.{row.view_name}"
-                    )
+                    logger.debug(f"Extracted continuous aggregate view: {row.view_schema}.{row.view_name}")
 
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Failed to process continuous aggregate {row.view_schema}.{row.view_name}: {exc}"
-                    )
+                    logger.warning(f"Failed to process continuous aggregate {row.view_schema}.{row.view_name}: {exc}")
 
         except Exception as exc:
             logger.debug(traceback.format_exc())

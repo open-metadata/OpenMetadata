@@ -11,6 +11,7 @@
 """
 Trigger endpoint
 """
+
 import traceback
 from typing import Callable
 
@@ -46,17 +47,11 @@ def get_fn(blueprint: Blueprint) -> Callable:
     if not is_airflow_3_or_higher():
         from airflow.www.app import csrf
     else:
-        # Airflow 3.x doesn't have csrf in the same location, use a no-op
-        class csrf:
-            @staticmethod
-            def exempt(f):
-                return f
+        from airflow.providers.fab.www.app import csrf
 
     @blueprint.route("/trigger", methods=["POST"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)])
     def trigger_dag() -> Response:
         """
         Trigger a dag run with optional configuration

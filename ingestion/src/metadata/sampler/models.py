@@ -11,27 +11,75 @@
 """
 Sampling Models
 """
+
+from enum import Enum
 from typing import Any, List, Optional, Union
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from typing_extensions import Annotated
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     PartitionProfilerConfig,
-    ProfileSampleType,
-    SamplingMethodType,
     Table,
     TableData,
 )
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     SampleDataStorageConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import (
+    FullyQualifiedEntityName,
+    ProfileSampleType,
+    SamplingMethodType,
+)
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.pii.types import ClassifiableEntityType
+
+
+class ProfileSampleConfigType(str, Enum):
+    STATIC = "STATIC"
+    DYNAMIC = "DYNAMIC"
+
+
+class DynamicSamplingThreshold(ConfigModel):
+    """Single threshold entry for dynamic sampling"""
+
+    rowCountThreshold: int
+    profileSample: Union[float, int]
+    profileSampleType: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
+    samplingMethodType: Optional[SamplingMethodType] = None
+
+
+class DynamicSamplingConfig(ConfigModel):
+    """Configuration for dynamic sampling with row-count-based thresholds"""
+
+    thresholds: Optional[List[DynamicSamplingThreshold]] = None
+
+    @field_validator("thresholds")
+    @classmethod
+    def sort_thresholds_descending(
+        cls, v: Optional[List[DynamicSamplingThreshold]]
+    ) -> Optional[List[DynamicSamplingThreshold]]:
+        if v is not None:
+            return sorted(v, key=lambda t: t.rowCountThreshold, reverse=True)
+        return v
+
+
+class StaticSamplingConfig(ConfigModel):
+    """Configuration for static sampling"""
+
+    profileSample: Optional[Union[float, int]] = None
+    profileSampleType: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
+    samplingMethodType: Optional[SamplingMethodType] = None
+
+
+class ProfileSampleConfig(ConfigModel):
+    """Profile sample configuration supporting static and dynamic sampling"""
+
+    sampleConfigType: ProfileSampleConfigType = ProfileSampleConfigType.STATIC
+    config: Optional[Union[DynamicSamplingConfig, StaticSamplingConfig]] = None
 
 
 class BaseProfileConfig(ConfigModel):
@@ -43,6 +91,7 @@ class BaseProfileConfig(ConfigModel):
     samplingMethodType: Optional[SamplingMethodType] = None
     sampleDataCount: Optional[int] = 100
     randomizedSample: Optional[bool] = True
+    profileSampleConfig: Optional[ProfileSampleConfig] = None
 
 
 class ColumnConfig(ConfigModel):
@@ -58,18 +107,17 @@ class TableConfig(BaseProfileConfig):
     profileQuery: Optional[str] = None
     partitionConfig: Optional[PartitionProfilerConfig] = None
     columnConfig: Optional[ColumnConfig] = None
-    randomizedSample: Optional[bool] = True
+    randomizedSample: Optional[bool] = False
 
     @classmethod
-    def from_database_and_schema_config(
-        cls, config: "DatabaseAndSchemaConfig", table_fqn: str
-    ):
+    def from_database_and_schema_config(cls, config: "DatabaseAndSchemaConfig", table_fqn: str):
         table_config = TableConfig(
             fullyQualifiedName=table_fqn,
             profileSample=config.profileSample,
             profileSampleType=config.profileSampleType,
             sampleDataCount=config.sampleDataCount,
             samplingMethodType=config.samplingMethodType,
+            profileSampleConfig=config.profileSampleConfig,
         )
         return table_config
 
@@ -84,9 +132,7 @@ class SampleData(BaseModel):
     """TableData wrapper to handle ephemeral SampleData"""
 
     data: Annotated[TableData, Field(None, description="Table Sample Data")]
-    store: Annotated[
-        bool, Field(False, description="Is the sample data should be stored or not")
-    ]
+    store: Annotated[bool, Field(False, description="Is the sample data should be stored or not")]
 
 
 class SamplerResponse(ConfigModel):
@@ -115,16 +161,20 @@ class SamplerResponse(ConfigModel):
     def __str__(self):
         """Return the entity name being processed"""
         entity_type = type(self.entity).__name__
-        entity_name = (
-            self.entity.name.root if hasattr(self.entity, "name") else "Unknown"
-        )
+        entity_name = self.entity.name.root if hasattr(self.entity, "name") else "Unknown"
         return f"{entity_type} [{entity_name}]"
 
 
 class SampleConfig(ConfigModel):
     """Profile Sample Config"""
 
-    profileSample: Optional[Union[float, int]] = None
-    profileSampleType: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
-    samplingMethodType: Optional[SamplingMethodType] = None
+    profileSampleConfig: Optional[ProfileSampleConfig] = None
     randomizedSample: Optional[bool] = True
+
+    def get_static_config(self) -> Optional[StaticSamplingConfig]:
+        """Extract the StaticSamplingConfig from profileSampleConfig, or None."""
+        if self.profileSampleConfig and self.profileSampleConfig.config:
+            cfg = self.profileSampleConfig.config
+            if isinstance(cfg, StaticSamplingConfig):
+                return cfg
+        return None

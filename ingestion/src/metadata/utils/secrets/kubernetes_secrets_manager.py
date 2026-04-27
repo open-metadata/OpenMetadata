@@ -12,6 +12,7 @@
 """
 Kubernetes Secrets Manager implementation
 """
+
 import base64
 import os
 import traceback
@@ -48,14 +49,10 @@ def _get_current_namespace() -> str:
     :return: The namespace where the application service account is running or default if it can't be retrieved
     """
     try:
-        with open(
-            "/var/run/secrets/kubernetes.io/serviceaccount/namespace", encoding="utf-8"
-        ) as f:
+        with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace", encoding="utf-8") as f:
             return f.read().strip()
     except Exception as _:
-        logger.info(
-            "Can't read the current namespace from in-cluster kubernetes. Is the service account configured?"
-        )
+        logger.info("Can't read the current namespace from in-cluster kubernetes. Is the service account configured?")
     return "default"
 
 
@@ -74,12 +71,8 @@ def _() -> Optional[KubernetesCredentials]:
         "kubernetes_namespace",
         fallback=_get_current_namespace(),
     )
-    in_cluster = conf.getboolean(
-        SECRET_MANAGER_AIRFLOW_CONF, "kubernetes_in_cluster", fallback=False
-    )
-    kubeconfig_path = conf.get(
-        SECRET_MANAGER_AIRFLOW_CONF, "kubernetes_kubeconfig_path", fallback=None
-    )
+    in_cluster = conf.getboolean(SECRET_MANAGER_AIRFLOW_CONF, "kubernetes_in_cluster", fallback=False)
+    kubeconfig_path = conf.get(SECRET_MANAGER_AIRFLOW_CONF, "kubernetes_kubeconfig_path", fallback=None)
 
     return KubernetesCredentials(
         namespace=namespace,
@@ -127,9 +120,7 @@ class KubernetesSecretsManager(ExternalSecretsManager, ABC):
 
         self.client = client.CoreV1Api()
         self.namespace = self.credentials.namespace or _get_current_namespace()
-        logger.info(
-            f"Kubernetes SecretsManager initialized with namespace: {self.namespace}"
-        )
+        logger.info(f"Kubernetes SecretsManager initialized with namespace: {self.namespace}")
 
     def get_string_value(self, secret_id: str) -> str:
         """
@@ -137,11 +128,8 @@ class KubernetesSecretsManager(ExternalSecretsManager, ABC):
         :return: The value of the secret
         """
         try:
-
             # Get the secret from Kubernetes
-            secret = self.client.read_namespaced_secret(
-                name=secret_id, namespace=self.namespace
-            )
+            secret = self.client.read_namespaced_secret(name=secret_id, namespace=self.namespace)
 
             # Kubernetes stores secret data as base64 encoded
             if secret.data and "value" in secret.data:
@@ -156,15 +144,11 @@ class KubernetesSecretsManager(ExternalSecretsManager, ABC):
                 logger.debug(f"Secret {secret_id} not found")
                 return None
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Could not get the secret value of {secret_id} due to [{exc}]"
-            )
+            logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")
             raise exc
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Could not get the secret value of {secret_id} due to [{exc}]"
-            )
+            logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")
             raise exc
 
     def load_credentials(self) -> Optional[dict]:

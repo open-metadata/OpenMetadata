@@ -95,6 +95,7 @@ yarn build                     # Production build
 ### Frontend CI Checkstyle (run before PR to match CI)
 ```bash
 cd openmetadata-ui/src/main/resources/ui
+yarn ui-checkstyle:changed         # One-shot checkstyle for changed files (excludes tsc)
 yarn organize-imports:cli <files>  # Sort and organize imports
 yarn lint:fix                      # ESLint auto-fix
 yarn pretty:base --write <files>   # Prettier formatting
@@ -136,6 +137,22 @@ make static-checks             # Run type checking with basedpyright
 make run_e2e_tests             # Full E2E test suite
 make unit_ingestion            # Python unit tests with coverage
 yarn test:coverage             # Frontend test coverage
+```
+
+### Backend Integration Tests
+All backend API integration tests MUST be placed in `openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/` directory. Tests should:
+- Use naming convention `*IT.java` (Integration Test)
+- Extend `BaseEntityIT<T, K>` for entity CRUD tests
+- Be designed to run concurrently (use `@Execution(ExecutionMode.CONCURRENT)`)
+- Use `TestNamespace` for test isolation
+- Use `SdkClients` for API calls (e.g., `SdkClients.adminClient().tables().create(...)`)
+
+```bash
+# Run a specific integration test
+mvn test -pl openmetadata-integration-tests -Dtest=TaskResourceIT
+
+# Run all integration tests
+mvn test -pl openmetadata-integration-tests
 ```
 
 ## Code Generation and Schemas
@@ -452,6 +469,7 @@ These checks run automatically in CI. Code that violates them **will not merge**
 - **Keep connector-specific logic in connector-specific files**, not in generic/shared files like `builders.py`
 - Example: Redshift IAM auth should be in `ingestion/src/metadata/ingestion/source/database/redshift/connection.py`, not in `ingestion/src/metadata/ingestion/connections/builders.py`
 - This keeps the codebase modular and prevents generic utilities from becoming cluttered with connector-specific edge cases
+- **Use `model_str()` for Pydantic RootModel to string conversion** — OpenMetadata schema types like `ColumnName`, `EntityName`, `FullyQualifiedEntityName`, and `UUID` are Pydantic `RootModel[str]` subclasses where `str()` returns `"root='value'"` instead of the raw value. Always use `model_str()` from `metadata.ingestion.ometa.utils` instead of manual `hasattr(x, "root")` / `str(x.root)` checks.
 
 ### Testing Philosophy
 - **Test real behavior, not mock wiring** - if a test requires mocking 3+ classes just to verify a method call, it's testing the wrong thing

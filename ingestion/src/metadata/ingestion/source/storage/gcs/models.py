@@ -11,10 +11,11 @@
 """
 GCS custom pydantic models
 """
+
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Extra, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from metadata.generated.schema.entity.data.container import (
     ContainerDataModel,
@@ -29,9 +30,6 @@ class GCSBucketResponse(BaseModel):
     Class modelling a response received from gcs_client.list_buckets operation
     """
 
-    class Config:
-        extra = Extra.forbid
-
     name: str = Field(..., description="Bucket name")
     project_id: str = Field(..., description="Project ID")
     creation_date: Optional[datetime] = Field(
@@ -45,14 +43,13 @@ class GCSContainerDetails(BaseModel):
     Class mapping container details used to create the container requests
     """
 
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
     name: str = Field(..., description="Bucket name")
     prefix: str = Field(..., description="Prefix for the container")
-    description: Optional[basic.Markdown] = Field(
-        None, description="Description of the container instance."
-    )
+    description: Optional[basic.Markdown] = Field(None, description="Description of the container instance.")
     number_of_objects: Optional[float] = Field(
         None,
         description="Total nr. of objects",
@@ -78,15 +75,7 @@ class GCSContainerDetails(BaseModel):
         None,
         description="Reference to the parent container",
     )
-    sourceUrl: Optional[basic.SourceUrl] = Field(
-        None, description="Source URL of the container."
-    )
-    fullPath: Optional[str] = Field(
-        None, description="Full path of the container/file."
-    )
-    container_fqn: Optional[str] = Field(
-        None, description="Fully qualified name of the container."
-    )
-    leaf_container: Optional[bool] = Field(
-        None, description="Whether this is a leaf container."
-    )
+    sourceUrl: Optional[basic.SourceUrl] = Field(None, description="Source URL of the container.")
+    fullPath: Optional[str] = Field(None, description="Full path of the container/file.")
+    container_fqn: Optional[str] = Field(None, description="Fully qualified name of the container.")
+    leaf_container: Optional[bool] = Field(None, description="Whether this is a leaf container.")

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,11 +15,7 @@ import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import {
-  FieldOperation,
-  Thread,
-} from '../../../../../generated/entity/feed/thread';
-import { getFieldOperationText } from '../../../../../utils/AnnouncementsUtils';
+import { AnnouncementEntity } from '../../../../../rest/announcementsAPI';
 import { getShortRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getEntityFQN, getEntityType } from '../../../../../utils/FeedUtils';
@@ -29,7 +25,7 @@ import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTex
 import './announcement-card-v1.less';
 
 interface AnnouncementCardV1Props {
-  announcement: Thread;
+  announcement: AnnouncementEntity;
   currentBackgroundColor?: string;
   disabled?: boolean;
   onClick: () => void;
@@ -44,31 +40,24 @@ const AnnouncementCardV1 = ({
   const { t } = useTranslation();
 
   const {
-    columnName,
     description,
     entityFQN,
     entityName,
     entityType,
-    fieldOperation,
     timestamp,
     title,
     userName,
   } = useMemo(() => {
-    const fqn = getEntityFQN(announcement.about);
-    const entityName = fqn.split('::').pop() || '';
-    const entityType = getEntityType(announcement.about);
-    const entityFQN = fqn;
+    const fqn = getEntityFQN(announcement.entityLink ?? '');
 
     return {
-      title: announcement.message,
-      description: announcement?.announcement?.description || '',
+      title: announcement.displayName ?? announcement.name,
+      description: announcement.description || '',
       userName: announcement.createdBy || '',
-      timestamp: announcement.threadTs,
-      entityName,
-      entityType,
-      entityFQN,
-      fieldOperation: announcement.fieldOperation,
-      columnName: announcement.feedInfo?.fieldName || '',
+      timestamp: announcement.updatedAt ?? announcement.createdAt,
+      entityName: fqn.split('::').pop() || '',
+      entityType: getEntityType(announcement.entityLink ?? ''),
+      entityFQN: fqn,
     };
   }, [announcement]);
 
@@ -96,128 +85,74 @@ const AnnouncementCardV1 = ({
       },
       timeStampStyle: {
         color: currentBackgroundColor,
-        '&.ant-typography': {
-          color: `${currentBackgroundColor} !important`,
-        },
       },
     };
   }, [currentBackgroundColor]);
 
-  const entityIcon = useMemo(() => {
-    return getEntityIcon(entityType);
-  }, [entityType, currentBackgroundColor]);
-
-  const handleEntityClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
-
-  const handleUserClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
-
-  const handleCardClick = () => {
-    onClick();
-  };
+  const entityIcon = useMemo(() => getEntityIcon(entityType), [entityType]);
 
   return (
     <Card
       className={classNames('announcement-card-v1', disabled ? 'disabled' : '')}
       data-testid={`announcement-card-v1-${announcement.id}`}
-      onClick={handleCardClick}>
+      onClick={onClick}>
       <div className="announcement-card-v1-content">
         <div className="announcement-header-container">
           <div
             className="announcement-title-section"
             style={announcementTitleSectionStyle}>
-            {fieldOperation && fieldOperation !== FieldOperation.None ? (
-              <div
-                className="announcement-header"
-                style={announcementTitleStyle}>
+            <div className="announcement-header" style={announcementTitleStyle}>
+              {userName && (
                 <Link
                   className="user-name"
                   data-testid="user-link"
                   style={userNameStyle}
                   to={getUserPath(userName)}
-                  onClick={handleUserClick}>
+                  onClick={(e) => e.stopPropagation()}>
                   {userName}
                 </Link>
+              )}
+              <span
+                className="announcement-card-entity-icon"
+                style={{ color: currentBackgroundColor ?? 'inherit' }}>
+                {entityIcon}
+              </span>
+              {entityFQN && entityType ? (
                 <Typography.Text
-                  className="field-operation-text"
-                  style={{
-                    color: currentBackgroundColor ?? 'inherit',
-                  }}>
-                  {' '}
-                  {getFieldOperationText(fieldOperation)}
-                </Typography.Text>
-                <span
-                  className="announcement-card-entity-icon"
-                  style={{
-                    color: currentBackgroundColor ?? 'inherit',
-                  }}>
-                  {entityIcon}
-                </span>
-                {entityFQN && entityType ? (
-                  <Typography.Text
-                    ellipsis={{
-                      tooltip: (
-                        <div className="announcement-entity-name-tooltip">
-                          {entityName}
-                        </div>
-                      ),
-                    }}
-                    style={{
-                      color: currentBackgroundColor ?? 'inherit',
-                    }}>
-                    <Link
-                      className="announcement-entity-name"
-                      data-testid="announcement-entity-link"
-                      style={{
-                        color: currentBackgroundColor ?? 'inherit',
-                      }}
-                      to={entityUtilClassBase.getEntityLink(
-                        entityType,
-                        entityFQN
-                      )}
-                      onClick={handleEntityClick}>
-                      {entityName}
-                    </Link>
-                  </Typography.Text>
-                ) : (
-                  <Typography.Text
+                  ellipsis={{ tooltip: true }}
+                  style={{ color: currentBackgroundColor ?? 'inherit' }}>
+                  <Link
                     className="announcement-entity-name"
-                    ellipsis={{ tooltip: true }}
-                    style={{
-                      color: currentBackgroundColor ?? 'inherit',
-                    }}>
+                    data-testid="announcement-entity-link"
+                    style={{ color: currentBackgroundColor ?? 'inherit' }}
+                    to={entityUtilClassBase.getEntityLink(
+                      entityType,
+                      entityFQN
+                    )}
+                    onClick={(e) => e.stopPropagation()}>
                     {entityName}
-                  </Typography.Text>
-                )}
-              </div>
-            ) : (
-              <Typography.Text
-                className="announcement-header"
-                style={announcementTitleStyle}>
-                {title}
-              </Typography.Text>
-            )}
+                  </Link>
+                </Typography.Text>
+              ) : (
+                <Typography.Text
+                  className="announcement-entity-name"
+                  ellipsis={{ tooltip: true }}
+                  style={{ color: currentBackgroundColor ?? 'inherit' }}>
+                  {entityName}
+                </Typography.Text>
+              )}
+            </div>
             <Typography.Text className="timestamp" style={timeStampStyle}>
               {getShortRelativeTime(timestamp)}
             </Typography.Text>
           </div>
         </div>
 
-        {fieldOperation && fieldOperation !== FieldOperation.None && (
-          <Typography.Paragraph
-            className="announcement-title"
-            ellipsis={{ tooltip: true, rows: 2 }}>
-            {title}
-            {columnName && (
-              <Typography.Text>
-                {`${t('label.column-name')}: ${columnName}`}
-              </Typography.Text>
-            )}
-          </Typography.Paragraph>
-        )}
+        <Typography.Paragraph
+          className="announcement-title"
+          ellipsis={{ tooltip: true, rows: 2 }}>
+          {title}
+        </Typography.Paragraph>
 
         {description && (
           <RichTextEditorPreviewerV1
@@ -227,6 +162,12 @@ const AnnouncementCardV1 = ({
             maxLength={200}
             showReadMoreBtn={false}
           />
+        )}
+
+        {!description && (
+          <Typography.Text className="text-grey-muted text-xs">
+            {t('message.no-announcement-message')}
+          </Typography.Text>
         )}
       </div>
     </Card>

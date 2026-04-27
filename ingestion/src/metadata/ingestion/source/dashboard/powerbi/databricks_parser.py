@@ -64,9 +64,7 @@ def parse_databricks_native_query_source(
         if catalog_info:
             catalog_info = catalog_info.replace("\n", " ")
             catalog_info = re.sub(r"\s+", " ", catalog_info).strip()
-            catalog_info_match = re.search(
-                r"\[\s?,?\s?Catalog\s?=\s?(?P<catalog>[^,\]\s]+)\s?,", catalog_info
-            )
+            catalog_info_match = re.search(r"\[\s?,?\s?Catalog\s?=\s?(?P<catalog>[^,\]\s]+)\s?,", catalog_info)
         if not catalog_info_match:
             logger.error(f"Could not find catalog in info: {catalog_info}")
             catalog = None
@@ -101,20 +99,14 @@ def parse_databricks_native_query_source(
         # 4. Clean up excessive whitespace
         parser_query = re.sub(r"\s+", " ", parser_query).strip()
 
-        logger.debug(
-            f"Attempting LineageParser with cleaned query: {parser_query[:200]}"
-        )
+        logger.debug(f"Attempting LineageParser with cleaned query: {parser_query[:200]}")
         if re.match(
             "^([A-Za-z0-9_]+)(?:\.([A-Za-z0-9_]+))?(?:\.([A-Za-z0-9_]+))?$",
             parser_query,
         ):
-            logger.debug(
-                "Query appears to be a simple table reference, skipping LineageParser."
-            )
+            logger.debug("Query appears to be a simple table reference, skipping LineageParser.")
             schema_table = parser_query.split(".")
-            schema, table = (
-                schema_table[-2:] if len(schema_table) > 1 else [None, schema_table[0]]
-            )
+            schema, table = schema_table[-2:] if len(schema_table) > 1 else [None, schema_table[0]]
 
             return [{"database": database, "schema": schema, "table": table}]
         try:

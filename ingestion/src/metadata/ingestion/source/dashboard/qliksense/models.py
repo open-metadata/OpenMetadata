@@ -11,6 +11,7 @@
 """
 QlikSense Models
 """
+
 from typing import List, Optional, Union
 
 from pydantic import BaseModel
@@ -95,13 +96,40 @@ class QlikDataModelValue(BaseModel):
 
 
 class QlikDataModelLayout(BaseModel):
-    qLayout: Optional[
-        Union[QlikTablesList, List[QlikDataModelValue]]
-    ] = QlikTablesList()
+    qLayout: Optional[Union[QlikTablesList, List[QlikDataModelValue]]] = QlikTablesList()
 
 
 class QlikDataModelResult(BaseModel):
     result: Optional[QlikDataModelLayout] = QlikDataModelLayout()
+
+
+# GetTablesAndKeys response models
+class QlikTablesAndKeysField(BaseModel):
+    qName: Optional[str] = None
+    qOriginalFieldName: Optional[str] = None
+
+
+class QlikTablesAndKeysTable(BaseModel):
+    qName: Optional[str] = None
+    qFields: Optional[List[QlikTablesAndKeysField]] = []
+    qConnectorProperties: Optional[QlikTableConnectionProp] = QlikTableConnectionProp()
+
+
+class QlikTablesAndKeysResult(BaseModel):
+    qtr: Optional[List[QlikTablesAndKeysTable]] = []
+
+
+class QlikTablesAndKeysResponse(BaseModel):
+    result: Optional[QlikTablesAndKeysResult] = QlikTablesAndKeysResult()
+
+
+# script models
+class QlikScript(BaseModel):
+    qScript: Optional[str] = None
+
+
+class QlikScriptResult(BaseModel):
+    result: Optional[QlikScript] = QlikScript()
 
 
 class QlikLayoutHandle(BaseModel):

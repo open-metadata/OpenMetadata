@@ -13,11 +13,12 @@ Module centralising logger configs
 """
 
 import logging
+import re
 from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
 from types import DynamicClassAttribute
-from typing import Dict, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 from metadata.data_quality.api.models import (
     TableAndTests,
@@ -39,9 +40,7 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.user import OMetaUserProfile
 
 METADATA_LOGGER = "metadata"
-BASE_LOGGING_FORMAT = (
-    "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
-)
+BASE_LOGGING_FORMAT = "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
 logging.basicConfig(format=BASE_LOGGING_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 
 REDACTED_KEYS = {"serviceConnection", "securityConfig"}
@@ -242,9 +241,7 @@ def _(record: AddLineageRequest) -> str:
     type_ = record.edge.fromEntity.type
 
     # name can be informed or not
-    name_str = (
-        f"name: {record.edge.fromEntity.name}, " if record.edge.fromEntity.name else ""
-    )
+    name_str = f"name: {record.edge.fromEntity.name}, " if record.edge.fromEntity.name else ""
 
     return f"{type_} [{name_str}id: {id_}]"
 
@@ -320,6 +317,43 @@ def _(record: OMetaUserProfile) -> str:
         f"User Profile: {get_log_name(record.user)},"
         f"Teams: {record.teams if record.teams else 'None'}, \nRoles: {record.roles if record.roles else 'None'}"
     )
+
+
+class StatusWarningHandler(logging.Handler):
+    """
+    Logging handler that intercepts WARNING-level records from our metadata
+    loggers and forwards them to the workflow Status object so the final
+    summary reflects the true warning count.
+
+    Records from Status.failed() (module="status") and the Step framework
+    error handling (module="step") are skipped — those are already counted
+    as failures, not warnings.
+    """
+
+    _SKIP_MODULES = frozenset({"status", "step"})
+
+    def __init__(self, status: Any) -> None:
+        super().__init__(level=logging.WARNING)
+        self._status = status
+
+    def emit(self, record: logging.LogRecord) -> None:
+        # Only capture WARNING; ERROR/CRITICAL are already tracked as failures by Step.run()
+        if record.levelno != logging.WARNING:
+            return
+        if record.module in self._SKIP_MODULES:
+            return
+        try:
+            self._status.warning(
+                key=record.module,
+                reason=record.getMessage(),
+            )
+        except Exception:  # pylint: disable=broad-except
+            self.handleError(record)
+
+
+def sanitize_url_credentials(message: str) -> str:
+    """Mask credentials embedded in URLs (e.g., https://token@host)"""
+    return re.sub(r"https://[^@]+@", "https://****@", message)
 
 
 def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:

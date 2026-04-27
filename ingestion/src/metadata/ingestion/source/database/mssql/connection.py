@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from sqlalchemy.engine import Engine
@@ -36,6 +37,7 @@ from metadata.ingestion.source.database.azuresql.connection import (
     get_connection_url as get_pyodbc_connection_url,
 )
 from metadata.ingestion.source.database.mssql.queries import (
+    MSSQL_GET_CURRENT_DATABASE,
     MSSQL_GET_DATABASE,
     MSSQL_TEST_GET_QUERIES,
 )
@@ -72,8 +74,9 @@ def test_connection(
     """
     queries = {
         "GetQueries": MSSQL_TEST_GET_QUERIES,
-        "GetDatabases": MSSQL_GET_DATABASE,
+        "GetDatabases": MSSQL_GET_DATABASE if service_connection.ingestAllDatabases else MSSQL_GET_CURRENT_DATABASE,
     }
+
     return test_connection_db_common(
         metadata=metadata,
         engine=engine,

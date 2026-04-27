@@ -11,6 +11,7 @@
 """
 Metadata DAG function builder
 """
+
 import json
 import tempfile
 
@@ -49,16 +50,12 @@ def usage_workflow(
 
     set_operator_logger(workflow_config)
 
-    config = json.loads(
-        workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
-    )
+    config = json.loads(workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False))
     workflow = UsageWorkflow.create(config)
     execute_workflow(workflow, workflow_config)
 
 
-def build_usage_config_from_file(
-    ingestion_pipeline: IngestionPipeline, filename: str
-) -> OpenMetadataWorkflowConfig:
+def build_usage_config_from_file(ingestion_pipeline: IngestionPipeline, filename: str) -> OpenMetadataWorkflowConfig:
     """
     Given a filename for the staging location, build
     the OpenMetadataWorkflowConfig

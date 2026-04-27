@@ -94,30 +94,34 @@ test(
         `[data-testid="${testCaseName}"] >> text=${testCaseName}`
       );
 
-      await page.waitForSelector(
-        '[data-testid="test-case-result-tab-container"]'
-      );
+      await page
+        .locator('[data-testid="test-case-result-tab-container"]')
+        .waitFor({ state: 'visible' });
 
       await expect(
         page.locator('.failed-sample-data-column').first()
       ).toBeVisible();
 
-      const columns = await page.$$('.failed-sample-data-column');
+      const sampleDataTable = page.getByTestId('sample-data-table').first();
 
-      expect(columns).toHaveLength(3);
+      const failedColumns = sampleDataTable.locator(
+        '.failed-sample-data-column'
+      );
+
+      await expect(failedColumns).toHaveCount(3);
     });
 
     await test.step('Delete sample data', async () => {
       await page.click('[data-testid="sample-data-manage-button"]');
       await page.click('[data-testid="delete-button"]');
-      await page.waitForSelector('.ant-modal-body');
+      await page.locator('.ant-modal-body').waitFor({ state: 'visible' });
       await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
       const deleteSampleData = page.waitForResponse(
         '/api/v1/dataQuality/testCases/*/failedRowsSample'
       );
       await page.click('[data-testid="confirm-button"]');
       await deleteSampleData;
-      await page.waitForSelector('[data-testid="sample-data-manage-button"]', {
+      await page.locator('[data-testid="sample-data-manage-button"]').waitFor({
         state: 'hidden',
       });
     });

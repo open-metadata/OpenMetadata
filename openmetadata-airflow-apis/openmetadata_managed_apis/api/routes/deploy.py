@@ -11,6 +11,7 @@
 """
 Deploy the DAG and scan it with the scheduler
 """
+
 import traceback
 from typing import Callable
 
@@ -44,17 +45,11 @@ def get_fn(blueprint: Blueprint) -> Callable:
     if not is_airflow_3_or_higher():
         from airflow.www.app import csrf
     else:
-        # Airflow 3.x doesn't have csrf in the same location, use a no-op
-        class csrf:
-            @staticmethod
-            def exempt(f):
-                return f
+        from airflow.providers.fab.www.app import csrf
 
     @blueprint.route("/deploy", methods=["POST"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_CREATE, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_CREATE, permissions.RESOURCE_DAG)])
     def deploy_dag() -> Response:
         """
         Custom Function for the deploy_dag API
@@ -71,9 +66,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
                     error="Did not receive any JSON request to deploy",
                 )
 
-            ingestion_pipeline = parse_ingestion_pipeline_config_gracefully(
-                json_request
-            )
+            ingestion_pipeline = parse_ingestion_pipeline_config_gracefully(json_request)
 
             deployer = DagDeployer(ingestion_pipeline)
             response = deployer.deploy()

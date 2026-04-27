@@ -121,13 +121,9 @@ def _clean(source_type: str):
 
 def get_pipeline_type_from_source_config(source_config: SourceConfig) -> PipelineType:
     """From the YAML serviceType, get the Ingestion Pipeline Type"""
-    pipeline_type = SOURCE_CONFIG_TYPE_INGESTION.get(
-        source_config.config.__class__.__name__
-    )
+    pipeline_type = SOURCE_CONFIG_TYPE_INGESTION.get(source_config.config.__class__.__name__)
     if not pipeline_type:
-        raise ValueError(
-            f"Cannot find Pipeline Type for SourceConfig {source_config.config}"
-        )
+        raise ValueError(f"Cannot find Pipeline Type for SourceConfig {source_config.config}")
     return pipeline_type
 
 
@@ -159,9 +155,7 @@ def get_reference_type_from_service_type(service_type: ServiceType) -> str:
     """Get the type to build the EntityReference from the service type"""
     service_reference = SERVICE_TYPE_REF.get(service_type.value)
     if not service_type:
-        raise ValueError(
-            f"Cannot find Service Type reference for service {service_type}"
-        )
+        raise ValueError(f"Cannot find Service Type reference for service {service_type}")
     return service_reference
 
 

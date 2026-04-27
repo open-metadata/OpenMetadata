@@ -37,9 +37,7 @@ class TestOwnerResolver(unittest.TestCase):
         result = resolver.resolve_owner(entity_type="table", entity_name="test_table")
 
         self.assertIsNotNone(result)
-        self.mock_metadata.get_reference_by_name.assert_called_with(
-            name="data-team", is_owner=True
-        )
+        self.mock_metadata.get_reference_by_name.assert_called_with(name="data-team", is_owner=True)
 
     def test_level_specific_owner(self):
         """Test level-specific owner configuration"""
@@ -57,25 +55,17 @@ class TestOwnerResolver(unittest.TestCase):
         # Test database level
         result = resolver.resolve_owner(entity_type="database", entity_name="test_db")
         self.assertIsNotNone(result)
-        self.mock_metadata.get_reference_by_name.assert_called_with(
-            name="db-team", is_owner=True
-        )
+        self.mock_metadata.get_reference_by_name.assert_called_with(name="db-team", is_owner=True)
 
         # Test databaseSchema level
-        result = resolver.resolve_owner(
-            entity_type="databaseSchema", entity_name="test_schema"
-        )
+        result = resolver.resolve_owner(entity_type="databaseSchema", entity_name="test_schema")
         self.assertIsNotNone(result)
-        self.mock_metadata.get_reference_by_name.assert_called_with(
-            name="schema-team", is_owner=True
-        )
+        self.mock_metadata.get_reference_by_name.assert_called_with(name="schema-team", is_owner=True)
 
         # Test table level
         result = resolver.resolve_owner(entity_type="table", entity_name="test_table")
         self.assertIsNotNone(result)
-        self.mock_metadata.get_reference_by_name.assert_called_with(
-            name="table-team", is_owner=True
-        )
+        self.mock_metadata.get_reference_by_name.assert_called_with(name="table-team", is_owner=True)
 
     def test_specific_entity_mapping(self):
         """Test specific entity name mapping"""
@@ -91,16 +81,12 @@ class TestOwnerResolver(unittest.TestCase):
         # Test specific table mapping
         result = resolver.resolve_owner(entity_type="table", entity_name="orders")
         self.assertIsNotNone(result)
-        self.mock_metadata.get_reference_by_name.assert_called_with(
-            name="sales-team", is_owner=True
-        )
+        self.mock_metadata.get_reference_by_name.assert_called_with(name="sales-team", is_owner=True)
 
         # Test unmapped table falls back to default
         result = resolver.resolve_owner(entity_type="table", entity_name="products")
         self.assertIsNotNone(result)
-        self.mock_metadata.get_reference_by_name.assert_called_with(
-            name="default-team", is_owner=True
-        )
+        self.mock_metadata.get_reference_by_name.assert_called_with(name="default-team", is_owner=True)
 
     def test_fqn_matching(self):
         """Test FQN matching for entities"""
@@ -117,13 +103,9 @@ class TestOwnerResolver(unittest.TestCase):
         resolver = OwnerResolver(self.mock_metadata, config)
 
         # Test FQN match
-        result = resolver.resolve_owner(
-            entity_type="table", entity_name="sales_db.public.orders"
-        )
+        result = resolver.resolve_owner(entity_type="table", entity_name="sales_db.public.orders")
         self.assertIsNotNone(result)
-        self.mock_metadata.get_reference_by_name.assert_called_with(
-            name="sales-team", is_owner=True
-        )
+        self.mock_metadata.get_reference_by_name.assert_called_with(name="sales-team", is_owner=True)
 
     def test_simple_name_fallback(self):
         """Test fallback to simple name when FQN doesn't match"""
@@ -134,14 +116,10 @@ class TestOwnerResolver(unittest.TestCase):
         resolver = OwnerResolver(self.mock_metadata, config)
 
         # Test FQN that falls back to simple name
-        result = resolver.resolve_owner(
-            entity_type="table", entity_name="sales_db.public.orders"
-        )
+        result = resolver.resolve_owner(entity_type="table", entity_name="sales_db.public.orders")
         self.assertIsNotNone(result)
         # Should match on simple name "orders"
-        self.mock_metadata.get_reference_by_name.assert_called_with(
-            name="sales-team", is_owner=True
-        )
+        self.mock_metadata.get_reference_by_name.assert_called_with(name="sales-team", is_owner=True)
 
     def test_inheritance_enabled(self):
         """Test owner inheritance from parent"""
@@ -152,13 +130,9 @@ class TestOwnerResolver(unittest.TestCase):
         resolver = OwnerResolver(self.mock_metadata, config)
 
         # Table should inherit from schema owner
-        result = resolver.resolve_owner(
-            entity_type="table", entity_name="test_table", parent_owner="schema-team"
-        )
+        result = resolver.resolve_owner(entity_type="table", entity_name="test_table", parent_owner="schema-team")
         self.assertIsNotNone(result)
-        self.mock_metadata.get_reference_by_name.assert_called_with(
-            name="schema-team", is_owner=True
-        )
+        self.mock_metadata.get_reference_by_name.assert_called_with(name="schema-team", is_owner=True)
 
     def test_inheritance_disabled(self):
         """Test that inheritance can be disabled"""
@@ -169,14 +143,10 @@ class TestOwnerResolver(unittest.TestCase):
         resolver = OwnerResolver(self.mock_metadata, config)
 
         # Table should NOT inherit, should use default
-        result = resolver.resolve_owner(
-            entity_type="table", entity_name="test_table", parent_owner="schema-team"
-        )
+        result = resolver.resolve_owner(entity_type="table", entity_name="test_table", parent_owner="schema-team")
         self.assertIsNotNone(result)
         # Should use default, not parent
-        self.mock_metadata.get_reference_by_name.assert_called_with(
-            name="default-team", is_owner=True
-        )
+        self.mock_metadata.get_reference_by_name.assert_called_with(name="default-team", is_owner=True)
 
     def test_priority_order(self):
         """Test priority order: specific > level > inheritance > default"""
@@ -191,14 +161,10 @@ class TestOwnerResolver(unittest.TestCase):
         resolver = OwnerResolver(self.mock_metadata, config)
 
         # Specific configuration should have highest priority
-        result = resolver.resolve_owner(
-            entity_type="table", entity_name="orders", parent_owner="parent-team"
-        )
+        result = resolver.resolve_owner(entity_type="table", entity_name="orders", parent_owner="parent-team")
         self.assertIsNotNone(result)
         # Should use specific, not parent or default
-        self.mock_metadata.get_reference_by_name.assert_called_with(
-            name="specific-team", is_owner=True
-        )
+        self.mock_metadata.get_reference_by_name.assert_called_with(name="specific-team", is_owner=True)
 
     def test_owner_not_found(self):
         """Test handling when owner is not found"""
@@ -230,9 +196,7 @@ class TestOwnerResolver(unittest.TestCase):
         result = resolver.resolve_owner(entity_type="table", entity_name="test_table")
 
         self.assertIsNotNone(result)
-        self.mock_metadata.get_reference_by_email.assert_called_with(
-            "admin@company.com"
-        )
+        self.mock_metadata.get_reference_by_email.assert_called_with("admin@company.com")
 
     def test_multiple_owners_array(self):
         """Test multiple owners specified as array (users, not teams)"""
@@ -324,9 +288,7 @@ class TestOwnerResolver(unittest.TestCase):
         result = resolver.resolve_owner(entity_type="table", entity_name="orders")
 
         self.assertIsNotNone(result)
-        self.mock_metadata.get_reference_by_name.assert_called_with(
-            name="sales-team", is_owner=True
-        )
+        self.mock_metadata.get_reference_by_name.assert_called_with(name="sales-team", is_owner=True)
 
     def test_multiple_owners_with_fqn(self):
         """Test multiple owners with FQN matching (users)"""
@@ -355,9 +317,7 @@ class TestOwnerResolver(unittest.TestCase):
         self.mock_metadata.get_reference_by_name.side_effect = mock_get_reference
 
         resolver = OwnerResolver(self.mock_metadata, config)
-        result = resolver.resolve_owner(
-            entity_type="table", entity_name="sales_db.public.orders"
-        )
+        result = resolver.resolve_owner(entity_type="table", entity_name="sales_db.public.orders")
 
         self.assertIsNotNone(result)
         self.assertEqual(len(result.root), 2)
@@ -389,9 +349,7 @@ class TestGetOwnerFromConfig(unittest.TestCase):
         )
 
         self.assertIsNotNone(result)
-        self.mock_metadata.get_reference_by_name.assert_called_with(
-            name="data-team", is_owner=True
-        )
+        self.mock_metadata.get_reference_by_name.assert_called_with(name="data-team", is_owner=True)
 
     def test_dict_config(self):
         """Test with dict configuration"""
@@ -406,9 +364,7 @@ class TestGetOwnerFromConfig(unittest.TestCase):
         )
 
         self.assertIsNotNone(result)
-        self.mock_metadata.get_reference_by_name.assert_called_with(
-            name="data-team", is_owner=True
-        )
+        self.mock_metadata.get_reference_by_name.assert_called_with(name="data-team", is_owner=True)
 
     def test_none_config(self):
         """Test with None configuration"""

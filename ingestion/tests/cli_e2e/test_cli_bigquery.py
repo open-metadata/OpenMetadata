@@ -12,6 +12,7 @@
 """
 Test Bigquery connector with CLI
 """
+
 import random
 from datetime import datetime
 from typing import List, Tuple
@@ -23,13 +24,12 @@ from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     DmlOperationType,
-    ProfileSampleType,
     SystemProfile,
     TableProfilerConfig,
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
-from metadata.generated.schema.type.basic import Timestamp
+from metadata.generated.schema.type.basic import ProfileSampleType, Timestamp
 
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
@@ -222,9 +222,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @pytest.mark.order(9999)
     def test_profiler_w_partition_table(self):
         """Test profiler sample for partitioned table"""
-        self.build_config_file(
-            E2EType.INGEST_DB_FILTER_SCHEMA, {"includes": ["w_partition"]}
-        )
+        self.build_config_file(E2EType.INGEST_DB_FILTER_SCHEMA, {"includes": ["w_partition"]})
         self.run_command()
 
         self.build_config_file(E2EType.PROFILER, {"includes": ["w_partition"]})

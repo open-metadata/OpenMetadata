@@ -12,6 +12,7 @@
 """
 Base source for the data quality used to instantiate a data quality runner with its interface
 """
+
 from copy import deepcopy
 from typing import Optional, cast
 
@@ -32,7 +33,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.sampler.models import SampleConfig
+from metadata.sampler.models import (
+    ProfileSampleConfig,
+    ProfileSampleConfigType,
+    SampleConfig,
+    StaticSamplingConfig,
+)
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.bigquery_utils import copy_service_config
 from metadata.utils.profiler_utils import get_context_entities
@@ -57,9 +63,7 @@ class BaseTestSuiteRunner:
         self.service_conn_config = self._copy_service_config(config, self.entity.database)  # type: ignore
         self._interface_type: str = self.service_conn_config.type.value.lower()
 
-        self.source_config = TestSuitePipeline.model_validate(
-            config.source.sourceConfig.config
-        )
+        self.source_config = TestSuitePipeline.model_validate(config.source.sourceConfig.config)
         self.ometa_client = ometa_client
 
     @property
@@ -70,9 +74,7 @@ class BaseTestSuiteRunner:
     def interface(self, interface):
         self._interface = interface
 
-    def _copy_service_config(
-        self, config: OpenMetadataWorkflowConfig, database: EntityReference
-    ) -> DatabaseConnection:
+    def _copy_service_config(self, config: OpenMetadataWorkflowConfig, database: EntityReference) -> DatabaseConnection:
         """Make a copy of the service config and update the database name
 
         Args:
@@ -105,9 +107,7 @@ class BaseTestSuiteRunner:
         Returns:
             TestSuiteInterface: a data quality interface
         """
-        schema_entity, database_entity, _ = get_context_entities(
-            entity=self.entity, metadata=self.ometa_client
-        )
+        schema_entity, database_entity, _ = get_context_entities(entity=self.entity, metadata=self.ometa_client)
         test_suite_class = import_test_suite_class(
             ServiceType.Database,
             source_type=self._interface_type,
@@ -126,9 +126,16 @@ class BaseTestSuiteRunner:
             schema_entity=schema_entity,
             database_entity=database_entity,
             default_sample_config=SampleConfig(
-                profileSample=self.source_config.profileSample,
-                profileSampleType=self.source_config.profileSampleType,
-                samplingMethodType=self.source_config.samplingMethodType,
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    config=StaticSamplingConfig(
+                        profileSample=self.source_config.profileSample,
+                        profileSampleType=self.source_config.profileSampleType,
+                        samplingMethodType=self.source_config.samplingMethodType,
+                    ),
+                )
+                if self.source_config.profileSample
+                else None,
             ),
         )
 

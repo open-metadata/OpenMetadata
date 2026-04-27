@@ -12,6 +12,7 @@
 name: OpenMetadata Service Unit Tests
 
 on:
+  merge_group:
   workflow_dispatch:
   push:
     branches:
@@ -39,6 +40,7 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     outputs:
       java: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.java }}
+      k8s_operator: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.k8s_operator }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,22 +61,23 @@ jobs:
               - 'pom.xml'
               - 'Makefile'
               - 'bootstrap/**'
+            k8s_operator:
+              - 'openmetadata-k8s-operator/**'
 
   openmetadata-service-unit-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     needs: changes
     if: ${{ needs.changes.outputs.java == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [mysql, postgresql]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 0
-
-      - name: Fetch PR base branch
-        if: ${{ github.event_name == 'pull_request' }}
-        run: git fetch --no-tags origin ${{ github.event.pull_request.base.ref }}
 
       - name: Cache Maven dependencies
         uses: actions/cache@v4
@@ -97,12 +100,12 @@ jobs:
           librdkafka-dev unixodbc-dev libevent-dev jq
           sudo make install_antlr_cli
 
-      - name: Run openmetadata-service unit tests
+      - name: Run openmetadata-service unit tests (${{ matrix.database }})
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mvn -B clean package -pl openmetadata-service -am \
-            -Pstatic-code-analysis \
+            -Pstatic-code-analysis,${{ matrix.database }} \
             -DfailIfNoTests=false \
             -Dsonar.skip=true
 
@@ -110,7 +113,7 @@ jobs:
         if: ${{ failure() && hashFiles('openmetadata-service/target/surefire-reports/TEST-*.xml') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: openmetadata-service-surefire-reports
+          name: openmetadata-service-surefire-reports-${{ matrix.database }}
           path: openmetadata-service/target/surefire-reports/
 
       - name: Publish Test Report
@@ -120,6 +123,56 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_test_failures: true
           report_paths: "openmetadata-service/target/surefire-reports/TEST-*.xml"
+          check_name: "Test Report (${{ matrix.database }})"
+
+  k8s_operator-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: changes
+    if: ${{ needs.changes.outputs.k8s_operator == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Build k8s-operator dependencies
+        run: |
+          mvn -B clean install -pl openmetadata-k8s-operator -am -DskipTests
+
+      - name: Run k8s-operator unit tests
+        run: |
+          mvn -B test -pl openmetadata-k8s-operator
+
+      - name: Upload surefire reports
+        if: ${{ failure() && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8s-operator-surefire-reports
+          path: openmetadata-k8s-operator/target/surefire-reports/
+
+      - name: Publish Test Report
+        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
+        uses: scacap/action-surefire-report@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_test_failures: true
+          report_paths: "openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml"
+          check_name: "K8s Operator Test Report"
 
   # Single required-check gate for branch protection.
   # Skipped (= "Success") when all test jobs pass or are legitimately skipped.
@@ -127,7 +180,7 @@ jobs:
   # Set "OpenMetadata Service Unit Tests / openmetadata-service-unit-tests-status" as the sole required check for this workflow.
   openmetadata-service-unit-tests-status:
     name: openmetadata-service-unit-tests-status
-    needs: [changes, openmetadata-service-unit-tests]
+    needs: [changes, openmetadata-service-unit-tests, k8s_operator-unit-tests]
     if: ${{ failure() || cancelled() }}
     runs-on: ubuntu-latest
     steps:

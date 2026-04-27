@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from functools import partial
 from typing import Optional
 from urllib.parse import quote_plus
@@ -83,9 +84,7 @@ def _get_provisioned_cluster_identifier(host: str) -> str:
 def _get_serverless_iam_credentials(connection: RedshiftConnection, host: str) -> tuple:
     workgroup = _get_serverless_workgroup(host)
     try:
-        aws_client = AWSClient(
-            config=connection.authType.awsConfig
-        ).get_redshift_serverless_client()
+        aws_client = AWSClient(config=connection.authType.awsConfig).get_redshift_serverless_client()
 
         kwargs = {"workgroupName": workgroup, "dbName": connection.database or "dev"}
 
@@ -93,19 +92,14 @@ def _get_serverless_iam_credentials(connection: RedshiftConnection, host: str) -
         return response["dbUser"], response["dbPassword"]
     except Exception as exc:
         raise SourceConnectionException(
-            f"Failed to retrieve IAM credentials for Redshift Serverless "
-            f"workgroup '{workgroup}': {exc}"
+            f"Failed to retrieve IAM credentials for Redshift Serverless workgroup '{workgroup}': {exc}"
         ) from exc
 
 
-def _get_provisioned_iam_credentials(
-    connection: RedshiftConnection, host: str
-) -> tuple:
+def _get_provisioned_iam_credentials(connection: RedshiftConnection, host: str) -> tuple:
     cluster_identifier = _get_provisioned_cluster_identifier(host)
     try:
-        aws_client = AWSClient(
-            config=connection.authType.awsConfig
-        ).get_redshift_client()
+        aws_client = AWSClient(config=connection.authType.awsConfig).get_redshift_client()
 
         kwargs = {
             "DbUser": connection.username,
@@ -119,8 +113,7 @@ def _get_provisioned_iam_credentials(
         return response["DbUser"], response["DbPassword"]
     except Exception as exc:
         raise SourceConnectionException(
-            f"Failed to retrieve IAM credentials for Redshift cluster "
-            f"'{cluster_identifier}': {exc}"
+            f"Failed to retrieve IAM credentials for Redshift cluster '{cluster_identifier}': {exc}"
         ) from exc
 
 
@@ -157,11 +150,7 @@ def get_redshift_connection_url(connection: RedshiftConnection) -> str:
         if options:
             if not connection.database:
                 url += "/"
-            params = "&".join(
-                f"{key}={quote_plus(value)}"
-                for (key, value) in options.items()
-                if value
-            )
+            params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
             url = f"{url}?{params}"
 
         return url
@@ -203,16 +192,11 @@ def get_redshift_instance_type(engine: Engine) -> RedshiftInstanceType:
         with engine.connect() as conn:
             conn.execute(probe_query)
 
-        logger.info(
-            "Redshift instance type detected: PROVISIONED (STL tables accessible)"
-        )
+        logger.info("Redshift instance type detected: PROVISIONED (STL tables accessible)")
         return RedshiftInstanceType.PROVISIONED
 
     except ProgrammingError:
-        logger.info(
-            "Redshift instance type detected: SERVERLESS "
-            "(STL tables not accessible, will use SYS_* views)"
-        )
+        logger.info("Redshift instance type detected: SERVERLESS (STL tables not accessible, will use SYS_* views)")
         return RedshiftInstanceType.SERVERLESS
 
 
@@ -227,18 +211,14 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-    table_and_view_query = REDSHIFT_GET_ALL_RELATIONS.format(
-        schema_clause="", table_clause="", limit_clause="LIMIT 1"
-    )
+    table_and_view_query = REDSHIFT_GET_ALL_RELATIONS.format(schema_clause="", table_clause="", limit_clause="LIMIT 1")
 
     def test_get_queries_permissions(engine_: Engine):
         """Check if we have the right permissions to list queries"""
         redshift_instance_type = get_redshift_instance_type(engine_)
 
         with engine_.connect() as conn:
-            res = conn.execute(
-                text(REDSHIFT_TEST_GET_QUERIES_MAP[redshift_instance_type])
-            ).fetchone()
+            res = conn.execute(text(REDSHIFT_TEST_GET_QUERIES_MAP[redshift_instance_type])).fetchone()
             if not all(res):
                 raise SourceConnectionException(
                     f"We don't have the right permissions to list queries from sys views (Redshift Serverless) - {res}"
@@ -252,9 +232,7 @@ def test_connection(
         "GetTables": partial(test_query, statement=table_and_view_query, engine=engine),
         "GetViews": partial(test_query, statement=table_and_view_query, engine=engine),
         "GetQueries": partial(test_get_queries_permissions, engine),
-        "GetDatabases": partial(
-            test_query, statement=REDSHIFT_GET_DATABASE_NAMES, engine=engine
-        ),
+        "GetDatabases": partial(test_query, statement=REDSHIFT_GET_DATABASE_NAMES, engine=engine),
     }
 
     result = test_connection_steps(

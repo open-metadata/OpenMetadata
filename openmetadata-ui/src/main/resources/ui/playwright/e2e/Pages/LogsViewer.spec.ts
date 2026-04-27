@@ -24,8 +24,8 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { waitForFirstPipelineStatusNotQueued } from '../../utils/logsViewer';
 import { test } from '../fixtures/pages';
 
-const table = new TableClass();
-const bundleTestSuite = new BundleTestSuiteClass();
+let table: TableClass;
+let bundleTestSuite: BundleTestSuiteClass;
 
 test.describe(
   'Logs viewer page',
@@ -39,6 +39,9 @@ test.describe(
     test.beforeAll(
       'Create table, bundle test suite, pipeline, and run pipeline for logs viewer',
       async ({ browser }) => {
+        table = new TableClass();
+        bundleTestSuite = new BundleTestSuiteClass();
+
         const { apiContext, afterAction } = await performAdminLogin(browser);
 
         await table.create(apiContext);
@@ -54,7 +57,7 @@ test.describe(
     test('Logs page shows breadcrumb, summary, and log viewer or empty state after opening from bundle suite pipeline tab', async ({
       page,
     }) => {
-      test.slow();
+      // 6 minutes
       test.setTimeout(6 * 60 * 1000);
 
       await test.step('Open Data Quality → Bundle Suites and click on the newly created bundle', async () => {
@@ -127,7 +130,14 @@ test.describe(
         expect(hasLogContent || hasNoLogsEmptyState).toBeTruthy();
       });
 
-      await test.step('Verify action buttons work when log content is present', async () => {
+      await test.step('Verify action buttons when logs exist, or skip if empty state', async () => {
+        const noLogsAvailable = page.getByText(/No logs are available/i);
+
+        // If no logs are available, skip the test
+        if (await noLogsAvailable.isVisible()) {
+          return;
+        }
+
         const jumpToEnd = page.getByTestId('jump-to-end-button');
         const downloadBtn = page.getByTestId('download');
         const copyToClipboardBtn = page.getByTestId('copy-secret');

@@ -11,6 +11,7 @@
 """
 Vertica source implementation.
 """
+
 import re
 import traceback
 from textwrap import dedent
@@ -56,14 +57,24 @@ ischema_names.update(
     {
         "UUID": create_sqlalchemy_type("UUID"),
         "GEOGRAPHY": create_sqlalchemy_type("GEOGRAPHY"),
+        "GEOMETRY": create_sqlalchemy_type("GEOMETRY"),
+        # Binary types
+        "BINARY": sqltypes.LargeBinary,
+        "VARBINARY": sqltypes.LargeBinary,
+        "LONG VARBINARY": sqltypes.LargeBinary,
+        # Long string
+        "LONG VARCHAR": sqltypes.Text,
+        # Complex / semi-structured types (Vertica v11+)
+        "ARRAY": create_sqlalchemy_type("ARRAY"),
+        "NATIVE ARRAY": create_sqlalchemy_type("ARRAY"),
+        "ROW": create_sqlalchemy_type("ROW"),
+        "SET": create_sqlalchemy_type("SET"),
     }
 )
 
 
 @reflection.cache
-def get_columns(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=too-many-locals,unused-argument
+def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: disable=too-many-locals,unused-argument
     """
     Method to handle column details
     """
@@ -73,20 +84,10 @@ def get_columns(
         schema_condition = "1"
 
     sql_query = sql.text(
-        dedent(
-            VERTICA_GET_COLUMNS.format(
-                table=table_name.lower(), schema_condition=schema_condition
-            )
-        )
+        dedent(VERTICA_GET_COLUMNS.format(table=table_name.lower(), schema_condition=schema_condition))
     )
 
-    spk = sql.text(
-        dedent(
-            VERTICA_GET_PRIMARY_KEYS.format(
-                table=table_name.lower(), schema_condition=schema_condition
-            )
-        )
-    )
+    spk = sql.text(dedent(VERTICA_GET_PRIMARY_KEYS.format(table=table_name.lower(), schema_condition=schema_condition)))
 
     pk_columns = [x[0] for x in connection.execute(spk)]
     columns = {}
@@ -188,13 +189,7 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
                 # unconditionally quote the schema name.  this could
                 # later be enhanced to obey quoting rules /
                 # "quote schema"
-                default = (
-                    match.group(1)
-                    + (f'"{sch}"')
-                    + "."
-                    + match.group(2)
-                    + match.group(3)
-                )
+                default = match.group(1) + (f'"{sch}"') + "." + match.group(2) + match.group(3)
 
     column_info = {
         "name": name,
@@ -209,9 +204,7 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
 
 
 @reflection.cache
-def get_view_definition(
-    self, connection, view_name, schema=None, **kw
-):  # pylint: disable=unused-argument,unused-argument
+def get_view_definition(self, connection, view_name, schema=None, **kw):  # pylint: disable=unused-argument,unused-argument
     """
     If we create a view as:
         CREATE VIEW vendor_dimension_v AS
@@ -231,11 +224,7 @@ def get_view_definition(
         schema_condition = "1"
 
     sql_query = sql.text(
-        dedent(
-            VERTICA_VIEW_DEFINITION.format(
-                view_name=view_name.lower(), schema_condition=schema_condition
-            )
-        )
+        dedent(VERTICA_VIEW_DEFINITION.format(view_name=view_name.lower(), schema_condition=schema_condition))
     )
     rows = list(connection.execute(sql_query))
     if len(rows) >= 1:
@@ -245,7 +234,11 @@ def get_view_definition(
 
 @reflection.cache
 def get_table_comment(
-    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
+    self,
+    connection,
+    table_name,
+    schema=None,
+    **kw,  # pylint: disable=unused-argument
 ):
     return get_table_comment_wrapper(
         self,
@@ -274,15 +267,11 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
         self.schema_desc_map = {}
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: VerticaConnection = config.serviceConnection.root.config
         if not isinstance(connection, VerticaConnection):
-            raise InvalidSourceException(
-                f"Expected VerticaConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected VerticaConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_schema_description(self, schema_name: str) -> Optional[str]:
@@ -292,9 +281,7 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
         return self.schema_desc_map.get(schema_name)
 
     def set_schema_description_map(self) -> None:
-        self.schema_desc_map = get_schema_descriptions(
-            self.engine, VERTICA_SCHEMA_COMMENTS
-        )
+        self.schema_desc_map = get_schema_descriptions(self.engine, VERTICA_SCHEMA_COMMENTS)
 
     def get_configured_database(self) -> Optional[str]:
         return self.service_connection.database
@@ -319,9 +306,7 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    database_fqn if self.source_config.useFqnForFiltering else new_database,
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -332,6 +317,4 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(
-                        f"Error trying to connect to database {new_database}: {exc}"
-                    )
+                    logger.error(f"Error trying to connect to database {new_database}: {exc}")

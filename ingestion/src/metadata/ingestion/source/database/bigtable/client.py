@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """A client for Google Cloud Bigtable that supports multiple projects."""
+
 from functools import partial
 from typing import List, Optional, Type
 
@@ -37,10 +38,7 @@ class MultiProjectClient:
         **client_kwargs,
     ):
         if project_ids:
-            self.clients = {
-                project_id: client_class(project=project_id, **client_kwargs)
-                for project_id in project_ids
-            }
+            self.clients = {project_id: client_class(project=project_id, **client_kwargs) for project_id in project_ids}
         else:
             self.clients = {NoProject: client_class(**client_kwargs)}
 

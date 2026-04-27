@@ -11,6 +11,7 @@
 """
 Test dbt cloud using the topology
 """
+
 import json
 import uuid
 from datetime import datetime, timedelta
@@ -482,9 +483,7 @@ MOCK_PIPELINE = Pipeline(
             endDate="None",
         ),
     ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"),
     scheduleInterval="6 */12 * * 0,1,2,3,4,5,6",
 )
 
@@ -502,9 +501,7 @@ class DBTCloudUnitTest(TestCase):
     DBTCloud unit tests
     """
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
@@ -515,16 +512,10 @@ class DBTCloudUnitTest(TestCase):
             config.workflowConfig.openMetadataServerConfig,
         )
         self.dbtcloud.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        self.dbtcloud.context.get().__dict__[
-            "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.root
-        self.dbtcloud.metadata = OpenMetadata(
-            config.workflowConfig.openMetadataServerConfig
-        )
+        self.dbtcloud.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
+        self.dbtcloud.metadata = OpenMetadata(config.workflowConfig.openMetadataServerConfig)
         self.metadata = OpenMetadata(
-            OpenMetadataConnection.model_validate(
-                mock_dbtcloud_config["workflowConfig"]["openMetadataServerConfig"]
-            )
+            OpenMetadataConnection.model_validate(mock_dbtcloud_config["workflowConfig"]["openMetadataServerConfig"])
         )
 
     @patch("metadata.ingestion.source.pipeline.dbtcloud.client.DBTCloudClient.get_jobs")
@@ -534,10 +525,7 @@ class DBTCloudUnitTest(TestCase):
         self.assertEqual([EXPECTED_JOB_DETAILS], results)
 
     def test_pipeline_name(self):
-        assert (
-            self.dbtcloud.get_pipeline_name(EXPECTED_JOB_DETAILS)
-            == EXPECTED_PIPELINE_NAME
-        )
+        assert self.dbtcloud.get_pipeline_name(EXPECTED_JOB_DETAILS) == EXPECTED_PIPELINE_NAME
 
     def test_filters_to_list(self):
         assert self.dbtcloud.client.job_ids == EXPECTED_JOB_FILTERS
@@ -553,9 +541,7 @@ class DBTCloudUnitTest(TestCase):
         self.assertEqual(pipeline.name, EXPECTED_CREATED_PIPELINES.name)
         self.assertEqual(pipeline.description, EXPECTED_CREATED_PIPELINES.description)
         self.assertEqual(pipeline.sourceUrl, EXPECTED_CREATED_PIPELINES.sourceUrl)
-        self.assertEqual(
-            pipeline.scheduleInterval, EXPECTED_CREATED_PIPELINES.scheduleInterval
-        )
+        self.assertEqual(pipeline.scheduleInterval, EXPECTED_CREATED_PIPELINES.scheduleInterval)
         self.assertEqual(pipeline.service, EXPECTED_CREATED_PIPELINES.service)
 
     def test_yield_pipeline_usage(self):
@@ -591,9 +577,7 @@ class DBTCloudUnitTest(TestCase):
             ],
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
-            got_usage = next(
-                self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS)
-            ).right
+            got_usage = next(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS)).right
             self.assertEqual(
                 got_usage,
                 PipelineUsage(
@@ -625,15 +609,11 @@ class DBTCloudUnitTest(TestCase):
                     endDate="2025-02-19 11:09:36.920915+00:00",
                 ),
             ],
-            usageSummary=UsageDetails(
-                dailyStats=UsageStats(count=10), date=self.dbtcloud.today
-            ),
+            usageSummary=UsageDetails(dailyStats=UsageStats(count=10), date=self.dbtcloud.today),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
             # Nothing is returned
-            self.assertEqual(
-                len(list(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS))), 0
-            )
+            self.assertEqual(len(list(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS))), 0)
 
         # But if we have usage for today but the count is 0, we'll return the details
         return_value = Pipeline(
@@ -658,14 +638,10 @@ class DBTCloudUnitTest(TestCase):
                     endDate="2025-02-19 11:09:36.920915+00:00",
                 ),
             ],
-            usageSummary=UsageDetails(
-                dailyStats=UsageStats(count=0), date=self.dbtcloud.today
-            ),
+            usageSummary=UsageDetails(dailyStats=UsageStats(count=0), date=self.dbtcloud.today),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
-            got_usage = next(
-                self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS)
-            ).right
+            got_usage = next(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS)).right
             self.assertEqual(
                 next(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS)).right,
                 PipelineUsage(
@@ -723,9 +699,7 @@ class DBTCloudUnitTest(TestCase):
             ),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
-            got_usage = next(
-                self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS)
-            ).right
+            got_usage = next(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS)).right
             self.assertEqual(
                 next(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS)).right,
                 PipelineUsage(
@@ -764,9 +738,7 @@ class DBTCloudUnitTest(TestCase):
             ),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
-            self.assertEqual(
-                len(list(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS))), 0
-            )
+            self.assertEqual(len(list(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS))), 0)
 
     def test_error_handling_in_lineage(self):
         """
@@ -776,13 +748,9 @@ class DBTCloudUnitTest(TestCase):
         self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
 
         # Mock metadata.get_by_name to raise an exception
-        with patch.object(
-            OpenMetadata, "get_by_name", side_effect=Exception("Test error")
-        ):
+        with patch.object(OpenMetadata, "get_by_name", side_effect=Exception("Test error")):
             # Get the lineage details
-            lineage_details = list(
-                self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS)
-            )
+            lineage_details = list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
 
             # Verify we got an error
             self.assertEqual(len(lineage_details), 1)
@@ -796,9 +764,7 @@ class DBTCloudUnitTest(TestCase):
         # Mock the context with latest run ID
         self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
         self.dbtcloud.context.get().__dict__["pipeline"] = "New job"
-        self.dbtcloud.context.get().__dict__[
-            "pipeline_service"
-        ] = "dbtcloud_pipeline_test"
+        self.dbtcloud.context.get().__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
 
         # Set up run context for observability cache
         mock_run = DBTRun(
@@ -812,9 +778,7 @@ class DBTCloudUnitTest(TestCase):
         self.dbtcloud.context.get().__dict__["current_runs"] = [mock_run]
 
         # Mock the source config for lineage
-        self.dbtcloud.source_config.lineageInformation = type(
-            "obj", (object,), {"dbServiceNames": ["local_redshift"]}
-        )
+        self.dbtcloud.source_config.lineageInformation = type("obj", (object,), {"dbServiceNames": ["local_redshift"]})
 
         # Create mock entities
         mock_pipeline = Pipeline(
@@ -866,10 +830,7 @@ class DBTCloudUnitTest(TestCase):
             mock_get_by_name.side_effect = get_by_name_side_effect
 
             # Mock the combined GraphQL method
-            with patch.object(
-                self.dbtcloud.client, "get_models_with_lineage"
-            ) as mock_get_models_with_lineage:
-
+            with patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models_with_lineage:
                 # Return (models, seeds, sources) tuple
                 mock_get_models_with_lineage.return_value = (
                     [
@@ -895,9 +856,7 @@ class DBTCloudUnitTest(TestCase):
                 )
 
                 # Get the lineage details
-                lineage_details = list(
-                    self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS)
-                )
+                lineage_details = list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
 
                 # Verify we can call the method without errors
                 # Note: Lineage edges may or may not be generated depending on entity resolution
@@ -929,9 +888,7 @@ class DBTCloudUnitTest(TestCase):
         self.dbtcloud.context.get().__dict__["current_runs"] = [mock_run]
 
         # Get observability data
-        result = list(
-            self.dbtcloud.get_table_pipeline_observability(EXPECTED_JOB_DETAILS)
-        )
+        result = list(self.dbtcloud.get_table_pipeline_observability(EXPECTED_JOB_DETAILS))
 
         # Verify we got results
         self.assertEqual(len(result), 1)
@@ -943,9 +900,7 @@ class DBTCloudUnitTest(TestCase):
         self.assertIn("local_redshift.dev.dbt_test_new.model_32", table_pipeline_map)
 
         # Verify observability data structure for model_15
-        observability_list = table_pipeline_map[
-            "local_redshift.dev.dbt_test_new.model_15"
-        ]
+        observability_list = table_pipeline_map["local_redshift.dev.dbt_test_new.model_15"]
         self.assertEqual(len(observability_list), 1)
 
         observability = observability_list[0]
@@ -1023,26 +978,18 @@ class DBTCloudUnitTest(TestCase):
         }
 
         # Get observability data
-        result = list(
-            self.dbtcloud.get_table_pipeline_observability(EXPECTED_JOB_DETAILS)
-        )
+        result = list(self.dbtcloud.get_table_pipeline_observability(EXPECTED_JOB_DETAILS))
 
         # Verify we got results from cache
         self.assertEqual(len(result), 1)
         table_pipeline_map = result[0]
 
         # Verify cached tables are present
-        self.assertIn(
-            "local_redshift.dev.dbt_test_new.cached_model_1", table_pipeline_map
-        )
-        self.assertIn(
-            "local_redshift.dev.dbt_test_new.cached_model_2", table_pipeline_map
-        )
+        self.assertIn("local_redshift.dev.dbt_test_new.cached_model_1", table_pipeline_map)
+        self.assertIn("local_redshift.dev.dbt_test_new.cached_model_2", table_pipeline_map)
 
         # Verify observability data
-        observability_list = table_pipeline_map[
-            "local_redshift.dev.dbt_test_new.cached_model_1"
-        ]
+        observability_list = table_pipeline_map["local_redshift.dev.dbt_test_new.cached_model_1"]
         self.assertEqual(len(observability_list), 1)
 
         observability = observability_list[0]
@@ -1069,9 +1016,7 @@ class DBTCloudUnitTest(TestCase):
         self.dbtcloud.observability_cache.clear()
 
         # Get observability data
-        result = list(
-            self.dbtcloud.get_table_pipeline_observability(EXPECTED_JOB_DETAILS)
-        )
+        result = list(self.dbtcloud.get_table_pipeline_observability(EXPECTED_JOB_DETAILS))
 
         # Should get an empty map
         self.assertEqual(len(result), 1)
@@ -1175,14 +1120,10 @@ class DBTCloudUnitTest(TestCase):
         # Mock the context
         self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
         self.dbtcloud.context.get().__dict__["pipeline"] = "New job"
-        self.dbtcloud.context.get().__dict__[
-            "pipeline_service"
-        ] = "dbtcloud_pipeline_test"
+        self.dbtcloud.context.get().__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
 
         # Mock the source config
-        self.dbtcloud.source_config.lineageInformation = type(
-            "obj", (object,), {"dbServiceNames": ["local_redshift"]}
-        )
+        self.dbtcloud.source_config.lineageInformation = type("obj", (object,), {"dbServiceNames": ["local_redshift"]})
 
         # Create mock entities
         mock_pipeline = Pipeline(
@@ -1226,10 +1167,7 @@ class DBTCloudUnitTest(TestCase):
             mock_get_by_name.side_effect = get_by_name_side_effect
 
             # Mock client method - now using combined get_models_with_lineage
-            with patch.object(
-                self.dbtcloud.client, "get_models_with_lineage"
-            ) as mock_get_models_with_lineage:
-
+            with patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models_with_lineage:
                 # Return (models, seeds, sources) tuple
                 mock_get_models_with_lineage.return_value = (
                     [
@@ -1333,9 +1271,7 @@ class DBTCloudUnitTest(TestCase):
         self.dbtcloud.context.get().__dict__.pop("latest_run", None)
 
         # Get observability data
-        result = list(
-            self.dbtcloud.get_table_pipeline_observability(EXPECTED_JOB_DETAILS)
-        )
+        result = list(self.dbtcloud.get_table_pipeline_observability(EXPECTED_JOB_DETAILS))
 
         # Verify we got results
         self.assertEqual(len(result), 1)
@@ -1396,9 +1332,7 @@ class DBTCloudUnitTest(TestCase):
                 }
             }
 
-            models, seeds, sources = self.dbtcloud.client.get_models_with_lineage(
-                70403103936332, 70403110257794
-            )
+            models, seeds, sources = self.dbtcloud.client.get_models_with_lineage(70403103936332, 70403110257794)
 
             # Verify models
             self.assertEqual(len(models), 2)
@@ -1421,9 +1355,7 @@ class DBTCloudUnitTest(TestCase):
                 error_models,
                 error_seeds,
                 error_sources,
-            ) = self.dbtcloud.client.get_models_with_lineage(
-                70403103936332, 70403110257794
-            )
+            ) = self.dbtcloud.client.get_models_with_lineage(70403103936332, 70403110257794)
             self.assertIsNone(error_models)
             self.assertIsNone(error_seeds)
             self.assertIsNone(error_sources)
@@ -1543,9 +1475,7 @@ class DBTCloudUnitTest(TestCase):
             databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
         )
 
-        with patch.object(
-            self.dbtcloud.metadata, "get_by_name", return_value=mock_table
-        ) as mock_get:
+        with patch.object(self.dbtcloud.metadata, "get_by_name", return_value=mock_table) as mock_get:
             # First call should hit the API
             result1 = self.dbtcloud._get_table_entity("service.db.schema.test_table")
             self.assertEqual(result1, mock_table)
@@ -1567,9 +1497,7 @@ class DBTCloudUnitTest(TestCase):
         # Set up context
         self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
         self.dbtcloud.context.get().__dict__["pipeline"] = "New job"
-        self.dbtcloud.context.get().__dict__[
-            "pipeline_service"
-        ] = "dbtcloud_pipeline_test"
+        self.dbtcloud.context.get().__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
 
         mock_run = DBTRun(
             id=70403110257794,
@@ -1581,9 +1509,7 @@ class DBTCloudUnitTest(TestCase):
         self.dbtcloud.context.get().__dict__["current_runs"] = [mock_run]
 
         # Mock source config
-        self.dbtcloud.source_config.lineageInformation = type(
-            "obj", (object,), {"dbServiceNames": ["local_redshift"]}
-        )
+        self.dbtcloud.source_config.lineageInformation = type("obj", (object,), {"dbServiceNames": ["local_redshift"]})
 
         mock_pipeline = Pipeline(
             id=uuid.uuid4(),
@@ -1615,9 +1541,7 @@ class DBTCloudUnitTest(TestCase):
 
             mock_get_by_name.side_effect = get_by_name_side_effect
 
-            with patch.object(
-                self.dbtcloud.client, "get_models_with_lineage"
-            ) as mock_get_models:
+            with patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models:
                 # Return same model multiple times to test deduplication
                 mock_get_models.return_value = (
                     [
@@ -1640,9 +1564,7 @@ class DBTCloudUnitTest(TestCase):
                 # Verify cache was populated with set
                 cache_key = (70403103936332, "70403110257794")
                 if cache_key in self.dbtcloud.observability_cache:
-                    table_fqns = self.dbtcloud.observability_cache[cache_key][
-                        "table_fqns"
-                    ]
+                    table_fqns = self.dbtcloud.observability_cache[cache_key]["table_fqns"]
                     self.assertIsInstance(table_fqns, set)
 
     def test_get_jobs_url_construction_with_project_id(self):
@@ -1698,11 +1620,7 @@ class DBTCloudUnitTest(TestCase):
             mock_get.return_value = MOCK_JOB_RESULT
 
             # Consume the generator
-            list(
-                self.dbtcloud.client._get_jobs(
-                    project_id="70403103922127", environment_id="70403103931988"
-                )
-            )
+            list(self.dbtcloud.client._get_jobs(project_id="70403103922127", environment_id="70403103931988"))
 
             # Verify the URL was constructed with both query params
             call_args = mock_get.call_args
@@ -1794,7 +1712,7 @@ class DBTCloudUnitTest(TestCase):
             self.dbtcloud.client.environment_ids = EXPECTED_ENVIRONMENT_FILTERS
 
             try:
-                jobs = list(self.dbtcloud.client.get_jobs())
+                jobs = list(self.dbtcloud.client.get_jobs())  # noqa: F841
 
                 # Should only call _get_jobs with job_id, ignoring project/environment
                 for call in mock_get_jobs.call_args_list:
@@ -1835,7 +1753,7 @@ class DBTCloudUnitTest(TestCase):
             self.dbtcloud.client.environment_ids = ["70403103931988"]
 
             try:
-                jobs = list(self.dbtcloud.client.get_jobs())
+                jobs = list(self.dbtcloud.client.get_jobs())  # noqa: F841
 
                 # Should call _get_jobs for each project_id x environment_id combination
                 # 2 project_ids x 1 environment_id = 2 calls
@@ -1861,9 +1779,7 @@ class DBTCloudUnitTest(TestCase):
         # Mock the context
         self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
         self.dbtcloud.context.get().__dict__["pipeline"] = "New job"
-        self.dbtcloud.context.get().__dict__[
-            "pipeline_service"
-        ] = "dbtcloud_pipeline_test"
+        self.dbtcloud.context.get().__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
 
         mock_run = DBTRun(
             id=70403110257794,
@@ -1876,9 +1792,7 @@ class DBTCloudUnitTest(TestCase):
         self.dbtcloud.context.get().__dict__["current_runs"] = [mock_run]
 
         # Mock source config
-        self.dbtcloud.source_config.lineageInformation = type(
-            "obj", (object,), {"dbServiceNames": ["local_redshift"]}
-        )
+        self.dbtcloud.source_config.lineageInformation = type("obj", (object,), {"dbServiceNames": ["local_redshift"]})
 
         mock_pipeline = Pipeline(
             id=uuid.uuid4(),
@@ -1907,9 +1821,7 @@ class DBTCloudUnitTest(TestCase):
 
             mock_get_by_name.side_effect = get_by_name_side_effect
 
-            with patch.object(
-                self.dbtcloud.client, "get_models_with_lineage"
-            ) as mock_get_models:
+            with patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models:
                 # Return models - one with runGeneratedAt, one without
                 mock_get_models.return_value = (
                     [
@@ -1935,7 +1847,7 @@ class DBTCloudUnitTest(TestCase):
                 )
 
                 # Process lineage
-                lineage_results = list(
+                lineage_results = list(  # noqa: F841
                     self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS)
                 )
 
@@ -1960,9 +1872,7 @@ class DBTCloudUnitTest(TestCase):
         # Mock the context
         self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
         self.dbtcloud.context.get().__dict__["pipeline"] = "New job"
-        self.dbtcloud.context.get().__dict__[
-            "pipeline_service"
-        ] = "dbtcloud_pipeline_test"
+        self.dbtcloud.context.get().__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
 
         mock_run = DBTRun(
             id=70403110257794,
@@ -1975,9 +1885,7 @@ class DBTCloudUnitTest(TestCase):
         self.dbtcloud.context.get().__dict__["current_runs"] = [mock_run]
 
         # Mock source config
-        self.dbtcloud.source_config.lineageInformation = type(
-            "obj", (object,), {"dbServiceNames": ["local_redshift"]}
-        )
+        self.dbtcloud.source_config.lineageInformation = type("obj", (object,), {"dbServiceNames": ["local_redshift"]})
 
         mock_pipeline = Pipeline(
             id=uuid.uuid4(),
@@ -2036,9 +1944,7 @@ class DBTCloudUnitTest(TestCase):
 
             mock_get_by_name.side_effect = get_by_name_side_effect
 
-            with patch.object(
-                self.dbtcloud.client, "get_models_with_lineage"
-            ) as mock_get_models:
+            with patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models:
                 # Return a child model that depends on:
                 # 1. A parent model WITH runGeneratedAt (should create lineage)
                 # 2. A parent model WITHOUT runGeneratedAt (should be skipped)
@@ -2088,9 +1994,7 @@ class DBTCloudUnitTest(TestCase):
                 )
 
                 # Process lineage
-                lineage_results = list(
-                    self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS)
-                )
+                lineage_results = list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
 
                 # Verify method completed without errors
                 self.assertIsInstance(lineage_results, list)
@@ -2118,9 +2022,7 @@ class DBTCloudUnitTest(TestCase):
         # Mock the context
         self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
         self.dbtcloud.context.get().__dict__["pipeline"] = "New job"
-        self.dbtcloud.context.get().__dict__[
-            "pipeline_service"
-        ] = "dbtcloud_pipeline_test"
+        self.dbtcloud.context.get().__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
 
         mock_run = DBTRun(
             id=70403110257794,
@@ -2133,9 +2035,7 @@ class DBTCloudUnitTest(TestCase):
         self.dbtcloud.context.get().__dict__["current_runs"] = [mock_run]
 
         # Mock source config
-        self.dbtcloud.source_config.lineageInformation = type(
-            "obj", (object,), {"dbServiceNames": ["local_redshift"]}
-        )
+        self.dbtcloud.source_config.lineageInformation = type("obj", (object,), {"dbServiceNames": ["local_redshift"]})
 
         mock_pipeline = Pipeline(
             id=uuid.uuid4(),
@@ -2177,9 +2077,7 @@ class DBTCloudUnitTest(TestCase):
 
             mock_get_by_name.side_effect = get_by_name_side_effect
 
-            with patch.object(
-                self.dbtcloud.client, "get_models_with_lineage"
-            ) as mock_get_models:
+            with patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models:
                 # Return a model that depends on a source (source has no runGeneratedAt)
                 mock_get_models.return_value = (
                     [
@@ -2206,9 +2104,7 @@ class DBTCloudUnitTest(TestCase):
                 )
 
                 # Process lineage
-                lineage_results = list(
-                    self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS)
-                )
+                lineage_results = list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
 
                 # Verify method completed without errors
                 self.assertIsInstance(lineage_results, list)

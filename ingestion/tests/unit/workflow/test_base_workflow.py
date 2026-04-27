@@ -11,8 +11,10 @@
 """
 Validate the logic and status handling of the base workflow
 """
+
 from typing import Iterable, Tuple
 from unittest import TestCase
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -93,9 +95,7 @@ class SimpleSink(Sink):
 
     def _run(self, element: int) -> Either:
         if element == 2:
-            return Either(
-                left=StackTraceError(name="bum", error="kaboom", stackTrace="trace")
-            )
+            return Either(left=StackTraceError(name="bum", error="kaboom", stackTrace="trace"))
 
         return Either(right=element)
 
@@ -181,16 +181,9 @@ class TestBaseWorkflow(TestCase):
     def test_broken_workflow(self):
         """test our broken workflow return expected exc"""
         self.broken_workflow.execute()
-        self.assertRaises(
-            WorkflowExecutionError, self.broken_workflow.raise_from_status
-        )
-        self.assertEqual(
-            self.broken_workflow.source.status.failures[0].name, "Not an Either"
-        )
-        assert (
-            "workflow/test_base_workflow.py"
-            in self.broken_workflow.source.status.failures[0].error
-        )
+        self.assertRaises(WorkflowExecutionError, self.broken_workflow.raise_from_status)
+        self.assertEqual(self.broken_workflow.source.status.failures[0].name, "Not an Either")
+        assert "workflow/test_base_workflow.py" in self.broken_workflow.source.status.failures[0].error
 
     def test_workflow_config_supports_ingestion_runner_name(self):
         workflow_config = OpenMetadataWorkflowConfig(
@@ -200,3 +193,45 @@ class TestBaseWorkflow(TestCase):
         )
 
         self.assertEqual(workflow_config.ingestionRunnerName, "test-runner")
+
+
+class TestWorkflowExecuteTeardown:
+    """
+    Validates the execute() teardown contract: status must be printed before
+    stop() tears down resources (so final records are flushed while the
+    metadata client and steps are alive), and stop() must still run when
+    print_status() raises so we never leak the timer thread or OM client.
+    """
+
+    def test_print_status_runs_before_stop(self):
+        workflow = SimpleWorkflow(config=config)
+        manager = MagicMock()
+
+        with (
+            patch.object(workflow, "print_status", wraps=workflow.print_status) as mock_print_status,
+            patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
+        ):
+            manager.attach_mock(mock_print_status, "print_status")
+            manager.attach_mock(mock_stop, "stop")
+
+            workflow.execute()
+
+        ordered_names = [mock_call[0] for mock_call in manager.mock_calls]
+        assert ordered_names == ["print_status", "stop"]
+
+    def test_stop_still_runs_when_print_status_raises(self):
+        workflow = SimpleWorkflow(config=config)
+
+        with (
+            patch.object(
+                workflow,
+                "print_status",
+                side_effect=RuntimeError("boom"),
+            ) as mock_print_status,
+            patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
+        ):
+            with pytest.raises(RuntimeError, match="boom"):
+                workflow.execute()
+
+            mock_print_status.assert_called_once()
+            mock_stop.assert_called_once()

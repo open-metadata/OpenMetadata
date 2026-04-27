@@ -11,6 +11,7 @@
 """
 Delete the DAG in Airflow's db, as well as the python file
 """
+
 import traceback
 from typing import Callable
 
@@ -43,17 +44,11 @@ def get_fn(blueprint: Blueprint) -> Callable:
     if not is_airflow_3_or_higher():
         from airflow.www.app import csrf
     else:
-        # Airflow 3.x doesn't have csrf in the same location, use a no-op
-        class csrf:
-            @staticmethod
-            def exempt(f):
-                return f
+        from airflow.providers.fab.www.app import csrf
 
     @blueprint.route("/delete", methods=["DELETE"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_DELETE, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_DELETE, permissions.RESOURCE_DAG)])
     def delete_dag() -> Response:
         """
         POST request to DELETE a DAG.
@@ -72,9 +67,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Failed to delete dag [{dag_id}] [secured: {secure_dag_id}]: {exc}"
-            )
+            logger.error(f"Failed to delete dag [{dag_id}] [secured: {secure_dag_id}]: {exc}")
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
                 error=f"Failed to delete [{dag_id}] [secured: {secure_dag_id}] due to [{exc}] ",

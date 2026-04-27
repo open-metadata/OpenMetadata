@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Dict, Optional, Union
 
 import requests
@@ -75,9 +76,7 @@ def get_connection(connection: RestConnection) -> Union[Response, Dict]:
         headers = {}
         if connection.token:
             headers["Authorization"] = f"Bearer {connection.token.get_secret_value()}"
-        return requests.get(
-            schema_conn.openAPISchemaURL, headers=headers, verify=verify
-        )
+        return requests.get(schema_conn.openAPISchemaURL, headers=headers, verify=verify)
 
     if isinstance(schema_conn, OpenAPISchemaFilePath):
         return parse_openapi_schema_from_file(schema_conn.openAPISchemaFilePath)
@@ -121,9 +120,7 @@ def test_connection(
             if validate_openapi_schema(schema):
                 return []
 
-            raise InvalidOpenAPISchemaError(
-                "Provided schema is not valid OpenAPI specification"
-            )
+            raise InvalidOpenAPISchemaError("Provided schema is not valid OpenAPI specification")
         except OpenAPIParseError as e:
             raise InvalidOpenAPISchemaError(f"Failed to parse OpenAPI schema: {e}")
         except InvalidOpenAPISchemaError:

@@ -11,7 +11,7 @@
 """Qlik Sense Source Module"""
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Set
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -72,15 +72,11 @@ class QliksenseSource(DashboardServiceSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: QlikSenseConnection = config.serviceConnection.root.config
         if not isinstance(connection, QlikSenseConnection):
-            raise InvalidSourceException(
-                f"Expected QlikSenseConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected QlikSenseConnection, but got {connection}")
         return cls(config, metadata)
 
     def __init__(
@@ -92,12 +88,12 @@ class QliksenseSource(DashboardServiceSource):
         self.collections: List[QlikDashboard] = []
         # Data models will be cleared up for each dashboard
         self.data_models: List[QlikTable] = []
+        # Mapping of qlik table name -> source SQL tables from load script
+        self.script_table_sources: Optional[Dict[str, Set[str]]] = None
 
     def filter_draft_dashboard(self, dashboard: QlikDashboard) -> bool:
         # When only published(non-draft) dashboards are allowed, filter dashboard based on "published" flag from QlikDashboardMeta(qMeta)
-        return (not self.source_config.includeDraftDashboard) and (
-            not dashboard.qMeta.published
-        )
+        return (not self.source_config.includeDraftDashboard) and (not dashboard.qMeta.published)
 
     def get_dashboards_list(self) -> Iterable[QlikDashboard]:
         """Get List of all dashboards"""
@@ -107,8 +103,9 @@ class QliksenseSource(DashboardServiceSource):
                 continue
             # create app specific websocket
             self.client.connect_websocket(dashboard.qDocId)
-            # clean data models for next iteration
+            # clean data models and script sources for next iteration
             self.data_models = []
+            self.script_table_sources = None
             yield dashboard
 
     def get_dashboard_name(self, dashboard: QlikDashboard) -> str:
@@ -119,17 +116,14 @@ class QliksenseSource(DashboardServiceSource):
         """Get Dashboard Details"""
         return dashboard
 
-    def yield_dashboard(
-        self, dashboard_details: QlikDashboard
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def yield_dashboard(self, dashboard_details: QlikDashboard) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         """
         try:
             if self.service_connection.displayUrl:
                 dashboard_url = (
-                    f"{clean_uri(self.service_connection.displayUrl)}/sense/app/"
-                    f"{dashboard_details.qDocId}/overview"
+                    f"{clean_uri(self.service_connection.displayUrl)}/sense/app/{dashboard_details.qDocId}/overview"
                 )
             else:
                 dashboard_url = None
@@ -139,9 +133,7 @@ class QliksenseSource(DashboardServiceSource):
                 sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.qDocName,
                 description=(
-                    Markdown(dashboard_details.qMeta.description)
-                    if dashboard_details.qMeta.description
-                    else None
+                    Markdown(dashboard_details.qMeta.description) if dashboard_details.qMeta.description else None
                 ),
                 charts=[
                     FullyQualifiedEntityName(
@@ -168,9 +160,7 @@ class QliksenseSource(DashboardServiceSource):
                 )
             )
 
-    def yield_dashboard_chart(
-        self, dashboard_details: QlikDashboard
-    ) -> Iterable[CreateChartRequest]:
+    def yield_dashboard_chart(self, dashboard_details: QlikDashboard) -> Iterable[CreateChartRequest]:
         """Get chart method"""
         charts = self.client.get_dashboard_charts(dashboard_id=dashboard_details.qDocId)
         for chart in charts:
@@ -184,27 +174,19 @@ class QliksenseSource(DashboardServiceSource):
                     )
                 else:
                     chart_url = None
-                if chart.qMeta.title and filter_by_chart(
-                    self.source_config.chartFilterPattern, chart.qMeta.title
-                ):
+                if chart.qMeta.title and filter_by_chart(self.source_config.chartFilterPattern, chart.qMeta.title):
                     self.status.filter(chart.qMeta.title, "Chart Pattern not allowed")
                     continue
-                yield Either(
-                    right=CreateChartRequest(
-                        name=EntityName(chart.qInfo.qId),
-                        displayName=chart.qMeta.title,
-                        description=(
-                            Markdown(chart.qMeta.description)
-                            if chart.qMeta.description
-                            else None
-                        ),
-                        chartType=ChartType.Other,
-                        sourceUrl=SourceUrl(chart_url),
-                        service=FullyQualifiedEntityName(
-                            self.context.get().dashboard_service
-                        ),
-                    )
+                chart_request = CreateChartRequest(
+                    name=EntityName(chart.qInfo.qId),
+                    displayName=chart.qMeta.title,
+                    description=(Markdown(chart.qMeta.description) if chart.qMeta.description else None),
+                    chartType=ChartType.Other,
+                    sourceUrl=SourceUrl(chart_url),
+                    service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 )
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
             except Exception as exc:  # pylint: disable=broad-except
                 yield Either(
                     left=StackTraceError(
@@ -240,24 +222,16 @@ class QliksenseSource(DashboardServiceSource):
                         data_model_name = data_model.name
                         data_model_columns = []
                     elif isinstance(data_model, QlikTable):
-                        data_model_name = (
-                            data_model.tableName
-                            if data_model.tableName
-                            else data_model.id
-                        )
+                        data_model_name = data_model.tableName if data_model.tableName else data_model.id
                         data_model_columns = self.get_column_info(data_model)
 
-                    if filter_by_datamodel(
-                        self.source_config.dataModelFilterPattern, data_model_name
-                    ):
+                    if filter_by_datamodel(self.source_config.dataModelFilterPattern, data_model_name):
                         self.status.filter(data_model_name, "Data model filtered out.")
                         continue
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(data_model.id),
                         displayName=data_model_name,
-                        service=FullyQualifiedEntityName(
-                            self.context.get().dashboard_service
-                        ),
+                        service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                         dataModelType=DataModelType.QlikDataModel.value,
                         serviceType=self.service_connection.type.value,
                         columns=data_model_columns,
@@ -265,9 +239,7 @@ class QliksenseSource(DashboardServiceSource):
                     yield Either(right=data_model_request)
                     self.register_record_datamodel(datamodel_request=data_model_request)
                 except Exception as exc:
-                    name = (
-                        data_model.tableName if data_model.tableName else data_model.id
-                    )
+                    name = data_model.tableName if data_model.tableName else data_model.id
                     yield Either(
                         left=StackTraceError(
                             name=name,
@@ -321,6 +293,61 @@ class QliksenseSource(DashboardServiceSource):
                 logger.warning(f"Error occured while finding table fqn: {exc}")
         return None
 
+    def _fetch_script_table_sources(self) -> None:
+        """Fetch and cache the script table source mapping for the current app."""
+        if self.script_table_sources is None:
+            self.script_table_sources = self.client.get_script_tables()
+
+    def _yield_lineage_from_script_sources(
+        self,
+        datamodel: QlikTable,
+        data_model_entity,
+        prefix_service_name: Optional[str],
+        prefix_database_name: Optional[str] = None,
+        prefix_schema_name: Optional[str] = None,
+        prefix_table_name: Optional[str] = None,
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Yield lineage from SQL source tables found in the load script
+        (FROM/JOIN clauses) to the data model entity.
+        """
+        source_tables = self.script_table_sources.get(datamodel.tableName, set())
+        for qualified_table in source_tables:
+            parts = qualified_table.split(".")
+            if len(parts) >= 2:
+                schema_name = parts[-2]
+                table_name = parts[-1]
+            else:
+                schema_name = None
+                table_name = parts[-1]
+            database_name = parts[-3] if len(parts) >= 3 else None
+
+            if prefix_table_name and prefix_table_name.lower() != table_name.lower():
+                continue
+            if prefix_schema_name and schema_name and prefix_schema_name.lower() != schema_name.lower():
+                continue
+            if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
+                continue
+
+            fqn_search_string = build_es_fqn_search_string(
+                database_name=prefix_database_name or database_name,
+                schema_name=prefix_schema_name or schema_name,
+                service_name=prefix_service_name or "*",
+                table_name=prefix_table_name or table_name,
+            )
+            om_table = self.metadata.search_in_any_service(
+                entity_type=Table,
+                fqn_search_string=fqn_search_string,
+            )
+            if om_table:
+                columns_list = [col.name for col in datamodel.fields]
+                column_lineage = self._get_column_lineage(om_table, data_model_entity, columns_list)
+                yield self._get_add_lineage_request(
+                    to_entity=data_model_entity,
+                    from_entity=om_table,
+                    column_lineage=column_lineage,
+                )
+
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: QlikDashboard,
@@ -333,71 +360,73 @@ class QliksenseSource(DashboardServiceSource):
             prefix_schema_name,
             prefix_table_name,
         ) = self.parse_db_service_prefix(db_service_prefix)
+
+        self._fetch_script_table_sources()
+
         for datamodel in self.data_models or []:
             try:
                 data_model_entity = self._get_datamodel(datamodel_id=datamodel.id)
-                if data_model_entity:
-                    if len(datamodel.connectorProperties.tableQualifiers) > 1:
-                        (
-                            database_name,
-                            schema_name,
-                        ) = datamodel.connectorProperties.tableQualifiers[-2:]
-                    elif len(datamodel.connectorProperties.tableQualifiers) == 1:
-                        schema_name = datamodel.connectorProperties.tableQualifiers[-1]
-                        database_name = None
-                    else:
-                        schema_name, database_name = None, None
+                if not data_model_entity:
+                    continue
 
-                    if (
-                        prefix_table_name
-                        and datamodel.tableName
-                        and prefix_table_name.lower() != datamodel.tableName.lower()
-                    ):
-                        logger.debug(
-                            f"Table {datamodel.tableName} does not match prefix {prefix_table_name}"
-                        )
-                        continue
-
-                    if (
-                        prefix_schema_name
-                        and schema_name
-                        and prefix_schema_name.lower() != schema_name.lower()
-                    ):
-                        logger.debug(
-                            f"Schema {schema_name} does not match prefix {prefix_schema_name}"
-                        )
-                        continue
-
-                    if (
-                        prefix_database_name
-                        and database_name
-                        and prefix_database_name.lower() != database_name.lower()
-                    ):
-                        logger.debug(
-                            f"Database {database_name} does not match prefix {prefix_database_name}"
-                        )
-                        continue
-
-                    fqn_search_string = build_es_fqn_search_string(
-                        database_name=prefix_database_name or database_name,
-                        schema_name=prefix_schema_name or schema_name,
-                        service_name=prefix_service_name or "*",
-                        table_name=prefix_table_name or datamodel.tableName,
+                # If the load script has SQL source tables for this data model,
+                # build lineage from those source tables instead.
+                if datamodel.tableName in self.script_table_sources:
+                    yield from self._yield_lineage_from_script_sources(
+                        datamodel,
+                        data_model_entity,
+                        prefix_service_name,
+                        prefix_database_name,
+                        prefix_schema_name,
+                        prefix_table_name,
                     )
-                    om_table = self.metadata.search_in_any_service(
-                        entity_type=Table,
-                        fqn_search_string=fqn_search_string,
+                    continue
+
+                if len(datamodel.connectorProperties.tableQualifiers) > 1:
+                    (
+                        database_name,
+                        schema_name,
+                    ) = datamodel.connectorProperties.tableQualifiers[-2:]
+                elif len(datamodel.connectorProperties.tableQualifiers) == 1:
+                    schema_name = datamodel.connectorProperties.tableQualifiers[-1]
+                    database_name = None
+                else:
+                    schema_name, database_name = None, None
+
+                if (
+                    prefix_table_name
+                    and datamodel.tableName
+                    and prefix_table_name.lower() != datamodel.tableName.lower()
+                ):
+                    logger.debug(f"Table {datamodel.tableName} does not match prefix {prefix_table_name}")
+                    continue
+
+                if prefix_schema_name and schema_name and prefix_schema_name.lower() != schema_name.lower():
+                    logger.debug(f"Schema {schema_name} does not match prefix {prefix_schema_name}")
+                    continue
+
+                if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
+                    logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
+                    continue
+
+                fqn_search_string = build_es_fqn_search_string(
+                    database_name=prefix_database_name or database_name,
+                    schema_name=prefix_schema_name or schema_name,
+                    service_name=prefix_service_name or "*",
+                    table_name=prefix_table_name or datamodel.tableName,
+                )
+                om_table = self.metadata.search_in_any_service(
+                    entity_type=Table,
+                    fqn_search_string=fqn_search_string,
+                )
+                if om_table:
+                    columns_list = [col.name for col in datamodel.fields]
+                    column_lineage = self._get_column_lineage(om_table, data_model_entity, columns_list)
+                    yield self._get_add_lineage_request(
+                        to_entity=data_model_entity,
+                        from_entity=om_table,
+                        column_lineage=column_lineage,
                     )
-                    if om_table:
-                        columns_list = [col.name for col in datamodel.fields]
-                        column_lineage = self._get_column_lineage(
-                            om_table, data_model_entity, columns_list
-                        )
-                        yield self._get_add_lineage_request(
-                            to_entity=data_model_entity,
-                            from_entity=om_table,
-                            column_lineage=column_lineage,
-                        )
             except Exception as err:
                 yield Either(
                     left=StackTraceError(

@@ -13,6 +13,7 @@
 Base source for the profiler used to instantiate a profiler runner with
 its interface
 """
+
 from copy import deepcopy
 from typing import Optional, Type, cast
 
@@ -44,7 +45,7 @@ from metadata.sampler.config import (
     get_exclude_columns,
     get_include_columns,
 )
-from metadata.sampler.models import SampleConfig
+from metadata.sampler.models import ProfileSampleConfig, SampleConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,
@@ -91,9 +92,7 @@ class ProfilerSource(ProfilerSourceInterface):
 
         self.config = config
         self.service_conn_config = self._copy_service_config(config, database)
-        self.profiler_config = profiler_config_class.model_validate(
-            config.processor.model_dump().get("config")
-        )
+        self.profiler_config = profiler_config_class.model_validate(config.processor.model_dump().get("config"))
         self.ometa_client = ometa_client
         self._interface_type: str = config.source.type.lower()
         self._interface = None
@@ -113,9 +112,7 @@ class ProfilerSource(ProfilerSourceInterface):
         """Set the interface"""
         self._interface = interface
 
-    def _copy_service_config(
-        self, config: OpenMetadataWorkflowConfig, database: Database
-    ) -> DatabaseConnection:
+    def _copy_service_config(self, config: OpenMetadataWorkflowConfig, database: Database) -> DatabaseConnection:
         """Make a copy of the service config and update the database name
 
         Args:
@@ -141,6 +138,17 @@ class ProfilerSource(ProfilerSourceInterface):
 
         return config_copy
 
+    def _build_default_sample_config(self) -> SampleConfig:
+        """Build a SampleConfig from the pipeline's profileSampleConfig."""
+        profile_sample_config = None
+        raw = self.source_config.profileSampleConfig if self.source_config else None
+        if raw:
+            profile_sample_config = ProfileSampleConfig.model_validate(raw.model_dump())
+        return SampleConfig(
+            profileSampleConfig=profile_sample_config,
+            randomizedSample=self.source_config.randomizedSample if self.source_config else False,
+        )
+
     @inject
     def create_profiler_interface(
         self,
@@ -159,9 +167,7 @@ class ProfilerSource(ProfilerSourceInterface):
         # NOTE: For some reason I do not understand, if we instantiate this on the __init__ method, we break the
         # autoclassification workflow. This should be fixed. There should not be an impact on AutoClassification.
         # We have an issue to track this here: https://github.com/open-metadata/OpenMetadata/issues/21790
-        self.source_config = DatabaseServiceProfilerPipeline.model_validate(
-            self.config.source.sourceConfig.config
-        )
+        self.source_config = DatabaseServiceProfilerPipeline.model_validate(self.config.source.sourceConfig.config)
 
         sampler_class, profiler_class = profiler_resolver.resolve(
             processing_engine=self.get_processing_engine(self.source_config),
@@ -177,12 +183,7 @@ class ProfilerSource(ProfilerSourceInterface):
             schema_entity=schema_entity,
             database_entity=database_entity,
             table_config=config,
-            default_sample_config=SampleConfig(
-                profileSample=self.source_config.profileSample,
-                profileSampleType=self.source_config.profileSampleType,
-                samplingMethodType=self.source_config.samplingMethodType,
-                randomizedSample=self.source_config.randomizedSample,
-            ),
+            default_sample_config=self._build_default_sample_config(),
             # TODO: Change this when we have the processing engine configuration implemented. Right now it does nothing.
             processing_engine=self.get_processing_engine(self.source_config),
         )
@@ -215,12 +216,8 @@ class ProfilerSource(ProfilerSourceInterface):
             )
 
         table_config = get_config_for_table(entity, profiler_config)
-        schema_entity, database_entity, db_service = get_context_entities(
-            entity=entity, metadata=self.ometa_client
-        )
-        profiler_interface = self.create_profiler_interface(
-            entity, table_config, schema_entity, database_entity
-        )
+        schema_entity, database_entity, db_service = get_context_entities(entity=entity, metadata=self.ometa_client)
+        profiler_interface = self.create_profiler_interface(entity, table_config, schema_entity, database_entity)
 
         if self.source_config and self.source_config.metrics:
             source_metrics = [m.value for m in self.source_config.metrics]
@@ -235,11 +232,7 @@ class ProfilerSource(ProfilerSourceInterface):
                 db_service=db_service,
             )
 
-        reference_metrics = (
-            profiler_config.profiler.metrics
-            if profiler_config.profiler
-            else source_metrics
-        )
+        reference_metrics = profiler_config.profiler.metrics if profiler_config.profiler else source_metrics
 
         if not reference_metrics:
             metrics = get_default_metrics(
@@ -253,9 +246,7 @@ class ProfilerSource(ProfilerSourceInterface):
             for name in reference_metrics:
                 metric = metrics_registry.get(name)
                 if metric is None:
-                    logger.warning(
-                        f"Metric {name} not found in registry. Skipping this metric."
-                    )
+                    logger.warning(f"Metric {name} not found in registry. Skipping this metric.")
                     continue
                 if metric.name() in RUNTIME_PROPS_METRICS:
                     logger.warning(

@@ -187,6 +187,17 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().apiEndpoints().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().apiEndpoints().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected APIEndpoint getVersion(UUID id, Double version) {
     return SdkClients.adminClient().apiEndpoints().getVersion(id.toString(), version);
   }
@@ -557,6 +568,7 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
     ListParams paramsTagsOnly = new ListParams();
     paramsTagsOnly.setFields("tags");
     paramsTagsOnly.setLimit(50);
+    paramsTagsOnly.addQueryParam("apiCollection", collection.getFullyQualifiedName());
     ListResponse<APIEndpoint> listWithTagsOnly = client.apiEndpoints().list(paramsTagsOnly);
     assertNotNull(listWithTagsOnly.getData());
 
@@ -594,6 +606,7 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
     ListParams paramsWithSchemas = new ListParams();
     paramsWithSchemas.setFields("requestSchema,responseSchema,tags");
     paramsWithSchemas.setLimit(50);
+    paramsWithSchemas.addQueryParam("apiCollection", collection.getFullyQualifiedName());
     ListResponse<APIEndpoint> listWithSchemas = client.apiEndpoints().list(paramsWithSchemas);
     assertNotNull(listWithSchemas.getData());
 

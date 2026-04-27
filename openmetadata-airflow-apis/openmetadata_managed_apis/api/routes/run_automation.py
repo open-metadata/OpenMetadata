@@ -11,6 +11,7 @@
 """
 Test the connection against a source system
 """
+
 import traceback
 from typing import Callable
 
@@ -45,17 +46,11 @@ def get_fn(blueprint: Blueprint) -> Callable:
     if not is_airflow_3_or_higher():
         from airflow.www.app import csrf
     else:
-        # Airflow 3.x doesn't have csrf in the same location, use a no-op
-        class csrf:
-            @staticmethod
-            def exempt(f):
-                return f
+        from airflow.providers.fab.www.app import csrf
 
     @blueprint.route("/run_automation", methods=["POST"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
     def run_automation() -> Response:
         """
         Given a WorkflowSource Schema, create the engine
@@ -65,9 +60,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
         json_request = request.get_json(cache=False)
 
         try:
-            automation_workflow = parse_automation_workflow_gracefully(
-                config_dict=json_request
-            )
+            automation_workflow = parse_automation_workflow_gracefully(config_dict=json_request)
 
             # we need to instantiate the secret manager in case secrets are passed
             SecretsManagerFactory(
@@ -79,9 +72,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
             execute(automation_workflow)
 
             return ApiResponse.success(
-                {
-                    "message": f"Workflow [{escape(automation_workflow.name)}] has been triggered."
-                }
+                {"message": f"Workflow [{escape(automation_workflow.name)}] has been triggered."}
             )
 
         except ValidationError as err:

@@ -16,10 +16,9 @@ Each edge contains:
 - fromDictionary -> toDictionary (table lineage)
 - condition: [{fromCol, toCol}] (column lineage)
 """
+
 import traceback
 from typing import Iterable, Optional
-
-from pydantic import ValidationError
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -64,16 +63,12 @@ class BurstiqLineageSource(Source):
         self.test_connection()
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: BurstIQConnection = config.serviceConnection.root.config
         if not isinstance(connection, BurstIQConnection):
-            raise InvalidSourceException(
-                f"Expected BurstIQConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected BurstIQConnection, but got {connection}")
         return cls(config, metadata)
 
     def test_connection(self):
@@ -119,28 +114,23 @@ class BurstiqLineageSource(Source):
             logger.debug(f"Table not found for dictionary {dictionary_name}: {exc}")
             return None
 
-    def _process_edge(self, edge_data: dict) -> Optional[Either[AddLineageRequest]]:
+    def _process_edge(self, edge: BurstIQEdge) -> Optional[Either[AddLineageRequest]]:
         """
         Process a single edge and create lineage request
 
         Args:
-            edge_data: Edge data from API: {fromDictionary, toDictionary, condition: [{fromCol, toCol}]}
+            edge: BurstIQEdge model instance
 
         Returns:
             Either[AddLineageRequest] or None
         """
         try:
-            # Parse edge
-            edge = BurstIQEdge.model_validate(edge_data)
-
-            # Get source and target tables
             from_table = self._get_table_entity(edge.fromDictionary)
             to_table = self._get_table_entity(edge.toDictionary)
 
             if not from_table or not to_table:
                 logger.debug(
-                    f"Skipping edge {edge.name}: tables not found "
-                    f"({edge.fromDictionary} -> {edge.toDictionary})"
+                    f"Skipping edge {edge.name}: tables not found ({edge.fromDictionary} -> {edge.toDictionary})"
                 )
                 return None
 
@@ -152,11 +142,7 @@ class BurstiqLineageSource(Source):
                     to_col_fqn = get_column_fqn(to_table, col_map.toCol)
 
                     if from_col_fqn and to_col_fqn:
-                        column_lineage.append(
-                            ColumnLineage(
-                                fromColumns=[from_col_fqn], toColumn=to_col_fqn
-                            )
-                        )
+                        column_lineage.append(ColumnLineage(fromColumns=[from_col_fqn], toColumn=to_col_fqn))
 
             # Create lineage details
             lineage_details = None
@@ -174,24 +160,15 @@ class BurstiqLineageSource(Source):
             )
 
             logger.info(
-                f"Created lineage: {edge.fromDictionary} -> {edge.toDictionary} "
-                f"({len(column_lineage)} columns)"
+                f"Created lineage: {edge.fromDictionary} -> {edge.toDictionary} ({len(column_lineage)} columns)"
             )
 
             return Either(right=AddLineageRequest(edge=entities_edge))
 
-        except ValidationError as exc:
-            return Either(
-                left=StackTraceError(
-                    name=f"Validation error for edge",
-                    error=str(exc),
-                    stackTrace=traceback.format_exc(),
-                )
-            )
         except Exception as exc:
             return Either(
                 left=StackTraceError(
-                    name=f"Error processing edge",
+                    name=f"Error processing edge",  # noqa: F541
                     error=str(exc),
                     stackTrace=traceback.format_exc(),
                 )
@@ -212,9 +189,8 @@ class BurstiqLineageSource(Source):
             edges = client.get_edges()
             logger.info(f"Processing {len(edges)} edges")
 
-            # Process each edge
-            for edge_data in edges:
-                result = self._process_edge(edge_data)
+            for edge in edges:
+                result = self._process_edge(edge)
                 if result:
                     yield result
 

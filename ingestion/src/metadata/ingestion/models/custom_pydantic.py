@@ -15,6 +15,7 @@ This classes are used in the generated module, which should have NO
 dependencies against any other metadata package. This class should
 be self-sufficient with only pydantic at import time.
 """
+
 import json
 import logging
 from typing import Any, Callable, Dict, Literal, Optional, Union
@@ -188,15 +189,9 @@ class _CustomSecretStr(SecretStr):
             secret_id = self._secret_value.replace(SECRET, "")
             logger.info(f"Getting secret value for {secret_id}")
             try:
-                return (
-                    SecretsManagerFactory()
-                    .get_secrets_manager()
-                    .get_string_value(secret_id)
-                )
+                return SecretsManagerFactory().get_secrets_manager().get_string_value(secret_id)
             except Exception as exc:
-                logger.error(
-                    f"Secret value [{secret_id}] not present in the configured secrets manager: {exc}"
-                )
+                logger.error(f"Secret value [{secret_id}] not present in the configured secrets manager: {exc}")
         return self._secret_value
 
 
@@ -215,10 +210,26 @@ def handle_secret(value: Any, handler, info: SerializationInfo) -> str:
 CustomSecretStr = Annotated[_CustomSecretStr, WrapSerializer(handle_secret)]
 
 
+def format_validation_error(exc: Exception) -> str:
+    """Render a Pydantic ``ValidationError`` (v2) as a compact one-liner
+    suitable for log messages and workflow status warnings.
+
+    Each field error becomes ``field.path: message``, joined by ``; ``.
+    Falls back to ``str(exc)`` for non-Pydantic exceptions so callers
+    don't need to type-check.
+
+    Example output::
+
+        entries.0.dataPath: Field required; entries.1.structureFormat: Input should be a valid string
+    """
+    errors = getattr(exc, "errors", None)
+    if callable(errors):
+        return "; ".join(f"{'.'.join(str(p) for p in err.get('loc', ()))}: {err.get('msg', '')}" for err in errors())
+    return str(exc)
+
+
 def ignore_type_decoder(type_: Any) -> None:
     """Given a type_, add a custom decoder to the BaseModel
     to ignore any decoding errors for that type_."""
     # We don't import the constants from the constants module to avoid circular imports
-    BaseModel.model_config[JSON_ENCODERS][type_] = {
-        lambda v: v.decode("utf-8", "ignore")
-    }
+    BaseModel.model_config[JSON_ENCODERS][type_] = {lambda v: v.decode("utf-8", "ignore")}

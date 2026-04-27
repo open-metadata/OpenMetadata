@@ -129,9 +129,7 @@ def test_table_diff(
     # Update table2 FQN with actual service name
     for param in test_case_definition.parameterValues:
         if param.name == "table2":
-            param.value = param.value.format(
-                db_service=db_service.fullyQualifiedName.root
-            )
+            param.value = param.value.format(db_service=db_service.fullyQualifiedName.root)
 
     # Configure test suite workflow
     test_suite_config = {
@@ -169,8 +167,6 @@ def test_table_diff(
         fields=["*"],
         nullable=False,
     )
-    cleanup_fqns(
-        TestCase, f"{table1.fullyQualifiedName.root}.{test_case_definition.name}"
-    )
+    cleanup_fqns(TestCase, f"{table1.fullyQualifiedName.root}.{test_case_definition.name}")
 
     assert_equal_pydantic_objects(expected_result, test_case_entity.testCaseResult)

@@ -9,9 +9,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """NoSQL Sampler"""
+
 from typing import Dict, List, Optional, Tuple
 
-from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
+from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.profiler.adaptors.factory import factory
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.sampler.sampler_interface import SamplerInterface
@@ -43,9 +45,7 @@ class NoSQLSampler(SamplerInterface):
         Get random sample from user query
         """
         limit = self._get_limit()
-        return self.client.query(
-            self.raw_dataset, self.raw_dataset.columns, self.sample_query, limit
-        )
+        return self.client.query(self.raw_dataset, self.raw_dataset.columns, self.sample_query, limit)
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """
@@ -53,10 +53,7 @@ class NoSQLSampler(SamplerInterface):
         If the engine does not support a custom query, an error will be raised.
         """
         records = self._rdn_sample_from_user_query()
-        columns = [
-            SQALikeColumn(name=column.name.root, type=column.dataType)
-            for column in self.raw_dataset.columns
-        ]
+        columns = [SQALikeColumn(name=column.name.root, type=column.dataType) for column in self.raw_dataset.columns]
         rows, cols = self.transpose_records(records, columns)
         return TableData(
             rows=[[self._truncate_cell(str(cell)) for cell in row] for row in rows],
@@ -76,9 +73,7 @@ class NoSQLSampler(SamplerInterface):
         returns sampled ometa dataframes
         """
         limit = self._get_limit()
-        records = self.client.scan(
-            self.raw_dataset, self.raw_dataset.columns, int(limit)
-        )
+        records = self.client.scan(self.raw_dataset, self.raw_dataset.columns, int(limit))
         rows, cols = self.transpose_records(records, columns)
         return TableData(
             rows=[[self._truncate_cell(str(cell)) for cell in row] for row in rows],
@@ -87,10 +82,11 @@ class NoSQLSampler(SamplerInterface):
 
     def _get_limit(self) -> Optional[int]:
         num_rows = self.client.item_count(self.raw_dataset)
-        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
-            limit = num_rows * (self.sample_config.profileSample or 100 / 100)
-        elif self.sample_config.profileSampleType == ProfileSampleType.ROWS:
-            limit = self.sample_config.profileSample
+        static = self.sample_config.get_static_config()
+        if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
+            limit = num_rows * (static.profileSample or 100 / 100)
+        elif static and static.profileSampleType == ProfileSampleType.ROWS:
+            limit = static.profileSample
         else:
             limit = SAMPLE_DATA_DEFAULT_COUNT
         return limit
@@ -108,7 +104,4 @@ class NoSQLSampler(SamplerInterface):
         return rows, columns
 
     def get_columns(self) -> List[Optional[SQALikeColumn]]:
-        return [
-            SQALikeColumn(name=c.name.root, type=c.dataType)
-            for c in self.raw_dataset.columns
-        ]
+        return [SQALikeColumn(name=c.name.root, type=c.dataType) for c in self.raw_dataset.columns]

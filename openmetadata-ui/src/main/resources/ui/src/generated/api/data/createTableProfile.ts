@@ -259,8 +259,7 @@ export interface TableProfile {
     /**
      * No.of rows in the table. This is always executed on the whole table.
      */
-    rowCount?:           number;
-    samplingMethodType?: SamplingMethodType;
+    rowCount?: number;
     /**
      * Table size in GB
      */
@@ -277,12 +276,4 @@ export interface TableProfile {
 export enum ProfileSampleType {
     Percentage = "PERCENTAGE",
     Rows = "ROWS",
-}
-
-/**
- * Type of Sampling Method (BERNOULLI or SYSTEM)
- */
-export enum SamplingMethodType {
-    Bernoulli = "BERNOULLI",
-    System = "SYSTEM",
 }

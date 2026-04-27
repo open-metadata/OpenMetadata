@@ -3,6 +3,8 @@ package org.openmetadata.service.governance.workflows;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,12 +17,12 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import javax.sql.DataSource;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
-import org.flowable.bpmn.model.BpmnModel;
-import org.flowable.bpmn.model.Message;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.api.FlowableWrongDbException;
 import org.flowable.common.engine.impl.el.DefaultExpressionManager;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
@@ -39,7 +41,6 @@ import org.flowable.job.api.Job;
 import org.flowable.task.api.Task;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.schema.configuration.WorkflowSettings;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
@@ -56,9 +57,9 @@ import org.openmetadata.service.governance.workflows.flowable.sql.SqlMapper;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockExecutionSql;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockJobSql;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
@@ -76,13 +77,16 @@ public class WorkflowHandler {
 
   private WorkflowHandler(OpenMetadataApplicationConfig config, boolean isMigrationContext) {
     this.isMigrationContext = isMigrationContext;
-    ProcessEngineConfiguration processEngineConfiguration =
-        new StandaloneProcessEngineConfiguration()
-            .setJdbcUrl(config.getDataSourceFactory().getUrl())
-            .setJdbcUsername(config.getDataSourceFactory().getUser())
-            .setJdbcPassword(config.getDataSourceFactory().getPassword())
-            .setJdbcDriver(config.getDataSourceFactory().getDriverClass())
-            .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
+    StandaloneProcessEngineConfiguration processEngineConfiguration =
+        new StandaloneProcessEngineConfiguration();
+    processEngineConfiguration.setJdbcUrl(config.getDataSourceFactory().getUrl());
+    processEngineConfiguration.setJdbcUsername(config.getDataSourceFactory().getUser());
+    processEngineConfiguration.setJdbcPassword(config.getDataSourceFactory().getPassword());
+    processEngineConfiguration.setJdbcDriver(config.getDataSourceFactory().getDriverClass());
+    processEngineConfiguration.setDatabaseSchemaUpdate(
+        isMigrationContext
+            ? ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE
+            : ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE);
 
     if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
       processEngineConfiguration.setDatabaseType(ProcessEngineConfiguration.DATABASE_TYPE_MYSQL);
@@ -90,7 +94,9 @@ public class WorkflowHandler {
       processEngineConfiguration.setDatabaseType(ProcessEngineConfiguration.DATABASE_TYPE_POSTGRES);
     }
 
-    initializeExpressionMap(config);
+    if (!isMigrationContext) {
+      initializeExpressionMap(config);
+    }
     initializeNewProcessEngine(processEngineConfiguration);
   }
 
@@ -102,6 +108,57 @@ public class WorkflowHandler {
             config.getPipelineServiceClientConfiguration()));
   }
 
+  private static DataSource migrationDataSource(ProcessEngineConfiguration config) {
+    if (config.getDataSource() != null) {
+      return config.getDataSource();
+    }
+    String url = config.getJdbcUrl();
+    String user = config.getJdbcUsername();
+    String password = config.getJdbcPassword();
+    return new DataSource() {
+      @Override
+      public java.io.PrintWriter getLogWriter() {
+        return null;
+      }
+
+      @Override
+      public void setLogWriter(java.io.PrintWriter out) {}
+
+      @Override
+      public void setLoginTimeout(int seconds) {}
+
+      @Override
+      public int getLoginTimeout() {
+        return 0;
+      }
+
+      @Override
+      public java.util.logging.Logger getParentLogger() {
+        return java.util.logging.Logger.getLogger("migration");
+      }
+
+      @Override
+      public <T> T unwrap(Class<T> iface) throws SQLException {
+        throw new SQLException("Not a wrapper");
+      }
+
+      @Override
+      public boolean isWrapperFor(Class<?> iface) {
+        return false;
+      }
+
+      @Override
+      public java.sql.Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(url, user, password);
+      }
+
+      @Override
+      public java.sql.Connection getConnection(String u, String p) throws SQLException {
+        return DriverManager.getConnection(url, u, p);
+      }
+    };
+  }
+
   public void initializeNewProcessEngine(
       ProcessEngineConfiguration currentProcessEngineConfiguration) {
     ProcessEngines.destroy();
@@ -111,40 +168,44 @@ public class WorkflowHandler {
     StandaloneProcessEngineConfiguration processEngineConfiguration =
         new StandaloneProcessEngineConfiguration();
 
-    // Setting Database Configuration
-    processEngineConfiguration
-        .setJdbcUrl(currentProcessEngineConfiguration.getJdbcUrl())
-        .setJdbcUsername(currentProcessEngineConfiguration.getJdbcUsername())
-        .setJdbcPassword(currentProcessEngineConfiguration.getJdbcPassword())
-        .setJdbcDriver(currentProcessEngineConfiguration.getJdbcDriver())
-        .setDatabaseType(currentProcessEngineConfiguration.getDatabaseType())
-        .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
-
-    // Setting Async Executor Configuration
-    processEngineConfiguration
-        .setAsyncExecutorActivate(!isMigrationContext)
-        .setAsyncExecutorCorePoolSize(workflowSettings.getExecutorConfiguration().getCorePoolSize())
-        .setAsyncExecutorMaxPoolSize(workflowSettings.getExecutorConfiguration().getMaxPoolSize())
-        .setAsyncExecutorThreadPoolQueueSize(
-            workflowSettings.getExecutorConfiguration().getQueueSize())
-        .setAsyncExecutorAsyncJobLockTimeInMillis(
-            workflowSettings.getExecutorConfiguration().getJobLockTimeInMillis())
-        .setAsyncExecutorMaxAsyncJobsDuePerAcquisition(
-            workflowSettings.getExecutorConfiguration().getTasksDuePerAcquisition())
-        .setAsyncExecutorDefaultAsyncJobAcquireWaitTime(
-            workflowSettings.getExecutorConfiguration().getAsyncJobAcquisitionInterval())
-        .setAsyncExecutorDefaultTimerJobAcquireWaitTime(
-            workflowSettings.getExecutorConfiguration().getTimerJobAcquisitionInterval());
-
-    // Setting History CleanUp - disable during migration to prevent race conditions
-    processEngineConfiguration
-        .setAsyncHistoryEnabled(true)
-        .setEnableHistoryCleaning(!isMigrationContext)
-        .setCleanInstancesEndedAfter(
-            Duration.ofDays(
-                workflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays()))
-        .setHistoryCleaningTimeCycleConfig(
-            workflowSettings.getHistoryCleanUpConfiguration().getTimeCycleConfig());
+    if (isMigrationContext) {
+      processEngineConfiguration.setDataSource(
+          new IdempotentDdlDataSource(migrationDataSource(currentProcessEngineConfiguration)));
+    } else {
+      processEngineConfiguration.setJdbcUrl(currentProcessEngineConfiguration.getJdbcUrl());
+      processEngineConfiguration.setJdbcUsername(
+          currentProcessEngineConfiguration.getJdbcUsername());
+      processEngineConfiguration.setJdbcPassword(
+          currentProcessEngineConfiguration.getJdbcPassword());
+      processEngineConfiguration.setJdbcDriver(currentProcessEngineConfiguration.getJdbcDriver());
+    }
+    processEngineConfiguration.setDatabaseType(currentProcessEngineConfiguration.getDatabaseType());
+    processEngineConfiguration.setDatabaseSchemaUpdate(
+        isMigrationContext
+            ? ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE
+            : ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE);
+    processEngineConfiguration.setAsyncExecutorActivate(!isMigrationContext);
+    processEngineConfiguration.setAsyncExecutorCorePoolSize(
+        workflowSettings.getExecutorConfiguration().getCorePoolSize());
+    processEngineConfiguration.setAsyncExecutorMaxPoolSize(
+        workflowSettings.getExecutorConfiguration().getMaxPoolSize());
+    processEngineConfiguration.setAsyncExecutorThreadPoolQueueSize(
+        workflowSettings.getExecutorConfiguration().getQueueSize());
+    processEngineConfiguration.setAsyncExecutorAsyncJobLockTimeInMillis(
+        workflowSettings.getExecutorConfiguration().getJobLockTimeInMillis());
+    processEngineConfiguration.setAsyncExecutorMaxAsyncJobsDuePerAcquisition(
+        workflowSettings.getExecutorConfiguration().getTasksDuePerAcquisition());
+    processEngineConfiguration.setAsyncExecutorDefaultAsyncJobAcquireWaitTime(
+        workflowSettings.getExecutorConfiguration().getAsyncJobAcquisitionInterval());
+    processEngineConfiguration.setAsyncExecutorDefaultTimerJobAcquireWaitTime(
+        workflowSettings.getExecutorConfiguration().getTimerJobAcquisitionInterval());
+    processEngineConfiguration.setAsyncHistoryEnabled(true);
+    processEngineConfiguration.setEnableHistoryCleaning(!isMigrationContext);
+    processEngineConfiguration.setCleanInstancesEndedAfter(
+        Duration.ofDays(
+            workflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays()));
+    processEngineConfiguration.setHistoryCleaningTimeCycleConfig(
+        workflowSettings.getHistoryCleanUpConfiguration().getTimeCycleConfig());
 
     // Add Expression Manager
     processEngineConfiguration.setExpressionManager(new DefaultExpressionManager(expressionMap));
@@ -152,7 +213,21 @@ public class WorkflowHandler {
     // Add Global Failure Listener
     processEngineConfiguration.setEventListeners(List.of(new WorkflowFailureListener()));
 
-    this.processEngine = processEngineConfiguration.buildProcessEngine();
+    try {
+      this.processEngine = processEngineConfiguration.buildProcessEngine();
+    } catch (FlowableWrongDbException e) {
+      String hint =
+          isMigrationContext
+              ? String.format(
+                  "Flowable schema version mismatch during migration: DB has '%s', library expects '%s'. "
+                      + "Re-running migrate should auto-heal any partial upgrade.",
+                  e.getDbVersion(), e.getLibraryVersion())
+              : String.format(
+                  "Flowable schema not initialized or at unexpected version (DB: '%s', expected: '%s'). "
+                      + "Run `openmetadata-ops.sh migrate` before starting the server.",
+                  e.getDbVersion(), e.getLibraryVersion());
+      throw new IllegalStateException(hint, e);
+    }
 
     // Add SqlMapper
     processEngine
@@ -525,6 +600,33 @@ public class WorkflowHandler {
     taskService.setVariable(taskId, "customTaskId", customTaskId.toString());
   }
 
+  /**
+   * Set a workflow variable at process instance scope with its raw (non-namespaced)
+   * name, matching the convention used by {@link
+   * org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver#buildWorkflowStartVariables}.
+   *
+   * <p>Used for cross-stage inputs like {@code taskAssignees} and {@code taskReviewers}
+   * that {@code SetApprovalAssigneesImpl} reads via {@code execution.getVariable(name)}.
+   * Variables passed through {@link #transformToNodeVariables(UUID, Map)} are prefixed
+   * with the current stage name and become invisible to that reader, so this method
+   * provides a separate path for setting them during a mid-workflow transition.
+   */
+  public void setProcessVariable(UUID customTaskId, String name, Object value) {
+    Optional<Task> oTask = Optional.ofNullable(getTaskFromCustomTaskId(customTaskId));
+    if (oTask.isPresent()) {
+      processEngine.getTaskService().setVariable(oTask.get().getId(), name, value);
+      LOG.debug(
+          "[WorkflowHandler] setProcessVariable: customTaskId='{}', name='{}', value='{}'",
+          customTaskId,
+          name,
+          value);
+    } else {
+      LOG.warn(
+          "[WorkflowHandler] setProcessVariable: no Flowable task for customTaskId='{}'",
+          customTaskId);
+    }
+  }
+
   public String getParentActivityId(String executionId) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
     String activityId = null;
@@ -658,6 +760,15 @@ public class WorkflowHandler {
   }
 
   public boolean resolveTask(UUID customTaskId, Map<String, Object> variables) {
+    return resolveTaskInternal(customTaskId, variables, false);
+  }
+
+  public boolean resolveLegacyThreadTask(UUID customTaskId, Map<String, Object> variables) {
+    return resolveTaskInternal(customTaskId, variables, true);
+  }
+
+  private boolean resolveTaskInternal(
+      UUID customTaskId, Map<String, Object> variables, boolean legacyThreadTask) {
     TaskService taskService = processEngine.getTaskService();
     LOG.debug("[WorkflowTask] RESOLVE: customTaskId='{}' variables={}", customTaskId, variables);
     try {
@@ -672,9 +783,9 @@ public class WorkflowHandler {
 
         // Check if this is a multi-approval task
         Integer approvalThreshold =
-            (Integer) taskService.getVariable(task.getId(), "approvalThreshold");
+            parseThresholdValue(taskService.getVariable(task.getId(), "approvalThreshold"));
         Integer rejectionThreshold =
-            (Integer) taskService.getVariable(task.getId(), "rejectionThreshold");
+            parseThresholdValue(taskService.getVariable(task.getId(), "rejectionThreshold"));
         if ((approvalThreshold != null && approvalThreshold > 1)
             || (rejectionThreshold != null && rejectionThreshold > 1)) {
           // This is a multi-reviewer approval task
@@ -688,8 +799,11 @@ public class WorkflowHandler {
             LOG.debug(
                 "[WorkflowTask] SUCCESS: Multi-approval task '{}' recorded vote, waiting for more votes",
                 customTaskId);
-            // Update the Thread entity to remove the task from the current voter's feed
-            removeTaskFromVoterFeed(task, customTaskId, variables);
+            if (legacyThreadTask) {
+              removeTaskFromVoterFeedForLegacyThread(task, customTaskId, variables);
+            } else {
+              removeTaskFromVoterFeedForTaskEntity(task, customTaskId, variables);
+            }
           }
         } else {
           // Single approval - original behavior
@@ -727,7 +841,7 @@ public class WorkflowHandler {
     }
   }
 
-  private void removeTaskFromVoterFeed(
+  private void removeTaskFromVoterFeedForLegacyThread(
       Task flowableTask, UUID customTaskId, Map<String, Object> variables) {
     try {
       // Extract the current user from variables
@@ -741,10 +855,10 @@ public class WorkflowHandler {
           "[WorkflowTask] Removing task '{}' from feed for user '{}'", customTaskId, currentUser);
 
       // Get the FeedRepository to work with Thread entities
-      FeedRepository feedRepository = Entity.getFeedRepository();
+      org.openmetadata.service.jdbi3.FeedRepository feedRepository = Entity.getFeedRepository();
 
       // Find the Thread entity by the customTaskId
-      Thread taskThread = null;
+      org.openmetadata.schema.entity.feed.Thread taskThread = null;
       try {
         taskThread = feedRepository.get(customTaskId);
       } catch (Exception e) {
@@ -786,7 +900,7 @@ public class WorkflowHandler {
           taskThread.withUpdatedBy(currentUser).withUpdatedAt(System.currentTimeMillis());
 
           // Persist the changes
-          Thread finalTaskThread = taskThread;
+          org.openmetadata.schema.entity.feed.Thread finalTaskThread = taskThread;
           Entity.getJdbi()
               .useHandle(
                   handle -> {
@@ -807,48 +921,7 @@ public class WorkflowHandler {
               taskThread.getId());
         }
       }
-
-      // Also update Flowable task to remove the user from candidates
-      TaskService taskService = processEngine.getTaskService();
-      if (flowableTask != null) {
-        // Store voted users in Flowable variables
-        @SuppressWarnings("unchecked")
-        List<String> votedUsers =
-            (List<String>) taskService.getVariable(flowableTask.getId(), "votedUsers");
-        if (votedUsers == null) {
-          votedUsers = new ArrayList<>();
-        }
-
-        if (!votedUsers.contains(currentUser)) {
-          votedUsers.add(currentUser);
-          taskService.setVariable(flowableTask.getId(), "votedUsers", votedUsers);
-          LOG.debug(
-              "[WorkflowTask] Added user '{}' to voted users list for Flowable task", currentUser);
-        }
-
-        // Remove the user from Flowable task assignees if they're directly assigned
-        try {
-          // If current user is the assignee, unassign them
-          String currentAssignee = flowableTask.getAssignee();
-          if (currentUser.equals(currentAssignee)) {
-            taskService.unclaim(flowableTask.getId());
-            LOG.debug(
-                "[WorkflowTask] Unclaimed Flowable task '{}' from user '{}'",
-                flowableTask.getId(),
-                currentUser);
-          }
-
-          // Remove from candidate users if present
-          taskService.deleteCandidateUser(flowableTask.getId(), currentUser);
-          LOG.debug(
-              "[WorkflowTask] Removed user '{}' from candidate users for Flowable task '{}'",
-              currentUser,
-              flowableTask.getId());
-
-        } catch (Exception e) {
-          LOG.debug("[WorkflowTask] Could not update Flowable task assignees: {}", e.getMessage());
-        }
-      }
+      updateFlowableVoteTracking(flowableTask, currentUser);
     } catch (Exception e) {
       LOG.error(
           "[WorkflowTask] Failed to update task voter information for task '{}': {}",
@@ -860,6 +933,10 @@ public class WorkflowHandler {
   }
 
   private String extractCurrentUser(Map<String, Object> variables) {
+    if (variables == null || variables.isEmpty()) {
+      return null;
+    }
+
     // Try direct key first
     String currentUser = (String) variables.get("updatedBy");
     if (currentUser != null) {
@@ -877,6 +954,116 @@ public class WorkflowHandler {
     }
 
     return null;
+  }
+
+  /**
+   * Update Task entity to reflect that a user has voted (for multi-approval tasks).
+   *
+   * <p>This method handles the new Task entity system. It removes the voting user from the
+   * assignees list so they no longer see the task in their pending tasks.
+   */
+  private void removeTaskFromVoterFeedForTaskEntity(
+      Task flowableTask, UUID customTaskId, Map<String, Object> variables) {
+    try {
+      String currentUser = extractCurrentUser(variables);
+      if (currentUser == null) {
+        LOG.warn("[WorkflowTask] Could not determine current user to remove from task feed");
+        return;
+      }
+
+      LOG.info(
+          "[WorkflowTask] Removing Task entity '{}' from feed for user '{}'",
+          customTaskId,
+          currentUser);
+
+      TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+      org.openmetadata.schema.entity.tasks.Task taskEntity =
+          taskRepository.get(
+              null,
+              customTaskId,
+              taskRepository.getFields(
+                  "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,resolution"));
+
+      if (taskEntity != null && taskEntity.getAssignees() != null) {
+        List<EntityReference> currentAssignees = new ArrayList<>(taskEntity.getAssignees());
+
+        boolean removed =
+            currentAssignees.removeIf(
+                assignee -> {
+                  if (assignee.getName() != null && assignee.getName().equals(currentUser)) {
+                    return true;
+                  }
+                  if (Entity.USER.equals(assignee.getType())) {
+                    try {
+                      User user =
+                          Entity.getEntity(Entity.USER, assignee.getId(), "", Include.NON_DELETED);
+                      return user.getName().equals(currentUser);
+                    } catch (Exception ex) {
+                      LOG.debug("Could not fetch user entity for assignee: {}", ex.getMessage());
+                    }
+                  }
+                  return false;
+                });
+
+        if (removed) {
+          taskEntity.setAssignees(currentAssignees);
+          taskEntity.setUpdatedBy(currentUser);
+          taskEntity.setUpdatedAt(System.currentTimeMillis());
+
+          taskRepository.createOrUpdate(null, taskEntity, currentUser);
+
+          LOG.info(
+              "[WorkflowTask] Successfully removed user '{}' from Task '{}' assignees. "
+                  + "Remaining assignees: {}",
+              currentUser,
+              taskEntity.getId(),
+              currentAssignees.size());
+        } else {
+          LOG.debug(
+              "[WorkflowTask] User '{}' was not in the assignees list for Task '{}'",
+              currentUser,
+              taskEntity.getId());
+        }
+      }
+      updateFlowableVoteTracking(flowableTask, currentUser);
+    } catch (Exception e) {
+      LOG.error(
+          "[WorkflowTask] Failed to update task voter information for Task entity '{}': {}",
+          customTaskId,
+          e.getMessage(),
+          e);
+    }
+  }
+
+  private void updateFlowableVoteTracking(Task flowableTask, String currentUser) {
+    if (flowableTask == null || currentUser == null) {
+      return;
+    }
+
+    TaskService taskService = processEngine.getTaskService();
+    @SuppressWarnings("unchecked")
+    List<String> votedUsers =
+        (List<String>) taskService.getVariable(flowableTask.getId(), "votedUsers");
+    if (votedUsers == null) {
+      votedUsers = new ArrayList<>();
+    }
+
+    if (!votedUsers.contains(currentUser)) {
+      votedUsers.add(currentUser);
+      taskService.setVariable(flowableTask.getId(), "votedUsers", votedUsers);
+      LOG.debug(
+          "[WorkflowTask] Added user '{}' to voted users list for Flowable task", currentUser);
+    }
+
+    try {
+      String currentAssignee = flowableTask.getAssignee();
+      if (currentUser.equals(currentAssignee)) {
+        taskService.unclaim(flowableTask.getId());
+      }
+      taskService.deleteCandidateUser(flowableTask.getId(), currentUser);
+    } catch (Exception e) {
+      LOG.debug("[WorkflowTask] Could not update Flowable task assignees: {}", e.getMessage());
+    }
   }
 
   private boolean handleMultiApproval(
@@ -913,7 +1100,7 @@ public class WorkflowHandler {
     String updatedByVariable = getNamespacedVariableName(nodeName, "updatedBy");
     String resultVariable = getNamespacedVariableName(nodeName, "result");
     String currentUser = (String) variables.get(updatedByVariable);
-    Boolean approved = (Boolean) variables.get(resultVariable);
+    Boolean approved = parseApprovalDecision(variables.get(resultVariable));
 
     if (currentUser == null || approved == null) {
       LOG.warn(
@@ -983,6 +1170,22 @@ public class WorkflowHandler {
     return false;
   }
 
+  private Boolean parseApprovalDecision(Object value) {
+    if (value instanceof Boolean boolValue) {
+      return boolValue;
+    }
+
+    if (value instanceof String stringValue) {
+      return switch (stringValue.trim().toLowerCase(java.util.Locale.ROOT)) {
+        case "true", "approve", "approved" -> true;
+        case "false", "reject", "rejected" -> false;
+        default -> null;
+      };
+    }
+
+    return null;
+  }
+
   public boolean isTaskStillOpen(UUID customTaskId) {
     try {
       Task task = getTaskFromCustomTaskId(customTaskId);
@@ -990,6 +1193,76 @@ public class WorkflowHandler {
     } catch (Exception e) {
       LOG.debug("Task {} not found or already completed", customTaskId);
       return false;
+    }
+  }
+
+  /**
+   * Returns true when there is an active Flowable runtime task for the given custom task ID.
+   * This is used during migration cutover where legacy tasks might be converted to Task entities
+   * before `workflowInstanceId` is backfilled.
+   */
+  public boolean hasActiveRuntimeTask(UUID customTaskId) {
+    return isTaskStillOpen(customTaskId);
+  }
+
+  public boolean isAwaitingAdditionalVotes(UUID customTaskId) {
+    try {
+      Task task = getTaskFromCustomTaskId(customTaskId);
+      if (task == null || task.isSuspended()) {
+        return false;
+      }
+
+      TaskService taskService = processEngine.getTaskService();
+      Integer approvalThreshold =
+          parseThresholdValue(taskService.getVariable(task.getId(), "approvalThreshold"));
+      Integer rejectionThreshold =
+          parseThresholdValue(taskService.getVariable(task.getId(), "rejectionThreshold"));
+
+      int effectiveApprovalThreshold = approvalThreshold != null ? approvalThreshold : 1;
+      int effectiveRejectionThreshold = rejectionThreshold != null ? rejectionThreshold : 1;
+      if (effectiveApprovalThreshold <= 1 && effectiveRejectionThreshold <= 1) {
+        return false;
+      }
+
+      @SuppressWarnings("unchecked")
+      List<String> approversList =
+          (List<String>) taskService.getVariable(task.getId(), "approversList");
+      @SuppressWarnings("unchecked")
+      List<String> rejectersList =
+          (List<String>) taskService.getVariable(task.getId(), "rejectersList");
+
+      int approvalCount = approversList != null ? approversList.size() : 0;
+      int rejectionCount = rejectersList != null ? rejectersList.size() : 0;
+      return approvalCount < effectiveApprovalThreshold
+          && rejectionCount < effectiveRejectionThreshold;
+    } catch (Exception e) {
+      LOG.warn("Could not determine multi-approval vote state for task {}", customTaskId, e);
+      return false;
+    }
+  }
+
+  /**
+   * Returns workflow instance ID (if available as runtime variable) for an active task.
+   * Returns null if task is not active or the variable is missing.
+   */
+  public UUID getRuntimeWorkflowInstanceId(UUID customTaskId) {
+    try {
+      Task task = getTaskFromCustomTaskId(customTaskId);
+      if (task == null) {
+        return null;
+      }
+      Object workflowInstanceId =
+          processEngine.getTaskService().getVariable(task.getId(), "workflowInstanceId");
+      if (workflowInstanceId == null) {
+        return null;
+      }
+      return UUID.fromString(workflowInstanceId.toString());
+    } catch (Exception e) {
+      LOG.debug(
+          "Could not fetch runtime workflowInstanceId for customTaskId '{}': {}",
+          customTaskId,
+          e.getMessage());
+      return null;
     }
   }
 
@@ -1027,115 +1300,42 @@ public class WorkflowHandler {
               .processVariableValueEquals("customTaskId", customTaskId.toString())
               .list();
       for (Task task : tasks) {
-        // Find the correct termination message for this task
-        String terminationMessageName = findTerminationMessageName(runtimeService, task);
-        if (terminationMessageName != null) {
-          Execution execution =
-              runtimeService
-                  .createExecutionQuery()
-                  .processInstanceId(task.getProcessInstanceId())
-                  .messageEventSubscriptionName(terminationMessageName)
-                  .singleResult();
-          if (execution != null) {
-            runtimeService.messageEventReceived(terminationMessageName, execution.getId());
-            LOG.debug(
-                "Terminated task {} using message '{}'", customTaskId, terminationMessageName);
-          } else {
-            LOG.warn(
-                "No execution found for termination message '{}' for task {}",
-                terminationMessageName,
-                customTaskId);
-          }
-        } else {
-          LOG.warn("No termination message found for task {}", customTaskId);
-        }
+        terminateTask(runtimeService, task, customTaskId);
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.debug("Flowable Task for Task ID {} not found.", customTaskId);
     }
   }
 
-  /**
-   * Find the termination message name for a task.
-   * Uses deterministic message names based on the subprocess ID.
-   */
-  private String findTerminationMessageName(RuntimeService runtimeService, Task task) {
+  private void terminateTask(RuntimeService runtimeService, Task task, UUID customTaskId) {
     try {
       String taskDefinitionKey = task.getTaskDefinitionKey();
-      LOG.debug(
-          "Finding termination message for task {} with definition key '{}'",
-          task.getId(),
-          taskDefinitionKey);
-
-      // List all message event subscriptions for this process instance
-      List<Execution> allMessageExecutions =
+      int lastDot = taskDefinitionKey.lastIndexOf('.');
+      if (lastDot < 0) {
+        LOG.warn(
+            "Task definition key '{}' has no '.' separator; cannot derive termination message",
+            taskDefinitionKey);
+        return;
+      }
+      String messageName = taskDefinitionKey.substring(0, lastDot) + ".terminateProcess";
+      Execution execution =
           runtimeService
               .createExecutionQuery()
               .processInstanceId(task.getProcessInstanceId())
-              .list();
-
-      LOG.debug(
-          "Found {} executions for process {}",
-          allMessageExecutions.size(),
-          task.getProcessInstanceId());
-
-      for (Execution exec : allMessageExecutions) {
-        if (exec.getActivityId() != null) {
-          LOG.debug("Execution {} has activity ID: {}", exec.getId(), exec.getActivityId());
-        }
+              .messageEventSubscriptionName(messageName)
+              .singleResult();
+      if (execution != null) {
+        runtimeService.messageEventReceived(messageName, execution.getId());
+        LOG.debug("Terminated task {} using message '{}'", customTaskId, messageName);
+      } else {
+        LOG.warn(
+            "No termination message subscription '{}' found for task {} (definition key '{}')",
+            messageName,
+            task.getId(),
+            taskDefinitionKey);
       }
-
-      // Get the BpmnModel to see what messages are available
-      BpmnModel model =
-          processEngine.getRepositoryService().getBpmnModel(task.getProcessDefinitionId());
-
-      LOG.debug("Available messages in model:");
-      for (Message msg : model.getMessages()) {
-        LOG.debug("  - Message ID: {}, Name: {}", msg.getId(), msg.getName());
-      }
-
-      // Extract the subprocess ID from the task definition key
-      // E.g., "ApproveGlossaryTerm_approvalTask" -> "ApproveGlossaryTerm"
-      String subProcessId =
-          taskDefinitionKey.contains("_")
-              ? taskDefinitionKey.substring(0, taskDefinitionKey.lastIndexOf("_"))
-              : taskDefinitionKey;
-
-      LOG.debug(
-          "Extracted subprocess ID: '{}' from task key '{}'", subProcessId, taskDefinitionKey);
-
-      // Try both possible termination message patterns
-      // UserApprovalTask uses: subProcessId_terminateProcess
-      // ChangeReviewTask uses: subProcessId_terminateChangeReviewProcess
-      String[] messagePatterns = {
-        subProcessId + "_terminateProcess", subProcessId + "_terminateChangeReviewProcess"
-      };
-
-      for (String messageName : messagePatterns) {
-        LOG.debug("Checking for message subscription: {}", messageName);
-        List<Execution> executions =
-            runtimeService
-                .createExecutionQuery()
-                .processInstanceId(task.getProcessInstanceId())
-                .messageEventSubscriptionName(messageName)
-                .list();
-        if (!executions.isEmpty()) {
-          LOG.debug(
-              "Found {} executions with message subscription '{}'", executions.size(), messageName);
-          return messageName;
-        } else {
-          LOG.debug("No executions found for message: {}", messageName);
-        }
-      }
-
-      LOG.warn(
-          "No termination message found for task {} with definition key '{}'",
-          task.getId(),
-          task.getTaskDefinitionKey());
-      return null;
     } catch (Exception e) {
-      LOG.error("Error finding termination message for task {}", task.getId(), e);
-      return null;
+      LOG.error("Error terminating task {}", task.getId(), e);
     }
   }
 
@@ -1550,5 +1750,33 @@ public class WorkflowHandler {
 
   public RuntimeService getRuntimeService() {
     return processEngine.getRuntimeService();
+  }
+
+  private Integer parseThresholdValue(Object value) {
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof Integer integerValue) {
+      return integerValue;
+    }
+    if (value instanceof Number numericValue) {
+      return numericValue.intValue();
+    }
+    if (value instanceof String stringValue && !stringValue.isBlank()) {
+      try {
+        return Integer.parseInt(stringValue.trim());
+      } catch (NumberFormatException e) {
+        LOG.warn("Invalid threshold value '{}'", stringValue);
+      }
+    }
+    return null;
+  }
+
+  public ManagementService getManagementService() {
+    return processEngine.getManagementService();
+  }
+
+  public RepositoryService getRepositoryService() {
+    return processEngine.getRepositoryService();
   }
 }

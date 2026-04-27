@@ -74,6 +74,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchManagementClient;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.nlq.NLQService;
@@ -93,6 +94,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private final String clusterAlias;
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final NLQService nlqService;
+  private static final String SORT_FIELD_SCORE = "_score";
+  private static final String SORT_TYPE_KEYWORD = "keyword";
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
           "suggest",
@@ -974,7 +977,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       String clusterAlias)
       throws IOException {
     ElasticSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, false);
 
     LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
 
@@ -1016,7 +1019,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     ElasticSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, true);
 
     try {
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
@@ -1059,7 +1062,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
       SearchSettings searchSettings,
-      String clusterAlias)
+      String clusterAlias,
+      boolean isExport)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
@@ -1183,21 +1187,24 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     // Handle sorting
     if (!nullOrEmpty(request.getSortFieldParam()) && !request.getIsHierarchy()) {
-      String sortField = request.getSortFieldParam();
+      String sortField =
+          SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getSortFieldParam());
       String sortTypeCapitalized =
           request.getSortOrder().substring(0, 1).toUpperCase()
               + request.getSortOrder().substring(1).toLowerCase();
       SortOrder sortOrder = SortOrder.valueOf(sortTypeCapitalized);
 
-      if (!sortField.equalsIgnoreCase("_score")) {
-        requestBuilder.sort(sortField, sortOrder, "integer");
+      if (!sortField.equalsIgnoreCase(SORT_FIELD_SCORE)) {
+        boolean isKeywordField =
+            sortField.endsWith(".keyword")
+                || SearchSourceBuilderFactory.KEYWORD_SORT_FIELDS.contains(sortField);
+        requestBuilder.sort(sortField, sortOrder, isKeywordField ? SORT_TYPE_KEYWORD : "integer");
       } else {
         requestBuilder.sort(sortField, sortOrder, null);
       }
 
-      // Add tiebreaker sort for stable pagination when sorting by score
-      if (sortField.equalsIgnoreCase("_score")) {
-        requestBuilder.sort("name.keyword", SortOrder.Asc, "keyword");
+      if (sortField.equalsIgnoreCase(SORT_FIELD_SCORE) || isExport) {
+        requestBuilder.sort("name.keyword", SortOrder.Asc, SORT_TYPE_KEYWORD);
       }
     }
 
@@ -1367,8 +1374,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     // Add sorting by score first for relevance, then by fullyQualifiedName for consistent hierarchy
     // ordering
-    requestBuilder.sort("_score", SortOrder.Desc, null);
-    requestBuilder.sort("fullyQualifiedName", SortOrder.Asc, "keyword");
+    requestBuilder.sort(SORT_FIELD_SCORE, SortOrder.Desc, null);
+    requestBuilder.sort("fullyQualifiedName", SortOrder.Asc, SORT_TYPE_KEYWORD);
 
     return requestBuilder;
   }

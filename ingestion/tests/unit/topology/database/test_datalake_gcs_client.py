@@ -28,12 +28,10 @@ class TestDatalakeGcsClientColdStorage(unittest.TestCase):
 
     def setUp(self):
         self.mock_gcs_client = MagicMock()
-        self.client = DatalakeGcsClient(
-            client=self.mock_gcs_client, temp_credentials_file_path_list=[]
-        )
+        self.client = DatalakeGcsClient(client=self.mock_gcs_client, temp_credentials_file_path_list=[])
 
-    def _make_blob(self, name, storage_class=None):
-        blob = SimpleNamespace(name=name, storage_class=storage_class)
+    def _make_blob(self, name, storage_class=None, size=None):
+        blob = SimpleNamespace(name=name, storage_class=storage_class, size=size)
         return blob
 
     def test_skip_cold_storage_filters_cold_classes(self):
@@ -51,13 +49,12 @@ class TestDatalakeGcsClientColdStorage(unittest.TestCase):
         ]
         self.mock_gcs_client.get_bucket.return_value = mock_bucket
 
-        result = list(
-            self.client.get_table_names(
-                bucket_name="my-bucket", prefix=None, skip_cold_storage=True
-            )
-        )
+        result = list(self.client.get_table_names(bucket_name="my-bucket", prefix=None, skip_cold_storage=True))
 
-        self.assertEqual(result, ["standard.csv", "nearline.csv"])
+        self.assertEqual(
+            result,
+            [("standard.csv", None), ("nearline.csv", None)],
+        )
 
     def test_skip_cold_storage_false_returns_all(self):
         """
@@ -72,13 +69,12 @@ class TestDatalakeGcsClientColdStorage(unittest.TestCase):
         ]
         self.mock_gcs_client.get_bucket.return_value = mock_bucket
 
-        result = list(
-            self.client.get_table_names(
-                bucket_name="my-bucket", prefix=None, skip_cold_storage=False
-            )
-        )
+        result = list(self.client.get_table_names(bucket_name="my-bucket", prefix=None, skip_cold_storage=False))
 
-        self.assertEqual(result, ["standard.csv", "archive.csv"])
+        self.assertEqual(
+            result,
+            [("standard.csv", None), ("archive.csv", None)],
+        )
 
     def test_default_skip_cold_storage_is_false(self):
         """
@@ -94,7 +90,7 @@ class TestDatalakeGcsClientColdStorage(unittest.TestCase):
 
         result = list(self.client.get_table_names(bucket_name="my-bucket", prefix=None))
 
-        self.assertEqual(result, ["archive.csv"])
+        self.assertEqual(result, [("archive.csv", None)])
 
     def test_skip_cold_storage_handles_no_storage_class(self):
         """
@@ -108,13 +104,9 @@ class TestDatalakeGcsClientColdStorage(unittest.TestCase):
         ]
         self.mock_gcs_client.get_bucket.return_value = mock_bucket
 
-        result = list(
-            self.client.get_table_names(
-                bucket_name="my-bucket", prefix=None, skip_cold_storage=True
-            )
-        )
+        result = list(self.client.get_table_names(bucket_name="my-bucket", prefix=None, skip_cold_storage=True))
 
-        self.assertEqual(result, ["no_class.csv"])
+        self.assertEqual(result, [("no_class.csv", None)])
 
     def test_skip_cold_storage_filters_each_cold_class(self):
         """
@@ -124,16 +116,11 @@ class TestDatalakeGcsClientColdStorage(unittest.TestCase):
         """
         mock_bucket = MagicMock()
         mock_bucket.list_blobs.return_value = [
-            self._make_blob(f"{cls.lower()}.csv", storage_class=cls)
-            for cls in GCS_COLD_STORAGE_CLASSES
+            self._make_blob(f"{cls.lower()}.csv", storage_class=cls) for cls in GCS_COLD_STORAGE_CLASSES
         ]
         self.mock_gcs_client.get_bucket.return_value = mock_bucket
 
-        result = list(
-            self.client.get_table_names(
-                bucket_name="my-bucket", prefix=None, skip_cold_storage=True
-            )
-        )
+        result = list(self.client.get_table_names(bucket_name="my-bucket", prefix=None, skip_cold_storage=True))
 
         self.assertEqual(result, [])
 
@@ -146,20 +133,15 @@ class TestDatalakeGcsClientColdStorage(unittest.TestCase):
         non_cold_classes = ["STANDARD", "NEARLINE", "MULTI_REGIONAL", "REGIONAL"]
         mock_bucket = MagicMock()
         mock_bucket.list_blobs.return_value = [
-            self._make_blob(f"{cls.lower()}.csv", storage_class=cls)
-            for cls in non_cold_classes
+            self._make_blob(f"{cls.lower()}.csv", storage_class=cls) for cls in non_cold_classes
         ]
         self.mock_gcs_client.get_bucket.return_value = mock_bucket
 
-        result = list(
-            self.client.get_table_names(
-                bucket_name="my-bucket", prefix=None, skip_cold_storage=True
-            )
-        )
+        result = list(self.client.get_table_names(bucket_name="my-bucket", prefix=None, skip_cold_storage=True))
 
         self.assertEqual(
             result,
-            [f"{cls.lower()}.csv" for cls in non_cold_classes],
+            [(f"{cls.lower()}.csv", None) for cls in non_cold_classes],
         )
 
 

@@ -16,6 +16,7 @@ To run this we need OpenMetadata server up and running.
 
 No sample data is required beforehand
 """
+
 import logging
 from copy import deepcopy
 from datetime import datetime, timedelta
@@ -25,11 +26,7 @@ import pytest
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase
 
-from metadata.generated.schema.entity.data.table import (
-    ColumnProfile,
-    ProfileSampleType,
-    Table,
-)
+from metadata.generated.schema.entity.data.table import ColumnProfile, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -37,6 +34,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.time_utils import (
@@ -231,9 +229,7 @@ def test_ingestion(ingest, metadata, service_name):
     Validate that the ingestion ran correctly
     """
 
-    table_entity: Table = metadata.get_by_name(
-        entity=Table, fqn=f"{service_name}.main.main.users"
-    )
+    table_entity: Table = metadata.get_by_name(entity=Table, fqn=f"{service_name}.main.main.users")
     assert table_entity.fullyQualifiedName.root == f"{service_name}.main.main.users"
 
 
@@ -283,11 +279,9 @@ def test_profiler_workflow(ingest, metadata, service_name):
 
     assert not table.tableProfilerConfig
     assert profile.profileSample == 75.0
-    assert profile.profileSampleType == ProfileSampleType.PERCENTAGE
+    assert profile.profileSampleType.root == ProfileSampleType.PERCENTAGE
 
-    workflow_config["processor"]["config"]["tableConfig"][0][
-        "profileSampleType"
-    ] = ProfileSampleType.ROWS
+    workflow_config["processor"]["config"]["tableConfig"][0]["profileSampleType"] = ProfileSampleType.ROWS
     workflow_config["processor"]["config"]["tableConfig"][0]["profileSample"] = 3
     profiler_workflow = ProfilerWorkflow.create(workflow_config)
     profiler_workflow.execute()
@@ -307,7 +301,7 @@ def test_profiler_workflow(ingest, metadata, service_name):
     assert not table.tableProfilerConfig
     assert profile.profileSample == 3.0
     assert profile.rowCount == 4.0
-    assert profile.profileSampleType == ProfileSampleType.ROWS
+    assert profile.profileSampleType.root == ProfileSampleType.ROWS
 
 
 def test_workflow_sample_profile(ingest, metadata, service_name):
@@ -316,7 +310,13 @@ def test_workflow_sample_profile(ingest, metadata, service_name):
     workflow_config["source"]["sourceConfig"]["config"].update(
         {
             "type": "Profiler",
-            "profileSample": 50,
+            "profileSampleConfig": {
+                "sampleConfigType": "STATIC",
+                "config": {
+                    "profileSample": 50,
+                    "profileSampleType": "PERCENTAGE",
+                },
+            },
             "tableFilterPattern": {"includes": ["newUsers"]},
         }
     )
@@ -707,9 +707,7 @@ def test_profiler_workflow_with_custom_profiler_config(ingest, metadata, service
     profiler_workflow.stop()
 
     sample_data = metadata.get_sample_data(table)
-    assert sorted([c.root for c in sample_data.sampleData.columns]) == sorted(
-        ["id", "age"]
-    )
+    assert sorted([c.root for c in sample_data.sampleData.columns]) == sorted(["id", "age"])
 
 
 def test_sample_data_ingestion(ingest, metadata, service_name):

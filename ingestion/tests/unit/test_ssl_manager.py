@@ -61,9 +61,7 @@ class SSLManagerTest(TestCase):
 
 
 class KafkaSourceSSLTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection")
     @patch("metadata.ingestion.source.messaging.kafka.metadata.SSLManager")
     def test_init(self, mock_ssl_manager, test_connection):
         test_connection.return_value = True
@@ -126,27 +124,19 @@ class KafkaSourceSSLTest(TestCase):
             "sslCertificateData",
         )
         self.assertIsNotNone(
-            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get(
-                "ssl.ca.location"
-            ),
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get("ssl.ca.location"),
         )
         self.assertIsNotNone(
-            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get(
-                "ssl.key.location"
-            ),
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get("ssl.key.location"),
         )
         self.assertIsNotNone(
-            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get(
-                "ssl.certificate.location"
-            ),
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get("ssl.certificate.location"),
         )
 
 
 class CassandraSourceSSLTest(TestCase):
     @patch("metadata.utils.ssl_manager.SSLManager.setup_ssl")
-    @patch(
-        "metadata.ingestion.source.database.cassandra.metadata.CassandraSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.cassandra.metadata.CassandraSource.test_connection")
     @patch("metadata.ingestion.source.database.cassandra.connection.get_connection")
     def test_init(self, get_connection, test_connection, setup_ssl):
         get_connection.return_value = True
@@ -210,6 +200,104 @@ class CassandraSourceSSLTest(TestCase):
             cassandra_source_with_ssl.service_connection.sslConfig.root.sslCertificate.get_secret_value(),
             "sslCertificateData",
         )
+
+
+class MatillionSSLManagerTest(TestCase):
+    """
+    Tests for Matillion SSL Manager with DPC auth variant (no sslConfig)
+    """
+
+    def test_check_ssl_and_init_dpc_connection_returns_none(self):
+        from metadata.generated.schema.entity.services.connections.pipeline.matillionConnection import (
+            MatillionConnection,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = MatillionConnection(
+            connection={
+                "type": "MatillionDPC",
+                "clientId": "test-client",
+                "clientSecret": "test-secret",
+                "region": "us1",
+            }
+        )
+
+        result = check_ssl_and_init(connection)
+
+        self.assertIsNone(result)
+
+    def test_setup_ssl_dpc_connection_returns_connection_unchanged(self):
+        from metadata.generated.schema.entity.services.connections.pipeline.matillionConnection import (
+            MatillionConnection,
+        )
+
+        connection = MatillionConnection(
+            connection={
+                "type": "MatillionDPC",
+                "clientId": "test-client",
+                "clientSecret": "test-secret",
+                "region": "us1",
+            }
+        )
+
+        ssl_manager = SSLManager()
+        result = ssl_manager.setup_ssl(connection)
+
+        self.assertIs(result, connection)
+
+    def test_check_ssl_and_init_etl_connection_with_ssl(self):
+        from metadata.generated.schema.entity.services.connections.pipeline.matillionConnection import (
+            MatillionConnection,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = MatillionConnection(
+            connection={
+                "type": "MatillionETL",
+                "hostPort": "https://matillion.example.com",
+                "username": "admin",
+                "password": "password",
+                "sslConfig": {"caCertificate": "caCertificateData"},
+            }
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+
+        self.assertIsNotNone(ssl_manager)
+        self.assertIsNotNone(ssl_manager.ca_file_path)
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_check_ssl_and_init_etl_connection_without_ssl(self):
+        from metadata.generated.schema.entity.services.connections.pipeline.matillionConnection import (
+            MatillionConnection,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = MatillionConnection(
+            connection={
+                "type": "MatillionETL",
+                "hostPort": "https://matillion.example.com",
+                "username": "admin",
+                "password": "password",
+            }
+        )
+
+        result = check_ssl_and_init(connection)
+
+        self.assertIsNone(result)
+
+    def test_check_ssl_and_init_no_connection_returns_none(self):
+        from metadata.generated.schema.entity.services.connections.pipeline.matillionConnection import (
+            MatillionConnection,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = MatillionConnection()
+
+        result = check_ssl_and_init(connection)
+
+        self.assertIsNone(result)
 
 
 class MssqlSSLManagerTest(TestCase):
@@ -278,18 +366,12 @@ class MssqlSSLManagerTest(TestCase):
             trustServerCertificate=False,
         )
 
-        ssl_manager = SSLManager(
-            ca=SecretStr("CA cert"), cert=SecretStr("Cert"), key=SecretStr("Key")
-        )
+        ssl_manager = SSLManager(ca=SecretStr("CA cert"), cert=SecretStr("Cert"), key=SecretStr("Key"))
         updated_connection = ssl_manager.setup_ssl(connection)
 
         self.assertIsNotNone(updated_connection.connectionArguments)
-        self.assertEqual(
-            updated_connection.connectionArguments.root.get("Encrypt"), "yes"
-        )
-        self.assertIsNone(
-            updated_connection.connectionArguments.root.get("TrustServerCertificate")
-        )
+        self.assertEqual(updated_connection.connectionArguments.root.get("Encrypt"), "yes")
+        self.assertIsNone(updated_connection.connectionArguments.root.get("TrustServerCertificate"))
 
         ssl_manager.cleanup_temp_files()
 
@@ -310,15 +392,11 @@ class MssqlSSLManagerTest(TestCase):
             trustServerCertificate=True,
         )
 
-        ssl_manager = SSLManager(
-            ca=SecretStr("CA cert"), cert=SecretStr("Cert"), key=SecretStr("Key")
-        )
+        ssl_manager = SSLManager(ca=SecretStr("CA cert"), cert=SecretStr("Cert"), key=SecretStr("Key"))
         updated_connection = ssl_manager.setup_ssl(connection)
 
         self.assertIsNotNone(updated_connection.connectionArguments)
-        self.assertEqual(
-            updated_connection.connectionArguments.root.get("Encrypt"), "yes"
-        )
+        self.assertEqual(updated_connection.connectionArguments.root.get("Encrypt"), "yes")
         self.assertEqual(
             updated_connection.connectionArguments.root.get("TrustServerCertificate"),
             "yes",
@@ -350,6 +428,37 @@ class MssqlSSLManagerTest(TestCase):
 
         ssl_manager.cleanup_temp_files()
 
+    def test_setup_ssl_pytds_client_cert(self):
+        """Test SSL setup for pytds driver with mutual TLS (all three certs)"""
+        from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+            MssqlConnection,
+            MssqlScheme,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = MssqlConnection(
+            hostPort="localhost:1433",
+            database="testdb",
+            username="sa",
+            password="password",
+            scheme=MssqlScheme.mssql_pytds,
+            sslConfig={
+                "caCertificate": "caCertificateData",
+                "sslCertificate": "sslCertificateData",
+                "sslKey": "sslKeyData",
+            },
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        args = updated_connection.connectionArguments.root
+        self.assertIsNotNone(args.get("cafile"))
+        self.assertIsNotNone(args.get("certfile"))
+        self.assertIsNotNone(args.get("keyfile"))
+
+        ssl_manager.cleanup_temp_files()
+
     def test_setup_ssl_pymssql_driver(self):
         """Test SSL setup for pymssql driver"""
         from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
@@ -365,9 +474,7 @@ class MssqlSSLManagerTest(TestCase):
             scheme=MssqlScheme.mssql_pymssql,
         )
 
-        ssl_manager = SSLManager(
-            ca=SecretStr("CA cert"), cert=SecretStr("Cert"), key=SecretStr("Key")
-        )
+        ssl_manager = SSLManager(ca=SecretStr("CA cert"), cert=SecretStr("Cert"), key=SecretStr("Key"))
         updated_connection = ssl_manager.setup_ssl(connection)
 
         self.assertDictEqual(updated_connection.connectionArguments.root, {})
@@ -512,18 +619,10 @@ class Db2SSLManagerTest(TestCase):
         updated_connection = ssl_manager.setup_ssl(connection)
 
         self.assertIsNotNone(updated_connection.connectionOptions)
-        self.assertEqual(
-            updated_connection.connectionOptions.root.get("SECURITY"), "SSL"
-        )
-        self.assertIsNotNone(
-            updated_connection.connectionOptions.root.get("SSLServerCertificate")
-        )
-        self.assertIsNone(
-            updated_connection.connectionOptions.root.get("SSLClientKeystoredb")
-        )
-        self.assertIsNone(
-            updated_connection.connectionOptions.root.get("SSLClientKeystash")
-        )
+        self.assertEqual(updated_connection.connectionOptions.root.get("SECURITY"), "SSL")
+        self.assertIsNotNone(updated_connection.connectionOptions.root.get("SSLServerCertificate"))
+        self.assertIsNone(updated_connection.connectionOptions.root.get("SSLClientKeystoredb"))
+        self.assertIsNone(updated_connection.connectionOptions.root.get("SSLClientKeystash"))
 
         ssl_manager.cleanup_temp_files()
 
@@ -542,24 +641,14 @@ class Db2SSLManagerTest(TestCase):
             sslMode=SslMode.require,
         )
 
-        ssl_manager = SSLManager(
-            ca=SecretStr("CA cert"), cert=SecretStr("Client cert"), key=SecretStr("Key")
-        )
+        ssl_manager = SSLManager(ca=SecretStr("CA cert"), cert=SecretStr("Client cert"), key=SecretStr("Key"))
         updated_connection = ssl_manager.setup_ssl(connection)
 
         self.assertIsNotNone(updated_connection.connectionOptions)
-        self.assertEqual(
-            updated_connection.connectionOptions.root.get("SECURITY"), "SSL"
-        )
-        self.assertIsNotNone(
-            updated_connection.connectionOptions.root.get("SSLServerCertificate")
-        )
-        self.assertIsNotNone(
-            updated_connection.connectionOptions.root.get("SSLClientKeystoredb")
-        )
-        self.assertIsNotNone(
-            updated_connection.connectionOptions.root.get("SSLClientKeystash")
-        )
+        self.assertEqual(updated_connection.connectionOptions.root.get("SECURITY"), "SSL")
+        self.assertIsNotNone(updated_connection.connectionOptions.root.get("SSLServerCertificate"))
+        self.assertIsNotNone(updated_connection.connectionOptions.root.get("SSLClientKeystoredb"))
+        self.assertIsNotNone(updated_connection.connectionOptions.root.get("SSLClientKeystash"))
 
         ssl_manager.cleanup_temp_files()
 
@@ -583,9 +672,7 @@ class Db2SSLManagerTest(TestCase):
 
         self.assertIsNotNone(updated_connection.connectionOptions)
         self.assertIsNone(updated_connection.connectionOptions.root.get("SECURITY"))
-        self.assertIsNone(
-            updated_connection.connectionOptions.root.get("SSLServerCertificate")
-        )
+        self.assertIsNone(updated_connection.connectionOptions.root.get("SSLServerCertificate"))
 
         ssl_manager.cleanup_temp_files()
 
@@ -611,11 +698,215 @@ class Db2SSLManagerTest(TestCase):
 
         updated_connection = ssl_manager.setup_ssl(connection)
 
-        self.assertEqual(
-            updated_connection.connectionOptions.root.get("SECURITY"), "SSL"
+        self.assertEqual(updated_connection.connectionOptions.root.get("SECURITY"), "SSL")
+        self.assertIsNotNone(updated_connection.connectionOptions.root.get("SSLServerCertificate"))
+
+        ssl_manager.cleanup_temp_files()
+
+
+class PostgresSSLManagerTest(TestCase):
+    """
+    Tests for PostgreSQL SSL Manager functionality — including mutual TLS.
+    """
+
+    def test_check_ssl_and_init_all_three_fields(self):
+        """All three SSL fields are extracted into SSLManager"""
+        from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+            PostgresConnection,
         )
-        self.assertIsNotNone(
-            updated_connection.connectionOptions.root.get("SSLServerCertificate")
+        from metadata.generated.schema.security.ssl.verifySSLConfig import SslMode
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = PostgresConnection(
+            hostPort="localhost:5432",
+            database="testdb",
+            username="postgres",
+            sslMode=SslMode.verify_ca,
+            sslConfig={
+                "caCertificate": "caCertificateData",
+                "sslCertificate": "sslCertificateData",
+                "sslKey": "sslKeyData",
+            },
         )
 
+        ssl_manager = check_ssl_and_init(connection)
+
+        self.assertIsNotNone(ssl_manager)
+        self.assertIsNotNone(ssl_manager.ca_file_path)
+        self.assertIsNotNone(ssl_manager.cert_file_path)
+        self.assertIsNotNone(ssl_manager.key_file_path)
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_mutual_tls_sets_all_psycopg2_params(self):
+        """setup_ssl sets sslrootcert, sslcert, and sslkey in connectionArguments"""
+        from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+            PostgresConnection,
+        )
+        from metadata.generated.schema.security.ssl.verifySSLConfig import SslMode
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = PostgresConnection(
+            hostPort="localhost:5432",
+            database="testdb",
+            username="postgres",
+            sslMode=SslMode.verify_ca,
+            sslConfig={
+                "caCertificate": "caCertificateData",
+                "sslCertificate": "sslCertificateData",
+                "sslKey": "sslKeyData",
+            },
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        args = updated_connection.connectionArguments.root
+        self.assertEqual(args.get("sslmode"), "verify-ca")
+        self.assertIsNotNone(args.get("sslrootcert"))
+        self.assertIsNotNone(args.get("sslcert"))
+        self.assertIsNotNone(args.get("sslkey"))
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_ca_only_verify_ca(self):
+        """Existing behaviour: CA-only verify-ca sets sslrootcert but not sslcert/sslkey"""
+        from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+            PostgresConnection,
+        )
+        from metadata.generated.schema.security.ssl.verifySSLConfig import SslMode
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = PostgresConnection(
+            hostPort="localhost:5432",
+            database="testdb",
+            username="postgres",
+            sslMode=SslMode.verify_ca,
+            sslConfig={"caCertificate": "caCertificateData"},
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        args = updated_connection.connectionArguments.root
+        self.assertEqual(args.get("sslmode"), "verify-ca")
+        self.assertIsNotNone(args.get("sslrootcert"))
+        self.assertIsNone(args.get("sslcert"))
+        self.assertIsNone(args.get("sslkey"))
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_require_mode_no_ca(self):
+        """sslmode=require without CA does not set sslrootcert"""
+        from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+            PostgresConnection,
+        )
+        from metadata.generated.schema.security.ssl.verifySSLConfig import SslMode
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = PostgresConnection(
+            hostPort="localhost:5432",
+            database="testdb",
+            username="postgres",
+            sslMode=SslMode.require,
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        args = updated_connection.connectionArguments.root
+        self.assertEqual(args.get("sslmode"), "require")
+        self.assertIsNone(args.get("sslrootcert"))
+        self.assertIsNone(args.get("sslcert"))
+        self.assertIsNone(args.get("sslkey"))
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_redshift_mutual_tls_sets_all_psycopg2_params(self):
+        """RedshiftConnection shares the handler — mutual TLS params are set"""
+        from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
+            RedshiftConnection,
+        )
+        from metadata.generated.schema.security.ssl.verifySSLConfig import SslMode
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = RedshiftConnection(
+            hostPort="localhost:5439",
+            database="testdb",
+            username="redshift",
+            sslMode=SslMode.verify_ca,
+            sslConfig={
+                "caCertificate": "caCertificateData",
+                "sslCertificate": "sslCertificateData",
+                "sslKey": "sslKeyData",
+            },
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        args = updated_connection.connectionArguments.root
+        self.assertEqual(args.get("sslmode"), "verify-ca")
+        self.assertIsNotNone(args.get("sslrootcert"))
+        self.assertIsNotNone(args.get("sslcert"))
+        self.assertIsNotNone(args.get("sslkey"))
+
+        ssl_manager.cleanup_temp_files()
+
+
+class HiveSSLManagerTest(TestCase):
+    """
+    Tests that setup_ssl for HiveConnection produces the kwarg names
+    that CustomHiveConnection expects (ssl_certfile, ssl_keyfile, ssl_ca_certs).
+    """
+
+    def test_setup_ssl_sets_custom_hive_connection_kwargs(self):
+        """ssl_ca_certs / ssl_certfile / ssl_keyfile are set at the top level"""
+        from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
+            HiveConnection,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = HiveConnection(
+            hostPort="localhost:10000",
+            useSSL=True,
+            sslConfig={
+                "caCertificate": "caCertificateData",
+                "sslCertificate": "sslCertificateData",
+                "sslKey": "sslKeyData",
+            },
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        args = updated_connection.connectionArguments.root
+        self.assertIsNotNone(args.get("ssl_ca_certs"))
+        self.assertIsNotNone(args.get("ssl_certfile"))
+        self.assertIsNotNone(args.get("ssl_keyfile"))
+        # Must not fall back to the old MySQL-style nested dict
+        self.assertNotIn("ssl", args)
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_ca_only(self):
+        """CA-only config sets ssl_ca_certs but not ssl_certfile or ssl_keyfile"""
+        from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
+            HiveConnection,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = HiveConnection(
+            hostPort="localhost:10000",
+            useSSL=True,
+            sslConfig={"caCertificate": "caCertificateData"},
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        args = updated_connection.connectionArguments.root
+        self.assertIsNotNone(args.get("ssl_ca_certs"))
+        self.assertIsNone(args.get("ssl_certfile"))
+        self.assertIsNone(args.get("ssl_keyfile"))
         ssl_manager.cleanup_temp_files()

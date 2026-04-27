@@ -31,7 +31,7 @@ from metadata.generated.schema.security.credentials.githubCredentials import (
 from metadata.generated.schema.security.credentials.gitlabCredentials import (
     GitlabCredentials,
 )
-from metadata.utils.logger import ingestion_logger
+from metadata.utils.logger import ingestion_logger, sanitize_url_credentials
 
 logger = ingestion_logger()
 
@@ -53,11 +53,7 @@ def _is_azure_devops_host(hostname: str) -> bool:
 def _clone_repo(
     repo_name: str,
     path: str,
-    credential: Optional[
-        Union[
-            NoGitCredentials, GitHubCredentials, BitBucketCredentials, GitlabCredentials
-        ]
-    ],
+    credential: Optional[Union[NoGitCredentials, GitHubCredentials, BitBucketCredentials, GitlabCredentials]],
     overwrite: Optional[bool] = False,
 ):
     """Clone a repo to local `path`"""
@@ -101,4 +97,5 @@ def _clone_repo(
 
         logger.info(f"repo {repo_name} cloned to {path}")
     except Exception as exc:
-        logger.error(f"GitHubCloneReader::_clone: ERROR {exc} ")
+        sanitized_msg = sanitize_url_credentials(str(exc))
+        logger.error(f"_clone_repo: ERROR {sanitized_msg}")

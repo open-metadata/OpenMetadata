@@ -12,6 +12,7 @@
 """
 Expand sqlalchemy types to map them to OpenMetadata DataType
 """
+
 # pylint: disable=duplicate-code,abstract-method
 import traceback
 from typing import Optional, Union
@@ -48,9 +49,7 @@ class HexByteString(TypeDecorator):
                 f" Received {type(value).__name__}."
             )
 
-    def process_result_value(
-        self, value: Optional[Union[bytes, bytearray, memoryview]], dialect
-    ) -> Optional[str]:
+    def process_result_value(self, value: Optional[Union[bytes, bytearray, memoryview]], dialect) -> Optional[str]:
         """This is executed during result retrieval
 
         Args:
@@ -70,16 +69,10 @@ class HexByteString(TypeDecorator):
                 # Decode the bytes value with the detected encoding and replace errors with "?"
                 # if bytes cannot be decoded e.g. b"\x66\x67\x67\x9c", if detected_encoding="utf-8"
                 # will result in 'foo�' (instead of failing)
-                str_value = bytes_value.decode(
-                    encoding=detected_encoding, errors="replace"
-                )
+                str_value = bytes_value.decode(encoding=detected_encoding, errors="replace")
                 # Replace NULL_BYTE with empty string to avoid errors with
                 # the database client (should be O(n))
-                str_value = (
-                    str_value.replace(NULL_BYTE, "")
-                    if NULL_BYTE in str_value
-                    else str_value
-                )
+                str_value = str_value.replace(NULL_BYTE, "") if NULL_BYTE in str_value else str_value
                 return str_value
             except Exception as exc:
                 logger.debug("Failed to parse bytes value as string: %s", exc)

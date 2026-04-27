@@ -11,6 +11,7 @@
 """
 Abstract definition of each step
 """
+
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, Optional
 
@@ -94,3 +95,15 @@ class BulkSink(BulkStep, ABC):
     @property
     def name(self) -> str:
         return "BulkSink"
+
+    def run(self) -> None:
+        """Wrap the abstract run() with the warning handler lifecycle.
+
+        BulkStep.run() is abstract and overridden directly by
+        concrete subclasses, so the handler must be scoped here.
+        """
+        self._activate_handler()
+        try:
+            super().run()
+        finally:
+            self._deactivate_handler()

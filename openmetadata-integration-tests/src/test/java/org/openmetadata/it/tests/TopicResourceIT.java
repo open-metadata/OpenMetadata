@@ -161,6 +161,17 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().topics().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().topics().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Topic getVersion(UUID id, Double version) {
     return SdkClients.adminClient().topics().getVersion(id.toString(), version);
   }
@@ -531,17 +542,20 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
     // List topics
     ListParams params = new ListParams();
+    params.setFields("service");
     params.setLimit(100);
+    params.setService(service.getFullyQualifiedName());
     ListResponse<Topic> response = listEntities(params);
     assertNotNull(response);
 
-    // Verify we have at least our 3 topics
-    long serviceCount =
+    assertTrue(response.getData().size() >= 3);
+    assertTrue(
         response.getData().stream()
-            .filter(
-                t -> t.getService().getFullyQualifiedName().equals(service.getFullyQualifiedName()))
-            .count();
-    assertTrue(serviceCount >= 3);
+            .allMatch(
+                t ->
+                    t.getService()
+                        .getFullyQualifiedName()
+                        .equals(service.getFullyQualifiedName())));
   }
 
   @Test
