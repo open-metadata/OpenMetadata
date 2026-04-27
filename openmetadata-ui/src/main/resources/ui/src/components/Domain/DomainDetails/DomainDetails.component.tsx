@@ -10,16 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { DownOutlined } from '@ant-design/icons';
-import { Box, Typography as MuiTypography, useTheme } from '@mui/material';
-import { Button, Dropdown, Form, Space, Tabs, Tooltip, Typography } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Dropdown,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { ChevronDown } from '@untitledui/icons';
+import { Form, Tabs } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, toString } from 'lodash';
 import { useSnackbar } from 'notistack';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
@@ -146,7 +160,6 @@ const DomainDetails = ({
   isTreeView = false,
 }: DomainDetailsProps) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { isMarketplace } = useMarketplaceStore();
   const location = useLocation();
@@ -612,13 +625,13 @@ const DomainDetails = ({
         showNotistackError(
           enqueueSnackbar,
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist) ? (
-            <MuiTypography sx={{ fontWeight: 600 }} variant="body2">
+            <Typography size="text-sm" weight="semibold">
               {t('server.entity-already-exist', {
                 entity: t('label.sub-domain'),
                 entityPlural: t('label.sub-domain-lowercase-plural'),
                 name: data.name,
               })}
-            </MuiTypography>
+            </Typography>
           ) : (
             (error as AxiosError)
           ),
@@ -879,7 +892,7 @@ const DomainDetails = ({
         {...getEntityAvatarProps({ ...domain, entityType: 'domain' })}
       />
     );
-  }, [domain, isSubDomain, theme, isTreeView]);
+  }, [domain, isSubDomain, isTreeView]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
@@ -898,25 +911,16 @@ const DomainDetails = ({
       <Box
         className="domain-details"
         data-testid="domain-details"
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 1.5,
-        }}>
+        direction="col"
+        gap={3}>
         {!isTreeView && (
           <CoverImage
             imageUrl={domain.style?.coverImage?.url}
             position={{ y: domain.style?.coverImage?.position }}
           />
         )}
-        <Box
-          className="entity-header"
-          sx={{
-            display: 'flex',
-            mx: 5,
-            alignItems: 'flex-end',
-          }}>
-          <Box sx={{ flex: 1 }}>
+        <Box align="end" className="entity-header tw:mx-5" direction="row">
+          <div className="tw:flex-1">
             <EntityHeader
               breadcrumb={[]}
               entityData={{ ...domain, displayName, name }}
@@ -934,37 +938,41 @@ const DomainDetails = ({
               }
               titleColor={domain.style?.color}
             />
-          </Box>
-          <Box>
+          </div>
+          <div>
             <Box
-              className="domain-header-action-container"
-              sx={{
-                display: 'flex',
-                gap: 3,
-                justifyContent: 'flex-end',
-                alignItems: 'center',
-                pb: '4px',
-              }}>
+              align="center"
+              className="domain-header-action-container tw:pb-1"
+              direction="row"
+              gap={3}
+              justify="end">
               {!isVersionsView && addButtonContent.length > 0 && (
-                <Dropdown
-                  data-testid="domain-details-add-button-menu"
-                  menu={{
-                    items: addButtonContent,
-                  }}
-                  placement="bottomRight"
-                  trigger={['click']}>
+                <Dropdown.Root>
                   <Button
+                    color="primary"
                     data-testid="domain-details-add-button"
-                    type="primary">
-                    <Space>
-                      {t('label.add')}
-                      <DownOutlined />
-                    </Space>
+                    iconTrailing={ChevronDown}>
+                    {t('label.add')}
                   </Button>
-                </Dropdown>
+                  <Dropdown.Popover placement="bottom right">
+                    <Dropdown.Menu>
+                      {addButtonContent.map((item) => (
+                        <Dropdown.Item
+                          unstyled
+                          id={String(item?.key)}
+                          key={String(item?.key)}
+                          onAction={
+                            (item as { onClick?: () => void })?.onClick
+                          }>
+                          {(item as { label?: ReactNode })?.label}
+                        </Dropdown.Item>
+                      ))}
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </Dropdown.Root>
               )}
 
-              <ButtonGroup className="spaced" size="small">
+              <Box className="spaced" direction="row">
                 {onUpdateVote && (
                   <Voting
                     voteStatus={voteStatus}
@@ -982,53 +990,58 @@ const DomainDetails = ({
                           : 'version-plural-history'
                       }`
                     )}>
-                    <Button
-                      className={classNames('', {
-                        'text-primary border-primary': version,
-                      })}
-                      data-testid="version-button"
-                      icon={<Icon component={VersionIcon} />}
-                      onClick={handleVersionClick}>
-                      <Typography.Text
-                        className={classNames('', {
-                          'text-primary': version,
-                        })}>
-                        {toString(domain.version)}
-                      </Typography.Text>
-                    </Button>
+                    <TooltipTrigger>
+                      <Button
+                        className={classNames({
+                          'text-primary border-primary': version,
+                        })}
+                        color="secondary"
+                        data-testid="version-button"
+                        iconLeading={VersionIcon}
+                        onPress={handleVersionClick}>
+                        <Typography
+                          className={classNames({
+                            'text-primary': version,
+                          })}>
+                          {toString(domain.version)}
+                        </Typography>
+                      </Button>
+                    </TooltipTrigger>
                   </Tooltip>
                 )}
 
                 {!isVersionsView && manageButtonContent.length > 0 && (
-                  <Dropdown
-                    align={{ targetOffset: [-12, 0] }}
-                    className="m-l-xs"
-                    menu={{
-                      items: manageButtonContent,
-                    }}
-                    open={showActions}
-                    overlayClassName="domain-manage-dropdown-list-container"
-                    overlayStyle={{ width: '350px' }}
-                    placement="bottomRight"
-                    trigger={['click']}
+                  <Dropdown.Root
+                    isOpen={showActions}
                     onOpenChange={setShowActions}>
-                    <Tooltip
-                      placement="topRight"
-                      title={t('label.manage-entity', {
+                    <ButtonUtility
+                      className="domain-manage-dropdown-button tw-px-1.5"
+                      data-testid="manage-button"
+                      icon={IconDropdown}
+                      tooltip={t('label.manage-entity', {
                         entity: t('label.domain'),
-                      })}>
-                      <Button
-                        className="domain-manage-dropdown-button tw-px-1.5"
-                        data-testid="manage-button"
-                        icon={
-                          <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                        }
-                        onClick={() => setShowActions(true)}
-                      />
-                    </Tooltip>
-                  </Dropdown>
+                      })}
+                    />
+                    <Dropdown.Popover
+                      className="domain-manage-dropdown-list-container"
+                      placement="bottom right">
+                      <Dropdown.Menu>
+                        {manageButtonContent.map((item) => (
+                          <Dropdown.Item
+                            unstyled
+                            id={String(item?.key)}
+                            key={String(item?.key)}
+                            onAction={
+                              (item as { onClick?: () => void })?.onClick
+                            }>
+                            {(item as { label?: ReactNode })?.label}
+                          </Dropdown.Item>
+                        ))}
+                      </Dropdown.Menu>
+                    </Dropdown.Popover>
+                  </Dropdown.Root>
                 )}
-              </ButtonGroup>
+              </Box>
               {activeAnnouncement && (
                 <AnnouncementCard
                   announcement={activeAnnouncement}
@@ -1036,7 +1049,7 @@ const DomainDetails = ({
                 />
               )}
             </Box>
-          </Box>
+          </div>
         </Box>
 
         <GenericProvider<Domain>
@@ -1048,8 +1061,11 @@ const DomainDetails = ({
           permissions={domainPermission}
           type={EntityType.DOMAIN}
           onUpdate={onUpdate}>
-          <Box className="domain-details-page-tabs" sx={{ width: '100%' }}>
-            <Box sx={{ px: isTreeView ? 0 : 5, py: 5 }}>
+          <div className="domain-details-page-tabs tw:w-full">
+            <div
+              className={classNames('tw:py-5', {
+                'tw:px-5': !isTreeView,
+              })}>
               <Tabs
                 destroyInactiveTabPane
                 activeKey={activeTab}
@@ -1069,8 +1085,8 @@ const DomainDetails = ({
                 }
                 onChange={handleTabChange}
               />
-            </Box>
-          </Box>
+            </div>
+          </div>
         </GenericProvider>
       </Box>
 

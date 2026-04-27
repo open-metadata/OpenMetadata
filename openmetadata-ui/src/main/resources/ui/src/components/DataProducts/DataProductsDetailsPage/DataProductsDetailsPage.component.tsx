@@ -10,16 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Avatar } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Tabs, Tooltip, Typography } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
+import {
+  Avatar,
+  Box,
+  Button,
+  ButtonUtility,
+  Dropdown,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Tabs } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toLower, toString } from 'lodash';
 import { useSnackbar } from 'notistack';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
@@ -681,9 +695,10 @@ const DataProductsDetailsPage = ({
             'data-contract-latest-result-button',
             toLower(dataContract.latestResult.status)
           )}
+          color="secondary"
           data-testid="data-contract-latest-result-btn"
-          icon={icon ? <Icon component={icon} /> : null}
-          onClick={() => {
+          iconLeading={icon ?? undefined}
+          onPress={() => {
             handleTabChange(EntityTabs.CONTRACT);
           }}>
           {t(`label.entity-${toLower(dataContract.latestResult.status)}`, {
@@ -758,19 +773,24 @@ const DataProductsDetailsPage = ({
             />
           </div>
           <div>
-            <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
+            <Box
+              align="center"
+              className="tw:pb-1"
+              direction="row"
+              gap={3}
+              justify="end">
               {!isVersionsView && dataProductPermission.Create && (
                 <Button
+                  color="primary"
                   data-testid="data-product-details-add-button"
-                  type="primary"
-                  onClick={openAssetDrawer}>
+                  onPress={openAssetDrawer}>
                   {t('label.add-entity', {
                     entity: t('label.asset-plural'),
                   })}
                 </Button>
               )}
 
-              <ButtonGroup className="spaced" size="small">
+              <Box className="spaced" direction="row">
                 {dataContractLatestResultButton}
 
                 {onUpdateVote && (
@@ -790,53 +810,58 @@ const DataProductsDetailsPage = ({
                           : 'version-plural-history'
                       }`
                     )}>
-                    <Button
-                      className={classNames('', {
-                        'text-primary border-primary': version,
-                      })}
-                      data-testid="version-button"
-                      icon={<Icon component={VersionIcon} />}
-                      onClick={handleVersionClick}>
-                      <Typography.Text
-                        className={classNames('', {
-                          'text-primary': version,
-                        })}>
-                        {toString(dataProduct.version)}
-                      </Typography.Text>
-                    </Button>
+                    <TooltipTrigger>
+                      <Button
+                        className={classNames({
+                          'text-primary border-primary': version,
+                        })}
+                        color="secondary"
+                        data-testid="version-button"
+                        iconLeading={VersionIcon}
+                        onPress={handleVersionClick}>
+                        <Typography
+                          className={classNames({
+                            'text-primary': version,
+                          })}>
+                          {toString(dataProduct.version)}
+                        </Typography>
+                      </Button>
+                    </TooltipTrigger>
                   </Tooltip>
                 )}
 
                 {!isVersionsView && manageButtonContent.length > 0 && (
-                  <Dropdown
-                    align={{ targetOffset: [-12, 0] }}
-                    className="m-l-xs"
-                    menu={{
-                      items: manageButtonContent,
-                    }}
-                    open={showActions}
-                    overlayClassName="domain-manage-dropdown-list-container"
-                    overlayStyle={{ width: '350px' }}
-                    placement="bottomRight"
-                    trigger={['click']}
+                  <Dropdown.Root
+                    isOpen={showActions}
                     onOpenChange={setShowActions}>
-                    <Tooltip
-                      placement="topRight"
-                      title={t('label.manage-entity', {
+                    <ButtonUtility
+                      className="domain-manage-dropdown-button tw-px-1.5"
+                      data-testid="manage-button"
+                      icon={IconDropdown}
+                      tooltip={t('label.manage-entity', {
                         entity: t('label.data-product'),
-                      })}>
-                      <Button
-                        className="domain-manage-dropdown-button tw-px-1.5"
-                        data-testid="manage-button"
-                        icon={
-                          <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                        }
-                        onClick={() => setShowActions(true)}
-                      />
-                    </Tooltip>
-                  </Dropdown>
+                      })}
+                    />
+                    <Dropdown.Popover
+                      className="domain-manage-dropdown-list-container"
+                      placement="bottom right">
+                      <Dropdown.Menu>
+                        {manageButtonContent.map((item) => (
+                          <Dropdown.Item
+                            unstyled
+                            id={String(item?.key)}
+                            key={String(item?.key)}
+                            onAction={
+                              (item as { onClick?: () => void })?.onClick
+                            }>
+                            {(item as { label?: ReactNode })?.label}
+                          </Dropdown.Item>
+                        ))}
+                      </Dropdown.Menu>
+                    </Dropdown.Popover>
+                  </Dropdown.Root>
                 )}
-              </ButtonGroup>
+              </Box>
 
               {activeAnnouncement && (
                 <AnnouncementCard
@@ -844,7 +869,7 @@ const DataProductsDetailsPage = ({
                   onClick={handleOpenAnnouncementDrawer}
                 />
               )}
-            </div>
+            </Box>
           </div>
         </div>
 
