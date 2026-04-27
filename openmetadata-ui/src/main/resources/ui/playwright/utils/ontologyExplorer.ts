@@ -15,11 +15,7 @@ import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../constant/sidebar';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
-import {
-  getAuthContext,
-  getToken,
-  redirectToHomePage,
-} from '../utils/common';
+import { getAuthContext, getToken, redirectToHomePage } from '../utils/common';
 import { sidebarClick } from '../utils/sidebar';
 
 export async function applyGlossaryFilter(page: Page, glossaryId: string) {
