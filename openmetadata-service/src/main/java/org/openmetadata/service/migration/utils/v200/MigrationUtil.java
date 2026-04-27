@@ -23,6 +23,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
@@ -86,7 +87,7 @@ public class MigrationUtil {
    * suggestion becomes a Task with type=Suggestion and category=MetadataUpdate. The about
    * EntityReference and aboutFqnHash are properly computed from the entityLink.
    */
-  public static void migrateSuggestionsToTaskEntity(Handle handle) {
+  public static void migrateSuggestionsToTaskEntity(Handle handle, ConnectionType connectionType) {
     LOG.info("Starting migration of suggestions to task_entity");
 
     boolean tableExists;
@@ -216,7 +217,7 @@ public class MigrationUtil {
         taskJson.put("commentCount", 0);
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
 
-        insertTask(handle, suggestionId, taskJson.toString(), fqnHash);
+        insertTask(handle, suggestionId, taskJson.toString(), fqnHash, connectionType);
         insertTaskDomainRelationships(handle, suggestionId, inheritedDomains);
         migrated++;
       } catch (Exception e) {
@@ -234,9 +235,12 @@ public class MigrationUtil {
    * Migrate thread-based tasks from thread_entity to the new task_entity table. Each thread with
    * type='Task' becomes a proper Task entity with correct type mapping, payload, and aboutFqnHash.
    */
-  public static void migrateThreadTasksToTaskEntity(Handle handle) {
+  public static void migrateThreadTasksToTaskEntity(Handle handle, ConnectionType connectionType) {
     LOG.info("Starting migration of thread-based tasks to task_entity");
-
+    if (!tableExists(handle, "thread_entity")) {
+      LOG.info("thread_entity table does not exist, skipping thread task migration");
+      return;
+    }
     List<Map<String, Object>> threads =
         handle
             .createQuery(
@@ -373,7 +377,7 @@ public class MigrationUtil {
           taskJson.set("resolution", resolution);
         }
 
-        insertTask(handle, threadId, taskJson.toString(), fqnHash);
+        insertTask(handle, threadId, taskJson.toString(), fqnHash, connectionType);
         insertTaskDomainRelationships(handle, threadId, inheritedDomains);
         migrated++;
       } catch (Exception e) {
@@ -475,7 +479,8 @@ public class MigrationUtil {
    * thread_entity. User conversations stay in thread_entity; only generated activity entries are
    * migrated.
    */
-  public static void migrateLegacyActivityThreadsToActivityStream(Handle handle) {
+  public static void migrateLegacyActivityThreadsToActivityStream(
+      Handle handle, ConnectionType connectionType) {
     LOG.info("Starting migration of legacy thread activity to activity_stream");
 
     if (!tableExists(handle, "thread_entity")) {
@@ -511,7 +516,7 @@ public class MigrationUtil {
           continue;
         }
 
-        insertActivityEvent(handle, event);
+        insertActivityEvent(handle, event, connectionType);
         migrated++;
       } catch (Exception e) {
         LOG.warn("Error migrating legacy activity thread to activity_stream: {}", e.getMessage());
@@ -960,7 +965,8 @@ public class MigrationUtil {
         > 0;
   }
 
-  private static void insertActivityEvent(Handle handle, ActivityEvent event) {
+  private static void insertActivityEvent(
+      Handle handle, ActivityEvent event, ConnectionType connectionType) {
     String entityFqnHash =
         event.getEntity().getFullyQualifiedName() != null
             ? FullyQualifiedName.buildHash(event.getEntity().getFullyQualifiedName())
@@ -973,6 +979,8 @@ public class MigrationUtil {
             : JsonUtils.pojoToJson(
                 event.getDomains().stream().map(domain -> domain.getId().toString()).toList());
 
+    String domainsBind = connectionType == ConnectionType.POSTGRES ? ":domains::jsonb" : ":domains";
+    String jsonBind = connectionType == ConnectionType.POSTGRES ? ":json::jsonb" : ":json";
     handle
         .createUpdate(
             "INSERT INTO activity_stream "
@@ -980,7 +988,11 @@ public class MigrationUtil {
                 + "actorId, actorName, timestamp, summary, fieldName, oldValue, newValue, domains, json) "
                 + "VALUES (:id, :eventType, :entityType, :entityId, :entityFqnHash, :about, "
                 + ":aboutFqnHash, :actorId, :actorName, :timestamp, :summary, :fieldName, "
-                + ":oldValue, :newValue, :domains, :json)")
+                + ":oldValue, :newValue, "
+                + domainsBind
+                + ", "
+                + jsonBind
+                + ")")
         .bind("id", event.getId().toString())
         .bind("eventType", event.getEventType().value())
         .bind("entityType", event.getEntity().getType())
@@ -1021,13 +1033,13 @@ public class MigrationUtil {
         > 0;
   }
 
-  private static void insertTask(Handle handle, String id, String json, String fqnHash) {
-    handle
-        .createUpdate("INSERT INTO task_entity (id, json, fqnHash) VALUES (:id, :json, :fqnHash)")
-        .bind("id", id)
-        .bind("json", json)
-        .bind("fqnHash", fqnHash)
-        .execute();
+  private static void insertTask(
+      Handle handle, String id, String json, String fqnHash, ConnectionType connectionType) {
+    String sql =
+        connectionType == ConnectionType.POSTGRES
+            ? "INSERT INTO task_entity (id, json, fqnHash) VALUES (:id, :json::jsonb, :fqnHash)"
+            : "INSERT INTO task_entity (id, json, fqnHash) VALUES (:id, :json, :fqnHash)";
+    handle.createUpdate(sql).bind("id", id).bind("json", json).bind("fqnHash", fqnHash).execute();
   }
 
   private static String lookupUserId(Handle handle, String userName) {

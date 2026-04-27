@@ -18,11 +18,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -46,13 +49,97 @@ class MigrationUtilTest {
   }
 
   @Test
+  void migrateThreadTasksToTaskEntitySkipsWhenThreadTableIsMissing() {
+    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).one())
+        .thenThrow(new RuntimeException("missing table"));
+
+    assertDoesNotThrow(() -> MigrationUtil.migrateThreadTasksToTaskEntity(handle, MYSQL));
+
+    verify(handle, never()).createUpdate(anyString());
+  }
+
+  @Test
+  void migrateThreadTasksToTaskEntitySkipsWhenThreadTableIsMissingPostgres() {
+    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).one())
+        .thenThrow(new RuntimeException("missing table"));
+
+    assertDoesNotThrow(() -> MigrationUtil.migrateThreadTasksToTaskEntity(handle, POSTGRES));
+
+    verify(handle, never()).createUpdate(anyString());
+  }
+
+  @Test
+  void migrateSuggestionsToTaskEntitySkipsWhenSuggestionsTableIsMissing() {
+    when(handle.createQuery("SELECT 1 FROM suggestions LIMIT 1").mapToMap().list())
+        .thenThrow(new RuntimeException("missing table"));
+
+    assertDoesNotThrow(() -> MigrationUtil.migrateSuggestionsToTaskEntity(handle, MYSQL));
+
+    verify(handle, never()).createUpdate(anyString());
+  }
+
+  @Test
+  void migrateSuggestionsToTaskEntitySkipsWhenSuggestionsTableIsMissingPostgres() {
+    when(handle.createQuery("SELECT 1 FROM suggestions LIMIT 1").mapToMap().list())
+        .thenThrow(new RuntimeException("missing table"));
+
+    assertDoesNotThrow(() -> MigrationUtil.migrateSuggestionsToTaskEntity(handle, POSTGRES));
+
+    verify(handle, never()).createUpdate(anyString());
+  }
+
+  @Test
   void migrateLegacyActivityThreadsToActivityStreamSkipsWhenThreadTableIsMissing() {
     when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).one())
         .thenThrow(new RuntimeException("missing table"));
 
-    assertDoesNotThrow(() -> MigrationUtil.migrateLegacyActivityThreadsToActivityStream(handle));
+    assertDoesNotThrow(
+        () -> MigrationUtil.migrateLegacyActivityThreadsToActivityStream(handle, MYSQL));
 
     verify(handle, never()).createUpdate(anyString());
+  }
+
+  @Test
+  void migrateLegacyActivityThreadsToActivityStreamSkipsWhenThreadTableIsMissingPostgres() {
+    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).one())
+        .thenThrow(new RuntimeException("missing table"));
+
+    assertDoesNotThrow(
+        () -> MigrationUtil.migrateLegacyActivityThreadsToActivityStream(handle, POSTGRES));
+
+    verify(handle, never()).createUpdate(anyString());
+  }
+
+  @Test
+  void migrateThreadTasksUsesJsonbCastForPostgres() {
+    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).one())
+        .thenReturn(1);
+    when(handle
+            .createQuery(
+                "SELECT json FROM thread_entity WHERE type = 'Task' ORDER BY createdAt ASC")
+            .mapToMap()
+            .list())
+        .thenReturn(java.util.List.of());
+
+    assertDoesNotThrow(() -> MigrationUtil.migrateThreadTasksToTaskEntity(handle, POSTGRES));
+
+    verify(handle, never()).createUpdate(contains(":json,"));
+  }
+
+  @Test
+  void migrateThreadTasksDoesNotUseJsonbCastForMysql() {
+    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).one())
+        .thenReturn(1);
+    when(handle
+            .createQuery(
+                "SELECT json FROM thread_entity WHERE type = 'Task' ORDER BY createdAt ASC")
+            .mapToMap()
+            .list())
+        .thenReturn(java.util.List.of());
+
+    assertDoesNotThrow(() -> MigrationUtil.migrateThreadTasksToTaskEntity(handle, MYSQL));
+
+    verify(handle, never()).createUpdate(contains("::jsonb"));
   }
 
   @Test
