@@ -213,7 +213,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to find database service by hostname: {exc}")
+            logger.error(f"Unable to find database service by hostname: {exc}")
             return None
 
     def find_messaging_service_by_brokers(self, brokers: str) -> Optional[str]:
@@ -264,7 +264,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to find messaging service by brokers: {exc}")
+            logger.error(f"Unable to find messaging service by brokers: {exc}")
             return None
 
     def get_service_from_connector_config(
@@ -593,7 +593,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get dataset entity {exc}")
+            logger.error(f"Unable to get dataset entity {exc}")
 
         return None
 
@@ -900,7 +900,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to build column lineage: {exc}")
+            logger.error(f"Unable to build column lineage: {exc}")
 
         return None
 
@@ -973,7 +973,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to search topics by prefix: {exc}")
+            logger.error(f"Unable to search topics by prefix: {exc}")
 
         return topics_found
 
@@ -1024,7 +1024,7 @@ class KafkaconnectSource(PipelineServiceSource):
             logger.warning(f"Invalid regex pattern '{topics_regex}': {exc}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to search topics by regex: {exc}")
+            logger.error(f"Unable to search topics by regex: {exc}")
 
         return topics_found
 
