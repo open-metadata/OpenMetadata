@@ -453,67 +453,67 @@ class TestGetTableExtensionsSanitization:
     """Property name sanitization and display-name preservation."""
 
     def test_dot_is_preserved(self, athena_source):
-        props = {"kpler.owner": "team-a"}
+        props = {"myprop.owner": "team-a"}
         with (
             patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
             patch.object(athena_source, "metadata") as mock_metadata,
         ):
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
-        assert result == {"kpler.owner": "team-a"}
+        assert result == {"myprop.owner": "team-a"}
         request = _get_request(mock_metadata)
-        assert request.name.root == "kpler.owner"
-        assert request.displayName == "kpler.owner"
+        assert request.name.root == "myprop.owner"
+        assert request.displayName == "myprop.owner"
 
     def test_hyphen_is_preserved(self, athena_source):
-        props = {"kpler-owner": "x"}
+        props = {"myprop-owner": "x"}
         with (
             patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
             patch.object(athena_source, "metadata") as mock_metadata,
         ):
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
-        assert result == {"kpler-owner": "x"}
+        assert result == {"myprop-owner": "x"}
         request = _get_request(mock_metadata)
-        assert request.name.root == "kpler-owner"
+        assert request.name.root == "myprop-owner"
 
     def test_allowed_punctuation_combined_preserved(self, athena_source):
         """Dots and hyphens together are allowed — name passes through untouched."""
-        props = {"kpler.airflow-dag-id": "scrape-dag"}
+        props = {"myprop.airflow-dag-id": "scrape-dag"}
         with (
             patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
             patch.object(athena_source, "metadata") as mock_metadata,
         ):
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
-        assert result == {"kpler.airflow-dag-id": "scrape-dag"}
+        assert result == {"myprop.airflow-dag-id": "scrape-dag"}
         request = _get_request(mock_metadata)
-        assert request.name.root == "kpler.airflow-dag-id"
-        assert request.displayName == "kpler.airflow-dag-id"
+        assert request.name.root == "myprop.airflow-dag-id"
+        assert request.displayName == "myprop.airflow-dag-id"
 
     def test_other_special_chars_still_replaced(self, athena_source):
         """Everything outside [A-Za-z0-9_.-] gets replaced with __."""
-        props = {"kpler/airflow:dag id@prod": "v"}
+        props = {"myprop/airflow:dag id@prod": "v"}
         with (
             patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
             patch.object(athena_source, "metadata") as mock_metadata,
         ):
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
-        assert result == {"kpler__airflow__dag__id__prod": "v"}
+        assert result == {"myprop__airflow__dag__id__prod": "v"}
         request = _get_request(mock_metadata)
-        assert request.displayName == "kpler/airflow:dag id@prod"
+        assert request.displayName == "myprop/airflow:dag id@prod"
 
     def test_mixed_allowed_and_disallowed_chars(self, athena_source):
         """Allowed chars (. -) stay; disallowed chars (/ space) get replaced."""
-        props = {"kpler.data/type-v1 beta": "v"}
+        props = {"myprop.data/type-v1 beta": "v"}
         with (
             patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
             patch.object(athena_source, "metadata"),
         ):
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
-        assert result == {"kpler.data__type-v1__beta": "v"}
+        assert result == {"myprop.data__type-v1__beta": "v"}
 
     def test_already_valid_name_unchanged(self, athena_source):
         props = {"simple_key": "value"}
@@ -551,7 +551,7 @@ class TestGetTableExtensionsSanitization:
         assert request.displayName == name
 
     def test_long_sanitized_name_is_md5_hashed(self, athena_source):
-        original = "kpler." + ("a" * 260)
+        original = "myprop." + ("a" * 260)
         props = {original: "value"}
         with (
             patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
@@ -698,11 +698,11 @@ class TestFetchIcebergProperties:
     def test_returns_properties_from_query(self, athena_source):
         _mock_query_rows(
             athena_source,
-            [("kpler.owner", "team-a"), ("kpler.source", "ex")],
+            [("myprop.owner", "team-a"), ("myprop.source", "ex")],
         )
 
         result = athena_source._fetch_iceberg_properties(MOCK_DATABASE_SCHEMA.name.root, MOCK_TABLE_NAME)
-        assert result == {"kpler.owner": "team-a", "kpler.source": "ex"}
+        assert result == {"myprop.owner": "team-a", "myprop.source": "ex"}
 
     def test_returns_empty_dict_on_exception(self, athena_source):
         mock_engine = MagicMock()
