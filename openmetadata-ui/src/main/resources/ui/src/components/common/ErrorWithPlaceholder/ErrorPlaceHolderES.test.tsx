@@ -41,6 +41,17 @@ jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
   },
 }));
 
+jest.mock('../../../utils/i18next/LocalUtil', () => ({
+  Transi18next: jest.fn().mockImplementation(({ i18nKey }) => {
+    return <span>{i18nKey}</span>;
+  }),
+  __esModule: true,
+  default: {
+    t: jest.fn().mockImplementation((key) => key),
+  },
+  t: jest.fn().mockImplementation((key) => key),
+}));
+
 const mockErrorMessage =
   'An exception with message [Elasticsearch exception [type=index_not_found_exception, reason=no such index [test_search_index]]] was thrown while processing request.';
 

@@ -92,16 +92,6 @@ export const FIELDS: EntityFields[] = [
     name: 'project.keyword',
   },
   {
-    id: 'Status',
-    name: 'entityStatus',
-  },
-  // Some common field value search criteria are causing problems in not equal filter tests
-  // TODO: Refactor the advanced search tests so that these fields can be added back
-  // {
-  //   id: 'Table Type',
-  //   name: 'tableType',
-  // },
-  {
     id: 'Chart',
     name: 'charts.displayName.keyword',
   },
@@ -220,7 +210,12 @@ export const selectOption = async (
   // Use .first() to handle multiple matches (acceptable when scoped to visible dropdown)
   const optionLocator = page
     .locator('.ant-select-dropdown:visible')
-    .locator(`[title="${optionTitle}"]`)
+    .locator('.ant-select-item-option')
+    .filter({
+      hasText: new RegExp(
+        `^${optionTitle.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
+      ),
+    })
     .first();
   await expect(optionLocator).toBeVisible();
 

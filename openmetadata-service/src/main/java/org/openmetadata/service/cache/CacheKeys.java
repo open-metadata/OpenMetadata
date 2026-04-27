@@ -14,6 +14,24 @@ public final class CacheKeys {
     return ns + ":e:" + type + ":" + id.toString();
   }
 
+  /**
+   * Packed read-bundle key for an entity (relationships + tags in one blob). Uses Redis hash tag
+   * braces around the UUID so related keys for the same entity route to the same Redis Cluster
+   * slot for MGET/pipelining affinity.
+   */
+  public String bundle(String type, UUID id) {
+    return ns + ":bundle:{" + id.toString() + "}:" + type;
+  }
+
+  /**
+   * Cached "find my parent via relationship R" lookup — used to serve href assembly without
+   * re-reading {@code entity_relationship}. Keyed by the child's id with a Redis hash tag so
+   * all parent lookups for the same child route to the same cluster slot.
+   */
+  public String containerRef(String childType, UUID childId, int relation) {
+    return ns + ":parent:{" + childId.toString() + "}:" + childType + ":" + relation;
+  }
+
   public String rel(String type, UUID id, String rel, String dir) {
     return ns + ":rel:" + type + ":" + id.toString() + ":" + rel + ":" + dir;
   }

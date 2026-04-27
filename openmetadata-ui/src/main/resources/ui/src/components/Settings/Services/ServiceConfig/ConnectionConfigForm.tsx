@@ -30,8 +30,7 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
-import { Transi18next } from '../../../../utils/CommonUtils';
-import i18n from '../../../../utils/i18next/LocalUtil';
+import i18n, { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
   getConnectionSchemas,

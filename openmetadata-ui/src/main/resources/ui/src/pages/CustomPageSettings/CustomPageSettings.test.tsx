@@ -62,10 +62,6 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious</div>);
 });
 
-jest.mock('../../utils/CommonUtils', () => ({
-  Transi18next: jest.fn().mockReturnValue(<div>Transi18next</div>),
-}));
-
 jest.mock('../../components/PageHeader/PageHeader.component', () => {
   return jest.fn().mockImplementation(({ children, data }) => (
     <div data-testid="page-header">

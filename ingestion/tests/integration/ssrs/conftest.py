@@ -45,6 +45,30 @@ MOCK_FOLDERS = [
     {"Id": "folder-1", "Name": "TestFolder", "Path": "/TestFolder"},
 ]
 
+MOCK_RDL_BY_ID = {
+    "report-1": (
+        b'<?xml version="1.0" encoding="utf-8"?>'
+        b'<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/'
+        b'2016/01/reportdefinition">'
+        b"<DataSources>"
+        b'<DataSource Name="MainDS">'
+        b"<ConnectionProperties>"
+        b"<DataProvider>SQL</DataProvider>"
+        b"<ConnectString>Data Source=sql01;Initial Catalog=SalesDB"
+        b"</ConnectString>"
+        b"</ConnectionProperties></DataSource>"
+        b"</DataSources>"
+        b"<DataSets>"
+        b'<DataSet Name="Orders">'
+        b"<Query><DataSourceName>MainDS</DataSourceName>"
+        b"<CommandType>Text</CommandType>"
+        b"<CommandText>SELECT OrderId FROM dbo.Orders</CommandText></Query>"
+        b'<Fields><Field Name="OrderId"><DataField>OrderId</DataField>'
+        b"</Field></Fields></DataSet>"
+        b"</DataSets></Report>"
+    ),
+}
+
 
 class SsrsMockHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -59,13 +83,37 @@ class SsrsMockHandler(BaseHTTPRequestHandler):
             skip = int(params.get("$skip", ["0"])[0])
             page = MOCK_REPORTS[skip : skip + top]
             self._respond({"value": page})
+        elif self._match_rdl(path) is not None:
+            self._respond_rdl(self._match_rdl(path))
         else:
             self.send_error(404)
+
+    @staticmethod
+    def _match_rdl(path: str):
+        for template in (
+            "/reports/api/v2.0/Reports({id})/Content/$value",
+            "/reports/api/v2.0/CatalogItems({id})/Content",
+        ):
+            prefix, _, suffix = template.partition("{id}")
+            if path.startswith(prefix) and path.endswith(suffix):
+                return path[len(prefix) : len(path) - len(suffix)]
+        return None
 
     def _respond(self, data: dict):
         body = json.dumps(data).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _respond_rdl(self, report_id: str):
+        body = MOCK_RDL_BY_ID.get(report_id)
+        if body is None:
+            self.send_error(404)
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "application/xml")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)

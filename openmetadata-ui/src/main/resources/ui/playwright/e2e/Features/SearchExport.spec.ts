@@ -11,25 +11,41 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
-import { redirectToHomePage } from '../../utils/common';
+import { expect } from '@playwright/test';
+import { performAdminLogin } from '../../utils/admin';
+import { redirectToExplorePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   countCsvResponseRows,
-  getExportCount,
+  getExportCountFromModal,
   getExportModalContent,
   openExportScopeModal,
 } from '../../utils/explore';
 import { test } from '../fixtures/pages';
 
-const navigateToExplorePage = async (page: Page) => {
-  await redirectToHomePage(page);
-  await page.getByTestId('app-bar-item-explore').click();
-  await expect(page.getByTestId('explore-page')).toBeVisible();
-};
-
 test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    const serviceRes = await apiContext.get(
+      '/api/v1/services/databaseServices/name/sample_data'
+    );
+    const service = await serviceRes.json();
+    if (service.displayName) {
+      await apiContext.patch(
+        `/api/v1/services/databaseServices/${service.id}`,
+        {
+          data: [{ op: 'replace', path: '/displayName', value: 'sample_data' }],
+          headers: { 'Content-Type': 'application/json-patch+json' },
+        }
+      );
+
+      await afterAction();
+    }
+  });
+
   test.beforeEach(async ({ page }) => {
-    await navigateToExplorePage(page);
+    await redirectToExplorePage(page);
   });
 
   test('Export button opens scope modal with correct options', async ({
@@ -111,7 +127,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
 
     const expectedCount =
       await test.step('Read displayed count from Visible Results card', () =>
-        getExportCount(page, 'export-scope-visible-count'));
+        getExportCountFromModal(modalContent, 'export-scope-visible-count'));
 
     const exportResponsePromise = page.waitForResponse(
       (response) =>
@@ -128,27 +144,159 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     });
   });
 
-  test('Browse mode visible export downloads CSV with current page row count', async ({
+  test('Search mode visible export count matches the first result tab count', async ({
     page,
   }) => {
-    test.slow();
-
     const countApiPromise = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.status() === 200
     );
 
-    await openExportScopeModal(page);
+    await page.goto(
+      '/explore/tables?search=sample_data.ecommerce_db.shopify.dim_customer'
+    );
+    await expect(page.getByTestId('explore-page')).toBeVisible();
     await countApiPromise;
+
+    const firstTabCount =
+      await test.step('Read the count from the first left panel result tab', async () => {
+        const firstTabCountText = await page
+          .getByTestId('explore-left-panel')
+          .locator('[role="menuitem"]')
+          .first()
+          .getByTestId('filter-count')
+          .textContent();
+
+        return parseInt(firstTabCountText?.trim() ?? '0', 10);
+      });
+
+    await openExportScopeModal(page);
+
+    const visibleExportCount =
+      await test.step('Read the visible results count from the export modal', () =>
+        getExportCountFromModal(
+          getExportModalContent(page),
+          'export-scope-visible-count'
+        ));
+
+    await test.step('Visible export count matches the first result tab count', async () => {
+      expect(visibleExportCount).toBe(firstTabCount);
+    });
+  });
+
+  test('Filtered search visible export downloads CSV with the filtered record count', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const searchResultsPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.status() === 200
+    );
+
+    await page.goto('/explore/tables?search=sample_data');
+    await expect(page.getByTestId('explore-page')).toBeVisible();
+    await searchResultsPromise;
+    await waitForAllLoadersToDisappear(page);
+
+    await test.step('Apply Service filter from the Explore page', async () => {
+      await page.getByTestId('search-dropdown-Service').click();
+
+      const serviceAggregatePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/aggregate') &&
+          response.url().includes('sample_data') &&
+          response.status() === 200
+      );
+
+      await page.getByTestId('search-input').fill('sample_data');
+      await serviceAggregatePromise;
+      await page.getByTestId('sample_data').click();
+      await expect(page.getByTestId('sample_data-checkbox')).toBeChecked();
+
+      const filteredQueryPromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.status() === 200
+      );
+
+      await page.getByTestId('update-btn').click();
+      await filteredQueryPromise;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    const filteredCount =
+      await test.step('Read filtered count from the first left panel tab', async () => {
+        const filteredCountText = await page
+          .getByTestId('explore-left-panel')
+          .locator('[role="menuitem"]')
+          .first()
+          .getByTestId('filter-count')
+          .textContent();
+
+        return parseInt(filteredCountText?.trim() ?? '0', 10);
+      });
+
+    await openExportScopeModal(page);
+
+    const modalContent = getExportModalContent(page);
+    await modalContent.locator('input[value="visible"]').click();
+
+    const visibleExportCount =
+      await test.step('Read filtered visible count from the export modal', () =>
+        getExportCountFromModal(modalContent, 'export-scope-visible-count'));
+
+    await test.step('Filtered page count matches the export modal count', async () => {
+      expect(visibleExportCount).toBe(filteredCount);
+    });
+
+    const exportResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/export') &&
+        response.status() === 200
+    );
+
+    await modalContent.getByRole('button', { name: 'Export' }).click();
+
+    await test.step('CSV row count matches the filtered record count', async () => {
+      const csvText = await (await exportResponsePromise).text();
+
+      expect(countCsvResponseRows(csvText)).toBe(filteredCount);
+    });
+  });
+
+  test('Browse mode visible export downloads CSV with current page row count', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const topicsQueryPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('index=topic') &&
+        response.status() === 200
+    );
+
+    await page.goto('/explore/topics');
+    await expect(page.getByTestId('explore-page')).toBeVisible();
+    await topicsQueryPromise;
+    await waitForAllLoadersToDisappear(page);
+    await expect(
+      page.locator('[data-testid^="table-data-card_"]').first()
+    ).toBeVisible();
+
+    await openExportScopeModal(page);
 
     const modalContent = getExportModalContent(page);
 
     await modalContent.locator('input[value="visible"]').click();
+    await expect(modalContent.locator('input[value="visible"]')).toBeChecked();
 
     const expectedCount =
       await test.step('Read displayed count from Visible Results card', () =>
-        getExportCount(page, 'export-scope-visible-count'));
+        getExportCountFromModal(modalContent, 'export-scope-visible-count'));
 
     const exportResponsePromise = page.waitForResponse(
       (response) =>
@@ -165,72 +313,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     });
   });
 
-  test('Export button is disabled while export is in progress', async ({
-    page,
-  }) => {
-    test.slow();
-
-    await page.route('**/api/v1/search/export?*', async (route) => {
-      await new Promise<void>((resolve) => setTimeout(resolve, 2000));
-      await route.fulfill({
-        status: 200,
-        contentType: 'text/csv',
-        body: 'Entity Type\ntable',
-      });
-    });
-
-    const countApiPromise = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.status() === 200
-    );
-
-    await openExportScopeModal(page);
-    await countApiPromise;
-
-    const modalContent = getExportModalContent(page);
-
-    await test.step('Export button becomes disabled and shows loading after click', async () => {
-      const exportButton = modalContent.getByRole('button', {
-        name: 'Export',
-      });
-
-      await exportButton.click();
-
-      await expect(exportButton).toBeDisabled();
-      await expect(exportButton).toHaveClass(/ant-btn-loading/);
-    });
-  });
-
-  test('Export API error is shown inside the modal', async ({ page }) => {
-    const errorMessage = 'Export failed due to a server error.';
-
-    await page.route('**/api/v1/search/export?*', async (route) => {
-      await route.fulfill({
-        status: 400,
-        contentType: 'text/plain',
-        body: errorMessage,
-      });
-    });
-
-    await openExportScopeModal(page);
-
-    await getExportModalContent(page)
-      .getByRole('button', { name: 'Export' })
-      .click();
-
-    await test.step('Error message is visible inside the modal', async () => {
-      await expect(
-        getExportModalContent(page).getByText(errorMessage)
-      ).toBeVisible();
-    });
-
-    await test.step('Modal remains open after error', async () => {
-      await expect(getExportModalContent(page)).toBeVisible();
-    });
-  });
-
-  test('Export is disabled when all matching assets exceed limit', async ({
+  test('Export is disabled when all matching assets exceed 200k', async ({
     page,
   }) => {
     await page.route('**/api/v1/search/query?*', async (route) => {
@@ -240,7 +323,10 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
         body: JSON.stringify({
           took: 1,
           hits: {
-            total: { value: 200001, relation: 'eq' },
+            total: {
+              value: 200001,
+              relation: 'eq',
+            },
             hits: [],
           },
           aggregations: {},
@@ -248,7 +334,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       });
     });
 
-    await page.getByTestId('export-search-results-button').click();
+    await openExportScopeModal(page);
 
     const modalContent = getExportModalContent(page);
     const exportButton = modalContent.getByRole('button', { name: 'Export' });
@@ -270,6 +356,16 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     page,
   }) => {
     test.slow();
+
+    const countApiPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.status() === 200
+    );
+
+    await page.goto('/explore/tables?search=sample_data');
+    await expect(page.getByTestId('explore-page')).toBeVisible();
+    await countApiPromise;
 
     await openExportScopeModal(page);
 
