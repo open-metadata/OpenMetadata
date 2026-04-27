@@ -11,6 +11,7 @@
 """
 Bigtable source methods.
 """
+
 import traceback
 from typing import Dict, Iterable, List, Optional, Union
 
@@ -74,15 +75,11 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
         self.tables: Dict[ProjectId, Dict[InstanceId, Dict[TableId, Table]]] = {}
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: BigTableConnection = config.serviceConnection.root.config
         if not isinstance(connection, BigTableConnection):
-            raise InvalidSourceException(
-                f"Expected BigTableConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected BigTableConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_configured_database(self) -> Optional[str]:
@@ -106,20 +103,14 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
             # the first element is a list of instances
             # the second element is another collection (seems empty) and I do not know what is its purpose
             instances, _ = self.client.list_instances(project_id=project_id)
-            self.instances[project_id] = {
-                instance.instance_id: instance for instance in instances
-            }
+            self.instances[project_id] = {instance.instance_id: instance for instance in instances}
             return list(self.instances[project_id].keys())
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Failed to list BigTable instances in project {project_id}: {err}"
-            )
+            logger.error(f"Failed to list BigTable instances in project {project_id}: {err}")
             raise
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         project_id = self.context.get().database
         try:
             instance = self._get_instance(project_id, schema_name)
@@ -132,56 +123,35 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
                     [project_id, instance.instance_id, table.table_id],
                     table,
                 )
-            return [
-                TableNameAndType(name=table)
-                for table in self.tables[project_id][schema_name].keys()
-            ]
+            return [TableNameAndType(name=table) for table in self.tables[project_id][schema_name].keys()]
         except Exception as err:
             logger.debug(traceback.format_exc())
             # add context to the error message
-            logger.error(
-                f"Failed to list BigTable table names in {project_id}.{schema_name}: {err}"
-            )
+            logger.error(f"Failed to list BigTable table names in {project_id}.{schema_name}: {err}")
         return []
 
-    def get_table_constraints(
-        self, db_name: str, schema_name: str, table_name: str
-    ) -> List[TableConstraint]:
-        return [
-            TableConstraint(
-                constraintType=ConstraintType.PRIMARY_KEY, columns=["row_key"]
-            )
-        ]
+    def get_table_constraints(self, db_name: str, schema_name: str, table_name: str) -> List[TableConstraint]:
+        return [TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=["row_key"])]
 
-    def get_table_columns_dict(
-        self, schema_name: str, table_name: str
-    ) -> Union[List[Dict], Dict]:
+    def get_table_columns_dict(self, schema_name: str, table_name: str) -> Union[List[Dict], Dict]:
         project_id = self.context.get().database
         try:
             table = self._get_table(project_id, schema_name, table_name)
             if table is None:
-                raise RuntimeError(
-                    f"Table {project_id}/{schema_name}/{table_name} not found."
-                )
+                raise RuntimeError(f"Table {project_id}/{schema_name}/{table_name} not found.")
             column_families = table.list_column_families()
             # all BigTable tables have a "row_key" column. Even if there are no records in the table.
             records = [{"row_key": b"row_key"}]
             # In order to get a "good" sample of data, we try to distribute the sampling
             # across multiple column families.
             for column_family in list(column_families.keys())[:MAX_COLUMN_FAMILIES]:
-                records.extend(
-                    self._get_records_for_column_family(
-                        table, column_family, SAMPLES_PER_COLUMN_FAMILY
-                    )
-                )
+                records.extend(self._get_records_for_column_family(table, column_family, SAMPLES_PER_COLUMN_FAMILY))
                 if len(records) >= GLOBAL_SAMPLE_SIZE:
                     break
             return records
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to read BigTable rows for [{project_id}.{schema_name}.{table_name}]: {err}"
-            )
+            logger.warning(f"Failed to read BigTable rows for [{project_id}.{schema_name}.{table_name}]: {err}")
         return []
 
     def get_source_url(
@@ -212,16 +182,12 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
         dct[keys[-1]] = value
 
     @staticmethod
-    def _get_records_for_column_family(
-        table: Table, column_family: str, limit: int
-    ) -> List[Dict]:
+    def _get_records_for_column_family(table: Table, column_family: str, limit: int) -> List[Dict]:
         filter_ = row_filters.ColumnRangeFilter(column_family_id=column_family)
         rows = table.read_rows(limit=limit, filter_=filter_)
         return [Row.from_partial_row(row).to_record() for row in rows]
 
-    def _get_table(
-        self, project_id: str, schema_name: str, table_name: str
-    ) -> Optional[Table]:
+    def _get_table(self, project_id: str, schema_name: str, table_name: str) -> Optional[Table]:
         try:
             return self.tables[project_id][schema_name][table_name]
         except KeyError:

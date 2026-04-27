@@ -11,6 +11,7 @@
 """
 Topology Restore Integration Test
 """
+
 import pytest
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -61,11 +62,7 @@ def restore_service(metadata):
 
     yield service_entity
 
-    service_id = str(
-        metadata.get_by_name(
-            entity=DatabaseService, fqn=service_request.name.root
-        ).id.root
-    )
+    service_id = str(metadata.get_by_name(entity=DatabaseService, fqn=service_request.name.root).id.root)
     metadata.delete(
         entity=DatabaseService,
         entity_id=service_id,
@@ -101,9 +98,7 @@ def restore_schema(metadata, restore_database):
 
     yield schema
 
-    metadata.delete(
-        entity=DatabaseSchema, entity_id=schema.id, recursive=True, hard_delete=True
-    )
+    metadata.delete(entity=DatabaseSchema, entity_id=schema.id, recursive=True, hard_delete=True)
 
 
 @pytest.fixture(scope="module")
@@ -163,9 +158,7 @@ class TestOMetaTopologyRestoreAPI:
             hard_delete=False,
         )
 
-        deleted_table = metadata.get_by_name(
-            entity=Table, fqn=table_fqn, fields=["*"], include="all"
-        )
+        deleted_table = metadata.get_by_name(entity=Table, fqn=table_fqn, fields=["*"], include="all")
         assert deleted_table is not None
         assert deleted_table.deleted is True
 
@@ -174,18 +167,13 @@ class TestOMetaTopologyRestoreAPI:
         assert restored_table is not None
         assert restored_table.deleted is False
         assert restored_table.id.root == restore_table.id.root
-        assert (
-            restored_table.fullyQualifiedName.root
-            == restore_table.fullyQualifiedName.root
-        )
+        assert restored_table.fullyQualifiedName.root == restore_table.fullyQualifiedName.root
 
         active_table = metadata.get_by_name(entity=Table, fqn=table_fqn)
         assert active_table is not None
         assert active_table.deleted is False
 
-    def test_restore_deleted_entity_with_same_source_hash(
-        self, metadata, restore_table
-    ):
+    def test_restore_deleted_entity_with_same_source_hash(self, metadata, restore_table):
         """
         Test that a deleted entity with the same sourceHash gets restored
         This simulates the topology runner scenario where an entity is deleted
@@ -194,9 +182,7 @@ class TestOMetaTopologyRestoreAPI:
         table_id = str(restore_table.id.root)
         table_fqn = restore_table.fullyQualifiedName.root
 
-        original_table = metadata.get_by_name(
-            entity=Table, fqn=table_fqn, fields=["sourceHash"]
-        )
+        original_table = metadata.get_by_name(entity=Table, fqn=table_fqn, fields=["sourceHash"])
         original_source_hash = original_table.sourceHash
 
         metadata.delete(
@@ -205,9 +191,7 @@ class TestOMetaTopologyRestoreAPI:
             hard_delete=False,
         )
 
-        deleted_table = metadata.get_by_name(
-            entity=Table, fqn=table_fqn, fields=["*"], include="all"
-        )
+        deleted_table = metadata.get_by_name(entity=Table, fqn=table_fqn, fields=["*"], include="all")
         assert deleted_table.deleted is True
 
         restored_table = metadata.restore(entity=Table, entity_id=table_id)
@@ -215,9 +199,7 @@ class TestOMetaTopologyRestoreAPI:
         assert restored_table is not None
         assert restored_table.deleted is False
 
-        restored_with_hash = metadata.get_by_name(
-            entity=Table, fqn=table_fqn, fields=["sourceHash"]
-        )
+        restored_with_hash = metadata.get_by_name(entity=Table, fqn=table_fqn, fields=["sourceHash"])
         assert restored_with_hash.sourceHash == original_source_hash
 
     def test_restore_nonexistent_entity(self, metadata):

@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """Table-level test definitions for DQ as Code API."""
+
 from typing import List, Optional
 
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
@@ -53,13 +54,9 @@ class TableColumnCountToBeBetween(TableTest):
             description=description or default_desc,
         )
         if min_count is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="minColValue", value=str(min_count))
-            )
+            self.parameters.append(TestCaseParameterValue(name="minColValue", value=str(min_count)))
         if max_count is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="maxColValue", value=str(max_count))
-            )
+            self.parameters.append(TestCaseParameterValue(name="maxColValue", value=str(max_count)))
 
 
 class TableColumnCountToEqual(TableTest):
@@ -89,12 +86,9 @@ class TableColumnCountToEqual(TableTest):
             test_definition_name="tableColumnCountToEqual",
             name=name or "table_column_count_equals",
             display_name=display_name or "Table Column Count Equals",
-            description=description
-            or f"Validates that the table has exactly {column_count} columns",
+            description=description or f"Validates that the table has exactly {column_count} columns",
         )
-        self.parameters.append(
-            TestCaseParameterValue(name="columnCount", value=str(column_count))
-        )
+        self.parameters.append(TestCaseParameterValue(name="columnCount", value=str(column_count)))
 
 
 class TableRowCountToBeBetween(TableTest):
@@ -124,8 +118,7 @@ class TableRowCountToBeBetween(TableTest):
         description: Optional[str] = None,
     ):
         default_desc = (
-            f"Validates that the number of rows in the table is between "
-            f"{min_count or 'any'} and {max_count or 'any'}"
+            f"Validates that the number of rows in the table is between {min_count or 'any'} and {max_count or 'any'}"
         )
         super().__init__(
             test_definition_name="tableRowCountToBeBetween",
@@ -134,13 +127,9 @@ class TableRowCountToBeBetween(TableTest):
             description=description or default_desc,
         )
         if min_count is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="minValue", value=str(min_count))
-            )
+            self.parameters.append(TestCaseParameterValue(name="minValue", value=str(min_count)))
         if max_count is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="maxValue", value=str(max_count))
-            )
+            self.parameters.append(TestCaseParameterValue(name="maxValue", value=str(max_count)))
 
 
 class TableRowCountToEqual(TableTest):
@@ -170,12 +159,9 @@ class TableRowCountToEqual(TableTest):
             test_definition_name="tableRowCountToEqual",
             name=name or "table_row_count_equals",
             display_name=display_name or "Table Row Count Equals",
-            description=description
-            or f"Validates that the table has exactly {row_count} rows",
+            description=description or f"Validates that the table has exactly {row_count} rows",
         )
-        self.parameters.append(
-            TestCaseParameterValue(name="value", value=str(row_count))
-        )
+        self.parameters.append(TestCaseParameterValue(name="value", value=str(row_count)))
 
 
 class TableRowInsertedCountToBeBetween(TableTest):
@@ -225,22 +211,12 @@ class TableRowInsertedCountToBeBetween(TableTest):
             description=description or default_desc,
         )
         if min_count is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="min", value=str(min_count))
-            )
+            self.parameters.append(TestCaseParameterValue(name="min", value=str(min_count)))
         if max_count is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="max", value=str(max_count))
-            )
-        self.parameters.append(
-            TestCaseParameterValue(name="columnName", value=column_name)
-        )
-        self.parameters.append(
-            TestCaseParameterValue(name="rangeType", value=range_type)
-        )
-        self.parameters.append(
-            TestCaseParameterValue(name="rangeInterval", value=str(range_interval))
-        )
+            self.parameters.append(TestCaseParameterValue(name="max", value=str(max_count)))
+        self.parameters.append(TestCaseParameterValue(name="columnName", value=column_name))
+        self.parameters.append(TestCaseParameterValue(name="rangeType", value=range_type))
+        self.parameters.append(TestCaseParameterValue(name="rangeInterval", value=str(range_interval)))
 
 
 class TableColumnToMatchSet(TableTest):
@@ -276,12 +252,8 @@ class TableColumnToMatchSet(TableTest):
             description=description
             or f"Validates that table columns {'exactly ' if ordered else ''}match the set: {column_names}",
         )
-        self.parameters.append(
-            TestCaseParameterValue(name="columnNames", value=str(column_names))
-        )
-        self.parameters.append(
-            TestCaseParameterValue(name="ordered", value=str(ordered))
-        )
+        self.parameters.append(TestCaseParameterValue(name="columnNames", value=str(column_names)))
+        self.parameters.append(TestCaseParameterValue(name="ordered", value=str(ordered)))
 
 
 class TableColumnNameToExist(TableTest):
@@ -311,12 +283,9 @@ class TableColumnNameToExist(TableTest):
             test_definition_name="tableColumnNameToExist",
             name=name or f"table_column_{column_name}_exists",
             display_name=display_name or f"Column '{column_name}' Exists",
-            description=description
-            or f"Validates that column '{column_name}' exists in the table",
+            description=description or f"Validates that column '{column_name}' exists in the table",
         )
-        self.parameters.append(
-            TestCaseParameterValue(name="columnName", value=column_name)
-        )
+        self.parameters.append(TestCaseParameterValue(name="columnName", value=column_name))
 
 
 class TableCustomSQLQuery(TableTest):
@@ -353,9 +322,7 @@ class TableCustomSQLQuery(TableTest):
             display_name=display_name or "Custom SQL Query",
             description=description or "Validates data using a custom SQL query",
         )
-        self.parameters.append(
-            TestCaseParameterValue(name="sqlExpression", value=sql_expression)
-        )
+        self.parameters.append(TestCaseParameterValue(name="sqlExpression", value=sql_expression))
         self.parameters.append(TestCaseParameterValue(name="strategy", value=strategy))
 
 
@@ -402,33 +369,20 @@ class TableDiff(TableTest):
             test_definition_name="tableDiff",
             name=name or "table_diff",
             display_name=display_name or "Table Diff",
-            description=description
-            or f"Compares current table with {table2} to identify differences",
+            description=description or f"Compares current table with {table2} to identify differences",
         )
         self.parameters.append(TestCaseParameterValue(name="table2", value=table2))
         if key_columns:
-            self.parameters.append(
-                TestCaseParameterValue(name="keyColumns", value=str(key_columns))
-            )
+            self.parameters.append(TestCaseParameterValue(name="keyColumns", value=str(key_columns)))
         if table2_key_columns:
-            self.parameters.append(
-                TestCaseParameterValue(
-                    name="table2.keyColumns", value=str(table2_key_columns)
-                )
-            )
+            self.parameters.append(TestCaseParameterValue(name="table2.keyColumns", value=str(table2_key_columns)))
         if use_columns:
-            self.parameters.append(
-                TestCaseParameterValue(name="useColumns", value=str(use_columns))
-            )
+            self.parameters.append(TestCaseParameterValue(name="useColumns", value=str(use_columns)))
         if threshold is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="threshold", value=str(threshold))
-            )
+            self.parameters.append(TestCaseParameterValue(name="threshold", value=str(threshold)))
         if where:
             self.parameters.append(TestCaseParameterValue(name="where", value=where))
         if case_sensitive_columns is not None:
             self.parameters.append(
-                TestCaseParameterValue(
-                    name="caseSensitiveColumns", value=str(case_sensitive_columns)
-                )
+                TestCaseParameterValue(name="caseSensitiveColumns", value=str(case_sensitive_columns))
             )

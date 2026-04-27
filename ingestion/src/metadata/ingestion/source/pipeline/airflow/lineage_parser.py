@@ -62,6 +62,7 @@ we'll join the keys and get [
 ]
 and we'll treat this as independent sets of lineage
 """
+
 import json
 import logging
 import textwrap
@@ -345,14 +346,13 @@ def _(xlet: str) -> Optional[Dict[str, List[OMEntity]]]:
 
         return {om_entity.key: [om_entity]}
     except Exception as exc:
-        logger.error(
-            f"We could not parse the inlet/outlet information from [{xlet}] due to [{exc}]"
-        )
+        logger.error(f"We could not parse the inlet/outlet information from [{xlet}] due to [{exc}]")
         return None
 
 
 def get_xlets_from_operator(
-    operator: "BaseOperator", xlet_mode: XLetsMode
+    operator: "BaseOperator",  # noqa: F821
+    xlet_mode: XLetsMode,  # noqa: F821
 ) -> Optional[Dict[str, List[OMEntity]]]:
     """
     Given an Airflow DAG Task, obtain the tables
@@ -368,16 +368,12 @@ def get_xlets_from_operator(
     attribute = None
     if xlet_mode == XLetsMode.INLETS:
         attribute = (
-            XLetsAttr.INLETS.value
-            if hasattr(operator, XLetsAttr.INLETS.value)
-            else XLetsAttr.PRIVATE_INLETS.value
+            XLetsAttr.INLETS.value if hasattr(operator, XLetsAttr.INLETS.value) else XLetsAttr.PRIVATE_INLETS.value
         )
 
     if xlet_mode == XLetsMode.OUTLETS:
         attribute = (
-            XLetsAttr.OUTLETS.value
-            if hasattr(operator, XLetsAttr.OUTLETS.value)
-            else XLetsAttr.PRIVATE_OUTLETS.value
+            XLetsAttr.OUTLETS.value if hasattr(operator, XLetsAttr.OUTLETS.value) else XLetsAttr.PRIVATE_OUTLETS.value
         )
 
     if attribute is None:
@@ -399,7 +395,7 @@ def get_xlets_from_operator(
     return xlet_data
 
 
-def get_xlets_from_dag(dag: "DAG") -> List[XLets]:
+def get_xlets_from_dag(dag: "DAG") -> List[XLets]:  # noqa: F821
     """
     Fill the inlets and outlets of the Pipeline by iterating
     over all its tasks
@@ -427,16 +423,10 @@ def get_xlets_from_dag(dag: "DAG") -> List[XLets]:
             )
 
         except Exception as exc:
-            error_msg = (
-                f"Error while getting inlets and outlets for task - {task} - {exc}"
-            )
+            error_msg = f"Error while getting inlets and outlets for task - {task} - {exc}"
             logger.error(error_msg)
             logger.error(traceback.format_exc())
 
     # We expect to have the same keys in both inlets and outlets dicts
     # We will then iterate over the inlet keys to build the list of XLets
-    return [
-        XLets(inlets=value, outlets=_outlets[key])
-        for key, value in _inlets.items()
-        if value and _outlets.get(key)
-    ]
+    return [XLets(inlets=value, outlets=_outlets[key]) for key, value in _inlets.items() if value and _outlets.get(key)]

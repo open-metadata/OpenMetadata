@@ -12,6 +12,7 @@
 """
 Test dashboard connectors with CLI
 """
+
 from abc import abstractmethod
 from typing import List
 from unittest import TestCase
@@ -98,9 +99,7 @@ class CliDashboardBase(TestCase):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_for_vanilla_ingestion(
-            self, source_status: Status, sink_status: Status
-        ) -> None:
+        def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
             raise NotImplementedError()
 
         @abstractmethod

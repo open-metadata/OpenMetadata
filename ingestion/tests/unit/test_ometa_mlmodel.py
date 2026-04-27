@@ -12,6 +12,7 @@
 """
 OpenMetadata MlModel mixin unit test — validates sklearn model → CreateMlModelRequest conversion
 """
+
 from unittest.mock import patch
 
 import pandas as pd
@@ -50,9 +51,7 @@ class TestMlModelSklearn:
         df = pd.DataFrame(iris.data, columns=iris.feature_names)
         y = iris.target
 
-        x_train, _, y_train, _ = train_test_split(
-            df, y, test_size=0.25, random_state=70
-        )
+        x_train, _, y_train, _ = train_test_split(df, y, test_size=0.25, random_state=70)
 
         dtree = DecisionTreeClassifier()
         dtree.fit(x_train, y_train)
@@ -65,9 +64,7 @@ class TestMlModelSklearn:
             connection={"config": {"type": "Sklearn"}},
         )
 
-        with patch.object(
-            OpenMetadata, "get_service_or_create", return_value=mock_service
-        ):
+        with patch.object(OpenMetadata, "get_service_or_create", return_value=mock_service):
             request = metadata.get_mlmodel_sklearn(
                 name="test-sklearn",
                 model=dtree,
@@ -92,8 +89,6 @@ class TestMlModelSklearn:
         assert "max_depth" in param_names
         assert "random_state" in param_names
 
-        criterion_param = next(
-            param for param in request.mlHyperParameters if param.name == "criterion"
-        )
+        criterion_param = next(param for param in request.mlHyperParameters if param.name == "criterion")
         assert criterion_param is not None
         assert criterion_param.value is not None

@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from sqlalchemy.engine import Engine
@@ -73,9 +74,7 @@ def test_connection(
     """
     queries = {
         "GetQueries": MSSQL_TEST_GET_QUERIES,
-        "GetDatabases": MSSQL_GET_DATABASE
-        if service_connection.ingestAllDatabases
-        else MSSQL_GET_CURRENT_DATABASE,
+        "GetDatabases": MSSQL_GET_DATABASE if service_connection.ingestAllDatabases else MSSQL_GET_CURRENT_DATABASE,
     }
 
     return test_connection_db_common(

@@ -20,9 +20,7 @@ from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-MOCK_ENTITY_REFERENCE = EntityReference(
-    id=str(UUID(int=0)), type="test_suite", name="test_suite"
-)
+MOCK_ENTITY_REFERENCE = EntityReference(id=str(UUID(int=0)), type="test_suite", name="test_suite")
 
 
 @pytest.mark.parametrize(
@@ -114,12 +112,8 @@ def test_source_config(parameters, expected, monkeypatch):
             entityLink="<#E::some::link>",
         ),
     ]
-    mock_metadata.get_by_id.return_value = TestSuite(
-        name="test_suite", basic=True, id=UUID(int=0)
-    )
+    mock_metadata.get_by_id.return_value = TestSuite(name="test_suite", basic=True, id=UUID(int=0))
 
-    source = TestSuiteSource(
-        OpenMetadataWorkflowConfig.model_validate(workflow_config), mock_metadata
-    )
+    source = TestSuiteSource(OpenMetadataWorkflowConfig.model_validate(workflow_config), mock_metadata)
     test_cases = list(source._iter())[0].right.test_cases
     assert [t.name.root for t in test_cases] == expected

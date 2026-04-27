@@ -52,6 +52,7 @@ Performance Impact:
 - Exceptional services (3): First import fails + fallback, ~12-20ms
 - Negligible impact: Only 3 out of 47 services use fallback
 """
+
 import pytest
 
 from metadata.generated.schema.entity.services.databaseService import (
@@ -143,25 +144,19 @@ class TestGetConnectionClass:
             connection_class = get_connection_class(service_name, DatabaseConnection)
 
             # Verify we got a valid class
-            assert (
-                connection_class is not None
-            ), f"get_connection_class returned None for {service_name}"
+            assert connection_class is not None, f"get_connection_class returned None for {service_name}"
 
             # Verify class name follows expected pattern
             expected_class_name = f"{service_name}Connection"
             assert connection_class.__name__ == expected_class_name, (
-                f"Expected class name '{expected_class_name}', "
-                f"got '{connection_class.__name__}'"
+                f"Expected class name '{expected_class_name}', got '{connection_class.__name__}'"
             )
 
             # Generate expected camelCase module name
             # (first char lowercase, rest unchanged)
-            expected_module_name = (
-                service_name[0].lower() + service_name[1:] + "Connection"
-            )
+            expected_module_name = service_name[0].lower() + service_name[1:] + "Connection"
             assert expected_module_name in connection_class.__module__, (
-                f"Expected module to contain '{expected_module_name}', "
-                f"got '{connection_class.__module__}'"
+                f"Expected module to contain '{expected_module_name}', got '{connection_class.__module__}'"
             )
 
         except ModuleNotFoundError as e:
@@ -183,22 +178,18 @@ class TestGetConnectionClass:
             connection_class = get_connection_class(service_name, DatabaseConnection)
 
             # Verify we got a valid class
-            assert (
-                connection_class is not None
-            ), f"get_connection_class returned None for {service_name}"
+            assert connection_class is not None, f"get_connection_class returned None for {service_name}"
 
             # Verify class name follows expected pattern
             expected_class_name = f"{service_name}Connection"
             assert connection_class.__name__ == expected_class_name, (
-                f"Expected class name '{expected_class_name}', "
-                f"got '{connection_class.__name__}'"
+                f"Expected class name '{expected_class_name}', got '{connection_class.__name__}'"
             )
 
             # Generate expected lowercase module name
             expected_module_name = service_name.lower() + "Connection"
             assert expected_module_name in connection_class.__module__, (
-                f"Expected module to contain '{expected_module_name}', "
-                f"got '{connection_class.__module__}'"
+                f"Expected module to contain '{expected_module_name}', got '{connection_class.__module__}'"
             )
 
         except ModuleNotFoundError as e:
@@ -219,24 +210,18 @@ class TestGetConnectionClass:
             connection_class = get_connection_class(service_name, DatabaseConnection)
 
             # Verify we got a valid class
-            assert (
-                connection_class is not None
-            ), f"get_connection_class returned None for {service_name}"
+            assert connection_class is not None, f"get_connection_class returned None for {service_name}"
 
             # Verify class name follows expected pattern
             expected_class_name = f"{service_name}Connection"
             assert connection_class.__name__ == expected_class_name, (
-                f"Expected class name '{expected_class_name}', "
-                f"got '{connection_class.__name__}'"
+                f"Expected class name '{expected_class_name}', got '{connection_class.__name__}'"
             )
 
             # Generate expected simple-case module name
-            expected_module_name = (
-                service_name[0].lower() + service_name[1:] + "Connection"
-            )
+            expected_module_name = service_name[0].lower() + service_name[1:] + "Connection"
             assert expected_module_name in connection_class.__module__, (
-                f"Expected module to contain '{expected_module_name}', "
-                f"got '{connection_class.__module__}'"
+                f"Expected module to contain '{expected_module_name}', got '{connection_class.__module__}'"
             )
 
         except ModuleNotFoundError as e:
@@ -268,9 +253,7 @@ class TestGetConnectionClass:
                 continue
 
             try:
-                connection_class = get_connection_class(
-                    service_name, DatabaseConnection
-                )
+                connection_class = get_connection_class(service_name, DatabaseConnection)
                 assert connection_class is not None
                 success_count += 1
             except Exception as e:
@@ -280,9 +263,7 @@ class TestGetConnectionClass:
         total_testable = len(list(DatabaseServiceType)) - len(skipped_services)
 
         if failed_services:
-            failure_details = "\n".join(
-                f"  - {name}: {error}" for name, error in failed_services
-            )
+            failure_details = "\n".join(f"  - {name}: {error}" for name, error in failed_services)
             pytest.fail(
                 f"Failed to import {len(failed_services)} out of "
                 f"{total_testable} services:\n"
@@ -292,8 +273,7 @@ class TestGetConnectionClass:
 
         # If we get here, all services passed
         assert success_count == total_testable, (
-            f"Expected {total_testable} services, "
-            f"but only {success_count} succeeded"
+            f"Expected {total_testable} services, but only {success_count} succeeded"
         )
 
     def test_sas_connection_specific(self):
@@ -312,9 +292,7 @@ class TestGetConnectionClass:
             assert "sasConnection" in connection_class.__module__
 
             # Verify it has expected attributes
-            assert hasattr(connection_class, "model_fields") or hasattr(
-                connection_class, "__fields__"
-            )
+            assert hasattr(connection_class, "model_fields") or hasattr(connection_class, "__fields__")
 
         except ModuleNotFoundError as e:
             pytest.fail(
@@ -340,10 +318,7 @@ class TestGetConnectionClass:
             assert "bigQueryConnection" in connection_class.__module__
 
         except ModuleNotFoundError as e:
-            pytest.fail(
-                f"BigQuery connection import failed: {e}\n"
-                f"Expected module 'bigQueryConnection' (camelCase)."
-            )
+            pytest.fail(f"BigQuery connection import failed: {e}\nExpected module 'bigQueryConnection' (camelCase).")
 
     def test_azuresql_connection_specific(self):
         """
@@ -361,10 +336,7 @@ class TestGetConnectionClass:
             assert "azureSQLConnection" in connection_class.__module__
 
         except ModuleNotFoundError as e:
-            pytest.fail(
-                f"AzureSQL connection import failed: {e}\n"
-                f"Expected module 'azureSQLConnection' (camelCase)."
-            )
+            pytest.fail(f"AzureSQL connection import failed: {e}\nExpected module 'azureSQLConnection' (camelCase).")
 
     def test_dynamodb_connection_specific(self):
         """
@@ -382,10 +354,7 @@ class TestGetConnectionClass:
             assert "dynamoDBConnection" in connection_class.__module__
 
         except ModuleNotFoundError as e:
-            pytest.fail(
-                f"DynamoDB connection import failed: {e}\n"
-                f"Expected module 'dynamoDBConnection' (camelCase)."
-            )
+            pytest.fail(f"DynamoDB connection import failed: {e}\nExpected module 'dynamoDBConnection' (camelCase).")
 
     def test_module_name_generation_formula(self):
         """
@@ -420,9 +389,7 @@ class TestGetConnectionClass:
 
         for service_name, expected_module_name in test_cases.items():
             try:
-                connection_class = get_connection_class(
-                    service_name, DatabaseConnection
-                )
+                connection_class = get_connection_class(service_name, DatabaseConnection)
 
                 # Extract just the module filename
                 actual_module_name = connection_class.__module__.split(".")[-1]

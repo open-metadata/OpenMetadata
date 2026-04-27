@@ -138,9 +138,7 @@ class NoSQLProfiler(TestCase):
         cls.collection = cls.db[TEST_COLLECTION]
         cls.collection.insert_many(TEST_DATA)
         cls.db.create_collection(EMPTY_COLLECTION)
-        cls.ingestion_config = get_ingestion_config(
-            cls.mongo_container.get_exposed_port("27017"), "test", "test"
-        )
+        cls.ingestion_config = get_ingestion_config(cls.mongo_container.get_exposed_port("27017"), "test", "test")
         # cls.client["admin"].command("grantRolesToUser", "test", roles=["userAdminAnyDatabase"])
         ingestion_workflow = MetadataWorkflow.create(
             cls.ingestion_config,
@@ -158,9 +156,7 @@ class NoSQLProfiler(TestCase):
 
     @classmethod
     def delete_service(cls):
-        service_entity = cls.metadata.get_by_name(
-            entity=DatabaseService, fqn=SERVICE_NAME
-        )
+        service_entity = cls.metadata.get_by_name(entity=DatabaseService, fqn=SERVICE_NAME)
         if service_entity:
             _safe_delete(
                 cls.metadata,
@@ -243,9 +239,7 @@ class NoSQLProfiler(TestCase):
                 get_end_of_day_timestamp_mill(),
                 profile_type=ColumnProfile,
             )
-            assert (len(column_profile.entities) > 0) == (
-                len(tc["expected"]["columns"]) > 0
-            )
+            assert (len(column_profile.entities) > 0) == (len(tc["expected"]["columns"]) > 0)
             if len(expected["columns"]) > 0:
                 for c1, c2 in zip(column_profile.entities, expected["columns"]):
                     assert c1.name == c2.name
@@ -266,9 +260,7 @@ class NoSQLProfiler(TestCase):
         }
         self.run_auto_classification_workflow(auto_workflow_config)
 
-        table = self.metadata.get_by_name(
-            Table, f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}"
-        )
+        table = self.metadata.get_by_name(Table, f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}")
         sample_data = self.metadata.get_sample_data(table)
         assert [c.root for c in sample_data.sampleData.columns] == [
             "_id",
@@ -334,18 +326,14 @@ class NoSQLProfiler(TestCase):
                 get_end_of_day_timestamp_mill(),
             )
             assert collection_profile.entities, collection
-            assert (
-                collection_profile.entities[-1].rowCount == expected_row_count
-            ), collection
+            assert collection_profile.entities[-1].rowCount == expected_row_count, collection
             column_profile = self.metadata.get_profile_data(
                 f"{SERVICE_NAME}.default.{TEST_DATABASE}.{collection}.age",
                 datetime_to_ts(datetime.now() - timedelta(seconds=10)),
                 get_end_of_day_timestamp_mill(),
                 profile_type=ColumnProfile,
             )
-            assert (len(column_profile.entities) > 0) == (
-                len(tc["expected"]["columns"]) > 0
-            )
+            assert (len(column_profile.entities) > 0) == (len(tc["expected"]["columns"]) > 0)
 
         auto_workflow_config = deepcopy(self.ingestion_config)
         auto_workflow_config["source"]["sourceConfig"]["config"].update(
@@ -368,13 +356,7 @@ class NoSQLProfiler(TestCase):
         }
         self.run_auto_classification_workflow(auto_workflow_config)
 
-        table = self.metadata.get_by_name(
-            Table, f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}"
-        )
+        table = self.metadata.get_by_name(Table, f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}")
         sample_data = self.metadata.get_sample_data(table)
-        age_column_index = [col.root for col in sample_data.sampleData.columns].index(
-            "age"
-        )
-        assert all(
-            [r[age_column_index] == str(query_age) for r in sample_data.sampleData.rows]
-        )
+        age_column_index = [col.root for col in sample_data.sampleData.columns].index("age")
+        assert all([r[age_column_index] == str(query_age) for r in sample_data.sampleData.rows])
