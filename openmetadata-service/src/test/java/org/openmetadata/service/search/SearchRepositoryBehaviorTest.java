@@ -75,12 +75,16 @@ import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -2262,6 +2266,62 @@ class SearchRepositoryBehaviorTest {
     assertSame(vectorService, spyRepository.getVectorIndexService());
     assertNotNull(spyRepository.getVectorEmbeddingHandler());
     verify(vectorService).ensureHybridSearchPipeline(0.4, 0.6);
+  }
+
+  @Test
+  void initializeVectorSearchServiceInitializesElasticSearchVectorSupport() throws Exception {
+    NaturalLanguageSearchConfiguration nlConfig =
+        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("openai");
+    SearchRepository esRepository =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING),
+            "cluster",
+            ElasticSearchConfiguration.SearchType.ELASTICSEARCH,
+            nlConfig);
+    SearchRepository spyRepository = spy(esRepository);
+    ElasticSearchClient elasticSearchClient = mock(ElasticSearchClient.class);
+    ElasticsearchClient rawClient = mock(ElasticsearchClient.class);
+    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
+    ElasticSearchVectorService vectorService = mock(ElasticSearchVectorService.class);
+
+    when(elasticSearchClient.getNewClient()).thenReturn(rawClient);
+    when(embeddingClient.getDimension()).thenReturn(1536);
+    doReturn(true).when(spyRepository).isVectorEmbeddingEnabled();
+    doReturn(embeddingClient)
+        .when(spyRepository)
+        .createEmbeddingClient(any(ElasticSearchConfiguration.class));
+    setPrivateField(spyRepository, "searchClient", elasticSearchClient);
+
+    try (var settingsCacheMock = mockStatic(SettingsCache.class);
+        var vectorServiceMock = mockStatic(ElasticSearchVectorService.class)) {
+      settingsCacheMock
+          .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
+          .thenReturn(null);
+      vectorServiceMock
+          .when(
+              () ->
+                  ElasticSearchVectorService.init(
+                      rawClient,
+                      embeddingClient,
+                      "en",
+                      VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER))
+          .thenAnswer(invocation -> null);
+      vectorServiceMock.when(ElasticSearchVectorService::getInstance).thenReturn(vectorService);
+
+      spyRepository.initializeVectorSearchService();
+
+      vectorServiceMock.verify(
+          () ->
+              ElasticSearchVectorService.init(
+                  rawClient,
+                  embeddingClient,
+                  "en",
+                  VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER));
+    }
+
+    assertSame(embeddingClient, spyRepository.getEmbeddingClient());
+    assertSame(vectorService, spyRepository.getVectorIndexService());
+    assertNotNull(spyRepository.getVectorEmbeddingHandler());
   }
 
   @Test
