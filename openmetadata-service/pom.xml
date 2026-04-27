@@ -1017,6 +1017,11 @@
       <artifactId>owasp-java-html-sanitizer</artifactId>
       <version>${owasp-html-sanitizer.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-compress</artifactId>
+      <version>${commons-compress.version}</version>
+    </dependency>
   </dependencies>
 
   <profiles>

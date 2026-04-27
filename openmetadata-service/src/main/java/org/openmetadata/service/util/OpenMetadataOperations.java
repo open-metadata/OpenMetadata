@@ -16,6 +16,7 @@ import ch.qos.logback.classic.LoggerContext;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
@@ -175,7 +176,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reembed', 'reindex-rdf', 'reindexdi', 'deploy-pipelines', "
             + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes', "
             + "'setOpenMetadataUrl', 'configureEmailSettings', 'get-security-config', 'update-security-config', 'install-app', 'delete-app', 'create-user', 'reset-password', "
-            + "'syncAlertOffset', 'analyze-tables', 'cleanup-flowable-history', 'regenerate-bot-tokens'");
+            + "'syncAlertOffset', 'analyze-tables', 'cleanup-flowable-history', 'regenerate-bot-tokens', 'backup', 'restore', 'test-migration'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     LOG.info(
@@ -2606,6 +2607,150 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to cleanup Flowable history due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "backup", description = "Backup the entire database to a .tar.gz archive.")
+  public Integer backup(
+      @Option(
+              names = {"--backup-path"},
+              required = true,
+              description =
+                  "Directory where the backup file will be created. "
+                      + "The file is named automatically as openmetadata_<version>_<timestamp>.tar.gz")
+          String backupPath,
+      @Option(
+              names = {"--batch-size"},
+              defaultValue = "1000",
+              description =
+                  "Number of rows to read/write per batch. Default: "
+                      + DatabaseBackupRestore.DEFAULT_BATCH_SIZE)
+          int batchSize) {
+    try {
+      parseConfig();
+      ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+      DatasourceConfig.initialize(connType.label);
+      String databaseName =
+          DatabaseBackupRestore.extractDatabaseName(config.getDataSourceFactory().getUrl());
+      DatabaseBackupRestore backupRestore =
+          new DatabaseBackupRestore(jdbi, connType, databaseName, batchSize);
+      String outputPath = backupRestore.backup(backupPath);
+      LOG.info("Backup saved to: {}", outputPath);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Backup failed", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "restore", description = "Restore the database from a .tar.gz backup archive.")
+  public Integer restore(
+      @Option(
+              names = {"--backup-path"},
+              required = true,
+              description = "Path to the backup .tar.gz file to restore from")
+          String backupPath,
+      @Option(
+              names = {"--batch-size"},
+              defaultValue = "1000",
+              description =
+                  "Number of rows to insert per batch. Default: "
+                      + DatabaseBackupRestore.DEFAULT_BATCH_SIZE)
+          int batchSize) {
+    try {
+      parseConfig();
+      ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+      DatasourceConfig.initialize(connType.label);
+
+      String databaseName =
+          DatabaseBackupRestore.extractDatabaseName(config.getDataSourceFactory().getUrl());
+      DatabaseBackupRestore backupRestore =
+          new DatabaseBackupRestore(jdbi, connType, databaseName, batchSize);
+
+      ObjectNode metadata = DatabaseBackupRestore.readBackupMetadata(backupPath);
+      String backupVersion = metadata.get("version").asText();
+      String targetVersion = resolveTargetVersion(metadata, backupVersion);
+
+      LOG.info("Dropping all tables before restore");
+      dropAllTables();
+
+      LOG.info("Running migrations up to version {}", targetVersion);
+      MigrationWorkflow workflow =
+          new MigrationWorkflow(
+              jdbi,
+              nativeSQLScriptRootPath,
+              connType,
+              extensionSQLScriptRootPath,
+              config.getMigrationConfiguration().getFlywayPath(),
+              config,
+              false);
+      workflow.setTargetVersion(targetVersion);
+      workflow.loadMigrations();
+      workflow.runMigrationWorkflows(true);
+
+      backupRestore.restore(backupPath);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Restore failed", e);
+      return 1;
+    }
+  }
+
+  static String resolveTargetVersion(ObjectNode metadata, String fallbackVersion) {
+    JsonNode versionsNode = metadata.get("migrationVersions");
+    if (versionsNode != null && versionsNode.isArray() && !versionsNode.isEmpty()) {
+      String maxVersion = null;
+      for (JsonNode v : versionsNode) {
+        String ver = v.asText();
+        if (maxVersion == null || MigrationWorkflow.compareVersions(ver, maxVersion) > 0) {
+          maxVersion = ver;
+        }
+      }
+      if (maxVersion != null) {
+        LOG.info(
+            "Using max migration version {} from backup metadata (pom version: {})",
+            maxVersion,
+            fallbackVersion);
+        return maxVersion;
+      }
+    }
+    LOG.info(
+        "No migrationVersions in backup metadata, falling back to pom version: {}",
+        fallbackVersion);
+    return fallbackVersion;
+  }
+
+  @Command(
+      name = "test-migration",
+      description =
+          "Test database migrations by restoring a backup and running pending migrations with before/after validation.")
+  public Integer testMigration(
+      @Option(
+              names = {"--backup-path"},
+              required = true,
+              description =
+                  "Path to the backup .tar.gz file to restore and test migrations against")
+          String backupPath,
+      @Option(
+              names = {"--batch-size"},
+              defaultValue = "1000",
+              description =
+                  "Number of rows per batch during restore. Default: "
+                      + DatabaseBackupRestore.DEFAULT_BATCH_SIZE)
+          int batchSize) {
+    try {
+      parseConfig();
+      ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+      DatasourceConfig.initialize(connType.label);
+      LOG.info("Dropping all tables before test-migration");
+      dropAllTables();
+      MigrationTestRunner runner =
+          new MigrationTestRunner(
+              jdbi, connType, config, nativeSQLScriptRootPath, extensionSQLScriptRootPath);
+      return runner.run(backupPath, batchSize);
+    } catch (Exception e) {
+      LOG.error("Migration test failed", e);
       return 1;
     }
   }
