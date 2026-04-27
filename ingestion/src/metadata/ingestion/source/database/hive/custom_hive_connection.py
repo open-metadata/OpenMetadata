@@ -53,9 +53,7 @@ class CustomHiveConnection(BaseConnection):
                 }
                 ssl_context.verify_mode = ssl_cert_parameter_map.get(ssl_cert, 0)
             thrift_transport = thrift.transport.THttpClient.THttpClient(
-                uri_or_host="{scheme}://{host}:{port}/cliservice/".format(
-                    scheme=scheme, host=host, port=port
-                ),
+                uri_or_host="{scheme}://{host}:{port}/cliservice/".format(scheme=scheme, host=host, port=port),
                 ssl_context=ssl_context,
             )
 
@@ -65,10 +63,7 @@ class CustomHiveConnection(BaseConnection):
             elif auth == "KERBEROS" and kerberos_service_name:
                 self._set_kerberos_header(thrift_transport, kerberos_service_name, host)
             else:
-                raise ValueError(
-                    "Authentication is not valid use one of:"
-                    "BASIC, NOSASL, KERBEROS, NONE"
-                )
+                raise ValueError("Authentication is not valid use one of:BASIC, NOSASL, KERBEROS, NONE")
             host, port, auth, kerberos_service_name, password = (
                 None,
                 None,
@@ -86,9 +81,7 @@ class CustomHiveConnection(BaseConnection):
                 "Remove password or use one of those modes"
             )
         if (kerberos_service_name is not None) != (auth == "KERBEROS"):
-            raise ValueError(
-                "kerberos_service_name should be set if and only if in KERBEROS mode"
-            )
+            raise ValueError("kerberos_service_name should be set if and only if in KERBEROS mode")
 
         # Use puretransport if SSL is enabled or if thrift_transport is provided
         if use_ssl or thrift_transport is not None:
@@ -160,8 +153,7 @@ class CustomHiveConnection(BaseConnection):
                 # https://cwiki.apache.org/confluence/display/Hive/Setting+Up+HiveServer2#SettingUpHiveServer2-Configuration
                 # PAM currently left to end user via thrift_transport option.
                 raise NotImplementedError(
-                    "Only NONE, NOSASL, LDAP, KERBEROS, CUSTOM "
-                    "authentication are supported, got {}".format(auth)
+                    "Only NONE, NOSASL, LDAP, KERBEROS, CUSTOM authentication are supported, got {}".format(auth)
                 )
 
         protocol = thrift.protocol.TBinaryProtocol.TBinaryProtocol(self._transport)
@@ -179,13 +171,9 @@ class CustomHiveConnection(BaseConnection):
             )
             response = self._client.OpenSession(open_session_req)
             _check_status(response)
-            assert (
-                response.sessionHandle is not None
-            ), "Expected a session from OpenSession"
+            assert response.sessionHandle is not None, "Expected a session from OpenSession"
             self._sessionHandle = response.sessionHandle
-            assert (
-                response.serverProtocolVersion == protocol_version
-            ), "Unable to handle protocol version {}".format(
+            assert response.serverProtocolVersion == protocol_version, "Unable to handle protocol version {}".format(
                 response.serverProtocolVersion
             )
             with contextlib.closing(self.cursor()) as cursor:

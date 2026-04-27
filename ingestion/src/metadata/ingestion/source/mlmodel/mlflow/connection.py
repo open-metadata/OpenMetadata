@@ -12,7 +12,8 @@
 """
 Source connection handler
 """
-from typing import Optional
+
+from typing import Optional  # noqa: I001
 
 from mlflow.tracking import MlflowClient
 

@@ -13,7 +13,7 @@
 Source connection handler
 """
 
-import os
+import os  # noqa: I001
 from functools import partial, singledispatch
 from typing import Any, Optional
 from urllib.parse import quote
@@ -148,10 +148,7 @@ def _get_engine_from_env_vars() -> Engine:
     encoded_password = quote(password, safe="")
     properties = properties or ""
 
-    sql_alchemy_conn = (
-        f"{scheme}://{encoded_user}:{encoded_password}"
-        f"@{host}:{port}/{database}{properties}"
-    )
+    sql_alchemy_conn = f"{scheme}://{encoded_user}:{encoded_password}@{host}:{port}/{database}{properties}"
 
     try:
         engine = create_engine(sql_alchemy_conn, pool_pre_ping=True)
@@ -314,9 +311,7 @@ def test_connection(
             result = session.query(SerializedDagModel.dag_id).first()
             return result
         except Exception as e:
-            raise AirflowPipelineDetailsAccessError(
-                f"Pipeline details access error: {e}"
-            )
+            raise AirflowPipelineDetailsAccessError(f"Pipeline details access error: {e}")
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, connection_obj),

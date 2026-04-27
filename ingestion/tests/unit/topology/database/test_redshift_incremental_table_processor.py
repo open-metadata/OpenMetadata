@@ -154,9 +154,7 @@ class TestRedshiftIncrementalTableProcessor:
                 "_query_for_changes",
                 return_value=return_value,
             ):
-                processor = RedshiftIncrementalTableProcessor.create(
-                    create_autospec(Connection), "default_schema"
-                )
+                processor = RedshiftIncrementalTableProcessor.create(create_autospec(Connection), "default_schema")
                 processor.set_table_map("my_database", datetime(2020, 1, 1))
 
                 assert processor.get_not_deleted("my_schema") == frozenset({"my_table"})
@@ -174,9 +172,7 @@ class TestRedshiftIncrementalTableProcessor:
                 "_query_for_changes",
                 return_value=return_value,
             ):
-                processor = RedshiftIncrementalTableProcessor.create(
-                    create_autospec(Connection), "default_schema"
-                )
+                processor = RedshiftIncrementalTableProcessor.create(create_autospec(Connection), "default_schema")
                 processor.set_table_map("my_database", datetime(2020, 1, 1))
 
                 assert processor.get_not_deleted("my_schema") == frozenset({"my_table"})
@@ -194,9 +190,7 @@ class TestRedshiftIncrementalTableProcessor:
                 "_query_for_changes",
                 return_value=return_value,
             ):
-                processor = RedshiftIncrementalTableProcessor.create(
-                    create_autospec(Connection), "default_schema"
-                )
+                processor = RedshiftIncrementalTableProcessor.create(create_autospec(Connection), "default_schema")
                 processor.set_table_map("my_database", datetime(2020, 1, 1))
 
                 assert processor.get_not_deleted("my_schema") == frozenset()
@@ -214,9 +208,7 @@ class TestRedshiftIncrementalTableProcessor:
                 "_query_for_changes",
                 return_value=return_value,
             ):
-                processor = RedshiftIncrementalTableProcessor.create(
-                    create_autospec(Connection), "default_schema"
-                )
+                processor = RedshiftIncrementalTableProcessor.create(create_autospec(Connection), "default_schema")
                 processor.set_table_map("my_database", datetime(2020, 1, 1))
 
                 assert processor.get_not_deleted("my_schema") == frozenset({"my_table"})
@@ -234,9 +226,7 @@ class TestRedshiftIncrementalTableProcessor:
                 "_query_for_changes",
                 return_value=return_value,
             ):
-                processor = RedshiftIncrementalTableProcessor.create(
-                    create_autospec(Connection), "default_schema"
-                )
+                processor = RedshiftIncrementalTableProcessor.create(create_autospec(Connection), "default_schema")
                 processor.set_table_map("my_database", datetime(2020, 1, 1))
 
                 assert processor.get_not_deleted("my_schema") == frozenset({"my_table"})
@@ -254,9 +244,7 @@ class TestRedshiftIncrementalTableProcessor:
                 "_query_for_changes",
                 return_value=return_value,
             ):
-                processor = RedshiftIncrementalTableProcessor.create(
-                    create_autospec(Connection), "default_schema"
-                )
+                processor = RedshiftIncrementalTableProcessor.create(create_autospec(Connection), "default_schema")
                 processor.set_table_map("my_database", datetime(2020, 1, 1))
 
                 assert processor.get_not_deleted("my_schema") == frozenset()
@@ -274,9 +262,7 @@ class TestRedshiftIncrementalTableProcessor:
                 "_query_for_changes",
                 return_value=return_value,
             ):
-                processor = RedshiftIncrementalTableProcessor.create(
-                    create_autospec(Connection), "default_schema"
-                )
+                processor = RedshiftIncrementalTableProcessor.create(create_autospec(Connection), "default_schema")
                 processor.set_table_map("my_database", datetime(2020, 1, 1))
 
                 assert processor.get_not_deleted("my_schema") == frozenset({"my_table"})
@@ -286,30 +272,22 @@ class TestRedshiftIncrementalTableProcessor:
 
     def test_default_schema_works_as_expected(self):
         """Check if when no schema is present in the table name, the default_schema is used."""
-        return_value = [
-            VALID_CREATE_TABLE_STATEMENT_TEMPLATES[0].format(table_name="my_table")
-        ]
+        return_value = [VALID_CREATE_TABLE_STATEMENT_TEMPLATES[0].format(table_name="my_table")]
 
         with patch.object(
             RedshiftIncrementalTableProcessor,
             "_query_for_changes",
             return_value=return_value,
         ):
-            processor = RedshiftIncrementalTableProcessor.create(
-                create_autospec(Connection), "default_schema"
-            )
+            processor = RedshiftIncrementalTableProcessor.create(create_autospec(Connection), "default_schema")
             processor.set_table_map("my_database", datetime(2020, 1, 1))
 
-            assert processor.get_not_deleted("default_schema") == frozenset(
-                {"my_table"}
-            )
+            assert processor.get_not_deleted("default_schema") == frozenset({"my_table"})
 
     def test_no_duplicates_are_allowed(self):
         """Checks if only the first time table is seen it is saved."""
         return_value = []
-        for template in [
-            VALID_DROP_TABLE_STATEMENT_TEMPLATES[0]
-        ] + VALID_CREATE_TABLE_STATEMENT_TEMPLATES:
+        for template in [VALID_DROP_TABLE_STATEMENT_TEMPLATES[0]] + VALID_CREATE_TABLE_STATEMENT_TEMPLATES:
             return_value.append(template.format(table_name="my_schema.my_table"))
 
         with patch.object(
@@ -317,9 +295,7 @@ class TestRedshiftIncrementalTableProcessor:
             "_query_for_changes",
             return_value=return_value,
         ):
-            processor = RedshiftIncrementalTableProcessor.create(
-                create_autospec(Connection), "default_schema"
-            )
+            processor = RedshiftIncrementalTableProcessor.create(create_autospec(Connection), "default_schema")
             processor.set_table_map("my_database", datetime(2020, 1, 1))
 
             assert processor.get_deleted("my_schema") == [("my_schema", "my_table")]
@@ -357,26 +333,18 @@ class TestRedshiftIncrementalTableProcessor:
 
         random.shuffle(templates)
 
-        return_value = [
-            template.format(table_name=random.choice(table_names))
-            for template in templates
-        ]
+        return_value = [template.format(table_name=random.choice(table_names)) for template in templates]
 
         with patch.object(
             RedshiftIncrementalTableProcessor,
             "_query_for_changes",
             return_value=return_value,
         ):
-            processor = RedshiftIncrementalTableProcessor.create(
-                create_autospec(Connection), "default_schema"
-            )
+            processor = RedshiftIncrementalTableProcessor.create(create_autospec(Connection), "default_schema")
             processor.set_table_map("my_database", datetime(2020, 1, 1))
 
             # schema_1
-            assert (
-                len(processor.get_deleted("schema_1"))
-                + len(processor.get_not_deleted("schema_1"))
-            ) <= 4
+            assert (len(processor.get_deleted("schema_1")) + len(processor.get_not_deleted("schema_1"))) <= 4
 
             assert all(
                 table_name in ["table_1", "table_2", "table_3", "table_4"]
@@ -389,69 +357,46 @@ class TestRedshiftIncrementalTableProcessor:
             )
 
             # schema_2
-            assert (
-                len(processor.get_deleted("schema_2"))
-                + len(processor.get_not_deleted("schema_2"))
-            ) <= 1
+            assert (len(processor.get_deleted("schema_2")) + len(processor.get_not_deleted("schema_2"))) <= 1
 
-            assert all(
-                table_name == "table_1"
-                for table_name in processor.get_not_deleted("schema_2")
-            )
+            assert all(table_name == "table_1" for table_name in processor.get_not_deleted("schema_2"))
 
-            assert all(
-                table_name == "table_1"
-                for (_, table_name) in processor.get_deleted("schema_2")
-            )
+            assert all(table_name == "table_1" for (_, table_name) in processor.get_deleted("schema_2"))
 
             # schema_3
-            assert (
-                len(processor.get_deleted("schema_3"))
-                + len(processor.get_not_deleted("schema_3"))
-            ) <= 3
+            assert (len(processor.get_deleted("schema_3")) + len(processor.get_not_deleted("schema_3"))) <= 3
 
             assert all(
-                table_name in ["table_1", "table_2", "table_4"]
-                for table_name in processor.get_not_deleted("schema_3")
+                table_name in ["table_1", "table_2", "table_4"] for table_name in processor.get_not_deleted("schema_3")
             )
 
             assert all(
-                table_name in ["table_1", "table_2", "table_4"]
-                for (_, table_name) in processor.get_deleted("schema_3")
+                table_name in ["table_1", "table_2", "table_4"] for (_, table_name) in processor.get_deleted("schema_3")
             )
 
             # default_schema
             assert (
-                len(processor.get_deleted("default_schema"))
-                + len(processor.get_not_deleted("default_schema"))
+                len(processor.get_deleted("default_schema")) + len(processor.get_not_deleted("default_schema"))
             ) <= 2
 
             assert all(
-                table_name in ["table_1", "table_2"]
-                for table_name in processor.get_not_deleted("default_schema")
+                table_name in ["table_1", "table_2"] for table_name in processor.get_not_deleted("default_schema")
             )
 
             assert all(
-                table_name in ["table_1", "table_2"]
-                for (_, table_name) in processor.get_deleted("default_schema")
+                table_name in ["table_1", "table_2"] for (_, table_name) in processor.get_deleted("default_schema")
             )
 
     def test_get_not_deleted_returns_frozenset(self):
         """Verify get_not_deleted returns a frozenset for O(1) membership checks."""
-        return_value = [
-            VALID_CREATE_TABLE_STATEMENT_TEMPLATES[0].format(
-                table_name="my_schema.my_table"
-            )
-        ]
+        return_value = [VALID_CREATE_TABLE_STATEMENT_TEMPLATES[0].format(table_name="my_schema.my_table")]
 
         with patch.object(
             RedshiftIncrementalTableProcessor,
             "_query_for_changes",
             return_value=return_value,
         ):
-            processor = RedshiftIncrementalTableProcessor.create(
-                create_autospec(Connection), "default_schema"
-            )
+            processor = RedshiftIncrementalTableProcessor.create(create_autospec(Connection), "default_schema")
             processor.set_table_map("my_database", datetime(2020, 1, 1))
 
             result = processor.get_not_deleted("my_schema")
@@ -460,9 +405,7 @@ class TestRedshiftIncrementalTableProcessor:
 
     def test_clean_statement_normalizes_whitespace_and_strips_quotes(self):
         """Verify _clean_statement replaces whitespace chars and removes double quotes."""
-        processor = RedshiftIncrementalTableProcessor.create(
-            create_autospec(Connection), "default_schema"
-        )
+        processor = RedshiftIncrementalTableProcessor.create(create_autospec(Connection), "default_schema")
         raw = 'CREATE\tTABLE\n"my_schema"."my_table"\v(col INT)'
         cleaned = processor._clean_statement(raw)
 
@@ -486,10 +429,7 @@ class TestRedshiftIncrementalTableProcessor:
         assert _FIRST_KW_RE.search("CREATE TABLE my_table").group(1).upper() == "CREATE"
         assert _FIRST_KW_RE.search("ALTER TABLE my_table").group(1).upper() == "ALTER"
         assert _FIRST_KW_RE.search("DROP TABLE my_table").group(1).upper() == "DROP"
-        assert (
-            _FIRST_KW_RE.search("COMMENT ON TABLE my_table IS NULL").group(1).upper()
-            == "COMMENT"
-        )
+        assert _FIRST_KW_RE.search("COMMENT ON TABLE my_table IS NULL").group(1).upper() == "COMMENT"
         assert _FIRST_KW_RE.search("SELECT * FROM my_table") is None
 
     def test_unknown_keyword_does_not_register_table(self):
@@ -501,9 +441,7 @@ class TestRedshiftIncrementalTableProcessor:
             "_query_for_changes",
             return_value=return_value,
         ):
-            processor = RedshiftIncrementalTableProcessor.create(
-                create_autospec(Connection), "default_schema"
-            )
+            processor = RedshiftIncrementalTableProcessor.create(create_autospec(Connection), "default_schema")
             processor.set_table_map("my_database", datetime(2020, 1, 1))
 
             assert processor.get_not_deleted("my_schema") == frozenset()
@@ -518,9 +456,7 @@ class TestRedshiftIncrementalTableProcessor:
             "_query_for_changes",
             return_value=return_value,
         ):
-            processor = RedshiftIncrementalTableProcessor.create(
-                create_autospec(Connection), "default_schema"
-            )
+            processor = RedshiftIncrementalTableProcessor.create(create_autospec(Connection), "default_schema")
             processor.set_table_map("my_database", datetime(2020, 1, 1))
 
             assert "my_table" in processor.get_not_deleted("my_schema")

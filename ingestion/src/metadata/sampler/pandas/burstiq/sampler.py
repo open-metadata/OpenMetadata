@@ -16,6 +16,7 @@ pandas DataFrame, and exposes the standard SamplerInterface contract
 so that PandasProfilerInterface can be used without any BurstIQ-specific
 profiler code.
 """
+
 from typing import Callable, Iterator, List, Optional
 
 import pandas as pd
@@ -93,9 +94,7 @@ class BurstIQSampler(SamplerInterface):
         frames = []
         skip = 0
         while True:
-            page_size = (
-                min(_PAGE_SIZE, total_limit - skip) if total_limit else _PAGE_SIZE
-            )
+            page_size = min(_PAGE_SIZE, total_limit - skip) if total_limit else _PAGE_SIZE
             records = self.client.get_records_by_tql(chain, limit=page_size, skip=skip)
             if not records:
                 break
@@ -142,18 +141,12 @@ class BurstIQSampler(SamplerInterface):
         row_limit = min(self.sample_limit or SAMPLE_DATA_DEFAULT_COUNT, len(df))
         subset = df[available].head(row_limit)
 
-        rows = [
-            [self._truncate_cell(str(v)) for v in row]
-            for row in subset.itertuples(index=False, name=None)
-        ]
+        rows = [[self._truncate_cell(str(v)) for v in row] for row in subset.itertuples(index=False, name=None)]
         return TableData(columns=available, rows=rows)
 
     def get_columns(self) -> List[SQALikeColumn]:
         """Return SQALikeColumn list derived from the OM Table entity."""
-        return [
-            SQALikeColumn(name=c.name.root, type=c.dataType)
-            for c in self.entity.columns
-        ]
+        return [SQALikeColumn(name=c.name.root, type=c.dataType) for c in self.entity.columns]
 
     # ------------------------------------------------------------------
     # Internal helpers

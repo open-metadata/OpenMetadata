@@ -13,6 +13,7 @@
 """
 Module for sqlalchemy dialect utils
 """
+
 import traceback
 from typing import Dict, Optional, Tuple
 
@@ -36,24 +37,17 @@ def get_all_table_comments(self, connection, query):
     result = connection.execute(text(query) if isinstance(query, str) else query)
     for table in result:
         table_dict = {k.lower(): v for k, v in dict(table._mapping).items()}
-        self.all_table_comments[
-            (table_dict["table_name"], table_dict["schema"])
-        ] = table_dict["table_comment"]
+        self.all_table_comments[(table_dict["table_name"], table_dict["schema"])] = table_dict["table_comment"]
 
 
 def get_table_comment_wrapper(self, connection, query, table_name, schema=None):
-    if (
-        not hasattr(self, "all_table_comments")
-        or self.current_db != connection.engine.url.database
-    ):
+    if not hasattr(self, "all_table_comments") or self.current_db != connection.engine.url.database:
         self.get_all_table_comments(connection, query)
     return {"text": self.all_table_comments.get((table_name, schema))}
 
 
 @reflection.cache
-def get_all_table_owners(
-    self, connection, query, schema_name, **kw
-):  # pylint: disable=unused-argument
+def get_all_table_owners(self, connection, query, schema_name, **kw):  # pylint: disable=unused-argument
     """
     Method to fetch owners of all available tables
     """
@@ -63,9 +57,7 @@ def get_all_table_owners(
         self.all_table_owners[(table[0], table[1])] = table[2]
 
 
-def get_table_owner_wrapper(
-    self, connection, query, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_owner_wrapper(self, connection, query, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     if not hasattr(self, "all_table_owners"):
         self.get_all_table_owners(connection, query, schema)
     return self.all_table_owners.get((schema, table_name), "")
@@ -87,10 +79,7 @@ def get_all_view_definitions(self, connection, query):
 
 
 def get_view_definition_wrapper(self, connection, query, table_name, schema=None):
-    if (
-        not hasattr(self, "all_view_definitions")
-        or self.current_db != connection.engine.url.database
-    ):
+    if not hasattr(self, "all_view_definitions") or self.current_db != connection.engine.url.database:
         self.get_all_view_definitions(connection, query)
     return self.all_view_definitions.get((table_name, schema), "")
 
@@ -143,9 +132,7 @@ def convert_numpy_to_list(data):
 
 
 @reflection.cache
-def get_all_table_ddls(
-    self, connection, query, schema_name, **kw
-):  # pylint: disable=unused-argument
+def get_all_table_ddls(self, connection, query, schema_name, **kw):  # pylint: disable=unused-argument
     """
     Method to fetch ddl of all available tables
     """
@@ -173,17 +160,13 @@ def get_all_table_ddls(
             pass
 
 
-def get_table_ddl_wrapper(
-    self, connection, query, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_ddl_wrapper(self, connection, query, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     if not hasattr(self, "all_table_ddls") or self.current_db != schema:
         self.get_all_table_ddls(connection, query, schema)
     return self.all_table_ddls.get((schema, table_name))
 
 
-def get_table_ddl(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_ddl(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     return get_table_ddl_wrapper(
         self,
         connection=connection,
@@ -200,30 +183,22 @@ def get_schema_comment_results(self, connection, query, database, schema=None):
     """
     self.schema_comment_result: Dict[str, str] = {}
     self.current_db: str = database
-    result = connection.execute(
-        text(query) if isinstance(query, str) else query
-    ).fetchall()
+    result = connection.execute(text(query) if isinstance(query, str) else query).fetchall()
     self.schema_comment_result[schema] = result
 
 
 @reflection.cache
-def get_table_comment_results(
-    self, connection, query, database, table_name, schema=None
-):
+def get_table_comment_results(self, connection, query, database, table_name, schema=None):
     """
     Method to fetch comment of all available tables
     """
     self.table_comment_result: Dict[Tuple[str, str], str] = {}
     self.current_db: str = database
-    result = connection.execute(
-        text(query) if isinstance(query, str) else query
-    ).fetchall()
+    result = connection.execute(text(query) if isinstance(query, str) else query).fetchall()
     self.table_comment_result[(table_name, schema)] = result
 
 
-def get_table_comment_result_wrapper(
-    self, connection, query, database, table_name, schema=None
-):
+def get_table_comment_result_wrapper(self, connection, query, database, table_name, schema=None):
     if (
         not hasattr(self, "table_comment_result")
         or self.table_comment_result.get((table_name, schema)) is None

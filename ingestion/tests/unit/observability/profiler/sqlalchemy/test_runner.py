@@ -12,6 +12,7 @@
 """
 Test Sample behavior
 """
+
 import sys
 import time
 from unittest import TestCase, mock
@@ -106,9 +107,7 @@ class RunnerTest(TestCase):
             )
             cls.dataset = sampler.get_dataset()
 
-        cls.raw_runner = QueryRunner(
-            session=cls.session, dataset=cls.dataset, raw_dataset=sampler.raw_dataset
-        )
+        cls.raw_runner = QueryRunner(session=cls.session, dataset=cls.dataset, raw_dataset=sampler.raw_dataset)
         cls.timeout_runner: Timer = cls_timeout(1)(Timer())
 
         # Insert 30 rows

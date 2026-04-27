@@ -86,23 +86,17 @@ class AtlasSource(Source):
         self.service = None
         self.message_service = None
         self.entity_types = {
-            "Table": {
-                self.service_connection.entity_type: {"db": "db", "column": "columns"}
-            },
+            "Table": {self.service_connection.entity_type: {"db": "db", "column": "columns"}},
             "Topic": {"Topic": {"schema": "schema"}},
         }
         self.test_connection()
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AtlasConnection = config.serviceConnection.root.config
         if not isinstance(connection, AtlasConnection):
-            raise InvalidSourceException(
-                f"Expected AtlasConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected AtlasConnection, but got {connection}")
         return cls(config, metadata)
 
     def prepare(self):
@@ -110,9 +104,7 @@ class AtlasSource(Source):
 
     def _iter(self, *_, **__) -> Iterable[Either[Entity]]:
         for service in self.service_connection.databaseServiceName or []:
-            check_service = self.metadata.get_by_name(
-                entity=DatabaseService, fqn=service
-            )
+            check_service = self.metadata.get_by_name(entity=DatabaseService, fqn=service)
             if check_service:
                 for key in self.entity_types["Table"]:
                     self.service = check_service
@@ -130,9 +122,7 @@ class AtlasSource(Source):
                 )
 
         for service in self.service_connection.messagingServiceName or []:
-            check_service = self.metadata.get_by_name(
-                entity=MessagingService, fqn=service
-            )
+            check_service = self.metadata.get_by_name(entity=MessagingService, fqn=service)
             if check_service:
                 for key in self.entity_types["Topic"]:
                     self.message_service = check_service
@@ -168,9 +158,7 @@ class AtlasSource(Source):
                         topic_name=topic_name,
                     )
 
-                    topic_object = self.metadata.get_by_name(
-                        entity=Topic, fqn=topic_fqn
-                    )
+                    topic_object = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
 
                     if tpc_attrs.get("description") and topic_object:
                         self.metadata.patch_description(
@@ -199,9 +187,7 @@ class AtlasSource(Source):
             for tbl_entity in tbl_entities:
                 try:
                     tbl_attrs = tbl_entity["attributes"]
-                    db_entity = tbl_entity["relationshipAttributes"][
-                        self.entity_types["Table"][name]["db"]
-                    ]
+                    db_entity = tbl_entity["relationshipAttributes"][self.entity_types["Table"][name]["db"]]
                     database_name = get_database_name_for_lineage(
                         db_service_entity=self.service,
                         default_db_name=db_entity["displayText"],
@@ -213,9 +199,7 @@ class AtlasSource(Source):
                         service_name=self.service.name.root,
                         database_name=database_name,
                     )
-                    database_object = self.metadata.get_by_name(
-                        entity=Database, fqn=database_fqn
-                    )
+                    database_object = self.metadata.get_by_name(entity=Database, fqn=database_fqn)
                     if db_entity.get("description", None) and database_object:
                         self.metadata.patch_description(
                             entity=Database,
@@ -231,9 +215,7 @@ class AtlasSource(Source):
                         database_name=database_name,
                         schema_name=db_entity["displayText"],
                     )
-                    database_schema_object = self.metadata.get_by_name(
-                        entity=DatabaseSchema, fqn=database_schema_fqn
-                    )
+                    database_schema_object = self.metadata.get_by_name(entity=DatabaseSchema, fqn=database_schema_fqn)
 
                     if db_entity.get("description", None) and database_schema_object:
                         self.metadata.patch_description(
@@ -259,9 +241,7 @@ class AtlasSource(Source):
                         table_name=tbl_attrs["name"],
                     )
 
-                    table_object = self.metadata.get_by_name(
-                        entity=Table, fqn=table_fqn
-                    )
+                    table_object = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
 
                     if table_object:
                         if tbl_attrs.get("description", None):
@@ -271,9 +251,7 @@ class AtlasSource(Source):
                                 description=tbl_attrs["description"],
                                 force=True,
                             )
-                        yield from self.apply_table_tags(
-                            table_object=table_object, table_entity=tbl_entity
-                        )
+                        yield from self.apply_table_tags(table_object=table_object, table_entity=tbl_entity)
 
                     yield from self.ingest_lineage(tbl_entity["guid"], name)
 
@@ -286,9 +264,7 @@ class AtlasSource(Source):
                         )
                     )
 
-    def apply_table_tags(
-        self, table_object: Table, table_entity: dict
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def apply_table_tags(self, table_object: Table, table_entity: dict) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         apply default atlas table tag
         """
@@ -326,9 +302,7 @@ class AtlasSource(Source):
 
     def _parse_table_columns(self, table_response, tbl_entity, name) -> List[Column]:
         om_cols = []
-        col_entities = tbl_entity["relationshipAttributes"][
-            self.entity_types["Table"][name]["column"]
-        ]
+        col_entities = tbl_entity["relationshipAttributes"][self.entity_types["Table"][name]["column"]]
         referred_entities = table_response["referredEntities"]
         ordinal_pos = 1
         for col in col_entities:
@@ -339,9 +313,7 @@ class AtlasSource(Source):
                 om_column = Column(
                     name=column["name"],
                     description=column.get("comment", None),
-                    dataType=ColumnTypeParser.get_column_type(
-                        column["dataType"].upper()
-                    ),
+                    dataType=ColumnTypeParser.get_column_type(column["dataType"].upper()),
                     dataTypeDisplay=column["dataType"],
                     dataLength=1,
                     ordinalPosition=ordinal_pos,
@@ -358,40 +330,25 @@ class AtlasSource(Source):
         try:
             lineage_response = self.atlas_client.get_lineage(source_guid)
             lineage_relations = lineage_response["relations"]
-            tbl_entity = self.atlas_client.get_entity(
-                lineage_response["baseEntityGuid"]
-            )
+            tbl_entity = self.atlas_client.get_entity(lineage_response["baseEntityGuid"])
             for key in tbl_entity["referredEntities"].keys():
-                if not tbl_entity["entities"][0]["relationshipAttributes"].get(
-                    self.entity_types["Table"][name]["db"]
-                ):
+                if not tbl_entity["entities"][0]["relationshipAttributes"].get(self.entity_types["Table"][name]["db"]):
                     continue
-                db_entity = tbl_entity["entities"][0]["relationshipAttributes"][
-                    self.entity_types["Table"][name]["db"]
-                ]
+                db_entity = tbl_entity["entities"][0]["relationshipAttributes"][self.entity_types["Table"][name]["db"]]
                 if not tbl_entity["referredEntities"].get(key):
                     continue
-                table_name = tbl_entity["referredEntities"][key][
-                    "relationshipAttributes"
-                ]["table"]["displayText"]
+                table_name = tbl_entity["referredEntities"][key]["relationshipAttributes"]["table"]["displayText"]
                 from_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
                     service_name=self.service.name.root,
-                    database_name=get_database_name_for_lineage(
-                        self.service, db_entity["displayText"]
-                    ),
+                    database_name=get_database_name_for_lineage(self.service, db_entity["displayText"]),
                     schema_name=db_entity["displayText"],
                     table_name=table_name,
                 )
                 from_entity_ref = self.get_lineage_entity_ref(from_fqn, "table")
                 for edge in lineage_relations:
-                    if (
-                        lineage_response["guidEntityMap"][edge["toEntityId"]][
-                            "typeName"
-                        ]
-                        == "processor"
-                    ):
+                    if lineage_response["guidEntityMap"][edge["toEntityId"]]["typeName"] == "processor":
                         continue
 
                     tbl_entity = self.atlas_client.get_entity(edge["toEntityId"])
@@ -400,16 +357,14 @@ class AtlasSource(Source):
                             self.entity_types["Table"][name]["db"]
                         ]
 
-                        table_name = tbl_entity["referredEntities"][key][
-                            "relationshipAttributes"
-                        ]["table"]["displayText"]
+                        table_name = tbl_entity["referredEntities"][key]["relationshipAttributes"]["table"][
+                            "displayText"
+                        ]
                         to_fqn = fqn.build(
                             self.metadata,
                             entity_type=Table,
                             service_name=self.service.name.root,
-                            database_name=get_database_name_for_lineage(
-                                self.service, db_entity["displayText"]
-                            ),
+                            database_name=get_database_name_for_lineage(self.service, db_entity["displayText"]),
                             schema_name=db_entity["displayText"],
                             table_name=table_name,
                         )
@@ -454,18 +409,12 @@ class AtlasSource(Source):
         logger.error("Failed to create a service with name kafka")
         return None
 
-    def yield_lineage(
-        self, from_entity_ref, to_entity_ref
-    ) -> Iterable[Either[AddLineageRequest]]:
+    def yield_lineage(self, from_entity_ref, to_entity_ref) -> Iterable[Either[AddLineageRequest]]:
         if from_entity_ref and to_entity_ref and from_entity_ref != to_entity_ref:
-            lineage = AddLineageRequest(
-                edge=EntitiesEdge(fromEntity=from_entity_ref, toEntity=to_entity_ref)
-            )
+            lineage = AddLineageRequest(edge=EntitiesEdge(fromEntity=from_entity_ref, toEntity=to_entity_ref))
             yield Either(right=lineage)
 
-    def get_lineage_entity_ref(
-        self, to_fqn: str, entity_type: str
-    ) -> Optional[EntityReference]:
+    def get_lineage_entity_ref(self, to_fqn: str, entity_type: str) -> Optional[EntityReference]:
         if entity_type == "table":
             table: Table = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
             if table:
@@ -477,6 +426,4 @@ class AtlasSource(Source):
         return None
 
     def test_connection(self) -> None:
-        test_connection_common(
-            self.metadata, self.connection_obj, self.service_connection
-        )
+        test_connection_common(self.metadata, self.connection_obj, self.service_connection)

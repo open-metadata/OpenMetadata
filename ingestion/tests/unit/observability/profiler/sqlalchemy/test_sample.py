@@ -12,6 +12,7 @@
 """
 Test Sample behavior
 """
+
 import os
 from unittest import TestCase
 from unittest.mock import patch
@@ -62,9 +63,7 @@ class SampleTest(TestCase):
     Run checks on different metrics
     """
 
-    db_path = os.path.join(
-        os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db"
-    )
+    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")
     sqlite_conn = SQLiteConnection(
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
@@ -398,9 +397,7 @@ class SampleTest(TestCase):
                 sample_data_count=5,
             )
 
-        with patch.object(
-            sampler, "get_sample_query", wraps=sampler.get_sample_query
-        ) as mock_gsq:
+        with patch.object(sampler, "get_sample_query", wraps=sampler.get_sample_query) as mock_gsq:
             sampler.fetch_sample_data()
             assert mock_gsq.called
 
@@ -425,9 +422,7 @@ class SampleTest(TestCase):
                 sample_data_count=5,
             )
 
-        with patch.object(
-            sampler, "get_sample_query", wraps=sampler.get_sample_query
-        ) as mock_gsq:
+        with patch.object(sampler, "get_sample_query", wraps=sampler.get_sample_query) as mock_gsq:
             sampler.fetch_sample_data()
             assert not mock_gsq.called
 
@@ -452,9 +447,7 @@ class SampleTest(TestCase):
                 sample_data_count=5,
             )
 
-        with patch.object(
-            sampler, "get_sample_query", wraps=sampler.get_sample_query
-        ) as mock_gsq:
+        with patch.object(sampler, "get_sample_query", wraps=sampler.get_sample_query) as mock_gsq:
             sampler.fetch_sample_data()
             assert not mock_gsq.called
 
@@ -480,9 +473,9 @@ class SampleTest(TestCase):
             )
 
         results = [sampler.fetch_sample_data().rows for _ in range(20)]
-        assert any(
-            results[i] != results[0] for i in range(1, len(results))
-        ), "Expected non-deterministic row ordering with randomizedSample=True"
+        assert any(results[i] != results[0] for i in range(1, len(results))), (
+            "Expected non-deterministic row ordering with randomizedSample=True"
+        )
 
     def test_randomized_false_produces_deterministic_rows(self, sampler_mock):
         """With randomizedSample=False at 100% PERCENTAGE, multiple
@@ -506,9 +499,9 @@ class SampleTest(TestCase):
             )
 
         results = [sampler.fetch_sample_data().rows for _ in range(5)]
-        assert all(
-            results[i] == results[0] for i in range(1, len(results))
-        ), "Expected deterministic row ordering with randomizedSample=False"
+        assert all(results[i] == results[0] for i in range(1, len(results))), (
+            "Expected deterministic row ordering with randomizedSample=False"
+        )
 
     @classmethod
     def tearDownClass(cls) -> None:

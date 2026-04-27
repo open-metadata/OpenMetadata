@@ -11,6 +11,7 @@
 """
 DBTcloud source to extract metadata from OM UI
 """
+
 import traceback
 from collections import defaultdict
 from datetime import datetime
@@ -78,15 +79,11 @@ class DbtcloudSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DBTCloudConnection = config.serviceConnection.root.config
         if not isinstance(connection, DBTCloudConnection):
-            raise InvalidSourceException(
-                f"Expected DBTCloudConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected DBTCloudConnection, but got {connection}")
         return cls(config, metadata)
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
@@ -101,9 +98,7 @@ class DbtcloudSource(PipelineServiceSource):
         Cached table entity lookup to avoid redundant API calls.
         """
         if table_fqn not in self._table_entity_cache:
-            self._table_entity_cache[table_fqn] = self.metadata.get_by_name(
-                entity=Table, fqn=table_fqn
-            )
+            self._table_entity_cache[table_fqn] = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
         return self._table_entity_cache[table_fqn]
 
     def _get_task_list(self, job_id: int) -> Optional[List[Task]]:
@@ -139,9 +134,7 @@ class DbtcloudSource(PipelineServiceSource):
             logger.warning(f"Failed to get tasks list due to : {exc}")
         return None
 
-    def yield_pipeline(
-        self, pipeline_details: DBTJob
-    ) -> Iterable[Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details: DBTJob) -> Iterable[Either[CreatePipelineRequest]]:
         """
         Method to Get Pipeline Entity
         """
@@ -157,11 +150,7 @@ class DbtcloudSource(PipelineServiceSource):
                 description=Markdown(pipeline_details.description),
                 sourceUrl=SourceUrl(connection_url),
                 tasks=self._get_task_list(job_id=pipeline_details.id),
-                scheduleInterval=(
-                    str(pipeline_details.schedule.cron)
-                    if pipeline_details.schedule
-                    else None
-                ),
+                scheduleInterval=(str(pipeline_details.schedule.cron) if pipeline_details.schedule else None),
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
             )
             yield Either(right=pipeline_request)
@@ -175,15 +164,12 @@ class DbtcloudSource(PipelineServiceSource):
                 )
             )
 
-    def yield_pipeline_lineage_details(
-        self, pipeline_details: DBTJob
-    ) -> Iterable[Either[AddLineageRequest]]:
+    def yield_pipeline_lineage_details(self, pipeline_details: DBTJob) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between pipeline and data sources.
         Uses combined GraphQL call for models and seeds, with optimized caching.
         """
         try:  # pylint: disable=too-many-nested-blocks
-
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Pipeline,
@@ -191,9 +177,7 @@ class DbtcloudSource(PipelineServiceSource):
                 pipeline_name=self.context.get().pipeline,
             )
 
-            pipeline_entity = self.metadata.get_by_name(
-                entity=Pipeline, fqn=pipeline_fqn
-            )
+            pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
             if not pipeline_entity:
                 logger.warning(f"Pipeline entity not found for FQN: {pipeline_fqn}")
@@ -214,9 +198,7 @@ class DbtcloudSource(PipelineServiceSource):
             self.context.get().current_pipeline_entity = pipeline_entity
             self.context.get().current_table_fqns = []
             # Store pipeline FQN from entity to ensure exact match for status updates
-            self.context.get().pipeline_fqn = str(
-                pipeline_entity.fullyQualifiedName.root
-            )
+            self.context.get().pipeline_fqn = str(pipeline_entity.fullyQualifiedName.root)
 
             # Create cache_key once at the start
             cache_key = (
@@ -235,9 +217,7 @@ class DbtcloudSource(PipelineServiceSource):
 
             for model in dbt_models or []:
                 if not model.runGeneratedAt:
-                    logger.debug(
-                        f"Skipping model with missing runGeneratedAt: name={getattr(model, 'name', None)}"
-                    )
+                    logger.debug(f"Skipping model with missing runGeneratedAt: name={getattr(model, 'name', None)}")
                     continue
 
                 if not all([model.name, model.database, model.dbtschema]):
@@ -269,9 +249,7 @@ class DbtcloudSource(PipelineServiceSource):
 
                     # Add to observability cache using set.add() for O(1)
                     if cache_key and cache_key in self.observability_cache:
-                        self.observability_cache[cache_key]["table_fqns"].add(
-                            to_entity_fqn
-                        )
+                        self.observability_cache[cache_key]["table_fqns"].add(to_entity_fqn)
 
                     for unique_id in model.dependsOn or []:
                         # Use dict lookup instead of list comprehension
@@ -283,9 +261,7 @@ class DbtcloudSource(PipelineServiceSource):
                         # Sources are auto-generated and don't have runGeneratedAt
                         is_source = unique_id.startswith("source.")
                         if not is_source and not parent.runGeneratedAt:
-                            logger.debug(
-                                f"Skipping parent with missing runGeneratedAt: uniqueId={unique_id}"
-                            )
+                            logger.debug(f"Skipping parent with missing runGeneratedAt: uniqueId={unique_id}")
                             continue
 
                         if not all([parent.name, parent.database, parent.dbtschema]):
@@ -312,20 +288,14 @@ class DbtcloudSource(PipelineServiceSource):
 
                         # Add to context table FQNs
                         if from_entity_fqn not in self.context.get().current_table_fqns:
-                            self.context.get().current_table_fqns.append(
-                                from_entity_fqn
-                            )
+                            self.context.get().current_table_fqns.append(from_entity_fqn)
 
                         # Add to observability cache using set.add() for O(1)
                         if cache_key and cache_key in self.observability_cache:
-                            self.observability_cache[cache_key]["table_fqns"].add(
-                                from_entity_fqn
-                            )
+                            self.observability_cache[cache_key]["table_fqns"].add(from_entity_fqn)
 
                         lineage_details = LineageDetails(
-                            pipeline=EntityReference(
-                                id=pipeline_entity.id.root, type="pipeline"
-                            ),
+                            pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
                             source=LineageSource.PipelineLineage,
                         )
 
@@ -413,9 +383,7 @@ class DbtcloudSource(PipelineServiceSource):
         """Build PipelineObservability object from run data."""
         return PipelineObservability(
             pipeline=EntityReference(
-                id=pipeline_entity.id.root
-                if hasattr(pipeline_entity.id, "root")
-                else pipeline_entity.id,
+                id=pipeline_entity.id.root if hasattr(pipeline_entity.id, "root") else pipeline_entity.id,
                 type="pipeline",
                 fullyQualifiedName=pipeline_entity.fullyQualifiedName.root
                 if hasattr(pipeline_entity.fullyQualifiedName, "root")
@@ -424,9 +392,7 @@ class DbtcloudSource(PipelineServiceSource):
             scheduleInterval=schedule_interval,
             startTime=self._parse_timestamp(run.started_at) if run.started_at else None,
             endTime=self._parse_timestamp(run.finished_at) if run.finished_at else None,
-            lastRunTime=self._parse_timestamp(run.finished_at)
-            if run.finished_at
-            else None,
+            lastRunTime=self._parse_timestamp(run.finished_at) if run.finished_at else None,
             lastRunStatus=self._map_run_status(run.state or run.status),
         )
 
@@ -438,9 +404,7 @@ class DbtcloudSource(PipelineServiceSource):
         Uses context data first (current job), falls back to cache for historical data.
         """
         try:
-            table_pipeline_map: Dict[str, List[PipelineObservability]] = defaultdict(
-                list
-            )
+            table_pipeline_map: Dict[str, List[PipelineObservability]] = defaultdict(list)
 
             ctx = self.context.get()
             if (
@@ -451,15 +415,9 @@ class DbtcloudSource(PipelineServiceSource):
                 and ctx.current_pipeline_entity
                 and ctx.current_table_fqns
             ):
-                logger.debug(
-                    f"Using context data for observability - {len(ctx.current_table_fqns)} tables"
-                )
+                logger.debug(f"Using context data for observability - {len(ctx.current_table_fqns)} tables")
 
-                schedule_interval = (
-                    str(pipeline_details.schedule.cron)
-                    if pipeline_details.schedule
-                    else None
-                )
+                schedule_interval = str(pipeline_details.schedule.cron) if pipeline_details.schedule else None
 
                 # using cached table FQNs directly from lineage processing
                 for table_fqn in ctx.current_table_fqns:
@@ -492,9 +450,7 @@ class DbtcloudSource(PipelineServiceSource):
 
                 schedule_interval = (
                     str(job_details.schedule.cron)
-                    if job_details
-                    and job_details.schedule
-                    and job_details.schedule.cron
+                    if job_details and job_details.schedule and job_details.schedule.cron
                     else None
                 )
 
@@ -514,14 +470,11 @@ class DbtcloudSource(PipelineServiceSource):
             logger.error(f"Failed to extract pipeline observability data: {exc}")
             logger.debug(traceback.format_exc())
 
-    def yield_pipeline_status(
-        self, pipeline_details: DBTJob
-    ) -> Iterable[Either[OMetaPipelineStatus]]:
+    def yield_pipeline_status(self, pipeline_details: DBTJob) -> Iterable[Either[OMetaPipelineStatus]]:
         """
         Get Pipeline Status
         """
         try:
-
             # Use stored FQN from context instead of reconstructing
             # This ensures exact match with database format, especially for special characters
             ctx = self.context.get()
@@ -537,11 +490,7 @@ class DbtcloudSource(PipelineServiceSource):
             )
 
             # using cached runs from context instead of making another API call
-            runs = (
-                ctx.current_runs
-                if hasattr(ctx, "current_runs") and ctx.current_runs
-                else None
-            )
+            runs = ctx.current_runs if hasattr(ctx, "current_runs") and ctx.current_runs else None
             if not runs:
                 runs = self.client.get_runs(job_id=pipeline_details.id)
 
@@ -549,20 +498,14 @@ class DbtcloudSource(PipelineServiceSource):
                 task_status = TaskStatus(
                     name=str(task.id),
                     executionStatus=STATUS_MAP.get(task.state, StatusType.Pending),
-                    startTime=self._parse_timestamp(task.started_at)
-                    if task.started_at
-                    else None,
-                    endTime=self._parse_timestamp(task.finished_at)
-                    if task.finished_at
-                    else None,
+                    startTime=self._parse_timestamp(task.started_at) if task.started_at else None,
+                    endTime=self._parse_timestamp(task.finished_at) if task.finished_at else None,
                 )
 
                 pipeline_status = PipelineStatus(
                     executionStatus=task_status.executionStatus,
                     taskStatus=[task_status],
-                    timestamp=task_status.endTime
-                    if task_status.endTime
-                    else task_status.startTime,
+                    timestamp=task_status.endTime if task_status.endTime else task_status.startTime,
                 )
 
                 yield Either(

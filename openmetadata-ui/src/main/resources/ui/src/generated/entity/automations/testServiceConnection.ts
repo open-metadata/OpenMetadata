@@ -118,6 +118,8 @@ export interface TestServiceConnectionConnection {
  *
  * Salesforce Connection Config
  *
+ * SAP SuccessFactors Connection Config
+ *
  * SingleStore Database Connection Config
  *
  * Snowflake Connection Config
@@ -415,9 +417,9 @@ export interface ConfigObject {
     /**
      * Client SSL verification. Make sure to configure the SSLConfig if enabled.
      *
-     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
-     *
      * Client SSL verification.
+     *
+     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
      *
      * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
      * validation, 'validate' to verify against a CA certificate.
@@ -786,6 +788,8 @@ export interface ConfigObject {
      *
      * Password to connect to Salesforce.
      *
+     * Password for BasicAuth authentication. Required when authType is BasicAuth.
+     *
      * Password to connect to SingleStore.
      *
      * Password to connect to Snowflake.
@@ -881,6 +885,11 @@ export interface ConfigObject {
      *
      * Username to connect to Salesforce. This user should have privileges to read all the
      * metadata in Salesforce.
+     *
+     * SAP SuccessFactors user login name. For BasicAuth: used as the credential username. For
+     * OAuth2Credentials: used as the SAML NameID — the user on whose behalf the token is
+     * requested. The user must exist in the SF system and be permitted to use the OAuth2
+     * application.
      *
      * Username to connect to SingleStore. This user should have privileges to read all the
      * metadata in MySQL.
@@ -1001,6 +1010,8 @@ export interface ConfigObject {
      * Choose Auth Config Type.
      *
      * Choose Auth Configuration Type.
+     *
+     * Choose how to authenticate with SAP SuccessFactors OData API.
      *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
@@ -1229,6 +1240,58 @@ export interface ConfigObject {
      */
     sobjectNames?: string[];
     /**
+     * SAP SuccessFactors OData API version.
+     *
+     * Tableau API version. If not provided, the version will be used from the tableau server.
+     *
+     * Sigma API version.
+     *
+     * ThoughtSpot API version to use
+     *
+     * Airbyte API version.
+     *
+     * OpenMetadata server API version to use.
+     */
+    apiVersion?: string;
+    /**
+     * SAP SuccessFactors OData API base URL. For example: https://api4.successfactors.com
+     */
+    baseUrl?: string;
+    /**
+     * OAuth2 Client ID. Required when authType is OAuth2Credentials.
+     *
+     * Client ID for DOMO
+     *
+     * Azure Application (client) ID for service principal authentication.
+     *
+     * Azure Application (client) ID for Service Principal authentication.
+     *
+     * User's Client ID. This user should have privileges to read all the metadata in Looker.
+     *
+     * client_id for PowerBI.
+     *
+     * client_id for Sigma.
+     *
+     * Application (client) ID from Azure Active Directory
+     */
+    clientId?: string;
+    /**
+     * SAP SuccessFactors Company ID (tenant identifier). Required for all API calls.
+     */
+    companyId?: string;
+    /**
+     * PEM-encoded RSA private key used to sign SAML assertions for OAuth2 SAML Bearer flow.
+     * Required when authType is OAuth2Credentials.
+     *
+     * Connection to Snowflake instance via Private Key
+     */
+    privateKey?: string;
+    /**
+     * OAuth2 Token endpoint URL. Required when authType is OAuth2Credentials. For example:
+     * https://api4.successfactors.com/oauth/token
+     */
+    tokenUrl?: string;
+    /**
      * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
      * account is xyz1234.us-east-1.gcp
      *
@@ -1264,10 +1327,6 @@ export interface ConfigObject {
      * TRANSIENT tables.
      */
     includeTransientTables?: boolean;
-    /**
-     * Connection to Snowflake instance via Private Key
-     */
-    privateKey?: string;
     /**
      * Session query tag used to monitor usage on snowflake. To use a query tag snowflake user
      * should have enough privileges to alter the session.
@@ -1321,22 +1380,6 @@ export interface ConfigObject {
      * API Host to connect to DOMO instance
      */
     apiHost?: string;
-    /**
-     * Client ID for DOMO
-     *
-     * Azure Application (client) ID for service principal authentication.
-     *
-     * Azure Application (client) ID for Service Principal authentication.
-     *
-     * User's Client ID. This user should have privileges to read all the metadata in Looker.
-     *
-     * client_id for PowerBI.
-     *
-     * client_id for Sigma.
-     *
-     * Application (client) ID from Azure Active Directory
-     */
-    clientId?: string;
     /**
      * URL of your Domo instance, e.g., https://openmetadata.domo.com
      */
@@ -1570,18 +1613,6 @@ export interface ConfigObject {
      * Version of the Redash instance
      */
     redashVersion?: string;
-    /**
-     * Tableau API version. If not provided, the version will be used from the tableau server.
-     *
-     * Sigma API version.
-     *
-     * ThoughtSpot API version to use
-     *
-     * Airbyte API version.
-     *
-     * OpenMetadata server API version to use.
-     */
-    apiVersion?: string;
     /**
      * Proxy URL for the tableau server. If not provided, the hostPort will be used. This is
      * used to generate the dashboard & Chart URL.
@@ -2918,10 +2949,16 @@ export enum CloudRegion {
 }
 
 /**
+ * Choose how to authenticate with SAP SuccessFactors OData API.
+ *
+ * Authentication type to connect to SAP SuccessFactors.
+ *
  * Database Authentication types not requiring config.
  */
 export enum NoConfigAuthenticationTypes {
+    BasicAuth = "BasicAuth",
     OAuth2 = "OAuth2",
+    OAuth2Credentials = "OAuth2Credentials",
 }
 
 /**
@@ -4944,6 +4981,7 @@ export enum ConfigType {
     SapERP = "SapErp",
     SapHana = "SapHana",
     SapS4Hana = "SapS4Hana",
+    SapSuccessFactors = "SapSuccessFactors",
     ServiceNow = "ServiceNow",
     SharePoint = "SharePoint",
     Sigma = "Sigma",

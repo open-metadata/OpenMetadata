@@ -1,6 +1,7 @@
 """
 CSV import/export mixin for OpenMetadata client.
 """
+
 import logging
 from typing import Dict, Type, TypeVar
 
@@ -72,14 +73,10 @@ class CSVMixin:
                 return response.get("jobId", "")
             return getattr(response, "text", str(response))
         except APIError as err:
-            logger.error(
-                f"Failed to start async CSV export for {entity.__name__} '{name}': {err}"
-            )
+            logger.error(f"Failed to start async CSV export for {entity.__name__} '{name}': {err}")
             raise
 
-    def import_csv(
-        self, entity: Type[T], name: str, csv_data: str, dry_run: bool = False
-    ) -> Dict:
+    def import_csv(self, entity: Type[T], name: str, csv_data: str, dry_run: bool = False) -> Dict:
         """
         Import entity data from CSV format.
 
@@ -113,9 +110,7 @@ class CSVMixin:
             logger.error(f"Failed to import CSV for {entity.__name__} '{name}': {err}")
             raise
 
-    def import_csv_async(
-        self, entity: Type[T], name: str, csv_data: str, dry_run: bool = False
-    ) -> str:
+    def import_csv_async(self, entity: Type[T], name: str, csv_data: str, dry_run: bool = False) -> str:
         """
         Import entity data from CSV format asynchronously.
 
@@ -144,9 +139,7 @@ class CSVMixin:
                 return response.get("jobId", "")
             return getattr(response, "text", str(response))
         except APIError as err:
-            logger.error(
-                f"Failed to start async CSV import for {entity.__name__} '{name}': {err}"
-            )
+            logger.error(f"Failed to start async CSV import for {entity.__name__} '{name}': {err}")
             raise
 
     def _get_csv_endpoint(self, entity: Type[T]) -> str:
@@ -173,8 +166,6 @@ class CSVMixin:
 
         endpoint = entity_endpoints.get(entity)
         if not endpoint:
-            raise ValueError(
-                f"CSV operations not supported for entity type {entity.__name__}"
-            )
+            raise ValueError(f"CSV operations not supported for entity type {entity.__name__}")
 
         return endpoint

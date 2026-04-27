@@ -13,6 +13,7 @@
 ExecutionTimeTracker implementation to help track the execution time of different parts
 of the code.
 """
+
 import threading
 from copy import deepcopy
 from functools import wraps
@@ -74,23 +75,17 @@ class ExecutionTimeTrackerContextMap(metaclass=Singleton):
 
         self.map[thread_id] = deepcopy(self.map.get(parent_thread_id, []))
 
-    def get_last_stored_context_level(
-        self, thread_id: Optional[int] = None
-    ) -> Optional[str]:
+    def get_last_stored_context_level(self, thread_id: Optional[int] = None) -> Optional[str]:
         """Gets the last stored context level for a given thread."""
         thread_id = thread_id or threading.get_ident()
 
-        stored_context = [
-            context for context in self.map.get(thread_id, []) if context.stored
-        ]
+        stored_context = [context for context in self.map.get(thread_id, []) if context.stored]
 
         if stored_context:
             return stored_context[-1].name
         return None
 
-    def append(
-        self, context: ExecutionTimeTrackerContext, thread_id: Optional[int] = None
-    ):
+    def append(self, context: ExecutionTimeTrackerContext, thread_id: Optional[int] = None):
         """Appends a new context level for a given thread."""
         thread_id = thread_id or threading.get_ident()
         self.map.setdefault(thread_id, []).append(context)
@@ -183,13 +178,7 @@ class ExecutionTimeTracker(metaclass=ExecutionTimeTrackerMeta):
         in multi-threaded environments.
         """
         thread_id = threading.get_ident()
-        new_context = ".".join(
-            [
-                part
-                for part in [self.context_map.get_last_stored_context_level(), context]
-                if part
-            ]
-        )
+        new_context = ".".join([part for part in [self.context_map.get_last_stored_context_level(), context] if part])
         self._pending_context[thread_id] = new_context
         self._pending_store[thread_id] = store
 
@@ -204,11 +193,7 @@ class ExecutionTimeTracker(metaclass=ExecutionTimeTrackerMeta):
             new_context = self._pending_context.pop(thread_id, "")
             store = self._pending_store.pop(thread_id, True)
 
-            self.context_map.append(
-                ExecutionTimeTrackerContext(
-                    name=new_context, start=perf_counter(), stored=store
-                )
-            )
+            self.context_map.append(ExecutionTimeTrackerContext(name=new_context, start=perf_counter(), stored=store))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """If enabled, when exiting the context, we calculate the elapsed time and log to debug.
@@ -272,9 +257,7 @@ def calculate_execution_time(context: Optional[str] = None, store: bool = True):
     return decorator
 
 
-def calculate_execution_time_generator(
-    context: Optional[str] = None, store: bool = True
-):
+def calculate_execution_time_generator(context: Optional[str] = None, store: bool = True):
     """Utility decorator to be able to use the ExecutionTimeTracker on a generator function.
 
     It receives the context and if it should store it.
