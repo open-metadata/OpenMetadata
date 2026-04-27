@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -40,9 +41,7 @@ def get_connection(connection: PowerBIConnection) -> PowerBiApiClient:
     file_client = None
     if connection.pbitFilesSource:
         file_client = PowerBiFileClient(connection)
-    return PowerBiClient(
-        api_client=PowerBiApiClient(connection), file_client=file_client
-    )
+    return PowerBiClient(api_client=PowerBiApiClient(connection), file_client=file_client)
 
 
 def test_connection(

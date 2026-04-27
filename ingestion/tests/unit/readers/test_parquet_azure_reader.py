@@ -12,6 +12,7 @@
 """
 Tests for ParquetDataFrameReader Azure-specific functionality
 """
+
 import unittest
 from unittest.mock import Mock, patch
 
@@ -75,12 +76,8 @@ class TestAzureParquetReader(unittest.TestCase):
         mock_pf = Mock()
         mock_parquet_file.return_value = mock_pf
 
-        batch1_data = pd.DataFrame(
-            {"id": [1, 2, 3], "name": ["Alice", "Bob", "Charlie"], "age": [25, 30, 35]}
-        )
-        batch2_data = pd.DataFrame(
-            {"id": [4, 5], "name": ["David", "Eve"], "age": [40, 45]}
-        )
+        batch1_data = pd.DataFrame({"id": [1, 2, 3], "name": ["Alice", "Bob", "Charlie"], "age": [25, 30, 35]})
+        batch2_data = pd.DataFrame({"id": [4, 5], "name": ["David", "Eve"], "age": [40, 45]})
 
         mock_batch1 = Mock()
         mock_batch1.to_pandas.return_value = batch1_data
@@ -91,9 +88,7 @@ class TestAzureParquetReader(unittest.TestCase):
 
         result = self.reader._read(key=self.key, bucket_name=self.bucket_name)
 
-        mock_azure_fs.assert_called_once_with(
-            account_name="teststorageaccount", connection_string="test-connection"
-        )
+        mock_azure_fs.assert_called_once_with(account_name="teststorageaccount", connection_string="test-connection")
         mock_adlfs.info.assert_called_once_with(f"{self.bucket_name}/{self.key}")
 
         # Consume the generator to trigger the lazy reading
@@ -105,18 +100,14 @@ class TestAzureParquetReader(unittest.TestCase):
         # Now check that the mocks were called after generator consumption
         mock_fsspec_handler.assert_called_once_with(mock_adlfs)
         mock_pyfilesystem.assert_called_once_with(mock_handler)
-        mock_parquet_file.assert_called_once_with(
-            f"{self.bucket_name}/{self.key}", filesystem=mock_fs
-        )
+        mock_parquet_file.assert_called_once_with(f"{self.bucket_name}/{self.key}", filesystem=mock_fs)
 
         self.assertTrue(len(chunks) > 0)
 
     @patch("adlfs.AzureBlobFileSystem")
     @patch("metadata.readers.dataframe.parquet.return_azure_storage_options")
     @patch("pandas.read_parquet")
-    def test_azure_small_file_regular_reading(
-        self, mock_read_parquet, mock_storage_options, mock_azure_fs
-    ):
+    def test_azure_small_file_regular_reading(self, mock_read_parquet, mock_storage_options, mock_azure_fs):
         """Test Azure parquet reading without chunking for small files"""
         mock_storage_options.return_value = {"connection_string": "test-connection"}
 
@@ -132,9 +123,7 @@ class TestAzureParquetReader(unittest.TestCase):
 
         result = self.reader._read(key=self.key, bucket_name=self.bucket_name)
 
-        mock_azure_fs.assert_called_once_with(
-            account_name="teststorageaccount", connection_string="test-connection"
-        )
+        mock_azure_fs.assert_called_once_with(account_name="teststorageaccount", connection_string="test-connection")
 
         # Consume the generator to trigger the lazy reading
         self.assertIsNotNone(result.dataframes)
@@ -142,10 +131,7 @@ class TestAzureParquetReader(unittest.TestCase):
         self.assertIsNotNone(dataframes)
         chunks = list(dataframes)
 
-        expected_account_url = (
-            f"abfs://{self.bucket_name}@teststorageaccount.dfs.core.windows.net/"
-            f"{self.key}"
-        )
+        expected_account_url = f"abfs://{self.bucket_name}@teststorageaccount.dfs.core.windows.net/{self.key}"
         mock_read_parquet.assert_called_once_with(
             expected_account_url,
             storage_options={"connection_string": "test-connection"},
@@ -157,9 +143,7 @@ class TestAzureParquetReader(unittest.TestCase):
         """Test the _should_use_chunking method logic"""
         self.assertTrue(self.reader._should_use_chunking(MAX_FILE_SIZE_FOR_PREVIEW + 1))
 
-        self.assertFalse(
-            self.reader._should_use_chunking(MAX_FILE_SIZE_FOR_PREVIEW - 1)
-        )
+        self.assertFalse(self.reader._should_use_chunking(MAX_FILE_SIZE_FOR_PREVIEW - 1))
 
         self.assertTrue(self.reader._should_use_chunking(0))
 

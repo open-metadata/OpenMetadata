@@ -38,9 +38,7 @@ from metadata.ingestion.source.database.redshift.connection import (
 )
 
 PROVISIONED_HOST = "my-cluster.abc123.us-east-1.redshift.amazonaws.com"
-SERVERLESS_HOST = (
-    "my-workgroup.123456789012.us-east-1.redshift-serverless.amazonaws.com"
-)
+SERVERLESS_HOST = "my-workgroup.123456789012.us-east-1.redshift-serverless.amazonaws.com"
 
 
 class TestHostParsing:
@@ -83,18 +81,14 @@ class TestGetRedshiftConnectionUrlBasicAuth:
 
 
 class TestGetRedshiftConnectionUrlIAMAuth:
-    @patch(
-        "metadata.ingestion.source.database.redshift.connection._get_redshift_iam_credentials"
-    )
+    @patch("metadata.ingestion.source.database.redshift.connection._get_redshift_iam_credentials")
     def test_iam_auth_url_provisioned(self, mock_get_creds):
         mock_get_creds.return_value = ("IAMUser:admin", "temporary-password-123")
 
         connection = RedshiftConnection(
             hostPort=f"{PROVISIONED_HOST}:5439",
             username="admin",
-            authType=IamAuthConfigurationSource(
-                awsConfig=AWSCredentials(awsRegion="us-east-1")
-            ),
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-east-1")),
             database="mydb",
         )
         url = get_redshift_connection_url(connection)
@@ -106,18 +100,14 @@ class TestGetRedshiftConnectionUrlIAMAuth:
         assert f"{PROVISIONED_HOST}:5439" in url
         assert url.endswith("/mydb")
 
-    @patch(
-        "metadata.ingestion.source.database.redshift.connection._get_redshift_iam_credentials"
-    )
+    @patch("metadata.ingestion.source.database.redshift.connection._get_redshift_iam_credentials")
     def test_iam_auth_url_no_database(self, mock_get_creds):
         mock_get_creds.return_value = ("admin", "temp-pass")
 
         connection = RedshiftConnection(
             hostPort=f"{PROVISIONED_HOST}:5439",
             username="admin",
-            authType=IamAuthConfigurationSource(
-                awsConfig=AWSCredentials(awsRegion="us-east-1")
-            ),
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-east-1")),
             database="",
         )
         url = get_redshift_connection_url(connection)
@@ -138,9 +128,7 @@ class TestGetRedshiftIAMCredentials:
         connection = RedshiftConnection(
             hostPort=f"{PROVISIONED_HOST}:5439",
             username="admin",
-            authType=IamAuthConfigurationSource(
-                awsConfig=AWSCredentials(awsRegion="us-east-1")
-            ),
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-east-1")),
             database="mydb",
         )
 
@@ -167,9 +155,7 @@ class TestGetRedshiftIAMCredentials:
         connection = RedshiftConnection(
             hostPort=f"{PROVISIONED_HOST}:5439",
             username="admin",
-            authType=IamAuthConfigurationSource(
-                awsConfig=AWSCredentials(awsRegion="us-east-1")
-            ),
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-east-1")),
             database="",
         )
 
@@ -185,16 +171,12 @@ class TestGetRedshiftIAMCredentials:
             "dbUser": "IAMR:admin",
             "dbPassword": "serverless-temp-password",
         }
-        mock_aws_client_cls.return_value.get_redshift_serverless_client.return_value = (
-            mock_client
-        )
+        mock_aws_client_cls.return_value.get_redshift_serverless_client.return_value = mock_client
 
         connection = RedshiftConnection(
             hostPort=f"{SERVERLESS_HOST}:5439",
             username="admin",
-            authType=IamAuthConfigurationSource(
-                awsConfig=AWSCredentials(awsRegion="us-east-1")
-            ),
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-east-1")),
             database="mydb",
         )
 
@@ -214,16 +196,12 @@ class TestGetRedshiftIAMCredentials:
             "dbUser": "admin",
             "dbPassword": "pass",
         }
-        mock_aws_client_cls.return_value.get_redshift_serverless_client.return_value = (
-            mock_client
-        )
+        mock_aws_client_cls.return_value.get_redshift_serverless_client.return_value = mock_client
 
         connection = RedshiftConnection(
             hostPort=f"{SERVERLESS_HOST}:5439",
             username="admin",
-            authType=IamAuthConfigurationSource(
-                awsConfig=AWSCredentials(awsRegion="us-east-1")
-            ),
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-east-1")),
             database="",
         )
 
@@ -246,9 +224,7 @@ class TestGetRedshiftIAMCredentials:
         connection = RedshiftConnection(
             hostPort=f"{PROVISIONED_HOST}:5439",
             username="admin",
-            authType=IamAuthConfigurationSource(
-                awsConfig=AWSCredentials(awsRegion="us-east-1")
-            ),
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-east-1")),
             database="mydb",
         )
 
@@ -262,16 +238,12 @@ class TestGetRedshiftIAMCredentials:
             {"Error": {"Code": "ResourceNotFoundException", "Message": "not found"}},
             "GetCredentials",
         )
-        mock_aws_client_cls.return_value.get_redshift_serverless_client.return_value = (
-            mock_client
-        )
+        mock_aws_client_cls.return_value.get_redshift_serverless_client.return_value = mock_client
 
         connection = RedshiftConnection(
             hostPort=f"{SERVERLESS_HOST}:5439",
             username="admin",
-            authType=IamAuthConfigurationSource(
-                awsConfig=AWSCredentials(awsRegion="us-east-1")
-            ),
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-east-1")),
             database="mydb",
         )
 

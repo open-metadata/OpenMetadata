@@ -11,6 +11,7 @@
 """
 Athena usage module
 """
+
 from typing import Iterable
 
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
@@ -42,21 +43,13 @@ class AthenaUsageSource(AthenaQueryParserSource, UsageSource):
                 TableQuery(
                     dialect=self.dialect.value,
                     query=query.Query,
-                    startTime=query.Status.SubmissionDateTime.isoformat(
-                        DATETIME_SEPARATOR, DATETIME_TIME_SPEC
-                    ),
-                    endTime=query.Status.CompletionDateTime.isoformat(
-                        DATETIME_SEPARATOR, DATETIME_TIME_SPEC
-                    )
+                    startTime=query.Status.SubmissionDateTime.isoformat(DATETIME_SEPARATOR, DATETIME_TIME_SPEC),
+                    endTime=query.Status.CompletionDateTime.isoformat(DATETIME_SEPARATOR, DATETIME_TIME_SPEC)
                     if getattr(query.Status, "CompletionDateTime", None)
-                    else query.Status.SubmissionDateTime.isoformat(
-                        DATETIME_SEPARATOR, DATETIME_TIME_SPEC
-                    ),
+                    else query.Status.SubmissionDateTime.isoformat(DATETIME_SEPARATOR, DATETIME_TIME_SPEC),
                     analysisDate=query.Status.SubmissionDateTime,
                     serviceName=self.config.serviceName,
-                    duration=query.Statistics.TotalExecutionTimeInMillis
-                    if query.Statistics
-                    else None,
+                    duration=query.Statistics.TotalExecutionTimeInMillis if query.Statistics else None,
                     aborted=query.Status.State.upper() == QUERY_ABORTED_STATE,
                 )
                 for query in query_list.QueryExecutions

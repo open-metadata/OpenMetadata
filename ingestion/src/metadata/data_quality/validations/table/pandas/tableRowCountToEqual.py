@@ -24,9 +24,7 @@ from metadata.data_quality.validations.table.base.tableRowCountToEqual import (
 from metadata.profiler.metrics.registry import Metrics
 
 
-class TableRowCountToEqualValidator(
-    BaseTableRowCountToEqualValidator, PandasValidatorMixin
-):
+class TableRowCountToEqualValidator(BaseTableRowCountToEqualValidator, PandasValidatorMixin):
     """Validator for table row count to be equal test case"""
 
     def _run_results(self, metric: Metrics) -> Optional[int]:

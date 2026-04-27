@@ -11,6 +11,7 @@
 """
 Status output utilities
 """
+
 import pprint
 import time
 from typing import Any, Dict, List, Optional
@@ -31,9 +32,7 @@ MAX_STACK_TRACE_LENGTH = 1_000_000
 # Max items per list rendered in as_string() to bound memory usage
 MAX_STATUS_DISPLAY_ITEMS = 1_000
 
-TruncatedStr = Annotated[
-    Optional[str], AfterValidator(lambda v: v[:MAX_STACK_TRACE_LENGTH] if v else None)
-]
+TruncatedStr = Annotated[Optional[str], AfterValidator(lambda v: v[:MAX_STACK_TRACE_LENGTH] if v else None)]
 
 
 class TruncatedStackTraceError(StackTraceError):
@@ -106,10 +105,7 @@ class Status(BaseModel):
         parts = []
         for key, value in self.__dict__.items():
             if isinstance(value, list) and len(value) > MAX_STATUS_DISPLAY_ITEMS:
-                header = (
-                    f"[{len(value)} total items"
-                    f" — showing first {MAX_STATUS_DISPLAY_ITEMS}]"
-                )
+                header = f"[{len(value)} total items — showing first {MAX_STATUS_DISPLAY_ITEMS}]"
                 formatted = pprint.pformat(value[:MAX_STATUS_DISPLAY_ITEMS], width=150)
                 parts.append(f"'{key}': {header}\n{formatted}")
             else:

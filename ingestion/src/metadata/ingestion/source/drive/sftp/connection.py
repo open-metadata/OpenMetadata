@@ -11,6 +11,7 @@
 """
 SFTP connection and helpers
 """
+
 import io
 import traceback
 from dataclasses import dataclass
@@ -70,26 +71,19 @@ def get_connection(connection: SftpConnection) -> SftpClient:
         auth_type = connection.authType
 
         if isinstance(auth_type, BasicAuth):
-            password = (
-                auth_type.password.get_secret_value() if auth_type.password else None
-            )
+            password = auth_type.password.get_secret_value() if auth_type.password else None
             transport.connect(
                 username=auth_type.username,
                 password=password,
             )
         elif isinstance(auth_type, KeyAuth):
             private_key_str = auth_type.privateKey.get_secret_value()
-            passphrase = (
-                auth_type.privateKeyPassphrase.get_secret_value()
-                if auth_type.privateKeyPassphrase
-                else None
-            )
+            passphrase = auth_type.privateKeyPassphrase.get_secret_value() if auth_type.privateKeyPassphrase else None
 
             pkey = _parse_private_key(private_key_str, passphrase)
             if pkey is None:
                 raise ValueError(
-                    "Unable to parse private key. Ensure it is in PEM format "
-                    "(RSA, Ed25519, ECDSA, or DSS)."
+                    "Unable to parse private key. Ensure it is in PEM format (RSA, Ed25519, ECDSA, or DSS)."
                 )
 
             transport.connect(username=auth_type.username, pkey=pkey)
@@ -110,9 +104,7 @@ def get_connection(connection: SftpConnection) -> SftpClient:
         raise SourceConnectionException(f"Failed to connect to SFTP server: {exc}")
 
 
-def _parse_private_key(
-    private_key_str: str, passphrase: Optional[str] = None
-) -> Optional[paramiko.PKey]:
+def _parse_private_key(private_key_str: str, passphrase: Optional[str] = None) -> Optional[paramiko.PKey]:
     """
     Parse a private key string in PEM format.
     Tries RSA, Ed25519, ECDSA, and DSS key types.
@@ -172,16 +164,12 @@ def test_connection(
                     logger.info(f"Found {len(entries)} entries in '{root_dir}'")
                 except Exception as dir_exc:
                     logger.warning(f"Could not list directory '{root_dir}': {dir_exc}")
-                    raise SourceConnectionException(
-                        f"Failed to list directory '{root_dir}': {dir_exc}"
-                    )
+                    raise SourceConnectionException(f"Failed to list directory '{root_dir}': {dir_exc}")
 
         except SourceConnectionException:
             raise
         except Exception as exc:
-            logger.debug(
-                f"Directory listing test error traceback: {traceback.format_exc()}"
-            )
+            logger.debug(f"Directory listing test error traceback: {traceback.format_exc()}")
             raise SourceConnectionException(f"Failed to list directories: {exc}")
 
     test_fn = {

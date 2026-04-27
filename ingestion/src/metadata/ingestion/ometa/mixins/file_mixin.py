@@ -13,6 +13,7 @@ Mixin class containing File specific methods
 
 To be used by OpenMetadata class
 """
+
 import traceback
 from typing import Optional
 
@@ -33,9 +34,7 @@ class OMetaFileMixin:
 
     client: REST
 
-    def ingest_file_sample_data(
-        self, file: File, sample_data: TableData
-    ) -> Optional[File]:
+    def ingest_file_sample_data(self, file: File, sample_data: TableData) -> Optional[File]:
         """
         PUT sample data for a file
 
@@ -60,9 +59,7 @@ class OMetaFileMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to PUT sample data for {file.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Error trying to PUT sample data for {file.fullyQualifiedName.root}: {exc}")
 
         if resp:
             try:
@@ -74,9 +71,7 @@ class OMetaFileMixin:
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error trying to parse sample data results from {file.fullyQualifiedName.root}: {exc}"
-                )
+                logger.warning(f"Error trying to parse sample data results from {file.fullyQualifiedName.root}: {exc}")
 
         return None
 
@@ -93,9 +88,7 @@ class OMetaFileMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to GET sample data for {file.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Error trying to GET sample data for {file.fullyQualifiedName.root}: {exc}")
 
         if resp:
             try:
@@ -107,8 +100,6 @@ class OMetaFileMixin:
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error trying to parse sample data results from {file.fullyQualifiedName.root}: {exc}"
-                )
+                logger.warning(f"Error trying to parse sample data results from {file.fullyQualifiedName.root}: {exc}")
 
         return None

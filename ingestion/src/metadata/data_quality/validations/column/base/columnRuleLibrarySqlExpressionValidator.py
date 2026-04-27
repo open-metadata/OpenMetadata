@@ -12,6 +12,7 @@
 """
 Validator for column value rule library SQL expression
 """
+
 from typing import Dict
 
 from jinja2 import StrictUndefined, Template, TemplateSyntaxError, UndefinedError
@@ -90,13 +91,10 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseTestValidator):
             template = Template(sql_template.root, undefined=StrictUndefined)
             return template.render(**params)
         except TemplateSyntaxError as e:
-            raise ValueError(
-                f"Invalid Jinja2 syntax in SQL expression: {e.message}"
-            ) from e
+            raise ValueError(f"Invalid Jinja2 syntax in SQL expression: {e.message}") from e
         except UndefinedError as e:
             raise ValueError(
-                f"Undefined variable in SQL expression: {e.message}. "
-                f"Available parameters: {list(params.keys())}"
+                f"Undefined variable in SQL expression: {e.message}. Available parameters: {list(params.keys())}"
             ) from e
 
     def _run_results(self, sql_expression: str) -> int:
@@ -160,9 +158,7 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseTestValidator):
         Returns:
             TestCaseResult: The test case result for the overall validation
         """
-        self.runtime_params = self.get_runtime_parameters(
-            RuleLibrarySqlExpressionRuntimeParameters
-        )
+        self.runtime_params = self.get_runtime_parameters(RuleLibrarySqlExpressionRuntimeParameters)
 
         column_name = self.get_column_name()
         table_name = self.get_table_name()
@@ -170,8 +166,7 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseTestValidator):
         count: int = self._run_results(sql_expression)
 
         result_message = (
-            f"Column '{column_name}' in table '{table_name}' "
-            f"has {count} rows matching the condition. Expected 0."
+            f"Column '{column_name}' in table '{table_name}' has {count} rows matching the condition. Expected 0."
         )
 
         return self.get_test_case_result_object(

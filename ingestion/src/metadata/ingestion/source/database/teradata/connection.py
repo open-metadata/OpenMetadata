@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 import enum
 from typing import Optional
 from urllib.parse import quote_plus

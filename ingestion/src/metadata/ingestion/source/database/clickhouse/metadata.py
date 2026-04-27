@@ -74,10 +74,7 @@ def execute(self, query, params=None):
     yield types
 
     for line in lines:
-        yield [
-            (conv(x) if conv else x)
-            for x, conv in zip(parse_tsv(line, self.unicode_errors), convs)
-        ]
+        yield [(conv(x) if conv else x) for x, conv in zip(parse_tsv(line, self.unicode_errors), convs)]
 
 
 ClickHouseDialect.get_unique_constraints = get_unique_constraints
@@ -107,20 +104,14 @@ class ClickhouseSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: ClickhouseConnection = config.serviceConnection.root.config
         if not isinstance(connection, ClickhouseConnection):
-            raise InvalidSourceException(
-                f"Expected ClickhouseConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected ClickhouseConnection, but got {connection}")
         return cls(config, metadata)
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Connect to the source database to get the table
         name and type. By default, use the inspector method
@@ -131,8 +122,7 @@ class ClickhouseSource(CommonDbSourceService):
         """
 
         regular_tables = [
-            TableNameAndType(name=table_name)
-            for table_name in self.inspector.get_table_names(schema_name) or []
+            TableNameAndType(name=table_name) for table_name in self.inspector.get_table_names(schema_name) or []
         ]
         material_tables = [
             TableNameAndType(name=table_name, type_=TableType.MaterializedView)

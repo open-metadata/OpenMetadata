@@ -14,7 +14,6 @@ Converter logic to transform an OpenMetadata Table Entity for Bigquery
 to an SQLAlchemy ORM class.
 """
 
-
 from typing import Dict, Set
 
 from sqlalchemy.sql.sqltypes import TypeEngine
@@ -27,10 +26,7 @@ from metadata.profiler.source.database.bigquery.type_mapper import bigquery_type
 
 class BigqueryMapTypes(CommonMapTypes):
     def return_custom_type(self, col: Column, table_service_type):
-        if (
-            table_service_type == databaseService.DatabaseServiceType.BigQuery
-            and col.dataType == DataType.STRUCT
-        ):
+        if table_service_type == databaseService.DatabaseServiceType.BigQuery and col.dataType == DataType.STRUCT:
             return bigquery_type_mapper(self._TYPE_MAP, col)
         return super().return_custom_type(col, table_service_type)
 

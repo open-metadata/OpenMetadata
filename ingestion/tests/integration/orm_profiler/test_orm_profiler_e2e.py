@@ -16,6 +16,7 @@ To run this we need OpenMetadata server up and running.
 
 No sample data is required beforehand
 """
+
 import logging
 from copy import deepcopy
 from datetime import datetime, timedelta
@@ -228,9 +229,7 @@ def test_ingestion(ingest, metadata, service_name):
     Validate that the ingestion ran correctly
     """
 
-    table_entity: Table = metadata.get_by_name(
-        entity=Table, fqn=f"{service_name}.main.main.users"
-    )
+    table_entity: Table = metadata.get_by_name(entity=Table, fqn=f"{service_name}.main.main.users")
     assert table_entity.fullyQualifiedName.root == f"{service_name}.main.main.users"
 
 
@@ -282,9 +281,7 @@ def test_profiler_workflow(ingest, metadata, service_name):
     assert profile.profileSample == 75.0
     assert profile.profileSampleType.root == ProfileSampleType.PERCENTAGE
 
-    workflow_config["processor"]["config"]["tableConfig"][0][
-        "profileSampleType"
-    ] = ProfileSampleType.ROWS
+    workflow_config["processor"]["config"]["tableConfig"][0]["profileSampleType"] = ProfileSampleType.ROWS
     workflow_config["processor"]["config"]["tableConfig"][0]["profileSample"] = 3
     profiler_workflow = ProfilerWorkflow.create(workflow_config)
     profiler_workflow.execute()
@@ -710,9 +707,7 @@ def test_profiler_workflow_with_custom_profiler_config(ingest, metadata, service
     profiler_workflow.stop()
 
     sample_data = metadata.get_sample_data(table)
-    assert sorted([c.root for c in sample_data.sampleData.columns]) == sorted(
-        ["id", "age"]
-    )
+    assert sorted([c.root for c in sample_data.sampleData.columns]) == sorted(["id", "age"])
 
 
 def test_sample_data_ingestion(ingest, metadata, service_name):

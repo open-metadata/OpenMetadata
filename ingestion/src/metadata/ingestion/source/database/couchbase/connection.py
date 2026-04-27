@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from functools import partial
 from typing import Any, Optional
 
@@ -40,9 +41,7 @@ def get_connection(connection: CouchbaseConnection):
     from couchbase.cluster import Cluster
     from couchbase.options import ClusterOptions
 
-    auth = PasswordAuthenticator(
-        connection.username, connection.password.get_secret_value()
-    )
+    auth = PasswordAuthenticator(connection.username, connection.password.get_secret_value())
     url = f"{connection.scheme.value}://{connection.hostport}"
     couchbase_cluster = Cluster.connect(url, ClusterOptions(auth))
     return couchbase_cluster
