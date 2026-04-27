@@ -12,6 +12,7 @@
 """
 Test Metrics behavior
 """
+
 import os
 import sys
 from unittest import TestCase, mock
@@ -93,12 +94,8 @@ class DatalakeMetricsTest(TestCase):
     ]
     root_dir = os.path.dirname(os.path.abspath(__file__))
     csv_dir = "../custom_csv"
-    df1 = pd.read_csv(
-        os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"), names=col_names
-    )
-    df2 = pd.read_csv(
-        os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"), names=col_names
-    )
+    df1 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"), names=col_names)
+    df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"), names=col_names)
 
     @classmethod
     @mock.patch(
@@ -119,9 +116,7 @@ class DatalakeMetricsTest(TestCase):
         table_entity = Table(
             id=uuid4(),
             name="user",
-            databaseSchema=EntityReference(
-                id=uuid4(), type="databaseSchema", name="name"
-            ),
+            databaseSchema=EntityReference(id=uuid4(), type="databaseSchema", name="name"),
             fileFormat="csv",
             columns=[
                 EntityColumn(
@@ -284,10 +279,7 @@ class DatalakeMetricsTest(TestCase):
             profiler_interface=self.datalake_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
-        assert (
-            str(round(res.get(User.nickname.name).get(Metrics.nullProportion.name), 2))
-            == "0.33"
-        )
+        assert str(round(res.get(User.nickname.name).get(Metrics.nullProportion.name), 2)) == "0.33"
 
     def test_table_row_count(self):
         """
@@ -575,10 +567,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert (
-            str(round(res.get(User.name.name)[Metrics.uniqueProportion.name], 2))
-            == "0.5"
-        )
+        assert str(round(res.get(User.name.name)[Metrics.uniqueProportion.name], 2)) == "0.5"
 
     def test_distinct_count(self):
         """
@@ -614,10 +603,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert (
-            str(round(res.get(User.name.name)[Metrics.distinctProportion.name], 2))
-            == "0.75"
-        )
+        assert str(round(res.get(User.name.name)[Metrics.distinctProportion.name], 2)) == "0.75"
 
     def test_count_in_set(self):
         """

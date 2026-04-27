@@ -44,9 +44,7 @@ class TestVerticaTypeMappingRegistered:
         ],
     )
     def test_type_key_registered(self, type_key):
-        assert (
-            type_key in vertica_ischema_names
-        ), f"'{type_key}' is missing from Vertica ischema_names"
+        assert type_key in vertica_ischema_names, f"'{type_key}' is missing from Vertica ischema_names"
 
 
 class TestVerticaTypeMappingResolution:
@@ -61,13 +59,9 @@ class TestVerticaTypeMappingResolution:
             ("LONG VARCHAR", sqltypes.Text),
         ],
     )
-    def test_standard_type_resolves_to_expected_class(
-        self, type_key, expected_sqa_class
-    ):
+    def test_standard_type_resolves_to_expected_class(self, type_key, expected_sqa_class):
         entry = vertica_ischema_names[type_key]
-        assert (
-            entry is expected_sqa_class
-        ), f"'{type_key}' expected {expected_sqa_class.__name__}, got {entry}"
+        assert entry is expected_sqa_class, f"'{type_key}' expected {expected_sqa_class.__name__}, got {entry}"
 
     @pytest.mark.parametrize(
         "type_key",
@@ -76,6 +70,6 @@ class TestVerticaTypeMappingResolution:
     def test_custom_type_is_not_null_type(self, type_key):
         entry = vertica_ischema_names[type_key]
         instance = entry() if isinstance(entry, type) else entry
-        assert not isinstance(
-            instance, sqltypes.NullType
-        ), f"'{type_key}' resolved to NullType — custom type was not registered"
+        assert not isinstance(instance, sqltypes.NullType), (
+            f"'{type_key}' resolved to NullType — custom type was not registered"
+        )

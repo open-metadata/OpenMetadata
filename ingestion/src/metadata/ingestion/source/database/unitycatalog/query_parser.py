@@ -11,6 +11,7 @@
 """
 UnityCatalog Query parser module
 """
+
 from abc import ABC
 from typing import Optional
 
@@ -35,9 +36,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class UnityCatalogQueryParserSource(
-    DatabricksQueryParserSource, QueryParserSource, ABC
-):
+class UnityCatalogQueryParserSource(DatabricksQueryParserSource, QueryParserSource, ABC):
     """
     UnityCatalog Query Parser Source
 
@@ -61,14 +60,10 @@ class UnityCatalogQueryParserSource(
         self.sql_client = get_sqlalchemy_connection(self.service_connection)
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: UnityCatalogConnection = config.serviceConnection.root.config
         if not isinstance(connection, UnityCatalogConnection):
-            raise InvalidSourceException(
-                f"Expected UnityCatalogConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected UnityCatalogConnection, but got {connection}")
         return cls(config, metadata)

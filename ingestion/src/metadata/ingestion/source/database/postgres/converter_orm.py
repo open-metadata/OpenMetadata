@@ -34,9 +34,7 @@ class PostgrestMapTypes(CommonMapTypes):
     """Postgres type mapper, inherits from CommonMapTypes"""
 
     def return_custom_type(self, col: Column, table_service_type):
-        return _CUSTOM_TYPE_MAP.get(
-            col.dataType, super().return_custom_type(col, table_service_type)
-        )
+        return _CUSTOM_TYPE_MAP.get(col.dataType, super().return_custom_type(col, table_service_type))
 
     @staticmethod
     def map_sqa_to_om_types() -> Dict[TypeEngine, Set[DataType]]:

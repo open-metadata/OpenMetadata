@@ -13,7 +13,6 @@
 Validator for table column name to match set test case
 """
 
-
 from typing import List, cast
 
 from sqlalchemy import inspect
@@ -30,20 +29,14 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class TableColumnToMatchSetValidator(
-    BaseTableColumnToMatchSetValidator, SQAValidatorMixin
-):
+class TableColumnToMatchSetValidator(BaseTableColumnToMatchSetValidator, SQAValidatorMixin):
     """Validator for table column name to match set test case"""
 
     def _run_results(self) -> List[str]:
         """compute result of the test case"""
         names = inspect(self.runner.table).c
         if not names:
-            raise ValueError(
-                f"Column names for test case {self.test_case.name} returned None"
-            )
-        names = cast(
-            ColumnCollection, names
-        )  # satisfy type checker for names.keys() access
+            raise ValueError(f"Column names for test case {self.test_case.name} returned None")
+        names = cast(ColumnCollection, names)  # satisfy type checker for names.keys() access
         names = list(names.keys())
         return names

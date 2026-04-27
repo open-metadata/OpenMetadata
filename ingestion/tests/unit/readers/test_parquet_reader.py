@@ -12,6 +12,7 @@
 """
 Tests for ParquetDataFrameReader S3, GCS, and Local
 """
+
 import tempfile
 import unittest
 from unittest.mock import MagicMock, Mock, patch
@@ -92,9 +93,7 @@ class TestParquetReader(unittest.TestCase):
         from collections import namedtuple
 
         config = S3Config(
-            securityConfig=AWSCredentials(
-                awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1"
-            )
+            securityConfig=AWSCredentials(awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1")
         )
         mock_client = Mock()
         mock_session = Mock()

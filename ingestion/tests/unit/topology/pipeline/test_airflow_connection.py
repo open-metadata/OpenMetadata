@@ -74,9 +74,7 @@ class TestTryExchangeJwt:
         mock_response.raise_for_status = MagicMock()
         mock_post.return_value = mock_response
 
-        result = try_exchange_jwt(
-            "http://airflow.example.com:8080", "admin", "password", True
-        )
+        result = try_exchange_jwt("http://airflow.example.com:8080", "admin", "password", True)
         assert result == "jwt_abc123"
         mock_post.assert_called_once_with(
             "http://airflow.example.com:8080/auth/token",
@@ -157,9 +155,7 @@ class TestBuildBasicAuthCallback:
         return_value="jwt_token_xyz",
     )
     def test_jwt_success_returns_bearer_mode(self, _mock_jwt):
-        cb, mode = build_basic_auth_callback(
-            "http://airflow.example.com:8080", "admin", "pass", True
-        )
+        cb, mode = build_basic_auth_callback("http://airflow.example.com:8080", "admin", "pass", True)
         assert mode is None
         token, expiry = cb()
         assert token == "Bearer jwt_token_xyz"
@@ -170,9 +166,7 @@ class TestBuildBasicAuthCallback:
         return_value=None,
     )
     def test_jwt_failure_falls_back_to_basic(self, _mock_jwt):
-        cb, mode = build_basic_auth_callback(
-            "http://airflow.example.com:8080", "admin", "secret", True
-        )
+        cb, mode = build_basic_auth_callback("http://airflow.example.com:8080", "admin", "secret", True)
         assert mode is None
         token, expiry = cb()
         expected_b64 = base64.b64encode(b"admin:secret").decode()
@@ -234,9 +228,7 @@ class TestBuildGcpTokenCallback:
 
     @patch("google.auth.default")
     @patch("metadata.ingestion.source.pipeline.airflow.api.auth.set_google_credentials")
-    def test_fallback_expiry_when_credentials_have_no_expiry(
-        self, _mock_set, mock_default
-    ):
+    def test_fallback_expiry_when_credentials_have_no_expiry(self, _mock_set, mock_default):
         mock_creds = MagicMock(token="tok")
         mock_creds.expiry = None
         mock_default.return_value = (mock_creds, "project")
@@ -251,13 +243,9 @@ class TestBuildGcpTokenCallback:
 
         assert before < expiry < after
 
-    @patch(
-        "metadata.ingestion.source.pipeline.airflow.api.auth.get_gcp_impersonate_credentials"
-    )
+    @patch("metadata.ingestion.source.pipeline.airflow.api.auth.get_gcp_impersonate_credentials")
     @patch("metadata.ingestion.source.pipeline.airflow.api.auth.set_google_credentials")
-    def test_impersonation_uses_impersonate_credentials(
-        self, _mock_set, mock_impersonate
-    ):
+    def test_impersonation_uses_impersonate_credentials(self, _mock_set, mock_impersonate):
         impersonate = MagicMock()
         impersonate.impersonateServiceAccount = "svc@project.iam.gserviceaccount.com"
         impersonate.lifetime = 3600
@@ -282,14 +270,10 @@ class TestBuildGcpTokenCallback:
         )
         mock_impersonated.refresh.assert_called_once()
 
-    @patch(
-        "metadata.ingestion.source.pipeline.airflow.api.auth.get_gcp_impersonate_credentials"
-    )
+    @patch("metadata.ingestion.source.pipeline.airflow.api.auth.get_gcp_impersonate_credentials")
     @patch("google.auth.default")
     @patch("metadata.ingestion.source.pipeline.airflow.api.auth.set_google_credentials")
-    def test_no_impersonation_when_field_is_none(
-        self, _mock_set, mock_default, mock_impersonate
-    ):
+    def test_no_impersonation_when_field_is_none(self, _mock_set, mock_default, mock_impersonate):
         mock_creds = MagicMock(token="tok", expiry=None)
         mock_default.return_value = (mock_creds, "project")
 
@@ -333,9 +317,7 @@ class TestBuildGcpTokenCallback:
         with patch("google.auth.transport.requests.Request"):
             cb()
 
-        mock_default.assert_called_once_with(
-            scopes=["https://www.googleapis.com/auth/cloud-platform"]
-        )
+        mock_default.assert_called_once_with(scopes=["https://www.googleapis.com/auth/cloud-platform"])
 
     @patch("google.auth.default")
     @patch("metadata.ingestion.source.pipeline.airflow.api.auth.set_google_credentials")
@@ -374,9 +356,7 @@ class TestGcpCredentialTypeCoverage:
     )
     @patch("google.auth.default")
     @patch("metadata.ingestion.source.pipeline.airflow.api.auth.set_google_credentials")
-    def test_set_google_credentials_called_for_all_types(
-        self, mock_set, mock_default, gcp_config_type_name
-    ):
+    def test_set_google_credentials_called_for_all_types(self, mock_set, mock_default, gcp_config_type_name):
         mock_creds = MagicMock(token="tok", expiry=None)
         mock_default.return_value = (mock_creds, "project")
 
@@ -438,9 +418,7 @@ class TestAirflowApiClientAuthConfig:
         "metadata.ingestion.source.pipeline.airflow.api.auth.try_exchange_jwt",
         return_value=None,
     )
-    def test_basic_auth_without_jwt_falls_back_to_basic_mode(
-        self, _mock_jwt, mock_rest_cls
-    ):
+    def test_basic_auth_without_jwt_falls_back_to_basic_mode(self, _mock_jwt, mock_rest_cls):
         variant = BasicAuth(username="admin", password="secret")
         config = _make_config(variant)
         AirflowApiClient(config)
@@ -455,9 +433,7 @@ class TestAirflowApiClientAuthConfig:
     @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
     @patch("metadata.ingestion.source.pipeline.airflow.api.auth.set_google_credentials")
     @patch("google.auth.default")
-    def test_gcp_credentials_sets_bearer_with_live_callback(
-        self, mock_default, _mock_set, mock_rest_cls
-    ):
+    def test_gcp_credentials_sets_bearer_with_live_callback(self, mock_default, _mock_set, mock_rest_cls):
         expiry = datetime.now(timezone.utc) + timedelta(hours=1)
         mock_creds = MagicMock(token="gcp_tok", expiry=expiry)
         mock_default.return_value = (mock_creds, "project")
@@ -540,9 +516,7 @@ class TestGcpTokenRefreshIntegration:
                 call_count["n"] += 1
 
             m.refresh.side_effect = do_refresh
-            type(m).token = property(
-                lambda self: tokens[min(call_count["n"] - 1, len(tokens) - 1)]
-            )
+            type(m).token = property(lambda self: tokens[min(call_count["n"] - 1, len(tokens) - 1)])
             return m
 
         mock_creds = make_mock_creds()

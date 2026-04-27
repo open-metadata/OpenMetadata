@@ -1,4 +1,5 @@
 """High-level entry points for the OpenMetadata Python SDK."""
+
 from __future__ import annotations
 
 import os
@@ -118,15 +119,10 @@ def configure(
             config_obj = OpenMetadataConfig.from_env()
         else:
             resolved_server_url = (
-                host
-                or server_url
-                or os.environ.get("OPENMETADATA_HOST")
-                or os.environ.get("OPENMETADATA_SERVER_URL")
+                host or server_url or os.environ.get("OPENMETADATA_HOST") or os.environ.get("OPENMETADATA_SERVER_URL")
             )
             resolved_jwt_token = (
-                jwt_token
-                or os.environ.get("OPENMETADATA_JWT_TOKEN")
-                or os.environ.get("OPENMETADATA_API_KEY")
+                jwt_token or os.environ.get("OPENMETADATA_JWT_TOKEN") or os.environ.get("OPENMETADATA_API_KEY")
             )
 
             if not resolved_server_url:
@@ -135,9 +131,7 @@ def configure(
                     + "'OPENMETADATA_HOST'/'OPENMETADATA_SERVER_URL' environment variable"
                 )
 
-            config_obj = OpenMetadataConfig(
-                server_url=resolved_server_url, jwt_token=resolved_jwt_token, **kwargs
-            )
+            config_obj = OpenMetadataConfig(server_url=resolved_server_url, jwt_token=resolved_jwt_token, **kwargs)
     elif isinstance(config, Mapping):
         config_obj = OpenMetadataConfig(**dict(config))
     else:

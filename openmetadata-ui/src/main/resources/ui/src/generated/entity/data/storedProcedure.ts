@@ -609,6 +609,7 @@ export enum DatabaseServiceType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    SapSuccessFactors = "SapSuccessFactors",
     ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",

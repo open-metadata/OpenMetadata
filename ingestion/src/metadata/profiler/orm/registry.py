@@ -13,6 +13,7 @@
 Custom types' registry for easy access
 without having an import mess
 """
+
 import math
 from enum import Enum
 
@@ -195,9 +196,7 @@ def is_quantifiable(_type) -> bool:
     """
     if isinstance(_type, DataType):
         return _type.value in QUANTIFIABLE_SET
-    return (
-        is_numeric(_type) or is_integer(_type) or getattr(_type, "quantifiable", False)
-    )
+    return is_numeric(_type) or is_integer(_type) or getattr(_type, "quantifiable", False)
 
 
 def is_concatenable(_type) -> bool:

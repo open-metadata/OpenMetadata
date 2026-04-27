@@ -11,6 +11,7 @@
 """
 Unit tests for PII classifiers
 """
+
 from unittest.mock import Mock
 
 import pytest
@@ -67,9 +68,7 @@ class TestTagScorer:
         )
 
     @pytest.fixture
-    def email_tag(
-        self, column_to_ignore: Column, pii_classification: Classification
-    ) -> Tag:
+    def email_tag(self, column_to_ignore: Column, pii_classification: Classification) -> Tag:
         """Create email tag for testing"""
         email_pattern = PatternFactory.create(
             name="Email pattern",
@@ -247,23 +246,17 @@ class TestTagScorer:
         )
 
         sample_data = ["maybe an email@somewhere", "could be phone 123456"]
-        scored_tags = high_cutoff_classifier.predict_scores(
-            sample_data, column_name="data"
-        )
+        scored_tags = high_cutoff_classifier.predict_scores(sample_data, column_name="data")
 
         # With such a high cutoff, weak matches should be filtered
-        assert len(scored_tags) == 0 or all(
-            scored_tag.score >= 0.95 for scored_tag in scored_tags
-        )
+        assert len(scored_tags) == 0 or all(scored_tag.score >= 0.95 for scored_tag in scored_tags)
 
     def test_column_name_contribution(self, classifier):
         """Test that column name contributes to score"""
         email_data = ["user1@domain.com", "user2@domain.org"]
 
         # First without column name match
-        scores_without = classifier.predict_scores(
-            email_data, column_name="random_field"
-        )
+        scores_without = classifier.predict_scores(email_data, column_name="random_field")
 
         # Then with column name that matches email pattern
         scores_with = classifier.predict_scores(email_data, column_name="email_address")
@@ -398,9 +391,7 @@ class TestTagAnalyzer:
         assert len(content_recognizers) == 1
 
         column_recognizers = tag_analyzer.get_recognizers_by(Target.column_name)
-        assert (
-            len(column_recognizers) == 0
-        )  # No column name recognizers in base fixture
+        assert len(column_recognizers) == 0  # No column name recognizers in base fixture
 
     def test_disabled_auto_classification(self, column, nlp_engine):
         """Test that disabled auto-classification returns no recognizers"""
@@ -446,7 +437,4 @@ class TestTagAnalyzer:
         ]
 
         analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
-        assert (
-            analyzer.should_skip_recognizer(email_tag.recognizers[0].exceptionList)
-            is True
-        )
+        assert analyzer.should_skip_recognizer(email_tag.recognizers[0].exceptionList) is True

@@ -11,6 +11,7 @@
 """
 Usage Source Module
 """
+
 import csv
 import os
 import traceback
@@ -46,11 +47,7 @@ class UsageSource(QueryParserSource, ABC):
             if os.path.isfile(query_log_path):
                 file_paths = [query_log_path]
             elif os.path.isdir(query_log_path):
-                file_paths = [
-                    os.path.join(query_log_path, f)
-                    for f in os.listdir(query_log_path)
-                    if f.endswith(".csv")
-                ]
+                file_paths = [os.path.join(query_log_path, f) for f in os.listdir(query_log_path) if f.endswith(".csv")]
             else:
                 raise ValueError(f"{query_log_path} is neither a file nor a directory.")
             for file_path in file_paths:
@@ -62,9 +59,7 @@ class UsageSource(QueryParserSource, ABC):
                         analysis_date = (
                             datetime.now(timezone.utc)
                             if not query_dict.get("start_time")
-                            else datetime.strptime(
-                                query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S.%f"
-                            )
+                            else datetime.strptime(query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S.%f")
                         )
                         query_list.append(
                             TableQuery(
@@ -153,9 +148,7 @@ class UsageSource(QueryParserSource, ABC):
                                 )
                             except Exception as exc:
                                 logger.debug(traceback.format_exc())
-                                logger.warning(
-                                    f"Unexpected exception processing row [{row}]: {exc}"
-                                )
+                                logger.warning(f"Unexpected exception processing row [{row}]: {exc}")
                     logger.info(f"Processed {row_count} query log entries for usage")
                     yield TableQueries(queries=queries)
             except Exception as exc:

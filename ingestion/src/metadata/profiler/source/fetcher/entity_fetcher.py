@@ -53,18 +53,12 @@ class EntityFetcher:
         service_type = service_class(self.config.source.type)
 
         if service_type is DatabaseService:
-            return DatabaseFetcherStrategy(
-                self.config, self.metadata, self.global_profiler_config, self.status
-            )
+            return DatabaseFetcherStrategy(self.config, self.metadata, self.global_profiler_config, self.status)
 
         if service_type is StorageService:
-            return StorageFetcherStrategy(
-                self.config, self.metadata, self.global_profiler_config, self.status
-            )
+            return StorageFetcherStrategy(self.config, self.metadata, self.global_profiler_config, self.status)
 
-        raise NotImplementedError(
-            f"Fetcher strategy not implemented for service type {service_type}"
-        )
+        raise NotImplementedError(f"Fetcher strategy not implemented for service type {service_type}")
 
     def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
         """Fetch entities"""

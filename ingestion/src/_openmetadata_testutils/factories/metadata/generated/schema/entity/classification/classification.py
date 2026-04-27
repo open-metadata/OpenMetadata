@@ -25,9 +25,7 @@ class AutoClassificationConfigFactory(factory.Factory):
 class ClassificationFactory(factory.Factory):
     id = RootSubFactory(UuidFactory)
     name = factory.LazyAttribute(lambda o: EntityName(root=o.fqn))
-    fullyQualifiedName = factory.LazyAttribute(
-        lambda o: FullyQualifiedEntityName(root=o.fqn)
-    )
+    fullyQualifiedName = factory.LazyAttribute(lambda o: FullyQualifiedEntityName(root=o.fqn))
     description = RootSubFactory(MarkdownFactory)
     mutuallyExclusive = True
     autoClassificationConfig = factory.SubFactory(AutoClassificationConfigFactory)

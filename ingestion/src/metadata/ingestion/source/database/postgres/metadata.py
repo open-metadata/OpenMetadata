@@ -11,6 +11,7 @@
 """
 Postgres source module
 """
+
 import traceback
 from collections import namedtuple
 from typing import Iterable, Optional, Tuple
@@ -134,15 +135,11 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         self.schema_desc_map = {}
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: PostgresConnection = config.serviceConnection.root.config
         if not isinstance(connection, PostgresConnection):
-            raise InvalidSourceException(
-                f"Expected PostgresConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected PostgresConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_schema_description(self, schema_name: str) -> Optional[str]:
@@ -152,13 +149,9 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         return self.schema_desc_map.get(schema_name)
 
     def set_schema_description_map(self) -> None:
-        self.schema_desc_map = get_schema_descriptions(
-            self.engine, POSTGRES_SCHEMA_COMMENTS
-        )
+        self.schema_desc_map = get_schema_descriptions(self.engine, POSTGRES_SCHEMA_COMMENTS)
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Overwrite the inspector implementation to handle partitioned
         and foreign types
@@ -169,10 +162,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         )
 
         return [
-            TableNameAndType(
-                name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)
-            )
-            for name, relkind in result
+            TableNameAndType(name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)) for name, relkind in result
         ]
 
     def get_configured_database(self) -> Optional[str]:
@@ -200,11 +190,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    (
-                        database_fqn
-                        if self.source_config.useFqnForFiltering
-                        else new_database
-                    ),
+                    (database_fqn if self.source_config.useFqnForFiltering else new_database),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -215,13 +201,9 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(
-                        f"Error trying to connect to database {new_database}: {exc}"
-                    )
+                    logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
-    def get_table_partition_details(
-        self, table_name: str, schema_name: str, inspector
-    ) -> Tuple[bool, TablePartition]:
+    def get_table_partition_details(self, table_name: str, schema_name: str, inspector) -> Tuple[bool, TablePartition]:
         with self.engine.connect() as conn:
             result = conn.execute(
                 text(POSTGRES_PARTITION_DETAILS),
@@ -233,9 +215,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 columns=[
                     PartitionColumnDetails(
                         columnName=row.column_name,
-                        intervalType=INTERVAL_TYPE_MAP.get(
-                            row.partition_strategy, PartitionIntervalTypes.COLUMN_VALUE
-                        ),
+                        intervalType=INTERVAL_TYPE_MAP.get(row.partition_strategy, PartitionIntervalTypes.COLUMN_VALUE),
                         interval=None,
                     )
                     for row in result
@@ -245,9 +225,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
             return True, partition_details
         return False, None
 
-    def yield_tag(
-        self, schema_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Fetch Tags
         """
@@ -285,9 +263,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 )
             )
 
-    def _get_stored_procedures_internal(
-        self, query: str
-    ) -> Iterable[PostgresStoredProcedure]:
+    def _get_stored_procedures_internal(self, query: str) -> Iterable[PostgresStoredProcedure]:
         with self.engine.connect() as conn:
             results = conn.execute(text(query)).all()
         for row in results:
@@ -312,26 +288,18 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         """List stored procedures"""
         if self.source_config.includeStoredProcedures:
             yield from self._get_stored_procedures_internal(
-                POSTGRES_GET_STORED_PROCEDURES.format(
-                    schema_name=self.context.get().database_schema
-                )
+                POSTGRES_GET_STORED_PROCEDURES.format(schema_name=self.context.get().database_schema)
             )
             yield from self._get_stored_procedures_internal(
-                POSTGRES_GET_FUNCTIONS.format(
-                    schema_name=self.context.get().database_schema
-                )
+                POSTGRES_GET_FUNCTIONS.format(schema_name=self.context.get().database_schema)
             )
 
-    def yield_stored_procedure(
-        self, stored_procedure
-    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+    def yield_stored_procedure(self, stored_procedure) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Prepare the stored procedure payload"""
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),
-                description=Markdown(stored_procedure.description)
-                if stored_procedure.description
-                else None,
+                description=Markdown(stored_procedure.description) if stored_procedure.description else None,
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
                     code=stored_procedure.definition,
