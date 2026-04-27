@@ -400,8 +400,28 @@ jest.mock('@openmetadata/ui-core-components', () => {
     NavItemButton: ({ children }) => children,
     Tabs: ({ children }) => children,
     Table: ({ children }) => children,
+    ModalOverlay: ({ children, isOpen }) =>
+      isOpen === false ? null : children,
     Modal: ({ children }) => children,
-    Dialog: ({ children }) => children,
+    Dialog: Object.assign(
+      ({ children, title, 'data-testid': testId }) =>
+        React.createElement('div', { 'data-testid': testId, role: 'dialog' }, [
+          title ? React.createElement('h2', { key: 'title' }, title) : null,
+          children,
+        ]),
+      {
+        Header: ({ children, title }) =>
+          React.createElement('div', null, [
+            title ? React.createElement('h3', { key: 'title' }, title) : null,
+            children,
+          ]),
+        Content: ({ children }) => React.createElement('div', null, children),
+        Footer: ({ children }) => React.createElement('div', null, children),
+      }
+    ),
+    DialogTrigger: ({ children }) =>
+      React.createElement(React.Fragment, null, children),
+    Heading: ({ children }) => React.createElement('h2', null, children),
     Alert: ({ title, children, className, ...rest }) =>
       React.createElement('div', { ...rest, className, role: 'alert' }, [
         title ? React.createElement('strong', { key: 'title' }, title) : null,
