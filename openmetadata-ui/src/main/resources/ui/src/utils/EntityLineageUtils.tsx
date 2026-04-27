@@ -1649,8 +1649,16 @@ const extractTempLineageNodes = (
       return;
     }
     edge.tempLineageTables.forEach((hop: TempLineageTable) => {
-      const fromNode = getOrCreateTempNode(hop.fromEntity, existingByFqn, newTempNodes);
-      const toNode = getOrCreateTempNode(hop.toEntity, existingByFqn, newTempNodes);
+      const fromNode = getOrCreateTempNode(
+        hop.fromEntity,
+        existingByFqn,
+        newTempNodes
+      );
+      const toNode = getOrCreateTempNode(
+        hop.toEntity,
+        existingByFqn,
+        newTempNodes
+      );
       newEdges.push({
         fromEntity: {
           id: fromNode.id,
