@@ -19,6 +19,17 @@ export interface AggregationRequest {
      */
     deleted?: boolean;
     /**
+     * If true, expand the requested index to also include the actual indexes of its child
+     * aliases declared in indexMapping.json. Defaults to true to preserve backward-compatible
+     * behavior.
+     */
+    fetchChildAliases?: boolean;
+    /**
+     * If true, expand the requested index to also include the actual indexes of its parent
+     * aliases declared in indexMapping.json. Defaults to false.
+     */
+    fetchParentsAliases?: boolean;
+    /**
      * Field name to aggregate on (typically a keyword field like service.displayName.keyword).
      */
     fieldName: string;

@@ -36,6 +36,19 @@ export interface SearchRequest {
      */
     explain?: boolean;
     /**
+     * If true, expand the requested index to also include the actual indexes of its child
+     * aliases declared in indexMapping.json (entities that list this alias in their
+     * parentAliases). Defaults to true to preserve backward-compatible behavior; set to false
+     * to return only the requested index's documents.
+     */
+    fetchChildAliases?: boolean;
+    /**
+     * If true, expand the requested index to also include the actual indexes of its parent
+     * aliases declared in indexMapping.json (entities listed in this index's parentAliases).
+     * Defaults to false.
+     */
+    fetchParentsAliases?: boolean;
+    /**
      * Get document body for each hit
      */
     fetchSource?: boolean;

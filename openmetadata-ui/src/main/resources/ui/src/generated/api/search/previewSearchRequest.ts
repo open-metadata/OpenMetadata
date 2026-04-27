@@ -14,8 +14,19 @@
  * Preview Search Results
  */
 export interface PreviewSearchRequest {
-    explain?:     boolean;
-    fetchSource?: boolean;
+    explain?: boolean;
+    /**
+     * If true, expand the requested index to also include the actual indexes of its child
+     * aliases declared in indexMapping.json. Defaults to true to preserve backward-compatible
+     * behavior.
+     */
+    fetchChildAliases?: boolean;
+    /**
+     * If true, expand the requested index to also include the actual indexes of its parent
+     * aliases declared in indexMapping.json. Defaults to false.
+     */
+    fetchParentsAliases?: boolean;
+    fetchSource?:         boolean;
     /**
      * Pagination start index.
      */
