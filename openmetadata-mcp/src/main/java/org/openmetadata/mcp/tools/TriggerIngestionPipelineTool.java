@@ -26,7 +26,7 @@ public class TriggerIngestionPipelineTool implements McpTool {
       throws IOException {
     String fqn = requireFqn(params);
     authorize(authorizer, securityContext);
-    PipelineServiceClientInterface client = resolveClient(fqn);
+    PipelineServiceClientInterface client = resolveClient();
     if (client == null) return clientNotConfiguredError(fqn);
     IngestionPipeline pipeline = fetchPipeline(fqn);
     if (!Boolean.TRUE.equals(pipeline.getDeployed())) return notDeployedError(fqn);
@@ -53,7 +53,7 @@ public class TriggerIngestionPipelineTool implements McpTool {
         new ResourceContext<>(Entity.INGESTION_PIPELINE));
   }
 
-  private static PipelineServiceClientInterface resolveClient(String fqn) {
+  private static PipelineServiceClientInterface resolveClient() {
     return PipelineServiceClientFactory.createPipelineServiceClient(null);
   }
 
