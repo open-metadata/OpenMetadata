@@ -968,7 +968,7 @@ const DomainDetails = ({
                 </Dropdown.Root>
               )}
 
-              <Box className="spaced" direction="row">
+              <Box align="center" className="spaced" direction="row" gap={3}>
                 {onUpdateVote && (
                   <Voting
                     voteStatus={voteStatus}

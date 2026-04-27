@@ -376,11 +376,31 @@ jest.mock('@openmetadata/ui-core-components', () => {
         title ? React.createElement('span', { key: 'title' }, title) : null,
       ]),
     TooltipTrigger: ({ children }) => children,
-    Button: ({ children, onClick, ...rest }) =>
+    Button: ({
+      children,
+      onClick,
+      onPress,
+      isDisabled,
+      isLoading,
+      iconLeading: IconLeading,
+      iconTrailing: IconTrailing,
+      ...rest
+    }) =>
       React.createElement(
         'button',
-        { ...rest, onClick, type: 'button' },
-        children
+        {
+          ...rest,
+          disabled: isDisabled || isLoading,
+          onClick: onClick || onPress,
+          type: 'button',
+        },
+        IconLeading
+          ? React.createElement(IconLeading, { key: 'leading' })
+          : null,
+        children,
+        IconTrailing
+          ? React.createElement(IconTrailing, { key: 'trailing' })
+          : null
       ),
     Toggle: ({ isSelected, onChange, isDisabled, 'data-testid': testId }) =>
       React.createElement('button', {
