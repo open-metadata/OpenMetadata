@@ -70,7 +70,7 @@ public class VectorSearchQueryBuilder {
     appendFilterMustClauses(sb, filters);
     sb.append("]}}"); // close must array and bool
 
-    sb.append("}}}}"); // close embedding, knn, query
+    sb.append("}}}"); // close embedding, knn, query
   }
 
   public static String buildNativeESQuery(

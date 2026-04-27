@@ -2145,20 +2145,22 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void createOrUpdateIndexTemplatesEnrichesContentForElasticsearch() throws Exception {
+    SearchRepository esRepository =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING),
+            "cluster",
+            ElasticSearchConfiguration.SearchType.ELASTICSEARCH,
+            null);
     when(searchClient.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
-
-    ArgumentCaptor<String> mappingCaptor = ArgumentCaptor.forClass(String.class);
-    doNothing()
-        .when(searchClient)
-        .createOrUpdateIndexTemplate(any(), any(), mappingCaptor.capture());
+    doNothing().when(searchClient).createOrUpdateIndexTemplate(any(), any(), any());
 
     try (var esUtils = mockStatic(EsUtils.class)) {
       esUtils
           .when(() -> EsUtils.enrichIndexMappingForElasticsearch(any()))
-          .thenAnswer(invocation -> invocation.getArgument(0) + "_enriched");
+          .thenAnswer(invocation -> invocation.getArgument(0));
 
-      repository.createOrUpdateIndexTemplates();
+      esRepository.createOrUpdateIndexTemplates();
 
       esUtils.verify(
           () -> EsUtils.enrichIndexMappingForElasticsearch(any()),
