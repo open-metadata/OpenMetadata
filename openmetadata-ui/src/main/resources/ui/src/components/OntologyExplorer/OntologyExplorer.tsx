@@ -56,8 +56,8 @@ const ONTOLOGY_TOOLBAR_CARD_CLASS =
 const ONTOLOGY_ENTITY_SUMMARY_SLIDEOUT_WIDTH = 576;
 
 interface GraphEmptyStateProps {
-  message: string;
-  testId: string;
+  readonly message: string;
+  readonly testId: string;
 }
 
 function GraphEmptyState({ message, testId }: GraphEmptyStateProps) {
@@ -104,7 +104,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     filteredGraphData,
     hierarchyGraphData,
     hierarchyBakedPositions,
-    graphSearchHighlight,
     glossaryColorMap,
     isHierarchyView,
     exportableGlossaryId,
@@ -223,14 +222,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     }
 
     return (
-      <>
-        {filters.searchQuery.trim() ? (
-          <div
-            aria-hidden
-            className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-1 tw:bg-gray-950/6"
-            data-testid="ontology-search-overlay"
-          />
-        ) : null}
         <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0">
           <OntologyGraph
             edges={graphDataToShow.edges}
@@ -245,7 +236,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             }
             glossaries={glossaries}
             glossaryColorMap={glossaryColorMap}
-            graphSearchHighlight={graphSearchHighlight}
             hierarchyCombos={
               isHierarchyView && hierarchyGraphData
                 ? hierarchyGraphData.combos.map((c) => ({
@@ -287,7 +277,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             </>
           )}
         </div>
-      </>
     );
   };
 

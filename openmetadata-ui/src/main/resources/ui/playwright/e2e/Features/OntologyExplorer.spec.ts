@@ -93,19 +93,6 @@ async function clickFirstGraphNode(page: Page): Promise<void> {
   await page.mouse.click(firstPos.x, firstPos.y);
 }
 
-async function readSearchHighlightIds(page: Page): Promise<string[]> {
-  return page.locator('.ontology-g6-container').evaluate((el: HTMLElement) => {
-    const raw = el.dataset.searchHighlightIds;
-    if (!raw) {
-      return [];
-    }
-    try {
-      return JSON.parse(raw) as string[];
-    } catch {
-      return [];
-    }
-  });
-}
 
 async function createApiContext(browser: Browser) {
   const page = await browser.newPage({
@@ -893,34 +880,8 @@ test.describe('Ontology Explorer', () => {
     });
   });
 
-  test.describe('Search Graph Overlay', () => {
-    test('should show overlay when search query is entered', async ({
-      page,
-    }) => {
-      await waitForGraphLoaded(page);
-      const searchInput = page
-        .getByTestId('ontology-graph-search')
-        .locator('input');
-      await searchInput.fill(term1.data.name);
-      await expect(page.getByTestId('ontology-search-overlay')).toBeVisible();
-    });
-
-    test('should hide overlay when search query is cleared', async ({
-      page,
-    }) => {
-      await waitForGraphLoaded(page);
-      const searchInput = page
-        .getByTestId('ontology-graph-search')
-        .locator('input');
-      await searchInput.fill(term1.data.name);
-      await expect(page.getByTestId('ontology-search-overlay')).toBeVisible();
-      await searchInput.clear();
-      await expect(
-        page.getByTestId('ontology-search-overlay')
-      ).not.toBeVisible();
-    });
-
-    test('matched term node should remain rendered in the graph during search', async ({
+  test.describe('Search Filtering', () => {
+    test('should show only the matching node and its neighbours when a search query is entered', async ({
       page,
     }) => {
       await waitForGraphLoaded(page);
@@ -931,17 +892,37 @@ test.describe('Ontology Explorer', () => {
         .getByTestId('ontology-graph-search')
         .locator('input');
       await searchInput.fill(term1.data.name);
-      await expect(page.getByTestId('ontology-search-overlay')).toBeVisible();
 
       const positions = await readNodePositions(page);
-
       expect(
         positions,
-        'term1 node must still be present in node positions while its name is the active search query'
+        'term1 must be visible — it matches the search query'
       ).toHaveProperty(term1.responseData.id);
+      expect(
+        positions,
+        'term2 must be visible — it is a direct neighbour of term1'
+      ).toHaveProperty(term2.responseData.id);
     });
 
-    test('should keep overlay visible and not crash when search term matches nothing', async ({
+    test('should restore all nodes when the search query is cleared', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary.responseData.id);
+      await waitForGraphLoaded(page);
+
+      const searchInput = page
+        .getByTestId('ontology-graph-search')
+        .locator('input');
+      await searchInput.fill(term1.data.name);
+      const filteredCount = Object.keys(await readNodePositions(page)).length;
+
+      await searchInput.clear();
+      const restoredCount = Object.keys(await readNodePositions(page)).length;
+      expect(restoredCount).toBeGreaterThanOrEqual(filteredCount);
+    });
+
+    test('should show empty graph state when the search matches nothing', async ({
       page,
     }) => {
       await waitForGraphLoaded(page);
@@ -950,10 +931,26 @@ test.describe('Ontology Explorer', () => {
         .locator('input');
       await searchInput.fill('__nonexistent_term_xyz__');
 
-      await expect(page.getByTestId('ontology-search-overlay')).toBeVisible();
+      await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
       await expect(
         page.locator('.ontology-g6-container canvas').first()
       ).toBeVisible();
+    });
+
+    test('should recover from a no-match state when the search is cleared', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      const searchInput = page
+        .getByTestId('ontology-graph-search')
+        .locator('input');
+      await searchInput.fill('__nonexistent_term_xyz__');
+      await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
+
+      await searchInput.clear();
+      await expect(
+        page.getByTestId('ontology-graph-empty')
+      ).not.toBeVisible();
     });
   });
 
@@ -1447,7 +1444,7 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
   });
 });
 
-test.describe('Ontology Explorer - Search Highlight Node-Level Effect', () => {
+test.describe('Ontology Explorer - Search Filtering - Node Visibility', () => {
   const highlightGlossary = new Glossary();
   const termAlpha = new GlossaryTerm(highlightGlossary);
   const termBeta = new GlossaryTerm(highlightGlossary);
@@ -1479,7 +1476,7 @@ test.describe('Ontology Explorer - Search Highlight Node-Level Effect', () => {
     await disposeApiContext(page, apiContext);
   });
 
-  test('searching by a term name highlights that term and its connected neighbour', async ({
+  test('searching by a term name shows only that term and its connected neighbour', async ({
     page,
   }) => {
     await navigateAndFilterByGlossary(page, highlightGlossary.responseData.id);
@@ -1488,16 +1485,24 @@ test.describe('Ontology Explorer - Search Highlight Node-Level Effect', () => {
       .getByTestId('ontology-graph-search')
       .locator('input');
     await searchInput.fill(termAlpha.data.name);
-    await expect(page.getByTestId('ontology-search-overlay')).toBeVisible();
 
-    const highlighted = await readSearchHighlightIds(page);
+    const positions = await readNodePositions(page);
 
-    expect(highlighted).toContain(termAlpha.responseData.id);
-    expect(highlighted).toContain(termBeta.responseData.id);
-    expect(highlighted).not.toContain(termGamma.responseData.id);
+    expect(
+      positions,
+      'termAlpha must be visible — it matches the search query'
+    ).toHaveProperty(termAlpha.responseData.id);
+    expect(
+      positions,
+      'termBeta must be visible — it is directly connected to termAlpha'
+    ).toHaveProperty(termBeta.responseData.id);
+    expect(
+      positions,
+      'termGamma must be hidden — it is unrelated to the search query'
+    ).not.toHaveProperty(termGamma.responseData.id);
   });
 
-  test('searching by the isolated term highlights only that term', async ({
+  test('searching by the isolated term shows only that term', async ({
     page,
   }) => {
     await navigateAndFilterByGlossary(page, highlightGlossary.responseData.id);
@@ -1506,16 +1511,24 @@ test.describe('Ontology Explorer - Search Highlight Node-Level Effect', () => {
       .getByTestId('ontology-graph-search')
       .locator('input');
     await searchInput.fill(termGamma.data.name);
-    await expect(page.getByTestId('ontology-search-overlay')).toBeVisible();
 
-    const highlighted = await readSearchHighlightIds(page);
+    const positions = await readNodePositions(page);
 
-    expect(highlighted).toContain(termGamma.responseData.id);
-    expect(highlighted).not.toContain(termAlpha.responseData.id);
-    expect(highlighted).not.toContain(termBeta.responseData.id);
+    expect(
+      positions,
+      'termGamma must be visible — it matches the search query'
+    ).toHaveProperty(termGamma.responseData.id);
+    expect(
+      positions,
+      'termAlpha must be hidden — it does not match and has no edge to termGamma'
+    ).not.toHaveProperty(termAlpha.responseData.id);
+    expect(
+      positions,
+      'termBeta must be hidden — it does not match and has no edge to termGamma'
+    ).not.toHaveProperty(termBeta.responseData.id);
   });
 
-  test('clearing the search removes all highlight state from the DOM', async ({
+  test('clearing the search restores all three terms to the graph', async ({
     page,
   }) => {
     await navigateAndFilterByGlossary(page, highlightGlossary.responseData.id);
@@ -1524,13 +1537,13 @@ test.describe('Ontology Explorer - Search Highlight Node-Level Effect', () => {
       .getByTestId('ontology-graph-search')
       .locator('input');
     await searchInput.fill(termAlpha.data.name);
-    await expect(page.getByTestId('ontology-search-overlay')).toBeVisible();
 
     await searchInput.clear();
-    await expect(page.getByTestId('ontology-search-overlay')).not.toBeVisible();
 
-    const highlighted = await readSearchHighlightIds(page);
-    expect(highlighted).toHaveLength(0);
+    const positions = await readNodePositions(page);
+    expect(positions).toHaveProperty(termAlpha.responseData.id);
+    expect(positions).toHaveProperty(termBeta.responseData.id);
+    expect(positions).toHaveProperty(termGamma.responseData.id);
   });
 });
 
