@@ -63,7 +63,7 @@ export class BlockEditorExtensionsClassBase {
       StarterKit.configure({
         codeBlock: disableCodeBlock ? false : undefined,
         heading: {
-          levels: [1, 2, 3],
+          levels: [1, 2, 3, 4, 5, 6],
         },
         bulletList: {
           HTMLAttributes: {

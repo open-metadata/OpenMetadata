@@ -685,7 +685,9 @@ const convertAdmonitionsToHtml = (markdown: string): string => {
   return markdown.replace(
     ADMONITION_BLOCK_REGEX,
     (_match, type: string, content: string) =>
-      `<div data-admonition="${type}">${content.trim()}</div>`
+      `<div data-admonition="${type}">${MarkdownToHTMLConverter.makeHtml(
+        content.trim()
+      )}</div>`
   );
 };
 
