@@ -57,23 +57,22 @@ public class PrometheusEventMonitor extends EventMonitor {
 
     try {
       switch (event.getEventType()) {
-        case ENTITY_DELETED,
-            ENTITY_SOFT_DELETED,
-            ENTITY_CREATED -> incrementIngestionPipelineCounter(
-            fqn, pipelineType, event.getEventType().value());
+        case ENTITY_DELETED, ENTITY_SOFT_DELETED, ENTITY_CREATED ->
+            incrementIngestionPipelineCounter(fqn, pipelineType, event.getEventType().value());
         case ENTITY_UPDATED ->
-        // we can have multiple updates bundled together
-        event
-            .getChangeDescription()
-            .getFieldsUpdated()
-            .forEach(
-                change -> {
-                  if (change.getName().equals(PIPELINE_STATUS) && change.getNewValue() != null) {
-                    PipelineStatus pipelineStatus = (PipelineStatus) change.getNewValue();
-                    incrementIngestionPipelineCounter(
-                        fqn, pipelineType, pipelineStatus.getPipelineState().value());
-                  }
-                });
+            // we can have multiple updates bundled together
+            event
+                .getChangeDescription()
+                .getFieldsUpdated()
+                .forEach(
+                    change -> {
+                      if (change.getName().equals(PIPELINE_STATUS)
+                          && change.getNewValue() != null) {
+                        PipelineStatus pipelineStatus = (PipelineStatus) change.getNewValue();
+                        incrementIngestionPipelineCounter(
+                            fqn, pipelineType, pipelineStatus.getPipelineState().value());
+                      }
+                    });
         default -> throw new IllegalArgumentException("Invalid EventType " + event.getEventType());
       }
     } catch (IllegalArgumentException | CloudWatchException e) {

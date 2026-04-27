@@ -342,11 +342,13 @@ public class MigrationUtil {
 
   private static String getInsertRolePolicyRelationshipQuery(ConnectionType connectionType) {
     return switch (connectionType) {
-      case MYSQL -> """
+      case MYSQL ->
+          """
           INSERT IGNORE INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
           VALUES (:roleId, :policyId, 'role', 'policy', :relation)
           """;
-      case POSTGRES -> """
+      case POSTGRES ->
+          """
           INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
           VALUES (:roleId, :policyId, 'role', 'policy', :relation)
           ON CONFLICT DO NOTHING
@@ -358,12 +360,14 @@ public class MigrationUtil {
       Handle handle, ConnectionType connectionType, String userName) {
     String query =
         switch (connectionType) {
-          case MYSQL -> """
+          case MYSQL ->
+              """
           SELECT id FROM user_entity
           WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :name
           AND JSON_EXTRACT(json, '$.isBot') = true
           """;
-          case POSTGRES -> """
+          case POSTGRES ->
+              """
           SELECT id FROM user_entity
           WHERE json->>'name' = :name
           AND (json->>'isBot')::boolean = true
@@ -401,11 +405,13 @@ public class MigrationUtil {
 
   private static String getInsertUserRoleRelationshipQuery(ConnectionType connectionType) {
     return switch (connectionType) {
-      case MYSQL -> """
+      case MYSQL ->
+          """
           INSERT IGNORE INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
           VALUES (:userId, :roleId, 'user', 'role', :relation)
           """;
-      case POSTGRES -> """
+      case POSTGRES ->
+          """
           INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
           VALUES (:userId, :roleId, 'user', 'role', :relation)
           ON CONFLICT DO NOTHING
@@ -486,7 +492,8 @@ public class MigrationUtil {
 
   private static String getAppsWithoutBotRelationshipQuery(ConnectionType connectionType) {
     return switch (connectionType) {
-      case MYSQL -> """
+      case MYSQL ->
+          """
           SELECT a.id, JSON_UNQUOTE(JSON_EXTRACT(a.json, '$.name')) as name
           FROM installed_apps a
           WHERE NOT EXISTS (
@@ -496,7 +503,8 @@ public class MigrationUtil {
               AND er.relation = 0
           )
           """;
-      case POSTGRES -> """
+      case POSTGRES ->
+          """
           SELECT a.id, a.json->>'name' as name
           FROM installed_apps a
           WHERE NOT EXISTS (
@@ -511,11 +519,13 @@ public class MigrationUtil {
 
   private static String getFindBotByNameQuery(ConnectionType connectionType) {
     return switch (connectionType) {
-      case MYSQL -> """
+      case MYSQL ->
+          """
           SELECT id FROM bot_entity
           WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :botName
           """;
-      case POSTGRES -> """
+      case POSTGRES ->
+          """
           SELECT id FROM bot_entity
           WHERE json->>'name' = :botName
           """;
@@ -524,11 +534,13 @@ public class MigrationUtil {
 
   private static String getInsertRelationshipQuery(ConnectionType connectionType) {
     return switch (connectionType) {
-      case MYSQL -> """
+      case MYSQL ->
+          """
           INSERT IGNORE INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
           VALUES (:appId, :botId, 'application', 'bot', :relation)
           """;
-      case POSTGRES -> """
+      case POSTGRES ->
+          """
           INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
           VALUES (:appId, :botId, 'application', 'bot', :relation)
           ON CONFLICT DO NOTHING
@@ -605,11 +617,13 @@ public class MigrationUtil {
 
   private static String getCheckPolicyExistsQuery(ConnectionType connectionType) {
     return switch (connectionType) {
-      case MYSQL -> """
+      case MYSQL ->
+          """
           SELECT COUNT(*) FROM policy_entity
           WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :name
           """;
-      case POSTGRES -> """
+      case POSTGRES ->
+          """
           SELECT COUNT(*) FROM policy_entity
           WHERE json->>'name' = :name
           """;
@@ -618,11 +632,13 @@ public class MigrationUtil {
 
   private static String getCheckRoleExistsQuery(ConnectionType connectionType) {
     return switch (connectionType) {
-      case MYSQL -> """
+      case MYSQL ->
+          """
           SELECT COUNT(*) FROM role_entity
           WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :name
           """;
-      case POSTGRES -> """
+      case POSTGRES ->
+          """
           SELECT COUNT(*) FROM role_entity
           WHERE json->>'name' = :name
           """;

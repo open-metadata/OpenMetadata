@@ -248,12 +248,8 @@ public final class TaskWorkflowLifecycleResolver {
     }
 
     return switch (defaultTaskTypeForWorkflowDefinitionRef(workflowDefinitionRef)) {
-      case DescriptionUpdate,
-          TagUpdate,
-          OwnershipUpdate,
-          TierUpdate,
-          DomainUpdate,
-          Suggestion -> TaskCategory.MetadataUpdate;
+      case DescriptionUpdate, TagUpdate, OwnershipUpdate, TierUpdate, DomainUpdate, Suggestion ->
+          TaskCategory.MetadataUpdate;
       case GlossaryApproval, RequestApproval -> TaskCategory.Approval;
       case DataAccessRequest -> TaskCategory.DataAccess;
       case IncidentResolution, TestCaseResolution -> TaskCategory.Incident;
@@ -478,113 +474,124 @@ public final class TaskWorkflowLifecycleResolver {
     }
 
     return switch (taskType) {
-      case DescriptionUpdate -> taskCategory == TaskCategory.MetadataUpdate
-          ? defaultSchema(
-              taskType,
-              taskCategory,
-              defaultWorkflowDefinitionRef(taskType),
-              namedObjectSchema(
-                  "fieldPath", "currentDescription", "newDescription", "source", "confidence"))
-          : null;
-      case TagUpdate -> taskCategory == TaskCategory.MetadataUpdate
-          ? defaultSchema(
-              taskType,
-              taskCategory,
-              defaultWorkflowDefinitionRef(taskType),
-              namedObjectSchema(
-                  "fieldPath",
-                  "currentTags",
-                  "tagsToAdd",
-                  "tagsToRemove",
-                  "operation",
-                  "source",
-                  "confidence"))
-          : null;
-      case OwnershipUpdate -> taskCategory == TaskCategory.MetadataUpdate
-          ? defaultSchema(
-              taskType,
-              taskCategory,
-              defaultWorkflowDefinitionRef(taskType),
-              schemaWithProperties(
-                  Map.of(
-                      "currentOwners", nullable(arrayOfObjectsProperty()),
-                      "newOwners", arrayOfObjectsProperty(),
-                      "reason", stringProperty())))
-          : null;
-      case TierUpdate -> taskCategory == TaskCategory.MetadataUpdate
-          ? defaultSchema(
-              taskType,
-              taskCategory,
-              defaultWorkflowDefinitionRef(taskType),
-              schemaWithProperties(
-                  Map.of(
-                      "currentTier", nullable(objectProperty()),
-                      "newTier", objectProperty(),
-                      "reason", stringProperty())))
-          : null;
-      case DomainUpdate -> taskCategory == TaskCategory.MetadataUpdate
-          ? defaultSchema(
-              taskType,
-              taskCategory,
-              defaultWorkflowDefinitionRef(taskType),
-              schemaWithProperties(
-                  Map.of(
-                      "currentDomain", nullable(objectProperty()),
-                      "newDomain", objectProperty(),
-                      "reason", stringProperty())))
-          : null;
-      case GlossaryApproval, RequestApproval -> taskCategory == TaskCategory.Approval
-          ? defaultSchema(
-              taskType,
-              taskCategory,
-              defaultWorkflowDefinitionRef(taskType),
-              namedObjectSchema("comment"))
-          : null;
-      case DataAccessRequest -> taskCategory == TaskCategory.DataAccess
-          ? defaultSchema(
-              taskType,
-              taskCategory,
-              defaultWorkflowDefinitionRef(taskType),
-              schemaWithProperties(
-                  Map.of(
-                      "requestedAccess", stringProperty(),
-                      "duration", stringProperty(),
-                      "reason", stringProperty(),
-                      "assets", Map.of("type", "array", "items", objectProperty()),
-                      "ticketId", stringProperty(),
-                      "expirationDate", stringProperty())))
-          : null;
-      case TestCaseResolution, IncidentResolution -> taskCategory == TaskCategory.Incident
-          ? defaultSchema(
-              taskType,
-              taskCategory,
-              defaultWorkflowDefinitionRef(taskType),
-              namedObjectSchema("rootCause", "resolution"))
-          : null;
-      case PipelineReview -> taskCategory == TaskCategory.Review
-          ? defaultSchema(
-              taskType,
-              taskCategory,
-              defaultWorkflowDefinitionRef(taskType),
-              schemaWithProperties(
-                  Map.of(
-                      "reviewType", stringProperty(),
-                      "reviewCriteria", Map.of("type", "array", "items", objectProperty()),
-                      "findings", stringProperty(),
-                      "recommendation", stringProperty(),
-                      "attachments", Map.of("type", "array", "items", objectProperty()))))
-          : null;
-      case DataQualityReview -> taskCategory == TaskCategory.Review
-          ? defaultSchema(
-              taskType,
-              taskCategory,
-              defaultWorkflowDefinitionRef(taskType),
-              namedObjectSchema("comment"))
-          : null;
-      case CustomTask -> taskCategory == TaskCategory.Custom
-          ? defaultSchema(
-              taskType, taskCategory, defaultWorkflowDefinitionRef(taskType), objectSchema())
-          : null;
+      case DescriptionUpdate ->
+          taskCategory == TaskCategory.MetadataUpdate
+              ? defaultSchema(
+                  taskType,
+                  taskCategory,
+                  defaultWorkflowDefinitionRef(taskType),
+                  namedObjectSchema(
+                      "fieldPath", "currentDescription", "newDescription", "source", "confidence"))
+              : null;
+      case TagUpdate ->
+          taskCategory == TaskCategory.MetadataUpdate
+              ? defaultSchema(
+                  taskType,
+                  taskCategory,
+                  defaultWorkflowDefinitionRef(taskType),
+                  namedObjectSchema(
+                      "fieldPath",
+                      "currentTags",
+                      "tagsToAdd",
+                      "tagsToRemove",
+                      "operation",
+                      "source",
+                      "confidence"))
+              : null;
+      case OwnershipUpdate ->
+          taskCategory == TaskCategory.MetadataUpdate
+              ? defaultSchema(
+                  taskType,
+                  taskCategory,
+                  defaultWorkflowDefinitionRef(taskType),
+                  schemaWithProperties(
+                      Map.of(
+                          "currentOwners", nullable(arrayOfObjectsProperty()),
+                          "newOwners", arrayOfObjectsProperty(),
+                          "reason", stringProperty())))
+              : null;
+      case TierUpdate ->
+          taskCategory == TaskCategory.MetadataUpdate
+              ? defaultSchema(
+                  taskType,
+                  taskCategory,
+                  defaultWorkflowDefinitionRef(taskType),
+                  schemaWithProperties(
+                      Map.of(
+                          "currentTier", nullable(objectProperty()),
+                          "newTier", objectProperty(),
+                          "reason", stringProperty())))
+              : null;
+      case DomainUpdate ->
+          taskCategory == TaskCategory.MetadataUpdate
+              ? defaultSchema(
+                  taskType,
+                  taskCategory,
+                  defaultWorkflowDefinitionRef(taskType),
+                  schemaWithProperties(
+                      Map.of(
+                          "currentDomain", nullable(objectProperty()),
+                          "newDomain", objectProperty(),
+                          "reason", stringProperty())))
+              : null;
+      case GlossaryApproval, RequestApproval ->
+          taskCategory == TaskCategory.Approval
+              ? defaultSchema(
+                  taskType,
+                  taskCategory,
+                  defaultWorkflowDefinitionRef(taskType),
+                  namedObjectSchema("comment"))
+              : null;
+      case DataAccessRequest ->
+          taskCategory == TaskCategory.DataAccess
+              ? defaultSchema(
+                  taskType,
+                  taskCategory,
+                  defaultWorkflowDefinitionRef(taskType),
+                  schemaWithProperties(
+                      Map.of(
+                          "requestedAccess", stringProperty(),
+                          "duration", stringProperty(),
+                          "reason", stringProperty(),
+                          "assets", Map.of("type", "array", "items", objectProperty()),
+                          "ticketId", stringProperty(),
+                          "expirationDate", stringProperty())))
+              : null;
+      case TestCaseResolution, IncidentResolution ->
+          taskCategory == TaskCategory.Incident
+              ? defaultSchema(
+                  taskType,
+                  taskCategory,
+                  defaultWorkflowDefinitionRef(taskType),
+                  namedObjectSchema("rootCause", "resolution"))
+              : null;
+      case PipelineReview ->
+          taskCategory == TaskCategory.Review
+              ? defaultSchema(
+                  taskType,
+                  taskCategory,
+                  defaultWorkflowDefinitionRef(taskType),
+                  schemaWithProperties(
+                      Map.of(
+                          "reviewType", stringProperty(),
+                          "reviewCriteria", Map.of("type", "array", "items", objectProperty()),
+                          "findings", stringProperty(),
+                          "recommendation", stringProperty(),
+                          "attachments", Map.of("type", "array", "items", objectProperty()))))
+              : null;
+      case DataQualityReview ->
+          taskCategory == TaskCategory.Review
+              ? defaultSchema(
+                  taskType,
+                  taskCategory,
+                  defaultWorkflowDefinitionRef(taskType),
+                  namedObjectSchema("comment"))
+              : null;
+      case CustomTask ->
+          taskCategory == TaskCategory.Custom
+              ? defaultSchema(
+                  taskType, taskCategory, defaultWorkflowDefinitionRef(taskType), objectSchema())
+              : null;
       default -> null;
     };
   }

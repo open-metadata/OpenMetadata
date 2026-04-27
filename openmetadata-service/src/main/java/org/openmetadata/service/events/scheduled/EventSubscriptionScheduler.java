@@ -617,12 +617,12 @@ public class EventSubscriptionScheduler {
 
   public int countTotalEvents(UUID id, TypedEvent.Status status) {
     return switch (status) {
-      case FAILED -> Entity.getCollectionDAO()
-          .eventSubscriptionDAO()
-          .countFailedEventsById(id.toString());
-      case SUCCESSFUL -> Entity.getCollectionDAO()
-          .eventSubscriptionDAO()
-          .countSuccessfulEventsBySubscriptionId(id.toString());
+      case FAILED ->
+          Entity.getCollectionDAO().eventSubscriptionDAO().countFailedEventsById(id.toString());
+      case SUCCESSFUL ->
+          Entity.getCollectionDAO()
+              .eventSubscriptionDAO()
+              .countSuccessfulEventsBySubscriptionId(id.toString());
       default -> throw new IllegalArgumentException("Unknown event status: " + status);
     };
   }

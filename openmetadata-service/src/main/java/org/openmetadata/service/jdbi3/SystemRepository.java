@@ -740,15 +740,17 @@ public class SystemRepository {
       }
 
       return switch (provider.toLowerCase()) {
-        case "djl" -> String.format(
-            "DJL configuration: embeddingModel: %s", nlpConfig.getDjl().getEmbeddingModel());
-        case "bedrock" -> String.format(
-            "Bedrock configuration: region: %s, embeddingModelId: %s, embeddingDimension %s",
-            nlpConfig.getBedrock().getAwsConfig() != null
-                ? nlpConfig.getBedrock().getAwsConfig().getRegion()
-                : "not configured",
-            nlpConfig.getBedrock().getEmbeddingModelId(),
-            nlpConfig.getBedrock().getEmbeddingDimension());
+        case "djl" ->
+            String.format(
+                "DJL configuration: embeddingModel: %s", nlpConfig.getDjl().getEmbeddingModel());
+        case "bedrock" ->
+            String.format(
+                "Bedrock configuration: region: %s, embeddingModelId: %s, embeddingDimension %s",
+                nlpConfig.getBedrock().getAwsConfig() != null
+                    ? nlpConfig.getBedrock().getAwsConfig().getRegion()
+                    : "not configured",
+                nlpConfig.getBedrock().getEmbeddingModelId(),
+                nlpConfig.getBedrock().getEmbeddingDimension());
         case "openai" -> {
           String openaiEndpoint =
               nullOrEmpty(nlpConfig.getOpenai().getEndpoint())
@@ -766,8 +768,9 @@ public class SystemRepository {
               nlpConfig.getOpenai().getEmbeddingDimension(),
               deploymentInfo);
         }
-        default -> String.format(
-            "Unknown provider '%s'. Supported providers: djl, bedrock, openai", provider);
+        default ->
+            String.format(
+                "Unknown provider '%s'. Supported providers: djl, bedrock, openai", provider);
       };
     } catch (Exception e) {
       LOG.error("Error getting embedding configuration", e);

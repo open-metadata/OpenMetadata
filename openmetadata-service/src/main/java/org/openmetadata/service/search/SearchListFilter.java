@@ -369,8 +369,9 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
   private String getTestCaseTypeCondition(String type, String field) {
     return switch (type) {
-      case Entity.TABLE -> String.format(
-          "{\"bool\": {\"must_not\": [{\"regexp\": {\"%s\": \".*::columns::.*\"}}]}}", field);
+      case Entity.TABLE ->
+          String.format(
+              "{\"bool\": {\"must_not\": [{\"regexp\": {\"%s\": \".*::columns::.*\"}}]}}", field);
       case "column" -> String.format("{\"regexp\": {\"%s\": \".*::columns::.*\"}}", field);
       default -> "";
     };

@@ -360,8 +360,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       }
       return switch (provider) {
         case GOOGLE -> List.of("openid", "profile", "email");
-        case OKTA, AUTH_0, AWS_COGNITO, CUSTOM_OIDC -> List.of(
-            "openid", "profile", "email", "offline_access");
+        case OKTA, AUTH_0, AWS_COGNITO, CUSTOM_OIDC ->
+            List.of("openid", "profile", "email", "offline_access");
         case AZURE -> List.of("openid", "profile", "email", "offline_access");
         default -> List.of("openid", "profile", "email");
       };

@@ -26,14 +26,16 @@ public class MigrationUtil {
 
       String updateQuery =
           switch (connectionType) {
-            case MYSQL -> """
+            case MYSQL ->
+                """
                                 UPDATE openmetadata_settings
                                 SET json = JSON_REMOVE(json, '$.samlConfiguration.idp.authorityUrl')
                                 WHERE configType = 'authenticationConfiguration'
                                   AND JSON_CONTAINS_PATH(json, 'one', '$.samlConfiguration.idp.authorityUrl')
                                 """;
 
-            case POSTGRES -> """
+            case POSTGRES ->
+                """
                                 UPDATE openmetadata_settings
                                 SET json = jsonb_set(
                                     json::jsonb,

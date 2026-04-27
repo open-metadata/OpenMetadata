@@ -170,7 +170,8 @@ class QueryFilterParserTest {
 
   @Test
   void parseFilterClausesFallsBackToWholeNodeIfNoBoolMust() {
-    String jsonFilter = """
+    String jsonFilter =
+        """
         {"term": {"tags.tagFQN.keyword": "Tier.Gold"}}
         """;
 
@@ -258,7 +259,8 @@ class QueryFilterParserTest {
 
   @Test
   void parseFilterHandlesWildcardQuerySimpleFormat() {
-    String jsonFilter = """
+    String jsonFilter =
+        """
         {"wildcard": {"name": "*data*"}}
         """;
 
@@ -269,7 +271,8 @@ class QueryFilterParserTest {
 
   @Test
   void parseFilterHandlesWildcardQueryObjectFormat() {
-    String jsonFilter = """
+    String jsonFilter =
+        """
         {"wildcard": {"name": {"value": "*data*"}}}
         """;
 
@@ -280,7 +283,8 @@ class QueryFilterParserTest {
 
   @Test
   void parseFilterSkipsWildcardWithOnlyStars() {
-    String jsonFilter = """
+    String jsonFilter =
+        """
         {"wildcard": {"name": "**"}}
         """;
 

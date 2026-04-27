@@ -1635,11 +1635,14 @@ public class EventSubscriptionResource
       UUID id, int limit, int paginationOffset, TypedEvent.Status status) {
     List<?> events;
     switch (status) {
-      case FAILED -> events =
-          EventSubscriptionScheduler.getInstance().getFailedEventsById(id, limit, paginationOffset);
-      case SUCCESSFUL -> events =
-          EventSubscriptionScheduler.getInstance()
-              .getSuccessfullySentChangeEventsForAlert(id, limit, paginationOffset);
+      case FAILED ->
+          events =
+              EventSubscriptionScheduler.getInstance()
+                  .getFailedEventsById(id, limit, paginationOffset);
+      case SUCCESSFUL ->
+          events =
+              EventSubscriptionScheduler.getInstance()
+                  .getSuccessfullySentChangeEventsForAlert(id, limit, paginationOffset);
       default -> throw new IllegalArgumentException("Unknown event status: " + status);
     }
 

@@ -464,16 +464,19 @@ public class ActivityStreamRepository {
       case ENTITY_DELETED -> String.format("Deleted %s: %s", entityType, entityName);
       case ENTITY_SOFT_DELETED -> String.format("Soft deleted %s: %s", entityType, entityName);
       case ENTITY_RESTORED -> String.format("Restored %s: %s", entityType, entityName);
-      case DESCRIPTION_UPDATED -> fieldChange != null
-          ? String.format("Updated description of %s", entityName)
-          : String.format("Description updated on %s", entityName);
+      case DESCRIPTION_UPDATED ->
+          fieldChange != null
+              ? String.format("Updated description of %s", entityName)
+              : String.format("Description updated on %s", entityName);
       case TAGS_UPDATED -> String.format("Tags updated on %s", entityName);
       case OWNER_UPDATED -> String.format("Owner changed on %s", entityName);
       case DOMAIN_UPDATED -> String.format("Domain changed on %s", entityName);
       case TIER_UPDATED -> String.format("Tier changed on %s", entityName);
-      case CUSTOM_PROPERTY_UPDATED -> fieldChange != null
-          ? String.format("Custom property '%s' updated on %s", fieldChange.getName(), entityName)
-          : String.format("Custom property updated on %s", entityName);
+      case CUSTOM_PROPERTY_UPDATED ->
+          fieldChange != null
+              ? String.format(
+                  "Custom property '%s' updated on %s", fieldChange.getName(), entityName)
+              : String.format("Custom property updated on %s", entityName);
       default -> String.format("Updated %s: %s", entityType, entityName);
     };
   }

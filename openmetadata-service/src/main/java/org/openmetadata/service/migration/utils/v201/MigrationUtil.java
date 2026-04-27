@@ -340,16 +340,16 @@ public class MigrationUtil {
     }
 
     return switch (legacyTaskType) {
-      case RequestApproval -> new TypeAndCategory(
-          TaskEntityType.GlossaryApproval, TaskCategory.Approval);
-      case RecognizerFeedbackApproval -> new TypeAndCategory(
-          TaskEntityType.DataQualityReview, TaskCategory.Review);
-      case RequestDescription, UpdateDescription -> new TypeAndCategory(
-          TaskEntityType.DescriptionUpdate, TaskCategory.MetadataUpdate);
-      case RequestTag, UpdateTag -> new TypeAndCategory(
-          TaskEntityType.TagUpdate, TaskCategory.MetadataUpdate);
-      case RequestTestCaseFailureResolution -> new TypeAndCategory(
-          TaskEntityType.TestCaseResolution, TaskCategory.Incident);
+      case RequestApproval ->
+          new TypeAndCategory(TaskEntityType.GlossaryApproval, TaskCategory.Approval);
+      case RecognizerFeedbackApproval ->
+          new TypeAndCategory(TaskEntityType.DataQualityReview, TaskCategory.Review);
+      case RequestDescription, UpdateDescription ->
+          new TypeAndCategory(TaskEntityType.DescriptionUpdate, TaskCategory.MetadataUpdate);
+      case RequestTag, UpdateTag ->
+          new TypeAndCategory(TaskEntityType.TagUpdate, TaskCategory.MetadataUpdate);
+      case RequestTestCaseFailureResolution ->
+          new TypeAndCategory(TaskEntityType.TestCaseResolution, TaskCategory.Incident);
       case Generic -> new TypeAndCategory(TaskEntityType.CustomTask, TaskCategory.Custom);
     };
   }

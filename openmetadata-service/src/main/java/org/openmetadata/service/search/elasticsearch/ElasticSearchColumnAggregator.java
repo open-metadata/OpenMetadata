@@ -534,13 +534,14 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
     return switch (status.toUpperCase()) {
       case "MISSING" -> Query.of(q -> q.bool(b -> b.must(noDesc).must(noTags)));
-      case "INCOMPLETE" -> Query.of(
-          q ->
-              q.bool(
-                  b ->
-                      b.should(Query.of(qs -> qs.bool(bs -> bs.must(hasDesc).must(noTags))))
-                          .should(Query.of(qs -> qs.bool(bs -> bs.must(noDesc).must(hasTags))))
-                          .minimumShouldMatch("1")));
+      case "INCOMPLETE" ->
+          Query.of(
+              q ->
+                  q.bool(
+                      b ->
+                          b.should(Query.of(qs -> qs.bool(bs -> bs.must(hasDesc).must(noTags))))
+                              .should(Query.of(qs -> qs.bool(bs -> bs.must(noDesc).must(hasTags))))
+                              .minimumShouldMatch("1")));
       case "COMPLETE" -> Query.of(q -> q.bool(b -> b.must(hasDesc).must(hasTags)));
       default -> null;
     };

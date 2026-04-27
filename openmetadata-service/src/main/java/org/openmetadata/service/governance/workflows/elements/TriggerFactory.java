@@ -19,17 +19,20 @@ public class TriggerFactory {
     String triggerWorkflowId = getTriggerWorkflowId(workflow.getFullyQualifiedName());
 
     return switch (TriggerType.fromValue(workflow.getTrigger().getType())) {
-      case EVENT_BASED_ENTITY -> new EventBasedEntityTrigger(
-          workflow.getName(),
-          triggerWorkflowId,
-          (EventBasedEntityTriggerDefinition) workflow.getTrigger());
-      case NO_OP -> new NoOpTrigger(
-          workflow.getName(), triggerWorkflowId, (NoOpTriggerDefinition) workflow.getTrigger());
-      case PERIODIC_BATCH_ENTITY -> new PeriodicBatchEntityTrigger(
-          workflow.getName(),
-          triggerWorkflowId,
-          (PeriodicBatchEntityTriggerDefinition) workflow.getTrigger(),
-          hasBatchModeNodes(workflow));
+      case EVENT_BASED_ENTITY ->
+          new EventBasedEntityTrigger(
+              workflow.getName(),
+              triggerWorkflowId,
+              (EventBasedEntityTriggerDefinition) workflow.getTrigger());
+      case NO_OP ->
+          new NoOpTrigger(
+              workflow.getName(), triggerWorkflowId, (NoOpTriggerDefinition) workflow.getTrigger());
+      case PERIODIC_BATCH_ENTITY ->
+          new PeriodicBatchEntityTrigger(
+              workflow.getName(),
+              triggerWorkflowId,
+              (PeriodicBatchEntityTriggerDefinition) workflow.getTrigger(),
+              hasBatchModeNodes(workflow));
     };
   }
 

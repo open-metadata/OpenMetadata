@@ -105,12 +105,12 @@ public class CloudwatchEventMonitor extends EventMonitor {
           switch (event.getEventType()) {
             case ENTITY_CREATED -> List.of(logPipelineCreated(fqn, pipelineType, timestamp));
             case ENTITY_UPDATED ->
-            // we can have multiple updates bundled together
-            logPipelineUpdated(fqn, pipelineType, timestamp, event.getChangeDescription());
-            case ENTITY_DELETED, ENTITY_SOFT_DELETED -> List.of(
-                logPipelineDeleted(fqn, pipelineType, timestamp));
-            default -> throw new IllegalArgumentException(
-                "Invalid EventType " + event.getEventType());
+                // we can have multiple updates bundled together
+                logPipelineUpdated(fqn, pipelineType, timestamp, event.getChangeDescription());
+            case ENTITY_DELETED, ENTITY_SOFT_DELETED ->
+                List.of(logPipelineDeleted(fqn, pipelineType, timestamp));
+            default ->
+                throw new IllegalArgumentException("Invalid EventType " + event.getEventType());
           };
     } catch (IllegalArgumentException | CloudWatchException e) {
       LOG.error("Failed to publish IngestionPipeline Cloudwatch metric due to {}", e.getMessage());

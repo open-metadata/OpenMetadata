@@ -301,8 +301,8 @@ public class RdfRepository {
       case "testedby" -> model.createProperty("https://open-metadata.org/ontology/", "testedBy");
       case "upstream" -> model.createProperty("http://www.w3.org/ns/prov#", "wasDerivedFrom");
       case "downstream" -> model.createProperty("http://www.w3.org/ns/prov#", "wasInfluencedBy");
-      case "joinedwith" -> model.createProperty(
-          "https://open-metadata.org/ontology/", "joinedWith");
+      case "joinedwith" ->
+          model.createProperty("https://open-metadata.org/ontology/", "joinedWith");
       case "processedby" -> model.createProperty("http://www.w3.org/ns/prov#", "wasGeneratedBy");
       default -> model.createProperty("https://open-metadata.org/ontology/", relationshipType);
     };
@@ -678,12 +678,12 @@ public class RdfRepository {
       // Convert inference level string to enum
       org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel level =
           switch (inferenceLevel.toLowerCase()) {
-            case "rdfs" -> org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel
-                .RDFS;
-            case "owl" -> org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel
-                .OWL_LITE;
-            case "custom" -> org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel
-                .CUSTOM;
+            case "rdfs" ->
+                org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel.RDFS;
+            case "owl" ->
+                org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel.OWL_LITE;
+            case "custom" ->
+                org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel.CUSTOM;
             default -> org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel.NONE;
           };
 
@@ -1548,9 +1548,9 @@ public class RdfRepository {
       case "hasstoredprocedure" -> "Has Stored Procedure";
       case "hasindex" -> "Has Index";
       default ->
-      // Convert camelCase to Title Case
-      relationship.replaceAll("([a-z])([A-Z])", "$1 $2").substring(0, 1).toUpperCase()
-          + relationship.replaceAll("([a-z])([A-Z])", "$1 $2").substring(1);
+          // Convert camelCase to Title Case
+          relationship.replaceAll("([a-z])([A-Z])", "$1 $2").substring(0, 1).toUpperCase()
+              + relationship.replaceAll("([a-z])([A-Z])", "$1 $2").substring(1);
     };
   }
 
@@ -2623,8 +2623,8 @@ public class RdfRepository {
       case "broader" -> model.createProperty("http://www.w3.org/2004/02/skos/core#", "broader");
       case "narrower" -> model.createProperty("http://www.w3.org/2004/02/skos/core#", "narrower");
       case "synonym" -> model.createProperty("http://www.w3.org/2004/02/skos/core#", "exactMatch");
-      case "relatedto", "related" -> model.createProperty(
-          "http://www.w3.org/2004/02/skos/core#", "related");
+      case "relatedto", "related" ->
+          model.createProperty("http://www.w3.org/2004/02/skos/core#", "related");
       case "seealso" -> model.createProperty("http://www.w3.org/2000/01/rdf-schema#", "seeAlso");
       default -> {
         try {

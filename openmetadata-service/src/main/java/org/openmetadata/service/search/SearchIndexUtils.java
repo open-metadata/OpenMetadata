@@ -329,8 +329,8 @@ public final class SearchIndexUtils {
                           s -> {
                             switch (s.getValueType()) {
                               case NUMBER -> nodeData.put(dimensions.get(0), String.valueOf(s));
-                              default -> nodeData.put(
-                                  dimensions.get(0), ((JsonString) s).getString());
+                              default ->
+                                  nodeData.put(dimensions.get(0), ((JsonString) s).getString());
                             }
                           },
                           () -> nodeData.put(dimensions.get(0), null));
@@ -723,17 +723,17 @@ public final class SearchIndexUtils {
       case "integer", "number" -> entries.add(buildNumericEntry(propertyName, propertyType, value));
       case "timestamp" -> entries.add(buildTimestampEntry(propertyName, propertyType, value));
       case "timeInterval" -> entries.add(buildTimeIntervalEntry(propertyName, propertyType, value));
-      case "date-cp", "dateTime-cp", "time-cp" -> entries.add(
-          buildDateStringEntry(propertyName, propertyType, value));
-      case "entityReference" -> entries.add(
-          buildEntityReferenceEntry(propertyName, propertyType, value));
-      case "entityReferenceList" -> entries.addAll(
-          buildEntityReferenceListEntries(propertyName, propertyType, value));
+      case "date-cp", "dateTime-cp", "time-cp" ->
+          entries.add(buildDateStringEntry(propertyName, propertyType, value));
+      case "entityReference" ->
+          entries.add(buildEntityReferenceEntry(propertyName, propertyType, value));
+      case "entityReferenceList" ->
+          entries.addAll(buildEntityReferenceListEntries(propertyName, propertyType, value));
       case "enum" -> entries.addAll(buildEnumEntries(propertyName, propertyType, value));
       case "markdown", "sqlQuery" -> entries.add(buildTextEntry(propertyName, propertyType, value));
       case "table-cp" -> entries.addAll(buildTableEntries(propertyName, propertyType, value));
-      case "hyperlink-cp" -> entries.addAll(
-          buildHyperlinkEntries(propertyName, propertyType, value));
+      case "hyperlink-cp" ->
+          entries.addAll(buildHyperlinkEntries(propertyName, propertyType, value));
       default -> entries.add(buildStringEntry(propertyName, propertyType, value));
     }
 

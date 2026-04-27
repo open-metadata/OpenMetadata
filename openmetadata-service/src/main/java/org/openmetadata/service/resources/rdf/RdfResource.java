@@ -592,8 +592,9 @@ public class RdfResource {
     String entityUri = normalizedBaseUri + "entity/" + entityType + "/" + entityId;
 
     return switch (direction.toLowerCase()) {
-      case "upstream" -> String.format(
-          """
+      case "upstream" ->
+          String.format(
+              """
           PREFIX om: <https://open-metadata.org/ontology/>
           SELECT DISTINCT ?entity ?name ?type ?distance
           WHERE {
@@ -604,10 +605,11 @@ public class RdfResource {
           }
           ORDER BY ?distance ?name
           """,
-          entityUri);
+              entityUri);
 
-      case "downstream" -> String.format(
-          """
+      case "downstream" ->
+          String.format(
+              """
           PREFIX om: <https://open-metadata.org/ontology/>
           SELECT DISTINCT ?entity ?name ?type ?distance
           WHERE {
@@ -618,10 +620,11 @@ public class RdfResource {
           }
           ORDER BY ?distance ?name
           """,
-          entityUri);
+              entityUri);
 
-      default -> String.format(
-          """
+      default ->
+          String.format(
+              """
           PREFIX om: <https://open-metadata.org/ontology/>
           SELECT DISTINCT ?entity ?name ?type ?relationship
           WHERE {
@@ -637,7 +640,7 @@ public class RdfResource {
           }
           ORDER BY ?relationship ?name
           """,
-          entityUri, entityUri);
+              entityUri, entityUri);
     };
   }
 

@@ -80,8 +80,8 @@ public final class FeedUtils {
         addEntityInfoToThread(thread, Thread.CardStyle.ENTITY_CREATED, message, entityInterface);
         yield List.of(thread.withMessage(message));
       }
-      case ENTITY_UPDATED -> getFormattedMessages(
-          messageDecorator, thread, changeEvent.getChangeDescription());
+      case ENTITY_UPDATED ->
+          getFormattedMessages(messageDecorator, thread, changeEvent.getChangeDescription());
       case ENTITY_SOFT_DELETED -> {
         message =
             String.format(

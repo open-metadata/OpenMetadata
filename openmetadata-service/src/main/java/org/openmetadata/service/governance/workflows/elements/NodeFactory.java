@@ -50,39 +50,49 @@ public class NodeFactory {
     return switch (NodeSubType.fromValue(nodeDefinition.getSubType())) {
       case START_EVENT -> new StartEvent((StartEventDefinition) nodeDefinition, config);
       case END_EVENT -> new EndEvent((EndEventDefinition) nodeDefinition, config);
-      case CHECK_ENTITY_ATTRIBUTES_TASK -> new CheckEntityAttributesTask(
-          (CheckEntityAttributesTaskDefinition) nodeDefinition, config);
-      case CHECK_CHANGE_DESCRIPTION_TASK -> new CheckChangeDescriptionTask(
-          (CheckChangeDescriptionTaskDefinition) nodeDefinition, config);
-      case SET_ENTITY_ATTRIBUTE_TASK -> new SetEntityAttributeTask(
-          (SetEntityAttributeTaskDefinition) nodeDefinition, config);
-      case SET_ENTITY_CERTIFICATION_TASK -> new SetEntityCertificationTask(
-          (SetEntityCertificationTaskDefinition) nodeDefinition, config);
-      case SET_GLOSSARY_TERM_STATUS_TASK -> new SetGlossaryTermStatusTask(
-          (SetGlossaryTermStatusTaskDefinition) nodeDefinition, config);
-      case USER_APPROVAL_TASK -> new UserApprovalTask(
-          (UserApprovalTaskDefinition) nodeDefinition,
-          config,
-          resolveUserApprovalTaskType(workflowDefinitionName),
-          resolveUserApprovalTaskCategory(workflowDefinitionName));
-      case CREATE_AND_RUN_INGESTION_PIPELINE_TASK -> new CreateAndRunIngestionPipelineTask(
-          (CreateAndRunIngestionPipelineTaskDefinition) nodeDefinition, config);
+      case CHECK_ENTITY_ATTRIBUTES_TASK ->
+          new CheckEntityAttributesTask(
+              (CheckEntityAttributesTaskDefinition) nodeDefinition, config);
+      case CHECK_CHANGE_DESCRIPTION_TASK ->
+          new CheckChangeDescriptionTask(
+              (CheckChangeDescriptionTaskDefinition) nodeDefinition, config);
+      case SET_ENTITY_ATTRIBUTE_TASK ->
+          new SetEntityAttributeTask((SetEntityAttributeTaskDefinition) nodeDefinition, config);
+      case SET_ENTITY_CERTIFICATION_TASK ->
+          new SetEntityCertificationTask(
+              (SetEntityCertificationTaskDefinition) nodeDefinition, config);
+      case SET_GLOSSARY_TERM_STATUS_TASK ->
+          new SetGlossaryTermStatusTask(
+              (SetGlossaryTermStatusTaskDefinition) nodeDefinition, config);
+      case USER_APPROVAL_TASK ->
+          new UserApprovalTask(
+              (UserApprovalTaskDefinition) nodeDefinition,
+              config,
+              resolveUserApprovalTaskType(workflowDefinitionName),
+              resolveUserApprovalTaskCategory(workflowDefinitionName));
+      case CREATE_AND_RUN_INGESTION_PIPELINE_TASK ->
+          new CreateAndRunIngestionPipelineTask(
+              (CreateAndRunIngestionPipelineTaskDefinition) nodeDefinition, config);
       case RUN_APP_TASK -> new RunAppTask((RunAppTaskDefinition) nodeDefinition, config);
-      case ROLLBACK_ENTITY_TASK -> new RollbackEntityTask(
-          (RollbackEntityTaskDefinition) nodeDefinition, config);
-      case DATA_COMPLETENESS_TASK -> new DataCompletenessTask(
-          (DataCompletenessTaskDefinition) nodeDefinition, config);
-      case PARALLEL_GATEWAY -> new ParallelGateway(
-          (ParallelGatewayDefinition) nodeDefinition, config);
+      case ROLLBACK_ENTITY_TASK ->
+          new RollbackEntityTask((RollbackEntityTaskDefinition) nodeDefinition, config);
+      case DATA_COMPLETENESS_TASK ->
+          new DataCompletenessTask((DataCompletenessTaskDefinition) nodeDefinition, config);
+      case PARALLEL_GATEWAY ->
+          new ParallelGateway((ParallelGatewayDefinition) nodeDefinition, config);
       case SINK_TASK -> new SinkTask((SinkTaskDefinition) nodeDefinition, config);
-      case CREATE_RECOGNIZER_FEEDBACK_APPROVAL_TASK -> new CreateRecognizerFeedbackApprovalTask(
-          (CreateRecognizerFeedbackApprovalTaskDefinition) nodeDefinition, config);
-      case APPLY_RECOGNIZER_FEEDBACK_TASK -> new ApplyRecognizerFeedbackTask(
-          (ApplyRecognizerFeedbackTaskDefinition) nodeDefinition, config);
-      case REJECT_RECOGNIZER_FEEDBACK_TASK -> new RejectRecognizerFeedbackTask(
-          (RejectRecognizerFeedbackTaskDefinition) nodeDefinition, config);
-      default -> throw new IllegalArgumentException(
-          "Unsupported node subtype: " + nodeDefinition.getSubType());
+      case CREATE_RECOGNIZER_FEEDBACK_APPROVAL_TASK ->
+          new CreateRecognizerFeedbackApprovalTask(
+              (CreateRecognizerFeedbackApprovalTaskDefinition) nodeDefinition, config);
+      case APPLY_RECOGNIZER_FEEDBACK_TASK ->
+          new ApplyRecognizerFeedbackTask(
+              (ApplyRecognizerFeedbackTaskDefinition) nodeDefinition, config);
+      case REJECT_RECOGNIZER_FEEDBACK_TASK ->
+          new RejectRecognizerFeedbackTask(
+              (RejectRecognizerFeedbackTaskDefinition) nodeDefinition, config);
+      default ->
+          throw new IllegalArgumentException(
+              "Unsupported node subtype: " + nodeDefinition.getSubType());
     };
   }
 

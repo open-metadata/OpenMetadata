@@ -398,53 +398,54 @@ public final class SearchUtils {
   public static boolean isDataAssetIndex(String indexName) {
     return switch (indexName) {
       case "topic_search_index",
-          Entity.TOPIC,
-          "dashboard_search_index",
-          Entity.DASHBOARD,
-          "pipeline_search_index",
-          Entity.PIPELINE,
-          "mlmodel_search_index",
-          Entity.MLMODEL,
-          "table_search_index",
-          Entity.TABLE,
-          "database_schema_search_index",
-          Entity.DATABASE_SCHEMA,
-          "database_search_index",
-          Entity.DATABASE,
-          "container_search_index",
-          Entity.CONTAINER,
-          "query_search_index",
-          Entity.QUERY,
-          "stored_procedure_search_index",
-          Entity.STORED_PROCEDURE,
-          "dashboard_data_model_search_index",
-          Entity.DASHBOARD_DATA_MODEL,
-          "data_product_search_index",
-          Entity.DATA_PRODUCT,
-          "domain_search_index",
-          Entity.DOMAIN,
-          "glossary_term_search_index",
-          Entity.GLOSSARY_TERM,
-          "glossary_search_index",
-          Entity.GLOSSARY,
-          "tag_search_index",
-          Entity.TAG,
-          "search_entity_search_index",
-          Entity.SEARCH_INDEX,
-          "api_collection_search_index",
-          Entity.API_COLLECTION,
-          "api_endpoint_search_index",
-          Entity.API_ENDPOINT,
-          "directory_search_index",
-          Entity.DIRECTORY,
-          "worksheet_search_index",
-          Entity.WORKSHEET,
-          "spreadsheet_search_index",
-          Entity.SPREADSHEET,
-          "file_search_index",
-          Entity.FILE,
-          "metric_search_index",
-          Entity.METRIC -> true;
+              Entity.TOPIC,
+              "dashboard_search_index",
+              Entity.DASHBOARD,
+              "pipeline_search_index",
+              Entity.PIPELINE,
+              "mlmodel_search_index",
+              Entity.MLMODEL,
+              "table_search_index",
+              Entity.TABLE,
+              "database_schema_search_index",
+              Entity.DATABASE_SCHEMA,
+              "database_search_index",
+              Entity.DATABASE,
+              "container_search_index",
+              Entity.CONTAINER,
+              "query_search_index",
+              Entity.QUERY,
+              "stored_procedure_search_index",
+              Entity.STORED_PROCEDURE,
+              "dashboard_data_model_search_index",
+              Entity.DASHBOARD_DATA_MODEL,
+              "data_product_search_index",
+              Entity.DATA_PRODUCT,
+              "domain_search_index",
+              Entity.DOMAIN,
+              "glossary_term_search_index",
+              Entity.GLOSSARY_TERM,
+              "glossary_search_index",
+              Entity.GLOSSARY,
+              "tag_search_index",
+              Entity.TAG,
+              "search_entity_search_index",
+              Entity.SEARCH_INDEX,
+              "api_collection_search_index",
+              Entity.API_COLLECTION,
+              "api_endpoint_search_index",
+              Entity.API_ENDPOINT,
+              "directory_search_index",
+              Entity.DIRECTORY,
+              "worksheet_search_index",
+              Entity.WORKSHEET,
+              "spreadsheet_search_index",
+              Entity.SPREADSHEET,
+              "file_search_index",
+              Entity.FILE,
+              "metric_search_index",
+              Entity.METRIC ->
+          true;
       default -> false;
     };
   }
@@ -452,13 +453,14 @@ public final class SearchUtils {
   public static boolean isTimeSeriesIndex(String indexName) {
     return switch (indexName) {
       case "test_case_result_search_index",
-          "testCaseResult",
-          "test_case_resolution_status_search_index",
-          "testCaseResolutionStatus",
-          "raw_cost_analysis_report_data_index",
-          "rawCostAnalysisReportData",
-          "aggregated_cost_analysis_report_data_index",
-          "aggregatedCostAnalysisReportData" -> true;
+              "testCaseResult",
+              "test_case_resolution_status_search_index",
+              "testCaseResolutionStatus",
+              "raw_cost_analysis_report_data_index",
+              "rawCostAnalysisReportData",
+              "aggregated_cost_analysis_report_data_index",
+              "aggregatedCostAnalysisReportData" ->
+          true;
       default -> false;
     };
   }
@@ -480,27 +482,28 @@ public final class SearchUtils {
   public static boolean isServiceIndex(String indexName) {
     return switch (indexName) {
       case "api_service_search_index",
-          "apiService",
-          "mlmodel_service_search_index",
-          "mlModelService",
-          "database_service_search_index",
-          "databaseService",
-          "messaging_service_index",
-          "messagingService",
-          "dashboard_service_index",
-          "dashboardService",
-          "pipeline_service_index",
-          "pipelineService",
-          "storage_service_index",
-          "storageService",
-          "search_service_index",
-          "searchService",
-          "security_service_index",
-          "securityService",
-          "metadata_service_index",
-          "metadataService",
-          "drive_service_index",
-          "driveService" -> true;
+              "apiService",
+              "mlmodel_service_search_index",
+              "mlModelService",
+              "database_service_search_index",
+              "databaseService",
+              "messaging_service_index",
+              "messagingService",
+              "dashboard_service_index",
+              "dashboardService",
+              "pipeline_service_index",
+              "pipelineService",
+              "storage_service_index",
+              "storageService",
+              "search_service_index",
+              "searchService",
+              "security_service_index",
+              "securityService",
+              "metadata_service_index",
+              "metadataService",
+              "drive_service_index",
+              "driveService" ->
+          true;
       default -> false;
     };
   }
@@ -517,8 +520,8 @@ public final class SearchUtils {
       case "container_search_index", Entity.CONTAINER -> Entity.CONTAINER;
       case "query_search_index", Entity.QUERY -> Entity.QUERY;
       case "stored_procedure_search_index", Entity.STORED_PROCEDURE -> Entity.STORED_PROCEDURE;
-      case "dashboard_data_model_search_index", Entity.DASHBOARD_DATA_MODEL -> Entity
-          .DASHBOARD_DATA_MODEL;
+      case "dashboard_data_model_search_index", Entity.DASHBOARD_DATA_MODEL ->
+          Entity.DASHBOARD_DATA_MODEL;
       case "api_endpoint_search_index", Entity.API_ENDPOINT -> Entity.API_ENDPOINT;
       case "api_collection_search_index", Entity.API_COLLECTION -> Entity.API_COLLECTION;
       case "metric_search_index", Entity.METRIC -> Entity.METRIC;

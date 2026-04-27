@@ -315,14 +315,15 @@ public class DistributedJobStatsAggregator {
 
         switch (currentStatus) {
           case COMPLETED -> progressListener.onJobCompleted(stats, elapsedMillis);
-          case COMPLETED_WITH_ERRORS -> progressListener.onJobCompletedWithErrors(
-              stats, elapsedMillis);
-          case FAILED -> progressListener.onJobFailed(
-              stats,
-              new RuntimeException(
-                  job.getErrorMessage() != null
-                      ? job.getErrorMessage()
-                      : "Distributed job failed"));
+          case COMPLETED_WITH_ERRORS ->
+              progressListener.onJobCompletedWithErrors(stats, elapsedMillis);
+          case FAILED ->
+              progressListener.onJobFailed(
+                  stats,
+                  new RuntimeException(
+                      job.getErrorMessage() != null
+                          ? job.getErrorMessage()
+                          : "Distributed job failed"));
           case STOPPED -> progressListener.onJobStopped(stats);
           default -> {
             /* No special notification for other states */

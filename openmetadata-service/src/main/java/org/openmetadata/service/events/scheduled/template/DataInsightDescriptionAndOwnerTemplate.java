@@ -95,11 +95,14 @@ public class DataInsightDescriptionAndOwnerTemplate {
     if (metricType != MetricType.TIER) {
       if (kpiAvailable) {
         return switch (criteria) {
-          case MET -> "Great the Target Set for KPIs has been achieved. It's time to restructure your goals, set new KPIs and progress faster.";
-          case IN_PROGRESS -> String.format(
-              "To meet the KPIs you will need a minimum of %s%% %s in the next %s days.",
-              targetKpi, getMetricTypeMessage(metricType).toLowerCase(), numberOfDaysLeft);
-          case NOT_MET -> "The Target set for KPIs was not met it’s time to restructure your goals and progress faster.";
+          case MET ->
+              "Great the Target Set for KPIs has been achieved. It's time to restructure your goals, set new KPIs and progress faster.";
+          case IN_PROGRESS ->
+              String.format(
+                  "To meet the KPIs you will need a minimum of %s%% %s in the next %s days.",
+                  targetKpi, getMetricTypeMessage(metricType).toLowerCase(), numberOfDaysLeft);
+          case NOT_MET ->
+              "The Target set for KPIs was not met it’s time to restructure your goals and progress faster.";
         };
       }
       return "You have not set any KPIs yet, it’s time to restructure your goals, set KPIs and progress faster.";

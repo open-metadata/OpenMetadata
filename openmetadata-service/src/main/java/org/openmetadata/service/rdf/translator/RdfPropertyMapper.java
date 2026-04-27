@@ -1039,21 +1039,23 @@ public class RdfPropertyMapper {
   private String getContextName(String entityType) {
     return switch (entityType.toLowerCase()) {
       case "table",
-          "database",
-          "databaseschema",
-          "pipeline",
-          "topic",
-          "dashboard",
-          "chart",
-          "mlmodel",
-          "container",
-          "report" -> "dataAsset-complete";
+              "database",
+              "databaseschema",
+              "pipeline",
+              "topic",
+              "dashboard",
+              "chart",
+              "mlmodel",
+              "container",
+              "report" ->
+          "dataAsset-complete";
       case "databaseservice",
-          "dashboardservice",
-          "messagingservice",
-          "pipelineservice",
-          "mlmodelservice",
-          "storageservice" -> "service";
+              "dashboardservice",
+              "messagingservice",
+              "pipelineservice",
+              "mlmodelservice",
+              "storageservice" ->
+          "service";
       case "user", "team", "role" -> "team";
       case "glossary", "glossaryterm", "tag", "classification" -> "governance";
       default -> "base";

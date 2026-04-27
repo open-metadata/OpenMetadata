@@ -45,12 +45,13 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
               currentActivity);
           updateStage(varHandler, execution, workflowInstanceStateRepository);
         }
-        default -> LOG.debug(
-            "[STAGE_EVENT] Workflow: {}, ProcessInstance: {}, Activity: {} - Unsupported event: {}",
-            workflowName,
-            processInstanceId,
-            currentActivity,
-            eventName);
+        default ->
+            LOG.debug(
+                "[STAGE_EVENT] Workflow: {}, ProcessInstance: {}, Activity: {} - Unsupported event: {}",
+                workflowName,
+                processInstanceId,
+                currentActivity,
+                eventName);
       }
     } catch (Exception exc) {
       LOG.error(

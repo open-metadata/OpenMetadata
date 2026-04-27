@@ -10230,29 +10230,29 @@ public interface CollectionDAO {
       Object value =
           switch (configType) {
             case EMAIL_CONFIGURATION -> JsonUtils.readValue(json, SmtpSettings.class);
-            case OPEN_METADATA_BASE_URL_CONFIGURATION -> JsonUtils.readValue(
-                json, OpenMetadataBaseUrlConfiguration.class);
+            case OPEN_METADATA_BASE_URL_CONFIGURATION ->
+                JsonUtils.readValue(json, OpenMetadataBaseUrlConfiguration.class);
             case CUSTOM_UI_THEME_PREFERENCE -> JsonUtils.readValue(json, UiThemePreference.class);
             case LOGIN_CONFIGURATION -> JsonUtils.readValue(json, LoginConfiguration.class);
-            case SLACK_APP_CONFIGURATION, SLACK_INSTALLER, SLACK_BOT, SLACK_STATE -> JsonUtils
-                .readValue(json, String.class);
+            case SLACK_APP_CONFIGURATION, SLACK_INSTALLER, SLACK_BOT, SLACK_STATE ->
+                JsonUtils.readValue(json, String.class);
             case PROFILER_CONFIGURATION -> JsonUtils.readValue(json, ProfilerConfiguration.class);
             case SEARCH_SETTINGS -> JsonUtils.readValue(json, SearchSettings.class);
-            case ASSET_CERTIFICATION_SETTINGS -> JsonUtils.readValue(
-                json, AssetCertificationSettings.class);
+            case ASSET_CERTIFICATION_SETTINGS ->
+                JsonUtils.readValue(json, AssetCertificationSettings.class);
             case WORKFLOW_SETTINGS -> JsonUtils.readValue(json, WorkflowSettings.class);
             case LINEAGE_SETTINGS -> JsonUtils.readValue(json, LineageSettings.class);
-            case AUTHENTICATION_CONFIGURATION -> JsonUtils.readValue(
-                json, AuthenticationConfiguration.class);
-            case AUTHORIZER_CONFIGURATION -> JsonUtils.readValue(
-                json, AuthorizerConfiguration.class);
+            case AUTHENTICATION_CONFIGURATION ->
+                JsonUtils.readValue(json, AuthenticationConfiguration.class);
+            case AUTHORIZER_CONFIGURATION ->
+                JsonUtils.readValue(json, AuthorizerConfiguration.class);
             case ENTITY_RULES_SETTINGS -> JsonUtils.readValue(json, EntityRulesSettings.class);
             case SCIM_CONFIGURATION -> JsonUtils.readValue(json, ScimConfiguration.class);
             case OPEN_LINEAGE_SETTINGS -> JsonUtils.readValue(json, OpenLineageSettings.class);
             case TEAMS_APP_CONFIGURATION -> JsonUtils.readValue(json, TeamsAppConfiguration.class);
             case MCP_CONFIGURATION -> JsonUtils.readValue(json, MCPConfiguration.class);
-            case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
-                json, GlossaryTermRelationSettings.class);
+            case GLOSSARY_TERM_RELATION_SETTINGS ->
+                JsonUtils.readValue(json, GlossaryTermRelationSettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

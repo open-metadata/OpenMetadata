@@ -328,10 +328,8 @@ public class OpenSearchSourceBuilderFactory
     }
 
     return switch (indexName) {
-      case "user_search_index",
-          "user",
-          "team_search_index",
-          "team" -> buildUserOrTeamSearchBuilderV2(searchQuery, fromOffset, size);
+      case "user_search_index", "user", "team_search_index", "team" ->
+          buildUserOrTeamSearchBuilderV2(searchQuery, fromOffset, size);
       default -> buildAggregateSearchBuilderV2(searchQuery, fromOffset, size, includeAggregations);
     };
   }
@@ -635,21 +633,21 @@ public class OpenSearchSourceBuilderFactory
     }
 
     return switch (modifier.value()) {
-      case "log" -> os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier
-          .Log;
-      case "log1p" -> os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier
-          .Log1p;
-      case "sqrt" -> os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier
-          .Sqrt;
-      case "square" -> os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier
-          .Square;
+      case "log" ->
+          os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier.Log;
+      case "log1p" ->
+          os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier.Log1p;
+      case "sqrt" ->
+          os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier.Sqrt;
+      case "square" ->
+          os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier.Square;
       case "ln" -> os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier.Ln;
-      case "ln1p" -> os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier
-          .Ln1p;
-      case "ln2p" -> os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier
-          .Ln2p;
-      case "reciprocal" -> os.org.opensearch.client.opensearch._types.query_dsl
-          .FieldValueFactorModifier.Reciprocal;
+      case "ln1p" ->
+          os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier.Ln1p;
+      case "ln2p" ->
+          os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier.Ln2p;
+      case "reciprocal" ->
+          os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier.Reciprocal;
       default -> null;
     };
   }
@@ -660,8 +658,8 @@ public class OpenSearchSourceBuilderFactory
       case "avg" -> os.org.opensearch.client.opensearch._types.query_dsl.FunctionScoreMode.Avg;
       case "max" -> os.org.opensearch.client.opensearch._types.query_dsl.FunctionScoreMode.Max;
       case "min" -> os.org.opensearch.client.opensearch._types.query_dsl.FunctionScoreMode.Min;
-      case "multiply" -> os.org.opensearch.client.opensearch._types.query_dsl.FunctionScoreMode
-          .Multiply;
+      case "multiply" ->
+          os.org.opensearch.client.opensearch._types.query_dsl.FunctionScoreMode.Multiply;
       case "first" -> os.org.opensearch.client.opensearch._types.query_dsl.FunctionScoreMode.First;
       default -> os.org.opensearch.client.opensearch._types.query_dsl.FunctionScoreMode.Sum;
     };
@@ -674,8 +672,8 @@ public class OpenSearchSourceBuilderFactory
       case "avg" -> os.org.opensearch.client.opensearch._types.query_dsl.FunctionBoostMode.Avg;
       case "max" -> os.org.opensearch.client.opensearch._types.query_dsl.FunctionBoostMode.Max;
       case "min" -> os.org.opensearch.client.opensearch._types.query_dsl.FunctionBoostMode.Min;
-      case "replace" -> os.org.opensearch.client.opensearch._types.query_dsl.FunctionBoostMode
-          .Replace;
+      case "replace" ->
+          os.org.opensearch.client.opensearch._types.query_dsl.FunctionBoostMode.Replace;
       default -> os.org.opensearch.client.opensearch._types.query_dsl.FunctionBoostMode.Multiply;
     };
   }
@@ -784,11 +782,10 @@ public class OpenSearchSourceBuilderFactory
       String indexName, String query, int from, int size) {
     return switch (indexName) {
       case "test_case_result_search_index" -> buildTestCaseResultSearchV2(query, from, size);
-      case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearchV2(
-          query, from, size);
-      case "raw_cost_analysis_report_data_index",
-          "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearchV2(
-          query, from, size);
+      case "test_case_resolution_status_search_index" ->
+          buildTestCaseResolutionStatusSearchV2(query, from, size);
+      case "raw_cost_analysis_report_data_index", "aggregated_cost_analysis_report_data_index" ->
+          buildCostAnalysisReportDataSearchV2(query, from, size);
       default -> buildAggregateSearchBuilderV2(query, from, size);
     };
   }
@@ -796,10 +793,8 @@ public class OpenSearchSourceBuilderFactory
   public OpenSearchRequestBuilder buildDataQualitySearchBuilderV2(
       String indexName, String query, int from, int size) {
     return switch (indexName) {
-      case "test_case_search_index",
-          "testCase",
-          "test_suite_search_index",
-          "testSuite" -> buildTestCaseSearchV2(query, from, size);
+      case "test_case_search_index", "testCase", "test_suite_search_index", "testSuite" ->
+          buildTestCaseSearchV2(query, from, size);
       default -> buildAggregateSearchBuilderV2(query, from, size);
     };
   }

@@ -347,10 +347,8 @@ public class ElasticSearchSourceBuilderFactory
     }
 
     return switch (indexName) {
-      case "user_search_index",
-          "user",
-          "team_search_index",
-          "team" -> buildUserOrTeamSearchBuilderV2(searchQuery, fromOffset, size);
+      case "user_search_index", "user", "team_search_index", "team" ->
+          buildUserOrTeamSearchBuilderV2(searchQuery, fromOffset, size);
       default -> buildAggregateSearchBuilderV2(searchQuery, fromOffset, size, includeAggregations);
     };
   }
@@ -359,11 +357,10 @@ public class ElasticSearchSourceBuilderFactory
       String indexName, String query, int from, int size) {
     return switch (indexName) {
       case "test_case_result_search_index" -> buildTestCaseResultSearchV2(query, from, size);
-      case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearchV2(
-          query, from, size);
-      case "raw_cost_analysis_report_data_index",
-          "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearchV2(
-          query, from, size);
+      case "test_case_resolution_status_search_index" ->
+          buildTestCaseResolutionStatusSearchV2(query, from, size);
+      case "raw_cost_analysis_report_data_index", "aggregated_cost_analysis_report_data_index" ->
+          buildCostAnalysisReportDataSearchV2(query, from, size);
       default -> buildAggregateSearchBuilderV2(query, from, size);
     };
   }
@@ -462,10 +459,8 @@ public class ElasticSearchSourceBuilderFactory
   public ElasticSearchRequestBuilder buildDataQualitySearchBuilderV2(
       String indexName, String query, int from, int size) {
     return switch (indexName) {
-      case "test_case_search_index",
-          "testCase",
-          "test_suite_search_index",
-          "testSuite" -> buildTestCaseSearchV2(query, from, size);
+      case "test_case_search_index", "testCase", "test_suite_search_index", "testSuite" ->
+          buildTestCaseSearchV2(query, from, size);
       default -> buildAggregateSearchBuilderV2(query, from, size);
     };
   }
@@ -784,21 +779,21 @@ public class ElasticSearchSourceBuilderFactory
     }
 
     return switch (modifier.value()) {
-      case "log" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier
-          .Log;
-      case "log1p" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier
-          .Log1p;
-      case "sqrt" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier
-          .Sqrt;
-      case "square" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier
-          .Square;
+      case "log" ->
+          es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier.Log;
+      case "log1p" ->
+          es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier.Log1p;
+      case "sqrt" ->
+          es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier.Sqrt;
+      case "square" ->
+          es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier.Square;
       case "ln" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier.Ln;
-      case "ln1p" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier
-          .Ln1p;
-      case "ln2p" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier
-          .Ln2p;
-      case "reciprocal" -> es.co.elastic.clients.elasticsearch._types.query_dsl
-          .FieldValueFactorModifier.Reciprocal;
+      case "ln1p" ->
+          es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier.Ln1p;
+      case "ln2p" ->
+          es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier.Ln2p;
+      case "reciprocal" ->
+          es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier.Reciprocal;
       default -> null;
     };
   }
@@ -809,8 +804,8 @@ public class ElasticSearchSourceBuilderFactory
       case "avg" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode.Avg;
       case "max" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode.Max;
       case "min" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode.Min;
-      case "multiply" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode
-          .Multiply;
+      case "multiply" ->
+          es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode.Multiply;
       case "first" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode.First;
       default -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode.Sum;
     };
@@ -823,8 +818,8 @@ public class ElasticSearchSourceBuilderFactory
       case "avg" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode.Avg;
       case "max" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode.Max;
       case "min" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode.Min;
-      case "replace" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode
-          .Replace;
+      case "replace" ->
+          es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode.Replace;
       default -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode.Multiply;
     };
   }

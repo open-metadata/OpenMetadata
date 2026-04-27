@@ -409,17 +409,18 @@ public class SubscriptionUtil {
       Thread thread = AlertsRuleEvaluator.getThread(event);
       switch (thread.getType()) {
         case Task -> receiverUrls.addAll(getTaskAssignees(action, category, type, event));
-        case Conversation -> receiverUrls.addAll(
-            handleConversationNotification(action, category, type, event));
-          // TODO: For Announcement, Immediate Consumer needs to be Notified (find information from
-          // Lineage)
-        case Announcement -> receiverUrls.addAll(
-            buildReceivers(
-                action,
-                category,
-                type,
-                thread.getEntityRef().getType(),
-                thread.getEntityRef().getId()));
+        case Conversation ->
+            receiverUrls.addAll(handleConversationNotification(action, category, type, event));
+        // TODO: For Announcement, Immediate Consumer needs to be Notified (find information from
+        // Lineage)
+        case Announcement ->
+            receiverUrls.addAll(
+                buildReceivers(
+                    action,
+                    category,
+                    type,
+                    thread.getEntityRef().getType(),
+                    thread.getEntityRef().getId()));
       }
     } else {
       EntityInterface entityInterface = getEntity(event);

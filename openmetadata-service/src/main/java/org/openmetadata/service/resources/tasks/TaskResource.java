@@ -852,14 +852,14 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           }
         }
       }
-      case COUNT_VIEW_ASSIGNED -> filter.addQueryParam(
-          "assigneeIds", getCurrentUserAssigneeIds(securityContext));
-      case COUNT_VIEW_OWNED -> filter.addQueryParam(
-          "ownedByIds", getCurrentUserOwnedIds(uriInfo, securityContext));
-      case COUNT_VIEW_CREATED -> filter.addQueryParam(
-          "createdById", getCurrentUserId(securityContext));
-      case COUNT_VIEW_MENTIONED -> filter.addQueryParam(
-          "mentionedUser", getCurrentUserMentionedFqn(securityContext));
+      case COUNT_VIEW_ASSIGNED ->
+          filter.addQueryParam("assigneeIds", getCurrentUserAssigneeIds(securityContext));
+      case COUNT_VIEW_OWNED ->
+          filter.addQueryParam("ownedByIds", getCurrentUserOwnedIds(uriInfo, securityContext));
+      case COUNT_VIEW_CREATED ->
+          filter.addQueryParam("createdById", getCurrentUserId(securityContext));
+      case COUNT_VIEW_MENTIONED ->
+          filter.addQueryParam("mentionedUser", getCurrentUserMentionedFqn(securityContext));
       case COUNT_VIEW_ENTITY -> {
         // aboutEntity is applied below when present.
       }

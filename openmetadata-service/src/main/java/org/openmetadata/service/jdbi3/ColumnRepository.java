@@ -152,10 +152,12 @@ public class ColumnRepository {
     String user = securityContext.getUserPrincipal().getName();
 
     return switch (entityType) {
-      case TABLE -> updateTableColumn(
-          uriInfo, securityContext, user, columnFQN, updateColumn, parentEntityRef);
-      case DASHBOARD_DATA_MODEL -> updateDashboardDataModelColumn(
-          uriInfo, securityContext, user, columnFQN, updateColumn, parentEntityRef);
+      case TABLE ->
+          updateTableColumn(
+              uriInfo, securityContext, user, columnFQN, updateColumn, parentEntityRef);
+      case DASHBOARD_DATA_MODEL ->
+          updateDashboardDataModelColumn(
+              uriInfo, securityContext, user, columnFQN, updateColumn, parentEntityRef);
       default -> throw new IllegalStateException("Unexpected entity type: " + entityType);
     };
   }
@@ -343,8 +345,8 @@ public class ColumnRepository {
             dataModelRepository.findByName(parentFQN, Include.NON_DELETED);
         yield dataModel.getEntityReference();
       }
-      default -> throw new IllegalArgumentException(
-          "Unsupported entity type: %s".formatted(entityType));
+      default ->
+          throw new IllegalArgumentException("Unsupported entity type: %s".formatted(entityType));
     };
   }
 

@@ -299,8 +299,9 @@ public class JWTTokenGenerator {
       case RS_256 -> Algorithm.RSA256(rsaPublicKey, rsaPrivateKey);
       case RS_384 -> Algorithm.RSA384(rsaPublicKey, rsaPrivateKey);
       case RS_512 -> Algorithm.RSA512(rsaPublicKey, rsaPrivateKey);
-      case ES_256, ES_384, ES_512 -> throw new IllegalArgumentException(
-          "EC algorithms require ECPublicKey/ECPrivateKey. Use getAlgorithm(algorithm, ecPublicKey, ecPrivateKey) instead.");
+      case ES_256, ES_384, ES_512 ->
+          throw new IllegalArgumentException(
+              "EC algorithms require ECPublicKey/ECPrivateKey. Use getAlgorithm(algorithm, ecPublicKey, ecPrivateKey) instead.");
     };
   }
 
@@ -312,8 +313,9 @@ public class JWTTokenGenerator {
       case ES_256 -> Algorithm.ECDSA256(ecPublicKey, ecPrivateKey);
       case ES_384 -> Algorithm.ECDSA384(ecPublicKey, ecPrivateKey);
       case ES_512 -> Algorithm.ECDSA512(ecPublicKey, ecPrivateKey);
-      case RS_256, RS_384, RS_512 -> throw new IllegalArgumentException(
-          "RSA algorithms require RSAPublicKey/RSAPrivateKey. Use getAlgorithm(algorithm, rsaPublicKey, rsaPrivateKey) instead.");
+      case RS_256, RS_384, RS_512 ->
+          throw new IllegalArgumentException(
+              "RSA algorithms require RSAPublicKey/RSAPrivateKey. Use getAlgorithm(algorithm, rsaPublicKey, rsaPrivateKey) instead.");
     };
   }
 

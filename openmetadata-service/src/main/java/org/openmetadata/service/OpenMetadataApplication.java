@@ -947,8 +947,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       case BASIC -> authenticatorHandler = new BasicAuthenticator();
       case LDAP -> authenticatorHandler = new LdapAuthenticator();
       default ->
-      // For all other types, google, okta etc. auth is handled externally
-      authenticatorHandler = new NoopAuthenticator();
+          // For all other types, google, okta etc. auth is handled externally
+          authenticatorHandler = new NoopAuthenticator();
     }
     SecurityConfigurationManager.getInstance().setAuthenticatorHandler(authenticatorHandler);
   }

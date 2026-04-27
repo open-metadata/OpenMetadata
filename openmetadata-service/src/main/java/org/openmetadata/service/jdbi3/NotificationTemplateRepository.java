@@ -457,8 +457,9 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
     switch (destination.getType()) {
       case EMAIL -> sendEmailNotification((EmailMessage) message, destination);
       case SLACK, MS_TEAMS, G_CHAT, WEBHOOK -> sendWebhookNotification(message, destination);
-      default -> throw new IllegalArgumentException(
-          "Unsupported destination type: " + destination.getType());
+      default ->
+          throw new IllegalArgumentException(
+              "Unsupported destination type: " + destination.getType());
     }
   }
 

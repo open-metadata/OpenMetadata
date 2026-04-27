@@ -183,40 +183,46 @@ public final class TaskFormExecutionResolver {
     }
 
     return switch (task.getType()) {
-      case DescriptionUpdate -> new TaskExecutionBinding(
-          HandlerType.DESCRIPTION_UPDATE,
-          MetadataOperation.EDIT_DESCRIPTION,
-          "fieldPath",
-          "newDescription",
-          null,
-          null,
-          null);
-      case TagUpdate -> new TaskExecutionBinding(
-          HandlerType.TAG_UPDATE,
-          MetadataOperation.EDIT_TAGS,
-          "fieldPath",
-          null,
-          "currentTags",
-          "tagsToAdd",
-          "tagsToRemove");
-      case OwnershipUpdate -> new TaskExecutionBinding(
-          HandlerType.OWNERSHIP_UPDATE,
-          MetadataOperation.EDIT_OWNERS,
-          null,
-          null,
-          null,
-          null,
-          null);
-      case TierUpdate -> new TaskExecutionBinding(
-          HandlerType.TIER_UPDATE, MetadataOperation.EDIT_TIER, null, null, null, null, null);
-      case DomainUpdate -> new TaskExecutionBinding(
-          HandlerType.DOMAIN_UPDATE, MetadataOperation.EDIT_ALL, null, null, null, null, null);
-      case GlossaryApproval, RequestApproval -> new TaskExecutionBinding(
-          HandlerType.APPROVAL, MetadataOperation.EDIT_ALL, null, null, null, null, null);
-      case TestCaseResolution, IncidentResolution -> new TaskExecutionBinding(
-          HandlerType.INCIDENT, null, null, null, null, null, null);
-      case Suggestion -> new TaskExecutionBinding(
-          HandlerType.SUGGESTION, null, null, null, null, null, null);
+      case DescriptionUpdate ->
+          new TaskExecutionBinding(
+              HandlerType.DESCRIPTION_UPDATE,
+              MetadataOperation.EDIT_DESCRIPTION,
+              "fieldPath",
+              "newDescription",
+              null,
+              null,
+              null);
+      case TagUpdate ->
+          new TaskExecutionBinding(
+              HandlerType.TAG_UPDATE,
+              MetadataOperation.EDIT_TAGS,
+              "fieldPath",
+              null,
+              "currentTags",
+              "tagsToAdd",
+              "tagsToRemove");
+      case OwnershipUpdate ->
+          new TaskExecutionBinding(
+              HandlerType.OWNERSHIP_UPDATE,
+              MetadataOperation.EDIT_OWNERS,
+              null,
+              null,
+              null,
+              null,
+              null);
+      case TierUpdate ->
+          new TaskExecutionBinding(
+              HandlerType.TIER_UPDATE, MetadataOperation.EDIT_TIER, null, null, null, null, null);
+      case DomainUpdate ->
+          new TaskExecutionBinding(
+              HandlerType.DOMAIN_UPDATE, MetadataOperation.EDIT_ALL, null, null, null, null, null);
+      case GlossaryApproval, RequestApproval ->
+          new TaskExecutionBinding(
+              HandlerType.APPROVAL, MetadataOperation.EDIT_ALL, null, null, null, null, null);
+      case TestCaseResolution, IncidentResolution ->
+          new TaskExecutionBinding(HandlerType.INCIDENT, null, null, null, null, null, null);
+      case Suggestion ->
+          new TaskExecutionBinding(HandlerType.SUGGESTION, null, null, null, null, null, null);
       default -> new TaskExecutionBinding(HandlerType.CUSTOM, null, null, null, null, null, null);
     };
   }
@@ -229,81 +235,88 @@ public final class TaskFormExecutionResolver {
     TaskExecutionBinding binding = defaultBinding(task);
 
     return switch (binding.handlerType()) {
-      case DESCRIPTION_UPDATE -> new TaskExecutionPlan(
-          List.of(
-              new TaskExecutionAction(
-                  ActionType.SET_DESCRIPTION,
-                  binding.fieldPathField(),
-                  binding.valueField(),
-                  null,
-                  null,
-                  null,
-                  null,
-                  null,
-                  null)),
-          List.of());
-      case TAG_UPDATE -> new TaskExecutionPlan(
-          List.of(
-              new TaskExecutionAction(
-                  ActionType.MERGE_TAGS,
-                  binding.fieldPathField(),
-                  null,
-                  binding.currentTagsField(),
-                  binding.addTagsField(),
-                  binding.removeTagsField(),
-                  null,
-                  null,
-                  null)),
-          List.of());
-      case OWNERSHIP_UPDATE -> new TaskExecutionPlan(
-          List.of(
-              new TaskExecutionAction(
-                  ActionType.REPLACE_OWNERS,
-                  null,
-                  null,
-                  null,
-                  null,
-                  null,
-                  "newOwners",
-                  null,
-                  null)),
-          List.of());
-      case TIER_UPDATE -> new TaskExecutionPlan(
-          List.of(
-              new TaskExecutionAction(
-                  ActionType.APPLY_TIER, null, null, null, null, null, "newTier", null, null)),
-          List.of());
-      case DOMAIN_UPDATE -> new TaskExecutionPlan(
-          List.of(
-              new TaskExecutionAction(
-                  ActionType.REPLACE_DOMAINS,
-                  null,
-                  null,
-                  null,
-                  null,
-                  null,
-                  "newDomain",
-                  null,
-                  null)),
-          List.of());
-      case APPROVAL -> new TaskExecutionPlan(
-          List.of(
-              new TaskExecutionAction(
-                  ActionType.PATCH_ENTITY_FIELD,
-                  null,
-                  null,
-                  null,
-                  null,
-                  null,
-                  null,
-                  "entityStatus",
-                  "Approved")),
-          List.of());
-      case SUGGESTION -> new TaskExecutionPlan(
-          List.of(
-              new TaskExecutionAction(
-                  ActionType.APPLY_SUGGESTION, null, null, null, null, null, null, null, null)),
-          List.of());
+      case DESCRIPTION_UPDATE ->
+          new TaskExecutionPlan(
+              List.of(
+                  new TaskExecutionAction(
+                      ActionType.SET_DESCRIPTION,
+                      binding.fieldPathField(),
+                      binding.valueField(),
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null)),
+              List.of());
+      case TAG_UPDATE ->
+          new TaskExecutionPlan(
+              List.of(
+                  new TaskExecutionAction(
+                      ActionType.MERGE_TAGS,
+                      binding.fieldPathField(),
+                      null,
+                      binding.currentTagsField(),
+                      binding.addTagsField(),
+                      binding.removeTagsField(),
+                      null,
+                      null,
+                      null)),
+              List.of());
+      case OWNERSHIP_UPDATE ->
+          new TaskExecutionPlan(
+              List.of(
+                  new TaskExecutionAction(
+                      ActionType.REPLACE_OWNERS,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      "newOwners",
+                      null,
+                      null)),
+              List.of());
+      case TIER_UPDATE ->
+          new TaskExecutionPlan(
+              List.of(
+                  new TaskExecutionAction(
+                      ActionType.APPLY_TIER, null, null, null, null, null, "newTier", null, null)),
+              List.of());
+      case DOMAIN_UPDATE ->
+          new TaskExecutionPlan(
+              List.of(
+                  new TaskExecutionAction(
+                      ActionType.REPLACE_DOMAINS,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      "newDomain",
+                      null,
+                      null)),
+              List.of());
+      case APPROVAL ->
+          new TaskExecutionPlan(
+              List.of(
+                  new TaskExecutionAction(
+                      ActionType.PATCH_ENTITY_FIELD,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      "entityStatus",
+                      "Approved")),
+              List.of());
+      case SUGGESTION ->
+          new TaskExecutionPlan(
+              List.of(
+                  new TaskExecutionAction(
+                      ActionType.APPLY_SUGGESTION, null, null, null, null, null, null, null, null)),
+              List.of());
       default -> new TaskExecutionPlan(List.of(), List.of());
     };
   }

@@ -287,10 +287,11 @@ public class IdTokenValidator {
       case "RS256" -> Algorithm.RSA256(publicKey, null);
       case "RS384" -> Algorithm.RSA384(publicKey, null);
       case "RS512" -> Algorithm.RSA512(publicKey, null);
-      default -> throw new IllegalArgumentException(
-          "Unsupported token validation algorithm: "
-              + algorithm
-              + ". Supported: RS256, RS384, RS512");
+      default ->
+          throw new IllegalArgumentException(
+              "Unsupported token validation algorithm: "
+                  + algorithm
+                  + ". Supported: RS256, RS384, RS512");
     };
   }
 

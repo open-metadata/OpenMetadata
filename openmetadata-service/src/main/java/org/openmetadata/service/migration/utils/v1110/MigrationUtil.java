@@ -105,10 +105,12 @@ public class MigrationUtil {
   public boolean checkTableExists(Handle handle, String tableName) {
     String query =
         switch (connectionType) {
-          case MYSQL -> "SELECT COUNT(*) FROM information_schema.tables "
-              + "WHERE table_schema = DATABASE() AND table_name = ?";
-          case POSTGRES -> "SELECT COUNT(*) FROM information_schema.tables "
-              + "WHERE table_schema = current_schema() AND table_name = ?";
+          case MYSQL ->
+              "SELECT COUNT(*) FROM information_schema.tables "
+                  + "WHERE table_schema = DATABASE() AND table_name = ?";
+          case POSTGRES ->
+              "SELECT COUNT(*) FROM information_schema.tables "
+                  + "WHERE table_schema = current_schema() AND table_name = ?";
         };
 
     Integer count = handle.createQuery(query).bind(0, tableName).mapTo(Integer.class).one();

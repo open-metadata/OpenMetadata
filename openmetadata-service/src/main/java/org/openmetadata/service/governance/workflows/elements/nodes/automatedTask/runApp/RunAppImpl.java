@@ -114,17 +114,20 @@ public class RunAppImpl {
     Object config = JsonUtils.deepCopy(app.getAppConfiguration(), Object.class);
 
     switch (app.getName()) {
-      case "CollateAIApplication" -> config =
-          (JsonUtils.convertValue(config, CollateAIAppConfig.class))
-              .withFilter(getTableServiceFilter(service.getName()))
-              .withPatchIfEmpty(true);
-      case "CollateAIQualityAgentApplication" -> config =
-          (JsonUtils.convertValue(config, CollateAIQualityAgentAppConfig.class))
-              .withFilter(getTableServiceFilter(service.getName()));
-      case "CollateAITierAgentApplication" -> config =
-          (JsonUtils.convertValue(config, CollateAITierAgentAppConfig.class))
-              .withFilter(getTableServiceFilter(service.getName()))
-              .withPatchIfEmpty(true);
+      case "CollateAIApplication" ->
+          config =
+              (JsonUtils.convertValue(config, CollateAIAppConfig.class))
+                  .withFilter(getTableServiceFilter(service.getName()))
+                  .withPatchIfEmpty(true);
+      case "CollateAIQualityAgentApplication" ->
+          config =
+              (JsonUtils.convertValue(config, CollateAIQualityAgentAppConfig.class))
+                  .withFilter(getTableServiceFilter(service.getName()));
+      case "CollateAITierAgentApplication" ->
+          config =
+              (JsonUtils.convertValue(config, CollateAITierAgentAppConfig.class))
+                  .withFilter(getTableServiceFilter(service.getName()))
+                  .withPatchIfEmpty(true);
       case "DataInsightsApplication" -> {
         DataInsightsAppConfig updatedAppConfig =
             (JsonUtils.convertValue(config, DataInsightsAppConfig.class));

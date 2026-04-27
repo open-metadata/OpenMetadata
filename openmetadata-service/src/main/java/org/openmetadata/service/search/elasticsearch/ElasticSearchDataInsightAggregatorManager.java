@@ -258,22 +258,22 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
       DataInsightChartResult.DataInsightChartType dataInsightChartType)
       throws IllegalArgumentException {
     return switch (dataInsightChartType) {
-      case DAILY_ACTIVE_USERS -> new ElasticSearchDailyActiveUsersAggregator(
-          response.aggregations());
-      case PAGE_VIEWS_BY_ENTITIES -> new ElasticSearchPageViewsByEntitiesAggregator(
-          response.aggregations());
+      case DAILY_ACTIVE_USERS ->
+          new ElasticSearchDailyActiveUsersAggregator(response.aggregations());
+      case PAGE_VIEWS_BY_ENTITIES ->
+          new ElasticSearchPageViewsByEntitiesAggregator(response.aggregations());
       case MOST_ACTIVE_USERS -> new ElasticSearchMostActiveUsersAggregator(response.aggregations());
-      case MOST_VIEWED_ENTITIES -> new ElasticSearchMostViewedEntitiesAggregator(
-          response.aggregations());
+      case MOST_VIEWED_ENTITIES ->
+          new ElasticSearchMostViewedEntitiesAggregator(response.aggregations());
       case UNUSED_ASSETS -> new ElasticSearchUnusedAssetsAggregator(response.hits());
-      case AGGREGATED_UNUSED_ASSETS_SIZE -> new ElasticSearchAggregatedUnusedAssetsSizeAggregator(
-          response.aggregations());
-      case AGGREGATED_UNUSED_ASSETS_COUNT -> new ElasticSearchAggregatedUnusedAssetsCountAggregator(
-          response.aggregations());
-      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT -> new ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator(
-          response.aggregations());
-      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE -> new ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator(
-          response.aggregations());
+      case AGGREGATED_UNUSED_ASSETS_SIZE ->
+          new ElasticSearchAggregatedUnusedAssetsSizeAggregator(response.aggregations());
+      case AGGREGATED_UNUSED_ASSETS_COUNT ->
+          new ElasticSearchAggregatedUnusedAssetsCountAggregator(response.aggregations());
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT ->
+          new ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator(response.aggregations());
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE ->
+          new ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator(response.aggregations());
     };
   }
 

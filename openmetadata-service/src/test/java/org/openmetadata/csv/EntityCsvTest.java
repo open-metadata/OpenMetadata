@@ -2889,24 +2889,38 @@ public class EntityCsvTest {
       throws Exception {
     Class<?>[] parameterTypes =
         switch (methodName) {
-          case "parseLongField" -> new Class<?>[] {
-            CSVPrinter.class, CSVRecord.class, int.class, String.class, String.class, Object.class
-          };
-          case "parseTimeInterval" -> new Class<?>[] {
-            CSVPrinter.class, CSVRecord.class, int.class, String.class, Object.class
-          };
-          case "parseEnumType" -> new Class<?>[] {
-            CSVPrinter.class,
-            CSVRecord.class,
-            int.class,
-            String.class,
-            String.class,
-            Object.class,
-            String.class
-          };
-          case "parseTableType" -> new Class<?>[] {
-            CSVPrinter.class, CSVRecord.class, int.class, String.class, Object.class, String.class
-          };
+          case "parseLongField" ->
+              new Class<?>[] {
+                CSVPrinter.class,
+                CSVRecord.class,
+                int.class,
+                String.class,
+                String.class,
+                Object.class
+              };
+          case "parseTimeInterval" ->
+              new Class<?>[] {
+                CSVPrinter.class, CSVRecord.class, int.class, String.class, Object.class
+              };
+          case "parseEnumType" ->
+              new Class<?>[] {
+                CSVPrinter.class,
+                CSVRecord.class,
+                int.class,
+                String.class,
+                String.class,
+                Object.class,
+                String.class
+              };
+          case "parseTableType" ->
+              new Class<?>[] {
+                CSVPrinter.class,
+                CSVRecord.class,
+                int.class,
+                String.class,
+                Object.class,
+                String.class
+              };
           default -> throw new IllegalArgumentException("Unsupported method " + methodName);
         };
 

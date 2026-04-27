@@ -65,8 +65,8 @@ public class MathHelper implements HandlebarsHelper {
                     bd = bd.setScale(decimalPlaces, RoundingMode.HALF_UP);
                     yield bd.doubleValue();
                   }
-                  default -> throw new IllegalArgumentException(
-                      "Unsupported operator: " + operator);
+                  default ->
+                      throw new IllegalArgumentException("Unsupported operator: " + operator);
                 };
 
             // Return as integer if no decimal part, otherwise as double

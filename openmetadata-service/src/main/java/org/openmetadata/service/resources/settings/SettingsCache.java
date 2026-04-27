@@ -641,8 +641,8 @@ public class SettingsCache {
           }
           LOG.info("Loaded Email Setting");
         }
-        case OPEN_METADATA_BASE_URL_CONFIGURATION -> fetchedSettings =
-            Entity.getSystemRepository().getOMBaseUrlConfigInternal();
+        case OPEN_METADATA_BASE_URL_CONFIGURATION ->
+            fetchedSettings = Entity.getSystemRepository().getOMBaseUrlConfigInternal();
         case SLACK_APP_CONFIGURATION -> {
           // Only if available
           fetchedSettings = Entity.getSystemRepository().getSlackApplicationConfigInternal();

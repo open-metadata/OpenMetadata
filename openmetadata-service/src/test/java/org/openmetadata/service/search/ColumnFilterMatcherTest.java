@@ -56,10 +56,10 @@ class ColumnFilterMatcherTest {
         Set.of("service.db.schema.customers.customer_id", "service.db.schema.orders.customer_id"),
         parentFqn ->
             switch (parentFqn) {
-              case "service.db.schema.customers" -> doc(
-                  "service.db.schema.customers", column("customer_id", "PII.Sensitive"));
-              case "service.db.schema.orders" -> doc(
-                  "service.db.schema.orders", column("customer_id", "Glossary.Location"));
+              case "service.db.schema.customers" ->
+                  doc("service.db.schema.customers", column("customer_id", "PII.Sensitive"));
+              case "service.db.schema.orders" ->
+                  doc("service.db.schema.orders", column("customer_id", "Glossary.Location"));
               default -> throw new IllegalArgumentException(parentFqn);
             });
 

@@ -160,14 +160,16 @@ public class VectorSearchQueryBuilder {
   private static void appendOneFlat(StringBuilder sb, String field, String val) {
     switch (val) {
       case ANY -> sb.append("{\"exists\":{\"field\":\"").append(field).append("\"}}");
-      case NONE -> sb.append("{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"")
-          .append(field)
-          .append("\"}}}}");
-      default -> sb.append("{\"term\":{\"")
-          .append(field)
-          .append("\":\"")
-          .append(escape(val))
-          .append("\"}}");
+      case NONE ->
+          sb.append("{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"")
+              .append(field)
+              .append("\"}}}}");
+      default ->
+          sb.append("{\"term\":{\"")
+              .append(field)
+              .append("\":\"")
+              .append(escape(val))
+              .append("\"}}");
     }
   }
 

@@ -426,8 +426,8 @@ public class ODCSConverter {
       case TIME -> ODCSSchemaElement.LogicalType.TIME;
       case ARRAY -> ODCSSchemaElement.LogicalType.ARRAY;
       case MAP, STRUCT, JSON -> ODCSSchemaElement.LogicalType.OBJECT;
-      case BLOB, BYTEA, BINARY, VARBINARY, LONGBLOB, MEDIUMBLOB -> ODCSSchemaElement.LogicalType
-          .BYTES;
+      case BLOB, BYTEA, BINARY, VARBINARY, LONGBLOB, MEDIUMBLOB ->
+          ODCSSchemaElement.LogicalType.BYTES;
       case TEXT, MEDIUMTEXT, CLOB, NTEXT -> ODCSSchemaElement.LogicalType.TEXT;
       default -> ODCSSchemaElement.LogicalType.STRING;
     };
@@ -1069,8 +1069,8 @@ public class ODCSConverter {
     if (testDefinitionName == null) return null;
     return switch (testDefinitionName.toLowerCase()) {
       case "columnvaluestobenotnull" -> ODCSQualityRule.OdcsQualityMetric.NULL_VALUES;
-      case "tablerowcounttoequal", "tablerowcounttobebetween" -> ODCSQualityRule.OdcsQualityMetric
-          .ROW_COUNT;
+      case "tablerowcounttoequal", "tablerowcounttobebetween" ->
+          ODCSQualityRule.OdcsQualityMetric.ROW_COUNT;
       case "columnvaluestobeunique" -> ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES;
       case "columnvaluesmissingcounttobeequal" -> ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES;
       default -> null;

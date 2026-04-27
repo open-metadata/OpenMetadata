@@ -219,8 +219,9 @@ public class TestCaseResolutionStatusRepository
           return;
         }
       }
-      default -> throw new IllegalArgumentException(
-          String.format("Invalid status %s", recordEntity.getTestCaseResolutionStatusType()));
+      default ->
+          throw new IllegalArgumentException(
+              String.format("Invalid status %s", recordEntity.getTestCaseResolutionStatusType()));
     }
     EntityReference testCaseReference = recordEntity.getTestCaseReference();
     recordEntity.withTestCaseReference(null);

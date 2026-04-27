@@ -647,31 +647,36 @@ public abstract class EntityCsv<T extends EntityInterface> {
           fieldValue =
               parseEntityReferences(printer, csvRecord, fieldNumber, fieldValue.toString(), isList);
         }
-        case "date-cp", "dateTime-cp", "time-cp" -> fieldValue =
-            parseFormattedDateTimeField(
-                printer,
-                csvRecord,
-                fieldNumber,
-                fieldName,
-                fieldValue.toString(),
-                customPropertyType,
-                propertyConfig);
-        case "enum" -> fieldValue =
-            parseEnumType(
-                printer,
-                csvRecord,
-                fieldNumber,
-                fieldName,
-                customPropertyType,
-                fieldValue,
-                propertyConfig);
-        case "timeInterval" -> fieldValue =
-            parseTimeInterval(printer, csvRecord, fieldNumber, fieldName, fieldValue);
-        case "number", "integer", "timestamp" -> fieldValue =
-            parseLongField(
-                printer, csvRecord, fieldNumber, fieldName, customPropertyType, fieldValue);
-        case "table-cp" -> fieldValue =
-            parseTableType(printer, csvRecord, fieldNumber, fieldName, fieldValue, propertyConfig);
+        case "date-cp", "dateTime-cp", "time-cp" ->
+            fieldValue =
+                parseFormattedDateTimeField(
+                    printer,
+                    csvRecord,
+                    fieldNumber,
+                    fieldName,
+                    fieldValue.toString(),
+                    customPropertyType,
+                    propertyConfig);
+        case "enum" ->
+            fieldValue =
+                parseEnumType(
+                    printer,
+                    csvRecord,
+                    fieldNumber,
+                    fieldName,
+                    customPropertyType,
+                    fieldValue,
+                    propertyConfig);
+        case "timeInterval" ->
+            fieldValue = parseTimeInterval(printer, csvRecord, fieldNumber, fieldName, fieldValue);
+        case "number", "integer", "timestamp" ->
+            fieldValue =
+                parseLongField(
+                    printer, csvRecord, fieldNumber, fieldName, customPropertyType, fieldValue);
+        case "table-cp" ->
+            fieldValue =
+                parseTableType(
+                    printer, csvRecord, fieldNumber, fieldName, fieldValue, propertyConfig);
 
         default -> {}
       }

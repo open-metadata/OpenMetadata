@@ -795,7 +795,7 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     return switch (testSuiteType) {
-        // We'll clean up the executable when we deprecate the /executable endpoints
+      // We'll clean up the executable when we deprecate the /executable endpoints
       case "basic", "executable" -> {
         if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
           yield String.format(

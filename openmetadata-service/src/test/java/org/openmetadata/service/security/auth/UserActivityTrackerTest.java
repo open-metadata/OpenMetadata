@@ -249,14 +249,18 @@ class UserActivityTrackerTest {
         long activityTime = (long) lastActivityTimeField.get(activity);
 
         switch (entry.getKey()) {
-          case "alice" -> assertTrue(
-              Math.abs(activityTime - time1) < 500,
-              "Alice's activity time should be close to time1");
-          case "bob" -> assertTrue(
-              Math.abs(activityTime - time2) < 500, "Bob's activity time should be close to time2");
-          case "charlie" -> assertTrue(
-              Math.abs(activityTime - time3) < 500,
-              "Charlie's activity time should be close to time3");
+          case "alice" ->
+              assertTrue(
+                  Math.abs(activityTime - time1) < 500,
+                  "Alice's activity time should be close to time1");
+          case "bob" ->
+              assertTrue(
+                  Math.abs(activityTime - time2) < 500,
+                  "Bob's activity time should be close to time2");
+          case "charlie" ->
+              assertTrue(
+                  Math.abs(activityTime - time3) < 500,
+                  "Charlie's activity time should be close to time3");
         }
       }
 

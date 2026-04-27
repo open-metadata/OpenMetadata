@@ -237,13 +237,16 @@ class TestCaseResolutionStatusRepositoryTest {
       return false;
     }
     return switch (from) {
-      case New -> to == TestCaseResolutionStatusTypes.Ack
-          || to == TestCaseResolutionStatusTypes.Assigned
-          || to == TestCaseResolutionStatusTypes.Resolved;
-      case Ack -> to == TestCaseResolutionStatusTypes.Assigned
-          || to == TestCaseResolutionStatusTypes.Resolved;
-      case Assigned -> to == TestCaseResolutionStatusTypes.Assigned
-          || to == TestCaseResolutionStatusTypes.Resolved;
+      case New ->
+          to == TestCaseResolutionStatusTypes.Ack
+              || to == TestCaseResolutionStatusTypes.Assigned
+              || to == TestCaseResolutionStatusTypes.Resolved;
+      case Ack ->
+          to == TestCaseResolutionStatusTypes.Assigned
+              || to == TestCaseResolutionStatusTypes.Resolved;
+      case Assigned ->
+          to == TestCaseResolutionStatusTypes.Assigned
+              || to == TestCaseResolutionStatusTypes.Resolved;
       default -> false;
     };
   }

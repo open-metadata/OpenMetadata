@@ -514,15 +514,15 @@ public class TaskWorkflowHandler {
       String newValue) {
     for (TaskExecutionAction action : actions) {
       switch (action.actionType()) {
-        case SET_DESCRIPTION -> applyDescriptionAction(
-            task, entity, repository, user, newValue, payload, action);
-        case MERGE_TAGS -> applyMergeTagsAction(
-            task, entity, repository, user, newValue, payload, action);
-        case REPLACE_OWNERS -> applyReplaceOwnersAction(
-            task, entity, repository, user, payload, action);
+        case SET_DESCRIPTION ->
+            applyDescriptionAction(task, entity, repository, user, newValue, payload, action);
+        case MERGE_TAGS ->
+            applyMergeTagsAction(task, entity, repository, user, newValue, payload, action);
+        case REPLACE_OWNERS ->
+            applyReplaceOwnersAction(task, entity, repository, user, payload, action);
         case APPLY_TIER -> applyApplyTierAction(task, entity, repository, user, payload, action);
-        case REPLACE_DOMAINS -> applyReplaceDomainsAction(
-            task, entity, repository, user, payload, action);
+        case REPLACE_DOMAINS ->
+            applyReplaceDomainsAction(task, entity, repository, user, payload, action);
         case PATCH_ENTITY_FIELD -> applyPatchEntityFieldAction(task, entity, user, payload, action);
         case APPLY_SUGGESTION -> applySuggestion(task, payload, entity, repository, user);
         default -> LOG.debug("Unsupported task execution action '{}'", action.actionType());

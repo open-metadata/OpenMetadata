@@ -255,20 +255,20 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
       throws IllegalArgumentException {
     return switch (dataInsightChartType) {
       case DAILY_ACTIVE_USERS -> new OpenSearchDailyActiveUsersAggregator(response.aggregations());
-      case PAGE_VIEWS_BY_ENTITIES -> new OpenSearchPageViewsByEntitiesAggregator(
-          response.aggregations());
+      case PAGE_VIEWS_BY_ENTITIES ->
+          new OpenSearchPageViewsByEntitiesAggregator(response.aggregations());
       case MOST_ACTIVE_USERS -> new OpenSearchMostActiveUsersAggregator(response.aggregations());
-      case MOST_VIEWED_ENTITIES -> new OpenSearchMostViewedEntitiesAggregator(
-          response.aggregations());
+      case MOST_VIEWED_ENTITIES ->
+          new OpenSearchMostViewedEntitiesAggregator(response.aggregations());
       case UNUSED_ASSETS -> new OpenSearchUnusedAssetsAggregator(response.hits());
-      case AGGREGATED_UNUSED_ASSETS_SIZE -> new OpenSearchAggregatedUnusedAssetsSizeAggregator(
-          response.aggregations());
-      case AGGREGATED_UNUSED_ASSETS_COUNT -> new OpenSearchAggregatedUnusedAssetsCountAggregator(
-          response.aggregations());
-      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT -> new OpenSearchAggregatedUsedvsUnusedAssetsCountAggregator(
-          response.aggregations());
-      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE -> new OpenSearchAggregatedUsedvsUnusedAssetsSizeAggregator(
-          response.aggregations());
+      case AGGREGATED_UNUSED_ASSETS_SIZE ->
+          new OpenSearchAggregatedUnusedAssetsSizeAggregator(response.aggregations());
+      case AGGREGATED_UNUSED_ASSETS_COUNT ->
+          new OpenSearchAggregatedUnusedAssetsCountAggregator(response.aggregations());
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT ->
+          new OpenSearchAggregatedUsedvsUnusedAssetsCountAggregator(response.aggregations());
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE ->
+          new OpenSearchAggregatedUsedvsUnusedAssetsSizeAggregator(response.aggregations());
     };
   }
 

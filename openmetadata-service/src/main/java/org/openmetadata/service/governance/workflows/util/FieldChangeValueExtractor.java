@@ -28,7 +28,7 @@ public class FieldChangeValueExtractor {
         return null;
       }
 
-        // FieldChange values are often stored as JSON strings, try to parse first
+      // FieldChange values are often stored as JSON strings, try to parse first
       case String strValue -> {
         String trimmed = strValue.trim();
         if (trimmed.startsWith("[") || trimmed.startsWith("{")) {

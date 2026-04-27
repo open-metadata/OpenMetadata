@@ -20,18 +20,19 @@ public class RdfUtils {
       case "glossaryterm", "tag" -> "skos:Concept";
       case "classification", "glossary" -> "skos:ConceptScheme";
       case "databaseservice",
-          "dashboardservice",
-          "messagingservice",
-          "pipelineservice",
-          "mlmodelservice",
-          "storageservice",
-          "searchservice",
-          "metadataservice",
-          "apiservice",
-          "reportingservice",
-          "qualityservice",
-          "observabilityservice",
-          "driveservice" -> "dcat:DataService";
+              "dashboardservice",
+              "messagingservice",
+              "pipelineservice",
+              "mlmodelservice",
+              "storageservice",
+              "searchservice",
+              "metadataservice",
+              "apiservice",
+              "reportingservice",
+              "qualityservice",
+              "observabilityservice",
+              "driveservice" ->
+          "dcat:DataService";
       case "role" -> "foaf:Group";
       case "bot" -> "foaf:Agent";
       case "policy" -> "om:Policy";

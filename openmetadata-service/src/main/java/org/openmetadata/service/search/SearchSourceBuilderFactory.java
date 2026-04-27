@@ -113,10 +113,8 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     }
 
     return switch (indexName) {
-      case "user_search_index",
-          "user",
-          "team_search_index",
-          "team" -> buildUserOrTeamSearchBuilderV2(searchQuery, fromOffset, size);
+      case "user_search_index", "user", "team_search_index", "team" ->
+          buildUserOrTeamSearchBuilderV2(searchQuery, fromOffset, size);
       default -> buildAggregateSearchBuilderV2(searchQuery, fromOffset, size, includeAggregations);
     };
   }
@@ -151,21 +149,18 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
   default S buildTimeSeriesSearchBuilderV2(String indexName, String query, int from, int size) {
     return switch (indexName) {
       case "test_case_result_search_index" -> buildTestCaseResultSearchV2(query, from, size);
-      case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearchV2(
-          query, from, size);
-      case "raw_cost_analysis_report_data_index",
-          "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearchV2(
-          query, from, size);
+      case "test_case_resolution_status_search_index" ->
+          buildTestCaseResolutionStatusSearchV2(query, from, size);
+      case "raw_cost_analysis_report_data_index", "aggregated_cost_analysis_report_data_index" ->
+          buildCostAnalysisReportDataSearchV2(query, from, size);
       default -> buildAggregateSearchBuilderV2(query, from, size);
     };
   }
 
   default S buildDataQualitySearchBuilderV2(String indexName, String query, int from, int size) {
     return switch (indexName) {
-      case "test_case_search_index",
-          "testCase",
-          "test_suite_search_index",
-          "testSuite" -> buildTestCaseSearchV2(query, from, size);
+      case "test_case_search_index", "testCase", "test_suite_search_index", "testSuite" ->
+          buildTestCaseSearchV2(query, from, size);
       default -> buildAggregateSearchBuilderV2(query, from, size);
     };
   }

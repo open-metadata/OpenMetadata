@@ -96,7 +96,8 @@ class OsUtilsTest {
 
   @Test
   void testParseJsonQuery_resultIsBase64Encoded() throws JsonProcessingException {
-    String query = """
+    String query =
+        """
         {
           "term": {"status": "active"}
         }
@@ -187,7 +188,8 @@ class OsUtilsTest {
 
   @Test
   void testParseJsonQuery_simpleTermQuery() throws JsonProcessingException {
-    String simpleQuery = """
+    String simpleQuery =
+        """
         {
           "term": {"owner": "admin"}
         }
@@ -222,7 +224,8 @@ class OsUtilsTest {
 
   @Test
   void testParseJsonQuery_queryWrapperOnly() throws JsonProcessingException {
-    String queryWrapperOnly = """
+    String queryWrapperOnly =
+        """
         {
           "query": {}
         }

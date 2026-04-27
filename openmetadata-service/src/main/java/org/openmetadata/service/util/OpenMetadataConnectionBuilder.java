@@ -93,8 +93,9 @@ public class OpenMetadataConnectionBuilder {
         String type = IngestionPipelineRepository.getPipelineWorkflowType(ingestionPipeline);
         botName = String.format("%sApplicationBot", type);
       }
-      default -> botName =
-          String.format("%s-bot", ingestionPipeline.getPipelineType().toString().toLowerCase());
+      default ->
+          botName =
+              String.format("%s-bot", ingestionPipeline.getPipelineType().toString().toLowerCase());
     }
     return botName;
   }
@@ -144,14 +145,16 @@ public class OpenMetadataConnectionBuilder {
   private AuthProvider extractAuthProvider(User botUser) {
     AuthenticationMechanism.AuthType authType = botUser.getAuthenticationMechanism().getAuthType();
     return switch (authType) {
-      case SSO -> AuthProvider.fromValue(
-          JsonUtils.convertValue(
-                  botUser.getAuthenticationMechanism().getConfig(), SSOAuthMechanism.class)
-              .getSsoServiceType()
-              .value());
+      case SSO ->
+          AuthProvider.fromValue(
+              JsonUtils.convertValue(
+                      botUser.getAuthenticationMechanism().getConfig(), SSOAuthMechanism.class)
+                  .getSsoServiceType()
+                  .value());
       case JWT -> AuthProvider.OPENMETADATA;
-      default -> throw new IllegalArgumentException(
-          String.format("Not supported authentication mechanism type: [%s]", authType.value()));
+      default ->
+          throw new IllegalArgumentException(
+              String.format("Not supported authentication mechanism type: [%s]", authType.value()));
     };
   }
 
