@@ -16,9 +16,7 @@ class Root:
     def __init__(self, *args, **kwargs):
         """Collaborative constructor"""
         super_class = None
-        for cls, super_class in zip(
-            self.__class__.mro()[:-1], self.__class__.mro()[1:]
-        ):
+        for cls, super_class in zip(self.__class__.mro()[:-1], self.__class__.mro()[1:]):
             if cls is Root:
                 break
         for cls in self.__terminal__:

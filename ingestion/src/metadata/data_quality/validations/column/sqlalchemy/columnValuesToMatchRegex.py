@@ -51,9 +51,7 @@ class ColumnValuesToMatchRegexValidator(
 ):
     """Validator for column values to match regex test case"""
 
-    def _run_results(
-        self, metric: Tuple[Metrics], column: Column, **kwargs
-    ) -> Tuple[Optional[int], Optional[int]]:
+    def _run_results(self, metric: Tuple[Metrics], column: Column, **kwargs) -> Tuple[Optional[int], Optional[int]]:
         """compute result of the test case
 
         Args:
@@ -71,9 +69,7 @@ class ColumnValuesToMatchRegexValidator(
             )
             res = dict(row._mapping)
         except (CompileError, SQLAlchemyError) as err:
-            logger.warning(
-                f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`"
-            )
+            logger.warning(f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`")
             regex_count = Metrics.likeCount(column)
             regex_count.expression = kwargs.get("expression")
             regex_count_fn = regex_count.fn()
@@ -123,22 +119,17 @@ class ColumnValuesToMatchRegexValidator(
             regex = test_params[BaseColumnValuesToMatchRegexValidator.REGEX]
 
             metric_expressions = {
-                Metrics.regexCount.name: add_props(expression=regex)(
-                    Metrics.regexCount.value
-                )(column).fn(),
+                Metrics.regexCount.name: add_props(expression=regex)(Metrics.regexCount.value)(column).fn(),
                 Metrics.valuesCount.name: Metrics.valuesCount(column).fn(),
                 Metrics.rowCount.name: Metrics.rowCount().fn(),
                 DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
             }
 
             metric_expressions[DIMENSION_FAILED_COUNT_KEY] = (
-                metric_expressions[Metrics.valuesCount.name]
-                - metric_expressions[Metrics.regexCount.name]
+                metric_expressions[Metrics.valuesCount.name] - metric_expressions[Metrics.regexCount.name]
             )
 
-            normalized_dimension = self._get_normalized_dimension_expression(
-                dimension_col
-            )
+            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
             result_rows = self._run_dimensional_validation_query(
                 source=self.runner.dataset,
@@ -147,9 +138,7 @@ class ColumnValuesToMatchRegexValidator(
                 top_n=top_n,
             )
 
-            return self._process_dimension_rows(
-                result_rows, dimension_col.name, metrics_to_compute, test_params
-            )
+            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

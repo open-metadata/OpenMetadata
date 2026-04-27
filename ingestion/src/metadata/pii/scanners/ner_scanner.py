@@ -13,6 +13,7 @@ NER Scanner based on Presidio.
 
 Supported Entities https://microsoft.github.io/presidio/supported_entities/
 """
+
 import json
 import logging
 import traceback
@@ -63,30 +64,20 @@ class NERScanner(BaseScanner):
 
         _load_spacy_model(SPACY_EN_MODEL)
 
-        nlp_engine_model = NLPEngineModel(
-            lang_code=SUPPORTED_LANG, model_name=SPACY_EN_MODEL
-        )
+        nlp_engine_model = NLPEngineModel(lang_code=SUPPORTED_LANG, model_name=SPACY_EN_MODEL)
 
         # Set the presidio logger to talk less about internal entities unless we are debugging
         logging.getLogger(PRESIDIO_LOGGER).setLevel(
-            logging.INFO
-            if logging.getLogger(METADATA_LOGGER).level == logging.DEBUG
-            else logging.ERROR
+            logging.INFO if logging.getLogger(METADATA_LOGGER).level == logging.DEBUG else logging.ERROR
         )
 
-        self.analyzer = AnalyzerEngine(
-            nlp_engine=SpacyNlpEngine(models=[nlp_engine_model.model_dump()])
-        )
+        self.analyzer = AnalyzerEngine(nlp_engine=SpacyNlpEngine(models=[nlp_engine_model.model_dump()]))
 
     @staticmethod
-    def get_highest_score_label(
-        entities_score: Dict[str, StringAnalysis]
-    ) -> Tuple[str, float]:
+    def get_highest_score_label(entities_score: Dict[str, StringAnalysis]) -> Tuple[str, float]:
         top_entity = max(
             entities_score,
-            key=lambda type_: entities_score[type_].score
-            * entities_score[type_].appearances
-            * 0.8,
+            key=lambda type_: entities_score[type_].score * entities_score[type_].appearances * 0.8,
         )
         return top_entity, entities_score[top_entity].score
 
@@ -114,13 +105,9 @@ class NERScanner(BaseScanner):
         logger.debug("Processing '%s'", data)
 
         # Initialize an empty dict for the given row list
-        entities_score: Dict[str, StringAnalysis] = defaultdict(
-            lambda: StringAnalysis(score=0, appearances=0)
-        )
+        entities_score: Dict[str, StringAnalysis] = defaultdict(lambda: StringAnalysis(score=0, appearances=0))
 
-        str_sample_data_rows = [
-            str(row)[:MAX_NLP_TEXT_LENGTH] for row in data if row is not None
-        ]
+        str_sample_data_rows = [str(row)[:MAX_NLP_TEXT_LENGTH] for row in data if row is not None]
         for row in str_sample_data_rows:
             try:
                 self.process_data(row=row, entities_score=entities_score)
@@ -151,14 +138,10 @@ class NERScanner(BaseScanner):
         is_json, value = self.is_json_data(row)
         if is_json and isinstance(value, dict):
             for val in value.values():
-                self.process_data(
-                    row=str(val)[:MAX_NLP_TEXT_LENGTH], entities_score=entities_score
-                )
+                self.process_data(row=str(val)[:MAX_NLP_TEXT_LENGTH], entities_score=entities_score)
         elif is_json and isinstance(value, list):
             for val in value:
-                self.process_data(
-                    row=str(val)[:MAX_NLP_TEXT_LENGTH], entities_score=entities_score
-                )
+                self.process_data(row=str(val)[:MAX_NLP_TEXT_LENGTH], entities_score=entities_score)
         else:
             self.scan_value(value=row, entities_score=entities_score)
 

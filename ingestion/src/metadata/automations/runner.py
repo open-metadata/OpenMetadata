@@ -47,7 +47,6 @@ def _(
         if hasattr(request.connection.config, "hostPort"):
             host_port_str = str(request.connection.config.hostPort or "")
             if "localhost" in host_port_str:
-
                 result = _test_connection(metadata, request.connection.config)
                 raise_test_connection_exception(result)
 
@@ -58,9 +57,7 @@ def _(
             raise error
 
         host_port_type = type(request.connection.config.hostPort)
-        docker_host_port_str = host_port_str.replace(
-            "localhost", "host.docker.internal"
-        )
+        docker_host_port_str = host_port_str.replace("localhost", "host.docker.internal")
         request.connection.config.hostPort = host_port_type(docker_host_port_str)
 
         _ = _test_connection(metadata, request.connection.config, automation_workflow)
@@ -82,6 +79,4 @@ def _test_connection(
         return test_connection_fn(metadata, automation_workflow=automation_workflow)
     except TypeError:
         connection = get_connection(config)
-        return test_connection_fn(
-            metadata, connection, config, automation_workflow=automation_workflow
-        )
+        return test_connection_fn(metadata, connection, config, automation_workflow=automation_workflow)

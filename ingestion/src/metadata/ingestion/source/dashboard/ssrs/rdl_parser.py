@@ -14,6 +14,7 @@ Parser for SSRS RDL (Report Definition Language) XML documents.
 RDL namespaces differ across SSRS versions (2008/2010/2016+). Traversal is
 namespace-agnostic: we compare element local names.
 """
+
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 from xml.etree import ElementTree as ET
@@ -172,9 +173,7 @@ def _parse_data_sets(root: ET.Element) -> List[SsrsDataSet]:
     return datasets
 
 
-def _build_dataset(
-    ds_elem: ET.Element, name: str, shared_ref: Optional[str]
-) -> SsrsDataSet:
+def _build_dataset(ds_elem: ET.Element, name: str, shared_ref: Optional[str]) -> SsrsDataSet:
     query = _find_child(ds_elem, "Query")
     command_type = None
     command_text = None

@@ -12,7 +12,6 @@
 SQL Queries used during ingestion
 """
 
-
 import textwrap
 
 PRESTO_SHOW_CATALOGS = "SHOW CATALOGS"

@@ -58,20 +58,14 @@ def assert_equal_pydantic_objects(
                 f"expected: [{type(expected).__name__}], actual: [{type(actual).__name__}]"
             )
             continue
-        if issubclass(expected.__class__, BaseModel) and isinstance(
-            expected.model_dump(), dict
-        ):
+        if issubclass(expected.__class__, BaseModel) and isinstance(expected.model_dump(), dict):
             for key, expected_value in expected.model_dump().items():
                 if expected_value is None and ignore_none:
                     continue
                 actual_value = actual.model_dump().get(key)
-                new_key_prefix = (
-                    f"{current_key_prefix}.{key}" if current_key_prefix else key
-                )
+                new_key_prefix = f"{current_key_prefix}.{key}" if current_key_prefix else key
                 if issubclass(getattr(expected, key).__class__, BaseModel):
-                    queue.append(
-                        (getattr(expected, key), getattr(actual, key), new_key_prefix)
-                    )
+                    queue.append((getattr(expected, key), getattr(actual, key), new_key_prefix))
                 elif expected_value != actual_value:
                     errors.append(
                         f"objects mismatched on field: [{new_key_prefix}], expected: [{expected_value}], actual: [{actual_value}]"
@@ -87,13 +81,9 @@ def assert_equal_pydantic_objects(
                 )
             else:
                 for i, (expected_item, actual_item) in enumerate(zip(expected, actual)):
-                    queue.append(
-                        (expected_item, actual_item, f"{current_key_prefix}[{i}]")
-                    )
+                    queue.append((expected_item, actual_item, f"{current_key_prefix}[{i}]"))
         else:
             if expected != actual:
-                errors.append(
-                    f"mismatch at {current_key_prefix}: expected: [{expected}], actual: [{actual}]"
-                )
+                errors.append(f"mismatch at {current_key_prefix}: expected: [{expected}], actual: [{actual}]")
     if errors:
         raise AssertionError("\n".join(errors))

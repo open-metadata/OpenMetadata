@@ -5,32 +5,25 @@ Unit tests for edge cases with zero or negative thresholds
 import unittest
 
 
-def calculate_less_than_failure_fixed(
-    threshold: int, len_rows: int, row_count: int
-) -> tuple[int, int]:
+def calculate_less_than_failure_fixed(threshold: int, len_rows: int, row_count: int) -> tuple[int, int]:
     """
     Fixed implementation of _calculate_less_than_failure
     """
     if threshold <= 0:
-
         if row_count:
             failed_rows = row_count
             passed_rows = 0
         else:
-
             failed_rows = max(len_rows, 1)
             passed_rows = 0
     else:
-
         failed_rows = max(0, len_rows - threshold)
         passed_rows = (row_count - failed_rows) if row_count else threshold
 
     return max(0, passed_rows), max(0, failed_rows)
 
 
-def calculate_less_than_failure_old(
-    threshold: int, len_rows: int, row_count: int
-) -> tuple[int, int]:
+def calculate_less_than_failure_old(threshold: int, len_rows: int, row_count: int) -> tuple[int, int]:
     """
     Original buggy implementation for comparison
     """
@@ -49,17 +42,11 @@ class TestZeroThresholdEdgeCases(unittest.TestCase):
         threshold = 0
         row_count = 1
 
-        old_passed, old_failed = calculate_less_than_failure_old(
-            threshold, len_rows, row_count
-        )
+        old_passed, old_failed = calculate_less_than_failure_old(threshold, len_rows, row_count)
 
-        new_passed, new_failed = calculate_less_than_failure_fixed(
-            threshold, len_rows, row_count
-        )
+        new_passed, new_failed = calculate_less_than_failure_fixed(threshold, len_rows, row_count)
 
-        print(
-            f"Bug case - len_rows={len_rows}, threshold={threshold}, row_count={row_count}"
-        )
+        print(f"Bug case - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")
         print(f"Old: passed={old_passed}, failed={old_failed}")
         print(f"New: passed={new_passed}, failed={new_failed}")
 
@@ -75,16 +62,10 @@ class TestZeroThresholdEdgeCases(unittest.TestCase):
         threshold = -1
         row_count = 100
 
-        old_passed, old_failed = calculate_less_than_failure_old(
-            threshold, len_rows, row_count
-        )
-        new_passed, new_failed = calculate_less_than_failure_fixed(
-            threshold, len_rows, row_count
-        )
+        old_passed, old_failed = calculate_less_than_failure_old(threshold, len_rows, row_count)
+        new_passed, new_failed = calculate_less_than_failure_fixed(threshold, len_rows, row_count)
 
-        print(
-            f"Negative threshold - len_rows={len_rows}, threshold={threshold}, row_count={row_count}"
-        )
+        print(f"Negative threshold - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")
         print(f"Old: passed={old_passed}, failed={old_failed}")
         print(f"New: passed={new_passed}, failed={new_failed}")
 
@@ -100,16 +81,10 @@ class TestZeroThresholdEdgeCases(unittest.TestCase):
         threshold = 0
         row_count = 50
 
-        old_passed, old_failed = calculate_less_than_failure_old(
-            threshold, len_rows, row_count
-        )
-        new_passed, new_failed = calculate_less_than_failure_fixed(
-            threshold, len_rows, row_count
-        )
+        old_passed, old_failed = calculate_less_than_failure_old(threshold, len_rows, row_count)
+        new_passed, new_failed = calculate_less_than_failure_fixed(threshold, len_rows, row_count)
 
-        print(
-            f"Zero threshold, no results - len_rows={len_rows}, threshold={threshold}, row_count={row_count}"
-        )
+        print(f"Zero threshold, no results - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")
         print(f"Old: passed={old_passed}, failed={old_failed}")
         print(f"New: passed={new_passed}, failed={new_failed}")
 
@@ -125,16 +100,10 @@ class TestZeroThresholdEdgeCases(unittest.TestCase):
         threshold = 10
         row_count = 100
 
-        old_passed, old_failed = calculate_less_than_failure_old(
-            threshold, len_rows, row_count
-        )
-        new_passed, new_failed = calculate_less_than_failure_fixed(
-            threshold, len_rows, row_count
-        )
+        old_passed, old_failed = calculate_less_than_failure_old(threshold, len_rows, row_count)
+        new_passed, new_failed = calculate_less_than_failure_fixed(threshold, len_rows, row_count)
 
-        print(
-            f"Normal case - len_rows={len_rows}, threshold={threshold}, row_count={row_count}"
-        )
+        print(f"Normal case - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")
         print(f"Old: passed={old_passed}, failed={old_failed}")
         print(f"New: passed={new_passed}, failed={new_failed}")
 
@@ -150,13 +119,9 @@ class TestZeroThresholdEdgeCases(unittest.TestCase):
         threshold = 0
         row_count = None
 
-        new_passed, new_failed = calculate_less_than_failure_fixed(
-            threshold, len_rows, row_count
-        )
+        new_passed, new_failed = calculate_less_than_failure_fixed(threshold, len_rows, row_count)
 
-        print(
-            f"No row count - len_rows={len_rows}, threshold={threshold}, row_count={row_count}"
-        )
+        print(f"No row count - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")
         print(f"New: passed={new_passed}, failed={new_failed}")
 
         self.assertEqual(new_passed, 0)
@@ -168,16 +133,10 @@ class TestZeroThresholdEdgeCases(unittest.TestCase):
         threshold = 0
         row_count = 20
 
-        old_passed, old_failed = calculate_less_than_failure_old(
-            threshold, len_rows, row_count
-        )
-        new_passed, new_failed = calculate_less_than_failure_fixed(
-            threshold, len_rows, row_count
-        )
+        old_passed, old_failed = calculate_less_than_failure_old(threshold, len_rows, row_count)
+        new_passed, new_failed = calculate_less_than_failure_fixed(threshold, len_rows, row_count)
 
-        print(
-            f"<= 0 with results - len_rows={len_rows}, threshold={threshold}, row_count={row_count}"
-        )
+        print(f"<= 0 with results - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")
         print(f"Old: passed={old_passed}, failed={old_failed}")
         print(f"New: passed={new_passed}, failed={new_failed}")
 

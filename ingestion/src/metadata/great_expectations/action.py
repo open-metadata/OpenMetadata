@@ -15,6 +15,7 @@ Open Metadata table quality.
 This subpackage needs to be used in Great Expectations
 checkpoints actions.
 """
+
 import logging
 import traceback
 from datetime import datetime
@@ -37,7 +38,7 @@ from great_expectations.data_context.data_context import DataContext
 from metadata.generated.schema.type.basic import Timestamp
 
 try:
-    from great_expectations.data_context.types.resource_identifiers import (
+    from great_expectations.data_context.types.resource_identifiers import (  # noqa: I001
         GeCloudIdentifier,  # type: ignore
     )
     from great_expectations.data_context.types.resource_identifiers import (
@@ -45,7 +46,7 @@ try:
         ValidationResultIdentifier,
     )
 except ImportError:
-    from great_expectations.data_context.types.resource_identifiers import (
+    from great_expectations.data_context.types.resource_identifiers import (  # noqa: I001
         ExpectationSuiteIdentifier,
         GXCloudIdentifier as GeCloudIdentifier,
         ValidationResultIdentifier,
@@ -83,9 +84,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.entity_link import get_entity_link
 
-logger = logging.getLogger(
-    "great_expectations.validation_operators.validation_operators.openmetadata"
-)
+logger = logging.getLogger("great_expectations.validation_operators.validation_operators.openmetadata")
 
 
 class OpenMetadataValidationAction(ValidationAction):
@@ -122,16 +121,12 @@ class OpenMetadataValidationAction(ValidationAction):
         self.table_name = table_name
         self.schema_name = schema_name  # for database without schema concept
         self.config_file_path = config_file_path
-        self.expectation_suite_table_config_map = (
-            expectation_suite_table_config_map or {}
-        )
+        self.expectation_suite_table_config_map = expectation_suite_table_config_map or {}
         self.table_mapper = TableMapper(
             default_database_name=self.database_name,
             default_schema_name=self.schema_name,
             default_table_name=self.table_name,
-            expectation_suite_table_config_map=TableConfigMap.parse(
-                self.expectation_suite_table_config_map
-            ),
+            expectation_suite_table_config_map=TableConfigMap.parse(self.expectation_suite_table_config_map),
         )
         self.ometa_conn = self._create_ometa_connection()
         self.expectation_suite = None
@@ -139,9 +134,7 @@ class OpenMetadataValidationAction(ValidationAction):
     def _run(  # pylint: disable=unused-argument
         self,
         validation_result_suite: ExpectationSuiteValidationResult,
-        validation_result_suite_identifier: Union[
-            ValidationResultIdentifier, GeCloudIdentifier
-        ],
+        validation_result_suite_identifier: Union[ValidationResultIdentifier, GeCloudIdentifier],
         data_asset: Union[Validator, DataAsset, Batch],
         payload=None,
         expectation_suite_identifier: Optional[ExpectationSuiteIdentifier] = None,
@@ -161,46 +154,30 @@ class OpenMetadataValidationAction(ValidationAction):
 
         if expectation_suite_identifier:
             expectation_suite_name = expectation_suite_identifier.expectation_suite_name
-            self.expectation_suite = self.data_context.get_expectation_suite(
-                expectation_suite_name
-            )
+            self.expectation_suite = self.data_context.get_expectation_suite(expectation_suite_name)
 
         check_point_spec = self._get_checkpoint_batch_spec(data_asset)
         table_entity = None
         if isinstance(check_point_spec, SqlAlchemyDatasourceBatchSpec):
             execution_engine_url = self._get_execution_engine_url(data_asset)
             table_entity = self._get_table_entity(
-                self.table_mapper.get_part_name(
-                    TablePart.DATABASE, expectation_suite_name
-                )
+                self.table_mapper.get_part_name(TablePart.DATABASE, expectation_suite_name)
                 or execution_engine_url.database,
                 check_point_spec.get(
                     "schema_name",
-                    self.table_mapper.get_part_name(
-                        TablePart.SCHEMA, expectation_suite_name
-                    ),
+                    self.table_mapper.get_part_name(TablePart.SCHEMA, expectation_suite_name),
                 ),
                 check_point_spec.get(
                     "table_name",
-                    self.table_mapper.get_part_name(
-                        TablePart.TABLE, expectation_suite_name
-                    ),
+                    self.table_mapper.get_part_name(TablePart.TABLE, expectation_suite_name),
                 ),
             )
 
-        elif isinstance(check_point_spec, RuntimeDataBatchSpec) or isinstance(
-            check_point_spec, RuntimeQueryBatchSpec
-        ):
+        elif isinstance(check_point_spec, RuntimeDataBatchSpec) or isinstance(check_point_spec, RuntimeQueryBatchSpec):
             table_entity = self._get_table_entity(
-                self.table_mapper.get_part_name(
-                    TablePart.DATABASE, expectation_suite_name
-                ),
-                self.table_mapper.get_part_name(
-                    TablePart.SCHEMA, expectation_suite_name
-                ),
-                self.table_mapper.get_part_name(
-                    TablePart.TABLE, expectation_suite_name
-                ),
+                self.table_mapper.get_part_name(TablePart.DATABASE, expectation_suite_name),
+                self.table_mapper.get_part_name(TablePart.SCHEMA, expectation_suite_name),
+                self.table_mapper.get_part_name(TablePart.TABLE, expectation_suite_name),
             )
 
         if table_entity:
@@ -209,10 +186,8 @@ class OpenMetadataValidationAction(ValidationAction):
 
     @staticmethod
     def _get_checkpoint_batch_spec(
-        data_asset: Union[Validator, DataAsset, Batch]
-    ) -> Union[
-        SqlAlchemyDatasourceBatchSpec, RuntimeDataBatchSpec, RuntimeQueryBatchSpec
-    ]:
+        data_asset: Union[Validator, DataAsset, Batch],
+    ) -> Union[SqlAlchemyDatasourceBatchSpec, RuntimeDataBatchSpec, RuntimeQueryBatchSpec]:
         """Return run meta and check instance of data_asset
 
         Args:
@@ -230,7 +205,7 @@ class OpenMetadataValidationAction(ValidationAction):
         if isinstance(batch_spec, RuntimeQueryBatchSpec):
             return batch_spec
         raise ValueError(
-            f"Type `{type(batch_spec).__name__,}` is not supported."
+            f"Type `{(type(batch_spec).__name__,)}` is not supported."
             " Make sure you ran your expectations against a relational database",
         )
 
@@ -259,9 +234,7 @@ class OpenMetadataValidationAction(ValidationAction):
                          `database`.`schema`.`table` are found
         """
         if not all([schema_name, table_name]):
-            raise ValueError(
-                "No Schema or Table name provided. Can't fetch table entity from OpenMetadata."
-            )
+            raise ValueError("No Schema or Table name provided. Can't fetch table entity from OpenMetadata.")
 
         if self.database_service_name:
             return self.ometa_conn.get_by_name(
@@ -272,11 +245,8 @@ class OpenMetadataValidationAction(ValidationAction):
 
         table_entity = [
             entity
-            for entity in self.ometa_conn.list_entities(
-                entity=Table, fields=["testSuite"]
-            ).entities
-            if f"{database}.{schema_name}.{table_name}"
-            in entity.fullyQualifiedName.root
+            for entity in self.ometa_conn.list_entities(entity=Table, fields=["testSuite"]).entities
+            if f"{database}.{schema_name}.{table_name}" in entity.fullyQualifiedName.root
         ]
 
         if len(table_entity) > 1:
@@ -288,9 +258,7 @@ class OpenMetadataValidationAction(ValidationAction):
         if table_entity:
             return table_entity[0]
 
-        logger.warning(
-            "No entity found for %s.%s.%s", database, schema_name, table_name
-        )
+        logger.warning("No entity found for %s.%s.%s", database, schema_name, table_name)
         return None
 
     def _check_or_create_test_suite(self, table_entity: Table) -> TestSuite:
@@ -304,9 +272,7 @@ class OpenMetadataValidationAction(ValidationAction):
         """
 
         if table_entity.testSuite:
-            test_suite = self.ometa_conn.get_by_name(
-                TestSuite, table_entity.testSuite.fullyQualifiedName
-            )
+            test_suite = self.ometa_conn.get_by_name(TestSuite, table_entity.testSuite.fullyQualifiedName)
             test_suite = cast(TestSuite, test_suite)
             return test_suite
 
@@ -314,15 +280,11 @@ class OpenMetadataValidationAction(ValidationAction):
             name=f"{table_entity.fullyQualifiedName.root}.TestSuite",
             basicEntityReference=table_entity.fullyQualifiedName.root,
         )  # type: ignore
-        test_suite = self.ometa_conn.create_or_update_executable_test_suite(
-            create_test_suite
-        )
+        test_suite = self.ometa_conn.create_or_update_executable_test_suite(create_test_suite)
         return test_suite
 
     @staticmethod
-    def _get_execution_engine_url(
-        data_asset: Union[Validator, DataAsset, Batch]
-    ) -> URL:
+    def _get_execution_engine_url(data_asset: Union[Validator, DataAsset, Batch]) -> URL:
         """Get execution engine used to run the expectation
 
         Args:
@@ -336,10 +298,7 @@ class OpenMetadataValidationAction(ValidationAction):
             return data_asset.execution_engine.engine.url
         if isinstance(data_asset.execution_engine.engine, Connection):
             return data_asset.execution_engine.engine.engine.url
-        raise ValueError(
-            "Type is not supported. Make sur you ran your"
-            " expectations against a relational database"
-        )
+        raise ValueError("Type is not supported. Make sur you ran your expectations against a relational database")
 
     def _create_ometa_connection(self) -> OpenMetadata:
         """Create OpenMetadata API connection"""
@@ -410,9 +369,7 @@ class OpenMetadataValidationAction(ValidationAction):
             if key not in {"column", "batch_id"}
         ]
 
-    def _get_test_case_params_definition(
-        self, result: dict
-    ) -> List[TestCaseParameterDefinition]:
+    def _get_test_case_params_definition(self, result: dict) -> List[TestCaseParameterDefinition]:
         """Build test case parameter definition from GE test result"""
         if self.expectation_suite:
             expectation = self._get_expectation_config(result)
@@ -476,15 +433,11 @@ class OpenMetadataValidationAction(ValidationAction):
                         )
                     )
                 elif field == "observed_value":
-                    test_result_values.extend(
-                        self._extract_complex_value_from_observed_value(value)
-                    )
+                    test_result_values.extend(self._extract_complex_value_from_observed_value(value))
 
         return test_result_values
 
-    def _extract_complex_value_from_observed_value(
-        self, observed_value
-    ) -> List[TestResultValue]:
+    def _extract_complex_value_from_observed_value(self, observed_value) -> List[TestResultValue]:
         """Extract complex value from observed value
 
         Args:
@@ -538,9 +491,7 @@ class OpenMetadataValidationAction(ValidationAction):
 
         return []
 
-    def _get_expectation_config(
-        self, result: dict
-    ) -> Optional[ExpectationConfiguration]:
+    def _get_expectation_config(self, result: dict) -> Optional[ExpectationConfiguration]:
         """Get expectation config from GE test result
 
         Args:
@@ -576,16 +527,12 @@ class OpenMetadataValidationAction(ValidationAction):
         try:
             test_definition = self.ometa_conn.get_or_create_test_definition(
                 test_definition_fqn=result["expectation_config"]["expectation_type"],
-                test_definition_description=result["expectation_config"][
-                    "expectation_type"
-                ].replace("_", " "),
+                test_definition_description=result["expectation_config"]["expectation_type"].replace("_", " "),
                 entity_type=EntityType.COLUMN
                 if "column" in result["expectation_config"]["kwargs"]
                 else EntityType.TABLE,
                 test_platforms=[TestPlatform.GreatExpectations],
-                test_case_parameter_definition=self._get_test_case_params_definition(
-                    result
-                ),
+                test_case_parameter_definition=self._get_test_case_params_definition(result),
             )
 
             test_case_fqn = self._build_test_case_fqn(
@@ -608,17 +555,13 @@ class OpenMetadataValidationAction(ValidationAction):
             self.ometa_conn.add_test_case_results(
                 test_results=TestCaseResult(
                     timestamp=Timestamp(int(datetime.now().timestamp() * 1000)),
-                    testCaseStatus=TestCaseStatus.Success
-                    if result["success"]
-                    else TestCaseStatus.Failed,
+                    testCaseStatus=TestCaseStatus.Success if result["success"] else TestCaseStatus.Failed,
                     testResultValue=self._get_test_result_value(result),
                 ),  # type: ignore
                 test_case_fqn=test_case.fullyQualifiedName.root,
             )
 
-            logger.debug(
-                f"Test case result for {test_case.fullyQualifiedName.root} successfully ingested"
-            )
+            logger.debug(f"Test case result for {test_case.fullyQualifiedName.root} successfully ingested")
 
         except Exception as exc:
             logger.debug(traceback.format_exc())

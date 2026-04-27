@@ -11,6 +11,7 @@
 """
 Test helpers module
 """
+
 import uuid
 from unittest import TestCase
 
@@ -259,22 +260,14 @@ class TestHelpers(TestCase):
         self.assertEqual(pretty_print_time_duration(100), "1m 40s 000.000ms")
         self.assertEqual(pretty_print_time_duration(1000), "16m 40s 000.000ms")
         self.assertEqual(pretty_print_time_duration(10000), "2h 46m 40s 000.000ms")
-        self.assertEqual(
-            pretty_print_time_duration(100000), "1day(s) 03h 46m 40s 000.000ms"
-        )
-        self.assertEqual(
-            pretty_print_time_duration(1000000), "11day(s) 13h 46m 40s 000.000ms"
-        )
+        self.assertEqual(pretty_print_time_duration(100000), "1day(s) 03h 46m 40s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(1000000), "11day(s) 13h 46m 40s 000.000ms")
         self.assertEqual(pretty_print_time_duration(20), "20s 000.000ms")
         self.assertEqual(pretty_print_time_duration(200), "3m 20s 000.000ms")
         self.assertEqual(pretty_print_time_duration(2000), "33m 20s 000.000ms")
         self.assertEqual(pretty_print_time_duration(20000), "5h 33m 20s 000.000ms")
-        self.assertEqual(
-            pretty_print_time_duration(200000), "2day(s) 07h 33m 20s 000.000ms"
-        )
-        self.assertEqual(
-            pretty_print_time_duration(2000000), "23day(s) 03h 33m 20s 000.000ms"
-        )
+        self.assertEqual(pretty_print_time_duration(200000), "2day(s) 07h 33m 20s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(2000000), "23day(s) 03h 33m 20s 000.000ms")
         self.assertEqual(pretty_print_time_duration(0.5), "500.000ms")
         self.assertEqual(pretty_print_time_duration(1.234), "1s 234.000ms")
         self.assertEqual(pretty_print_time_duration(65.5), "1m 05s 500.000ms")

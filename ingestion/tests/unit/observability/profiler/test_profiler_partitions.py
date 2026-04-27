@@ -41,9 +41,7 @@ mock_bigquery_config = {
     "source": {
         "type": "bigquery",
         "serviceName": "local_bigquery",
-        "serviceConnection": {
-            "config": {"type": "BigQuery", "credentials": {"gcpConfig": {}}}
-        },
+        "serviceConnection": {"config": {"type": "BigQuery", "credentials": {"gcpConfig": {}}}},
         "sourceConfig": {
             "config": {
                 "type": "Profiler",
@@ -105,22 +103,16 @@ class MockRedshiftTable(BaseModel):
         arbitrary_types_allowed = True
 
 
-MOCK_TIME_UNIT_PARTITIONING = TimePartitioning(
-    expiration_ms=None, field="test_column", type_="DAY"
-)
+MOCK_TIME_UNIT_PARTITIONING = TimePartitioning(expiration_ms=None, field="test_column", type_="DAY")
 
 MOCK_INGESTION_TIME_PARTITIONING = TimePartitioning(expiration_ms=None, type_="HOUR")
 
-MOCK_RANGE_PARTITIONING = RangePartitioning(
-    field="test_column", range_=PartitionRange(end=100, interval=10, start=0)
-)
+MOCK_RANGE_PARTITIONING = RangePartitioning(field="test_column", range_=PartitionRange(end=100, interval=10, start=0))
 
 
 class ProfilerPartitionUnitTest(TestCase):
     @patch.object(ProfilerWorkflow, "test_connection")
-    @patch(
-        "metadata.profiler.source.metadata.OpenMetadataSource._validate_service_name"
-    )
+    @patch("metadata.profiler.source.metadata.OpenMetadataSource._validate_service_name")
     @patch("google.auth.default")
     @patch("sqlalchemy.engine.base.Engine.connect")
     @patch("sqlalchemy_bigquery._helpers.create_bigquery_client")

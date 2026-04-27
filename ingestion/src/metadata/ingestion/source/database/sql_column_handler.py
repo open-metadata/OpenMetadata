@@ -11,6 +11,7 @@
 """
 Generic call to handle table columns for sql connectors.
 """
+
 import re
 import traceback
 from typing import Dict, List, Optional, Tuple
@@ -66,9 +67,7 @@ class SqlColumnHandlerMixin:
             logger.info("Fetching tags not implemented for this connector")
             self.source_config.includeTags = False
 
-    def process_additional_table_constraints(
-        self, column: dict, table_constraints: List[TableConstraint]
-    ) -> None:
+    def process_additional_table_constraints(self, column: dict, table_constraints: List[TableConstraint]) -> None:
         """
         By Default there are no additional table constraints
         """
@@ -104,14 +103,9 @@ class SqlColumnHandlerMixin:
                 valid.append(constraint)
             else:
                 logger.warning(
-                    "Filtering out table constraint %s: references columns %s "
-                    "not found in processed columns",
+                    "Filtering out table constraint %s: references columns %s not found in processed columns",
                     constraint.constraintType.name,
-                    [
-                        c
-                        for c in constraint.columns
-                        if c.lower() not in column_names_lower
-                    ],
+                    [c for c in constraint.columns if c.lower() not in column_names_lower],
                 )
         return valid
 
@@ -124,11 +118,7 @@ class SqlColumnHandlerMixin:
         precision: Optional[Tuple[str, str]],
     ) -> str:
         if precision:
-            return (
-                data_type_display
-                if data_type_display
-                else f"{col_type}({precision[0]},{precision[1]})"
-            )
+            return data_type_display if data_type_display else f"{col_type}({precision[0]},{precision[1]})"
         data_type_display = (
             f"{data_type_display}"
             if data_type_display
@@ -147,9 +137,7 @@ class SqlColumnHandlerMixin:
         arr_data_type = None
         parsed_string = None
         if column.get("system_data_type") and column.get("is_complex"):
-            column["system_data_type"] = self.clean_raw_data_type(
-                column["system_data_type"]
-            )
+            column["system_data_type"] = self.clean_raw_data_type(column["system_data_type"])
             if not column["system_data_type"].startswith(schema):
                 parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                     column["system_data_type"]
@@ -160,15 +148,9 @@ class SqlColumnHandlerMixin:
             # For arrays, we'll get the item type if possible, or parse the string representation of the column
             # if SQLAlchemy does not provide any further information
             if col_type == "ARRAY" and getattr(column["type"], "item_type", None):
-                arr_data_type = ColumnTypeParser.get_column_type(
-                    column["type"].item_type
-                )
-            if col_type == "ARRAY" and re.match(
-                r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])
-            ):
-                arr_data_type = re.match(
-                    r"(?:\w*)(?:[(]*)(\w*)(?:.*)", str(column["type"])
-                ).groups()
+                arr_data_type = ColumnTypeParser.get_column_type(column["type"].item_type)
+            if col_type == "ARRAY" and re.match(r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])):
+                arr_data_type = re.match(r"(?:\w*)(?:[(]*)(\w*)(?:.*)", str(column["type"])).groups()
                 if isinstance(arr_data_type, (list, tuple)):
                     arr_data_type = ColumnTypeParser.get_column_type(arr_data_type[0])
                 data_type_display = column["type"]
@@ -183,9 +165,7 @@ class SqlColumnHandlerMixin:
     ) -> Tuple[List, List, List]:
         pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
         try:
-            unique_constraints = inspector.get_unique_constraints(
-                table_name, schema_name
-            )
+            unique_constraints = inspector.get_unique_constraints(table_name, schema_name)
         except NotImplementedError:
             logger.debug(
                 f"Cannot obtain unique constraints for table [{schema_name}.{table_name}]: NotImplementedError"
@@ -207,9 +187,7 @@ class SqlColumnHandlerMixin:
 
         foreign_columns = []
         for foreign_constraint in foreign_constraints:
-            if len(foreign_constraint) > 0 and foreign_constraint.get(
-                "constrained_columns"
-            ):
+            if len(foreign_constraint) > 0 and foreign_constraint.get("constrained_columns"):
                 foreign_constraint.update(
                     {
                         "constrained_columns": [
@@ -234,35 +212,21 @@ class SqlColumnHandlerMixin:
                     ]
                 )
 
-        pk_columns = [
-            clean_up_starting_ending_double_quotes_in_string(pk_column)
-            for pk_column in pk_columns
-        ]
+        pk_columns = [clean_up_starting_ending_double_quotes_in_string(pk_column) for pk_column in pk_columns]
 
         return pk_columns, unique_columns, foreign_columns
 
     def _process_complex_col_type(self, parsed_string: dict, column: dict) -> Column:
-        parsed_string["dataLength"] = self._check_col_length(
-            parsed_string["dataType"], column["type"]
-        )
+        parsed_string["dataLength"] = self._check_col_length(parsed_string["dataType"], column["type"])
         parsed_string["description"] = column.get("comment")
         if column["system_data_type"] == "array":
             array_data_type_display = (
-                repr(column["type"])
-                .replace("(", "<")
-                .replace(")", ">")
-                .replace("=", ":")
-                .replace("<>", "")
-                .lower()
+                repr(column["type"]).replace("(", "<").replace(")", ">").replace("=", ":").replace("<>", "").lower()
             )
             parsed_string["dataTypeDisplay"] = f"{array_data_type_display}"
-            parsed_string[
-                "arrayDataType"
-            ] = ColumnTypeParser._parse_primitive_datatype_string(  # pylint: disable=protected-access
+            parsed_string["arrayDataType"] = ColumnTypeParser._parse_primitive_datatype_string(  # pylint: disable=protected-access
                 array_data_type_display[6:-1]
-            )[
-                "dataType"
-            ]
+            )["dataType"]
         return Column(**parsed_string)
 
     def _get_columns_internal(
@@ -277,9 +241,7 @@ class SqlColumnHandlerMixin:
         Get columns list
         """
 
-        return inspector.get_columns(
-            table_name, schema_name, table_type=table_type, db_name=db_name
-        )
+        return inspector.get_columns(table_name, schema_name, table_type=table_type, db_name=db_name)
 
     @calculate_execution_time()
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
@@ -289,9 +251,7 @@ class SqlColumnHandlerMixin:
         db_name: str,
         inspector: Inspector,
         table_type: TableType = None,
-    ) -> Tuple[
-        Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]
-    ]:
+    ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]]:
         """
         Get columns types and constraints information
         """
@@ -311,8 +271,7 @@ class SqlColumnHandlerMixin:
                 column_level_unique_constraints.add(col[0])
             else:
                 if not any(
-                    tc.constraintType == ConstraintType.UNIQUE and tc.columns == col
-                    for tc in table_constraints
+                    tc.constraintType == ConstraintType.UNIQUE and tc.columns == col for tc in table_constraints
                 ):
                     table_constraints.append(
                         TableConstraint(
@@ -331,9 +290,7 @@ class SqlColumnHandlerMixin:
         table_columns = []
 
         try:
-            columns = self._get_columns_internal(
-                schema_name, table_name, db_name, inspector, table_type
-            )
+            columns = self._get_columns_internal(schema_name, table_name, db_name, inspector, table_type)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -348,24 +305,16 @@ class SqlColumnHandlerMixin:
                 arr_data_type,
                 parsed_string,
             ) = self._process_col_type(column, schema_name)
-            self.process_additional_table_constraints(
-                column=column, table_constraints=table_constraints
-            )
+            self.process_additional_table_constraints(column=column, table_constraints=table_constraints)
             if parsed_string is None:
                 col_type = ColumnTypeParser.get_column_type(column["type"])
-                col_constraint = self._get_column_constraints(
-                    column, pk_columns, column_level_unique_constraints
-                )
+                col_constraint = self._get_column_constraints(column, pk_columns, column_level_unique_constraints)
                 col_data_length = self._check_col_length(col_type, column["type"])
-                precision = ColumnTypeParser.check_col_precision(
-                    col_type, column["type"]
-                )
+                precision = ColumnTypeParser.check_col_precision(col_type, column["type"])
                 if col_type is None:
                     col_type = DataType.UNKNOWN.name
                     data_type_display = col_type.lower()
-                    logger.warning(
-                        f"Unknown type {repr(column['type'])}: {column['name']}"
-                    )
+                    logger.warning(f"Unknown type {repr(column['type'])}: {column['name']}")
                 data_type_display = self._get_display_datatype(
                     data_type_display,
                     col_type,
@@ -391,17 +340,14 @@ class SqlColumnHandlerMixin:
                     dataLength=col_data_length,
                     constraint=col_constraint,
                     arrayDataType=arr_data_type,
-                    ordinalPosition=column.get("ordinalPosition")
-                    or column.get("ordinal_position"),
+                    ordinalPosition=column.get("ordinalPosition") or column.get("ordinal_position"),
                 )
                 if precision:
                     # Precision and scale must be integer values
                     om_column.precision = int(precision[0])
                     om_column.scale = int(precision[1])
             else:
-                col_obj = self._process_complex_col_type(
-                    column=column, parsed_string=parsed_string
-                )
+                col_obj = self._process_complex_col_type(column=column, parsed_string=parsed_string)
                 om_column = col_obj
 
                 if column.get("children"):
@@ -409,12 +355,8 @@ class SqlColumnHandlerMixin:
                     # If 'children' are directly provided in the source metadata,
                     # process and assign them to the output column, overriding any derived children.
                     # Currently, this is only used for BigQuery.
-                    om_column.children = [
-                        process_column(children) for children in column.get("children")
-                    ]
-            om_column.tags = self.get_column_tag_labels(
-                table_name=table_name, column=column
-            )
+                    om_column.children = [process_column(children) for children in column.get("children")]
+            om_column.tags = self.get_column_tag_labels(table_name=table_name, column=column)
             return om_column
 
         for column in columns:
@@ -422,15 +364,11 @@ class SqlColumnHandlerMixin:
                 om_column = process_column(column)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unexpected exception processing column [{column}]: {exc}"
-                )
+                logger.warning(f"Unexpected exception processing column [{column}]: {exc}")
                 continue
             table_columns.append(om_column)
 
-        table_constraints = self._filter_invalid_constraints(
-            table_columns, table_constraints
-        )
+        table_constraints = self._filter_invalid_constraints(table_columns, table_constraints)
 
         self._extract_json_schema_for_columns(
             table_columns=table_columns,
@@ -452,9 +390,7 @@ class SqlColumnHandlerMixin:
         return None
 
     @staticmethod
-    def _get_column_constraints(
-        column, pk_columns, unique_columns
-    ) -> Optional[Constraint]:
+    def _get_column_constraints(column, pk_columns, unique_columns) -> Optional[Constraint]:
         """
         Prepare column constraints for the Table Entity
         """
@@ -495,10 +431,7 @@ class SqlColumnHandlerMixin:
         """Check if a column is a JSON type column."""
         if column.dataType and column.dataType.value in JSON_COLUMN_TYPES:
             return True
-        if (
-            column.dataTypeDisplay
-            and column.dataTypeDisplay.upper() in JSON_COLUMN_TYPES
-        ):
+        if column.dataTypeDisplay and column.dataTypeDisplay.upper() in JSON_COLUMN_TYPES:
             return True
         return False
 
@@ -506,10 +439,7 @@ class SqlColumnHandlerMixin:
         """Check if a column is a STRING type column that might contain JSON."""
         if column.dataType and column.dataType.value in STRING_COLUMN_TYPES:
             return True
-        if (
-            column.dataTypeDisplay
-            and column.dataTypeDisplay.upper() in STRING_COLUMN_TYPES
-        ):
+        if column.dataTypeDisplay and column.dataTypeDisplay.upper() in STRING_COLUMN_TYPES:
             return True
         return False
 
@@ -560,9 +490,7 @@ class SqlColumnHandlerMixin:
                 if col_name in json_values_by_column:
                     json_values = json_values_by_column[col_name]
                     if json_values:
-                        json_schema_str, children = infer_json_schema_from_sample(
-                            json_values
-                        )
+                        json_schema_str, children = infer_json_schema_from_sample(json_values)
                         if json_schema_str:
                             column.jsonSchema = json_schema_str
                         if children:
@@ -571,8 +499,7 @@ class SqlColumnHandlerMixin:
                                 column.dataType = DataType.JSON
                                 column.dataTypeDisplay = "json"
                         logger.debug(
-                            f"Extracted JSON schema for column [{col_name}] "
-                            f"in table [{schema_name}.{table_name}]"
+                            f"Extracted JSON schema for column [{col_name}] in table [{schema_name}.{table_name}]"
                         )
 
         except Exception as exc:

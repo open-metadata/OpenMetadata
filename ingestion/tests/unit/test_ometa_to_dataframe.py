@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """Test Ometa Dataframe utility tests"""
+
 import os
 import unittest
 from unittest.mock import patch
@@ -30,11 +31,7 @@ from .topology.database.test_datalake import mock_datalake_config
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-resp_parquet_file = (
-    pq.ParquetFile(os.path.join(ROOT_DIR, "test_ometa_to_dataframe.parquet"))
-    .read()
-    .to_pandas()
-)
+resp_parquet_file = pq.ParquetFile(os.path.join(ROOT_DIR, "test_ometa_to_dataframe.parquet")).read().to_pandas()
 method_resp_file = DatalakeColumnWrapper(
     columns=None,
     dataframes=lambda: iter((resp_parquet_file,)),
@@ -51,9 +48,7 @@ class TestStringMethods(unittest.TestCase):
             resp = exec_mock_method("key", "string")
             assert type(resp) == DatalakeColumnWrapper
 
-    @patch(
-        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection")
     def test_get_dataframes(self, test_connection):
         with patch(
             "metadata.mixins.pandas.pandas_mixin.fetch_dataframe_generator",
@@ -83,9 +78,7 @@ class TestStringMethods(unittest.TestCase):
             assert resp == method_resp_file
             assert type(resp) == DatalakeColumnWrapper
 
-    @patch(
-        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection")
     def test_get_dataframes_fail(self, test_connection):
         with patch(
             "metadata.mixins.pandas.pandas_mixin.fetch_dataframe_generator",

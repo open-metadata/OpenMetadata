@@ -11,6 +11,7 @@
 """
 Integration tests for Rule Library SQL Expression validator
 """
+
 from dataclasses import dataclass
 from typing import List
 
@@ -66,9 +67,7 @@ def rule_library_test_definition(
     test_def = metadata.create_or_update(
         CreateTestDefinitionRequest(
             name=test_def_name,
-            description=Markdown(
-                root="Rule library test definition for custom SQL expression validation"
-            ),
+            description=Markdown(root="Rule library test definition for custom SQL expression validation"),
             entityType=EntityType.COLUMN,
             testPlatforms=[TestPlatform.OpenMetadata],
             supportedDataTypes=NUMERIC_DATA_TYPES,
@@ -114,9 +113,7 @@ def get_rule_library_test_suite_config(workflow_config, sink_config):
             },
             "processor": {
                 "type": "orm-test-runner",
-                "config": {
-                    "testCases": [obj.model_dump() for obj in test_case_definitions]
-                },
+                "config": {"testCases": [obj.model_dump() for obj in test_case_definitions]},
             },
             "sink": sink_config,
             "workflowConfig": workflow_config,
@@ -158,12 +155,8 @@ class RuleLibraryTestParameter:
     ids=lambda x: x.test_case_definition.name,
 )
 def rule_library_parameters(request, db_service, rule_library_test_definition):
-    request.param.entity_fqn = request.param.entity_fqn.format(
-        database_service_fqn=db_service.fullyQualifiedName.root
-    )
-    request.param.test_case_definition.testDefinitionName = (
-        rule_library_test_definition.name.root
-    )
+    request.param.entity_fqn = request.param.entity_fqn.format(database_service_fqn=db_service.fullyQualifiedName.root)
+    request.param.test_case_definition.testDefinitionName = rule_library_test_definition.name.root
     return request.param
 
 
@@ -211,7 +204,4 @@ def test_rule_library_sql_expression_validator(
     cleanup_fqns(TestCase, test_case.fullyQualifiedName.root)
 
     assert test_case.testCaseResult is not None
-    assert (
-        test_case.testCaseResult.testCaseStatus
-        == rule_library_parameters.expected_status
-    )
+    assert test_case.testCaseResult.testCaseStatus == rule_library_parameters.expected_status

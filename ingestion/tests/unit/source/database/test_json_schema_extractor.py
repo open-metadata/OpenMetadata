@@ -11,6 +11,7 @@
 """
 Unit tests for JSON schema extraction from sampled data.
 """
+
 import json
 
 from metadata.generated.schema.entity.data.table import DataType
@@ -422,9 +423,7 @@ class TestJsonSchemaExtractionEdgeCases:
 
     def test_large_numbers(self):
         """Test handling large numbers."""
-        json_values = [
-            {"big_int": 9999999999999999, "big_float": 1.7976931348623157e308}
-        ]
+        json_values = [{"big_int": 9999999999999999, "big_float": 1.7976931348623157e308}]
         schema_str, children = infer_json_schema_from_sample(json_values)
 
         assert schema_str is not None
@@ -841,19 +840,14 @@ class TestAllStringColumnTypes:
         schema_str, children = infer_json_schema_from_sample(long_json)
         assert schema_str is not None
         schema = json.loads(schema_str)
-        assert (
-            "very_long_key_name_that_might_be_stored_in_varchar" in schema["properties"]
-        )
+        assert "very_long_key_name_that_might_be_stored_in_varchar" in schema["properties"]
 
     def test_text_type_with_large_json(self):
         """Test TEXT type columns that might store large JSON documents."""
         large_json = [
             {
                 "document": {
-                    "sections": [
-                        {"title": f"Section {i}", "content": f"Content for section {i}"}
-                        for i in range(10)
-                    ],
+                    "sections": [{"title": f"Section {i}", "content": f"Content for section {i}"} for i in range(10)],
                     "metadata": {
                         "author": "Test Author",
                         "created": "2024-01-01",

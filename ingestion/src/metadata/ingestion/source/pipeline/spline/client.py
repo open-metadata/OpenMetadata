@@ -11,6 +11,7 @@
 """
 Client to interact with Spline consumer apis
 """
+
 import traceback
 from typing import Optional
 
@@ -49,9 +50,7 @@ class SplineClient:
     def _paginate_pipelines(self, pipelines: ExecutionEvents):
         while pipelines.pageNum * pipelines.pageSize < pipelines.totalCount:
             try:
-                response = self.client.get(
-                    f"/execution-events?pageNum={pipelines.pageNum+1}"
-                )
+                response = self.client.get(f"/execution-events?pageNum={pipelines.pageNum + 1}")
                 pipelines = ExecutionEvents(**response)
                 yield pipelines
             except Exception as exe:
@@ -94,16 +93,12 @@ class SplineClient:
 
         return None
 
-    def get_column_lineage_details(
-        self, pipeline_id: str, attribute_id: str
-    ) -> Optional[AttributeDetail]:
+    def get_column_lineage_details(self, pipeline_id: str, attribute_id: str) -> Optional[AttributeDetail]:
         """
         Method returns the column lineage details
         """
         try:
-            response = self.client.get(
-                f"/attribute-lineage-and-impact?execId={pipeline_id}&attributeId={attribute_id}"
-            )
+            response = self.client.get(f"/attribute-lineage-and-impact?execId={pipeline_id}&attributeId={attribute_id}")
             if response:
                 return AttributeDetail(**response)
         except Exception as exe:

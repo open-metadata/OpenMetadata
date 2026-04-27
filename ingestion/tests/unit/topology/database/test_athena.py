@@ -104,16 +104,12 @@ EXPECTED_DATABASES = [
         ),
     )
 ]
-EXPECTED_QUERY_TABLE_NAMES_TYPES = [
-    TableNameAndType(name="sample_table", type_=TableType.External)
-]
+EXPECTED_QUERY_TABLE_NAMES_TYPES = [TableNameAndType(name="sample_table", type_=TableType.External)]
 MOCK_LOCATION_ENTITY = [
     Container(
         id=Uuid(UUID("9c489754-bb60-435b-b2a5-0e43100cf950")),
         name=EntityName("dbt-testing/mayur/customers.csv"),
-        fullyQualifiedName=FullyQualifiedEntityName(
-            's3_local.awsdatalake-testing."dbt-testing/mayur/customers.csv"'
-        ),
+        fullyQualifiedName=FullyQualifiedEntityName('s3_local.awsdatalake-testing."dbt-testing/mayur/customers.csv"'),
         updatedAt=Timestamp(1717070902713),
         updatedBy="admin",
         href=Href(
@@ -167,9 +163,7 @@ MOCK_TABLE_ENTITY = [
     Table(
         id=Uuid(UUID("2c040cf8-432d-4597-9517-4794d6142da3")),
         name=EntityName("demo_data_ext_tbl3"),
-        fullyQualifiedName=FullyQualifiedEntityName(
-            "local_athena.demo.default.demo_data_ext_tbl3"
-        ),
+        fullyQualifiedName=FullyQualifiedEntityName("local_athena.demo.default.demo_data_ext_tbl3"),
         updatedAt=Timestamp(1717071974350),
         updatedBy="admin",
         href=Href(
@@ -184,9 +178,7 @@ MOCK_TABLE_ENTITY = [
                 dataType=DataType.INT,
                 dataLength=1,
                 dataTypeDisplay="int",
-                fullyQualifiedName=FullyQualifiedEntityName(
-                    "local_athena.demo.default.demo_data_ext_tbl3.CUSTOMERID"
-                ),
+                fullyQualifiedName=FullyQualifiedEntityName("local_athena.demo.default.demo_data_ext_tbl3.CUSTOMERID"),
                 constraint=Constraint.NULL,
             ),
         ],
@@ -237,13 +229,9 @@ MOCK_TABLE_ENTITY = [
 EXPECTED_COLUMN_LINEAGE = [
     ColumnLineage(
         fromColumns=[
-            FullyQualifiedEntityName(
-                's3_local.awsdatalake-testing."dbt-testing/mayur/customers.csv".CUSTOMERID'
-            )
+            FullyQualifiedEntityName('s3_local.awsdatalake-testing."dbt-testing/mayur/customers.csv".CUSTOMERID')
         ],
-        toColumn=FullyQualifiedEntityName(
-            "local_athena.demo.default.demo_data_ext_tbl3.CUSTOMERID"
-        ),
+        toColumn=FullyQualifiedEntityName("local_athena.demo.default.demo_data_ext_tbl3.CUSTOMERID"),
     )
 ]
 
@@ -278,9 +266,7 @@ mock_athena_config = {
 
 
 class TestAthenaService(unittest.TestCase):
-    @patch(
-        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection")
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
@@ -289,12 +275,8 @@ class TestAthenaService(unittest.TestCase):
             mock_athena_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.athena_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
-        self.athena_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.athena_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        self.athena_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.athena_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     def test_get_database_name(self):
@@ -303,15 +285,11 @@ class TestAthenaService(unittest.TestCase):
     def test_query_table_names_and_types(self):
         mock_glue_client = MagicMock()
         mock_paginator = MagicMock()
-        mock_paginator.paginate.return_value = [
-            {"TableList": [{"Name": MOCK_TABLE_NAME, "Parameters": {}}]}
-        ]
+        mock_paginator.paginate.return_value = [{"TableList": [{"Name": MOCK_TABLE_NAME, "Parameters": {}}]}]
         mock_glue_client.get_paginator.return_value = mock_paginator
         self.athena_source.glue_client = mock_glue_client
         assert (
-            self.athena_source.query_table_names_and_types(
-                MOCK_DATABASE_SCHEMA.name.root
-            )
+            self.athena_source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root)
             == EXPECTED_QUERY_TABLE_NAMES_TYPES
         )
 
@@ -330,17 +308,12 @@ class TestAthenaService(unittest.TestCase):
         ]
         mock_glue_client.get_paginator.return_value = mock_paginator
         self.athena_source.glue_client = mock_glue_client
-        assert self.athena_source.query_table_names_and_types(
-            MOCK_DATABASE_SCHEMA.name.root
-        ) == [TableNameAndType(name=MOCK_TABLE_NAME, type_=TableType.Iceberg)]
+        assert self.athena_source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root) == [
+            TableNameAndType(name=MOCK_TABLE_NAME, type_=TableType.Iceberg)
+        ]
 
     def test_yield_database(self):
-        assert (
-            list(
-                self.athena_source.yield_database(database_name=MOCK_DATABASE.name.root)
-            )
-            == EXPECTED_DATABASES
-        )
+        assert list(self.athena_source.yield_database(database_name=MOCK_DATABASE.name.root)) == EXPECTED_DATABASES
 
     def test_column_lineage(self):
         columns_list = [column.name.root for column in MOCK_TABLE_ENTITY[0].columns]
@@ -357,9 +330,7 @@ class TestAthenaService(unittest.TestCase):
         from metadata.generated.schema.type.customProperty import PropertyType
 
         self.athena_source._string_property_type_ref = PropertyType(
-            EntityReference(
-                id=UUID("00000000-0000-0000-0000-000000000001"), type="type"
-            )
+            EntityReference(id=UUID("00000000-0000-0000-0000-000000000001"), type="type")
         )
         mock_inspector = MagicMock()
         mock_inspector.get_table_comment.return_value = {"text": "desc"}
@@ -367,9 +338,7 @@ class TestAthenaService(unittest.TestCase):
             "awsathena_location": "s3://bucket/path",
             "awsathena_tblproperties": {"prop_key": "prop_value", "null_prop": None},
         }
-        self.athena_source.get_table_description(
-            MOCK_DATABASE_SCHEMA.name.root, MOCK_TABLE_NAME, mock_inspector
-        )
+        self.athena_source.get_table_description(MOCK_DATABASE_SCHEMA.name.root, MOCK_TABLE_NAME, mock_inspector)
 
         with patch.object(self.athena_source, "metadata") as mock_metadata:
             result = self.athena_source.get_table_extensions(MOCK_TABLE_NAME)

@@ -11,6 +11,7 @@
 """
 Test FQN build behavior
 """
+
 from unittest import TestCase
 from unittest.mock import MagicMock
 
@@ -157,9 +158,7 @@ class TestFqn(TestCase):
         assert split_fqn.column == "customer_id"
         assert split_fqn.test_case == "expect_column_max_to_be_between"
 
-        split_fqn = fqn.split_test_case_fqn(
-            "local_redshift.dev.dbt_jaffle.customers.expect_table_column_to_be_between"
-        )
+        split_fqn = fqn.split_test_case_fqn("local_redshift.dev.dbt_jaffle.customers.expect_table_column_to_be_between")
 
         assert not split_fqn.column
         assert split_fqn.test_case == "expect_table_column_to_be_between"
@@ -281,9 +280,7 @@ class TestFqn(TestCase):
             table_name="events",
             column_name=postgres_column,
         )
-        expected2 = (
-            f"postgres.mydb.public.events.created_at{RESERVED_COLON_KEYWORD}timestamp"
-        )
+        expected2 = f"postgres.mydb.public.events.created_at{RESERVED_COLON_KEYWORD}timestamp"
         self.assertEqual(result2, expected2)
 
         # BigQuery partition notation
@@ -349,9 +346,7 @@ class TestFqn(TestCase):
 
         # APICollection (2 slots: service.collection)
         api_collection_fqn = "users_api"
-        result = fqn.prefix_entity_for_wildcard_search(
-            APICollection, api_collection_fqn
-        )
+        result = fqn.prefix_entity_for_wildcard_search(APICollection, api_collection_fqn)
         self.assertEqual(result, "*.users_api")
 
         # Chart (2 slots: service.chart)
@@ -398,15 +393,11 @@ class TestFqn(TestCase):
         self.assertEqual(result, "*.*.*.calculate_revenue")
 
         stored_proc_fqn_partial = "public.calculate_revenue"
-        result = fqn.prefix_entity_for_wildcard_search(
-            StoredProcedure, stored_proc_fqn_partial
-        )
+        result = fqn.prefix_entity_for_wildcard_search(StoredProcedure, stored_proc_fqn_partial)
         self.assertEqual(result, "*.*.public.calculate_revenue")
 
         stored_proc_fqn_full = "oracle.sales_db.public.calculate_revenue"
-        result = fqn.prefix_entity_for_wildcard_search(
-            StoredProcedure, stored_proc_fqn_full
-        )
+        result = fqn.prefix_entity_for_wildcard_search(StoredProcedure, stored_proc_fqn_full)
         self.assertEqual(result, "oracle.sales_db.public.calculate_revenue")
 
         # Pipeline (2 slots: service.pipeline)
@@ -417,9 +408,7 @@ class TestFqn(TestCase):
         # Test error cases
         # FQN with too many parts
         with pytest.raises(fqn.FQNBuildingException) as exc:
-            fqn.prefix_entity_for_wildcard_search(
-                Table, "service.db.schema.table.extra"
-            )
+            fqn.prefix_entity_for_wildcard_search(Table, "service.db.schema.table.extra")
         assert "has too many parts" in str(exc.value)
 
         # Test unsupported entity type (Column doesn't have slots defined)
