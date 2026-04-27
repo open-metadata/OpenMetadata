@@ -33,7 +33,6 @@ import {
   DEFAULT_FILTERS,
   useOntologyExplorer,
 } from './hooks/useOntologyExplorer';
-import NodeContextMenu from './NodeContextMenu';
 import OntologyControlButtons from './OntologyControlButtons';
 import { withoutOntologyAutocompleteAll } from './OntologyExplorer.constants';
 import {
@@ -99,7 +98,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     filters,
     explorationMode,
     selectedNode,
-    contextMenu,
     expandedTermIds,
     rdfEnabled,
     graphDataToShow,
@@ -125,13 +123,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     handleScrollNearEdge,
     handleSettingsChange,
     handleFiltersChange,
-    handleContextMenuClose,
-    handleContextMenuFocus,
-    handleContextMenuViewDetails,
-    handleContextMenuOpenInNewTab,
     handleGraphNodeClick,
     handleGraphNodeDoubleClick,
-    handleGraphNodeContextMenu,
     handleGraphPaneClick,
   } = useOntologyExplorer({
     scope,
@@ -250,6 +243,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 ? selectedNode?.id ?? entityId
                 : entityId
             }
+            glossaries={glossaries}
             glossaryColorMap={glossaryColorMap}
             graphSearchHighlight={graphSearchHighlight}
             hierarchyCombos={
@@ -271,7 +265,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             }
             settings={settings}
             onNodeClick={handleGraphNodeClick}
-            onNodeContextMenu={handleGraphNodeContextMenu}
             onNodeDoubleClick={handleGraphNodeDoubleClick}
             onPaneClick={handleGraphPaneClick}
             onScrollNearEdge={handleScrollNearEdge}
@@ -453,17 +446,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 />
               )}
             </SlideoutMenu>
-          )}
-
-          {contextMenu && (
-            <NodeContextMenu
-              node={contextMenu.node}
-              position={contextMenu.position}
-              onClose={handleContextMenuClose}
-              onFocus={handleContextMenuFocus}
-              onOpenInNewTab={handleContextMenuOpenInNewTab}
-              onViewDetails={handleContextMenuViewDetails}
-            />
           )}
         </div>
       </div>

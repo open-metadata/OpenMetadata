@@ -3860,3 +3860,106 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
             source.add_dbt_test_result(dbt_test)
 
         source.metadata.add_test_case_results.assert_called_once()
+
+
+class TestRemoveManifestNonRequiredKeys(TestCase):
+    """
+    Tests for DbtServiceSource.remove_manifest_non_required_keys.
+
+    The fix ensures that non-required keys whose original value is a list are
+    cleared to ``[]`` rather than ``{}``.  Setting a list-typed field to ``{}``
+    causes Pydantic validation to fail when the manifest is later parsed,
+    because a dict is not a valid list value.
+    """
+
+    @staticmethod
+    def _make_source():
+        from metadata.ingestion.source.database.dbt.dbt_service import DbtServiceSource
+
+        source = MagicMock(spec=DbtServiceSource)
+        source.remove_manifest_non_required_keys = (
+            DbtServiceSource.remove_manifest_non_required_keys.__get__(
+                source, DbtServiceSource
+            )
+        )
+        return source
+
+    def test_list_typed_non_required_key_is_cleared_to_empty_list(self):
+        """
+        A non-required key whose value is a list must be replaced with ``[]``,
+        not ``{}``.  The original bug set it to ``{}`` which caused Pydantic to
+        raise a validation error when the manifest was later parsed.
+        """
+        source = self._make_source()
+        manifest_dict = {
+            "metadata": {"dbt_schema_version": "v1"},
+            "nodes": {},
+            "sources": {},
+            "exposures": {},
+            "disabled": [{"name": "some_disabled_model"}],
+        }
+        source.remove_manifest_non_required_keys(manifest_dict)
+
+        assert manifest_dict["disabled"] == []
+
+    def test_dict_typed_non_required_key_is_cleared_to_empty_dict(self):
+        """
+        A non-required key whose value is a dict must be replaced with ``{}``.
+        """
+        source = self._make_source()
+        manifest_dict = {
+            "metadata": {"dbt_schema_version": "v1"},
+            "nodes": {},
+            "sources": {},
+            "exposures": {},
+            "parent_map": {"model.pkg.foo": ["model.pkg.bar"]},
+        }
+        source.remove_manifest_non_required_keys(manifest_dict)
+
+        assert manifest_dict["parent_map"] == {}
+
+    def test_required_keys_are_preserved(self):
+        """
+        The required keys (nodes, sources, metadata, exposures) must not be
+        touched by the cleanup.
+        """
+        source = self._make_source()
+        nodes = {"model.pkg.foo": {"name": "foo", "unique_id": "model.pkg.foo"}}
+        sources = {"source.pkg.bar": {"name": "bar", "unique_id": "source.pkg.bar"}}
+        metadata = {"dbt_schema_version": "v1"}
+        exposures = {"exposure.pkg.baz": {"name": "baz"}}
+        manifest_dict = {
+            "metadata": metadata,
+            "nodes": nodes,
+            "sources": sources,
+            "exposures": exposures,
+        }
+        source.remove_manifest_non_required_keys(manifest_dict)
+
+        assert manifest_dict["nodes"] is nodes
+        assert manifest_dict["sources"] is sources
+        assert manifest_dict["metadata"] is metadata
+        assert manifest_dict["exposures"] is exposures
+
+    def test_multiple_non_required_keys_of_mixed_types(self):
+        """
+        When a manifest contains several non-required keys of different types
+        they must all be cleared to the correct empty value for their type.
+        """
+        source = self._make_source()
+        manifest_dict = {
+            "metadata": {},
+            "nodes": {},
+            "sources": {},
+            "exposures": {},
+            "disabled": ["item1", "item2"],
+            "parent_map": {"a": "b"},
+            "child_map": {"x": "y"},
+            "group_map": [],
+        }
+        source.remove_manifest_non_required_keys(manifest_dict)
+
+        assert manifest_dict["disabled"] == []
+        assert manifest_dict["parent_map"] == {}
+        assert manifest_dict["child_map"] == {}
+        assert manifest_dict["group_map"] == []

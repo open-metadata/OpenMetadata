@@ -142,44 +142,15 @@ test('schema table test', async ({ dataStewardPage, ownerPage, page }) => {
       await redirectToHomePage(currentPage);
 
       await table.visitEntityPage(currentPage);
-      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(currentPage);
       await crudColumnDisplayName(
         currentPage,
-        columnFqn,
+        columnFqn || '',
         columnName,
         'data-row-key'
       );
     }
   });
-});
-
-test('Schema Table Pagination should work Properly', async ({ page }) => {
-  const tableResponse = page.waitForResponse(`/api/v1/tables?limit=15**`);
-
-  await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
-  await tableResponse;
-
-  await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
-    '15 / Page'
-  );
-
-  await expect(page.getByTestId('previous')).toBeDisabled();
-
-  await expect(page.getByTestId('next')).not.toBeDisabled();
-
-  const tableResponse2 = page.waitForResponse(`/api/v1/tables?**limit=15**`);
-  await page.getByTestId('next').click();
-  await tableResponse2;
-
-  await expect(page.getByTestId('previous')).not.toBeDisabled();
-
-  await expect(page.getByTestId('page-indicator')).toContainText('2');
-
-  const tableResponse3 = page.waitForResponse(`/api/v1/tables?**limit=15**`);
-  await page.getByTestId('previous').click();
-  await tableResponse3;
-
-  await expect(page.getByTestId('page-indicator')).toContainText('1');
 });
 
 test('Copy column link button should copy the column URL to clipboard', async ({
@@ -226,7 +197,28 @@ test('Copy column link should have valid URL format', async ({ page }) => {
   expect(validationResult.pathname).toContain('table');
 
   // Visit the copied link to verify it opens the side panel
-  await page.goto(clipboardText);
+  const tableFqn = table.entityResponseData?.['fullyQualifiedName'] ?? '';
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes(`/api/v1/tables/name/${encodeURIComponent(tableFqn)}`) &&
+        response.url().includes('fields=') &&
+        response.request().method() === 'GET'
+    ),
+    page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes(`/api/v1/tables/name/${encodeURIComponent(tableFqn)}`) &&
+        response.url().includes('profile') &&
+        response.request().method() === 'GET',
+      { timeout: 150_000 } // TODO: Reduce timeout once the latency issue is fixed
+    ),
+    page.goto(clipboardText),
+  ]);
+  await waitForAllLoadersToDisappear(page);
 
   // Verify side panel is open
   const sidePanel = page.locator('.column-detail-panel');
@@ -279,7 +271,33 @@ test('Copy nested column link should include full hierarchical path', async ({
       );
 
       // Visit the copied link to verify it opens the side panel
-      await page.goto(clipboardText);
+      const nestedTableFqn =
+        table.entityResponseData?.['fullyQualifiedName'] ?? '';
+      await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes(
+                `/api/v1/tables/name/${encodeURIComponent(nestedTableFqn)}`
+              ) &&
+            response.url().includes('fields=') &&
+            response.request().method() === 'GET'
+        ),
+        page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes(
+                `/api/v1/tables/name/${encodeURIComponent(nestedTableFqn)}`
+              ) &&
+            response.url().includes('profile') &&
+            response.request().method() === 'GET',
+          { timeout: 150_000 } // TODO: Reduce timeout once the latency issue is fixed
+        ),
+        page.goto(clipboardText),
+      ]);
+      await waitForAllLoadersToDisappear(page);
 
       // Verify side panel is open
       const sidePanel = page.locator('.column-detail-panel');

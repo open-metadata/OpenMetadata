@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { forwardRef } from 'react';
 import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
-import { postThread } from '../../../rest/feedsAPI';
+import { createTask } from '../../../rest/tasksAPI';
 import i18n from '../../../utils/i18next/LocalUtil';
 import RequestDescription from './RequestDescriptionPage';
 
@@ -43,6 +42,7 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
   ))
 );
 jest.mock('../../../utils/TasksUtils', () => ({
+  ...jest.requireActual('../../../utils/TasksUtils'),
   fetchEntityDetail: jest
     .fn()
     .mockImplementation((_entityType, _decodedEntityFQN, setEntityData) => {
@@ -80,13 +80,17 @@ jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => jest.fn().mockImplementation(() => <div>TitleBreadcrumb.component</div>)
 );
-jest.mock('../../../components/common/RichTextEditor/RichTextEditor', () =>
-  forwardRef(
-    jest.fn().mockImplementation(() => <div>RichTextEditor.component</div>)
-  )
+jest.mock('../shared/TaskPayloadSchemaFields', () =>
+  jest.fn().mockImplementation(() => <div>RichTextEditor.component</div>)
 );
-jest.mock('../../../rest/feedsAPI', () => ({
-  postThread: jest.fn().mockResolvedValue({}),
+jest.mock('../../../rest/taskFormSchemasAPI', () => ({
+  resolveTaskFormSchema: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('../../../rest/tasksAPI', () => ({
+  createTask: jest.fn().mockResolvedValue({}),
+  TaskCategory: { MetadataUpdate: 'MetadataUpdate' },
+  TaskEntityType: { DescriptionUpdate: 'DescriptionUpdate' },
+  TaskPriority: { Medium: 'Medium' },
 }));
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest
@@ -128,7 +132,7 @@ describe('RequestDescriptionPage', () => {
   });
 
   it('should submit form when submit button is clicked', async () => {
-    const mockPostThread = postThread as jest.Mock;
+    const mockCreateTask = createTask as jest.Mock;
     render(
       <RequestDescription pageTitle={i18n.t('label.request-description')} />
     );
@@ -138,23 +142,19 @@ describe('RequestDescriptionPage', () => {
       fireEvent.click(submitBtn);
     });
 
-    expect(mockPostThread).toHaveBeenCalledWith({
-      about:
-        '<#E::table::sample_data.ecommerce_db.shopify.dim_location::columns::"address.street_name"::description>',
-      from: undefined,
-      message: 'Task message',
-      taskDetails: {
-        assignees: [
-          {
-            id: 'id1',
-            type: 'User',
-          },
-        ],
-        oldValue: '',
-        suggestion: undefined,
-        type: 'RequestDescription',
+    expect(mockCreateTask).toHaveBeenCalledWith({
+      name: 'Task message',
+      category: 'MetadataUpdate',
+      type: 'DescriptionUpdate',
+      priority: 'Medium',
+      about: 'sample_data.ecommerce_db.shopify.dim_location',
+      aboutType: 'table',
+      assignees: ['sample_data'],
+      payload: {
+        newDescription: '',
+        currentDescription: '',
+        fieldPath: 'columns::"address.street_name"::description',
       },
-      type: 'Task',
     });
   });
 });

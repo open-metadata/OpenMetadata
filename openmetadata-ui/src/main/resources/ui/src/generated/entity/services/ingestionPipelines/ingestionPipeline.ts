@@ -450,7 +450,7 @@ export interface OpenMetadataConnection {
     /**
      * SSL Configuration for OpenMetadata Server
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     /**
      * If set to true, when creating a service during the ingestion we will store its Service
      * Connection. Otherwise, the ingestion will create a bare service without connection
@@ -535,6 +535,11 @@ export enum AuthProvider {
  * Regex to only fetch MlModels with names matching the pattern.
  *
  * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch buckets (top-level containers) that match the pattern.
+ *
+ * Regex to only compute metrics for containers that matches the given tag, tiers, glossary
+ * pattern.
  *
  * Regex to only include/exclude directories that matches the pattern.
  *
@@ -662,6 +667,9 @@ export interface OpenMetadataJWTClientConfig {
  *
  * SSL Configuration details.
  *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
+ *
  * SSL Configuration details for DB2 connection. Provide CA certificate for server
  * validation, and optionally client certificate and key for mutual TLS authentication.
  *
@@ -677,9 +685,12 @@ export interface OpenMetadataJWTClientConfig {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
+ *
  * OpenMetadata Client configured to validate SSL certificates.
  */
-export interface ConsumerConfigSSLClass {
+export interface DbtSSLConfigClass {
     /**
      * The CA certificate used for SSL validation.
      */
@@ -709,6 +720,11 @@ export enum OpenmetadataType {
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
  *
  * Client SSL verification.
+ *
+ * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+ * validation, 'validate' to verify against a CA certificate.
+ *
+ * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
  */
 export enum VerifySSL {
     Ignore = "ignore",
@@ -938,6 +954,8 @@ export interface SourceConfig {
  *
  * StorageService Metadata Pipeline Configuration.
  *
+ * StorageService AutoClassification Pipeline Configuration.
+ *
  * DriveService Metadata Pipeline Configuration.
  *
  * SearchService Metadata Pipeline Configuration.
@@ -1103,6 +1121,9 @@ export interface Pipeline {
      * Regex will be applied on fully qualified name (e.g
      * service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)
      *
+     * Regex will be applied on fully qualified name (e.g service_name.container_name) instead
+     * of raw name (e.g. container_name)
+     *
      * Regex will be applied on fully qualified name (e.g service_name.directory_name.file_name)
      * instead of raw name (e.g. file_name)
      */
@@ -1244,6 +1265,9 @@ export interface Pipeline {
     /**
      * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
      * pattern.
+     *
+     * Regex to only compute metrics for containers that matches the given tag, tiers, glossary
+     * pattern.
      */
     classificationFilterPattern?: FilterPattern;
     /**
@@ -1306,6 +1330,9 @@ export interface Pipeline {
     /**
      * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
      * each table.
+     *
+     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
+     * each structured container.
      */
     storeSampleData?: boolean;
     /**
@@ -1347,12 +1374,28 @@ export interface Pipeline {
      */
     containerFilterPattern?: FilterPattern;
     /**
+     * Fallback manifest applied to any bucket that does not have its own openmetadata.json
+     * file. If a bucket has a manifest file, that file takes precedence and this value is
+     * ignored for that bucket. Paste the same JSON you would place in a bucket's
+     * openmetadata.json file — entries accept literal paths or glob-style dataPath patterns.
+     */
+    defaultManifest?: string;
+    /**
      * Optional configuration to soft delete containers in OpenMetadata if the source containers
      * are deleted. Also, if the topic is deleted, all the associated entities with that
      * containers will be deleted
      */
-    markDeletedContainers?:       boolean;
+    markDeletedContainers?: boolean;
+    /**
+     * Global manifest source. When configured, entries here take precedence over any
+     * bucket-level openmetadata.json and over defaultManifest for buckets whose containerName
+     * matches.
+     */
     storageMetadataConfigSource?: StorageMetadataConfigurationSource;
+    /**
+     * Regex to only fetch buckets (top-level containers) that match the pattern.
+     */
+    bucketFilterPattern?: FilterPattern;
     /**
      * Regex to only include/exclude directories that matches the pattern.
      */
@@ -2817,6 +2860,11 @@ export interface DBTConfigurationSource {
      */
     dbtCatalogHttpPath?: string;
     /**
+     * Custom HTTP headers to include in every request when fetching dbt artifacts (e.g.
+     * Authorization for private GitLab/GitHub repos).
+     */
+    dbtHttpHeaders?: { [key: string]: string };
+    /**
      * DBT manifest http file path to extract dbt models and associate with tables.
      */
     dbtManifestHttpPath?: string;
@@ -2828,6 +2876,15 @@ export interface DBTConfigurationSource {
      * DBT sources http file path to extract freshness test results information.
      */
     dbtSourcesHttpPath?: string;
+    /**
+     * SSL certificate configuration for validating the server certificate when fetching dbt
+     * artifacts.
+     */
+    dbtSSLConfig?: DbtSSLConfigClass;
+    /**
+     * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
+     */
+    dbtVerifySSL?: VerifySSL;
     /**
      * Details of the bucket where the dbt files are stored
      */
@@ -3107,6 +3164,10 @@ export interface LineageInformation {
      * List of Database Service Names for creation of lineage
      */
     dbServiceNames?: string[];
+    /**
+     * List of Messaging Service Names for creation of lineage
+     */
+    messagingServiceNames?: string[];
     /**
      * List of Storage Service Names for creation of lineage
      */
@@ -3548,6 +3609,8 @@ export interface ServiceConnection {
  * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
  * create, deploy, and manage paginated reports
  *
+ * SAP S/4HANA Connection Config for Embedded Analytics
+ *
  * Google BigQuery Connection Config
  *
  * Google BigTable Connection Config
@@ -3790,6 +3853,9 @@ export interface ConfigObject {
     /**
      * SSL Configuration details.
      *
+     * CA certificate, client certificate, and private key for SSL validation. Required when
+     * verifySSL is 'validate'.
+     *
      * SSL Configuration details for DB2 connection. Provide CA certificate for server
      * validation, and optionally client certificate and key for mutual TLS authentication.
      *
@@ -3852,6 +3918,9 @@ export interface ConfigObject {
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
      *
      * Client SSL verification.
+     *
+     * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+     * validation, 'validate' to verify against a CA certificate.
      *
      * Flag to verify SSL Certificate for OpenMetadata Server.
      *
@@ -3942,6 +4011,8 @@ export interface ConfigObject {
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      *
      * Host and Port of the Ssrs instance.
+     *
+     * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
      *
      * BigQuery APIs URL.
      *
@@ -4349,6 +4420,9 @@ export interface ConfigObject {
     /**
      * Types of methods used to authenticate to the tableau instance
      *
+     * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
+     * SAP S/4HANA Cloud.
+     *
      * Choose between different authentication types for Databricks.
      *
      * Choose Auth Config Type.
@@ -4363,7 +4437,7 @@ export interface ConfigObject {
      *
      * Authentication method: username/password or SSH private key
      */
-    authType?: AuthenticationTypeForTableau | NoConfigAuthenticationTypes;
+    authType?: AuthenticationType | NoConfigAuthenticationTypes;
     /**
      * Pagination limit used while querying the tableau metadata API for getting data sources
      *
@@ -4506,6 +4580,14 @@ export interface ConfigObject {
      */
     tokenType?: TokenType;
     /**
+     * SAP client number (Mandant), typically a 3-digit string (e.g. '100').
+     */
+    clientNumber?: string;
+    /**
+     * Supports Lineage Extraction.
+     */
+    supportsLineageExtraction?: boolean;
+    /**
      * Billing Project ID
      */
     billingProjectId?: string;
@@ -4568,13 +4650,9 @@ export interface ConfigObject {
     supportsDataDiff?:                      boolean;
     supportsDBTExtraction?:                 boolean;
     supportsIncrementalMetadataExtraction?: boolean;
-    /**
-     * Supports Lineage Extraction.
-     */
-    supportsLineageExtraction?: boolean;
-    supportsProfiler?:          boolean;
-    supportsQueryComment?:      boolean;
-    supportsSystemProfile?:     boolean;
+    supportsProfiler?:                      boolean;
+    supportsQueryComment?:                  boolean;
+    supportsSystemProfile?:                 boolean;
     /**
      * Supports Usage Extraction.
      */
@@ -5139,7 +5217,7 @@ export interface ConfigObject {
      * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
      * connection.
      */
-    consumerConfigSSL?: ConsumerConfigSSLClass;
+    consumerConfigSSL?: DbtSSLConfigClass;
     /**
      * sasl.mechanism Consumer Config property
      */
@@ -5163,7 +5241,7 @@ export interface ConfigObject {
      * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
      * connection.
      */
-    schemaRegistrySSL?: ConsumerConfigSSLClass;
+    schemaRegistrySSL?: DbtSSLConfigClass;
     /**
      * Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get
      * topic schema from registry.
@@ -5759,6 +5837,13 @@ export enum AuthMechanismEnum {
  *
  * Access Token Auth Credentials
  *
+ * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
+ * SAP S/4HANA Cloud.
+ *
+ * Username and password credentials for SAP S/4HANA.
+ *
+ * OAuth 2.0 client credentials for SAP S/4HANA Cloud.
+ *
  * Choose between different authentication types for Databricks.
  *
  * Personal Access Token authentication for Databricks.
@@ -5819,9 +5904,11 @@ export enum AuthMechanismEnum {
  *
  * SSH private key authentication for SFTP
  */
-export interface AuthenticationTypeForTableau {
+export interface AuthenticationType {
     /**
      * Password to access the service.
+     *
+     * Password to authenticate with SAP S/4HANA.
      *
      * Password to connect to source.
      *
@@ -5838,6 +5925,8 @@ export interface AuthenticationTypeForTableau {
     password?: string;
     /**
      * Username to access the service.
+     *
+     * Username to authenticate with SAP S/4HANA.
      *
      * Username for authenticating with Dremio Software. This user should have appropriate
      * permissions to access metadata.
@@ -5858,20 +5947,32 @@ export interface AuthenticationTypeForTableau {
      */
     personalAccessTokenSecret?: string;
     /**
-     * Generated Personal Access Token for Databricks workspace authentication. This token is
-     * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     * Authentication type identifier.
      */
-    token?: string;
+    authType?: AuthType;
     /**
+     * OAuth 2.0 client ID registered in SAP.
+     *
      * Service Principal Application ID created in your Databricks Account Console for OAuth
      * Machine-to-Machine authentication.
      */
     clientId?: string;
     /**
+     * OAuth 2.0 client secret.
+     *
      * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
      * secure OAuth2 authentication.
      */
     clientSecret?: string;
+    /**
+     * OAuth 2.0 token endpoint URL (e.g. /sap/bc/security/oauth2/token).
+     */
+    tokenEndpoint?: string;
+    /**
+     * Generated Personal Access Token for Databricks workspace authentication. This token is
+     * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     */
+    token?: string;
     /**
      * Azure Service Principal Application (client) ID registered in your Azure Active Directory.
      */
@@ -5988,6 +6089,14 @@ export interface AuthenticationTypeForTableau {
      * Passphrase for the private key (if encrypted)
      */
     privateKeyPassphrase?: string;
+}
+
+/**
+ * Authentication type identifier.
+ */
+export enum AuthType {
+    Basic = "basic",
+    Oauth2 = "oauth2",
 }
 
 /**
@@ -6267,7 +6376,7 @@ export interface BrokerConfiguration {
     /**
      * SSL Configuration details.
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     /**
      * Topic from where OpenLineage events will be pulled.
      */
@@ -6347,7 +6456,7 @@ export enum KafkaSecurityProtocol {
  * Qlik Authentication Certificate File Path
  */
 export interface QlikCertificatesBy {
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     /**
      * Client Certificate
      */
@@ -6943,6 +7052,9 @@ export enum ConnectionScheme {
  *
  * SSL Configuration details.
  *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
+ *
  * SSL Configuration details for DB2 connection. Provide CA certificate for server
  * validation, and optionally client certificate and key for mutual TLS authentication.
  *
@@ -6957,6 +7069,9 @@ export enum ConnectionScheme {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
  */
 export interface ConnectionSSLConfig {
     /**
@@ -7114,7 +7229,7 @@ export interface DatabaseConnectionClass {
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
      * client certificate, and private key for mutual TLS authentication.
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
@@ -7334,7 +7449,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * SSL Configuration details.
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     sslMode?:   SSLMode;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
@@ -7506,6 +7621,7 @@ export interface S3Connection {
      */
     containerFilterPattern?:     FilterPattern;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Service Type
      */
@@ -7685,6 +7801,9 @@ export enum SpaceType {
  *
  * SSL Configuration details.
  *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
+ *
  * SSL Configuration details for DB2 connection. Provide CA certificate for server
  * validation, and optionally client certificate and key for mutual TLS authentication.
  *
@@ -7699,6 +7818,9 @@ export enum SpaceType {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  *
@@ -7832,6 +7954,8 @@ export enum TokenType {
  * Grafana service type
  *
  * Service type.
+ *
+ * SAP S/4HANA service type
  *
  * Custom database service type
  *
@@ -7988,6 +8112,7 @@ export enum PurpleType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    SapS4Hana = "SapS4Hana",
     ServiceNow = "ServiceNow",
     SharePoint = "SharePoint",
     Sigma = "Sigma",
@@ -8016,6 +8141,10 @@ export enum PurpleType {
 }
 
 /**
+ * Global manifest source. When configured, entries here take precedence over any
+ * bucket-level openmetadata.json and over defaultManifest for buckets whose containerName
+ * matches.
+ *
  * No manifest file available. Ingestion would look for bucket-level metadata file instead
  *
  * Storage Metadata Manifest file path config.
@@ -8074,6 +8203,8 @@ export interface StorageMetadataBucketDetails {
  * MlModel Source Config Metadata Pipeline type
  *
  * Object Store Source Config Metadata Pipeline type
+ *
+ * Storage Service Auto Classification Pipeline type
  *
  * Drive Source Config Metadata Pipeline type
  *

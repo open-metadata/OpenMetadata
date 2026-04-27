@@ -13,6 +13,7 @@
 OpenLineage source to extract metadata from Kafka or Kinesis events
 """
 import json
+import re
 import time
 import traceback
 from collections import defaultdict
@@ -100,7 +101,8 @@ class OpenlineageSource(PipelineServiceSource):
     Works under the assumption that OpenLineage integrations produce events to Kafka topic or Kinesis stream,
     which is a source of events for this connector.
 
-    Only OpenLineage events that indicate successfull data movement (COMPLETE, RUNNING, START) are taken into account in this connector.
+    Only OpenLineage events that indicate successful data movement (COMPLETE, RUNNING, START) are taken into account
+    in this connector.
 
     Configuring OpenLineage integrations: https://openlineage.io/docs/integrations/about
     """
@@ -184,6 +186,27 @@ class OpenlineageSource(PipelineServiceSource):
                     "input table name cannot be retrieved from name attribute."
                 )
 
+        namespace = data.get("namespace", "")
+
+        # AWS Glue: arn:aws:glue:{region}:{account} / table/{database}/{table}
+        # Source: https://openlineage.io/docs/spec/naming/
+        if namespace.startswith("arn:aws:glue:"):
+            result = OpenlineageSource._parse_glue_table_name(name)
+            if result:
+                return result
+
+        # Azure Data Explorer (Kusto): azurekusto://{host} / {database}/{table}
+        if namespace.startswith("azurekusto://"):
+            result = OpenlineageSource._parse_slash_table_name(name)
+            if result:
+                return result
+
+        # Azure Cosmos DB: azurecosmos://{host}/dbs/{db} / colls/{collection}
+        if namespace.startswith("azurecosmos://"):
+            result = OpenlineageSource._parse_cosmos_table_name(namespace, name)
+            if result:
+                return result
+
         name_parts = name.split(".")
 
         if len(name_parts) < 2:
@@ -228,6 +251,59 @@ class OpenlineageSource(PipelineServiceSource):
             broker_hostname = f"{broker_hostname}:{parsed.port}"
 
         return TopicDetails(name=name, broker_hostname=broker_hostname)
+
+    @staticmethod
+    def _parse_glue_table_name(name: str) -> Optional[TableDetails]:
+        """
+        Parse AWS Glue OL dataset name: ``table/{database}/{table}``.
+
+        Glue EMR jobs emit a slash-separated name with a ``table/`` prefix instead
+        of the dot-separated ``schema.table`` convention used by SQL engines.
+
+        Source: https://github.com/OpenLineage/OpenLineage/blob/main/client/java/
+                src/main/java/io/openlineage/client/dataset/Naming.java (GlueNaming)
+        """
+        if not name.startswith("table/"):
+            return None
+        parts = name[len("table/") :].split("/")
+        if len(parts) < 2:
+            return None
+        return TableDetails(name=parts[-1].lower(), schema=parts[-2].lower())
+
+    @staticmethod
+    def _parse_slash_table_name(name: str) -> Optional[TableDetails]:
+        """
+        Parse slash-separated ``{database}/{table}`` OL dataset names.
+
+        Used by Azure Data Explorer (Kusto):
+          namespace ``azurekusto://{host}`` / name ``{database}/{table}``
+
+        Source: https://github.com/OpenLineage/OpenLineage/blob/main/client/java/
+                src/main/java/io/openlineage/client/dataset/Naming.java (KustoNaming)
+        """
+        parts = name.split("/")
+        if len(parts) < 2:
+            return None
+        return TableDetails(name=parts[-1].lower(), schema=parts[-2].lower())
+
+    @staticmethod
+    def _parse_cosmos_table_name(namespace: str, name: str) -> Optional[TableDetails]:
+        """
+        Parse Azure Cosmos DB OL dataset names.
+
+        The database lives in the namespace path (``azurecosmos://{host}/dbs/{db}``)
+        while the name field is ``colls/{collection}``.
+
+        Source: https://github.com/OpenLineage/OpenLineage/blob/main/client/java/
+                src/main/java/io/openlineage/client/dataset/Naming.java (CosmosNaming)
+        """
+        db_match = re.search(r"/dbs/([^/]+)", namespace)
+        coll_match = re.fullmatch(r"colls/([^/]+)", name)
+        if not db_match or not coll_match:
+            return None
+        return TableDetails(
+            name=coll_match.group(1).lower(), schema=db_match.group(1).lower()
+        )
 
     def _get_by_name_cached(self, entity_class, fqn_str: str, **kwargs):
         """Wrapper around metadata.get_by_name with in-memory caching."""
@@ -324,6 +400,11 @@ class OpenlineageSource(PipelineServiceSource):
                     )
                     return f"{schema_fqn}.{table_details.name}"
                 except FQNNotFoundException:
+                    logger.debug(
+                        f"Table '{table_details.name}' in schema '{table_details.schema}' "
+                        f"not found in services {resolved_services or self.get_db_service_names()}. "
+                        "Skipping lineage edge."
+                    )
                     return None
         except Exception:
             logger.warning(
@@ -466,7 +547,7 @@ class OpenlineageSource(PipelineServiceSource):
 
         if not result:
             raise FQNNotFoundException(
-                f"Schema FQN not found within services: {services}"
+                f"Schema '{schema}' not found in services: {services}"
             )
 
         return result
@@ -566,14 +647,13 @@ class OpenlineageSource(PipelineServiceSource):
         if not om_table_fqn:
             try:
                 om_schema_fqn = self._get_schema_fqn_from_om(table_details.schema)
-            except FQNNotFoundException as e:
-                return Either(
-                    left=StackTraceError(
-                        name="",
-                        error=f"Failed to get fully qualified schema name: {e}",
-                        stackTrace=traceback.format_exc(),
-                    )
+            except FQNNotFoundException:
+                logger.warning(
+                    f"Schema '{table_details.schema}' not found in configured services "
+                    f"{self.get_db_service_names()}. Skipping table creation for "
+                    f"'{table_details.name}'."
                 )
+                return None
 
             # After finding schema fqn (based on partial schema name) we know where we can create table
             # and we move forward with creating request.
@@ -1050,10 +1130,13 @@ class OpenlineageSource(PipelineServiceSource):
                         if result:
                             yield result
                     except Exception as e:
-                        logger.debug(e)
+                        logger.warning(
+                            f"Failed to parse OpenLineage event from Kafka message: {e}"
+                        )
+                        logger.debug(traceback.format_exc())
 
         except Exception as e:
-            traceback.print_exc()
+            logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Failed to read from Kafka: {str(e)}")
 
         finally:
@@ -1113,12 +1196,15 @@ class OpenlineageSource(PipelineServiceSource):
                             if result:
                                 yield result
                         except Exception as e:
-                            logger.debug(e)
+                            logger.warning(
+                                f"Failed to parse OpenLineage event from Kinesis record: {e}"
+                            )
+                            logger.debug(traceback.format_exc())
 
                     time.sleep(pool_timeout)
 
         except Exception as e:
-            traceback.print_exc()
+            logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Failed to read from Kinesis: {str(e)}")
 
     def get_pipeline_name(self, pipeline_details: OpenLineageEvent) -> str:

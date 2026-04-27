@@ -11,10 +11,12 @@
 """
 Workflow definition for the profiler
 """
-from typing import cast
 
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
     DatabaseServiceAutoClassificationPipeline,
+)
+from metadata.generated.schema.metadataIngestion.storageServiceAutoClassificationPipeline import (
+    StorageServiceAutoClassificationPipeline,
 )
 from metadata.ingestion.api.steps import Processor
 from metadata.pii.constants import PII
@@ -40,14 +42,27 @@ class AutoClassificationWorkflow(ProfilerWorkflow):
         sampler_processor = self._get_sampler_processor()
 
         # Only instantiate the PII Processor on demand
-        source_config: DatabaseServiceAutoClassificationPipeline = cast(
-            DatabaseServiceAutoClassificationPipeline,
-            self.config.source.sourceConfig.config,
-        )
-        if source_config.enableAutoClassification:
-            pii_processor = self._get_pii_processor()
-            self.steps = (sampler_processor, pii_processor, sink)
+        source_config = self.config.source.sourceConfig.config
+
+        # Support both Database and Storage service auto-classification pipelines
+        if isinstance(
+            source_config,
+            (
+                DatabaseServiceAutoClassificationPipeline,
+                StorageServiceAutoClassificationPipeline,
+            ),
+        ):
+            if source_config.enableAutoClassification:
+                pii_processor = self._get_pii_processor()
+                self.steps = (sampler_processor, pii_processor, sink)
+            else:
+                self.steps = (sampler_processor, sink)
         else:
+            logger.warning(
+                f"Unsupported source config type {type(source_config).__name__}. "
+                "Auto-classification workflow requires DatabaseServiceAutoClassificationPipeline "
+                "or StorageServiceAutoClassificationPipeline"
+            )
             self.steps = (sampler_processor, sink)
 
     def _get_pii_processor(self) -> Processor:

@@ -40,10 +40,13 @@ export type ListDataModelParams = {
 
 const BASE_URL = '/dashboards';
 
-export const getDashboardVersions = async (id: string) => {
+export const getDashboardVersions = async (
+  id: string,
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
+) => {
   const url = `${BASE_URL}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url);
+  const response = await APIClient.get<EntityHistory>(url, { params });
 
   return response.data;
 };

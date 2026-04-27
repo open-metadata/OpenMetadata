@@ -1,14 +1,18 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,13 +24,15 @@ import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.openmetadata.schema.api.feed.CreateSuggestion;
+import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.SuggestionType;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
@@ -66,19 +72,16 @@ public class ChangeSummaryResourceIT {
   void testChangeSummaryUpdatesWhenSameValueAcceptedByDifferentUser(TestNamespace ns)
       throws Exception {
     Table table = createTestTable(ns);
-    String entityLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
 
-    OpenMetadataClient user1Client = SdkClients.user1Client();
+    OpenMetadataClient user1Client = sharedUser1ClientWithTestAdminRole();
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
-    // User1 accepts a description suggestion
-    Suggestion suggestion1 =
-        createSuggestion(
-            new CreateSuggestion()
-                .withDescription(SHARED_DESCRIPTION)
-                .withType(SuggestionType.SuggestDescription)
-                .withEntityLink(entityLink));
-    acceptSuggestion(user1Client, suggestion1.getId().toString());
+    // Shared user accepts a description suggestion
+    Task suggestion1 =
+        createSuggestionTask(table.getFullyQualifiedName(), "table", "description", "shared_user1");
+    awaitTaskReadyForWorkflowResolution(suggestion1.getId());
+    assertSuggestionResolutionContext(user1Client, suggestion1.getId(), "shared_user1");
+    applySuggestion(user1Client, suggestion1.getId().toString());
 
     // Verify changeSummary reflects user1
     Map<String, Object> summary1 = getChangeSummary("table", table.getFullyQualifiedName());
@@ -92,13 +95,10 @@ public class ChangeSummaryResourceIT {
         "Expected changedBy to contain shared_user1 but was: " + firstChangedBy);
 
     // Admin accepts a second suggestion with the SAME description value
-    Suggestion suggestion2 =
-        createSuggestion(
-            new CreateSuggestion()
-                .withDescription(SHARED_DESCRIPTION)
-                .withType(SuggestionType.SuggestDescription)
-                .withEntityLink(entityLink));
-    acceptSuggestion(adminClient, suggestion2.getId().toString());
+    Task suggestion2 =
+        createSuggestionTask(table.getFullyQualifiedName(), "table", "description", "admin");
+    awaitTaskReadyForWorkflowResolution(suggestion2.getId());
+    applySuggestion(adminClient, suggestion2.getId().toString());
 
     // The description value is the same, but a different user accepted it.
     // changeSummary must reflect the latest acceptor.
@@ -123,20 +123,16 @@ public class ChangeSummaryResourceIT {
   void testChangeSummaryUpdatesColumnWhenSameValueAcceptedByDifferentUser(TestNamespace ns)
       throws Exception {
     Table table = createTestTableWithColumns(ns);
-    String columnLink =
-        String.format("<#E::table::%s::columns::name>", table.getFullyQualifiedName());
 
-    OpenMetadataClient user1Client = SdkClients.user1Client();
+    OpenMetadataClient user1Client = sharedUser1ClientWithTestAdminRole();
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
-    // User1 accepts a column description suggestion
-    Suggestion suggestion1 =
-        createSuggestion(
-            new CreateSuggestion()
-                .withDescription(SHARED_DESCRIPTION)
-                .withType(SuggestionType.SuggestDescription)
-                .withEntityLink(columnLink));
-    acceptSuggestion(user1Client, suggestion1.getId().toString());
+    // Shared user accepts a column description suggestion
+    Task suggestion1 =
+        createSuggestionTask(
+            table.getFullyQualifiedName(), "table", "columns::name::description", "shared_user1");
+    awaitTaskReadyForWorkflowResolution(suggestion1.getId());
+    applySuggestion(user1Client, suggestion1.getId().toString());
 
     Map<String, Object> summary1 = getChangeSummary("table", table.getFullyQualifiedName());
     Map<String, Map<String, Object>> entries1 = extractChangeSummary(summary1);
@@ -150,13 +146,11 @@ public class ChangeSummaryResourceIT {
         "Expected changedBy to contain shared_user1 but was: " + firstChangedBy);
 
     // Admin accepts a second suggestion with the SAME description
-    Suggestion suggestion2 =
-        createSuggestion(
-            new CreateSuggestion()
-                .withDescription(SHARED_DESCRIPTION)
-                .withType(SuggestionType.SuggestDescription)
-                .withEntityLink(columnLink));
-    acceptSuggestion(adminClient, suggestion2.getId().toString());
+    Task suggestion2 =
+        createSuggestionTask(
+            table.getFullyQualifiedName(), "table", "columns::name::description", "admin");
+    awaitTaskReadyForWorkflowResolution(suggestion2.getId());
+    applySuggestion(adminClient, suggestion2.getId().toString());
 
     // changeSummary must reflect admin, not user1
     Map<String, Object> summary2 = getChangeSummary("table", table.getFullyQualifiedName());
@@ -183,19 +177,20 @@ public class ChangeSummaryResourceIT {
   void testChangeSummaryUpdatesWhenDifferentValuesAcceptedByDifferentUsers(TestNamespace ns)
       throws Exception {
     Table table = createTestTable(ns);
-    String entityLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
 
-    OpenMetadataClient user1Client = SdkClients.user1Client();
+    OpenMetadataClient user1Client = sharedUser1ClientWithTestAdminRole();
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
-    // User1 accepts a description suggestion
-    Suggestion suggestion1 =
-        createSuggestion(
-            new CreateSuggestion()
-                .withDescription("Description from first suggestion")
-                .withType(SuggestionType.SuggestDescription)
-                .withEntityLink(entityLink));
-    acceptSuggestion(user1Client, suggestion1.getId().toString());
+    // Shared user accepts a description suggestion
+    Task suggestion1 =
+        createSuggestionTask(
+            table.getFullyQualifiedName(),
+            "table",
+            "description",
+            "Description from first suggestion",
+            "shared_user1");
+    awaitTaskReadyForWorkflowResolution(suggestion1.getId());
+    applySuggestion(user1Client, suggestion1.getId().toString());
 
     Map<String, Object> summary1 = getChangeSummary("table", table.getFullyQualifiedName());
     Map<String, Map<String, Object>> entries1 = extractChangeSummary(summary1);
@@ -208,13 +203,15 @@ public class ChangeSummaryResourceIT {
         "Expected changedBy to contain shared_user1 but was: " + firstChangedBy);
 
     // Admin accepts a second suggestion with a DIFFERENT description
-    Suggestion suggestion2 =
-        createSuggestion(
-            new CreateSuggestion()
-                .withDescription("Description from second suggestion")
-                .withType(SuggestionType.SuggestDescription)
-                .withEntityLink(entityLink));
-    acceptSuggestion(adminClient, suggestion2.getId().toString());
+    Task suggestion2 =
+        createSuggestionTask(
+            table.getFullyQualifiedName(),
+            "table",
+            "description",
+            "Description from second suggestion",
+            "admin");
+    awaitTaskReadyForWorkflowResolution(suggestion2.getId());
+    applySuggestion(adminClient, suggestion2.getId().toString());
 
     Table updatedTable = Tables.findByName(table.getFullyQualifiedName()).fetch().get();
     assertEquals("Description from second suggestion", updatedTable.getDescription());
@@ -239,31 +236,31 @@ public class ChangeSummaryResourceIT {
   @Test
   void testChangeSummaryTracksMultipleColumnsIndependently(TestNamespace ns) throws Exception {
     Table table = createTestTableWithColumns(ns);
-    String col1Link =
-        String.format("<#E::table::%s::columns::name>", table.getFullyQualifiedName());
-    String col2Link =
-        String.format("<#E::table::%s::columns::email>", table.getFullyQualifiedName());
 
-    OpenMetadataClient user1Client = SdkClients.user1Client();
+    OpenMetadataClient user1Client = sharedUser1ClientWithTestAdminRole();
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
-    // User1 accepts a suggestion on column "name"
-    Suggestion suggestion1 =
-        createSuggestion(
-            new CreateSuggestion()
-                .withDescription("Name column description by user1")
-                .withType(SuggestionType.SuggestDescription)
-                .withEntityLink(col1Link));
-    acceptSuggestion(user1Client, suggestion1.getId().toString());
+    // Shared user accepts a suggestion on column "name"
+    Task suggestion1 =
+        createSuggestionTask(
+            table.getFullyQualifiedName(),
+            "table",
+            "columns::name::description",
+            "Name column description by user1",
+            "shared_user1");
+    awaitTaskReadyForWorkflowResolution(suggestion1.getId());
+    applySuggestion(user1Client, suggestion1.getId().toString());
 
     // Admin accepts a suggestion on column "email"
-    Suggestion suggestion2 =
-        createSuggestion(
-            new CreateSuggestion()
-                .withDescription("Email column description by admin")
-                .withType(SuggestionType.SuggestDescription)
-                .withEntityLink(col2Link));
-    acceptSuggestion(adminClient, suggestion2.getId().toString());
+    Task suggestion2 =
+        createSuggestionTask(
+            table.getFullyQualifiedName(),
+            "table",
+            "columns::email::description",
+            "Email column description by admin",
+            "admin");
+    awaitTaskReadyForWorkflowResolution(suggestion2.getId());
+    applySuggestion(adminClient, suggestion2.getId().toString());
 
     Map<String, Object> summary = getChangeSummary("table", table.getFullyQualifiedName());
     Map<String, Map<String, Object>> entries = extractChangeSummary(summary);
@@ -293,8 +290,13 @@ public class ChangeSummaryResourceIT {
         DatabaseServiceTestFactory.createPostgresWithName("svc" + shortId, ns);
     DatabaseSchema schema =
         DatabaseSchemaTestFactory.createSimpleWithName("sc" + shortId, ns, service);
-    return TableTestFactory.createSimpleWithName(
-        "tbl" + shortId, ns, schema.getFullyQualifiedName());
+    Table table =
+        TableTestFactory.createSimpleWithName("tbl" + shortId, ns, schema.getFullyQualifiedName());
+
+    User sharedUser1 = SdkClients.adminClient().users().getByName("shared_user1");
+    table.setOwners(List.of(sharedUser1.getEntityReference()));
+
+    return SdkClients.adminClient().tables().update(table.getId().toString(), table);
   }
 
   private Table createTestTableWithColumns(TestNamespace ns) {
@@ -310,33 +312,63 @@ public class ChangeSummaryResourceIT {
             ColumnBuilder.of("name", "VARCHAR").dataLength(255).build(),
             ColumnBuilder.of("email", "VARCHAR").dataLength(255).build());
 
-    return Tables.create()
-        .name("tbl" + shortId)
-        .inSchema(schema.getFullyQualifiedName())
-        .withColumns(columns)
-        .execute();
+    Table table =
+        Tables.create()
+            .name("tbl" + shortId)
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(columns)
+            .execute();
+
+    User sharedUser1 = SdkClients.adminClient().users().getByName("shared_user1");
+    table.setOwners(List.of(sharedUser1.getEntityReference()));
+
+    return SdkClients.adminClient().tables().update(table.getId().toString(), table);
   }
 
-  private Suggestion createSuggestion(CreateSuggestion createSuggestion) throws Exception {
-    String response =
-        SdkClients.adminClient()
-            .getHttpClient()
-            .executeForString(
-                HttpMethod.POST,
-                "/v1/suggestions",
-                createSuggestion,
-                RequestOptions.builder().build());
-    return MAPPER.readValue(response, Suggestion.class);
+  private Task createSuggestionTask(String entityFqn, String aboutType, String fieldPath) {
+    return createSuggestionTask(entityFqn, aboutType, fieldPath, SHARED_DESCRIPTION, "admin");
   }
 
-  private void acceptSuggestion(OpenMetadataClient client, String suggestionId) throws Exception {
+  private Task createSuggestionTask(
+      String entityFqn, String aboutType, String fieldPath, String assignee) {
+    return createSuggestionTask(entityFqn, aboutType, fieldPath, SHARED_DESCRIPTION, assignee);
+  }
+
+  private Task createSuggestionTask(
+      String entityFqn,
+      String aboutType,
+      String fieldPath,
+      String suggestedValue,
+      String assignee) {
+    return SdkClients.adminClient()
+        .tasks()
+        .create(
+            new CreateTask()
+                .withName("change-summary-suggestion-" + UUID.randomUUID())
+                .withDescription("Change summary suggestion")
+                .withCategory(TaskCategory.MetadataUpdate)
+                .withType(TaskEntityType.Suggestion)
+                .withAbout(entityFqn)
+                .withAboutType(aboutType)
+                .withAssignees(List.of(assignee))
+                .withPayload(
+                    Map.of(
+                        "suggestionType",
+                        "Description",
+                        "fieldPath",
+                        fieldPath,
+                        "suggestedValue",
+                        suggestedValue,
+                        "source",
+                        "Agent",
+                        "confidence",
+                        85.0)));
+  }
+
+  private void applySuggestion(OpenMetadataClient client, String taskId) throws Exception {
     client
         .getHttpClient()
-        .executeForString(
-            HttpMethod.PUT,
-            "/v1/suggestions/" + suggestionId + "/accept",
-            null,
-            RequestOptions.builder().build());
+        .execute(HttpMethod.PUT, "/v1/tasks/" + taskId + "/suggestion/apply", null, Task.class);
   }
 
   private Map<String, Object> getChangeSummary(String entityType, String fqn) throws Exception {
@@ -363,5 +395,55 @@ public class ChangeSummaryResourceIT {
         .map(Map.Entry::getValue)
         .findFirst()
         .orElse(null);
+  }
+
+  private void awaitTaskReadyForWorkflowResolution(UUID taskId) {
+    Awaitility.await("task workflow materialization for " + taskId)
+        .atMost(Duration.ofSeconds(20))
+        .pollInterval(Duration.ofMillis(250))
+        .untilAsserted(
+            () -> {
+              Task task =
+                  SdkClients.adminClient()
+                      .tasks()
+                      .get(
+                          taskId.toString(),
+                          "status,workflowDefinitionId,workflowInstanceId,workflowStageId,availableTransitions");
+
+              assertNotNull(task.getWorkflowDefinitionId(), "workflow definition should be bound");
+              assertNotNull(task.getWorkflowStageId(), "workflow stage should be materialized");
+              assertNotNull(task.getAvailableTransitions(), "workflow transitions should exist");
+              assertFalse(
+                  task.getAvailableTransitions().isEmpty(),
+                  "workflow transitions should be available before resolution");
+            });
+  }
+
+  private void assertSuggestionResolutionContext(
+      OpenMetadataClient client, UUID taskId, String expectedUserName) throws Exception {
+    String loggedInUserResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/users/loggedInUser", null, RequestOptions.builder().build());
+    User loggedInUser = MAPPER.readValue(loggedInUserResponse, User.class);
+    assertEquals(expectedUserName, loggedInUser.getName(), "unexpected client principal");
+
+    Task task =
+        SdkClients.adminClient().tasks().get(taskId.toString(), "assignees,about,createdBy");
+    assertNotNull(task.getAssignees(), "task assignees should be materialized");
+    assertTrue(
+        task.getAssignees().stream().anyMatch(ref -> expectedUserName.equals(ref.getName())),
+        "expected task assignees to include "
+            + expectedUserName
+            + " but were "
+            + task.getAssignees());
+  }
+
+  private OpenMetadataClient sharedUser1ClientWithTestAdminRole() {
+    return SdkClients.createClient(
+        "shared_user1@test.openmetadata.org",
+        "shared_user1@test.openmetadata.org",
+        new String[] {"shared_test_admin_role"});
   }
 }

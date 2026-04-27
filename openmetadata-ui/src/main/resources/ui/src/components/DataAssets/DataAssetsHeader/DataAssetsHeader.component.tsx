@@ -57,13 +57,15 @@ import {
 } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
-import { Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityRules } from '../../../hooks/useEntityRules';
+import {
+  AnnouncementEntity,
+  getActiveAnnouncements,
+} from '../../../rest/announcementsAPI';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
-import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import {
@@ -159,6 +161,7 @@ export const DataAssetsHeader = ({
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
+  const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -224,7 +227,8 @@ export const DataAssetsHeader = ({
 
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
-  const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
+  const [activeAnnouncement, setActiveAnnouncement] =
+    useState<AnnouncementEntity>();
 
   const fetchDQFailureCount = async () => {
     if (!tableClassBase.getAlertEnableStatus() || !isDqAlertSupported) {
@@ -320,7 +324,7 @@ export const DataAssetsHeader = ({
 
   const fetchActiveAnnouncement = async () => {
     try {
-      const announcements = await getActiveAnnouncement(
+      const announcements = await getActiveAnnouncements(
         getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? '')
       );
 
@@ -586,6 +590,25 @@ export const DataAssetsHeader = ({
     permissions.Trigger,
   ]);
 
+  const requestDataAccessButton = useMemo(() => {
+    if (
+      !tableClassBase.getShowRequestDataAccess() ||
+      SERVICE_TYPES.includes(entityType) ||
+      deleted
+    ) {
+      return null;
+    }
+
+    return (
+      <Button
+        className="source-url-button font-semibold"
+        data-testid="request-data-access-button"
+        onClick={() => setIsRequestDataAccessOpen(true)}>
+        {t('label.request-data-access')}
+      </Button>
+    );
+  }, [entityType, deleted]);
+
   useEffect(() => {
     if (dataAsset.id) {
       fetchDataContract(dataAsset.id);
@@ -687,6 +710,7 @@ export const DataAssetsHeader = ({
                       </Typography.Link>
                     </Tooltip>
                   )}
+                  {requestDataAccessButton}
                   <ManageButton
                     isAsyncDelete
                     afterDeleteAction={afterDeleteAction}
@@ -894,6 +918,14 @@ export const DataAssetsHeader = ({
           open={isAnnouncementDrawerOpen}
           onClose={handleCloseAnnouncementDrawer}
         />
+      )}
+
+      {tableClassBase.getRequestDataAccessDrawer(
+        isRequestDataAccessOpen,
+        () => setIsRequestDataAccessOpen(false),
+        dataAsset.fullyQualifiedName ?? '',
+        getEntityName(dataAsset),
+        entityType
       )}
     </>
   );
