@@ -124,7 +124,7 @@ class QlikCloudClient:
             return data.result.qLayout.qAppObjectList.qItems  # noqa: TRY300
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard charts")
+            logger.error("Failed to fetch the dashboard charts")  # noqa: TRY400
         return []
 
     def get_dashboards_list(self) -> Iterable[QlikApp]:
@@ -144,7 +144,7 @@ class QlikCloudClient:
                         break
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the app list")
+            logger.error("Failed to fetch the app list")  # noqa: TRY400
 
     def get_dashboards_list_test_conn(self) -> Iterable[QlikApp]:  # noqa: RET503
         resp_apps = self.client.get("/v1/items?resourceType=app")
@@ -164,7 +164,7 @@ class QlikCloudClient:
                 return QlikApp(**resp_dashboard.get("attributes"))
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the dashboard with id: {dashboard_id}")
+            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")  # noqa: TRY400
         return None
 
     def get_dashboard_models(self) -> List[QlikTable]:  # noqa: UP006
@@ -194,7 +194,7 @@ class QlikCloudClient:
             return parsed_datamodels  # noqa: TRY300
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard datamodels")
+            logger.error("Failed to fetch the dashboard datamodels")  # noqa: TRY400
         return []
 
     def get_projects_list(self) -> Iterable[QlikSpace]:
@@ -214,7 +214,7 @@ class QlikCloudClient:
                         break
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the space list")
+            logger.error("Failed to fetch the space list")  # noqa: TRY400
 
     def get_script_tables(self) -> Optional[List[QlikTable]]:  # noqa: UP006, UP045
         """Get script tables from the dashboard script"""
@@ -234,7 +234,7 @@ class QlikCloudClient:
             return script_tables  # noqa: TRY300
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the script tables")
+            logger.error("Failed to fetch the script tables")  # noqa: TRY400
         return script_tables
 
     def get_data_files(self) -> List[QlikDataFile]:  # noqa: UP006
@@ -246,5 +246,5 @@ class QlikCloudClient:
             data_files = parsed_resp.data or []
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch data files from api `/v1/data-files`")
+            logger.error("Failed to fetch data files from api `/v1/data-files`")  # noqa: TRY400
         return data_files

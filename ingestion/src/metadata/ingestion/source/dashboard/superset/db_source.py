@@ -95,7 +95,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 self.all_charts[chart_detail.id] = chart_detail
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch chart list due to - {err}]")
+            logger.error(f"Failed to fetch chart list due to - {err}]")  # noqa: TRY400
 
     def get_column_list(self, table_id: Optional[int]) -> Iterable[FetchChart]:  # noqa: UP045
         try:

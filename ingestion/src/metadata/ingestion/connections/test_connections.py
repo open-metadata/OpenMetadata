@@ -136,7 +136,7 @@ def _test_connection_steps_automation_workflow(
                 )
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"{step.name}-{err}")
+                logger.error(f"{step.name}-{err}")  # noqa: TRY400
                 test_connection_result.steps.append(
                     TestConnectionStepResult(
                         name=step.name,

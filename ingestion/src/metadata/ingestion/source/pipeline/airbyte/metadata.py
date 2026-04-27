@@ -224,14 +224,14 @@ class AirbyteSource(PipelineServiceSource):
                     start_dt = datetime.fromisoformat(job.startTime.replace("Z", "+00:00"))
                     created_at = datetime_to_timestamp(start_dt, milliseconds=True)
                 except (ValueError, AttributeError) as exc:
-                    logger.warning(f"Failed to parse startTime: {exc}")
+                    logger.error(f"Failed to parse startTime: {exc}")  # noqa: TRY400
 
             if job.lastUpdatedAt:
                 try:
                     end_dt = datetime.fromisoformat(job.lastUpdatedAt.replace("Z", "+00:00"))
                     ended_at = datetime_to_timestamp(end_dt, milliseconds=True)
                 except (ValueError, AttributeError) as exc:
-                    logger.warning(f"Failed to parse lastUpdatedAt: {exc}")
+                    logger.error(f"Failed to parse lastUpdatedAt: {exc}")  # noqa: TRY400
 
             task_status = [
                 TaskStatus(

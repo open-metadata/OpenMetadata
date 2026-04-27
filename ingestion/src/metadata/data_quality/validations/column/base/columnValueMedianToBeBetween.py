@@ -68,7 +68,7 @@ class BaseColumnValueMedianToBeBetweenValidator(BaseTestValidator):
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
-            logger.warning(msg)
+            logger.error(msg)  # noqa: TRY400
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,

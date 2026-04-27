@@ -262,6 +262,11 @@ exclude = [
 # 3.12 is verified separately by the unit-test matrix in py-tests.yml.
 # Keep this in sync with `requires-python` above.
 pythonVersion = "3.10"
+# Pin platform analysis to Linux so the baseline file (generated against
+# CI's Ubuntu runner) matches results from any developer machine. Without
+# this, macOS arm64 analyzers resolve some stubs differently and produce
+# column-shifted error positions that don't match the committed baseline.
+pythonPlatform = "Linux"
 
 # Existing violations are grandfathered via .basedpyright/baseline.json
 # (regenerate with `basedpyright -p ingestion/pyproject.toml --writebaseline`

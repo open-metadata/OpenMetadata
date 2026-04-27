@@ -211,7 +211,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             )
             return result  # noqa: RET504
         except UnsupportedDialectError as e:
-            logger.warning(f"[Data Diff]: Unsupported dialect: {e}")
+            logger.error(f"[Data Diff]: Unsupported dialect: {e}")  # noqa: TRY400
             result = TestCaseResult(
                 timestamp=self.execution_date,  # type: ignore
                 testCaseStatus=TestCaseStatus.Aborted,

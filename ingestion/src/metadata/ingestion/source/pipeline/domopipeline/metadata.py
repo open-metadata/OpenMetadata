@@ -183,5 +183,5 @@ class DomopipelineSource(PipelineServiceSource):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get source url for {pipeline_id}: {exc}")
+            logger.error(f"Unable to get source url for {pipeline_id}: {exc}")  # noqa: TRY400
         return None

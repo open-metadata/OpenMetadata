@@ -250,7 +250,7 @@ class DBTCloudClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get run info :{exc}")
+            logger.error(f"Unable to get run info :{exc}")  # noqa: TRY400
 
     def get_models_with_lineage(
         self, job_id: int, run_id: int
@@ -277,5 +277,5 @@ class DBTCloudClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get models with lineage info: {exc}")
+            logger.error(f"Unable to get models with lineage info: {exc}")  # noqa: TRY400
         return None, None, None

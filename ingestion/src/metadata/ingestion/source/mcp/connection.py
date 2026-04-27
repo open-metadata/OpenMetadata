@@ -133,7 +133,7 @@ class McpConnectionManager:
             client = self.connect_to_server(server)
             return True  # noqa: TRY300
         except McpProtocolError as e:
-            logger.warning(f"Failed to connect to MCP server '{server.name}': {e}")
+            logger.error(f"Failed to connect to MCP server '{server.name}': {e}")  # noqa: TRY400
             return False
         except Exception as e:
             logger.warning(f"Unexpected error connecting to MCP server '{server.name}': {e}")

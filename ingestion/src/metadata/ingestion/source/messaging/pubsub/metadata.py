@@ -204,10 +204,10 @@ class PubsubSource(MessagingServiceSource):
                     )
                 except Exception as err:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Failed to get subscription {sub_path}: {err}")
+                    logger.error(f"Failed to get subscription {sub_path}: {err}")  # noqa: TRY400
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to list subscriptions for {topic_name}: {err}")
+            logger.error(f"Failed to list subscriptions for {topic_name}: {err}")  # noqa: TRY400
         return subscriptions
 
     def _get_schema_info(self, schema_name: str) -> Optional[PubSubSchemaInfo]:  # noqa: UP045
@@ -227,7 +227,7 @@ class PubsubSource(MessagingServiceSource):
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get schema {schema_name}: {err}")
+            logger.error(f"Failed to get schema {schema_name}: {err}")  # noqa: TRY400
         return None
 
     def yield_topic(self, topic_details: BrokerTopicDetails) -> Iterable[Either[CreateTopicRequest]]:
@@ -345,7 +345,7 @@ class PubsubSource(MessagingServiceSource):
                 return load_parser_fn(topic_name, schema_text)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to parse schema for {topic_name}: {exc}")
+            logger.error(f"Failed to parse schema for {topic_name}: {exc}")  # noqa: TRY400
         return None
 
     def yield_topic_sample_data(self, topic_details: BrokerTopicDetails) -> Iterable[Either[OMetaTopicSampleData]]:

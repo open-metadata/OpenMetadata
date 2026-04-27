@@ -74,7 +74,7 @@ class OMetaContainerMixin:
             return TableData(**resp["sampleData"])
         except UnicodeError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Cannot parse response from {container_fqn} due to {err}")
+            logger.error(f"Cannot parse response from {container_fqn} due to {err}")  # noqa: TRY400
             return None
 
     def ingest_container_sample_data(self, container: Container, sample_data: TableData) -> Optional[TableData]:  # noqa: UP045
