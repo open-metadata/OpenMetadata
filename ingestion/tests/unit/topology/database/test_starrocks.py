@@ -177,9 +177,7 @@ class TestStarRocksIcebergMapping(TestCase):
 class TestStarRocksGetTableDescription(TestCase):
     """Tests for get_table_description delegating to utils.get_table_comment"""
 
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def setUp(self, test_connection):
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_starrocks_config)
@@ -200,9 +198,7 @@ class TestStarRocksGetTableDescription(TestCase):
             inspector=MagicMock(),
         )
         assert description == "审计日志表"
-        mock_get_table_comment.assert_called_once_with(
-            None, self.source.connection, "audit_tbl", schema="test_db"
-        )
+        mock_get_table_comment.assert_called_once_with(None, self.source.connection, "audit_tbl", schema="test_db")
 
     @patch("metadata.ingestion.source.database.starrocks.metadata.get_table_comment")
     def test_returns_none_for_empty_comment(self, mock_get_table_comment):

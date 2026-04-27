@@ -260,14 +260,10 @@ class StarRocksSource(CommonDbSourceService):
         return tables
 
     # pylint: disable=arguments-differ,unused-argument
-    def get_table_description(
-        self, schema_name: str, table_name: str, inspector: Inspector
-    ) -> Optional[str]:
+    def get_table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> Optional[str]:
         description = None
         try:
-            table_info = get_table_comment(
-                None, self.connection, table_name, schema=schema_name
-            )
+            table_info = get_table_comment(None, self.connection, table_name, schema=schema_name)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
