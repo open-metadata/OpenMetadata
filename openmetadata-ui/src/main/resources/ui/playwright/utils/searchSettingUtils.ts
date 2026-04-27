@@ -29,6 +29,7 @@ export const mockEntitySearchConfig = {
   assetType: 'table',
   searchFields: [
     { field: 'displayName.keyword', boost: 20, matchType: 'exact' },
+    { field: 'name.keyword', boost: 20, matchType: 'exact' },
     { field: 'name', boost: 10, matchType: 'phrase' },
     { field: 'name.ngram', boost: 1, matchType: 'fuzzy' },
     { field: 'name.compound', boost: 8, matchType: 'standard' },

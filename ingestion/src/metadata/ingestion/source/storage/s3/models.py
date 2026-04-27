@@ -35,6 +35,11 @@ class S3BucketResponse(BaseModel):
         description="Timestamp of Bucket creation in ISO format",
         alias="CreationDate",
     )
+    bucket_arn: Optional[str] = Field(
+        None,
+        description="ARN of the bucket",
+        alias="BucketArn",
+    )
 
 
 class S3Tag(BaseModel):

@@ -61,6 +61,7 @@ from metadata.ingestion.models.topology import get_entity_hierarchy_depth
 from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.announcement_mixin import OMetaAnnouncementMixin
+from metadata.ingestion.ometa.mixins.container_mixin import OMetaContainerMixin
 from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
 from metadata.ingestion.ometa.mixins.custom_property_mixin import (
     OMetaCustomPropertyMixin,
@@ -268,6 +269,7 @@ class OpenMetadata(
     OMetaPipelineMixin,
     OMetaMlModelMixin,
     OMetaTableMixin,
+    OMetaContainerMixin,
     OMetaFileMixin,
     OMetaTopicMixin,
     OMetaVersionMixin,
