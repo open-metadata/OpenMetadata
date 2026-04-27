@@ -16,11 +16,10 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from functools import partial
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union  # noqa: UP035
 
 from airflow import DAG
 from airflow.utils import timezone
-from openmetadata_managed_apis.api.utils import clean_dag_id
 from pydantic import ValidationError
 from requests.utils import quote
 
@@ -41,6 +40,7 @@ from metadata.generated.schema.type.basic import Timestamp, Uuid
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.workflow.base import BaseWorkflow
+from openmetadata_managed_apis.api.utils import clean_dag_id
 
 # pylint: disable=ungrouped-imports
 try:
@@ -91,13 +91,13 @@ ENTITY_CLASS_MAP = {
 }
 
 
-class InvalidServiceException(Exception):
+class InvalidServiceException(Exception):  # noqa: N818
     """
     The service type we received is not supported
     """
 
 
-class GetServiceException(Exception):
+class GetServiceException(Exception):  # noqa: N818
     """
     Exception to be thrown when couldn't fetch the service from server
     """
@@ -134,7 +134,7 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         # check we can access OM server
         metadata.health_check()
     except Exception as exc:
-        raise ClientInitializationError(
+        raise ClientInitializationError(  # noqa: B904
             f"Failed to initialize the OpenMetadata client due to: {exc}."
             " Make sure that the Airflow host can reach the OpenMetadata"
             f" server running at {ingestion_pipeline.openMetadataServerConnection.hostPort}"
@@ -173,12 +173,12 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
             if isinstance(scoped_error, ValidationError):
                 # Let's catch validations of internal Workflow models, not the Workflow itself
                 object_error = getattr(scoped_error, "title", None) or "workflow"
-                raise ParsingConfigurationError(
+                raise ParsingConfigurationError(  # noqa: B904
                     f"We encountered an error parsing the configuration of your {object_error}.\n"
                     f"{parse_validation_err(scoped_error)}"
                 )
-            raise scoped_error
-        raise ParsingConfigurationError(
+            raise scoped_error  # noqa: TRY201
+        raise ParsingConfigurationError(  # noqa: B904
             f"We encountered an error parsing the configuration of your workflow.\n"
             f"{parse_validation_err(original_error)}"
         )
@@ -236,7 +236,7 @@ def build_workflow_config_property(
     )
 
 
-def clean_name_tag(tag: str) -> Optional[str]:
+def clean_name_tag(tag: str) -> Optional[str]:  # noqa: UP045
     """
     Clean the tag to be used in Airflow.
     Airflow supports 100 characters. We'll keep just 90
@@ -386,9 +386,9 @@ class CustomPythonOperator(PythonOperator):
 def build_dag(
     task_name: str,
     ingestion_pipeline: IngestionPipeline,
-    workflow_config: Union[OpenMetadataWorkflowConfig, OpenMetadataApplicationConfig],
+    workflow_config: Union[OpenMetadataWorkflowConfig, OpenMetadataApplicationConfig],  # noqa: UP007
     workflow_fn: Callable,
-    params: Optional[dict] = None,
+    params: Optional[dict] = None,  # noqa: UP045
 ) -> DAG:
     """
     Build a simple metadata workflow DAG

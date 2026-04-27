@@ -14,7 +14,7 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from typing import Callable, cast
+from typing import Callable, cast  # noqa: UP035
 
 from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
     TableRowInsertedCountToBeBetweenValidator,
@@ -107,7 +107,7 @@ class PandasInterfaceMixin:
                 )
                 yield from dfs()
 
-        self.table_partition_config = cast(PartitionProfilerConfig, partition_details)
+        self.table_partition_config = cast(PartitionProfilerConfig, partition_details)  # noqa: TC006
         return yield_df_partitions
 
     def get_sampled_query_dataframe(self, sample_query: str | None, raw_dataset: Callable) -> Callable:
@@ -147,7 +147,7 @@ class PandasInterfaceMixin:
                     for df in dfs():
                         yield df.sample(frac=percentage / 100)
                 except Exception as exc:
-                    logger.error(f"Error sampling dataframes based on percentage {static.profileSample}: {exc}")
+                    logger.error(f"Error sampling dataframes based on percentage {static.profileSample}: {exc}")  # noqa: TRY400
             elif static and static.profileSampleType == ProfileSampleType.ROWS:
                 try:
                     rows = static.profileSample or 0
@@ -155,13 +155,13 @@ class PandasInterfaceMixin:
                     for df in dfs():
                         n = len(df)
                         if streamed_rows + n > rows:
-                            df = df.head(rows - streamed_rows)
+                            df = df.head(rows - streamed_rows)  # noqa: PLW2901
                         yield df
                         streamed_rows += len(df)
                         if streamed_rows >= rows:
                             break
                 except Exception as exc:
-                    logger.error(f"Error sampling dataframes based on rows {static.profileSample}: {exc}")
+                    logger.error(f"Error sampling dataframes based on rows {static.profileSample}: {exc}")  # noqa: TRY400
             else:
                 logger.warning("Sample type not recognized. Returning un-sampled dataframes.")
                 yield from dfs()

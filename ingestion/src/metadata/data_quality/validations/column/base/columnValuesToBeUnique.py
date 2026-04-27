@@ -15,7 +15,7 @@ Validator for column values to be unique test case
 
 import traceback
 from abc import abstractmethod
-from typing import List, Optional, Union
+from typing import List, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -43,7 +43,7 @@ UNIQUE_COUNT = "uniqueCount"
 class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
     """Validator for column values to be unique test case"""
 
-    def _get_metrics_to_compute(self, test_params: Optional[dict] = None) -> dict:
+    def _get_metrics_to_compute(self, test_params: Optional[dict] = None) -> dict:  # noqa: UP045
         """Define which metrics to compute for uniqueness test
 
         Args:
@@ -58,7 +58,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
             Metrics.uniqueCount.name: Metrics.uniqueCount,
         }
 
-    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:  # noqa: UP045
         """Evaluate the uniqueness test condition and calculate derived values
 
         For uniqueness test: all values should be unique, meaning COUNT == UNIQUE_COUNT
@@ -88,8 +88,8 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
     def _format_result_message(
         self,
         metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,
-        test_params: Optional[dict] = None,
+        dimension_info: Optional[DimensionInfo] = None,  # noqa: UP045
+        test_params: Optional[dict] = None,  # noqa: UP045
     ) -> str:
         """Format the result message for uniqueness test
 
@@ -109,13 +109,13 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
                 f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
                 f"Found valuesCount={count} vs. uniqueCount={unique_count}"
             )
-        else:
+        else:  # noqa: RET505
             return (
                 f"Found valuesCount={count} vs. uniqueCount={unique_count}. "
                 "Both counts should be equal for column values to be unique."
             )
 
-    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:
+    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:  # noqa: UP006
         """Get test result values for uniqueness test
 
         Args:
@@ -141,7 +141,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self.get_column()
+            column: Union[SQALikeColumn, Column] = self.get_column()  # noqa: UP007
             count = self._run_results(Metrics.valuesCount, column)
             unique_count = self._get_unique_count(Metrics.uniqueCount, column)
 
@@ -178,7 +178,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         )
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):
+    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):  # noqa: UP007
         """Compute row count for the given column
 
         Args:
@@ -190,7 +190,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         raise NotImplementedError
 
     @abstractmethod
-    def _get_unique_count(self, metric: Metrics, column: Union[SQALikeColumn, Column]):
+    def _get_unique_count(self, metric: Metrics, column: Union[SQALikeColumn, Column]):  # noqa: UP007
         """Get row count
 
         Returns:
@@ -201,12 +201,12 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
     @abstractmethod
     def _execute_dimensional_validation(
         self,
-        column: Union[SQALikeColumn, Column],
-        dimension_col: Union[SQALikeColumn, Column],
+        column: Union[SQALikeColumn, Column],  # noqa: UP007
+        dimension_col: Union[SQALikeColumn, Column],  # noqa: UP007
         metrics_to_compute: dict,
-        test_params: Optional[dict],
+        test_params: Optional[dict],  # noqa: UP045
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional query for a single dimension
 
         This method should implement the engine-specific logic for executing

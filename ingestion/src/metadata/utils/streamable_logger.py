@@ -59,7 +59,7 @@ import queue
 import threading
 import time
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional  # noqa: UP035
 from uuid import UUID
 
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -123,12 +123,12 @@ class CircuitBreaker:
         try:
             result = func(*args, **kwargs)
             self._on_success()
-            return result
+            return result  # noqa: TRY300
         except (CircuitBreakerError, ServiceCallError):
             raise
         except Exception as e:
             self._on_failure()
-            raise ServiceCallError(f"Service call failed: {str(e)}") from e
+            raise ServiceCallError(f"Service call failed: {str(e)}") from e  # noqa: RUF010
 
     def _should_attempt_reset(self) -> bool:
         """Check if enough time has passed to attempt reset"""
@@ -302,7 +302,7 @@ class StreamableLogHandler(logging.Handler):
                 time.sleep(1.0)
 
             except Exception as e:
-                logger.error(f"Error in log shipping worker: {e}")
+                logger.error(f"Error in log shipping worker: {e}")  # noqa: TRY400
                 # Continue processing to avoid blocking
 
         # Final cleanup - drain ALL remaining items from the queue
@@ -381,8 +381,8 @@ class StreamableLogHandler(logging.Handler):
 
         except Exception as e:
             # Any error, fallback to local logging
-            logger.error(f"Error in emit: {e}")
-            try:
+            logger.error(f"Error in emit: {e}")  # noqa: TRY400
+            try:  # noqa: SIM105
                 self.fallback_handler.emit(record)
             except Exception:
                 pass  # Last resort: silently drop the log
@@ -390,12 +390,12 @@ class StreamableLogHandler(logging.Handler):
     def flush(self):
         """Flush any buffered logs"""
         # Signal worker to flush by adding a None marker
-        try:
+        try:  # noqa: SIM105
             self.log_queue.put_nowait(None)
         except queue.Full:
             pass
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> Dict[str, Any]:  # noqa: UP006
         """Get current metrics for monitoring"""
         return {
             **self.metrics,
@@ -477,11 +477,11 @@ class StreamableLogHandlerManager:
 
 def setup_streamable_logging_for_workflow(
     metadata: OpenMetadata,
-    pipeline_fqn: Optional[str] = None,
-    run_id: Optional[UUID] = None,
+    pipeline_fqn: Optional[str] = None,  # noqa: UP045
+    run_id: Optional[UUID] = None,  # noqa: UP045
     log_level: int = logging.INFO,
     enable_streaming: bool = False,
-) -> Optional[StreamableLogHandler]:
+) -> Optional[StreamableLogHandler]:  # noqa: UP045
     """
     Setup streamable logging for a workflow execution.
     This is automatically called when a workflow starts if:
@@ -540,7 +540,7 @@ def setup_streamable_logging_for_workflow(
         logger.info(f"Streamable logging configured for pipeline: {pipeline_fqn}, run_id: {model_str(run_id)}")
         metadata.validate_versions()  # Send the version check log
 
-        return handler
+        return handler  # noqa: TRY300
 
     except Exception as e:
         logger.warning(f"Failed to setup streamable logging: {e}")

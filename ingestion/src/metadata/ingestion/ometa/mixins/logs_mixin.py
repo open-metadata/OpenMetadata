@@ -92,11 +92,11 @@ class OMetaLogsMixin:
             # The REST client returns None for successful requests with empty response body (HTTP 200/201/204)
             # If we reach this point without an exception, the request was successful
             logger.debug(f"Successfully sent {log_batch['lineCount']} log lines for pipeline {pipeline_fqn}")
-            return True
+            return True  # noqa: TRY300
 
         except Exception as e:
             line_count = log_content.count("\n") + 1
-            logger.error(
+            logger.error(  # noqa: TRY400
                 f"Failed to send logs to S3 for pipeline {pipeline_fqn}: {e}. "
                 f"Log batch size: {len(log_content)} chars, "
                 f"Lines: {line_count}, "
@@ -147,7 +147,7 @@ class OMetaLogsMixin:
                     else:
                         logger.debug(f"Successfully shipped {line_count} log lines to server")
                     return metrics
-                else:
+                else:  # noqa: PLR5501, RET505
                     if attempt < max_retries:
                         wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
                         logger.warning(
@@ -169,7 +169,7 @@ class OMetaLogsMixin:
                     )
                     time.sleep(wait_time)
                 else:
-                    logger.error(
+                    logger.error(  # noqa: TRY400
                         f"Failed to send logs batch for pipeline {pipeline_fqn} after {max_retries + 1} attempts: {e}"
                     )
 
@@ -239,7 +239,7 @@ class OMetaLogsMixin:
 
             logger.debug(f"Successfully closed log stream for pipeline {pipeline_fqn}")
 
-            return True
+            return True  # noqa: TRY300
 
         except Exception as e:
             logger.warning(f"Failed to close log stream for pipeline {pipeline_fqn}: {e}")
@@ -251,7 +251,7 @@ class OMetaLogsMixin:
         run_id: UUID,
         offset: int = 0,
         limit: int = 1000,
-    ) -> Optional[str]:
+    ) -> Optional[str]:  # noqa: UP045
         """
         Retrieve logs from S3 storage for a pipeline run.
 
@@ -283,13 +283,13 @@ class OMetaLogsMixin:
                         decoded = base64.b64decode(log_data)
                         log_data = gzip.decompress(decoded).decode(UTF_8)
                     except Exception as e:
-                        logger.error(f"Failed to decompress logs: {e}")
+                        logger.error(f"Failed to decompress logs: {e}")  # noqa: TRY400
                         return None
 
                 return log_data
 
-            return None
+            return None  # noqa: TRY300
 
         except Exception as e:
-            logger.error(f"Failed to retrieve logs from S3 for pipeline {pipeline_fqn}: {e}")
+            logger.error(f"Failed to retrieve logs from S3 for pipeline {pipeline_fqn}: {e}")  # noqa: TRY400
             return None

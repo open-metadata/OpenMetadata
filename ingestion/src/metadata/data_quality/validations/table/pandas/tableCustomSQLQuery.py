@@ -36,7 +36,7 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValid
             [len(runner.query(sql_expression)) for runner in self.runner if len(runner.query(sql_expression))]
         )
 
-    def compute_row_count(self) -> Optional[int]:
+    def compute_row_count(self) -> Optional[int]:  # noqa: UP045
         """Compute row count for the given column
 
         Returns:
@@ -56,7 +56,7 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValid
                     try:
                         total_rows += len(dataframe.query(partition_expression))
                     except Exception as e:
-                        logger.error(
+                        logger.error(  # noqa: TRY400
                             "Error executing partition expression, "
                             f"expression may be invalid: {partition_expression} - {e}"
                         )

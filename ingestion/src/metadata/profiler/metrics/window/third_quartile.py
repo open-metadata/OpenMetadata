@@ -80,7 +80,7 @@ class ThirdQuartile(StaticMetric, PercentilMixin):
         if dfs is None:
             return None
         # pylint: disable=import-outside-toplevel
-        import pandas as pd
+        import pandas as pd  # noqa: PLC0415
 
         if is_quantifiable(self.col.type):
             # we can't compute the median unless we have
@@ -89,7 +89,7 @@ class ThirdQuartile(StaticMetric, PercentilMixin):
             try:
                 df = pd.concat([df[self.col.name] for df in dfs])
             except MemoryError:
-                logger.error(
+                logger.error(  # noqa: TRY400
                     f"Unable to compute Median for {self.col.name} due to memory constraints."
                     f"We recommend using a smaller sample size or partitioning."
                 )

@@ -15,7 +15,7 @@
 import fnmatch
 import traceback
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional  # noqa: UP035
 
 import lkml
 from pydantic import ValidationError
@@ -58,18 +58,18 @@ class LkmlParser:
     """
 
     def __init__(self, reader: Reader):
-        self._views_cache: Dict[ViewName, LookMlView] = {}
-        self._visited_files: Dict[Includes, List[Includes]] = {}
+        self._views_cache: Dict[ViewName, LookMlView] = {}  # noqa: UP006
+        self._visited_files: Dict[Includes, List[Includes]] = {}  # noqa: UP006
 
         # To store the raw string of the lkml explores
-        self.parsed_files: Dict[Includes, str] = {}
+        self.parsed_files: Dict[Includes, str] = {}  # noqa: UP006
 
         self.reader = reader
 
-        self._file_tree: Optional[List[Includes]] = None
+        self._file_tree: Optional[List[Includes]] = None  # noqa: UP006, UP045
 
     @property
-    def file_tree(self) -> List[Includes]:
+    def file_tree(self) -> List[Includes]:  # noqa: UP006
         """
         Parse the file tree of the repo
         """
@@ -78,7 +78,7 @@ class LkmlParser:
 
         return self._file_tree or []
 
-    def parse_file(self, path: Includes) -> Optional[List[Includes]]:
+    def parse_file(self, path: Includes) -> Optional[List[Includes]]:  # noqa: UP006, UP045
         """
         Internal parser. Parse the file and cache the views
 
@@ -100,16 +100,16 @@ class LkmlParser:
 
         except ReadException as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error trying to read the file [{path}]: {err}")
+            logger.error(f"Error trying to read the file [{path}]: {err}")  # noqa: TRY400
         except ValidationError as err:
-            logger.error(f"Validation error building the .lkml file from [{path}]: {err}")
+            logger.error(f"Validation error building the .lkml file from [{path}]: {err}")  # noqa: TRY400
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unknown error building the .lkml file from [{path}]: {err}")
+            logger.error(f"Unknown error building the .lkml file from [{path}]: {err}")  # noqa: TRY400
 
         return None
 
-    def _process_file(self, path: Includes) -> Optional[List[Includes]]:
+    def _process_file(self, path: Includes) -> Optional[List[Includes]]:  # noqa: UP006, UP045
         """
         Processing of a single path
         """
@@ -126,7 +126,7 @@ class LkmlParser:
 
         return expanded_includes
 
-    def _expand_includes(self, includes: Optional[List[Includes]]) -> Optional[List[Includes]]:
+    def _expand_includes(self, includes: Optional[List[Includes]]) -> Optional[List[Includes]]:  # noqa: UP006, UP045
         """
         If we have * in includes, expand them based on the file tree
         """
@@ -135,7 +135,7 @@ class LkmlParser:
 
         return [expanded for path in includes for expanded in self._expand(path)]
 
-    def _expand(self, path: Includes) -> List[Includes]:
+    def _expand(self, path: Includes) -> List[Includes]:  # noqa: UP006
         """
         Match files in tree if there's any * in the include
         """
@@ -172,7 +172,7 @@ class LkmlParser:
 
         raise ReadException(f"Error trying to read the file [{path}]")
 
-    def get_view_from_cache(self, view_name: ViewName) -> Optional[LookMlView]:
+    def get_view_from_cache(self, view_name: ViewName) -> Optional[LookMlView]:  # noqa: UP045
         """
         Check if view is cached, and return it.
         Otherwise, return None
@@ -183,7 +183,7 @@ class LkmlParser:
 
         return None
 
-    def find_view(self, view_name: ViewName, path: Includes) -> Optional[LookMlView]:
+    def find_view(self, view_name: ViewName, path: Includes) -> Optional[LookMlView]:  # noqa: UP045
         """
         Parse an incoming file (either from a `source_file` or an `include`),
         cache the views and return the list of includes to parse if

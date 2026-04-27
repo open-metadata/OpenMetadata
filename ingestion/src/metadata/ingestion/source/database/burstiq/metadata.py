@@ -13,7 +13,7 @@ BurstIQ LifeGraph source module for OpenMetadata
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -43,7 +43,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+    DatabaseServiceMetadataPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -80,8 +80,8 @@ class Burstiqsource(DatabaseServiceSource):
         self.metadata = metadata
         self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
         self.service_connection: BurstIQConnection = self.config.serviceConnection.root.config
-        self.client: Optional[BurstIQClient] = None
-        self._current_dictionary: Optional[BurstIQDictionary] = None
+        self.client: Optional[BurstIQClient] = None  # noqa: UP045
+        self._current_dictionary: Optional[BurstIQDictionary] = None  # noqa: UP045
 
         # Initialize connection and test it
         self.connection_obj = self._get_client()
@@ -92,7 +92,7 @@ class Burstiqsource(DatabaseServiceSource):
         cls,
         config_dict,
         metadata: OpenMetadataConnection,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: BurstIQConnection = config.serviceConnection.root.config
@@ -106,7 +106,7 @@ class Burstiqsource(DatabaseServiceSource):
             self.client = get_connection(self.service_connection)
         return self.client
 
-    def _get_current_dictionary(self, table_name: str) -> Optional[BurstIQDictionary]:
+    def _get_current_dictionary(self, table_name: str) -> Optional[BurstIQDictionary]:  # noqa: UP045
         """
         Get the currently cached dictionary for the given table name
 
@@ -178,7 +178,7 @@ class Burstiqsource(DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
         """
         Fetch dictionaries from BurstIQ and return as table names with type
         Caches each dictionary one at a time for use in yield_table
@@ -231,16 +231,16 @@ class Burstiqsource(DatabaseServiceSource):
 
         except ConnectionError as err:
             # Connection errors are critical - fail fast and stop the workflow
-            logger.error(f"Failed to connect to BurstIQ for schema {schema_name}: {err}")
+            logger.error(f"Failed to connect to BurstIQ for schema {schema_name}: {err}")  # noqa: TRY400
             logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Cannot connect to BurstIQ API: {err}") from err
         except Exception as err:
             # Other errors - log and re-raise to fail the workflow
-            logger.error(f"Fetching dictionaries from BurstIQ failed for schema {schema_name}: {err}")
+            logger.error(f"Fetching dictionaries from BurstIQ failed for schema {schema_name}: {err}")  # noqa: TRY400
             logger.debug(traceback.format_exc())
             raise
 
-    def _process_attribute_to_column(self, attribute, table_name: str) -> Optional[Column]:
+    def _process_attribute_to_column(self, attribute, table_name: str) -> Optional[Column]:  # noqa: UP045
         """
         Process a single BurstIQ attribute and convert it to an OpenMetadata Column
 
@@ -312,7 +312,7 @@ class Burstiqsource(DatabaseServiceSource):
             if column:
                 yield column
 
-    def _map_burstiq_datatype(self, burstiq_type: str) -> Tuple[str, Optional[str]]:
+    def _map_burstiq_datatype(self, burstiq_type: str) -> Tuple[str, Optional[str]]:  # noqa: UP006, UP045
         """
         Map BurstIQ data types to OpenMetadata/SQL data types
 
@@ -356,7 +356,7 @@ class Burstiqsource(DatabaseServiceSource):
         # Regular types - no array element type
         return (type_mapping.get(burstiq_type, "VARCHAR"), None)
 
-    def get_table_constraints(self, dictionary: BurstIQDictionary) -> Optional[List[TableConstraint]]:
+    def get_table_constraints(self, dictionary: BurstIQDictionary) -> Optional[List[TableConstraint]]:  # noqa: UP006, UP045
         """
         Get all table constraints (primary key, unique, and foreign key) from BurstIQ dictionary
 
@@ -378,7 +378,7 @@ class Burstiqsource(DatabaseServiceSource):
 
         for index in dictionary.indexes:
             if index.type == "UNIQUE" and index.attributes:
-                table_constraints.append(
+                table_constraints.append(  # noqa: PERF401
                     TableConstraint(
                         constraintType=ConstraintType.UNIQUE,
                         columns=index.attributes,
@@ -414,7 +414,7 @@ class Burstiqsource(DatabaseServiceSource):
 
         return table_constraints if table_constraints else None
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
+    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -476,7 +476,7 @@ class Burstiqsource(DatabaseServiceSource):
                 f"Unexpected exception to yield table "
                 f"(database=[{db_name}], schema=[{schema_name}], table=[{table_name}]): {exc}"
             )
-            logger.error(error)
+            logger.error(error)  # noqa: TRY400
             logger.debug(traceback.format_exc())
             yield Either(left=StackTraceError(name=table_name, error=error, stackTrace=traceback.format_exc()))
 

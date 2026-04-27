@@ -11,7 +11,7 @@
 """MSSQL source module"""
 
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy import text
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
@@ -112,7 +112,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         self.encrypted_procedures_cache: dict[tuple[str, str], set[str]] = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: MssqlConnection = config.serviceConnection.root.config
@@ -120,7 +120,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             raise InvalidSourceException(f"Expected MssqlConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -145,13 +145,13 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             (row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT for row in results
         }
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:
+    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the schema description
         """
         return self.schema_desc_map.get((self.context.get().database, schema_name))
 
-    def get_database_description(self, database_name: str) -> Optional[str]:
+    def get_database_description(self, database_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the database description
         """
@@ -173,7 +173,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                 self.encrypted_procedures_cache[cache_key] = set()
         return self.encrypted_procedures_cache[cache_key]
 
-    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:
+    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the stored procedure description
         """
@@ -221,7 +221,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Error trying to connect to database {new_database}: {exc}")
+                    logger.error(f"Error trying to connect to database {new_database}: {exc}")  # noqa: TRY400
 
     def get_stored_procedures(self) -> Iterable[MssqlStoredProcedure]:
         """List Snowflake stored procedures"""
@@ -242,7 +242,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                         continue
                     yield stored_procedure
                 except Exception as exc:
-                    logger.error(f"Error parsing Stored Procedure row: {row}")
+                    logger.error(f"Error parsing Stored Procedure row: {row}")  # noqa: TRY400
                     self.status.failed(
                         error=StackTraceError(
                             name=row._asdict().get("name", "UNKNOWN"),

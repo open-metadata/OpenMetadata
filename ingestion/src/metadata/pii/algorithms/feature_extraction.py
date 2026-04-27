@@ -16,7 +16,7 @@ for the PII classification model.
 import logging
 import re
 from collections import defaultdict
-from typing import DefaultDict, Dict, Iterable, List, Mapping, Optional, Sequence, Set
+from typing import DefaultDict, Dict, Iterable, List, Mapping, Optional, Sequence, Set  # noqa: UP035
 
 from presidio_analyzer import AnalyzerEngine
 
@@ -32,9 +32,9 @@ logger = pii_logger()
 def extract_pii_tags(
     analyzer: AnalyzerEngine,
     texts: Sequence[str],
-    context: Optional[List[str]] = None,
-    recognizer_result_patcher: Optional[PresidioRecognizerResultPatcher] = None,
-) -> Dict[PIITag, float]:
+    context: Optional[List[str]] = None,  # noqa: UP006, UP045
+    recognizer_result_patcher: Optional[PresidioRecognizerResultPatcher] = None,  # noqa: UP045
+) -> Dict[PIITag, float]:  # noqa: UP006
     """
     Extract PII entities from a batch of texts.
 
@@ -53,7 +53,7 @@ def extract_pii_tags(
     Returns:
         Mapping[PIITag, float]: A mapping of PII entity types to their average scores.
     """
-    entity_scores: DefaultDict[PIITag, float] = defaultdict(float)
+    entity_scores: DefaultDict[PIITag, float] = defaultdict(float)  # noqa: UP006
 
     if SUPPORTED_LANG not in analyzer.supported_languages:
         raise ValueError(f"The analyzer does not support {SUPPORTED_LANG}, which is required for this function.")
@@ -75,7 +75,7 @@ def extract_pii_tags(
                 pii_entity = PIITag[result.entity_type]
                 entity_scores[pii_entity] += result.score
             except KeyError:
-                logging.error(f"Unrecognized PII entity type: {result.entity_type}.")
+                logging.error(f"Unrecognized PII entity type: {result.entity_type}.")  # noqa: TRY400
 
     # normalize the scores if the batch is not empty
     if len(texts):
@@ -85,7 +85,7 @@ def extract_pii_tags(
     return entity_scores
 
 
-def split_column_name(column_name: str) -> List[str]:
+def split_column_name(column_name: str) -> List[str]:  # noqa: UP006
     """
     Split a column name into its components.
     This is used for passing column names to the analyzer as context.
@@ -97,7 +97,7 @@ def split_column_name(column_name: str) -> List[str]:
     parts = re.split(regex_pattern, column_name)
 
     # Then split each part by camelCase
-    result: List[str] = []
+    result: List[str] = []  # noqa: UP006
     for part in parts:
         if not part:
             continue
@@ -109,7 +109,7 @@ def split_column_name(column_name: str) -> List[str]:
 
 def extract_pii_from_column_names(
     column_name: str, patterns: Mapping[PIITag, Iterable[re.Pattern[str]]]
-) -> Set[PIITag]:
+) -> Set[PIITag]:  # noqa: UP006
     """
     Extract PII entities from a column name using a collection of regex patterns
     for each PII type. This is used to match patterns in column names that might
@@ -118,7 +118,7 @@ def extract_pii_from_column_names(
     Example: "user_email" might match the EMAIL_ADDRESS pattern, returning
     a set containing the PII tag PIITag.EMAIL_ADDRESS.
     """
-    results: Set[PIITag] = set()
+    results: Set[PIITag] = set()  # noqa: UP006
 
     for pii_type, pii_type_patterns in patterns.items():
         for pattern in pii_type_patterns:

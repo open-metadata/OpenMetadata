@@ -20,7 +20,7 @@ import traceback
 from abc import ABC
 from multiprocessing import Process, Queue
 from threading import Thread
-from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union
+from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union  # noqa: UP035
 
 import networkx as nx
 from sqlalchemy import text
@@ -81,10 +81,10 @@ class LineageSource(QueryParserSource, ABC):
     dialect: Dialect
 
     @staticmethod
-    def generate_lineage_with_processes(
+    def generate_lineage_with_processes(  # noqa: C901
         producer_fn: Callable[[], Iterable[Any]],
         processor_fn: Callable[[Any, Queue], None],
-        args: Tuple[Any, ...],
+        args: Tuple[Any, ...],  # noqa: UP006
         chunk_size: int = CHUNK_SIZE,
         processor_timeout: int = PROCESS_TIMEOUT,
         max_threads: int = MAX_ACTIVE_TIMED_OUT_THREADS,
@@ -198,7 +198,7 @@ class LineageSource(QueryParserSource, ABC):
             """Check if queue has items based on queue type."""
             if multiprocessing_supported:
                 return not queue.empty()
-            else:
+            else:  # noqa: RET505
                 return queue.has_tasks()
 
         def process_queue_items():
@@ -284,15 +284,15 @@ class LineageSource(QueryParserSource, ABC):
         """
         try:
             query_log_path = self.source_config.queryLogFilePath
-            if os.path.isfile(query_log_path):
+            if os.path.isfile(query_log_path):  # noqa: PTH113
                 file_paths = [query_log_path]
-            elif os.path.isdir(query_log_path):
-                file_paths = [os.path.join(query_log_path, f) for f in os.listdir(query_log_path) if f.endswith(".csv")]
+            elif os.path.isdir(query_log_path):  # noqa: PTH112
+                file_paths = [os.path.join(query_log_path, f) for f in os.listdir(query_log_path) if f.endswith(".csv")]  # noqa: PTH118, PTH208
             else:
-                raise ValueError(f"{query_log_path} is neither a file nor a directory.")
+                raise ValueError(f"{query_log_path} is neither a file nor a directory.")  # noqa: TRY301
 
             for file_path in file_paths:
-                with open(file_path, "r", encoding="utf-8") as file:
+                with open(file_path, "r", encoding="utf-8") as file:  # noqa: PTH123
                     for row in csv.DictReader(file):
                         query_dict = dict(row)
                         yield TableQuery(
@@ -356,7 +356,7 @@ class LineageSource(QueryParserSource, ABC):
 
     def yield_query_lineage(
         self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
         """
         Based on the query logs, prepare the lineage
         and send it to the sink
@@ -435,13 +435,13 @@ class LineageSource(QueryParserSource, ABC):
 
     def yield_procedure_lineage(
         self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
         """
         By default stored   procedure lineage is not supported.
         """
-        logger.info(f"Processing Procedure Lineage not supported for {str(self.service_connection.type.value)}")
+        logger.info(f"Processing Procedure Lineage not supported for {str(self.service_connection.type.value)}")  # noqa: RUF010
 
-    def get_column_lineage(self, from_table: Table, to_table: Table) -> List[ColumnLineage]:
+    def get_column_lineage(self, from_table: Table, to_table: Table) -> List[ColumnLineage]:  # noqa: UP006
         """
         Get the column lineage from the fields
         """
@@ -454,7 +454,7 @@ class LineageSource(QueryParserSource, ABC):
                 if from_column and to_column:
                     column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))
 
-            return column_lineage
+            return column_lineage  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error to get column lineage: {exc}")
             logger.debug(traceback.format_exc())
@@ -464,8 +464,8 @@ class LineageSource(QueryParserSource, ABC):
         self,
         from_entity: Table,
         to_entity: Table,
-        column_lineage: List[ColumnLineage] = None,
-    ) -> Optional[Either[AddLineageRequest]]:
+        column_lineage: List[ColumnLineage] = None,  # noqa: RUF013, UP006
+    ) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
         """
         Get the add cross database lineage request
         """
@@ -490,7 +490,7 @@ class LineageSource(QueryParserSource, ABC):
         By default cross database lineage is not supported.
         """
 
-    def _iter(self, *_, **__) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+    def _iter(self, *_, **__) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
         """
         Based on the query logs, prepare the lineage
         and send it to the sink
@@ -516,7 +516,7 @@ class LineageSource(QueryParserSource, ABC):
                 yield from get_lineage_by_graph(graph=self.graph, metadata=self.metadata)
             else:
                 logger.warning(
-                    f"Lineage extraction is not supported for {str(self.service_connection.type.value)} connection"
+                    f"Lineage extraction is not supported for {str(self.service_connection.type.value)} connection"  # noqa: RUF010
                 )
         if self.source_config.processCrossDatabaseLineage and self.source_config.crossDatabaseServiceNames:
             yield from self.yield_cross_database_lineage() or []

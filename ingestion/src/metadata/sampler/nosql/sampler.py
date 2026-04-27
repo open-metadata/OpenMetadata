@@ -10,7 +10,7 @@
 #  limitations under the License.
 """NoSQL Sampler"""
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.type.basic import ProfileSampleType
@@ -40,7 +40,7 @@ class NoSQLSampler(SamplerInterface):
             client=self.connection,
         )
 
-    def _rdn_sample_from_user_query(self) -> List[Dict[str, any]]:
+    def _rdn_sample_from_user_query(self) -> List[Dict[str, any]]:  # noqa: UP006
         """
         Get random sample from user query
         """
@@ -63,12 +63,12 @@ class NoSQLSampler(SamplerInterface):
     def get_dataset(self, **__):
         """No randomization for NoSQL"""
 
-    def fetch_sample_data(self, columns: List[SQALikeColumn]) -> TableData:
+    def fetch_sample_data(self, columns: List[SQALikeColumn]) -> TableData:  # noqa: UP006
         if self.sample_query:
             return self._fetch_sample_data_from_user_query()
         return self._fetch_sample_data(columns)
 
-    def _fetch_sample_data(self, columns: List[SQALikeColumn]) -> TableData:
+    def _fetch_sample_data(self, columns: List[SQALikeColumn]) -> TableData:  # noqa: UP006
         """
         returns sampled ometa dataframes
         """
@@ -80,7 +80,7 @@ class NoSQLSampler(SamplerInterface):
             columns=[col.name for col in cols],
         )
 
-    def _get_limit(self) -> Optional[int]:
+    def _get_limit(self) -> Optional[int]:  # noqa: UP045
         num_rows = self.client.item_count(self.raw_dataset)
         static = self.sample_config.get_static_config()
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
@@ -93,15 +93,16 @@ class NoSQLSampler(SamplerInterface):
 
     @staticmethod
     def transpose_records(
-        records: List[Dict[str, any]], columns: List[SQALikeColumn]
-    ) -> Tuple[List[List[any]], List[SQALikeColumn]]:
+        records: list[dict[str, any]],
+        columns: List[SQALikeColumn],  # noqa: UP006
+    ) -> Tuple[List[List[any]], List[SQALikeColumn]]:  # noqa: UP006
         rows = []
         for record in records:
             row = []
             for column in columns:
-                row.append(record.get(column.name))
+                row.append(record.get(column.name))  # noqa: PERF401
             rows.append(row)
         return rows, columns
 
-    def get_columns(self) -> List[Optional[SQALikeColumn]]:
+    def get_columns(self) -> List[Optional[SQALikeColumn]]:  # noqa: UP006, UP045
         return [SQALikeColumn(name=c.name.root, type=c.dataType) for c in self.raw_dataset.columns]

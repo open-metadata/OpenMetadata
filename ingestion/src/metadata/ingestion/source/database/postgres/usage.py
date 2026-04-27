@@ -14,7 +14,7 @@ Postgres usage module
 
 import traceback
 from datetime import datetime
-from typing import Iterable
+from typing import Iterable  # noqa: UP035
 
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
@@ -57,7 +57,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                 row_count = 0
                 for row in rows:
                     row_count += 1
-                    row = row._asdict()
+                    row = row._asdict()  # noqa: PLW2901
                     try:
                         queries.append(
                             TableQuery(
@@ -74,7 +74,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                         )
                     except Exception as err:
                         logger.debug(traceback.format_exc())
-                        logger.error(str(err))
+                        logger.error(str(err))  # noqa: TRY400
             logger.info(f"Processed {row_count} query log entries for usage")
             if queries:
                 yield TableQueries(queries=queries)
@@ -91,7 +91,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
         except Exception as err:
             if query:
                 logger.debug(f"###### USAGE QUERY #######\n{query}\n##########################")
-            logger.error(f"Source usage processing error - {err}")
+            logger.error(f"Source usage processing error - {err}")  # noqa: TRY400
             logger.debug(traceback.format_exc())
 
     def get_filters(self) -> str:

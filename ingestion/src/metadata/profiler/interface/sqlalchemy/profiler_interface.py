@@ -23,7 +23,7 @@ import time
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union  # noqa: UP035
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
@@ -91,12 +91,12 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     # pylint: disable=too-many-arguments
     def __init__(
         self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection],  # noqa: UP007
         ometa_client: OpenMetadata,
         entity: Table,
         source_config: DatabaseServiceProfilerPipeline,
         sampler: SamplerInterface,
-        thread_count: Optional[int],
+        thread_count: Optional[int],  # noqa: UP045
         timeout_seconds: int = 43200,
         **kwargs,
     ):
@@ -126,7 +126,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     def table(self):
         return self._table
 
-    def _get_effective_thread_count(self, metric_funcs: List[ThreadPoolMetrics]) -> int:
+    def _get_effective_thread_count(self, metric_funcs: List[ThreadPoolMetrics]) -> int:  # noqa: UP006
         """Given the number of tasks to perform return a dynamic thread count.
         If the thread count is explicitly set by the user, we will use that.
 
@@ -163,7 +163,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
     @staticmethod
     def _compute_static_metrics_wo_sum(
-        metrics: List[Metrics],
+        metrics: List[Metrics],  # noqa: UP006
         runner: QueryRunner,
         session,
         column: Column,
@@ -190,12 +190,12 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
     def _compute_table_metrics(
         self,
-        metrics: List[Metrics],
+        metrics: List[Metrics],  # noqa: UP006
         runner: QueryRunner,
         session,
         *args,
         **kwargs,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
         """Given a list of metrics, compute the given results
         and returns the values
 
@@ -217,7 +217,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             row = table_metric_computer.compute()
             if row:
                 return row._asdict()
-            return None
+            return None  # noqa: TRY300
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -225,11 +225,11 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 f"Error trying to compute profile for {runner.table_name}: {exc}"  # type: ignore
             )
             session.rollback()
-            raise RuntimeError(exc)
+            raise RuntimeError(exc)  # noqa: B904
 
     def _compute_static_metrics(
         self,
-        metrics: List[Metrics],
+        metrics: List[Metrics],  # noqa: UP006
         runner: QueryRunner,
         column,
         session,
@@ -282,7 +282,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             metric_query = col_metric.query(sample=sample, session=session)
             if metric_query is None:
                 return None
-            if col_metric.metric_type == dict:
+            if col_metric.metric_type == dict:  # noqa: E721
                 results = runner.select_all_from_query(metric_query)
                 data = {k: [result[k] for result in results] for k in results[0]._asdict()}
                 return {metric.name(): data}
@@ -315,7 +315,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
     def _compute_window_metrics(
         self,
-        metrics: List[Metrics],
+        metrics: List[Metrics],  # noqa: UP006
         runner: QueryRunner,
         column,
         session,
@@ -347,7 +347,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             handle_query_exception(msg, exc, session)
         return None
 
-    def _compute_custom_metrics(self, metrics: List[CustomMetric], runner, session, *args, **kwargs):
+    def _compute_custom_metrics(self, metrics: List[CustomMetric], runner, session, *args, **kwargs):  # noqa: UP006
         """Compute custom metrics
 
         Args:
@@ -362,7 +362,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         for metric in metrics:
             try:
                 if not is_safe_sql_query(metric.expression):
-                    raise RuntimeError(f"SQL expression is not safe\n\n{metric.expression}")
+                    raise RuntimeError(f"SQL expression is not safe\n\n{metric.expression}")  # noqa: TRY301
 
                 crs = session.execute(text(metric.expression))
                 row = crs.scalar()  # raise MultipleResultsFound if more than one row is returned
@@ -378,11 +378,11 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
     def _compute_system_metrics(
         self,
-        metrics: Type[System],
+        metrics: Type[System],  # noqa: UP006
         runner: QueryRunner,
         *args,
         **kwargs,
-    ) -> List[SystemProfile]:
+    ) -> List[SystemProfile]:  # noqa: UP006
         """Get system metric for tables. Override this in the interface if you want to use a metric source with
         for other sources.
 
@@ -417,7 +417,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     ):
         """Run metrics in processor worker"""
         logger.debug(f"Running profiler for {metric_func.table.__tablename__} on thread {threading.current_thread()}")
-        Session = self.session_factory  # pylint: disable=invalid-name
+        Session = self.session_factory  # pylint: disable=invalid-name  # noqa: N806
         max_retries = 3
         retry_count = 0
         initial_backoff = 5
@@ -452,7 +452,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                         self.status.scanned(f"{metric_func.table.__tablename__}__{metric_func.metric_type.value}")
                         column = None
 
-                    return row, column, metric_func.metric_type.value
+                    return row, column, metric_func.metric_type.value  # noqa: TRY300
 
                 except Exception as exc:
                     dialect = session.get_bind().dialect
@@ -467,12 +467,12 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                             session.rollback()
                             time.sleep(backoff)
                             continue
-                        logger.error(f"Max retries ({max_retries}) exceeded for disconnection")
+                        logger.error(f"Max retries ({max_retries}) exceeded for disconnection")  # noqa: TRY400
                     error = (
                         f"{metric_func.column if metric_func.column is not None else metric_func.table.__tablename__} "
                         f"metric_type.value: {exc}"
                     )
-                    logger.error(error)
+                    logger.error(error)  # noqa: TRY400
                     self.status.failed_profiler(error, traceback.format_exc())
                     break
                 finally:
@@ -483,7 +483,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         return None, None, None
 
     @staticmethod
-    def _validate_nulls(row: Dict[str, Any]) -> Dict[str, Any]:
+    def _validate_nulls(row: Dict[str, Any]) -> Dict[str, Any]:  # noqa: UP006
         """Detect if we are computing NaNs and replace them with None"""
         for k, v in row.items():
             if isinstance(v, float) and math.isnan(v):
@@ -499,7 +499,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         """get all profiler metrics"""
         thread_count = self._get_effective_thread_count(metric_funcs)
         logger.debug(f"Computing metrics with {thread_count} threads.")
-        profile_results = {"table": dict(), "columns": defaultdict(dict)}
+        profile_results = {"table": dict(), "columns": defaultdict(dict)}  # noqa: C408
         with CustomThreadPoolExecutor(max_workers=thread_count) as pool:
             futures = [
                 pool.submit(
@@ -516,7 +516,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 try:
                     profile, column, metric_type = future.result(timeout=self.timeout_seconds)
                     if metric_type != MetricTypes.System.value and not isinstance(profile, dict):
-                        profile = dict()
+                        profile = dict()  # noqa: C408
                     if metric_type == MetricTypes.Table.value:
                         profile_results["table"].update(profile)
                     elif metric_type == MetricTypes.System.value:
@@ -534,15 +534,15 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 except concurrent.futures.TimeoutError as exc:
                     pool.shutdown39(wait=True, cancel_futures=True)
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Operation was cancelled due to TimeoutError - {exc}")
-                    raise concurrent.futures.TimeoutError
+                    logger.error(f"Operation was cancelled due to TimeoutError - {exc}")  # noqa: TRY400
+                    raise concurrent.futures.TimeoutError  # noqa: B904
                 except KeyboardInterrupt:
                     pool.shutdown39(wait=True, cancel_futures=True)
                     raise
 
         return profile_results
 
-    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: Dict):
+    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: Dict):  # noqa: UP006
         """Given a list of metrics, compute the given results
         and returns the values
 
@@ -563,8 +563,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     def get_hybrid_metrics(
         self,
         column: Column,
-        metric: Type[HybridMetric],
-        column_results: Dict[str, Any],
+        metric: Type[HybridMetric],  # noqa: UP006
+        column_results: Dict[str, Any],  # noqa: UP006
     ):
         """Given a list of metrics, compute the given results
         and returns the values

@@ -18,7 +18,7 @@ import functools
 import json
 import traceback
 from copy import deepcopy
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -52,7 +52,7 @@ class OMetaLineageMixin(Generic[T]):
 
     client: REST
 
-    def _merge_column_lineage(self, original: List[Dict[str, Any]], updated: List[Dict[str, Any]]):
+    def _merge_column_lineage(self, original: List[Dict[str, Any]], updated: List[Dict[str, Any]]):  # noqa: UP006
         flat_original_result = set()
         flat_updated_result = set()
         try:
@@ -74,7 +74,7 @@ class OMetaLineageMixin(Generic[T]):
             return original
         return [{"fromColumns": list(col_data[:-1]), "toColumn": col_data[-1]} for col_data in union_result]
 
-    def _update_cache(self, request: AddLineageRequest, response: Dict[str, Any]):
+    def _update_cache(self, request: AddLineageRequest, response: Dict[str, Any]):  # noqa: UP006
         try:
             for res in response.get("downstreamEdges", []):
                 if str(request.edge.toEntity.id.root) == res.get("toEntity"):
@@ -98,7 +98,7 @@ class OMetaLineageMixin(Generic[T]):
             None,
         )
 
-    def add_lineage(self, data: AddLineageRequest, check_patch: bool = False) -> Dict[str, Any]:
+    def add_lineage(self, data: AddLineageRequest, check_patch: bool = False) -> Dict[str, Any]:  # noqa: UP006
         """
         Add lineage relationship between two entities and returns
         the entity information of the origin node
@@ -129,12 +129,12 @@ class OMetaLineageMixin(Generic[T]):
 
                     serialized_col_details = []
                     for col_lin in data.edge.lineageDetails.columnsLineage or []:
-                        serialized_col_details.append(ColumnLineage(**col_lin))
+                        serialized_col_details.append(ColumnLineage(**col_lin))  # noqa: PERF401
                     data.edge.lineageDetails.columnsLineage = serialized_col_details
 
                     serialized_col_details_og = []
                     for col_lin in original.edge.lineageDetails.columnsLineage or []:
-                        serialized_col_details_og.append(ColumnLineage(**col_lin))
+                        serialized_col_details_og.append(ColumnLineage(**col_lin))  # noqa: PERF401
                     original.edge.lineageDetails.columnsLineage = serialized_col_details_og
 
                     # Keep the pipeline information from the original
@@ -150,8 +150,8 @@ class OMetaLineageMixin(Generic[T]):
 
         except APIError as err:
             logger.debug(traceback.format_exc())
-            error = f"Error {err.status_code} trying to PUT lineage for {data.model_dump_json()}: {str(err)}"
-            logger.error(error)
+            error = f"Error {err.status_code} trying to PUT lineage for {data.model_dump_json()}: {str(err)}"  # noqa: RUF010
+            logger.error(error)  # noqa: TRY400
             return {"error": error}
 
         from_entity_lineage = self.get_lineage_by_id(data.edge.fromEntity.type, str(data.edge.fromEntity.id.root))
@@ -163,7 +163,7 @@ class OMetaLineageMixin(Generic[T]):
         self,
         from_id: str,
         to_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
         """
         Get the lineage edge between two entities.
 
@@ -179,7 +179,7 @@ class OMetaLineageMixin(Generic[T]):
                 return search_cache.get((from_id, to_id))
             res = self.client.get(f"{self.get_suffix(AddLineageRequest)}/getLineageEdge/{from_id}/{to_id}")
             search_cache.put((from_id, to_id), res)
-            return res
+            return res  # noqa: TRY300
         except APIError as err:
             if err.status_code != 404:
                 logger.debug(traceback.format_exc())
@@ -190,7 +190,7 @@ class OMetaLineageMixin(Generic[T]):
         self,
         original: AddLineageRequest,
         updated: AddLineageRequest,
-    ) -> Optional[bool]:
+    ) -> Optional[bool]:  # noqa: UP045
         """
         Patches a lineage edge between two entities.
 
@@ -216,7 +216,7 @@ class OMetaLineageMixin(Generic[T]):
                     f"/{original.edge.toEntity.id.root}",
                     data=str(patch),
                 )
-            return True
+            return True  # noqa: TRY300
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -226,11 +226,11 @@ class OMetaLineageMixin(Generic[T]):
 
     def get_lineage_by_id(
         self,
-        entity: Union[Type[T], str],
-        entity_id: Union[str, Uuid],
+        entity: Union[Type[T], str],  # noqa: UP006, UP007
+        entity_id: Union[str, Uuid],  # noqa: UP007
         up_depth: int = 1,
         down_depth: int = 1,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
         """
         Get lineage details for an entity `id`
         :param entity: Type of the entity
@@ -247,11 +247,11 @@ class OMetaLineageMixin(Generic[T]):
 
     def get_lineage_by_name(
         self,
-        entity: Union[Type[T], str],
-        fqn: Union[str, FullyQualifiedEntityName],
+        entity: Union[Type[T], str],  # noqa: UP006, UP007
+        fqn: Union[str, FullyQualifiedEntityName],  # noqa: UP007
         up_depth: int = 1,
         down_depth: int = 1,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
         """
         Get lineage details for an entity `id`
         :param entity: Type of the entity
@@ -268,11 +268,11 @@ class OMetaLineageMixin(Generic[T]):
 
     def _get_lineage(
         self,
-        entity: Union[Type[T], str],
+        entity: Union[Type[T], str],  # noqa: UP006, UP007
         path: str,
         up_depth: int = 1,
         down_depth: int = 1,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
         """
         Generic function to get entity data.
         :param entity: Type of the entity
@@ -285,7 +285,7 @@ class OMetaLineageMixin(Generic[T]):
 
         try:
             res = self.client.get(f"{self.get_suffix(AddLineageRequest)}/{entity_name}/{path}{search}")
-            return res
+            return res  # noqa: RET504, TRY300
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error {err.status_code} trying to GET linage for " + f"{entity_name} and {path}: {err}")
@@ -302,9 +302,9 @@ class OMetaLineageMixin(Generic[T]):
             )
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error {err.status_code} trying to DELETE linage for {edge}")
+            logger.error(f"Error {err.status_code} trying to DELETE linage for {edge}")  # noqa: TRY400
 
-    @functools.lru_cache(maxsize=LRU_CACHE_SIZE)
+    @functools.lru_cache(maxsize=LRU_CACHE_SIZE)  # noqa: B019
     def delete_lineage_by_source(self, entity_type: str, entity_id: str, source: str) -> None:
         """
         Remove the given Edge
@@ -313,14 +313,14 @@ class OMetaLineageMixin(Generic[T]):
             self.client.delete(f"{self.get_suffix(AddLineageRequest)}/{entity_type}/{entity_id}/type/{source}")
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error {err.status_code} trying to DELETE linage for {entity_id} of type {source}")
+            logger.error(f"Error {err.status_code} trying to DELETE linage for {entity_id} of type {source}")  # noqa: TRY400
 
     def add_lineage_by_query(
         self,
         database_service: DatabaseService,
         sql: str,
-        database_name: str = None,
-        schema_name: str = None,
+        database_name: str = None,  # noqa: RUF013
+        schema_name: str = None,  # noqa: RUF013
         timeout: int = LINEAGE_PARSING_TIMEOUT,
         check_patch: bool = False,
     ) -> None:
@@ -331,7 +331,7 @@ class OMetaLineageMixin(Generic[T]):
 
         # pylint: disable=import-outside-toplevel,cyclic-import
         # importing inside the method to avoid circular import
-        from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+        from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query  # noqa: PLC0415
 
         if database_service:
             connection_type = database_service.serviceType.value
@@ -357,10 +357,10 @@ class OMetaLineageMixin(Generic[T]):
                 elif lineage_request.left:
                     logger.error(f"Error while adding lineage: {lineage_request.left.error}")
 
-    @functools.lru_cache(maxsize=LRU_CACHE_SIZE)
+    @functools.lru_cache(maxsize=LRU_CACHE_SIZE)  # noqa: B019
     def patch_lineage_processed_flag(
         self,
-        entity: Type[T],
+        entity: Type[T],  # noqa: UP006
         fqn: str,
     ) -> None:
         """

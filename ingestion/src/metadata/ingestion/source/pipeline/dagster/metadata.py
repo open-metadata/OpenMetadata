@@ -13,7 +13,7 @@ Dagster source to extract metadata from OM UI
 """
 
 import traceback
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -82,7 +82,7 @@ class DagsterSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DagsterConnection = config.serviceConnection.root.config
         if not isinstance(connection, DagsterConnection):
@@ -93,24 +93,24 @@ class DagsterSource(PipelineServiceSource):
         super().__init__(config, metadata)
         self.strip_asset_key_prefix_length = self.service_connection.stripAssetKeyPrefixLength or 0
 
-    def _get_downstream_tasks(self, job: SolidHandle) -> Optional[List[str]]:
+    def _get_downstream_tasks(self, job: SolidHandle) -> Optional[List[str]]:  # noqa: UP006, UP045
         """Method to get downstream tasks"""
         down_stream_tasks = []
         if job.solid:
             for tasks in job.solid.inputs or []:
                 if tasks:
                     for task in tasks.dependsOn or []:
-                        down_stream_tasks.append(task.solid.name)
+                        down_stream_tasks.append(task.solid.name)  # noqa: PERF401
         return down_stream_tasks or None
 
-    def _get_task_list(self, pipeline_name: str) -> Optional[List[Task]]:
+    def _get_task_list(self, pipeline_name: str) -> Optional[List[Task]]:  # noqa: UP006, UP045
         """Method to collect all the tasks from dagster and return it in a task list"""
         jobs = self.client.get_jobs(
             pipeline_name=pipeline_name,
             repository_name=self.context.get().repository_name,
             repository_location=self.context.get().repository_location,
         )
-        task_list: List[Task] = []
+        task_list: List[Task] = []  # noqa: UP006
         if jobs:
             for job in jobs.solidHandles or []:
                 try:
@@ -336,16 +336,16 @@ class DagsterSource(PipelineServiceSource):
                     yield job
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
+            logger.error(  # noqa: TRY400
                 f"Unable to get pipelines list\n"
                 f"Please check if dagster is running correctly and is in good state: {exc}"
             )
-            raise WorkflowFatalError("Unable to get pipeline list")
+            raise WorkflowFatalError("Unable to get pipeline list")  # noqa: B904
 
     def get_pipeline_name(self, pipeline_details: DagsterPipeline) -> str:
         return pipeline_details.name
 
-    def get_source_url(self, pipeline_name: str, task_name: Optional[str]) -> Optional[SourceUrl]:
+    def get_source_url(self, pipeline_name: str, task_name: Optional[str]) -> Optional[SourceUrl]:  # noqa: UP045
         """
         Method to get source url for pipelines and tasks for dagster
         """
@@ -368,7 +368,7 @@ class DagsterSource(PipelineServiceSource):
             return False
         return any(job.name == pipeline_name for job in asset.jobs)
 
-    def _resolve_asset_to_table(self, asset: DagsterAssetNode, db_services: List[str]) -> TableResolutionResult:
+    def _resolve_asset_to_table(self, asset: DagsterAssetNode, db_services: List[str]) -> TableResolutionResult:  # noqa: UP006
         """
         Resolve Dagster asset to OpenMetadata Table entity.
         Tries multiple strategies to parse asset key into database/schema/table.
@@ -422,7 +422,7 @@ class DagsterSource(PipelineServiceSource):
 
         return TableResolutionResult()
 
-    def _parse_asset_from_materialization(self, asset: DagsterAssetNode) -> Optional[Dict[str, str]]:
+    def _parse_asset_from_materialization(self, asset: DagsterAssetNode) -> Optional[Dict[str, str]]:  # noqa: UP006, UP045
         """
         Extract table info from asset materialization metadata.
         """

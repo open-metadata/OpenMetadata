@@ -40,7 +40,7 @@ class FailedSampleValidatorMixin(ABC):
       - filter() -> filter expression (dict for SQA, string for Pandas)
     """
 
-    def get_inspection_query(self) -> Optional[str]:
+    def get_inspection_query(self) -> Optional[str]:  # noqa: UP045
         return getattr(self, "_inspection_query", None)
 
     @abstractmethod
@@ -68,10 +68,10 @@ class FailedSampleValidatorMixin(ABC):
             result.failedRowsSample = self.fetch_failed_rows_sample()
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error("Failed to fetch failed rows sample")
+            logger.error("Failed to fetch failed rows sample")  # noqa: TRY400
 
         try:
             result.inspectionQuery = self.get_inspection_query()
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error("Failed to get inspection query")
+            logger.error("Failed to get inspection query")  # noqa: TRY400

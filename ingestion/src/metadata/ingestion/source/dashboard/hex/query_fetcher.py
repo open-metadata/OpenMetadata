@@ -16,7 +16,7 @@ import re
 import traceback
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional  # noqa: UP035
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -55,7 +55,7 @@ class HexProjectLineage:
     """Lineage information for a Hex project - contains only what's needed for creating lineage"""
 
     project_id: str
-    upstream_tables: List[Table] = field(default_factory=list)  # Table entities referenced by the project
+    upstream_tables: list[Table] = field(default_factory=list)  # Table entities referenced by the project
     _table_ids_seen: set = field(default_factory=set, init=False)  # Track table IDs to prevent duplicates
 
     def add_table(self, table: Table) -> None:
@@ -64,7 +64,7 @@ class HexProjectLineage:
             self.upstream_tables.append(table)
             self._table_ids_seen.add(table.id.root)
 
-    def add_tables(self, tables: List[Table]) -> None:
+    def add_tables(self, tables: List[Table]) -> None:  # noqa: UP006
         """Add multiple tables, skipping duplicates"""
         for table in tables:
             self.add_table(table)
@@ -98,11 +98,12 @@ class HexQueryFetcher:
         self.start_time = self.end_time - timedelta(days=lookback_days)
 
         # Cache for project lineage
-        self._project_lineage_map: Dict[str, HexProjectLineage] = {}
+        self._project_lineage_map: Dict[str, HexProjectLineage] = {}  # noqa: UP006
 
     def fetch_hex_queries_from_service_prefix(
-        self, db_service_prefix: Optional[str] = None
-    ) -> Dict[str, HexProjectLineage]:
+        self,
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
+    ) -> Dict[str, HexProjectLineage]:  # noqa: UP006
         """
         Fetch Hex queries from database services matching the prefix
 
@@ -136,12 +137,12 @@ class HexQueryFetcher:
             logger.info(f"Querying {db_service.name.root} for Hex queries...")
             self._fetch_from_single_service(db_service, db_service_prefix)
         except Exception as e:
-            logger.error(f"Error fetching Hex queries from {db_service.name.root}: {e}")
+            logger.error(f"Error fetching Hex queries from {db_service.name.root}: {e}")  # noqa: TRY400
             logger.debug(traceback.format_exc())
 
         return self._project_lineage_map
 
-    def _find_matching_service(self, service_name: str) -> Optional[DatabaseService]:
+    def _find_matching_service(self, service_name: str) -> Optional[DatabaseService]:  # noqa: UP045
         """
         Find database service by exact name
 
@@ -153,12 +154,12 @@ class HexQueryFetcher:
         """
         try:
             service = self.metadata.get_by_name(entity=DatabaseService, fqn=service_name)
-            return service
+            return service  # noqa: RET504, TRY300
         except Exception as e:
             logger.debug(f"Service not found with name {service_name}: {e}")
             return None
 
-    def _fetch_from_single_service(self, db_service: DatabaseService, db_service_prefix: Optional[str] = None):
+    def _fetch_from_single_service(self, db_service: DatabaseService, db_service_prefix: Optional[str] = None):  # noqa: UP045
         """
         Fetch Hex queries from a single database service
 
@@ -196,10 +197,10 @@ class HexQueryFetcher:
                 )
 
         except Exception as e:
-            logger.error(f"Error fetching from service {db_service.name.root}: {e}")
+            logger.error(f"Error fetching from service {db_service.name.root}: {e}")  # noqa: TRY400
             logger.debug(traceback.format_exc())
 
-    def _create_engine_for_service(self, connection_config) -> Optional[Engine]:
+    def _create_engine_for_service(self, connection_config) -> Optional[Engine]:  # noqa: UP045
         """
         Create SQLAlchemy engine for a database service
 
@@ -210,7 +211,7 @@ class HexQueryFetcher:
             SQLAlchemy Engine or None if creation fails
         """
         try:
-            from metadata.utils.ssl_manager import get_ssl_connection
+            from metadata.utils.ssl_manager import get_ssl_connection  # noqa: PLC0415
 
             # Use get_ssl_connection which handles SSL setup and calls the appropriate get_connection
             # This is the same approach used in LineageSource and QueryParserSource
@@ -218,11 +219,11 @@ class HexQueryFetcher:
 
         except Exception as e:
             connection_type = connection_config.type.value if connection_config else "Unknown"
-            logger.error(f"Error creating engine for {connection_type}: {e}")
+            logger.error(f"Error creating engine for {connection_type}: {e}")  # noqa: TRY400
             logger.debug(traceback.format_exc())
             return None
 
-    def _execute_hex_query(self, engine: Engine, warehouse_type: str, connection_config) -> List[Dict]:
+    def _execute_hex_query(self, engine: Engine, warehouse_type: str, connection_config) -> List[Dict]:  # noqa: UP006
         """
         Execute Hex-specific query on the warehouse
 
@@ -278,12 +279,12 @@ class HexQueryFetcher:
             logger.info(f"Found {len(results)} Hex queries in {warehouse_type}")
 
         except Exception as e:
-            logger.error(f"Error executing Hex query on {warehouse_type}: {e}")
+            logger.error(f"Error executing Hex query on {warehouse_type}: {e}")  # noqa: TRY400
             logger.debug(traceback.format_exc())
 
         return results
 
-    def _extract_hex_metadata(self, query_text: str) -> Optional[Dict[str, str]]:
+    def _extract_hex_metadata(self, query_text: str) -> Optional[Dict[str, str]]:  # noqa: UP006, UP045
         """
         Extract Hex metadata from query text
 
@@ -310,9 +311,9 @@ class HexQueryFetcher:
 
     def _process_query_results(
         self,
-        queries: List[Dict],
+        queries: List[Dict],  # noqa: UP006
         service_name: str,
-        db_service_prefix: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
     ):
         """
         Process query results and extract lineage
@@ -353,10 +354,10 @@ class HexQueryFetcher:
         self,
         query_text: str,
         service_name: str,
-        database_name: Optional[str],
-        schema_name: Optional[str],
-        db_service_prefix: Optional[str] = None,
-    ) -> List[Table]:
+        database_name: Optional[str],  # noqa: UP045
+        schema_name: Optional[str],  # noqa: UP045
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
+    ) -> List[Table]:  # noqa: UP006
         """
         Extract table references from SQL query and resolve to Table entities
 
@@ -412,7 +413,7 @@ class HexQueryFetcher:
                         # Filter based on prefix constraints if needed
                         for table_entity in table_entities:
                             if self._matches_prefix_constraints(table_entity, db_service_prefix):
-                                tables.append(table_entity)
+                                tables.append(table_entity)  # noqa: PERF401
 
             except Exception as parser_error:
                 hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
@@ -423,7 +424,7 @@ class HexQueryFetcher:
 
         return tables
 
-    def _matches_prefix_constraints(self, table: Table, db_service_prefix: Optional[str]) -> bool:
+    def _matches_prefix_constraints(self, table: Table, db_service_prefix: Optional[str]) -> bool:  # noqa: UP045
         """
         Check if a table matches the constraints specified in the prefix
 
@@ -464,11 +465,11 @@ class HexQueryFetcher:
                     if not table_fqn_parts[i].startswith(prefix_part):
                         return False
                 # For other parts, check exact match
-                else:
+                else:  # noqa: PLR5501
                     if table_fqn_parts[i] != prefix_part:
                         return False
 
-            return True
+            return True  # noqa: TRY300
 
         except Exception as e:
             logger.debug(f"Error checking prefix constraints: {e}")

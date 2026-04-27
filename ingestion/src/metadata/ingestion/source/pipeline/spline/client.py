@@ -56,9 +56,9 @@ class SplineClient:
             except Exception as exe:
                 pipelines.pageNum += 1
                 logger.debug(traceback.format_exc())
-                logger.error(f"failed to fetch pipeline list due to: {exe}")
+                logger.error(f"failed to fetch pipeline list due to: {exe}")  # noqa: TRY400
 
-    def get_pipelines(self) -> Optional[ExecutionEvents]:
+    def get_pipelines(self) -> Optional[ExecutionEvents]:  # noqa: UP045
         """
         Method returns the executions events as pipelines
         """
@@ -70,16 +70,16 @@ class SplineClient:
                 yield from self._paginate_pipelines(pipelines)
         except Exception as exe:
             logger.debug(traceback.format_exc())
-            logger.error(f"failed to fetch pipeline list due to: {exe}")
+            logger.error(f"failed to fetch pipeline list due to: {exe}")  # noqa: TRY400
 
-    def get_pipelines_test_connection(self) -> Optional[ExecutionEvents]:
+    def get_pipelines_test_connection(self) -> Optional[ExecutionEvents]:  # noqa: UP045
         """
         Method returns the executions events as pipelines
         """
         response = self.client.get("/execution-events")
         return ExecutionEvents(**response)
 
-    def get_lineage_details(self, pipeline_id: str) -> Optional[ExecutionDetail]:
+    def get_lineage_details(self, pipeline_id: str) -> Optional[ExecutionDetail]:  # noqa: UP045
         """
         Method returns the executions events as pipelines
         """
@@ -89,11 +89,11 @@ class SplineClient:
                 return ExecutionDetail(**response)
         except Exception as exe:
             logger.debug(traceback.format_exc())
-            logger.error(f"failed to fetch pipeline list due to: {exe}")
+            logger.error(f"failed to fetch pipeline list due to: {exe}")  # noqa: TRY400
 
         return None
 
-    def get_column_lineage_details(self, pipeline_id: str, attribute_id: str) -> Optional[AttributeDetail]:
+    def get_column_lineage_details(self, pipeline_id: str, attribute_id: str) -> Optional[AttributeDetail]:  # noqa: UP045
         """
         Method returns the column lineage details
         """
@@ -103,6 +103,6 @@ class SplineClient:
                 return AttributeDetail(**response)
         except Exception as exe:
             logger.debug(traceback.format_exc())
-            logger.error(f"failed to fetch pipeline list due to: {exe}")
+            logger.error(f"failed to fetch pipeline list due to: {exe}")  # noqa: TRY400
 
         return None

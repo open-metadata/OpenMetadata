@@ -36,7 +36,7 @@ col_type_map = {
 }
 
 
-def parse_column(self, line, state):
+def parse_column(self, line, state):  # noqa: C901
     """
     Overriding the dialect method to include raw_data_type in response
 
@@ -82,7 +82,7 @@ def parse_column(self, line, state):
     # Column type keyword options
     type_kw = {}
 
-    if issubclass(col_type, (DATETIME, TIME, TIMESTAMP)):
+    if issubclass(col_type, (DATETIME, TIME, TIMESTAMP)):  # noqa: SIM102
         if type_args:
             type_kw["fsp"] = type_args.pop(0)
 

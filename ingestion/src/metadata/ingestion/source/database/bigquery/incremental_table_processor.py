@@ -24,7 +24,7 @@ Memory-optimized:
 
 import time
 from datetime import datetime, timezone
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional  # noqa: UP035
 
 import google.cloud.logging
 from google.api_core.exceptions import ResourceExhausted
@@ -48,13 +48,13 @@ PAGE_SIZE = 10000
 DATASET_BATCH_SIZE = 50
 
 
-def _batch(items: List[str], batch_size: int) -> Iterable[List[str]]:
+def _batch(items: List[str], batch_size: int) -> Iterable[List[str]]:  # noqa: UP006
     """Yield successive batches from a list."""
     for i in range(0, len(items), batch_size):
         yield items[i : i + batch_size]
 
 
-def _build_dataset_filter(datasets: List[str]) -> str:
+def _build_dataset_filter(datasets: List[str]) -> str:  # noqa: UP006
     """Build a Cloud Logging filter clause for a batch of dataset IDs.
 
     Uses the indexed field resource.labels.dataset_id for efficient
@@ -137,7 +137,7 @@ class BigQueryIncrementalTableProcessor:
                         logger.info("Processed %d Cloud Logging entries so far", total)
                 if total > 0:
                     logger.info("Finished processing %d Cloud Logging entries", total)
-                return
+                return  # noqa: TRY300
             except ResourceExhausted:
                 if attempt < MAX_RETRIES - 1:
                     wait = RETRY_BASE_WAIT * (attempt + 1)
@@ -149,13 +149,13 @@ class BigQueryIncrementalTableProcessor:
                     )
                     time.sleep(wait)
                 else:
-                    logger.error(
+                    logger.error(  # noqa: TRY400
                         "Cloud Logging quota exceeded after %d retries. Falling back to full extraction.",
                         MAX_RETRIES,
                     )
                     self._query_failed = True
             except Exception as exc:
-                logger.error("Failed to query Cloud Logging: %s", exc)
+                logger.error("Failed to query Cloud Logging: %s", exc)  # noqa: TRY400
                 self._query_failed = True
                 return
 
@@ -163,7 +163,7 @@ class BigQueryIncrementalTableProcessor:
         self,
         project: str,
         start_date: datetime,
-        datasets: Optional[List[str]] = None,
+        datasets: Optional[List[str]] = None,  # noqa: UP006, UP045
     ):
         """Fetch changed tables from Cloud Logging, batching datasets for efficiency.
 
@@ -215,13 +215,13 @@ class BigQueryIncrementalTableProcessor:
         else:
             logger.info("No datasets to query after filtering for project '%s'", project)
 
-    def get_deleted(self, schema_name: SchemaName) -> List[TableName]:
+    def get_deleted(self, schema_name: SchemaName) -> List[TableName]:  # noqa: UP006
         return self._changed_tables_map.get_deleted(schema_name)
 
-    def get_not_deleted(self, schema_name: SchemaName) -> List[TableName]:
+    def get_not_deleted(self, schema_name: SchemaName) -> List[TableName]:  # noqa: UP006
         return self._changed_tables_map.get_not_deleted(schema_name)
 
-    def get_all_deleted(self) -> Dict[SchemaName, List[TableName]]:
+    def get_all_deleted(self) -> Dict[SchemaName, List[TableName]]:  # noqa: UP006
         return self._changed_tables_map.get_all_deleted()
 
     @property

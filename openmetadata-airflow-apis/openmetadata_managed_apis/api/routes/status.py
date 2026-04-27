@@ -13,9 +13,10 @@ Return a list of the 10 last status for the ingestion Pipeline
 """
 
 import traceback
-from typing import Callable
+from typing import Callable  # noqa: UP035
 
 from flask import Blueprint, Response
+
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import get_arg_dag_id, get_arg_only_queued
 from openmetadata_managed_apis.operations.status import status
@@ -33,17 +34,18 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
-    from airflow.security import permissions
-    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
-    from openmetadata_managed_apis.utils.security_compat import (
+    from airflow.security import permissions  # noqa: PLC0415
+
+    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher  # noqa: PLC0415
+    from openmetadata_managed_apis.utils.security_compat import (  # noqa: PLC0415
         requires_access_decorator,
     )
 
     # CSRF protection import - different between Airflow 2.x and 3.x
     if not is_airflow_3_or_higher():
-        from airflow.www.app import csrf
+        from airflow.www.app import csrf  # noqa: PLC0415
     else:
-        from airflow.providers.fab.www.app import csrf
+        from airflow.providers.fab.www.app import csrf  # noqa: PLC0415
 
     @blueprint.route("/status", methods=["GET"])
     @csrf.exempt
@@ -59,7 +61,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get dag [{dag_id}] status: {exc}")
+            logger.error(f"Failed to get dag [{dag_id}] status: {exc}")  # noqa: TRY400
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
                 error=f"Failed to get status for [{dag_id}] due to [{exc}] ",

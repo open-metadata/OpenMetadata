@@ -14,7 +14,7 @@ AlationSink source to extract metadata
 """
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -86,7 +86,7 @@ class AlationsinkSource(Source):
         self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AlationSinkConnection = config.serviceConnection.root.config
         if not isinstance(connection, AlationSinkConnection):
@@ -96,7 +96,7 @@ class AlationsinkSource(Source):
     def prepare(self):
         """Not required to implement"""
 
-    def create_datasource_request(self, om_database: Database) -> Optional[CreateDatasourceRequest]:
+    def create_datasource_request(self, om_database: Database) -> Optional[CreateDatasourceRequest]:  # noqa: UP045
         """
         Method to form the CreateDatasourceRequest object
         """
@@ -113,12 +113,12 @@ class AlationsinkSource(Source):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to create datasource request for {model_str(om_database.name)}: {exc}")
+            logger.error(f"Failed to create datasource request for {model_str(om_database.name)}: {exc}")  # noqa: TRY400
         return None
 
     def create_schema_request(
         self, alation_datasource_id: int, om_schema: DatabaseSchema
-    ) -> Optional[CreateSchemaRequest]:
+    ) -> Optional[CreateSchemaRequest]:  # noqa: UP045
         """
         Method to form the CreateSchemaRequest object
         """
@@ -132,12 +132,12 @@ class AlationsinkSource(Source):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to create schema request for {model_str(om_schema.name)}: {exc}")
+            logger.error(f"Failed to create schema request for {model_str(om_schema.name)}: {exc}")  # noqa: TRY400
         return None
 
     def create_table_request(
         self, alation_datasource_id: int, schema_name: str, om_table: Table
-    ) -> Optional[CreateTableRequest]:
+    ) -> Optional[CreateTableRequest]:  # noqa: UP045
         """
         Method to form the CreateTableRequest object
         """
@@ -153,14 +153,14 @@ class AlationsinkSource(Source):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to create table request for {model_str(om_table.name)}: {exc}")
+            logger.error(f"Failed to create table request for {model_str(om_table.name)}: {exc}")  # noqa: TRY400
         return None
 
     def _update_foreign_key(
         self,
         alation_datasource_id: int,
         om_column: Column,
-        table_constraints: Optional[List[TableConstraint]],
+        table_constraints: Optional[List[TableConstraint]],  # noqa: UP006, UP045
         column_index: ColumnIndex,
     ):
         """
@@ -187,8 +187,8 @@ class AlationsinkSource(Source):
         self,
         alation_datasource_id: int,
         om_column: Column,
-        table_constraints: Optional[List[TableConstraint]],
-    ) -> Optional[ColumnIndex]:
+        table_constraints: Optional[List[TableConstraint]],  # noqa: UP006, UP045
+    ) -> Optional[ColumnIndex]:  # noqa: UP045
         """
         Method to get the alation column index
         """
@@ -205,7 +205,7 @@ class AlationsinkSource(Source):
             logger.warning(f"Failed to get column index for {model_str(om_column.name)}: {exc}")
         return column_index or None
 
-    def _check_nullable_column(self, om_column: Column) -> Optional[bool]:
+    def _check_nullable_column(self, om_column: Column) -> Optional[bool]:  # noqa: UP045
         """
         Method to check if the column is null
         """
@@ -225,8 +225,8 @@ class AlationsinkSource(Source):
         schema_name: str,
         table_name: str,
         om_column: Column,
-        table_constraints: Optional[List[TableConstraint]],
-    ) -> Optional[CreateColumnRequest]:
+        table_constraints: Optional[List[TableConstraint]],  # noqa: UP006, UP045
+    ) -> Optional[CreateColumnRequest]:  # noqa: UP045
         """
         Method to form the CreateColumnRequest object
         """
@@ -249,7 +249,7 @@ class AlationsinkSource(Source):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to create column request for {model_str(om_column.name)}: {exc}")
+            logger.error(f"Failed to create column request for {model_str(om_column.name)}: {exc}")  # noqa: TRY400
         return None
 
     def ingest_columns(self, alation_datasource_id: int, schema_name: str, om_table: Table):
@@ -273,7 +273,7 @@ class AlationsinkSource(Source):
                 self.alation_sink_client.write_entities(alation_datasource_id, create_requests)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to ingest columns for table [{model_str(om_table.name)}]: {exc}")
+            logger.error(f"Unable to ingest columns for table [{model_str(om_table.name)}]: {exc}")  # noqa: TRY400
 
     def ingest_tables(self, alation_datasource_id: int, om_schema: DatabaseSchema):
         """
@@ -319,7 +319,7 @@ class AlationsinkSource(Source):
                         )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to ingest tables for schema [{model_str(om_schema.name)}]: {exc}")
+            logger.error(f"Unable to ingest tables for schema [{model_str(om_schema.name)}]: {exc}")  # noqa: TRY400
 
     def ingest_schemas(self, alation_datasource_id: int, om_database: Database):
         """
@@ -350,7 +350,7 @@ class AlationsinkSource(Source):
                         self.ingest_tables(alation_datasource_id, om_schema)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to ingest schemas for database [{model_str(om_database.name)}]: {exc}")
+            logger.error(f"Unable to ingest schemas for database [{model_str(om_database.name)}]: {exc}")  # noqa: TRY400
 
     def _iter(self, *_, **__) -> Iterable[Either[Entity]]:
 

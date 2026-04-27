@@ -13,7 +13,7 @@ Dynamo source methods.
 """
 
 import traceback
-from typing import Dict, Iterable, List, Optional, Union
+from typing import Dict, Iterable, List, Optional, Union  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
@@ -47,14 +47,14 @@ class DynamodbSource(CommonNoSQLSource):
         self.dynamodb = self.connection_obj
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DynamoDBConnection = config.serviceConnection.root.config
         if not isinstance(connection, DynamoDBConnection):
             raise InvalidSourceException(f"Expected DynamoDBConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_schema_name_list(self) -> List[str]:
+    def get_schema_name_list(self) -> List[str]:  # noqa: UP006
         """
         Method to get list of schema names available within NoSQL db
         need to be overridden by sources
@@ -71,10 +71,10 @@ class DynamodbSource(CommonNoSQLSource):
             return [TableNameAndType(name=table.name) for table in tables]
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to list DynamoDB table names: {err}")
+            logger.error(f"Failed to list DynamoDB table names: {err}")  # noqa: TRY400
         return []
 
-    def get_table_columns_dict(self, schema_name: str, table_name: str) -> Union[List[Dict], Dict]:
+    def get_table_columns_dict(self, schema_name: str, table_name: str) -> Union[List[Dict], Dict]:  # noqa: UP006, UP007
         """
         Method to get actual data available within table
         need to be overridden by sources
@@ -92,7 +92,7 @@ class DynamodbSource(CommonNoSQLSource):
                 attributes.extend(response.Items)
                 start_key = response.LastEvaluatedKey
                 done = start_key is None or len(attributes) >= SAMPLE_SIZE
-            return attributes
+            return attributes  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to read DynamoDB attributes for [{table_name}]: {err}")
@@ -100,11 +100,11 @@ class DynamodbSource(CommonNoSQLSource):
 
     def get_source_url(
         self,
-        database_name: Optional[str] = None,
-        schema_name: Optional[str] = None,
-        table_name: Optional[str] = None,
-        table_type: Optional[TableType] = None,
-    ) -> Optional[str]:
+        database_name: Optional[str] = None,  # noqa: UP045
+        schema_name: Optional[str] = None,  # noqa: UP045
+        table_name: Optional[str] = None,  # noqa: UP045
+        table_type: Optional[TableType] = None,  # noqa: UP045
+    ) -> Optional[str]:  # noqa: UP045
         """
         Method to get the source url for dynamodb
         """
@@ -117,5 +117,5 @@ class DynamodbSource(CommonNoSQLSource):
                 )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")
+            logger.error(f"Unable to get source url: {exc}")  # noqa: TRY400
         return None

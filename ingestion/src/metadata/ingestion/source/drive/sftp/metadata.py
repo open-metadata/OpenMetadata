@@ -16,7 +16,7 @@ import io
 import mimetypes
 import stat
 import traceback
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
 
 import pandas as pd
 
@@ -37,7 +37,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.driveServiceMetadataPipeline import (
-    DriveServiceMetadataPipeline,
+    DriveServiceMetadataPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -84,12 +84,12 @@ class SftpSource(DriveServiceSource):
         self.client: SftpClient = get_connection(self.service_connection)
         self.connection_obj = self.client
 
-        self._directories_cache: Dict[str, SftpDirectoryInfo] = {}
-        self._files_by_parent_cache: Dict[str, List[SftpFileInfo]] = {}
-        self._directory_fqn_cache: Dict[str, str] = {}
-        self._current_directory_context: Optional[str] = None
+        self._directories_cache: Dict[str, SftpDirectoryInfo] = {}  # noqa: UP006
+        self._files_by_parent_cache: Dict[str, List[SftpFileInfo]] = {}  # noqa: UP006
+        self._directory_fqn_cache: Dict[str, str] = {}  # noqa: UP006
+        self._current_directory_context: Optional[str] = None  # noqa: UP045
         self._root_files_processed: bool = False
-        self._root_directory_prefixes: List[str] = []
+        self._root_directory_prefixes: List[str] = []  # noqa: UP006
 
         self.test_connection()
 
@@ -98,7 +98,7 @@ class SftpSource(DriveServiceSource):
         cls,
         config_dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SftpConnection = config.serviceConnection.root.config
@@ -106,7 +106,7 @@ class SftpSource(DriveServiceSource):
             raise InvalidSourceException(f"Expected SftpConnection, but got {connection}")
         return cls(config, metadata)
 
-    def _build_directory_path(self, full_path: str) -> List[str]:
+    def _build_directory_path(self, full_path: str) -> List[str]:  # noqa: UP006
         """Build directory path as list of components, stripping root directory prefix."""
         clean_path = full_path.strip("/")
         if not clean_path:
@@ -119,7 +119,7 @@ class SftpSource(DriveServiceSource):
                 break
         return components
 
-    def _get_full_path_for_stripped(self, stripped_path: List[str]) -> Optional[str]:
+    def _get_full_path_for_stripped(self, stripped_path: List[str]) -> Optional[str]:  # noqa: UP006, UP045
         """Reconstruct the full SFTP path from stripped path components."""
         if not stripped_path:
             return None
@@ -147,14 +147,14 @@ class SftpSource(DriveServiceSource):
             self._fetch_all_files()
 
         except Exception as e:
-            logger.error(f"Error fetching directories: {e}")
+            logger.error(f"Error fetching directories: {e}")  # noqa: TRY400
             logger.debug(traceback.format_exc())
 
     def _fetch_directories_recursive(
         self,
         path: str,
-        directories: Dict[str, SftpDirectoryInfo],
-        parent_path: Optional[str] = None,
+        directories: Dict[str, SftpDirectoryInfo],  # noqa: UP006
+        parent_path: Optional[str] = None,  # noqa: UP045
     ) -> None:
         """Recursively fetch directories starting from given path."""
         try:
@@ -194,7 +194,7 @@ class SftpSource(DriveServiceSource):
             files_by_parent = {}
             total_files = 0
 
-            for full_path, directory_info in self._directories_cache.items():
+            for full_path, directory_info in self._directories_cache.items():  # noqa: B007, PERF102
                 try:
                     entries = self.client.sftp.listdir_attr(full_path)
 
@@ -258,13 +258,13 @@ class SftpSource(DriveServiceSource):
             logger.debug(f"Cached {total_files} files across {len(files_by_parent)} directories")
 
         except Exception as e:
-            logger.error(f"Error fetching all files: {e}")
+            logger.error(f"Error fetching all files: {e}")  # noqa: TRY400
             logger.debug(traceback.format_exc())
             self._files_by_parent_cache = {}
 
-    def _sort_directories_by_hierarchy(self) -> List[str]:
+    def _sort_directories_by_hierarchy(self) -> List[str]:  # noqa: UP006
         """Sort directories hierarchically (parents before children)."""
-        children_map: Dict[str, List[str]] = {}
+        children_map: Dict[str, List[str]] = {}  # noqa: UP006
         root_directories = []
 
         for full_path, directory_info in self._directories_cache.items():
@@ -295,7 +295,7 @@ class SftpSource(DriveServiceSource):
 
         for dir_path in self._directories_cache:
             if dir_path not in visited:
-                ordered_directories.append(dir_path)
+                ordered_directories.append(dir_path)  # noqa: PERF401
 
         return ordered_directories
 
@@ -345,7 +345,7 @@ class SftpSource(DriveServiceSource):
                         logger.debug(f"Directory '{directory_info.name}' filtered out by directoryFilterPattern")
 
         except Exception as e:
-            logger.error(f"Error getting directory names: {e}")
+            logger.error(f"Error getting directory names: {e}")  # noqa: TRY400
             logger.debug(traceback.format_exc())
 
     def get_file_names(self) -> Iterable[str]:
@@ -412,12 +412,12 @@ class SftpSource(DriveServiceSource):
             yield Either(right=request)
 
         except Exception as exc:
-            logger.error(f"Error creating directory request for {directory_path}: {exc}")
+            logger.error(f"Error creating directory request for {directory_path}: {exc}")  # noqa: TRY400
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(
                     name=directory_path,
-                    error=f"Error creating directory {directory_path}: {str(exc)}",
+                    error=f"Error creating directory {directory_path}: {str(exc)}",  # noqa: RUF010
                     stackTrace=traceback.format_exc(),
                 )
             )
@@ -445,7 +445,7 @@ class SftpSource(DriveServiceSource):
 
         self.directory_source_state.add(directory_fqn)
 
-    def yield_file(self, directory_path: str) -> Iterable[Either[CreateFileRequest]]:
+    def yield_file(self, directory_path: str) -> Iterable[Either[CreateFileRequest]]:  # noqa: C901
         """Process all files in given directory."""
         if not getattr(self.source_config, "includeFiles", True):
             return
@@ -519,11 +519,11 @@ class SftpSource(DriveServiceSource):
                                 logger.debug(f"Root file '{file_info.name}' filtered out")
 
                         except Exception as file_exc:
-                            logger.error(f"Error processing root file {file_info.name}: {file_exc}")
+                            logger.error(f"Error processing root file {file_info.name}: {file_exc}")  # noqa: TRY400
                             yield Either(
                                 left=StackTraceError(
                                     name=file_info.name,
-                                    error=f"Error creating root file {file_info.name}: {str(file_exc)}",
+                                    error=f"Error creating root file {file_info.name}: {str(file_exc)}",  # noqa: RUF010
                                     stackTrace=traceback.format_exc(),
                                 )
                             )
@@ -597,22 +597,22 @@ class SftpSource(DriveServiceSource):
                         logger.debug(f"File '{file_info.name}' filtered out by fileFilterPattern")
 
                 except Exception as file_exc:
-                    logger.error(f"Error processing file {file_info.name}: {file_exc}")
+                    logger.error(f"Error processing file {file_info.name}: {file_exc}")  # noqa: TRY400
                     yield Either(
                         left=StackTraceError(
                             name=file_info.name,
-                            error=f"Error creating file {file_info.name}: {str(file_exc)}",
+                            error=f"Error creating file {file_info.name}: {str(file_exc)}",  # noqa: RUF010
                             stackTrace=traceback.format_exc(),
                         )
                     )
 
         except Exception as exc:
-            logger.error(f"Error processing files in directory {directory_path}: {exc}")
+            logger.error(f"Error processing files in directory {directory_path}: {exc}")  # noqa: TRY400
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(
                     name=directory_path,
-                    error=f"Error processing directory files: {str(exc)}",
+                    error=f"Error processing directory files: {str(exc)}",  # noqa: RUF010
                     stackTrace=traceback.format_exc(),
                 )
             )
@@ -650,7 +650,7 @@ class SftpSource(DriveServiceSource):
                 self.client.close()
 
         except Exception as e:
-            logger.error(f"Error closing SFTP source: {e}")
+            logger.error(f"Error closing SFTP source: {e}")  # noqa: TRY400
             logger.debug(traceback.format_exc())
 
     def _is_csv_file(self, filename: str) -> bool:
@@ -666,7 +666,7 @@ class SftpSource(DriveServiceSource):
     def _ingest_sample_data_for_file(
         self,
         file_name: str,
-        directory_path: Optional[List[str]],
+        directory_path: Optional[List[str]],  # noqa: UP006, UP045
         sample_data: TableData,
     ) -> None:
         """
@@ -707,7 +707,7 @@ class SftpSource(DriveServiceSource):
 
     def _extract_csv_schema(
         self, file_path: str, filename: str, extract_sample_data: bool = False
-    ) -> tuple[Optional[List[Column]], Optional[TableData]]:
+    ) -> tuple[Optional[List[Column]], Optional[TableData]]:  # noqa: UP006, UP045
         """
         Extract column schema and optionally sample data from CSV file.
 
@@ -770,7 +770,7 @@ class SftpSource(DriveServiceSource):
             else:
                 logger.debug(f"Extracted {len(columns)} columns from {filename}")
 
-            return columns, sample_data
+            return columns, sample_data  # noqa: TRY300
 
         except Exception as e:
             logger.warning(f"Failed to extract CSV schema from {file_path}: {e}")

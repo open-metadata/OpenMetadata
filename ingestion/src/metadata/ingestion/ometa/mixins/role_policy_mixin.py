@@ -16,7 +16,7 @@ To be used by OpenMetadata class
 
 import json
 import traceback
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union  # noqa: UP035
 
 from metadata.generated.schema.entity.policies.accessControl.rule import Rule
 from metadata.generated.schema.entity.policies.policy import Policy
@@ -48,12 +48,12 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
 
     @staticmethod
     def _get_rule_merge_patches(
-        previous: List,
-        current: List,
+        previous: List,  # noqa: UP006
+        current: List,  # noqa: UP006
         rule_index: int,
         path: str,
         is_enum: bool,
-    ) -> List[Dict]:
+    ) -> List[Dict]:  # noqa: UP006
         """
         Get the operations required to overwrite the set (resources or operations) of a rule.
 
@@ -66,9 +66,9 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
         Returns
             List of patch operations
         """
-        data: List[Dict] = []
+        data: List[Dict] = []  # noqa: UP006
         for index in range(len(previous) - 1, len(current) - 1, -1):
-            data.append(
+            data.append(  # noqa: PERF401
                 {
                     PatchField.OPERATION: PatchOperation.REMOVE,
                     PatchField.PATH: path.format(rule_index=rule_index - 1, index=index),
@@ -83,16 +83,16 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
                     PatchField.VALUE: item.name if is_enum else item,
                 }
             )
-            index += 1
+            index += 1  # noqa: SIM113
         return data
 
     @staticmethod
     def _get_optional_rule_patch(
-        previous: Union[basic.FullyQualifiedEntityName, basic.Markdown],
-        current: Union[basic.FullyQualifiedEntityName, basic.Markdown],
+        previous: Union[basic.FullyQualifiedEntityName, basic.Markdown],  # noqa: UP007
+        current: Union[basic.FullyQualifiedEntityName, basic.Markdown],  # noqa: UP007
         rule_index: int,
         path: str,
-    ) -> List[Dict]:
+    ) -> List[Dict]:  # noqa: UP006
         """
         Get the operations required to update an optional rule field
 
@@ -104,7 +104,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
         Returns
             list with one dict describing the operation to update the field
         """
-        data: List[Dict] = []
+        data: List[Dict] = []  # noqa: UP006
         if current is None:
             if previous is not None:
                 data = [
@@ -129,10 +129,10 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
     )
     def patch_role_policy(
         self,
-        entity_id: Union[str, basic.Uuid],
-        policy_id: Union[str, basic.Uuid],
-        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,
-    ) -> Optional[Role]:
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+        policy_id: Union[str, basic.Uuid],  # noqa: UP007
+        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,  # noqa: UP007
+    ) -> Optional[Role]:  # noqa: UP045
         """
         Given a Role ID, JSON PATCH the policies.
 
@@ -148,7 +148,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
             return None
 
         policy_index: int = len(instance.policies.root) - 1
-        data: List
+        data: List  # noqa: UP006
         if operation is PatchOperation.REMOVE:
             if len(instance.policies.root) == 1:
                 logger.error(f"The Role with id [{model_str(entity_id)}] has only one (1) policy. Unable to remove.")
@@ -237,7 +237,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error trying to PATCH policies for Role [{model_str(entity_id)}]: {exc}")
+            logger.error(f"Error trying to PATCH policies for Role [{model_str(entity_id)}]: {exc}")  # noqa: TRY400
 
         return None
 
@@ -247,10 +247,10 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
     )
     def patch_policy_rule(
         self,
-        entity_id: Union[str, basic.Uuid],
-        rule: Optional[Rule] = None,
-        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,
-    ) -> Optional[Policy]:
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+        rule: Optional[Rule] = None,  # noqa: UP045
+        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,  # noqa: UP007
+    ) -> Optional[Policy]:  # noqa: UP045
         """
         Given a Policy ID, JSON PATCH the rule (add or remove).
 
@@ -266,7 +266,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
             return None
 
         rule_index: int = len(instance.rules.root) - 1
-        data: List[Dict]
+        data: List[Dict]  # noqa: UP006
         if operation == PatchOperation.ADD:
             data = [
                 {
@@ -376,6 +376,6 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error trying to PATCH description for Role [{model_str(entity_id)}]: {exc}")
+            logger.error(f"Error trying to PATCH description for Role [{model_str(entity_id)}]: {exc}")  # noqa: TRY400
 
         return None

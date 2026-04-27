@@ -16,7 +16,7 @@ Validators are test classes (e.g. columnValuesToBeBetween, etc.)
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Set, Type, Union
+from typing import TYPE_CHECKING, Set, Type, Union  # noqa: UP035
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
@@ -41,7 +41,7 @@ class TestCaseImporter:
         runner_type: str,
         test_definition: str,
         validator_class: str,
-    ) -> Type[BaseTestValidator]:
+    ) -> Type[BaseTestValidator]:  # noqa: UP006
         return import_test_case_class(test_type, runner_type, test_definition, validator_class)
 
 
@@ -72,7 +72,7 @@ class ValidatorBuilder(TestCaseImporter):
         super().__init__()
         self._test_case = test_case
         self.runner = runner
-        self.validator_cls: Type[BaseTestValidator] = super().import_test_case_validator(
+        self.validator_cls: Type[BaseTestValidator] = super().import_test_case_validator(  # noqa: UP006
             entity_type,
             source_type.value,
             test_definition.fullyQualifiedName.root,  # type: ignore
@@ -90,7 +90,7 @@ class ValidatorBuilder(TestCaseImporter):
         """Return the validator object"""
         return self._validator
 
-    def set_runtime_params(self, runtime_params_setters: Set[RuntimeParameterSetter]):
+    def set_runtime_params(self, runtime_params_setters: Set[RuntimeParameterSetter]):  # noqa: UP006
         """Set the runtime parameters for the validator object
 
         Args:

@@ -12,7 +12,7 @@
 
 import re
 import traceback
-from typing import Dict, Iterable, List, Optional, Tuple, cast
+from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 from sqlalchemy import sql
 from sqlalchemy.engine.reflection import Inspector
@@ -134,7 +134,7 @@ def _get_sqlalchemy_type(type_str):
             return sql_type_cls(item_type=child_sql_type)
 
         # Length-based types (VARCHAR/CHAR, etc.)
-        elif base_type in ["VARCHAR", "CHAR", "VARBINARY", "BINARY"] and params:
+        elif base_type in ["VARCHAR", "CHAR", "VARBINARY", "BINARY"] and params:  # noqa: RET505
             return sql_type_cls(length=int(params[0]))
 
         # DECIMAL type (precision + scale)
@@ -142,7 +142,7 @@ def _get_sqlalchemy_type(type_str):
             return sql_type_cls(precision=int(params[0]), scale=int(params[1]))
 
     except (ValueError, TypeError) as exc:
-        logger.warning(f"Failed to parse type parameters ({type_str}): {str(exc)}, using default type")
+        logger.warning(f"Failed to parse type parameters ({type_str}): {str(exc)}, using default type")  # noqa: RUF010
 
     # Return type instance (NullType has no parameters, call directly)
     return sql_type_cls()
@@ -208,13 +208,13 @@ class StarRocksSource(CommonDbSourceService):
         super().__init__(config, metadata)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """Create a StarRocksSource instance (factory method)"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         if not config.serviceConnection:
             raise InvalidSourceException("Missing service connection configuration")
 
-        service_connection = cast(StarRocksConnection, config.serviceConnection.root.config)
+        service_connection = cast(StarRocksConnection, config.serviceConnection.root.config)  # noqa: TC006
         if not isinstance(service_connection, StarRocksConnection):
             raise InvalidSourceException(
                 f"Expected connection type to be StarRocksConnection, actual type: {type(service_connection)}"
@@ -259,7 +259,7 @@ class StarRocksSource(CommonDbSourceService):
         return tables
 
     @staticmethod
-    def get_table_description(schema_name: str, table_name: str, inspector: Inspector) -> Optional[str]:
+    def get_table_description(schema_name: str, table_name: str, inspector: Inspector) -> Optional[str]:  # noqa: UP045
         description = None
         try:
             table_info: dict = inspector.get_table_comment(table_name, schema_name)
@@ -292,7 +292,7 @@ class StarRocksSource(CommonDbSourceService):
 
                 # Parse by column name (avoid compatibility issues with fixed-position unpacking)
                 col_names = result.keys()
-                row_dicts = [dict(zip(col_names, row)) for row in result]
+                row_dicts = [dict(zip(col_names, row)) for row in result]  # noqa: B905
 
                 for ordinal, row in enumerate(row_dicts):
                     field_name = row.get("Field")
@@ -324,7 +324,7 @@ class StarRocksSource(CommonDbSourceService):
 
             except Exception as exc:
                 logger.error(
-                    f"Failed to get column information (table: {schema}.{table_name}): {str(exc)}",
+                    f"Failed to get column information (table: {schema}.{table_name}): {str(exc)}",  # noqa: RUF010
                     exc_info=True,
                 )
 
@@ -336,8 +336,8 @@ class StarRocksSource(CommonDbSourceService):
         table_name: str,
         db_name: str,
         inspector: Inspector,
-        table_type: str = None,
-    ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]]:
+        table_type: str = None,  # noqa: RUF013
+    ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]]:  # noqa: UP006, UP045
         """Get column information and constraints (compatible with OpenMetadata schema)"""
         table_columns = []
         table_constraints = []
@@ -409,7 +409,7 @@ class StarRocksSource(CommonDbSourceService):
             except Exception as exc:
                 logger.debug(f"Detailed stack trace for failed column processing: {traceback.format_exc()}")
                 logger.warning(
-                    f"Failed to process column [{column.get('name')}] in table {schema_name}.{table_name}: {str(exc)}"
+                    f"Failed to process column [{column.get('name')}] in table {schema_name}.{table_name}: {str(exc)}"  # noqa: RUF010
                 )
                 continue
 
@@ -420,7 +420,7 @@ class StarRocksSource(CommonDbSourceService):
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Tuple[bool, Optional[TablePartition]]:
+    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
         """Get partition information of the table"""
         if not self.engine:
             logger.debug("SQLAlchemy engine not initialized, cannot query partition information")
@@ -450,14 +450,14 @@ class StarRocksSource(CommonDbSourceService):
                     ]
                 )
                 logger.debug(f"Partition keys of table {schema_name}.{table_name}: {partition_keys}")
-                return True, partition_details
+                return True, partition_details  # noqa: TRY300
 
             except Exception as exc:
                 logger.debug(f"Could not get partition information for {schema_name}.{table_name}: {exc}")
 
         return False, None
 
-    def _check_col_length(self, system_data_type: str, data_type: sqltypes.TypeEngine) -> Optional[int]:
+    def _check_col_length(self, system_data_type: str, data_type: sqltypes.TypeEngine) -> Optional[int]:  # noqa: UP045
         """Check column length (compatible with sqlalchemy.sql.sqltypes types)"""
         if not isinstance(data_type, sqltypes.TypeEngine):
             logger.warning(f"Not a SQLAlchemy TypeEngine instance, cannot get length: {type(data_type)}")

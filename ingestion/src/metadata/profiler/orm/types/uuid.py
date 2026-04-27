@@ -45,8 +45,8 @@ class UUIDString(TypeDecorator):
             return UUID(value)
         except ValueError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error converting value [{value}] to UUID: {err}")
-            raise err
+            logger.error(f"Error converting value [{value}] to UUID: {err}")  # noqa: TRY400
+            raise err  # noqa: TRY201
 
     def process_result_value(self, value: str, dialect):
         """This is executed during result retrieval

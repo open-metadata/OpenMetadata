@@ -15,7 +15,7 @@ This Processor is in charge of executing the test cases
 
 import traceback
 from copy import deepcopy
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import RootModel
 
@@ -45,7 +45,7 @@ from metadata.generated.schema.tests.testDefinition import (
 from metadata.generated.schema.type.basic import EntityLink, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.step import Step
+from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import entity_link
@@ -103,7 +103,7 @@ class TestCaseRunner(Processor):
 
         return Either(right=TestCaseResults(test_results=test_results))
 
-    def get_test_cases(self, test_cases: List[TestCase], table_fqn: str) -> List[TestCase]:
+    def get_test_cases(self, test_cases: List[TestCase], table_fqn: str) -> List[TestCase]:  # noqa: UP006
         """
         Based on the test suite test cases that we already know, pick up
         the rest from the YAML config, compare and create the new ones
@@ -120,16 +120,16 @@ class TestCaseRunner(Processor):
 
     def get_test_case_from_cli_config(
         self,
-    ) -> List[TestCaseDefinition]:
+    ) -> List[TestCaseDefinition]:  # noqa: UP006
         """Get all the test cases names defined in the CLI config file"""
         return list(self.processor_config.testCases or [])
 
     def compare_and_create_test_cases(
         self,
-        cli_test_cases_definitions: List[TestCaseDefinition],
-        test_cases: List[TestCase],
+        cli_test_cases_definitions: List[TestCaseDefinition],  # noqa: UP006
+        test_cases: List[TestCase],  # noqa: UP006
         table_fqn: str,
-    ) -> List[TestCase]:
+    ) -> List[TestCase]:  # noqa: UP006
         """
         compare test cases defined in CLI config workflow with test cases
         defined on the server
@@ -189,7 +189,7 @@ class TestCaseRunner(Processor):
                 test_cases.append(test_case)
             except Exception as exc:
                 error = f"Couldn't create test case name {test_case_to_create.name}: {exc}"
-                logger.error(error)
+                logger.error(error)  # noqa: TRY400
                 logger.debug(traceback.format_exc())
                 self.status.failed(
                     StackTraceError(
@@ -203,8 +203,8 @@ class TestCaseRunner(Processor):
 
     def _update_test_cases(
         self,
-        test_cases_to_update: List[TestCaseDefinition],
-        test_cases: List[TestCase],
+        test_cases_to_update: List[TestCaseDefinition],  # noqa: UP006
+        test_cases: List[TestCase],  # noqa: UP006
         table_fqn: str,
     ):
         """Given a list of CLI test definition patch test cases in the platform
@@ -236,14 +236,14 @@ class TestCaseRunner(Processor):
 
         return test_cases
 
-    def filter_for_om_test_cases(self, test_cases: List[TestCase]) -> List[TestCase]:
+    def filter_for_om_test_cases(self, test_cases: List[TestCase]) -> List[TestCase]:  # noqa: UP006
         """
         Filter test cases for OM test cases only. This will prevent us from running non OM test cases
 
         Args:
             test_cases: list of test cases
         """
-        om_test_cases: List[TestCase] = []
+        om_test_cases: List[TestCase] = []  # noqa: UP006
         for test_case in test_cases:
             test_definition: TestDefinition = self.metadata.get_by_id(TestDefinition, test_case.testDefinition.id)
             if TestPlatform.OpenMetadata not in test_definition.testPlatforms:
@@ -258,16 +258,16 @@ class TestCaseRunner(Processor):
 
     def _run_test_case(
         self, test_case: TestCase, test_suite_runner: DataTestsRunner
-    ) -> Optional[TestCaseResultResponse]:
+    ) -> Optional[TestCaseResultResponse]:  # noqa: UP045
         """Execute the test case and return the result, if any"""
         try:
             test_result = test_suite_runner.run_and_handle(test_case)
             self.status.scanned(test_case.fullyQualifiedName.root)
-            return test_result
+            return test_result  # noqa: TRY300
         except Exception as exc:
             error = f"Could not run test case {test_case.name.root}: {exc}"
             logger.debug(traceback.format_exc())
-            logger.error(error)
+            logger.error(error)  # noqa: TRY400
             self.status.failed(
                 StackTraceError(
                     name=test_case.name.root,
@@ -282,7 +282,7 @@ class TestCaseRunner(Processor):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
@@ -290,7 +290,7 @@ class TestCaseRunner(Processor):
     def close(self) -> None:
         """Nothing to close"""
 
-    def filter_incompatible_test_cases(self, table: Table, test_cases: List[TestCase]) -> List[TestCase]:
+    def filter_incompatible_test_cases(self, table: Table, test_cases: List[TestCase]) -> List[TestCase]:  # noqa: UP006
         """Filter out test cases that are defined for incompatible columns. An example of this is a
         test case that checks for a column value to be between two values, but the column is of type
         VARCHAR and not a numeric type. Incompatible test cases will be logged as failures.
@@ -302,7 +302,7 @@ class TestCaseRunner(Processor):
         Returns:
             List of test cases that are compatible with the table columns
         """
-        result: List[TestCase] = []
+        result: List[TestCase] = []  # noqa: UP006
         for tc in test_cases:
             test_definition: TestDefinition = self.metadata.get_by_id(
                 TestDefinition, tc.testDefinition.id, nullable=False

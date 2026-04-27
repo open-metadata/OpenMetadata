@@ -14,7 +14,7 @@ External Table Lineage Mixin
 
 import traceback
 from abc import ABC
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.container import ContainerDataModel
@@ -34,7 +34,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class ExternalTableLineageMixin(ABC):
+class ExternalTableLineageMixin(ABC):  # noqa: B024
     """
     This mixin class is for deriving lineage between external table and container source/
     """
@@ -89,7 +89,7 @@ class ExternalTableLineageMixin(ABC):
                 logger.warning(f"Failed to yield external table lineage due to - {exc}")
                 logger.debug(traceback.format_exc())
 
-    def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> Optional[str]:
+    def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> Optional[str]:  # noqa: UP045
         """
         Get fqn of column if exist in data model entity
         """
@@ -104,8 +104,8 @@ class ExternalTableLineageMixin(ABC):
         self,
         data_model_entity: ContainerDataModel,
         table_entity: Table,
-        columns_list: List[str],
-    ) -> List[ColumnLineage]:
+        columns_list: List[str],  # noqa: UP006
+    ) -> List[ColumnLineage]:  # noqa: UP006
         """
         Get the column lineage
         """
@@ -116,7 +116,7 @@ class ExternalTableLineageMixin(ABC):
                 to_column = get_column_fqn(table_entity=table_entity, column=field)
                 if from_column and to_column:
                     column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))
-            return column_lineage
+            return column_lineage  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error to get column lineage: {exc}")
             logger.debug(traceback.format_exc())

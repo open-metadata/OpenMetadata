@@ -19,7 +19,7 @@ import traceback
 from collections import defaultdict
 from functools import singledispatchmethod
 from time import perf_counter
-from typing import Any, Generic, Iterable, List, Optional, Type, TypeVar
+from typing import Any, Generic, Iterable, List, Optional, Type, TypeVar  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -57,7 +57,7 @@ logger = ingestion_logger()
 C = TypeVar("C", bound=BaseModel)
 
 
-class MissingExpectedEntityAckException(Exception):
+class MissingExpectedEntityAckException(Exception):  # noqa: N818
     """
     After running the ack to the sink, we got no
     Entity back
@@ -75,14 +75,14 @@ class TopologyRunnerMixin(Generic[C]):
     metadata: OpenMetadata
 
     # The cache will have the shape {`child_stage.type_`: {`name`: `hash`}}
-    cache = defaultdict(dict)
+    cache = defaultdict(dict)  # noqa: RUF012
 
     # The deleted will have the shape {`child_stage.type_`: {`name`: `hash`}}
     # and will keep track of entities which were deleted and are being restored
-    deleted = defaultdict(dict)
+    deleted = defaultdict(dict)  # noqa: RUF012
     queue = Queue()
 
-    def _get_entity_type_for_node(self, node: TopologyNode) -> Optional[str]:
+    def _get_entity_type_for_node(self, node: TopologyNode) -> Optional[str]:  # noqa: UP045
         """
         Get the entity type name for a topology node.
         Used for progress tracking by entity type.
@@ -133,7 +133,7 @@ class TopologyRunnerMixin(Generic[C]):
         if node_entities_length == 0:
             return
         else:
-            chunksize = int(math.ceil(node_entities_length / threads))
+            chunksize = int(math.ceil(node_entities_length / threads))  # noqa: RUF046
             chunks: list[list[Entity]] = [
                 node_entities[i : i + chunksize] for i in range(0, node_entities_length, chunksize)
             ]
@@ -202,7 +202,7 @@ class TopologyRunnerMixin(Generic[C]):
             # process all children from the node being run
             yield from self.process_nodes(child_nodes)
 
-    def process_nodes(self, nodes: List[TopologyNode]) -> Iterable[Entity]:
+    def process_nodes(self, nodes: List[TopologyNode]) -> Iterable[Entity]:  # noqa: UP006
         """
         Given a list of nodes, either roots or children,
         yield from its producers and process the children.
@@ -244,10 +244,10 @@ class TopologyRunnerMixin(Generic[C]):
     def _multithread_process_entity(
         self,
         node: TopologyNode,
-        node_entities: List[Any],
-        child_nodes: List[TopologyNode],
+        node_entities: List[Any],  # noqa: UP006
+        child_nodes: List[TopologyNode],  # noqa: UP006
         parent_thread_id: int,
-        entity_type_name: Optional[str] = None,
+        entity_type_name: Optional[str] = None,  # noqa: UP045
     ):
         """Multithread processing of a Node Entity with progress tracking"""
         # Generates a new context based on the parent thread.
@@ -285,7 +285,7 @@ class TopologyRunnerMixin(Generic[C]):
         # Finally we pop the context and finish the thread
         self.context.pop()
 
-    def _get_child_nodes(self, node: TopologyNode) -> List[TopologyNode]:
+    def _get_child_nodes(self, node: TopologyNode) -> List[TopologyNode]:  # noqa: UP006
         """Compute children nodes if any"""
         return [get_topology_node(child, self.topology) for child in node.children] if node.children else []
 
@@ -296,9 +296,9 @@ class TopologyRunnerMixin(Generic[C]):
             yield from stage_fn(node_entity) or []
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error running stage processor: {exc}")
+            logger.error(f"Error running stage processor: {exc}")  # noqa: TRY400
 
-    def _process_stage(self, stage: NodeStage, node_entity: Any, child_nodes: List[TopologyNode]) -> Iterable[Entity]:
+    def _process_stage(self, stage: NodeStage, node_entity: Any, child_nodes: List[TopologyNode]) -> Iterable[Entity]:  # noqa: UP006
         """
         For each entity produced in the Node Producer, iterate over all the Node's Stages and
         yield the assets to pass down the workflow.
@@ -341,7 +341,7 @@ class TopologyRunnerMixin(Generic[C]):
             for process in node.post_process:
                 try:
                     node_post_process = getattr(self, process)
-                    for entity_request in node_post_process() or []:
+                    for entity_request in node_post_process() or []:  # noqa: UP028
                         yield entity_request
                 except Exception as exc:
                     self.status.failed(
@@ -352,7 +352,7 @@ class TopologyRunnerMixin(Generic[C]):
                         )
                     )
 
-    def _init_cache_dict(self, stage: NodeStage, child_nodes: List[TopologyNode]) -> None:
+    def _init_cache_dict(self, stage: NodeStage, child_nodes: List[TopologyNode]) -> None:  # noqa: UP006
         """
         Method to call the API to fill the entities cache.
 
@@ -372,7 +372,7 @@ class TopologyRunnerMixin(Generic[C]):
                         entity_fqn=entity_fqn,
                     )
 
-    def get_fqn_source_hash_dict(self, parent_type: Type[Entity], child_type: Type[Entity], entity_fqn: str) -> None:
+    def get_fqn_source_hash_dict(self, parent_type: Type[Entity], child_type: Type[Entity], entity_fqn: str) -> None:  # noqa: UP006
         """
         Get all the entities and store them as fqn:sourceHash in a dict
         """
@@ -461,7 +461,7 @@ class TopologyRunnerMixin(Generic[C]):
             if is_deleted:
                 entity = self.metadata.get_by_name(entity=stage.type_, fqn=entity_fqn, fields=["*"], include="all")
                 if entity:
-                    logger.debug(f"Restoring deleted {str(stage.type_.__name__)} '{entity_fqn}'")
+                    logger.debug(f"Restoring deleted {str(stage.type_.__name__)} '{entity_fqn}'")  # noqa: RUF010
                     restored_entity = self.metadata.restore(entity=stage.type_, entity_id=entity.id)
                     if restored_entity:
                         self.deleted[stage.type_].pop(entity_fqn, None)
@@ -476,7 +476,7 @@ class TopologyRunnerMixin(Generic[C]):
                             # entity restored with same hash, skip update
                             same_fingerprint = True
                     else:
-                        logger.warning(f"Failed to restore deleted {str(stage.type_.__name__)} '{entity_fqn}'")
+                        logger.warning(f"Failed to restore deleted {str(stage.type_.__name__)} '{entity_fqn}'")  # noqa: RUF010
             # if the source hash is not present or different from new hash, update the entity
             # if overrideMetadata is true, we will always update the entity
             elif entity_source_hash != create_entity_request_hash or self.source_config.overrideMetadata:
@@ -491,7 +491,7 @@ class TopologyRunnerMixin(Generic[C]):
                     entity_request.right = patch_entity
             else:
                 # nothing has changed on the source skip the API call
-                logger.debug(f"No changes detected for {str(stage.type_.__name__)} '{entity_fqn}'")
+                logger.debug(f"No changes detected for {str(stage.type_.__name__)} '{entity_fqn}'")  # noqa: RUF010
                 same_fingerprint = True
 
         if not same_fingerprint:

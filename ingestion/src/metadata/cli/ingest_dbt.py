@@ -19,7 +19,7 @@ import re
 import sys
 import traceback
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional  # noqa: UP035
 
 import yaml
 from dotenv import load_dotenv
@@ -35,8 +35,8 @@ logger = cli_logger()
 class FilterPattern(BaseModel):
     """Filter pattern model for database/schema/table filtering"""
 
-    includes: List[str] = Field(default=[".*"], description="Patterns to include")
-    excludes: Optional[List[str]] = Field(default=None, description="Patterns to exclude")
+    includes: List[str] = Field(default=[".*"], description="Patterns to include")  # noqa: UP006
+    excludes: Optional[List[str]] = Field(default=None, description="Patterns to exclude")  # noqa: UP006, UP045
 
 
 class OpenMetadataDBTConfig(BaseModel):
@@ -52,18 +52,18 @@ class OpenMetadataDBTConfig(BaseModel):
     openmetadata_dbt_update_owners: bool = Field(default=True, description="Update model owners from DBT")
     openmetadata_include_tags: bool = Field(default=True, description="Include DBT tags as metadata")
     openmetadata_search_across_databases: bool = Field(default=False, description="Search across multiple databases")
-    openmetadata_dbt_classification_name: Optional[str] = Field(
+    openmetadata_dbt_classification_name: Optional[str] = Field(  # noqa: UP045
         default=None, description="Custom classification name for DBT tags"
     )
 
     # Filter patterns - standardized to dict format only
-    openmetadata_database_filter_pattern: Optional[Dict[str, List[str]]] = Field(
+    openmetadata_database_filter_pattern: Optional[Dict[str, List[str]]] = Field(  # noqa: UP006, UP045
         default=None, description="Database filter pattern with includes/excludes"
     )
-    openmetadata_schema_filter_pattern: Optional[Dict[str, List[str]]] = Field(
+    openmetadata_schema_filter_pattern: Optional[Dict[str, List[str]]] = Field(  # noqa: UP006, UP045
         default=None, description="Schema filter pattern with includes/excludes"
     )
-    openmetadata_table_filter_pattern: Optional[Dict[str, List[str]]] = Field(
+    openmetadata_table_filter_pattern: Optional[Dict[str, List[str]]] = Field(  # noqa: UP006, UP045
         default=None, description="Table filter pattern with includes/excludes"
     )
 
@@ -74,13 +74,13 @@ class OpenMetadataDBTConfig(BaseModel):
         try:
             # This will raise ValueError if not a valid http/https/ws/wss URL
             URL(v)
-            return v
+            return v  # noqa: TRY300
         except (ValueError, TypeError) as e:  # noqa: F841
-            raise ValueError(
+            raise ValueError(  # noqa: B904
                 f"Host port must be a valid URL starting with http:// or https://"  # noqa: F541
             )
 
-    def _get_filter_pattern(self, pattern_dict: Optional[Dict[str, List[str]]]) -> FilterPattern:
+    def _get_filter_pattern(self, pattern_dict: Optional[Dict[str, List[str]]]) -> FilterPattern:  # noqa: UP006, UP045
         """Convert filter pattern dict to FilterPattern model or return default"""
         if pattern_dict:
             return FilterPattern(**pattern_dict)
@@ -160,10 +160,10 @@ def substitute_env_vars(content: str) -> str:
     content = shell_pattern.sub(replace_shell_vars, content)
     content = function_pattern.sub(replace_dbt_env_vars, content)
 
-    return content
+    return content  # noqa: RET504
 
 
-def find_dbt_project_config(dbt_project_path: Path) -> Dict:
+def find_dbt_project_config(dbt_project_path: Path) -> Dict:  # noqa: UP006
     """
     Find and load dbt_project.yml configuration with environment variable substitution
 
@@ -180,7 +180,7 @@ def find_dbt_project_config(dbt_project_path: Path) -> Dict:
         raise FileNotFoundError(f"dbt_project.yml not found in {dbt_project_path}")
 
     try:
-        with open(dbt_project_file, "r", encoding="utf-8") as file:
+        with open(dbt_project_file, "r", encoding="utf-8") as file:  # noqa: PTH123
             content = file.read()
 
         # Substitute environment variables before parsing YAML
@@ -188,10 +188,10 @@ def find_dbt_project_config(dbt_project_path: Path) -> Dict:
         return yaml.safe_load(processed_content)
 
     except Exception as exc:
-        raise ValueError(f"Failed to parse dbt_project.yml: {exc}")
+        raise ValueError(f"Failed to parse dbt_project.yml: {exc}")  # noqa: B904
 
 
-def extract_openmetadata_config(dbt_config: Dict) -> OpenMetadataDBTConfig:
+def extract_openmetadata_config(dbt_config: Dict) -> OpenMetadataDBTConfig:  # noqa: UP006
     """
     Extract and validate OpenMetadata configuration from dbt project config using Pydantic
 
@@ -203,13 +203,13 @@ def extract_openmetadata_config(dbt_config: Dict) -> OpenMetadataDBTConfig:
         # Create and validate the configuration using Pydantic
         om_config = OpenMetadataDBTConfig(**vars_config)
         om_config.log_configuration()
-        return om_config
+        return om_config  # noqa: TRY300
 
     except Exception as exc:
         # Provide helpful error message for missing required fields
         error_msg = str(exc)
         if "Field required" in error_msg:
-            raise ValueError(
+            raise ValueError(  # noqa: B904
                 f"Required OpenMetadata configuration not found in dbt_project.yml vars.\n"
                 f"Error: {error_msg}\n"
                 f"Please add the following to your dbt_project.yml:\n"
@@ -218,10 +218,10 @@ def extract_openmetadata_config(dbt_config: Dict) -> OpenMetadataDBTConfig:
                 f"  openmetadata_host_port: 'your-host-port (e.g. http://openmetadata-server:8585/api)'\n"
                 f"  openmetadata_service_name: 'your-service-name'"
             )
-        raise ValueError(f"Invalid OpenMetadata configuration: {error_msg}")
+        raise ValueError(f"Invalid OpenMetadata configuration: {error_msg}")  # noqa: B904
 
 
-def create_dbt_workflow_config(dbt_project_path: Path, om_config: OpenMetadataDBTConfig) -> Dict:
+def create_dbt_workflow_config(dbt_project_path: Path, om_config: OpenMetadataDBTConfig) -> Dict:  # noqa: UP006
     """
     Create OpenMetadata workflow configuration for dbt artifacts ingestion
 
@@ -288,7 +288,7 @@ def create_dbt_workflow_config(dbt_project_path: Path, om_config: OpenMetadataDB
         },
     }
 
-    return config
+    return config  # noqa: RET504
 
 
 def run_ingest_dbt(dbt_project_path: Path) -> None:
@@ -304,10 +304,10 @@ def run_ingest_dbt(dbt_project_path: Path) -> None:
         logger.info(f"Starting DBT artifacts ingestion from: {dbt_project_path}")
 
         if not dbt_project_path.exists():
-            raise FileNotFoundError(f"DBT project path does not exist: {dbt_project_path}")
+            raise FileNotFoundError(f"DBT project path does not exist: {dbt_project_path}")  # noqa: TRY301
 
         if not dbt_project_path.is_dir():
-            raise NotADirectoryError(f"DBT project path is not a directory: {dbt_project_path}")
+            raise NotADirectoryError(f"DBT project path is not a directory: {dbt_project_path}")  # noqa: TRY301
 
         logger.info("Loading dbt project configuration...")
         dbt_config = find_dbt_project_config(dbt_project_path)
@@ -332,6 +332,6 @@ def run_ingest_dbt(dbt_project_path: Path) -> None:
         logger.info("DBT artifacts ingestion completed successfully")
 
     except Exception as exc:
-        logger.error(f"Error during DBT artifacts ingestion: {exc}")
+        logger.error(f"Error during DBT artifacts ingestion: {exc}")  # noqa: TRY400
         logger.debug(traceback.format_exc())
         sys.exit(1)

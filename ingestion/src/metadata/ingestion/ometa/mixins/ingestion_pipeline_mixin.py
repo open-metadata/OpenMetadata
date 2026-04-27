@@ -14,7 +14,7 @@ Mixin class containing ingestion pipeline specific methods
 To be used by OpenMetadata class
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -51,7 +51,7 @@ class OMetaIngestionPipelineMixin:
         logger.debug(f"Created Pipeline Status for pipeline {ingestion_pipeline_fqn}: {pipeline_status}")
         return resp
 
-    def get_pipeline_status(self, ingestion_pipeline_fqn: str, pipeline_status_run_id: str) -> Optional[PipelineStatus]:
+    def get_pipeline_status(self, ingestion_pipeline_fqn: str, pipeline_status_run_id: str) -> Optional[PipelineStatus]:  # noqa: UP045
         """
         GET pipeline status
 
@@ -81,7 +81,7 @@ class OMetaIngestionPipelineMixin:
         ingestion_pipeline_fqn: str,
         start_ts: int,
         end_ts: int,
-    ) -> Optional[List[PipelineStatus]]:
+    ) -> Optional[List[PipelineStatus]]:  # noqa: UP006, UP045
         """Get pipeline status between timestamp
 
         Args:
@@ -103,9 +103,9 @@ class OMetaIngestionPipelineMixin:
 
     def get_ingestion_pipeline_by_name(
         self,
-        fields: Optional[List[str]] = None,
-        params: Optional[Dict[str, str]] = None,
-    ) -> Optional[IngestionPipeline]:
+        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+        params: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
+    ) -> Optional[IngestionPipeline]:  # noqa: UP045
         """
         Get ingestion pipeline statues based on name
 
@@ -124,7 +124,7 @@ class OMetaIngestionPipelineMixin:
 
         return None
 
-    def extract_pipeline_id_from_fqn(self, ingestion_pipeline_fqn: str) -> Optional[str]:
+    def extract_pipeline_id_from_fqn(self, ingestion_pipeline_fqn: str) -> Optional[str]:  # noqa: UP045
         """
         Extract pipeline ID from FQN by fetching the pipeline entity
 
@@ -139,5 +139,5 @@ class OMetaIngestionPipelineMixin:
             if pipeline and hasattr(pipeline, "id"):
                 return str(pipeline.id.root if hasattr(pipeline.id, "root") else pipeline.id)
         except Exception as e:
-            logger.error(f"Failed to extract pipeline ID from FQN {ingestion_pipeline_fqn}: {e}")
+            logger.error(f"Failed to extract pipeline ID from FQN {ingestion_pipeline_fqn}: {e}")  # noqa: TRY400
         return None

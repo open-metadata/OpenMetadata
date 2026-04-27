@@ -13,7 +13,7 @@
 import re
 import traceback
 from copy import deepcopy
-from typing import Any, Iterable, List, Optional, Union
+from typing import Any, Iterable, List, Optional, Union  # noqa: UP035
 
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
@@ -127,7 +127,7 @@ class PowerbiSource(DashboardServiceSource):
         if self.client.file_client:
             self.client.file_client.delete_tmp_files()
 
-    def get_org_workspace_data(self) -> Iterable[Optional[Group]]:
+    def get_org_workspace_data(self) -> Iterable[Optional[Group]]:  # noqa: UP045
         """
         fetch all the workspace data for non-admin users
         """
@@ -197,7 +197,7 @@ class PowerbiSource(DashboardServiceSource):
                 paginated_include_filters.append(filter_pattern_copy)
         return paginated_include_filters
 
-    def get_admin_workspace_data(self) -> Iterable[Optional[Group]]:
+    def get_admin_workspace_data(self) -> Iterable[Optional[Group]]:  # noqa: UP045
         """
         fetch all the workspace data
         """
@@ -224,7 +224,7 @@ class PowerbiSource(DashboardServiceSource):
                     workspace_scan = self.client.api_client.initiate_workspace_scan(workspace_ids_chunk)
                     if not workspace_scan:
                         logger.error(
-                            f"Error initiating workspace scan for ids:{str(workspace_ids_chunk)}\n moving to next set of workspaces"
+                            f"Error initiating workspace scan for ids:{str(workspace_ids_chunk)}\n moving to next set of workspaces"  # noqa: RUF010
                         )
                         count += 1
                         continue
@@ -252,7 +252,7 @@ class PowerbiSource(DashboardServiceSource):
                 logger.error("Unable to fetch any PowerBI workspaces")
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config = WorkflowSource.model_validate(config_dict)
         connection: PowerBIConnection = config.serviceConnection.root.config
         if not isinstance(connection, PowerBIConnection):
@@ -298,13 +298,13 @@ class PowerbiSource(DashboardServiceSource):
 
     def get_dashboards_list(
         self,
-    ) -> Optional[List[Union[PowerBIDashboard, PowerBIReport]]]:
+    ) -> Optional[List[Union[PowerBIDashboard, PowerBIReport]]]:  # noqa: UP006, UP007, UP045
         """
         Get List of all dashboards
         """
         return self.context.get().workspace.reports + self.context.get().workspace.dashboards
 
-    def get_dashboard_name(self, dashboard: Union[PowerBIDashboard, PowerBIReport]) -> str:
+    def get_dashboard_name(self, dashboard: Union[PowerBIDashboard, PowerBIReport]) -> str:  # noqa: UP007
         """
         Get Dashboard Name
         """
@@ -313,8 +313,9 @@ class PowerbiSource(DashboardServiceSource):
         return dashboard.name
 
     def get_dashboard_details(
-        self, dashboard: Union[PowerBIDashboard, PowerBIReport]
-    ) -> Union[PowerBIDashboard, PowerBIReport]:
+        self,
+        dashboard: Union[PowerBIDashboard, PowerBIReport],  # noqa: UP007
+    ) -> Union[PowerBIDashboard, PowerBIReport]:  # noqa: UP007
         """
         Get Dashboard Details
         """
@@ -339,7 +340,7 @@ class PowerbiSource(DashboardServiceSource):
         if isinstance(dashboard_details.format, str) and dashboard_details.format == RDL_REPORT_FORMAT:
             reports_prefix = RDL_REPORTS_PREFIX
         try:
-            pages: Optional[List[ReportPage]] = self.client.api_client.fetch_report_pages(workspace_id, dashboard_id)
+            pages: Optional[List[ReportPage]] = self.client.api_client.fetch_report_pages(workspace_id, dashboard_id)  # noqa: UP006, UP045
             if len(pages) >= 1:
                 # get first page out of multiple pages otherwise
                 # get page if of single page
@@ -372,7 +373,7 @@ class PowerbiSource(DashboardServiceSource):
             f"{workspace_id}/dataflows/{dataflow_id}?experience=power-bi"
         )
 
-    def _get_chart_url(self, report_id: Optional[str], workspace_id: str, dashboard_id: str) -> str:
+    def _get_chart_url(self, report_id: Optional[str], workspace_id: str, dashboard_id: str) -> str:  # noqa: UP045
         """
         Method to build the chart url
         """
@@ -486,7 +487,7 @@ class PowerbiSource(DashboardServiceSource):
                             )
                         )
 
-    def _get_child_measures(self, table: PowerBiTable) -> List[Column]:
+    def _get_child_measures(self, table: PowerBiTable) -> List[Column]:  # noqa: UP006
         """
         Extract the measures of the table
         """
@@ -512,7 +513,7 @@ class PowerbiSource(DashboardServiceSource):
                 logger.debug(f"Error processing datamodel nested measure: {err}")
         return measures
 
-    def _get_child_columns(self, table: PowerBiTable) -> List[Column]:
+    def _get_child_columns(self, table: PowerBiTable) -> List[Column]:  # noqa: UP006
         """
         Extract the child columns from the fields
         """
@@ -534,7 +535,7 @@ class PowerbiSource(DashboardServiceSource):
                 logger.warning(f"Error processing datamodel nested column: {exc}")
         return columns
 
-    def _get_column_info(self, dataset: Dataset) -> Optional[List[Column]]:
+    def _get_column_info(self, dataset: Dataset) -> Optional[List[Column]]:  # noqa: UP006, UP045
         """Build columns from dataset"""
         datasource_columns = []
         for table in dataset.tables or []:
@@ -566,7 +567,7 @@ class PowerbiSource(DashboardServiceSource):
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
 
-    def _get_dataflow_column_info(self, dataflow_export: DataflowExportResponse) -> Optional[List[Column]]:
+    def _get_dataflow_column_info(self, dataflow_export: DataflowExportResponse) -> Optional[List[Column]]:  # noqa: UP006, UP045
         """Build columns from dataflow export response entities"""
         datasource_columns = []
         for entity in dataflow_export.entities or []:
@@ -605,7 +606,7 @@ class PowerbiSource(DashboardServiceSource):
                 logger.warning(f"Error to yield dataflow entity column: {exc}")
         return datasource_columns
 
-    def _get_datamodels_list(self) -> List[Union[Dataset, Dataflow]]:
+    def _get_datamodels_list(self) -> List[Union[Dataset, Dataflow]]:  # noqa: UP006, UP007
         """
         Get All the Powerbi Datasets
         """
@@ -710,7 +711,7 @@ class PowerbiSource(DashboardServiceSource):
                 )
             )
 
-    def _get_dataset_ids_from_report_datasources(self, report_id: str) -> List[str]:
+    def _get_dataset_ids_from_report_datasources(self, report_id: str) -> List[str]:  # noqa: UP006
         """
         Fetch report datasources and extract dataset IDs from connectionDetails.database.
         The database field follows the pattern: sobe_wowvirtualserver-{DATASET_ID}
@@ -732,7 +733,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def create_datamodel_report_lineage(
         self,
-        db_service_prefix: Optional[str],
+        db_service_prefix: Optional[str],  # noqa: UP045
         dashboard_details: PowerBIReport,
     ) -> Iterable[Either[CreateDashboardRequest]]:
         """
@@ -769,7 +770,7 @@ class PowerbiSource(DashboardServiceSource):
                     )
                     if datamodel_entity and report_entity:
                         logger.debug(
-                            f"Creating lineage between datamodel={str(dataset_id)} and report={str(dashboard_details.id)}"
+                            f"Creating lineage between datamodel={str(dataset_id)} and report={str(dashboard_details.id)}"  # noqa: RUF010
                         )
                         yield self._get_add_lineage_request(
                             to_entity=report_entity,
@@ -790,7 +791,7 @@ class PowerbiSource(DashboardServiceSource):
             )
 
     @staticmethod
-    def _get_data_model_column_fqn(data_model_entity: DashboardDataModel, column: str) -> Optional[str]:
+    def _get_data_model_column_fqn(data_model_entity: DashboardDataModel, column: str) -> Optional[str]:  # noqa: UP045
         """
         Get fqn of column if exist in data model entity or its child columns
         """
@@ -801,12 +802,12 @@ class PowerbiSource(DashboardServiceSource):
                 for child_column in tbl_column.children or []:
                     if column.lower() == child_column.name.root.lower():
                         return child_column.fullyQualifiedName.root
-            return None
+            return None  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error to get data_model_column_fqn {exc}")
             logger.debug(traceback.format_exc())
 
-    def parse_table_name_from_source(self, table: PowerBiTable) -> Optional[str]:
+    def parse_table_name_from_source(self, table: PowerBiTable) -> Optional[str]:  # noqa: UP045
         """
         Parse the snowflake table name
         """
@@ -831,18 +832,18 @@ class PowerbiSource(DashboardServiceSource):
             table = None
             if isinstance(table_match, list):
                 table = table_match[1] if len(table_match) > 1 else None
-            return table
+            return table  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error to parse display table name: {exc}")
             logger.debug(traceback.format_exc())
         return None
 
-    def _parse_expression_regex_exp(self, match: re.Match, datamodel_entity: DashboardDataModel) -> Optional[str]:
+    def _parse_expression_regex_exp(self, match: re.Match, datamodel_entity: DashboardDataModel) -> Optional[str]:  # noqa: UP045
         """parse snowflake regex expression"""
         try:
             if not match:
                 return None
-            elif match.group(1):
+            elif match.group(1):  # noqa: RET505
                 return match.group(1)
             elif match.group(2):
                 dataset = self._fetch_dataset_from_workspace(datamodel_entity.name.root)
@@ -865,7 +866,7 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
-    def _parse_redshift_source(self, source_expression: str) -> Optional[List[dict]]:
+    def _parse_redshift_source(self, source_expression: str) -> Optional[List[dict]]:  # noqa: UP006, UP045
         try:
             db_match = re.search(r'AmazonRedshift\.Database\("[^"]+","([^"]+)"\)', source_expression)
             if not db_match:
@@ -881,13 +882,13 @@ class PowerbiSource(DashboardServiceSource):
 
             if table:  # atlease table should be fetched
                 return [{"database": database, "schema": schema, "table": table}]
-            return None
+            return None  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error to parse redshift table source: {exc}")
             logger.debug(traceback.format_exc())
         return None
 
-    def _parse_bigquery_query_source(self, source_expression: str) -> Optional[List[dict]]:
+    def _parse_bigquery_query_source(self, source_expression: str) -> Optional[List[dict]]:  # noqa: UP006, UP045
         """
         Parse BigQuery Value.NativeQuery source expressions containing inline SQL.
 
@@ -966,7 +967,7 @@ class PowerbiSource(DashboardServiceSource):
                             "table": table_name,
                         }
                     )
-            return lineage_tables_list or None
+            return lineage_tables_list or None  # noqa: TRY300
 
         except Exception as exc:
             logger.debug(f"Error parsing BigQuery query source: {exc}")
@@ -978,7 +979,7 @@ class PowerbiSource(DashboardServiceSource):
         source_expression: str,
         datamodel_entity: DashboardDataModel,
         table: PowerBiTable,
-    ) -> Optional[List[dict]]:
+    ) -> Optional[List[dict]]:  # noqa: UP006, UP045
         """
         Parse BigQuery source from Power Query M expressions.
         Handles direct BigQuery connections, Value.NativeQuery with inline SQL,
@@ -1050,7 +1051,7 @@ class PowerbiSource(DashboardServiceSource):
             for name, kind in name_matches:
                 if kind == "Schema":
                     dataset = name
-                elif kind == "Table" or kind == "View":
+                elif kind == "Table" or kind == "View":  # noqa: PLR1714
                     table_name = name
                 elif not kind and not project:
                     # First Name without Kind is likely the project
@@ -1065,14 +1066,14 @@ class PowerbiSource(DashboardServiceSource):
             if table_name:
                 return [{"database": project, "schema": dataset, "table": table_name}]
 
-            return None
+            return None  # noqa: TRY300
 
         except Exception as exc:
             logger.debug(f"Error to parse BigQuery table source: {exc}")
             logger.debug(traceback.format_exc())
         return None
 
-    def _parse_snowflake_query_source(self, source_expression: str) -> Optional[List[dict]]:
+    def _parse_snowflake_query_source(self, source_expression: str) -> Optional[List[dict]]:  # noqa: UP006, UP045
         """
         Parse snowflake query source
         source expressions like `Value.NativeQuery(Snowflake.Databases())`
@@ -1196,7 +1197,7 @@ class PowerbiSource(DashboardServiceSource):
                         )
                 return lineage_tables_list
             logger.debug("tables in query not found through parser")
-            return None
+            return None  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error parsing snowflake query source: {exc}")
             logger.debug(traceback.format_exc())
@@ -1204,7 +1205,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def _parse_catalog_table_definition(
         self, source_expression: str, datamodel_entity: DashboardDataModel
-    ) -> Optional[List[dict]]:
+    ) -> Optional[List[dict]]:  # noqa: UP006, UP045
         """parse catalog table definition"""
         db_match = re.search(r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Database"\]', source_expression)
         schema_match = re.search(r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Schema"\]', source_expression)
@@ -1230,7 +1231,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def _parse_databricks_source(
         self, source_expression: str, datamodel_entity: DashboardDataModel
-    ) -> Optional[List[dict]]:
+    ) -> Optional[List[dict]]:  # noqa: UP006, UP045
         if "Databricks.Catalogs" not in source_expression:
             return None
         dataset = self._fetch_dataset_from_workspace(datamodel_entity.name.root)
@@ -1242,7 +1243,7 @@ class PowerbiSource(DashboardServiceSource):
                         dataset,
                         parser_type=self.get_query_parser_type(),
                     )
-                else:
+                else:  # noqa: RET505
                     return self._parse_catalog_table_definition(source_expression, datamodel_entity)
             except Exception as exc:
                 logger.debug(f"Error to parse databricks table source: {exc}")
@@ -1251,7 +1252,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def _parse_snowflake_source(
         self, source_expression: str, datamodel_entity: DashboardDataModel
-    ) -> Optional[List[dict]]:
+    ) -> Optional[List[dict]]:  # noqa: UP006, UP045
         try:
             if "Snowflake.Databases" not in source_expression:
                 # Not a snowflake valid expression
@@ -1267,7 +1268,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def _parse_table_info_from_source_exp(
         self, table: PowerBiTable, datamodel_entity: DashboardDataModel
-    ) -> Optional[List[dict]]:
+    ) -> Optional[List[dict]]:  # noqa: UP006, UP045
         try:
             if not isinstance(table.source, list):
                 return None
@@ -1278,31 +1279,31 @@ class PowerbiSource(DashboardServiceSource):
 
             # parse snowflake source
             table_info_list = self._parse_snowflake_source(source_expression, datamodel_entity)
-            if isinstance(table_info_list, List):
+            if isinstance(table_info_list, List):  # noqa: UP006
                 return table_info_list
 
             # parse redshift source
             table_info_list = self._parse_redshift_source(source_expression)
-            if isinstance(table_info_list, List):
+            if isinstance(table_info_list, List):  # noqa: UP006
                 return table_info_list
 
             # parse bigquery source
             table_info_list = self._parse_bigquery_source(source_expression, datamodel_entity, table)
-            if isinstance(table_info_list, List):
+            if isinstance(table_info_list, List):  # noqa: UP006
                 return table_info_list
 
             # parse databricks source
             table_info_list = self._parse_databricks_source(source_expression, datamodel_entity)
-            if isinstance(table_info_list, List):
+            if isinstance(table_info_list, List):  # noqa: UP006
                 return table_info_list
 
             # parse generic Sql.Database source
             # (inline query, native query, catalog access)
             table_info_list = self._parse_sql_source(source_expression)
-            if isinstance(table_info_list, List):
+            if isinstance(table_info_list, List):  # noqa: UP006
                 return table_info_list
 
-            return None
+            return None  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error to parse table source: {exc}")
             logger.debug(traceback.format_exc())
@@ -1310,7 +1311,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def _get_table_and_datamodel_lineage(
         self,
-        db_service_prefix: Optional[str],
+        db_service_prefix: Optional[str],  # noqa: UP045
         table: PowerBiTable,
         datamodel_entity: DashboardDataModel,
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -1330,7 +1331,7 @@ class PowerbiSource(DashboardServiceSource):
                 # if tables are not found from source expression
                 # try establishing lineage using powerbi's table name
                 table_info_list = [{"table": table.name}]
-            if isinstance(table_info_list, List):
+            if isinstance(table_info_list, List):  # noqa: UP006
                 for table_info in table_info_list:
                     table_name = table_info.get("table") or table.name
                     schema_name = table_info.get("schema")
@@ -1385,8 +1386,8 @@ class PowerbiSource(DashboardServiceSource):
 
     def create_table_datamodel_lineage_from_files(
         self,
-        db_service_prefix: Optional[str],
-        datamodel_entity: Optional[DashboardDataModel],
+        db_service_prefix: Optional[str],  # noqa: UP045
+        datamodel_entity: Optional[DashboardDataModel],  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to create lineage between table and datamodels using pbit files
@@ -1404,7 +1405,7 @@ class PowerbiSource(DashboardServiceSource):
             for datamodel_schema in self.datamodel_file_mappings or []:
                 for connections in datamodel_schema.connectionFile.RemoteArtifacts or []:
                     if connections.DatasetId == model_str(datamodel_entity.name):
-                        datamodel_file_list.append(datamodel_schema)
+                        datamodel_file_list.append(datamodel_schema)  # noqa: PERF401
 
             for datamodel_schema_file in datamodel_file_list:
                 for table in datamodel_schema_file.tables or []:
@@ -1456,7 +1457,7 @@ class PowerbiSource(DashboardServiceSource):
                     )
                 else:
                     logger.debug(
-                        f"No upstreamDataflow entity with id={str(upstream_dataflow.targetDataflowId)} "
+                        f"No upstreamDataflow entity with id={str(upstream_dataflow.targetDataflowId)} "  # noqa: RUF010
                         f"found for datamodel [{datamodel_entity.name.root}]"
                     )
             except Exception as exc:  # pylint: disable=broad-except
@@ -1465,7 +1466,7 @@ class PowerbiSource(DashboardServiceSource):
                         name="Dataset and UpstreamDataflow Lineage",
                         error=(
                             "Error to yield dataset and upstreamDataflow lineage "
-                            f"between [{datamodel_entity.name.root}, {str(upstream_dataflow.targetDataflowId)}]: {exc}"
+                            f"between [{datamodel_entity.name.root}, {str(upstream_dataflow.targetDataflowId)}]: {exc}"  # noqa: RUF010
                         ),
                         stackTrace=traceback.format_exc(),
                     )
@@ -1473,7 +1474,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def _get_downstream_data_model_column_fqn(
         self, data_model_entity: DashboardDataModel, table_name: str, column: str
-    ) -> Optional[str]:
+    ) -> Optional[str]:  # noqa: UP045
         """
         Get the FQN of the column if it exists in the
         downstream data model entity's table and column.
@@ -1488,7 +1489,7 @@ class PowerbiSource(DashboardServiceSource):
                     if column.lower() == child_column.name.root.lower():
                         return child_column.fullyQualifiedName.root
         except Exception as exc:
-            logger.error(
+            logger.error(  # noqa: TRY400
                 f"Error to get downstream data_model_column_fqn for data_model_entity="
                 f"{data_model_entity.name.root}, table_name={table_name}, column={column}: {exc}"
             )
@@ -1499,7 +1500,7 @@ class PowerbiSource(DashboardServiceSource):
         self,
         datamodel_entity: DashboardDataModel,
         upstream_dataset_entity: DashboardDataModel,
-    ) -> Optional[List[ColumnLineage]]:
+    ) -> Optional[List[ColumnLineage]]:  # noqa: UP006, UP045
         """
         Create column lineage between powerbi dataset/datamodel and
         its upstream dataset/datamodel
@@ -1521,10 +1522,10 @@ class PowerbiSource(DashboardServiceSource):
                     )
                     if source_column and target_column:
                         column_lineage.append(ColumnLineage(fromColumns=[source_column], toColumn=target_column))
-            return column_lineage
+            return column_lineage  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
+            logger.error(  # noqa: TRY400
                 "Error while creating column lineage between dataset = "
                 f"{datamodel_entity.name.root} and upstream dataset = "
                 f"{upstream_dataset_entity.name.root}: {exc}"
@@ -1569,7 +1570,7 @@ class PowerbiSource(DashboardServiceSource):
                     )
                 else:
                     logger.debug(
-                        f"No upstreamDataset entity with id={str(upstream_dataset.targetDatasetId)} "
+                        f"No upstreamDataset entity with id={str(upstream_dataset.targetDatasetId)} "  # noqa: RUF010
                         f"found for datamodel [{datamodel_entity.name.root}]"
                     )
             except Exception as exc:  # pylint: disable=broad-except
@@ -1578,13 +1579,13 @@ class PowerbiSource(DashboardServiceSource):
                         name="Dataset and UpstreamDataset Lineage",
                         error=(
                             "Error to yield dataset and upstreamDataset lineage "
-                            f"between [{datamodel_entity.name.root}, {str(upstream_dataset.targetDatasetId)}]: {exc}"
+                            f"between [{datamodel_entity.name.root}, {str(upstream_dataset.targetDatasetId)}]: {exc}"  # noqa: RUF010
                         ),
                         stackTrace=traceback.format_exc(),
                     )
                 )
 
-    def _parse_dataflow_m_document(self, dataflow_export: DataflowExportResponse) -> List[dict]:
+    def _parse_dataflow_m_document(self, dataflow_export: DataflowExportResponse) -> List[dict]:  # noqa: UP006
         """
         Parse Power Query M expressions from the dataflow export document
         to extract table references for each entity/query in the dataflow.
@@ -1633,7 +1634,7 @@ class PowerbiSource(DashboardServiceSource):
                 )
         return results
 
-    def _parse_sql_source(self, m_expression: str) -> Optional[List[dict]]:
+    def _parse_sql_source(self, m_expression: str) -> Optional[List[dict]]:  # noqa: UP006, UP045
         """
         Parse a Power Query M expression block from a dataflow document to extract
         database table references. Handles:
@@ -1701,7 +1702,7 @@ class PowerbiSource(DashboardServiceSource):
                         }
                     ]
 
-            return None
+            return None  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error parsing dataflow SQL source: {exc}")
             logger.debug(traceback.format_exc())
@@ -1710,9 +1711,9 @@ class PowerbiSource(DashboardServiceSource):
     def _extract_tables_from_sql(
         self,
         sql_query: str,
-        database: Optional[str],
-        server: Optional[str],
-    ) -> Optional[List[dict]]:
+        database: Optional[str],  # noqa: UP045
+        server: Optional[str],  # noqa: UP045
+    ) -> Optional[List[dict]]:  # noqa: UP006, UP045
         """
         Extract table references from a SQL query found in a dataflow M expression.
         Uses LineageParser to parse the SQL and extract source tables.
@@ -1773,7 +1774,7 @@ class PowerbiSource(DashboardServiceSource):
                             "sql": cleaned_sql,
                         }
                     )
-            return lineage_tables if lineage_tables else None
+            return lineage_tables if lineage_tables else None  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error extracting tables from dataflow SQL: {exc}")
             logger.debug(traceback.format_exc())
@@ -1784,7 +1785,7 @@ class PowerbiSource(DashboardServiceSource):
         datamodel: Dataflow,
         datamodel_entity: DashboardDataModel,
         dataflow_export: DataflowExportResponse,
-        db_service_prefix: Optional[str],
+        db_service_prefix: Optional[str],  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Create lineage between dataflow entities and database tables
@@ -1870,8 +1871,8 @@ class PowerbiSource(DashboardServiceSource):
         table_entity: Table,
         datamodel_entity: DashboardDataModel,
         entity_name: str,
-        entity_attributes: List[str],
-    ) -> List[ColumnLineage]:
+        entity_attributes: List[str],  # noqa: UP006
+    ) -> List[ColumnLineage]:  # noqa: UP006
         """
         Get column-level lineage between a database table and a dataflow entity.
         Matches columns from the database table to the dataflow entity's attributes
@@ -1888,7 +1889,7 @@ class PowerbiSource(DashboardServiceSource):
                 )
                 if from_column and to_column:
                     column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))
-            return column_lineage
+            return column_lineage  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error getting dataflow column lineage: {exc}")
             logger.debug(traceback.format_exc())
@@ -1926,7 +1927,7 @@ class PowerbiSource(DashboardServiceSource):
                     )
                 else:
                     logger.debug(
-                        f"No upstreamDataflow entity with id={str(upstream_dataflow.targetDataflowId)} "
+                        f"No upstreamDataflow entity with id={str(upstream_dataflow.targetDataflowId)} "  # noqa: RUF010
                         f"found for datamodel [{datamodel_entity.name.root}]"
                     )
             except Exception as exc:  # pylint: disable=broad-except
@@ -1935,7 +1936,7 @@ class PowerbiSource(DashboardServiceSource):
                         name="Dataflow and UpstreamDataflow Lineage",
                         error=(
                             f"Error to yield dataflow and upstreamDataflow lineage "
-                            f"between [{datamodel_entity.name.root}, {str(upstream_dataflow.targetDataflowId)}]: {exc}"
+                            f"between [{datamodel_entity.name.root}, {str(upstream_dataflow.targetDataflowId)}]: {exc}"  # noqa: RUF010
                         ),
                         stackTrace=traceback.format_exc(),
                     )
@@ -1944,7 +1945,7 @@ class PowerbiSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Group,
-        db_service_prefix: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         We will build the logic to build the logic as below
@@ -1966,7 +1967,7 @@ class PowerbiSource(DashboardServiceSource):
                 yield Either(
                     left=StackTraceError(
                         name="Dashboard Lineage",
-                        error=f"Error to yield dashboard lineage details for DB service name [{str(prefix_service_name)}]: {exc}",
+                        error=f"Error to yield dashboard lineage details for DB service name [{str(prefix_service_name)}]: {exc}",  # noqa: RUF010
                         stackTrace=traceback.format_exc(),
                     )
                 )
@@ -2030,7 +2031,7 @@ class PowerbiSource(DashboardServiceSource):
                 yield Either(
                     left=StackTraceError(
                         name="Datamodel Lineage",
-                        error=f"Error to yield datamodel lineage details for DB service name [{str(prefix_service_name)}]: {exc}",
+                        error=f"Error to yield datamodel lineage details for DB service name [{str(prefix_service_name)}]: {exc}",  # noqa: RUF010
                         stackTrace=traceback.format_exc(),
                     )
                 )
@@ -2047,7 +2048,7 @@ class PowerbiSource(DashboardServiceSource):
             since we have report and dashboard both as dashboard.
         """
 
-    def _fetch_dataset_from_workspace(self, dataset_id: Optional[str]) -> Optional[Dataset]:
+    def _fetch_dataset_from_workspace(self, dataset_id: Optional[str]) -> Optional[Dataset]:  # noqa: UP045
         """
         Method to search the dataset using id in the workspace dict
         """
@@ -2061,7 +2062,7 @@ class PowerbiSource(DashboardServiceSource):
                     return dataset_data
         return None
 
-    def _fetch_report_from_workspace(self, report_id: Optional[str]) -> Optional[Dataset]:
+    def _fetch_report_from_workspace(self, report_id: Optional[str]) -> Optional[Dataset]:  # noqa: UP045
         """
         Method to search the report using id in the workspace dict
         """
@@ -2075,7 +2076,7 @@ class PowerbiSource(DashboardServiceSource):
                     return report_data
         return None
 
-    def get_project_name(self, dashboard_details: Any) -> Optional[str]:
+    def get_project_name(self, dashboard_details: Any) -> Optional[str]:  # noqa: UP045
         """
         Get the project / workspace / folder / collection name of the dashboard
         """
@@ -2086,9 +2087,9 @@ class PowerbiSource(DashboardServiceSource):
             logger.warning(f"Error fetching project name for {dashboard_details.id}: {exc}")
         return None
 
-    def get_owner_ref(  # pylint: disable=unused-argument, useless-return
+    def get_owner_ref(  # pylint: disable=unused-argument, useless-return  # noqa: C901
         self, dashboard_details: Any
-    ) -> Optional[EntityReferenceList]:
+    ) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Method to process the dashboard owners
         """
@@ -2160,7 +2161,7 @@ class PowerbiSource(DashboardServiceSource):
             if len(owner_ref_list) > 0:
                 logger.debug(f"Successfully fetched owners data for {dashboard_details.id}")
                 return EntityReferenceList(root=owner_ref_list)
-            return None
+            return None  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Could not fetch owner data due to {err}")

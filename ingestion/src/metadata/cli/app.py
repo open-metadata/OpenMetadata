@@ -36,7 +36,7 @@ def run_app(config_path: Path) -> None:
         # no logging for config because apps might have custom secrets
         workflow = ApplicationWorkflow.create(config_dict)
     except Exception as exc:
-        logger.error(f"Error running the application {exc}")
+        logger.error(f"Error running the application {exc}")  # noqa: TRY400
         logger.debug(traceback.format_exc())
         sys.exit(1)
 

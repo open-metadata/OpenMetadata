@@ -71,7 +71,7 @@ def openmetadata_airflow_lineage_example():
     )
     def generate_data():
         """Task demonstrating simple lineage with table FQNs"""
-        pass
+        pass  # noqa: PIE790
 
     # Example 2: Using OMEntity objects
     @task(
@@ -86,7 +86,7 @@ def openmetadata_airflow_lineage_example():
     )
     def generate_data2():
         """Task demonstrating lineage with OMEntity objects"""
-        pass
+        pass  # noqa: PIE790
 
     # Example 3: Using dict with entity type
     @task(
@@ -107,7 +107,7 @@ def openmetadata_airflow_lineage_example():
     )
     def generate_data3():
         """Task demonstrating lineage with dict-based entity definitions"""
-        pass
+        pass  # noqa: PIE790
 
     generate_data()
     generate_data2()

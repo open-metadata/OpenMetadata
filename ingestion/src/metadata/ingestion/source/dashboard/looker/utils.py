@@ -42,7 +42,7 @@ def _extract_hostname(git_host_url) -> str:
     url_str = str(git_host_url)
     # Remove protocol and trailing slash
     hostname = url_str.replace("https://", "").replace("http://", "").rstrip("/")
-    return hostname
+    return hostname  # noqa: RET504
 
 
 def _is_azure_devops_host(hostname: str) -> bool:
@@ -53,14 +53,14 @@ def _is_azure_devops_host(hostname: str) -> bool:
 def _clone_repo(
     repo_name: str,
     path: str,
-    credential: Optional[Union[NoGitCredentials, GitHubCredentials, BitBucketCredentials, GitlabCredentials]],
-    overwrite: Optional[bool] = False,
+    credential: Optional[Union[NoGitCredentials, GitHubCredentials, BitBucketCredentials, GitlabCredentials]],  # noqa: UP007, UP045
+    overwrite: Optional[bool] = False,  # noqa: UP045
 ):
     """Clone a repo to local `path`"""
     try:
         if overwrite:
             shutil.rmtree(path, ignore_errors=True)
-        if os.path.isdir(path):
+        if os.path.isdir(path):  # noqa: PTH112
             logger.debug(f"_clone_repo: repo {path} already cloned.")
             return
 
@@ -98,4 +98,4 @@ def _clone_repo(
         logger.info(f"repo {repo_name} cloned to {path}")
     except Exception as exc:
         sanitized_msg = sanitize_url_credentials(str(exc))
-        logger.error(f"_clone_repo: ERROR {sanitized_msg}")
+        logger.error(f"_clone_repo: ERROR {sanitized_msg}")  # noqa: TRY400

@@ -33,7 +33,7 @@ def get_python_versions():
         # Return the list of Python versions passed from GitHub Actions matrix
         python_versions = os.environ["PYTHON_VERSIONS"].split(",")
         # if some versions are not supported, they will be ignored by nox
-        return python_versions
+        return python_versions  # noqa: RET504
     return SUPPORTED_PYTHON_VERSIONS
 
 
@@ -56,11 +56,6 @@ def lint(session):
     session.run("black", "--check", ".", "../openmetadata-airflow-apis/")
     session.run("isort", "--check-only", ".", "../openmetadata-airflow-apis/")
     session.run("pycln", "--diff", ".", "../openmetadata-airflow-apis/")
-    # TODO: It remains to adapt the command from the Makefile:
-    # 	PYTHONPATH="${PYTHONPATH}:$(INGESTION_DIR)/plugins" pylint --errors-only
-    # 	--rcfile=$(INGESTION_DIR)/pyproject.toml --fail-under=10 $(PY_SOURCE)/metadata
-    # 	|| (echo "PyLint error code $$?"; exit 1)
-    #   Some work is required to import plugins correctly
 
 
 @nox.session(name="unit", reuse_venv=True, venv_backend="uv|venv", python=get_python_versions())
@@ -79,7 +74,6 @@ def unit(session):
         "test_sample_usage.py",
         "test_ssl_manager.py",
         "test_usage_filter.py",
-        "test_import_checker.py",
         "test_suite/",
         "profiler/test_profiler_partitions.py",
         "profiler/test_workflow.py",

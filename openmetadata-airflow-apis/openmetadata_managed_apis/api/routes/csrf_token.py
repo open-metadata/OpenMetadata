@@ -12,9 +12,10 @@
 CSRF Token endpoint to provide token for POST/PUT/DELETE requests
 """
 
-from typing import Callable
+from typing import Callable  # noqa: UP035
 
 from flask import Blueprint, session
+
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.utils.logger import routes_logger
 
@@ -30,8 +31,9 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
-    from airflow.security import permissions
-    from openmetadata_managed_apis.utils.security_compat import (
+    from airflow.security import permissions  # noqa: PLC0415
+
+    from openmetadata_managed_apis.utils.security_compat import (  # noqa: PLC0415
         requires_access_decorator,
     )
 
@@ -62,7 +64,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
             if not csrf_token:
                 try:
                     # Try Flask-WTF's generate_csrf
-                    from flask_wtf.csrf import generate_csrf
+                    from flask_wtf.csrf import generate_csrf  # noqa: PLC0415
 
                     csrf_token = generate_csrf()
                 except ImportError:
@@ -79,7 +81,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
                         "message": "Include this token in X-CSRFToken header for POST/PUT/DELETE requests",
                     }
                 )
-            else:
+            else:  # noqa: RET505
                 # CSRF might be disabled - return success with info
                 return ApiResponse.success(
                     {
@@ -89,7 +91,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
                 )
 
         except Exception as exc:
-            logger.error(f"Failed to get CSRF token: {exc}")
+            logger.error(f"Failed to get CSRF token: {exc}")  # noqa: TRY400
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
                 error=f"Failed to retrieve CSRF token: {exc}",

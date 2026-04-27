@@ -18,6 +18,6 @@ class TeradataStoredProcedure(BaseModel):
     """Teradata stored procedure list query results"""
 
     procedure_name: str = Field(...)
-    database_schema: Optional[str] = Field(None)
+    database_schema: Optional[str] = Field(None)  # noqa: UP045
     procedure_type: str = Field(Language.SQL)
     definition: str = Field(None)

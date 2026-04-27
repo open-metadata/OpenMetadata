@@ -14,7 +14,7 @@ Hive Metastore Postgres Dialect
 
 from sqlalchemy.dialects import registry
 
-from .dialect import HivePostgresMetaStoreDialect
+from .dialect import HivePostgresMetaStoreDialect  # noqa: TID252
 
 __version__ = "0.1.0"
 __all__ = ["HivePostgresMetaStoreDialect"]

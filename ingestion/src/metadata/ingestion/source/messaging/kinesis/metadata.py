@@ -15,7 +15,7 @@ Kinesis source ingestion
 import binascii
 import traceback
 from base64 import b64decode
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
@@ -79,14 +79,14 @@ class KinesisSource(MessagingServiceSource):
         self.kinesis = self.connection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: KinesisConnection = config.serviceConnection.root.config
         if not isinstance(connection, KinesisConnection):
             raise InvalidSourceException(f"Expected KinesisConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_stream_names_list(self) -> List[str]:
+    def get_stream_names_list(self) -> List[str]:  # noqa: UP006
         """Get the list of all the streams"""
         all_topics, has_more_topics, args = [], True, KinesisArgs(Limit=100)
         while has_more_topics:
@@ -99,7 +99,7 @@ class KinesisSource(MessagingServiceSource):
                     args.ExclusiveStartStreamName = all_topics[-1]
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Failed to fetch kinesis stream - {err}")
+                logger.error(f"Failed to fetch kinesis stream - {err}")  # noqa: TRY400
         return all_topics
 
     def get_topic_list(self) -> Iterable[BrokerTopicDetails]:
@@ -116,7 +116,7 @@ class KinesisSource(MessagingServiceSource):
                 )
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Failed to yield kinesis topic - {err}")
+                logger.error(f"Failed to yield kinesis topic - {err}")  # noqa: TRY400
 
     def yield_topic(self, topic_details: BrokerTopicDetails) -> Iterable[Either[CreateTopicRequest]]:
         """Method to yield the create topic request"""
@@ -152,13 +152,13 @@ class KinesisSource(MessagingServiceSource):
     def get_topic_name(self, topic_details: BrokerTopicDetails) -> str:
         return topic_details.topic_name
 
-    def _compute_retention_time(self, summary: Optional[KinesisSummaryModel]) -> float:
+    def _compute_retention_time(self, summary: Optional[KinesisSummaryModel]) -> float:  # noqa: UP045
         retention_time = 0
         if summary:
             retention_time = summary.StreamDescriptionSummary.RetentionPeriodHours * 3600000
         return float(retention_time)
 
-    def _get_topic_details(self, topic_name: str) -> Optional[KinesisSummaryModel]:
+    def _get_topic_details(self, topic_name: str) -> Optional[KinesisSummaryModel]:  # noqa: UP045
         try:
             topic_summary = self.kinesis.describe_stream_summary(StreamName=topic_name)
             return KinesisSummaryModel(**topic_summary)
@@ -167,7 +167,7 @@ class KinesisSource(MessagingServiceSource):
             logger.warning(f"Error while fetching topic partitions for topic: {topic_name} - {err}")
         return None
 
-    def _get_topic_partitions(self, topic_name: str) -> List[str]:
+    def _get_topic_partitions(self, topic_name: str) -> List[str]:  # noqa: UP006
         all_partitions, has_more_partitions, args = (
             [],
             True,
@@ -241,7 +241,7 @@ class KinesisSource(MessagingServiceSource):
             logger.warning(f"Error while fetching sample data for topic: {topic_name} - {err}")
         return TopicSampleData(messages=data)
 
-    def _get_sample_records(self, records: List[KinesisData]) -> List:
+    def _get_sample_records(self, records: List[KinesisData]) -> List:  # noqa: UP006
         sample_data = []
         try:
             for record in records:

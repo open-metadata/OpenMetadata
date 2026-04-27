@@ -22,7 +22,7 @@ To be extended by any other workflow:
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Type, cast
+from typing import List, Tuple, Type, cast  # noqa: UP035
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
@@ -74,7 +74,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
     # All workflows require a source as a first step
     source: Source
     # All workflows execute a series of steps, aside from the source
-    steps: Tuple[Step]
+    steps: Tuple[Step]  # noqa: UP006
 
     def __init__(self, config: OpenMetadataWorkflowConfig):
         self.config = config
@@ -130,10 +130,10 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         if bulk_sink:
             bulk_sink.run()
 
-    def get_failures(self) -> List[StackTraceError]:
+    def get_failures(self) -> List[StackTraceError]:  # noqa: UP006
         return self.source.get_status().failures
 
-    def workflow_steps(self) -> List[Step]:
+    def workflow_steps(self) -> List[Step]:  # noqa: UP006
         return [self.source] + list(self.steps)
 
     def _retrieve_service_connection_if_needed(self, service_type: ServiceType) -> None:
@@ -149,7 +149,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             service_name = self.config.source.serviceName
             try:
                 service: ServiceWithConnectionType = cast(
-                    ServiceWithConnectionType,
+                    ServiceWithConnectionType,  # noqa: TC006
                     self.metadata.get_by_name(
                         get_service_class_from_service_type(service_type),
                         service_name,
@@ -158,23 +158,23 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                 if service:
                     self.config.source.serviceConnection = ServiceConnection(service.connection)
                 else:
-                    raise InvalidWorkflowJSONException(
+                    raise InvalidWorkflowJSONException(  # noqa: TRY301
                         f"Error getting the service [{service_name}] from the API. If it exists in OpenMetadata,"
                         " make sure the ingestion-bot JWT token is valid and that the Workflow is deployed"
                         " with the latest one. If this error persists, recreate the JWT token and"
                         " redeploy the Workflow."
                     )
             except InvalidWorkflowJSONException as exc:
-                raise exc
+                raise exc  # noqa: TRY201
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(
+                logger.error(  # noqa: TRY400
                     f"Unknown error getting service connection for service name [{service_name}]"
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
 
     @inject
-    def validate(self, profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None):
+    def validate(self, profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None):  # noqa: UP006
         if profiler_config_class is None:
             raise DependencyNotFoundError(
                 "ProfilerProcessorConfig class not found. Please ensure the ProfilerProcessorConfig is properly registered."
@@ -182,18 +182,18 @@ class IngestionWorkflow(BaseWorkflow, ABC):
 
         try:
             if not self.config.source.serviceConnection.root.config.supportsProfiler:
-                raise AttributeError()
+                raise AttributeError()  # noqa: TRY301
         except AttributeError:
             if profiler_config_class.model_validate(self.config.processor.model_dump().get("config")).ignoreValidation:
                 logger.debug(
                     f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"
                 )
                 return
-            raise WorkflowExecutionError(
+            raise WorkflowExecutionError(  # noqa: B904
                 f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"
             )
 
-    def import_source_class(self) -> Type[Source]:
+    def import_source_class(self) -> Type[Source]:  # noqa: UP006
         source_type = self.config.source.type.lower()
         try:
             return (
@@ -203,7 +203,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             )
         except DynamicImportException as e:
             if source_type.startswith(CUSTOM_CONNECTOR_PREFIX):
-                raise e
+                raise e  # noqa: TRY201
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to import source of type '{source_type}'")
-            raise MissingPluginException(source_type)
+            logger.error(f"Failed to import source of type '{source_type}'")  # noqa: TRY400
+            raise MissingPluginException(source_type)  # noqa: B904

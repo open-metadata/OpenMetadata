@@ -1,5 +1,5 @@
 import re
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
@@ -50,7 +50,7 @@ def parse_databricks_native_query_source(
     source_expression: str,
     dataset: Dataset,
     parser_type: QueryParserType = QueryParserType.Auto,
-) -> Optional[List[dict]]:
+) -> Optional[List[dict]]:  # noqa: UP006, UP045
     # cleanup new lines and excessive spaces
     source_expression = source_expression.replace("\n", " ")
     source_expression = re.sub(r"\s+", " ", source_expression).strip()
@@ -101,7 +101,7 @@ def parse_databricks_native_query_source(
 
         logger.debug(f"Attempting LineageParser with cleaned query: {parser_query[:200]}")
         if re.match(
-            "^([A-Za-z0-9_]+)(?:\.([A-Za-z0-9_]+))?(?:\.([A-Za-z0-9_]+))?$",
+            "^([A-Za-z0-9_]+)(?:\.([A-Za-z0-9_]+))?(?:\.([A-Za-z0-9_]+))?$",  # noqa: W605
             parser_query,
         ):
             logger.debug("Query appears to be a simple table reference, skipping LineageParser.")
@@ -118,10 +118,10 @@ def parse_databricks_native_query_source(
             )
             query_hash = parser.query_hash
             if parser.query_parsing_success is False:
-                raise Exception(parser.query_parsing_failure_reason)
+                raise Exception(parser.query_parsing_failure_reason)  # noqa: TRY002, TRY301
         except Exception as parser_exc:
             hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
-            logger.error(
+            logger.error(  # noqa: TRY400
                 f"{hash_prefix}LineageParser failed parsing query with error {parser_query[:200]} ",
                 exc_info=parser_exc,
             )
@@ -129,7 +129,7 @@ def parse_databricks_native_query_source(
 
         lineage_tables_list = []
         for source_table in parser.source_tables:
-            lineage_tables_list.append(
+            lineage_tables_list.append(  # noqa: PERF401
                 {
                     "database": database,
                     "schema": source_table.schema.raw_name,
@@ -138,7 +138,7 @@ def parse_databricks_native_query_source(
             )
         return lineage_tables_list
 
-    else:
+    else:  # noqa: RET505
         logger.error(
             f"Invalid Databricks Native Query Syntax: {source_expression} in dataset {dataset.name}[{dataset.id}]"
         )

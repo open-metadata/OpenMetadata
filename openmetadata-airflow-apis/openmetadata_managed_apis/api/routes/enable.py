@@ -13,9 +13,10 @@ Enable/unpause a DAG
 """
 
 import traceback
-from typing import Callable
+from typing import Callable  # noqa: UP035
 
 from flask import Blueprint, Response
+
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import get_request_dag_id
 from openmetadata_managed_apis.operations.state import enable_dag
@@ -33,17 +34,18 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
-    from airflow.security import permissions
-    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
-    from openmetadata_managed_apis.utils.security_compat import (
+    from airflow.security import permissions  # noqa: PLC0415
+
+    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher  # noqa: PLC0415
+    from openmetadata_managed_apis.utils.security_compat import (  # noqa: PLC0415
         requires_access_decorator,
     )
 
     # CSRF protection import - different between Airflow 2.x and 3.x
     if not is_airflow_3_or_higher():
-        from airflow.www.app import csrf
+        from airflow.www.app import csrf  # noqa: PLC0415
     else:
-        from airflow.providers.fab.www.app import csrf
+        from airflow.providers.fab.www.app import csrf  # noqa: PLC0415
 
     @blueprint.route("/enable", methods=["POST"])
     @csrf.exempt
@@ -59,7 +61,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get last run logs for [{dag_id}]: {exc}")
+            logger.error(f"Failed to get last run logs for [{dag_id}]: {exc}")  # noqa: TRY400
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
                 error=f"Failed to get last run logs for [{dag_id}] due to {exc} ",

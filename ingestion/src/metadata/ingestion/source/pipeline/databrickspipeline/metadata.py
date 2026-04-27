@@ -15,7 +15,7 @@ Databricks pipeline source to extract metadata
 
 import traceback
 from datetime import datetime, timedelta, timezone
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple  # noqa: UP035
 
 from pydantic import ValidationError
 
@@ -96,13 +96,13 @@ class DatabrickspipelineSource(PipelineServiceSource):
         super().__init__(config, metadata)
         # Cache for Databricks services to avoid repeated API calls
         self._databricks_services_cached = False
-        self._databricks_services: List[str] = []
+        self._databricks_services: List[str] = []  # noqa: UP006
 
         self._table_lookup_cache = {}
         self._dlt_table_cache = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DatabricksPipelineConnection = config.serviceConnection.root.config
@@ -122,7 +122,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 yield DataBrickPipelineDetails(**workflow)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get jobs list due to : {exc}")
+            logger.error(f"Failed to get jobs list due to : {exc}")  # noqa: TRY400
 
         # Fetch DLT pipelines directly (new)
         try:
@@ -139,14 +139,14 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
         return None
 
-    def get_pipeline_name(self, pipeline_details: DataBrickPipelineDetails) -> Optional[str]:
+    def get_pipeline_name(self, pipeline_details: DataBrickPipelineDetails) -> Optional[str]:  # noqa: UP045
         try:
             if pipeline_details.pipeline_id:
                 return pipeline_details.name
-            return pipeline_details.settings.name if pipeline_details.settings else None
+            return pipeline_details.settings.name if pipeline_details.settings else None  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get pipeline name due to : {exc}")
+            logger.error(f"Failed to get pipeline name due to : {exc}")  # noqa: TRY400
 
         return None
 
@@ -207,7 +207,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 )
             )
 
-    def get_tasks(self, pipeline_details: DataBrickPipelineDetails) -> List[Task]:
+    def get_tasks(self, pipeline_details: DataBrickPipelineDetails) -> List[Task]:  # noqa: UP006
         try:
             if not pipeline_details.settings or not pipeline_details.settings.tasks:
                 return []
@@ -238,10 +238,10 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
             lookback_days = self.source_config.statusLookbackDays or 1
             cutoff_ts = int((datetime.now(timezone.utc) - timedelta(days=lookback_days)).timestamp() * 1000)
-            statuses: List[PipelineStatus] = []
+            statuses: List[PipelineStatus] = []  # noqa: UP006
 
             for run in self.client.get_job_runs(job_id=pipeline_details.job_id) or []:
-                run = DBRun(**run)
+                run = DBRun(**run)  # noqa: PLW2901
                 if run.start_time and run.start_time < cutoff_ts:
                     break
                 task_status = [
@@ -289,10 +289,10 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
     def _process_and_validate_column_lineage(
         self,
-        column_lineage: List[Tuple[str, str]],
+        column_lineage: List[Tuple[str, str]],  # noqa: UP006
         from_entity: Table,
         to_entity: Table,
-    ) -> List[ColumnLineage]:
+    ) -> List[ColumnLineage]:  # noqa: UP006
         """
         Process and validate column lineage
         """
@@ -334,7 +334,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             logger.warning(f"No column lineage found for {from_entity.name} to {to_entity.name}")
         return processed_column_lineage or []
 
-    def _get_databricks_services(self) -> List[str]:
+    def _get_databricks_services(self) -> List[str]:  # noqa: UP006
         """
         Get list of all Databricks/Unity Catalog database service names from OpenMetadata
 
@@ -347,7 +347,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             return self._databricks_services
 
         try:
-            from metadata.generated.schema.entity.services.databaseService import (
+            from metadata.generated.schema.entity.services.databaseService import (  # noqa: PLC0415
                 DatabaseService,
             )
 
@@ -381,7 +381,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             self._databricks_services_cached = True
 
             logger.info(f"Found {len(databricks_services)} Databricks/Unity Catalog service(s): {databricks_services}")
-            return databricks_services
+            return databricks_services  # noqa: TRY300
 
         except Exception as exc:
             logger.warning(f"Error fetching Databricks services: {exc}")
@@ -391,7 +391,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             self._databricks_services_cached = True
             return []
 
-    def _find_dlt_table(self, table_name: str, catalog: Optional[str], schema: Optional[str]) -> Optional[Table]:
+    def _find_dlt_table(self, table_name: str, catalog: Optional[str], schema: Optional[str]) -> Optional[Table]:  # noqa: UP045
         """
         Find DLT table in OpenMetadata by iterating through Databricks services
 
@@ -498,7 +498,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         self._dlt_table_cache[cache_key] = None
         return None
 
-    def _find_kafka_topic(self, topic_name: str) -> Optional[Topic]:
+    def _find_kafka_topic(self, topic_name: str) -> Optional[Topic]:  # noqa: UP045
         """
         Find Kafka topic in OpenMetadata using Elasticsearch search
 
@@ -513,7 +513,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
             # Use ES search with wildcard pattern to find topic regardless of service
             # Pattern: *.topic_name or *."topic.with.dots"
-            from metadata.utils.elasticsearch import ES_INDEX_MAP
+            from metadata.utils.elasticsearch import ES_INDEX_MAP  # noqa: PLC0415
 
             # Quote the topic name if it contains dots
             search_topic_name = f'"{topic_name}"' if "." in topic_name else topic_name
@@ -549,7 +549,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         )
         return None
 
-    def _yield_kafka_lineage(
+    def _yield_kafka_lineage(  # noqa: C901
         self, pipeline_details: DataBrickPipelineDetails, pipeline_entity: Pipeline
     ) -> Iterable[Either[AddLineageRequest]]:
         """
@@ -642,7 +642,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                         # Library can be dict or have different structures
                         if isinstance(lib, dict):
                             # Check for notebook path
-                            if "notebook" in lib and lib["notebook"]:
+                            if "notebook" in lib and lib["notebook"]:  # noqa: RUF019
                                 notebook = lib["notebook"]
                                 if isinstance(notebook, dict):
                                     path = notebook.get("path")
@@ -652,7 +652,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                     notebook_paths.append(path)
                                     logger.info(f"   ✓ Found notebook: {path}")
                             # Check for glob pattern
-                            elif "glob" in lib and lib["glob"]:
+                            elif "glob" in lib and lib["glob"]:  # noqa: RUF019
                                 glob_pattern = lib["glob"]
                                 if isinstance(glob_pattern, dict):
                                     include_pattern = glob_pattern.get("include")
@@ -684,7 +684,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 for idx, path in enumerate(notebook_paths):
                     logger.info(f"   {idx + 1}. {path}")
             except Exception as exc:
-                logger.error(f"✗ Failed to fetch pipeline config for {pipeline_id}: {exc}")
+                logger.error(f"✗ Failed to fetch pipeline config for {pipeline_id}: {exc}")  # noqa: TRY400
                 logger.debug(traceback.format_exc())
                 logger.info("=" * 80)
                 return
@@ -889,7 +889,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                             logger.warning(f"   ✗ Table '{dep.table_name}' not found")
 
                             except Exception as exc:
-                                logger.error(f"   ✗ Failed to process topic {topic_name}: {exc}")
+                                logger.error(f"   ✗ Failed to process topic {topic_name}: {exc}")  # noqa: TRY400
                                 logger.debug(traceback.format_exc())
                                 continue
 
@@ -1032,7 +1032,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                             logger.warning(f"   ✗ Target table '{dep.table_name}' not found")
 
                                 except Exception as exc:
-                                    logger.error(
+                                    logger.error(  # noqa: TRY400
                                         f"   ✗ Failed to process dependency {source_table_name} -> {dep.table_name}: {exc}"
                                     )
                                     logger.debug(traceback.format_exc())
@@ -1040,7 +1040,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
                     logger.info(f"\n✓ Lineage edges created for this notebook: {lineage_created}")
                 except Exception as exc:
-                    logger.error(f"✗ Failed to process notebook {lib_path}: {exc}")
+                    logger.error(f"✗ Failed to process notebook {lib_path}: {exc}")  # noqa: TRY400
                     logger.debug(traceback.format_exc())
                     logger.info(f"   Continuing with next notebook...")  # noqa: F541
                     continue
@@ -1051,9 +1051,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
             logger.info("=" * 80)
 
         except Exception as exc:
-            logger.error(f"✗ Unexpected error in Kafka lineage extraction: {exc}")
-            logger.error(f"   Job ID: {pipeline_details.job_id}")
-            logger.error(
+            logger.error(f"✗ Unexpected error in Kafka lineage extraction: {exc}")  # noqa: TRY400
+            logger.error(f"   Job ID: {pipeline_details.job_id}")  # noqa: TRY400
+            logger.error(  # noqa: TRY400
                 f"   Pipeline ID: {pipeline_details.pipeline_id if hasattr(pipeline_details, 'pipeline_id') else 'N/A'}"
             )
             logger.debug(traceback.format_exc())

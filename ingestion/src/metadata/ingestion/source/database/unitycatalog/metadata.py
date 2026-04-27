@@ -14,7 +14,7 @@ Databricks Unity Catalog Source source methods.
 
 import json
 import traceback
-from typing import Any, Iterable, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
@@ -45,7 +45,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+    DatabaseServiceMetadataPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -121,7 +121,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         # Caches to avoid redundant API calls (N+1 optimization)
         self._catalog_cache: dict[str, Any] = {}
         self._schema_cache: dict[str, Any] = {}
-        self._owner_cache: dict[str, Optional[EntityReferenceList]] = {}
+        self._owner_cache: dict[str, Optional[EntityReferenceList]] = {}  # noqa: UP045
         self.test_connection()
 
         self._sql_connection_map = {}
@@ -139,7 +139,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
 
         return self._sql_connection_map[thread_id]
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         return self.service_connection.catalog
 
     def get_database_names_raw(self) -> Iterable[str]:
@@ -149,7 +149,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             yield catalog.name
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: UnityCatalogConnection = config.serviceConnection.root.config
         if not isinstance(connection, UnityCatalogConnection):
@@ -280,7 +280,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Iterable[Tuple[str, str]]:
+    def get_tables_name_and_type(self) -> Iterable[Tuple[str, str]]:  # noqa: UP006
         """
         Handle table and views.
 
@@ -333,14 +333,14 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                     )
                 )
 
-    def get_schema_definition(self, table_name: str, table_type: TableType, table: Any) -> Optional[str]:
+    def get_schema_definition(self, table_name: str, table_type: TableType, table: Any) -> Optional[str]:  # noqa: UP045
         """
         Get the DDL statement or View Definition for a table
         """
         try:
             if table_type in (TableType.View, TableType.MaterializedView):
                 if hasattr(table, "view_definition") and table.view_definition:
-                    view_type = table_type == TableType.View and "VIEW" or "MATERIALIZED VIEW"
+                    view_type = table_type == TableType.View and "VIEW" or "MATERIALIZED VIEW"  # noqa: RUF021
 
                     return f"CREATE {view_type} `{table.catalog_name}`.`{table.schema_name}`.`{table_name}` AS {table.view_definition}"
             elif self.source_config.includeDDL and table_type != TableType.Iceberg:
@@ -361,7 +361,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             logger.warning(f"Unable to get schema definition for table [{table_name}]: {exc}")
         return None
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
+    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -417,8 +417,9 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             )
 
     def get_table_constraints(
-        self, constraints: List[DBTableConstraint]
-    ) -> Tuple[List[TableConstraint], List[ForeignConstrains]]:
+        self,
+        constraints: List[DBTableConstraint],  # noqa: UP006
+    ) -> Tuple[List[TableConstraint], List[ForeignConstrains]]:  # noqa: UP006
         """
         Function to handle table constraint for the current table and add it to context
         """
@@ -443,7 +444,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                 )
         return primary_constraints, foreign_constraints
 
-    def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:
+    def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:  # noqa: UP006
         """
         Search the referred table for foreign constraints
         and get referred column fqn
@@ -485,7 +486,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         return table_constraints
 
     # pylint: disable=arguments-differ
-    def update_table_constraints(self, table_constraints, foreign_columns, columns) -> List[TableConstraint]:
+    def update_table_constraints(self, table_constraints, foreign_columns, columns) -> List[TableConstraint]:  # noqa: UP006
         """
         From topology.
         process the table constraints of all tables
@@ -529,7 +530,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to add description to complex datatypes for column [{column.name}]: {exc}")
 
-    def get_columns(self, table_name: str, column_data: List[ColumnInfo]) -> Iterable[Column]:
+    def get_columns(self, table_name: str, column_data: List[ColumnInfo]) -> Iterable[Column]:  # noqa: UP006
         """
         process table regular columns info
         """
@@ -647,7 +648,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             self.engine.dispose()
 
     # pylint: disable=arguments-renamed
-    def get_owner_ref(self, owner: Optional[str]) -> Optional[EntityReferenceList]:
+    def get_owner_ref(self, owner: Optional[str]) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Method to process the table owners.
         Results are cached to avoid repeated API lookups for the same owner.
@@ -667,7 +668,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             owner_name = owner.split("@")[0]
             owner_ref = self.metadata.get_reference_by_name(name=owner_name)
             self._owner_cache[owner] = owner_ref
-            return owner_ref
+            return owner_ref  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner {owner}: {exc}")

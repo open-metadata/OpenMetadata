@@ -18,7 +18,7 @@ import functools
 import traceback
 from functools import singledispatchmethod
 from io import StringIO
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -50,8 +50,8 @@ class DSVDataFrameReader(DataFrameReader):
     from any source based on its init client.
     """
 
-    def _reformat_malformed_csv_data(self, chunk_list: List, parsed_columns: List, separator: str):
-        import pandas as pd  # pylint: disable=import-outside-toplevel
+    def _reformat_malformed_csv_data(self, chunk_list: List, parsed_columns: List, separator: str):  # noqa: UP006
+        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         try:
             updated_chunk_list = []
@@ -62,9 +62,9 @@ class DSVDataFrameReader(DataFrameReader):
                     if single_row_value:
                         values_list.append(single_row_value[0])
                 updated_chunk_list.append(pd.DataFrame(columns=parsed_columns, data=values_list))
-            return updated_chunk_list
+            return updated_chunk_list  # noqa: TRY300
         except Exception as exc:
-            logger.error(f"Error reformating the data: {exc}")
+            logger.error(f"Error reformating the data: {exc}")  # noqa: TRY400
             logger.debug(traceback.format_exc())
             logger.debug("Only parsing column data from csv since csv data can't be parsed")
             return [pd.DataFrame(columns=parsed_columns)]
@@ -85,7 +85,7 @@ class DSVDataFrameReader(DataFrameReader):
 
         Returns the fixed chunk_list.
         """
-        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: F401
+        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: F401, PLC0415
 
         if not chunk_list:
             return chunk_list
@@ -102,9 +102,9 @@ class DSVDataFrameReader(DataFrameReader):
     def __init__(
         self,
         config_source: ConfigSource,
-        client: Optional[Any],
+        client: Optional[Any],  # noqa: UP045
         separator: str = CSV_SEPARATOR,
-        session: Optional[Any] = None,
+        session: Optional[Any] = None,  # noqa: UP045
     ):
         self.separator = separator
         super().__init__(config_source, client, session=session)
@@ -112,10 +112,10 @@ class DSVDataFrameReader(DataFrameReader):
     def read_from_pandas(
         self,
         path: str,
-        storage_options: Optional[Dict[str, Any]] = None,
-        compression: Optional[str] = None,
+        storage_options: Optional[Dict[str, Any]] = None,  # noqa: UP006, UP045
+        compression: Optional[str] = None,  # noqa: UP045
     ) -> DatalakeColumnWrapper:
-        import pandas as pd  # pylint: disable=import-outside-toplevel
+        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         # Determine compression based on file extension if not provided
         if compression is None and path.endswith(".gz"):
@@ -132,7 +132,7 @@ class DSVDataFrameReader(DataFrameReader):
                 escapechar="\\",
             ) as reader:
                 for chunks in reader:
-                    chunks = self._fix_malformed_quoted_chunk(chunk_list=[chunks], separator=self.separator)[0]
+                    chunks = self._fix_malformed_quoted_chunk(chunk_list=[chunks], separator=self.separator)[0]  # noqa: PLW2901
                     yield chunks
 
         return DatalakeColumnWrapper(dataframes=chunk_generator, columns=None, raw_data=None)
@@ -156,7 +156,7 @@ class DSVDataFrameReader(DataFrameReader):
 
     @_read_dsv_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
-        import pandas as pd  # pylint: disable=import-outside-toplevel
+        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         compression = "gzip" if key.endswith(".gz") else None
 

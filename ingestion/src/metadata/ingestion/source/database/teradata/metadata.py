@@ -14,7 +14,7 @@ Teradata source implementation.
 """
 
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy import text
 from teradatasqlalchemy.dialect import TeradataDialect
@@ -69,7 +69,7 @@ class TeradataSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection = config.serviceConnection.root.config
         if not isinstance(connection, TeradataConnection):
@@ -95,7 +95,7 @@ class TeradataSource(CommonDbSourceService):
                         continue
                     yield stored_procedure
                 except Exception as exc:
-                    logger.error(f"Error parsing Stored Procedure row: {row}")
+                    logger.error(f"Error parsing Stored Procedure row: {row}")  # noqa: TRY400
                     self.status.failed(
                         error=StackTraceError(
                             name=row._asdict().get("name", "UNKNOWN"),
