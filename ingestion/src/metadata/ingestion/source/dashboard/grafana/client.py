@@ -11,6 +11,7 @@
 """
 Grafana API client
 """
+
 from typing import List, Optional, Union
 
 import requests
@@ -70,24 +71,17 @@ class GrafanaApiClient:
             self._session.verify = self.verify_ssl
         return self._session
 
-    def _make_request(
-        self, method: str, endpoint: str, **kwargs
-    ) -> Optional[requests.Response]:
+    def _make_request(self, method: str, endpoint: str, **kwargs) -> Optional[requests.Response]:
         """Make HTTP request with error handling"""
         url = f"{self.host_port}/api{endpoint}"
 
         try:
-            response = self.session.request(
-                method=method, url=url, timeout=API_TIMEOUT, **kwargs
-            )
+            response = self.session.request(method=method, url=url, timeout=API_TIMEOUT, **kwargs)
             response.raise_for_status()
             return response
         except requests.exceptions.HTTPError as err:
             if err.response.status_code in (401, 403):
-                logger.warning(
-                    f"Permission denied for {endpoint}. "
-                    f"Status: {err.response.status_code}"
-                )
+                logger.warning(f"Permission denied for {endpoint}. Status: {err.response.status_code}")
             else:
                 logger.error(f"HTTP error for {endpoint}: {err}")
             return None
@@ -102,9 +96,7 @@ class GrafanaApiClient:
             folders = []
             page = 1
             while True:
-                response = self._make_request(
-                    "GET", "/folders", params={"page": page, "limit": self.page_size}
-                )
+                response = self._make_request("GET", "/folders", params={"page": page, "limit": self.page_size})
 
                 if not response:
                     break
@@ -125,9 +117,7 @@ class GrafanaApiClient:
         except Exception as err:
             logger.error(f"Error fetching folders from Grafana: {err}")
 
-    def search_dashboards(
-        self, folder_id: Optional[int] = None
-    ) -> List[GrafanaSearchResult]:
+    def search_dashboards(self, folder_id: Optional[int] = None) -> List[GrafanaSearchResult]:
         """Search for dashboards with optional folder filter"""
         try:
             dashboards = []
@@ -186,9 +176,7 @@ class GrafanaApiClient:
             logger.error(f"Error fetching datasources from Grafana: {err}")
             return []
 
-    def get_datasource(
-        self, datasource_id: Union[int, str]
-    ) -> Optional[GrafanaDatasource]:
+    def get_datasource(self, datasource_id: Union[int, str]) -> Optional[GrafanaDatasource]:
         """Get datasource by ID or UID"""
         try:
             # Try by ID first if it's numeric
@@ -196,9 +184,7 @@ class GrafanaApiClient:
                 response = self._make_request("GET", f"/datasources/{datasource_id}")
             else:
                 # Try by UID
-                response = self._make_request(
-                    "GET", f"/datasources/uid/{datasource_id}"
-                )
+                response = self._make_request("GET", f"/datasources/uid/{datasource_id}")
 
             if response:
                 return GrafanaDatasource(**response.json())

@@ -31,9 +31,7 @@ class RedshiftOrdinalPositionTest(TestCase):
         self.mock_self._load_domains = Mock(return_value={})
         self.mock_connection = Mock()
 
-    def _create_mock_column(
-        self, name, format_type, attnum, distkey=False, sortkey=0, encode="none"
-    ):
+    def _create_mock_column(self, name, format_type, attnum, distkey=False, sortkey=0, encode="none"):
         """Helper to create a mock column object"""
         col = Mock()
         col.name = name
@@ -64,9 +62,7 @@ class RedshiftOrdinalPositionTest(TestCase):
             }
         )
 
-        result = get_columns(
-            self.mock_self, self.mock_connection, "test_table", schema="public"
-        )
+        result = get_columns(self.mock_self, self.mock_connection, "test_table", schema="public")
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["name"], "id")
@@ -78,9 +74,7 @@ class RedshiftOrdinalPositionTest(TestCase):
             self._create_mock_column("id", "bigint", attnum=1),
             self._create_mock_column("name", "character varying(256)", attnum=2),
             self._create_mock_column("email", "character varying(256)", attnum=3),
-            self._create_mock_column(
-                "created_at", "timestamp without time zone", attnum=4
-            ),
+            self._create_mock_column("created_at", "timestamp without time zone", attnum=4),
         ]
         self.mock_self._get_redshift_columns = Mock(return_value=mock_cols)
 
@@ -96,9 +90,7 @@ class RedshiftOrdinalPositionTest(TestCase):
 
         self.mock_self._get_column_info = Mock(side_effect=mock_column_info)
 
-        result = get_columns(
-            self.mock_self, self.mock_connection, "users", schema="public"
-        )
+        result = get_columns(self.mock_self, self.mock_connection, "users", schema="public")
 
         self.assertEqual(len(result), 4)
         self.assertEqual(result[0]["name"], "id")
@@ -123,9 +115,7 @@ class RedshiftOrdinalPositionTest(TestCase):
             self._create_mock_column("char_col", "character(10)", attnum=8),
             self._create_mock_column("varchar_col", "character varying(256)", attnum=9),
             self._create_mock_column("date_col", "date", attnum=10),
-            self._create_mock_column(
-                "timestamp_col", "timestamp without time zone", attnum=11
-            ),
+            self._create_mock_column("timestamp_col", "timestamp without time zone", attnum=11),
         ]
         self.mock_self._get_redshift_columns = Mock(return_value=mock_cols)
 
@@ -141,9 +131,7 @@ class RedshiftOrdinalPositionTest(TestCase):
 
         self.mock_self._get_column_info = Mock(side_effect=mock_column_info)
 
-        result = get_columns(
-            self.mock_self, self.mock_connection, "test_table", schema="public"
-        )
+        result = get_columns(self.mock_self, self.mock_connection, "test_table", schema="public")
 
         self.assertEqual(len(result), 11)
         for idx, column in enumerate(result, start=1):
@@ -169,9 +157,7 @@ class RedshiftOrdinalPositionTest(TestCase):
 
         self.mock_self._get_column_info = Mock(side_effect=mock_column_info)
 
-        result = get_columns(
-            self.mock_self, self.mock_connection, "test_table", schema="public"
-        )
+        result = get_columns(self.mock_self, self.mock_connection, "test_table", schema="public")
 
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0]["ordinal_position"], 1)
@@ -183,9 +169,7 @@ class RedshiftOrdinalPositionTest(TestCase):
         """Test ordinal position with sortkey columns"""
         mock_cols = [
             self._create_mock_column("id", "integer", attnum=1, sortkey=1),
-            self._create_mock_column(
-                "created_at", "timestamp without time zone", attnum=2, sortkey=2
-            ),
+            self._create_mock_column("created_at", "timestamp without time zone", attnum=2, sortkey=2),
             self._create_mock_column("name", "character varying(256)", attnum=3),
         ]
         self.mock_self._get_redshift_columns = Mock(return_value=mock_cols)
@@ -202,9 +186,7 @@ class RedshiftOrdinalPositionTest(TestCase):
 
         self.mock_self._get_column_info = Mock(side_effect=mock_column_info)
 
-        result = get_columns(
-            self.mock_self, self.mock_connection, "test_table", schema="public"
-        )
+        result = get_columns(self.mock_self, self.mock_connection, "test_table", schema="public")
 
         self.assertEqual(len(result), 3)
         self.assertEqual(result[0]["ordinal_position"], 1)
@@ -218,12 +200,8 @@ class RedshiftOrdinalPositionTest(TestCase):
         """Test ordinal position with column encoding"""
         mock_cols = [
             self._create_mock_column("id", "integer", attnum=1, encode="az64"),
-            self._create_mock_column(
-                "name", "character varying(256)", attnum=2, encode="lzo"
-            ),
-            self._create_mock_column(
-                "data", "character varying(1000)", attnum=3, encode="none"
-            ),
+            self._create_mock_column("name", "character varying(256)", attnum=2, encode="lzo"),
+            self._create_mock_column("data", "character varying(1000)", attnum=3, encode="none"),
         ]
         self.mock_self._get_redshift_columns = Mock(return_value=mock_cols)
 
@@ -243,9 +221,7 @@ class RedshiftOrdinalPositionTest(TestCase):
 
         self.mock_self._get_column_info = Mock(side_effect=mock_column_info)
 
-        result = get_columns(
-            self.mock_self, self.mock_connection, "test_table", schema="public"
-        )
+        result = get_columns(self.mock_self, self.mock_connection, "test_table", schema="public")
 
         self.assertEqual(len(result), 3)
         self.assertEqual(result[0]["ordinal_position"], 1)
@@ -259,9 +235,7 @@ class RedshiftOrdinalPositionTest(TestCase):
         """Test handling of empty column list"""
         self.mock_self._get_redshift_columns = Mock(return_value=[])
 
-        result = get_columns(
-            self.mock_self, self.mock_connection, "test_table", schema="public"
-        )
+        result = get_columns(self.mock_self, self.mock_connection, "test_table", schema="public")
 
         self.assertEqual(len(result), 0)
 
@@ -281,9 +255,7 @@ class RedshiftOrdinalPositionTest(TestCase):
             }
         )
 
-        result = get_columns(
-            self.mock_self, self.mock_connection, "test_table", schema="public"
-        )
+        result = get_columns(self.mock_self, self.mock_connection, "test_table", schema="public")
 
         self.assertEqual(len(result), 1)
         self.assertIn("ordinal_position", result[0])
@@ -310,9 +282,7 @@ class RedshiftOrdinalPositionTest(TestCase):
 
         self.mock_self._get_column_info = Mock(side_effect=mock_column_info)
 
-        result = get_columns(
-            self.mock_self, self.mock_connection, "test_table", schema="public"
-        )
+        result = get_columns(self.mock_self, self.mock_connection, "test_table", schema="public")
 
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0]["ordinal_position"], 1)
@@ -342,9 +312,7 @@ class RedshiftOrdinalPositionTest(TestCase):
 
         self.mock_self._get_column_info = Mock(side_effect=mock_column_info)
 
-        result = get_columns(
-            self.mock_self, self.mock_connection, "test_table", schema="public"
-        )
+        result = get_columns(self.mock_self, self.mock_connection, "test_table", schema="public")
 
         self.assertEqual(len(result), 4)
         self.assertEqual(result[0]["name"], "z_column")
@@ -360,9 +328,7 @@ class RedshiftOrdinalPositionTest(TestCase):
         """Test ordinal position when columns have comments"""
         mock_col1 = self._create_mock_column("id", "bigint", attnum=1)
         mock_col1.comment = "Primary key identifier"
-        mock_col2 = self._create_mock_column(
-            "email", "character varying(256)", attnum=2
-        )
+        mock_col2 = self._create_mock_column("email", "character varying(256)", attnum=2)
         mock_col2.comment = "User email address"
         mock_cols = [mock_col1, mock_col2]
         self.mock_self._get_redshift_columns = Mock(return_value=mock_cols)
@@ -380,9 +346,7 @@ class RedshiftOrdinalPositionTest(TestCase):
 
         self.mock_self._get_column_info = Mock(side_effect=mock_column_info)
 
-        result = get_columns(
-            self.mock_self, self.mock_connection, "test_table", schema="public"
-        )
+        result = get_columns(self.mock_self, self.mock_connection, "test_table", schema="public")
 
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0]["ordinal_position"], 1)
@@ -393,9 +357,7 @@ class RedshiftOrdinalPositionTest(TestCase):
     def test_ordinal_position_combined_features(self):
         """Test ordinal position with combined distkey, sortkey, and encoding"""
         mock_cols = [
-            self._create_mock_column(
-                "id", "integer", attnum=1, distkey=True, sortkey=1, encode="az64"
-            ),
+            self._create_mock_column("id", "integer", attnum=1, distkey=True, sortkey=1, encode="az64"),
             self._create_mock_column(
                 "created_at",
                 "timestamp without time zone",
@@ -403,9 +365,7 @@ class RedshiftOrdinalPositionTest(TestCase):
                 sortkey=2,
                 encode="az64",
             ),
-            self._create_mock_column(
-                "name", "character varying(256)", attnum=3, encode="lzo"
-            ),
+            self._create_mock_column("name", "character varying(256)", attnum=3, encode="lzo"),
         ]
         self.mock_self._get_redshift_columns = Mock(return_value=mock_cols)
 
@@ -425,9 +385,7 @@ class RedshiftOrdinalPositionTest(TestCase):
 
         self.mock_self._get_column_info = Mock(side_effect=mock_column_info)
 
-        result = get_columns(
-            self.mock_self, self.mock_connection, "test_table", schema="public"
-        )
+        result = get_columns(self.mock_self, self.mock_connection, "test_table", schema="public")
 
         self.assertEqual(len(result), 3)
         self.assertEqual(result[0]["ordinal_position"], 1)

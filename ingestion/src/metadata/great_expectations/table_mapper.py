@@ -11,6 +11,7 @@
 """
 Handles the TableMapper for the GX Action.
 """
+
 import logging
 from enum import Enum, auto
 from typing import Dict, Optional
@@ -19,9 +20,7 @@ from pydantic import BaseModel, ValidationError
 
 from metadata.models.base import DictModel
 
-logger = logging.getLogger(
-    "great_expectations.validation_operators.validation_operators.openmetadata"
-)
+logger = logging.getLogger("great_expectations.validation_operators.validation_operators.openmetadata")
 
 
 class TablePart(Enum):
@@ -86,15 +85,10 @@ class TableMapper:
 
         self.expectation_suite_table_config_map = expectation_suite_table_config_map
 
-    def get_part_name(
-        self, part: TablePart, expectation_suite_name: Optional[str] = None
-    ):
+    def get_part_name(self, part: TablePart, expectation_suite_name: Optional[str] = None):
         table_config = self.default
         if self.expectation_suite_table_config_map and expectation_suite_name:
-            table_config = (
-                self.expectation_suite_table_config_map.get(expectation_suite_name)
-                or self.default
-            )
+            table_config = self.expectation_suite_table_config_map.get(expectation_suite_name) or self.default
 
         match part:
             case TablePart.DATABASE:

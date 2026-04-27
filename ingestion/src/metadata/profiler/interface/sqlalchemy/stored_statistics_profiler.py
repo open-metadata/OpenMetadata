@@ -39,19 +39,11 @@ class StoredStatisticsSource(Root):
         """Statistic metrics that are found in system tables. Different for each database."""
         return set()
 
-    def get_column_statistics(
-        self, metric: List[Metrics], schema: str, table_name: Table, column: str
-    ) -> dict:
-        raise NotImplementedError(
-            "You used a connector that does not support using statistics tables."
-        )
+    def get_column_statistics(self, metric: List[Metrics], schema: str, table_name: Table, column: str) -> dict:
+        raise NotImplementedError("You used a connector that does not support using statistics tables.")
 
-    def get_table_statistics(
-        self, metric: List[Metrics], schema: str, table_name: Table
-    ) -> dict:
-        raise NotImplementedError(
-            "You used a connector that does not support using statistics tables."
-        )
+    def get_table_statistics(self, metric: List[Metrics], schema: str, table_name: Table) -> dict:
+        raise NotImplementedError("You used a connector that does not support using statistics tables.")
 
 
 class ProfilerWithStatistics(SQAProfilerInterface, StoredStatisticsSource):
@@ -87,11 +79,7 @@ class ProfilerWithStatistics(SQAProfilerInterface, StoredStatisticsSource):
                 table_name,
                 column.name,
             )
-            result.update(
-                super().get_column_statistics(
-                    stat_metrics, schema, table_name, column.name
-                )
-            )
+            result.update(super().get_column_statistics(stat_metrics, schema, table_name, column.name))
         result.update(
             super()._compute_static_metrics(
                 metrics,
@@ -121,9 +109,7 @@ class ProfilerWithStatistics(SQAProfilerInterface, StoredStatisticsSource):
             schema = runner.schema_name
             table_name = runner.table_name
             logger.debug("Geting statistics for table: %s.%s", schema, table_name)
-            result.update(
-                super().get_table_statistics(stat_metrics, schema, table_name)
-            )
+            result.update(super().get_table_statistics(stat_metrics, schema, table_name))
         super_table_metrics = super()._compute_table_metrics(
             metrics,
             runner,
@@ -137,9 +123,7 @@ class ProfilerWithStatistics(SQAProfilerInterface, StoredStatisticsSource):
 
     def get_hybrid_metrics(self, column: Column, metric: Metric, column_results: Dict):
         # this metrics might have been computed in a previous step
-        return column_results.get(metric.name()) or super().get_hybrid_metrics(
-            column, metric, column_results
-        )
+        return column_results.get(metric.name()) or super().get_hybrid_metrics(column, metric, column_results)
 
     def is_statistic_metric(self, metric: Metric) -> bool:
         return metric.name() in {m.name for m in super().get_statistics_metrics()}

@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Table test
 """
+
 from copy import deepcopy
 from datetime import datetime, timezone
 from typing import List
@@ -139,9 +140,7 @@ def test_schema(metadata, test_database):
     yield schema
 
     # Cleanup - recursive to delete any child tables
-    metadata.delete(
-        entity=DatabaseSchema, entity_id=schema.id, recursive=True, hard_delete=True
-    )
+    metadata.delete(entity=DatabaseSchema, entity_id=schema.id, recursive=True, hard_delete=True)
 
 
 @pytest.fixture
@@ -174,9 +173,7 @@ class TestOMetaTableAPI:
     - create_user: User factory (function scope)
     """
 
-    def test_create(
-        self, metadata, test_schema, table_request, expected_fqn, create_table
-    ):
+    def test_create(self, metadata, test_schema, table_request, expected_fqn, create_table):
         """
         We can create a Table and we receive it back as Entity
         """
@@ -224,9 +221,7 @@ class TestOMetaTableAPI:
         res = metadata.create_or_update(data=updated_entity)
 
         # Verify update
-        assert (
-            res.databaseSchema.fullyQualifiedName == test_schema.fullyQualifiedName.root
-        )
+        assert res.databaseSchema.fullyQualifiedName == test_schema.fullyQualifiedName.root
         assert res_create.id == res.id
         assert res.owners.root[0].id == user.id
 
@@ -256,9 +251,7 @@ class TestOMetaTableAPI:
 
         assert res_name.id == res.id
 
-    def test_list(
-        self, metadata, database_service, test_database, table_request, create_table
-    ):
+    def test_list(self, metadata, database_service, test_database, table_request, create_table):
         """
         We can list all our Tables
         """
@@ -266,18 +259,14 @@ class TestOMetaTableAPI:
 
         res = metadata.list_entities(
             entity=Table,
-            params={
-                "database": f"{database_service.name.root}.{test_database.name.root}"
-            },
+            params={"database": f"{database_service.name.root}.{test_database.name.root}"},
         )
 
         # Fetch our test Table. We have already inserted it, so we should find it
         data = next(iter(ent for ent in res.entities if ent.name == created.name), None)
         assert data is not None
 
-    def test_list_all_and_paginate(
-        self, metadata, database_service, test_database, table_request, create_table
-    ):
+    def test_list_all_and_paginate(self, metadata, database_service, test_database, table_request, create_table):
         """
         Validate generator utility to fetch all tables
         """
@@ -289,16 +278,12 @@ class TestOMetaTableAPI:
         db_fqn = f"{database_service.name.root}.{test_database.name.root}"
         db_filter = {"database": db_fqn}
 
-        all_entities = metadata.list_all_entities(
-            entity=Table, limit=2, params=db_filter
-        )
+        all_entities = metadata.list_all_entities(entity=Table, limit=2, params=db_filter)
         assert len(list(all_entities)) >= 10
 
         entity_list = metadata.list_entities(entity=Table, limit=2, params=db_filter)
         assert len(entity_list.entities) == 2
-        after_entity_list = metadata.list_entities(
-            entity=Table, limit=2, after=entity_list.after, params=db_filter
-        )
+        after_entity_list = metadata.list_entities(entity=Table, limit=2, after=entity_list.after, params=db_filter)
         assert len(after_entity_list.entities) == 2
         before_entity_list = metadata.list_entities(
             entity=Table, limit=2, before=after_entity_list.before, params=db_filter
@@ -318,9 +303,7 @@ class TestOMetaTableAPI:
         deleted = metadata.get_by_name(entity=Table, fqn=expected_fqn)
         assert deleted is None
 
-    def test_ingest_sample_data(
-        self, metadata, table_request, expected_fqn, create_table
-    ):
+    def test_ingest_sample_data(self, metadata, table_request, expected_fqn, create_table):
         """
         We can ingest sample TableData
         """
@@ -337,9 +320,7 @@ class TestOMetaTableAPI:
         res_sample = metadata.get_sample_data(table=res).sampleData
         assert res_sample == sample_data
 
-    def test_patch_table_certification(
-        self, metadata, table_request, expected_fqn, create_table
-    ):
+    def test_patch_table_certification(self, metadata, table_request, expected_fqn, create_table):
         """
         We can patch a Table with certification data
         """
@@ -373,34 +354,22 @@ class TestOMetaTableAPI:
         # Patch the table with certification
         destination = res.model_copy(deep=True)
         destination.certification = certification
-        patched_table = metadata.patch(
-            entity=Table, source=res, destination=destination
-        )
+        patched_table = metadata.patch(entity=Table, source=res, destination=destination)
 
         # Verify certification was applied
         assert patched_table.certification is not None
-        assert (
-            patched_table.certification.tagLabel.tagFQN.root == "Certification.Bronze"
-        )
+        assert patched_table.certification.tagLabel.tagFQN.root == "Certification.Bronze"
         assert patched_table.certification.tagLabel.name == "Bronze"
         current_time_ms = int(datetime.now().timestamp() * 1000)
-        assert (
-            abs(patched_table.certification.appliedDate.root - current_time_ms) < 60000
-        )
+        assert abs(patched_table.certification.appliedDate.root - current_time_ms) < 60000
         assert patched_table.certification.expiryDate is not None
 
         # Retrieve the table again and verify certification persists
-        retrieved_table = metadata.get_by_name(
-            entity=Table, fqn=expected_fqn, fields=["certification"]
-        )
+        retrieved_table = metadata.get_by_name(entity=Table, fqn=expected_fqn, fields=["certification"])
         assert retrieved_table.certification is not None
-        assert (
-            retrieved_table.certification.tagLabel.tagFQN.root == "Certification.Bronze"
-        )
+        assert retrieved_table.certification.tagLabel.tagFQN.root == "Certification.Bronze"
 
-    def test_ingest_table_profile_data(
-        self, metadata, table_request, expected_fqn, create_table
-    ):
+    def test_ingest_table_profile_data(self, metadata, table_request, expected_fqn, create_table):
         """
         We can ingest profile data TableProfile
         """
@@ -453,14 +422,10 @@ class TestOMetaTableAPI:
         assert table.profile.columnCount == table_profile.columnCount
         assert table.profile.rowCount == table_profile.rowCount
 
-        res_column_profile = next(
-            (col.profile for col in table.columns if col.name.root == "id")
-        )
+        res_column_profile = next((col.profile for col in table.columns if col.name.root == "id"))
         assert res_column_profile == column_profile[0]
 
-    def test_publish_table_usage(
-        self, metadata, table_request, expected_fqn, create_table
-    ):
+    def test_publish_table_usage(self, metadata, table_request, expected_fqn, create_table):
         """
         We can POST usage data for a Table
         """
@@ -472,9 +437,7 @@ class TestOMetaTableAPI:
 
         metadata.publish_table_usage(res, usage)
 
-    def test_publish_frequently_joined_with(
-        self, metadata, test_schema, table_request, expected_fqn, create_table
-    ):
+    def test_publish_frequently_joined_with(self, metadata, test_schema, table_request, expected_fqn, create_table):
         """
         We can PUT freq Table JOINs
         """
@@ -546,9 +509,7 @@ class TestOMetaTableAPI:
         )
 
         metadata.ingest_entity_queries_data(entity=res, queries=[query_no_user])
-        table_with_query: List[Query] = metadata.get_entity_queries(
-            res.id, fields=["*"]
-        )
+        table_with_query: List[Query] = metadata.get_entity_queries(res.id, fields=["*"])
 
         assert len(table_with_query) == 1
         assert table_with_query[0].query == query_no_user.query
@@ -563,17 +524,11 @@ class TestOMetaTableAPI:
         )
 
         metadata.ingest_entity_queries_data(entity=res, queries=[query_with_user])
-        table_with_query: List[Query] = metadata.get_entity_queries(
-            res.id, fields=["*"]
-        )
+        table_with_query: List[Query] = metadata.get_entity_queries(res.id, fields=["*"])
 
         assert len(table_with_query) == 2
         query_with_owner = next(
-            (
-                query
-                for query in table_with_query
-                if query.query == query_with_user.query
-            ),
+            (query for query in table_with_query if query.query == query_with_user.query),
             None,
         )
         assert len(query_with_owner.users) == 1
@@ -595,9 +550,7 @@ class TestOMetaTableAPI:
         """
         created = create_table(table_request)
 
-        res = metadata.get_entity_version(
-            entity=Table, entity_id=created.id.root, version=0.1
-        )
+        res = metadata.get_entity_version(entity=Table, entity_id=created.id.root, version=0.1)
 
         # Check we get the correct version requested and the correct entity ID
         assert res.version.root == 0.1
@@ -608,15 +561,11 @@ class TestOMetaTableAPI:
         Test retrieving EntityReference for a table
         """
         res = create_table(table_request)
-        entity_ref = metadata.get_entity_reference(
-            entity=Table, fqn=res.fullyQualifiedName
-        )
+        entity_ref = metadata.get_entity_reference(entity=Table, fqn=res.fullyQualifiedName)
 
         assert res.id == entity_ref.id
 
-    def test_update_profile_sample(
-        self, metadata, table_request, expected_fqn, create_table
-    ):
+    def test_update_profile_sample(self, metadata, table_request, expected_fqn, create_table):
         """
         We can safely update the profile sample %
         """
@@ -626,19 +575,12 @@ class TestOMetaTableAPI:
         metadata._create_or_update_table_profiler_config(
             table.id,
             table_profiler_config=TableProfilerConfig(
-                profileSampleConfig=ProfileSampleConfig(
-                    config=StaticSamplingConfig(profileSample=50.0)
-                )
+                profileSampleConfig=ProfileSampleConfig(config=StaticSamplingConfig(profileSample=50.0))
             ),
         )
 
-        stored = metadata.get_by_name(
-            entity=Table, fqn=table.fullyQualifiedName, fields=["tableProfilerConfig"]
-        )
-        assert (
-            stored.tableProfilerConfig.profileSampleConfig.root.config.profileSample
-            == 50.0
-        )
+        stored = metadata.get_by_name(entity=Table, fqn=table.fullyQualifiedName, fields=["tableProfilerConfig"])
+        assert stored.tableProfilerConfig.profileSampleConfig.root.config.profileSample == 50.0
 
     def test_list_w_skip_on_failure(self, metadata):
         """
@@ -666,9 +608,7 @@ class TestOMetaTableAPI:
                 list(res)
 
         with patch.object(REST, "get", return_value=BAD_RESPONSE):
-            res = metadata.list_all_entities(
-                entity=Table, limit=1, skip_on_failure=True
-            )
+            res = metadata.list_all_entities(entity=Table, limit=1, skip_on_failure=True)
 
             # We should have 2 tables, the 3rd one is broken and should be skipped
             assert len(list(res)) == 2
@@ -684,9 +624,7 @@ class TestOMetaTableAPI:
             )
         )
 
-        res: Table = metadata.get_by_name(
-            entity=Table, fqn=new_table.fullyQualifiedName
-        )
+        res: Table = metadata.get_by_name(entity=Table, fqn=new_table.fullyQualifiedName)
 
         assert res.name == name
 
@@ -704,9 +642,7 @@ class TestOMetaTableAPI:
                 reference=test_schema.fullyQualifiedName,
             )
         )
-        sample_data = TableData(
-            columns=["id"], rows=[[b"data\x00\x01\x02\x8e\xba\xab\xf0"]]
-        )
+        sample_data = TableData(columns=["id"], rows=[[b"data\x00\x01\x02\x8e\xba\xab\xf0"]])
         res = metadata.ingest_table_sample_data(table, sample_data)
         assert res == sample_data
 

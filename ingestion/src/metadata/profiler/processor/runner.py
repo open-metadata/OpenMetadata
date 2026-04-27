@@ -16,6 +16,7 @@ the session.
 This is useful to centralise the running logic
 and manage behavior such as timeouts.
 """
+
 from typing import TYPE_CHECKING, Callable, Dict, Iterator, Optional, Union
 
 from sqlalchemy import Table, text
@@ -221,11 +222,7 @@ class QueryRunner:
         """
         filter_ = get_query_filter_for_runner(kwargs)
         group_by_ = get_query_group_by_for_runner(kwargs)
-        user_query = (
-            text(f"{self.profile_sample_query}")
-            .columns(*self.raw_dataset.__table__.c)
-            .subquery()
-        )
+        user_query = text(f"{self.profile_sample_query}").columns(*self.raw_dataset.__table__.c).subquery()
 
         query = self._build_query(*entities, **kwargs).select_from(user_query)
 

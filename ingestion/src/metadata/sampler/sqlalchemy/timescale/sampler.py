@@ -13,6 +13,7 @@ TimescaleDB-aware sampler that restricts profiling to uncompressed chunks
 instead of scanning the entire hypertable (including compressed data that
 requires expensive decompression).
 """
+
 from datetime import datetime
 from typing import Dict, Optional, Union
 
@@ -113,28 +114,18 @@ class TimescaleSampler(PostgresSampler):
             with self.session_factory() as session:
                 params = {"schema": schema_name, "table": table_name}
 
-                ht_result = session.execute(
-                    text(TIMESCALE_GET_TIME_DIMENSION), params
-                ).first()
+                ht_result = session.execute(text(TIMESCALE_GET_TIME_DIMENSION), params).first()
 
                 if not ht_result:
                     return
 
                 time_column = ht_result[0]
 
-                comp_result = session.execute(
-                    text(TIMESCALE_GET_COMPRESSION_INFO), params
-                ).first()
+                comp_result = session.execute(text(TIMESCALE_GET_COMPRESSION_INFO), params).first()
 
-                has_compressed = (
-                    comp_result.has_compressed
-                    if comp_result and comp_result.has_compressed
-                    else False
-                )
+                has_compressed = comp_result.has_compressed if comp_result and comp_result.has_compressed else False
                 boundary_ts = (
-                    comp_result.uncompressed_boundary
-                    if comp_result and comp_result.uncompressed_boundary
-                    else None
+                    comp_result.uncompressed_boundary if comp_result and comp_result.uncompressed_boundary else None
                 )
 
                 self._hypertable_meta = HypertableMeta(
@@ -151,18 +142,14 @@ class TimescaleSampler(PostgresSampler):
 
         except Exception:
             logger.debug(
-                "Could not detect hypertable info for %s, "
-                "falling back to standard PostgreSQL sampling",
+                "Could not detect hypertable info for %s, falling back to standard PostgreSQL sampling",
                 self.raw_dataset.__tablename__,
             )
 
     def _has_compressed_chunks(self) -> bool:
         """Return True only when the hypertable has at least one compressed chunk."""
         self._get_hypertable_sampling_boundary()
-        return (
-            self._hypertable_meta is not None
-            and self._hypertable_meta.has_compressed is True
-        )
+        return self._hypertable_meta is not None and self._hypertable_meta.has_compressed is True
 
     def _get_uncompressed_dataset(self):
         """Return raw_dataset filtered to uncompressed chunks only.
@@ -176,8 +163,7 @@ class TimescaleSampler(PostgresSampler):
 
         if self._hypertable_meta.uncompressed_boundary is None:
             logger.debug(
-                "All chunks are compressed for %s — skipping uncompressed "
-                "filter, profiling will require decompression",
+                "All chunks are compressed for %s — skipping uncompressed filter, profiling will require decompression",
                 self.raw_dataset.__tablename__,
             )
             return self.raw_dataset

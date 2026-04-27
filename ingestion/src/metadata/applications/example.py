@@ -11,6 +11,7 @@
 """
 Example external application
 """
+
 from time import sleep
 from typing import Any
 
@@ -47,18 +48,14 @@ class HelloPipelines(AppRunner):
           jwtToken: "..."
     """
 
-    def __init__(
-        self, config: OpenMetadataApplicationConfig, metadata: OpenMetadata[Any, Any]
-    ):
+    def __init__(self, config: OpenMetadataApplicationConfig, metadata: OpenMetadata[Any, Any]):
         super().__init__(config, metadata)  # pyright: ignore [reportUnknownMemberType]
         try:
-            self.app_config: HelloPipelinesAppConfiguration = (
-                HelloPipelinesAppConfiguration.model_validate(self.app_config)
+            self.app_config: HelloPipelinesAppConfiguration = HelloPipelinesAppConfiguration.model_validate(
+                self.app_config
             )
         except Exception as e:
-            raise InvalidAppConfiguration(
-                f"Hello pipelines received invalid configuration: {e}"
-            )
+            raise InvalidAppConfiguration(f"Hello pipelines received invalid configuration: {e}")
 
     @property
     def name(self) -> str:

@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Models required for dbt 
+Models required for dbt
 """
 
 from typing import Any, Dict, List, Optional

@@ -76,9 +76,7 @@ class RedshiftSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
 
     def _get_insert_queries(self, database: str, schema: str) -> List[QueryResult]:
         if self.redshift_instance_type == RedshiftInstanceType.PROVISIONED:
-            insert_query = REDSHIFT_SYSTEM_METRICS_QUERY_MAP[
-                RedshiftInstanceType.PROVISIONED
-            ].format(
+            insert_query = REDSHIFT_SYSTEM_METRICS_QUERY_MAP[RedshiftInstanceType.PROVISIONED].format(
                 alias="si",
                 join_type="LEFT",
                 condition="sd.query is null",
@@ -86,9 +84,7 @@ class RedshiftSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
                 schema=schema,
             )
         else:
-            insert_query = REDSHIFT_SYSTEM_METRICS_QUERY_MAP[
-                RedshiftInstanceType.SERVERLESS
-            ].format(
+            insert_query = REDSHIFT_SYSTEM_METRICS_QUERY_MAP[RedshiftInstanceType.SERVERLESS].format(
                 alias="si",
                 join_type="LEFT",
                 condition="sd.query_id is null",
@@ -103,9 +99,7 @@ class RedshiftSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
 
     def _get_delete_queries(self, database: str, schema: str) -> List[QueryResult]:
         if self.redshift_instance_type == RedshiftInstanceType.PROVISIONED:
-            delete_query = REDSHIFT_SYSTEM_METRICS_QUERY_MAP[
-                RedshiftInstanceType.PROVISIONED
-            ].format(
+            delete_query = REDSHIFT_SYSTEM_METRICS_QUERY_MAP[RedshiftInstanceType.PROVISIONED].format(
                 alias="sd",
                 join_type="RIGHT",
                 condition="si.query is null",
@@ -113,9 +107,7 @@ class RedshiftSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
                 schema=schema,
             )
         else:
-            delete_query = REDSHIFT_SYSTEM_METRICS_QUERY_MAP[
-                RedshiftInstanceType.SERVERLESS
-            ].format(
+            delete_query = REDSHIFT_SYSTEM_METRICS_QUERY_MAP[RedshiftInstanceType.SERVERLESS].format(
                 alias="sd",
                 join_type="RIGHT",
                 condition="si.query_id is null",
@@ -130,9 +122,7 @@ class RedshiftSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
 
     def _get_update_queries(self, database: str, schema: str) -> List[QueryResult]:
         if self.redshift_instance_type == RedshiftInstanceType.PROVISIONED:
-            update_query = REDSHIFT_SYSTEM_METRICS_QUERY_MAP[
-                RedshiftInstanceType.PROVISIONED
-            ].format(
+            update_query = REDSHIFT_SYSTEM_METRICS_QUERY_MAP[RedshiftInstanceType.PROVISIONED].format(
                 alias="si",
                 join_type="INNER",
                 condition="sd.query is not null",
@@ -140,9 +130,7 @@ class RedshiftSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
                 schema=schema,
             )
         else:
-            update_query = REDSHIFT_SYSTEM_METRICS_QUERY_MAP[
-                RedshiftInstanceType.SERVERLESS
-            ].format(
+            update_query = REDSHIFT_SYSTEM_METRICS_QUERY_MAP[RedshiftInstanceType.SERVERLESS].format(
                 alias="si",
                 join_type="INNER",
                 condition="sd.query_id is not null",

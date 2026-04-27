@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from functools import partial
 from typing import Optional
 
@@ -65,9 +66,7 @@ def test_connection(
 
     holder = SchemaHolder()
 
-    def test_get_databases(
-        client_: MongoClient, holder_: SchemaHolder, database_name: Optional[str] = None
-    ):
+    def test_get_databases(client_: MongoClient, holder_: SchemaHolder, database_name: Optional[str] = None):
         # If database name is provided, use it directly instead of listing all databases
         if database_name:
             holder_.database = database_name
@@ -82,9 +81,7 @@ def test_connection(
 
     test_fn = {
         "CheckAccess": client.server_info,
-        "GetDatabases": partial(
-            test_get_databases, client, holder, service_connection.databaseSchema
-        ),
+        "GetDatabases": partial(test_get_databases, client, holder, service_connection.databaseSchema),
         "GetCollections": partial(test_get_collections, client, holder),
     }
 

@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Custom Properties Test
 """
+
 from typing import Dict
 
 import pytest
@@ -69,9 +70,7 @@ EXPECTED_CUSTOM_PROPERTIES = [
             "type": "type",
             "name": "enum",
         },
-        "customPropertyConfig": {
-            "config": {"values": ["D1", "D2", "D3"], "multiSelect": True}
-        },
+        "customPropertyConfig": {"config": {"values": ["D1", "D2", "D3"], "multiSelect": True}},
     },
     {
         "name": "Rating",
@@ -97,9 +96,7 @@ def _create_custom_properties(metadata):
             createCustomPropertyRequest=CreateCustomPropertyRequest(
                 name="TableSize",
                 description="Size of the Table",
-                propertyType=metadata.get_property_type_ref(
-                    CustomPropertyDataTypes.STRING
-                ),
+                propertyType=metadata.get_property_type_ref(CustomPropertyDataTypes.STRING),
             ),
         )
     )
@@ -110,9 +107,7 @@ def _create_custom_properties(metadata):
             createCustomPropertyRequest=CreateCustomPropertyRequest(
                 name="DataQuality",
                 description="Quality Details of a Table",
-                propertyType=metadata.get_property_type_ref(
-                    CustomPropertyDataTypes.MARKDOWN
-                ),
+                propertyType=metadata.get_property_type_ref(CustomPropertyDataTypes.MARKDOWN),
             ),
         )
     )
@@ -123,9 +118,7 @@ def _create_custom_properties(metadata):
             createCustomPropertyRequest=CreateCustomPropertyRequest(
                 name="SchemaAge",
                 description="Age in years of a Schema",
-                propertyType=metadata.get_property_type_ref(
-                    CustomPropertyDataTypes.INTEGER
-                ),
+                propertyType=metadata.get_property_type_ref(CustomPropertyDataTypes.INTEGER),
             ),
         )
     )
@@ -136,13 +129,9 @@ def _create_custom_properties(metadata):
             createCustomPropertyRequest=CreateCustomPropertyRequest(
                 name="Rating",
                 description="Rating of a table",
-                propertyType=metadata.get_property_type_ref(
-                    CustomPropertyDataTypes.ENUM
-                ),
+                propertyType=metadata.get_property_type_ref(CustomPropertyDataTypes.ENUM),
                 customPropertyConfig=CustomPropertyConfig(
-                    config=EnumConfig(
-                        multiSelect=False, values=["Good", "Average", "Bad"]
-                    )
+                    config=EnumConfig(multiSelect=False, values=["Good", "Average", "Bad"])
                 ),
             ),
         )
@@ -154,9 +143,7 @@ def _create_custom_properties(metadata):
             createCustomPropertyRequest=CreateCustomPropertyRequest(
                 name="Department",
                 description="Department of a table",
-                propertyType=metadata.get_property_type_ref(
-                    CustomPropertyDataTypes.ENUM
-                ),
+                propertyType=metadata.get_property_type_ref(CustomPropertyDataTypes.ENUM),
                 customPropertyConfig=CustomPropertyConfig(
                     config=EnumConfig(multiSelect=True, values=["D1", "D2", "D3"])
                 ),
@@ -170,9 +157,7 @@ def _create_custom_properties(metadata):
             createCustomPropertyRequest=CreateCustomPropertyRequest(
                 name="DataEngineers",
                 description="Data Engineers of a table",
-                propertyType=metadata.get_property_type_ref(
-                    CustomPropertyDataTypes.ENTITY_REFERENCE_LIST
-                ),
+                propertyType=metadata.get_property_type_ref(CustomPropertyDataTypes.ENTITY_REFERENCE_LIST),
                 customPropertyConfig=CustomPropertyConfig(
                     config=EntityTypes(root=[ENTITY_REFERENCE_TYPE_MAP[User.__name__]])
                 ),
@@ -189,9 +174,7 @@ def _create_date_time_custom_properties(metadata):
             createCustomPropertyRequest=CreateCustomPropertyRequest(
                 name="CreationDate",
                 description="Date when the table was created",
-                propertyType=metadata.get_property_type_ref(
-                    CustomPropertyDataTypes.DATE
-                ),
+                propertyType=metadata.get_property_type_ref(CustomPropertyDataTypes.DATE),
                 customPropertyConfig=CustomPropertyConfig(config=Format("yyyy-MM-dd")),
             ),
         )
@@ -203,12 +186,8 @@ def _create_date_time_custom_properties(metadata):
             createCustomPropertyRequest=CreateCustomPropertyRequest(
                 name="LastModifiedDateTime",
                 description="Date and time when the table was last modified",
-                propertyType=metadata.get_property_type_ref(
-                    CustomPropertyDataTypes.DATETIME
-                ),
-                customPropertyConfig=CustomPropertyConfig(
-                    config=Format("yyyy-MM-dd'T'HH:mm:ss'Z'")
-                ),
+                propertyType=metadata.get_property_type_ref(CustomPropertyDataTypes.DATETIME),
+                customPropertyConfig=CustomPropertyConfig(config=Format("yyyy-MM-dd'T'HH:mm:ss'Z'")),
             ),
         )
     )
@@ -219,9 +198,7 @@ def _create_date_time_custom_properties(metadata):
             createCustomPropertyRequest=CreateCustomPropertyRequest(
                 name="DailyBackupTime",
                 description="Time when daily backup occurs",
-                propertyType=metadata.get_property_type_ref(
-                    CustomPropertyDataTypes.TIME
-                ),
+                propertyType=metadata.get_property_type_ref(CustomPropertyDataTypes.TIME),
                 customPropertyConfig=CustomPropertyConfig(config=Format("HH:mm:ss")),
             ),
         )
@@ -343,9 +320,7 @@ class TestOMetaCustomPropertiesAPI:
         )
         assert res.extension.root["SchemaAge"] == extensions["SchemaAge"]
 
-    def test_add_custom_property_table(
-        self, metadata, cp_schema, cp_user_one_ref, cp_user_two_ref
-    ):
+    def test_add_custom_property_table(self, metadata, cp_schema, cp_user_one_ref, cp_user_two_ref):
         """
         Test to add the extension/custom property to the table
         """
@@ -376,12 +351,8 @@ class TestOMetaCustomPropertiesAPI:
         assert res.extension.root["TableSize"] == extensions["TableSize"]
         assert res.extension.root["Rating"] == extensions["Rating"]
         assert res.extension.root["Department"] == extensions["Department"]
-        assert res.extension.root["DataEngineers"][0]["id"] == str(
-            extensions["DataEngineers"][0].id.root
-        )
-        assert res.extension.root["DataEngineers"][1]["id"] == str(
-            extensions["DataEngineers"][1].id.root
-        )
+        assert res.extension.root["DataEngineers"][0]["id"] == str(extensions["DataEngineers"][0].id.root)
+        assert res.extension.root["DataEngineers"][1]["id"] == str(extensions["DataEngineers"][1].id.root)
 
     def test_all_custom_property_data_types(self, metadata):
         """
@@ -464,17 +435,15 @@ class TestOMetaCustomPropertiesAPI:
                 propertyType=metadata.get_property_type_ref(data_type),
             )
             if custom_property_config:
-                create_custom_property_request.customPropertyConfig = (
-                    CustomPropertyConfig(config=Format(custom_property_config))
+                create_custom_property_request.customPropertyConfig = CustomPropertyConfig(
+                    config=Format(custom_property_config)
                 )
             property_request = OMetaCustomProperties(
                 entity_type=Table,
                 createCustomPropertyRequest=create_custom_property_request,
             )
 
-            result = metadata.create_or_update_custom_property(
-                ometa_custom_property=property_request
-            )
+            result = metadata.create_or_update_custom_property(ometa_custom_property=property_request)
             assert result is not None
 
         custom_properties = metadata.get_entity_custom_properties(entity_type=Table)
@@ -539,18 +508,14 @@ class TestOMetaCustomPropertiesAPI:
         assert CustomPropertyDataTypes.TIMESTAMP.value == "timestamp"
         assert CustomPropertyDataTypes.ENUM.value == "enum"
         assert CustomPropertyDataTypes.ENTITY_REFERENCE.value == "entityReference"
-        assert (
-            CustomPropertyDataTypes.ENTITY_REFERENCE_LIST.value == "entityReferenceList"
-        )
+        assert CustomPropertyDataTypes.ENTITY_REFERENCE_LIST.value == "entityReferenceList"
 
     def test_custom_property_enum_backwards_compatibility(self, metadata):
         """
         Test that the enum values work correctly with property type references
         """
         date_type_ref = metadata.get_property_type_ref(CustomPropertyDataTypes.DATE)
-        datetime_type_ref = metadata.get_property_type_ref(
-            CustomPropertyDataTypes.DATETIME
-        )
+        datetime_type_ref = metadata.get_property_type_ref(CustomPropertyDataTypes.DATETIME)
         time_type_ref = metadata.get_property_type_ref(CustomPropertyDataTypes.TIME)
 
         assert date_type_ref is not None
@@ -591,26 +556,20 @@ class TestOMetaCustomPropertiesAPI:
                 CustomPropertyDataTypes.TIME,
             ]:
                 if data_type == CustomPropertyDataTypes.DATE:
-                    create_request.customPropertyConfig = CustomPropertyConfig(
-                        config=Format("yyyy-MM-dd")
-                    )
+                    create_request.customPropertyConfig = CustomPropertyConfig(config=Format("yyyy-MM-dd"))
                 elif data_type == CustomPropertyDataTypes.DATETIME:
                     create_request.customPropertyConfig = CustomPropertyConfig(
                         config=Format("yyyy-MM-dd'T'HH:mm:ss'Z'")
                     )
                 elif data_type == CustomPropertyDataTypes.TIME:
-                    create_request.customPropertyConfig = CustomPropertyConfig(
-                        config=Format("HH:mm:ss")
-                    )
+                    create_request.customPropertyConfig = CustomPropertyConfig(config=Format("HH:mm:ss"))
 
             property_request = OMetaCustomProperties(
                 entity_type=Table,
                 createCustomPropertyRequest=create_request,
             )
 
-            metadata.create_or_update_custom_property(
-                ometa_custom_property=property_request
-            )
+            metadata.create_or_update_custom_property(ometa_custom_property=property_request)
 
         extensions = {
             "Description": "This is a test table",
@@ -676,10 +635,7 @@ class TestOMetaCustomPropertiesAPI:
         )
 
         assert res.extension.root["CreationDate"] == extensions["CreationDate"]
-        assert (
-            res.extension.root["LastModifiedDateTime"]
-            == extensions["LastModifiedDateTime"]
-        )
+        assert res.extension.root["LastModifiedDateTime"] == extensions["LastModifiedDateTime"]
         assert res.extension.root["DailyBackupTime"] == extensions["DailyBackupTime"]
 
     def test_date_time_custom_properties(self, metadata):
@@ -690,16 +646,12 @@ class TestOMetaCustomPropertiesAPI:
 
         custom_properties = metadata.get_entity_custom_properties(entity_type=Table)
 
-        date_prop = next(
-            (cp for cp in custom_properties if cp["name"] == "CreationDate"), None
-        )
+        date_prop = next((cp for cp in custom_properties if cp["name"] == "CreationDate"), None)
         datetime_prop = next(
             (cp for cp in custom_properties if cp["name"] == "LastModifiedDateTime"),
             None,
         )
-        time_prop = next(
-            (cp for cp in custom_properties if cp["name"] == "DailyBackupTime"), None
-        )
+        time_prop = next((cp for cp in custom_properties if cp["name"] == "DailyBackupTime"), None)
 
         assert date_prop is not None
         assert datetime_prop is not None
@@ -723,15 +675,9 @@ class TestOMetaCustomPropertiesAPI:
                 if expected_custom_property["name"] == custom_property["name"]:
                     actual_custom_properties.append(custom_property)
                     assert custom_property["name"] == expected_custom_property["name"]
-                    assert (
-                        custom_property["description"]
-                        == expected_custom_property["description"]
-                    )
-                    assert custom_property.get(
+                    assert custom_property["description"] == expected_custom_property["description"]
+                    assert custom_property.get("customPropertyConfig") == expected_custom_property.get(
                         "customPropertyConfig"
-                    ) == expected_custom_property.get("customPropertyConfig")
-                    assert (
-                        custom_property["propertyType"]["name"]
-                        == expected_custom_property["propertyType"]["name"]
                     )
+                    assert custom_property["propertyType"]["name"] == expected_custom_property["propertyType"]["name"]
         assert len(actual_custom_properties) == len(EXPECTED_CUSTOM_PROPERTIES)

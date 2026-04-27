@@ -16,6 +16,7 @@ To run this we need OpenMetadata server up and running.
 
 No sample data is required beforehand
 """
+
 import pytest
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, Table
@@ -72,9 +73,7 @@ class TestDatalakeProfilerTestE2E:
         assert table_profile.entities
         assert column_profile.entities
 
-    def test_values_partitioned_datalake_profiler_workflow(
-        self, metadata, ingestion_config
-    ):
+    def test_values_partitioned_datalake_profiler_workflow(self, metadata, ingestion_config):
         """Test partitioned datalake profiler workflow"""
         ingestion_config["source"]["sourceConfig"]["config"].update(
             {
@@ -119,9 +118,7 @@ class TestDatalakeProfilerTestE2E:
         assert table_profile.rowCount == 1.0
         assert column_profile.valuesCount == 1.0
 
-    def test_datetime_partitioned_datalake_profiler_workflow(
-        self, ingestion_config, metadata
-    ):
+    def test_datetime_partitioned_datalake_profiler_workflow(self, ingestion_config, metadata):
         """Test partitioned datalake profiler workflow"""
         ingestion_config["source"]["sourceConfig"]["config"].update(
             {
@@ -166,9 +163,7 @@ class TestDatalakeProfilerTestE2E:
         assert table_profile.rowCount == 2.0
         assert column_profile.valuesCount == 2.0
 
-    def test_integer_range_partitioned_datalake_profiler_workflow(
-        self, ingestion_config, metadata
-    ):
+    def test_integer_range_partitioned_datalake_profiler_workflow(self, ingestion_config, metadata):
         """Test partitioned datalake profiler workflow"""
         ingestion_config["source"]["sourceConfig"]["config"].update(
             {
@@ -214,9 +209,7 @@ class TestDatalakeProfilerTestE2E:
         assert table_profile.rowCount == 2.0
         assert column_profile.valuesCount == 2.0
 
-    def test_datalake_profiler_workflow_with_custom_profiler_config(
-        self, metadata, ingestion_config
-    ):
+    def test_datalake_profiler_workflow_with_custom_profiler_config(self, metadata, ingestion_config):
         """Test custom profiler config return expected sample and metric computation"""
         profiler_metrics = [
             "min",
@@ -312,9 +305,7 @@ class TestDatalakeProfilerTestE2E:
             profile_type=ColumnProfile,
         ).entities
 
-        assert not [
-            p for p in first_name_profile if p.timestamp.root == latest_exc_timestamp
-        ]
+        assert not [p for p in first_name_profile if p.timestamp.root == latest_exc_timestamp]
 
         ingestion_config["source"]["sourceConfig"]["config"].update(
             {
@@ -332,6 +323,4 @@ class TestDatalakeProfilerTestE2E:
         assert status == WorkflowResultStatus.SUCCESS
 
         sample_data = metadata.get_sample_data(table)
-        assert sorted([c.root for c in sample_data.sampleData.columns]) == sorted(
-            ["id", "age"]
-        )
+        assert sorted([c.root for c in sample_data.sampleData.columns]) == sorted(["id", "age"])

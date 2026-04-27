@@ -12,6 +12,7 @@
 """
 AVG Metric definition
 """
+
 from functools import partial
 from typing import TYPE_CHECKING, Callable, NamedTuple, Optional
 
@@ -90,8 +91,7 @@ def _(element, compiler, **kw):
     # Check if the first clause is an instance of LenFn and its type is not in FLOAT_SET
     # or if the type of the first clause is date time
     if (
-        isinstance(first_clause, LenFn)
-        and type(first_clause.clauses.clauses[0].type) not in FLOAT_SET
+        isinstance(first_clause, LenFn) and type(first_clause.clauses.clauses[0].type) not in FLOAT_SET
     ) or is_date_time(first_clause.type):
         # If the condition is true, return the mean value of the column
         return f"avg({proc})"
@@ -127,9 +127,7 @@ class Mean(StaticMetric):
         if is_concatenable(self.col.type):
             return AvgFn(LenFn(column(self.col.name, self.col.type)))
 
-        logger.debug(
-            f"Don't know how to process type {self.col.type} when computing MEAN"
-        )
+        logger.debug(f"Don't know how to process type {self.col.type} when computing MEAN")
         return None
 
     # pylint: disable=import-outside-toplevel
@@ -143,32 +141,24 @@ class Mean(StaticMetric):
             try:
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:
-                logger.debug(
-                    f"Error while computing mean for column {self.col.name}: {err}"
-                )
+                logger.debug(f"Error while computing mean for column {self.col.name}: {err}")
                 return None
         mean = computation.aggregate_accumulator(accumulator)
 
         if mean is None:
-            logger.warning(
-                f"Don't know how to process type {self.col.type} when computing MEAN"
-            )
+            logger.warning(f"Don't know how to process type {self.col.type} when computing MEAN")
             return None
         return mean
 
     def get_pandas_computation(self) -> PandasComputation:
         return PandasComputation[SumAndCount, Optional[float]](
             create_accumulator=lambda: SumAndCount(0.0, 0),
-            update_accumulator=lambda acc, df: Mean.update_accumulator(
-                acc, df, self.col
-            ),
+            update_accumulator=lambda acc, df: Mean.update_accumulator(acc, df, self.col),
             aggregate_accumulator=Mean.aggregate_accumulator,
         )
 
     @staticmethod
-    def update_accumulator(
-        sum_and_count: SumAndCount, df: "pd.DataFrame", column
-    ) -> SumAndCount:
+    def update_accumulator(sum_and_count: SumAndCount, df: "pd.DataFrame", column) -> SumAndCount:
         """Optimized accumulator: maintains running sum and count (O(1) memory)
 
         Instead of storing per-chunk means, directly accumulates sum and count.

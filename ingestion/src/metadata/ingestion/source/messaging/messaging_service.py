@@ -74,9 +74,7 @@ class MessagingServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -91,9 +89,7 @@ class MessagingServiceTopology(ServiceTopology):
         children=["topic"],
         post_process=["mark_topics_as_deleted"],
     )
-    topic: Annotated[
-        TopologyNode, Field(description="Topic Processing Node")
-    ] = TopologyNode(
+    topic: Annotated[TopologyNode, Field(description="Topic Processing Node")] = TopologyNode(
         producer="get_topic",
         stages=[
             NodeStage(
@@ -128,7 +124,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: MessagingServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: MessagingConnection.model_fields["config"].annotation
+    service_connection: MessagingConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = MessagingServiceTopology()
     context = TopologyContextManager(topology)
@@ -143,9 +139,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.source_config: MessagingServiceMetadataPipeline = (
-            self.config.sourceConfig.config
-        )
+        self.source_config: MessagingServiceMetadataPipeline = self.config.sourceConfig.config
         self.service_connection = self.config.serviceConnection.root.config
         self.connection = get_connection(self.service_connection)
 
@@ -175,8 +169,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
             sample_data_config = cast(SampleDataIngestionConfig, sample_data_config)
             if not sample_data_config.storeSampleData:
                 logger.info(
-                    "Global profiler configuration disables storing "
-                    "of sample data. Overriding source configuration."
+                    "Global profiler configuration disables storing of sample data. Overriding source configuration."
                 )
                 return True
         except Exception as exc:
@@ -189,16 +182,12 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         Method to Get Messaging Entity
         """
 
-    def yield_topic_sample_data(
-        self, topic_details: Any
-    ) -> Iterable[Either[TopicSampleData]]:
+    def yield_topic_sample_data(self, topic_details: Any) -> Iterable[Either[TopicSampleData]]:
         """
         Method to Get Sample Data of Messaging Entity
         """
 
-    def yield_topic_lineage(
-        self, topic_details: Any
-    ) -> Iterable[Either[AddLineageRequest]]:
+    def yield_topic_lineage(self, topic_details: Any) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to Get Lineage for Messaging Entity.
         Override this method in subclasses to provide lineage information.
@@ -231,11 +220,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
             yield topic_details
 
     def yield_create_request_messaging_service(self, config: WorkflowSource):
-        yield Either(
-            right=self.metadata.get_create_service_from_source(
-                entity=MessagingService, config=config
-            )
-        )
+        yield Either(right=self.metadata.get_create_service_from_source(entity=MessagingService, config=config))
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
@@ -244,9 +229,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         """By default, nothing to prepare"""
 
     def test_connection(self) -> None:
-        test_connection_common(
-            self.metadata, self.connection_obj, self.service_connection
-        )
+        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def mark_topics_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the topics as deleted"""

@@ -86,23 +86,17 @@ class AlationsinkSource(Source):
         self.test_connection()
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AlationSinkConnection = config.serviceConnection.root.config
         if not isinstance(connection, AlationSinkConnection):
-            raise InvalidSourceException(
-                f"Expected AlationSinkConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected AlationSinkConnection, but got {connection}")
         return cls(config, metadata)
 
     def prepare(self):
         """Not required to implement"""
 
-    def create_datasource_request(
-        self, om_database: Database
-    ) -> Optional[CreateDatasourceRequest]:
+    def create_datasource_request(self, om_database: Database) -> Optional[CreateDatasourceRequest]:
         """
         Method to form the CreateDatasourceRequest object
         """
@@ -111,23 +105,15 @@ class AlationsinkSource(Source):
                 # We need to send a default fallback url because it is compulsory in the API
                 uri=model_str(om_database.sourceUrl) or DEFAULT_URL,
                 connector_id=self.connectors.get(
-                    SERVICE_TYPE_MAPPER.get(
-                        om_database.serviceType, "MySQL OCF Connector"
-                    ),
+                    SERVICE_TYPE_MAPPER.get(om_database.serviceType, "MySQL OCF Connector"),
                 ),
                 db_username="Test",
-                title=(
-                    om_database.displayName
-                    if om_database.displayName
-                    else model_str(om_database.name)
-                ),
+                title=(om_database.displayName if om_database.displayName else model_str(om_database.name)),
                 description=model_str(om_database.description),
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Failed to create datasource request for {model_str(om_database.name)}: {exc}"
-            )
+            logger.error(f"Failed to create datasource request for {model_str(om_database.name)}: {exc}")
         return None
 
     def create_schema_request(
@@ -141,18 +127,12 @@ class AlationsinkSource(Source):
                 key=fqn._build(  # pylint: disable=protected-access
                     str(alation_datasource_id), model_str(om_schema.name)
                 ),
-                title=(
-                    om_schema.displayName
-                    if om_schema.displayName
-                    else model_str(om_schema.name)
-                ),
+                title=(om_schema.displayName if om_schema.displayName else model_str(om_schema.name)),
                 description=model_str(om_schema.description),
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Failed to create schema request for {model_str(om_schema.name)}: {exc}"
-            )
+            logger.error(f"Failed to create schema request for {model_str(om_schema.name)}: {exc}")
         return None
 
     def create_table_request(
@@ -166,20 +146,14 @@ class AlationsinkSource(Source):
                 key=fqn._build(  # pylint: disable=protected-access
                     str(alation_datasource_id), schema_name, model_str(om_table.name)
                 ),
-                title=(
-                    om_table.displayName
-                    if om_table.displayName
-                    else model_str(om_table.name)
-                ),
+                title=(om_table.displayName if om_table.displayName else model_str(om_table.name)),
                 description=model_str(om_table.description),
                 table_type=TABLE_TYPE_MAPPER.get(om_table.tableType, "TABLE"),
                 sql=om_table.schemaDefinition,
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Failed to create table request for {model_str(om_table.name)}: {exc}"
-            )
+            logger.error(f"Failed to create table request for {model_str(om_table.name)}: {exc}")
         return None
 
     def _update_foreign_key(
@@ -195,27 +169,19 @@ class AlationsinkSource(Source):
         try:
             for table_constraint in table_constraints or []:
                 if table_constraint.constraintType == ConstraintType.FOREIGN_KEY:
-                    for i, constraint_column in enumerate(
-                        table_constraint.columns or []
-                    ):
+                    for i, constraint_column in enumerate(table_constraint.columns or []):
                         if constraint_column == model_str(om_column.name):
                             column_index.isForeignKey = True
                             # update the service name of OM with the alation datasource id in the column FQN
-                            splitted_col_fqn = fqn.split(
-                                model_str(table_constraint.referredColumns[i])
-                            )
+                            splitted_col_fqn = fqn.split(model_str(table_constraint.referredColumns[i]))
                             splitted_col_fqn[0] = str(alation_datasource_id)
-                            column_index.referencedColumnId = (
-                                fqn._build(  # pylint: disable=protected-access
-                                    *splitted_col_fqn
-                                )
+                            column_index.referencedColumnId = fqn._build(  # pylint: disable=protected-access
+                                *splitted_col_fqn
                             )
                             break
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to update foreign key for {model_str(om_column.name)}: {exc}"
-            )
+            logger.warning(f"Failed to update foreign key for {model_str(om_column.name)}: {exc}")
 
     def _get_column_index(
         self,
@@ -233,14 +199,10 @@ class AlationsinkSource(Source):
                 column_index.isPrimaryKey = True
 
             # Attach the foreign key
-            self._update_foreign_key(
-                alation_datasource_id, om_column, table_constraints, column_index
-            )
+            self._update_foreign_key(alation_datasource_id, om_column, table_constraints, column_index)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to get column index for {model_str(om_column.name)}: {exc}"
-            )
+            logger.warning(f"Failed to get column index for {model_str(om_column.name)}: {exc}")
         return column_index or None
 
     def _check_nullable_column(self, om_column: Column) -> Optional[bool]:
@@ -254,9 +216,7 @@ class AlationsinkSource(Source):
                 return True
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to check null type for {model_str(om_column.name)}: {exc}"
-            )
+            logger.warning(f"Failed to check null type for {model_str(om_column.name)}: {exc}")
         return None
 
     def create_column_request(
@@ -279,36 +239,20 @@ class AlationsinkSource(Source):
                     model_str(om_column.name),
                 ),
                 column_type=(
-                    om_column.dataTypeDisplay.lower()
-                    if om_column.dataTypeDisplay
-                    else om_column.dataType.value.lower()
+                    om_column.dataTypeDisplay.lower() if om_column.dataTypeDisplay else om_column.dataType.value.lower()
                 ),
-                title=(
-                    om_column.displayName
-                    if om_column.displayName
-                    else model_str(om_column.name)
-                ),
+                title=(om_column.displayName if om_column.displayName else model_str(om_column.name)),
                 description=model_str(om_column.description),
-                position=(
-                    str(om_column.ordinalPosition)
-                    if om_column.ordinalPosition
-                    else None
-                ),
-                index=self._get_column_index(
-                    alation_datasource_id, om_column, table_constraints
-                ),
+                position=(str(om_column.ordinalPosition) if om_column.ordinalPosition else None),
+                index=self._get_column_index(alation_datasource_id, om_column, table_constraints),
                 nullable=self._check_nullable_column(om_column),
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Failed to create column request for {model_str(om_column.name)}: {exc}"
-            )
+            logger.error(f"Failed to create column request for {model_str(om_column.name)}: {exc}")
         return None
 
-    def ingest_columns(
-        self, alation_datasource_id: int, schema_name: str, om_table: Table
-    ):
+    def ingest_columns(self, alation_datasource_id: int, schema_name: str, om_table: Table):
         """
         Method to ingest the columns
         """
@@ -326,14 +270,10 @@ class AlationsinkSource(Source):
                     create_requests.root.append(create_column_request)
             if create_requests.root:
                 # Make the API call to write the columns to Alation
-                self.alation_sink_client.write_entities(
-                    alation_datasource_id, create_requests
-                )
+                self.alation_sink_client.write_entities(alation_datasource_id, create_requests)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unable to ingest columns for table [{model_str(om_table.name)}]: {exc}"
-            )
+            logger.error(f"Unable to ingest columns for table [{model_str(om_table.name)}]: {exc}")
 
     def ingest_tables(self, alation_datasource_id: int, om_schema: DatabaseSchema):
         """
@@ -351,9 +291,7 @@ class AlationsinkSource(Source):
             )
             create_requests = CreateTableRequestList(root=[])
             for om_table in om_tables:
-                if filter_by_table(
-                    self.source_config.tableFilterPattern, model_str(om_table.name)
-                ):
+                if filter_by_table(self.source_config.tableFilterPattern, model_str(om_table.name)):
                     self.status.filter(model_str(om_table.name), "Table Filtered Out")
                     continue
                 create_table_request = self.create_table_request(
@@ -365,18 +303,14 @@ class AlationsinkSource(Source):
                     create_requests.root.append(create_table_request)
             if create_requests.root:
                 # Make the API call to write the tables to Alation
-                alation_tables = self.alation_sink_client.write_entities(
-                    alation_datasource_id, create_requests
-                )
+                alation_tables = self.alation_sink_client.write_entities(alation_datasource_id, create_requests)
                 if alation_tables:
                     for om_table in om_tables:
                         if filter_by_table(
                             self.source_config.tableFilterPattern,
                             model_str(om_table.name),
                         ):
-                            self.status.filter(
-                                model_str(om_table.name), "Table Filtered Out"
-                            )
+                            self.status.filter(model_str(om_table.name), "Table Filtered Out")
                             continue
                         self.ingest_columns(
                             alation_datasource_id=alation_datasource_id,
@@ -385,9 +319,7 @@ class AlationsinkSource(Source):
                         )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unable to ingest tables for schema [{model_str(om_schema.name)}]: {exc}"
-            )
+            logger.error(f"Unable to ingest tables for schema [{model_str(om_schema.name)}]: {exc}")
 
     def ingest_schemas(self, alation_datasource_id: int, om_database: Database):
         """
@@ -404,29 +336,21 @@ class AlationsinkSource(Source):
             )
             create_requests = CreateSchemaRequestList(root=[])
             for om_schema in om_schemas or []:
-                if filter_by_schema(
-                    self.source_config.schemaFilterPattern, model_str(om_schema.name)
-                ):
+                if filter_by_schema(self.source_config.schemaFilterPattern, model_str(om_schema.name)):
                     self.status.filter(model_str(om_schema.name), "Schema Filtered Out")
                     continue
-                create_schema_request = self.create_schema_request(
-                    alation_datasource_id, om_schema
-                )
+                create_schema_request = self.create_schema_request(alation_datasource_id, om_schema)
                 if create_schema_request:
                     create_requests.root.append(create_schema_request)
             if create_requests.root:
                 # Make the API call to write the schemas to Alation
-                alation_schemas = self.alation_sink_client.write_entities(
-                    alation_datasource_id, create_requests
-                )
+                alation_schemas = self.alation_sink_client.write_entities(alation_datasource_id, create_requests)
                 if alation_schemas:
                     for om_schema in om_schemas or []:
                         self.ingest_tables(alation_datasource_id, om_schema)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unable to ingest schemas for database [{model_str(om_database.name)}]: {exc}"
-            )
+            logger.error(f"Unable to ingest schemas for database [{model_str(om_database.name)}]: {exc}")
 
     def _iter(self, *_, **__) -> Iterable[Either[Entity]]:
 
@@ -436,9 +360,7 @@ class AlationsinkSource(Source):
                 alation_datasource_id,
                 om_database_fqn,
             ) in self.service_connection.datasourceLinks.root.items():
-                om_database = self.metadata.get_by_name(
-                    entity=Database, fqn=om_database_fqn
-                )
+                om_database = self.metadata.get_by_name(entity=Database, fqn=om_database_fqn)
                 if om_database:
                     self.ingest_schemas(
                         alation_datasource_id=int(alation_datasource_id),
@@ -457,14 +379,10 @@ class AlationsinkSource(Source):
                     self.source_config.databaseFilterPattern,
                     model_str(om_database.name),
                 ):
-                    self.status.filter(
-                        model_str(om_database.name), "Database Filtered Out"
-                    )
+                    self.status.filter(model_str(om_database.name), "Database Filtered Out")
                     continue
                 # write the datasource entity to alation
-                alation_datasource = self.alation_sink_client.write_entity(
-                    self.create_datasource_request(om_database)
-                )
+                alation_datasource = self.alation_sink_client.write_entity(self.create_datasource_request(om_database))
                 if alation_datasource:
                     self.ingest_schemas(alation_datasource.id, om_database)
 
@@ -472,6 +390,4 @@ class AlationsinkSource(Source):
         """Not required to implement"""
 
     def test_connection(self) -> None:
-        test_connection_common(
-            self.metadata, self.alation_sink_client, self.service_connection
-        )
+        test_connection_common(self.metadata, self.alation_sink_client, self.service_connection)

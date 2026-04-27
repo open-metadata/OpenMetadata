@@ -11,6 +11,7 @@
 """
 S3 custom pydantic models
 """
+
 from datetime import datetime
 from typing import List, Optional
 
@@ -65,9 +66,7 @@ class S3ContainerDetails(BaseModel):
     )
 
     leaf_container: bool = Field(False, description="Leaf container")
-    container_fqn: Optional[str] = Field(
-        None, description="Fully qualified name of the container"
-    )
+    container_fqn: Optional[str] = Field(None, description="Fully qualified name of the container")
     name: str = Field(..., description="Bucket name")
     prefix: str = Field(..., description="Prefix for the container")
     number_of_objects: Optional[float] = Field(
@@ -95,10 +94,6 @@ class S3ContainerDetails(BaseModel):
         None,
         description="Reference to the parent container",
     )
-    sourceUrl: Optional[basic.SourceUrl] = Field(
-        None, description="Source URL of the container."
-    )
+    sourceUrl: Optional[basic.SourceUrl] = Field(None, description="Source URL of the container.")
 
-    fullPath: Optional[str] = Field(
-        None, description="Full path of the container/file."
-    )
+    fullPath: Optional[str] = Field(None, description="Full path of the container/file.")

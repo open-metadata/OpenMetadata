@@ -154,9 +154,7 @@ class SystemMetricsRegistry:
     def _discover_implementation(cls, dialect: PythonDialects):
         """Auto-discover the implementation in the profiler metrics"""
         try:
-            implementation = import_from_module(
-                f"metadata.profiler.metrics.system.{dialect.name.lower()}.system"
-            )
+            implementation = import_from_module(f"metadata.profiler.metrics.system.{dialect.name.lower()}.system")
         except DynamicImportException:
             logger.warning(f"No implementation found for {dialect.name.lower()}")
             return
@@ -227,9 +225,7 @@ class System(SystemMetric):
         """Validate the necessary attributes given via add_props"""
         for attr in attr_list:
             if not hasattr(self, attr):
-                raise AttributeError(
-                    f"System requires a table to be set: add_props({attr}=...)(Metrics.system.value)"
-                )
+                raise AttributeError(f"System requires a table to be set: add_props({attr}=...)(Metrics.system.value)")
 
     def sql(self, session: Session, **kwargs):
         raise NotImplementedError(

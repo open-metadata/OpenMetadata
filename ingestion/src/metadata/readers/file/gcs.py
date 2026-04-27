@@ -12,6 +12,7 @@
 """
 Read files as string from S3
 """
+
 import traceback
 from typing import List
 
@@ -29,13 +30,9 @@ class GCSReader(Reader):
     def __init__(self, client):
         self.client = client
 
-    def read(
-        self, path: str, *, bucket_name: str = None, verbose: bool = True, **__
-    ) -> bytes:
+    def read(self, path: str, *, bucket_name: str = None, verbose: bool = True, **__) -> bytes:
         try:
-            return (
-                self.client.get_bucket(bucket_name).get_blob(path).download_as_string()
-            )
+            return self.client.get_bucket(bucket_name).get_blob(path).download_as_string()
         except Exception as err:
             if verbose:
                 logger.debug(traceback.format_exc())
@@ -59,9 +56,7 @@ class GCSReader(Reader):
         **__,
     ) -> bytes:
         try:
-            self.client.get_bucket(bucket_name).get_blob(path).download_to_filename(
-                local_file_path
-            )
+            self.client.get_bucket(bucket_name).get_blob(path).download_to_filename(local_file_path)
         except Exception as err:
             if verbose:
                 logger.debug(traceback.format_exc())

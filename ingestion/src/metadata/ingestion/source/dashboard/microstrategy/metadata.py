@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """MicroStrategy source module"""
+
 import traceback
 from typing import Iterable, List, Optional
 
@@ -86,9 +87,7 @@ class MicrostrategySource(DashboardServiceSource):
         config = WorkflowSource.model_validate(config_dict)
         connection: MicroStrategyConnection = config.serviceConnection.root.config
         if not isinstance(connection, MicroStrategyConnection):
-            raise InvalidSourceException(
-                f"Expected MicroStrategyConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected MicroStrategyConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_dashboards_list(self) -> Optional[List[MstrDashboard]]:
@@ -100,16 +99,12 @@ class MicrostrategySource(DashboardServiceSource):
         if self.client.is_project_name():
             project = self.client.get_project_by_name()
             if project:
-                dashboards.extend(
-                    self.client.get_dashboards_list(project.id, project.name)
-                )
+                dashboards.extend(self.client.get_dashboards_list(project.id, project.name))
 
         if not self.client.is_project_name():
             for project in self.client.get_projects_list():
                 if project:
-                    dashboards.extend(
-                        self.client.get_dashboards_list(project.id, project.name)
-                    )
+                    dashboards.extend(self.client.get_dashboards_list(project.id, project.name))
 
         return dashboards
 
@@ -126,23 +121,17 @@ class MicrostrategySource(DashboardServiceSource):
         try:
             return dashboard_details.projectName
         except Exception as exc:
-            logger.debug(
-                f"Cannot get project name from dashboard [{dashboard_details.name}] - [{exc}]"
-            )
+            logger.debug(f"Cannot get project name from dashboard [{dashboard_details.name}] - [{exc}]")
         return None
 
     def get_dashboard_details(self, dashboard: MstrDashboard) -> MstrDashboardDetails:
         """
         Get Dashboard Details
         """
-        dashboard_details = self.client.get_dashboard_details(
-            dashboard.projectId, dashboard.projectName, dashboard.id
-        )
+        dashboard_details = self.client.get_dashboard_details(dashboard.projectId, dashboard.projectName, dashboard.id)
         return dashboard_details
 
-    def yield_dashboard(
-        self, dashboard_details: MstrDashboardDetails
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def yield_dashboard(self, dashboard_details: MstrDashboardDetails) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         """
@@ -200,17 +189,11 @@ class MicrostrategySource(DashboardServiceSource):
             prefix_table_name,
         ) = self.parse_db_service_prefix(db_service_prefix)
 
-        database_service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=prefix_db_service_name
-        )
-        dialect = ConnectionTypeDialectMapper.dialect_of(
-            database_service.serviceType.value
-        )
+        database_service = self.metadata.get_by_name(entity=DatabaseService, fqn=prefix_db_service_name)
+        dialect = ConnectionTypeDialectMapper.dialect_of(database_service.serviceType.value)
 
         for dataset in dashboard_details.datasets:
-            cube_sql = self.client.get_cube_sql_details(
-                dashboard_details.projectId, dataset.id
-            )
+            cube_sql = self.client.get_cube_sql_details(dashboard_details.projectId, dataset.id)
             if not cube_sql:
                 continue
 
@@ -220,9 +203,7 @@ class MicrostrategySource(DashboardServiceSource):
                 service_name=self.context.get().dashboard_service,
                 data_model_name=dataset.id,
             )
-            datamodel_entity = self.metadata.get_by_name(
-                entity=DashboardDataModel, fqn=datamodel_fqn
-            )
+            datamodel_entity = self.metadata.get_by_name(entity=DashboardDataModel, fqn=datamodel_fqn)
 
             try:
                 lineage_parser = LineageParser(
@@ -240,31 +221,23 @@ class MicrostrategySource(DashboardServiceSource):
                         table_name=str(table),
                     )
                     if not table_entities:
-                        logger.debug(
-                            f"[{query_hash}] Table not found in metadata: {str(table)}"
-                        )
+                        logger.debug(f"[{query_hash}] Table not found in metadata: {str(table)}")
                         continue
                     for table_entity in table_entities or []:
-                        if (
-                            prefix_table_name
-                            and prefix_table_name.lower()
-                            != str(table_entity.name.root).lower()
-                        ):
+                        if prefix_table_name and prefix_table_name.lower() != str(table_entity.name.root).lower():
                             continue
 
                         if (
                             prefix_schema_name
                             and getattr(table_entity.databaseSchema, "name", None)
-                            and prefix_schema_name.lower()
-                            != str(table_entity.databaseSchema.name).lower()
+                            and prefix_schema_name.lower() != str(table_entity.databaseSchema.name).lower()
                         ):
                             continue
 
                         if (
                             prefix_database_name
                             and getattr(table_entity.database, "name", None)
-                            and prefix_database_name.lower()
-                            != str(table_entity.database.name).lower()
+                            and prefix_database_name.lower() != str(table_entity.database.name).lower()
                         ):
                             continue
 
@@ -279,9 +252,7 @@ class MicrostrategySource(DashboardServiceSource):
                                         id=Uuid(datamodel_entity.id.root),
                                         type="dashboardDataModel",
                                     ),
-                                    lineageDetails=LineageDetails(
-                                        source=LineageSource.DashboardLineage
-                                    ),
+                                    lineageDetails=LineageDetails(source=LineageSource.DashboardLineage),
                                 )
                             )
                         )
@@ -294,9 +265,7 @@ class MicrostrategySource(DashboardServiceSource):
                     )
                 )
 
-    def yield_dashboard_chart(
-        self, dashboard_details: MstrDashboardDetails
-    ) -> Optional[Iterable[CreateChartRequest]]:
+    def yield_dashboard_chart(self, dashboard_details: MstrDashboardDetails) -> Optional[Iterable[CreateChartRequest]]:
         """Get chart method
 
         Args:
@@ -314,9 +283,7 @@ class MicrostrategySource(DashboardServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error creating dashboard: {exc}")
 
-    def _yield_chart_from_visualization(
-        self, page: MstrPage
-    ) -> Iterable[Either[CreateChartRequest]]:
+    def _yield_chart_from_visualization(self, page: MstrPage) -> Iterable[Either[CreateChartRequest]]:
         for chart in page.visualizations:
             try:
                 if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
@@ -376,9 +343,7 @@ class MicrostrategySource(DashboardServiceSource):
         try:
             if self.source_config.includeDataModels:
                 for dataset in dashboard_details.datasets:
-                    if filter_by_datamodel(
-                        self.source_config.dataModelFilterPattern, dataset.name
-                    ):
+                    if filter_by_datamodel(self.source_config.dataModelFilterPattern, dataset.name):
                         self.status.filter(dataset.name, "Data model filtered out.")
                         continue
                     data_model_type = DataModelType.MicroStrategyDataset.value
@@ -387,15 +352,11 @@ class MicrostrategySource(DashboardServiceSource):
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(dataset.id),
                         displayName=dataset.name,
-                        service=FullyQualifiedEntityName(
-                            self.context.get().dashboard_service
-                        ),
+                        service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                         dataModelType=data_model_type,
                         serviceType=DashboardServiceType.MicroStrategy.value,
                         columns=datamodel_columns,
-                        project=self.get_project_name(
-                            dashboard_details=dashboard_details
-                        ),
+                        project=self.get_project_name(dashboard_details=dashboard_details),
                     )
                     yield Either(right=data_model_request)
                     self.register_record_datamodel(datamodel_request=data_model_request)

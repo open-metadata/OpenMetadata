@@ -11,6 +11,7 @@
 """
 Hive source methods.
 """
+
 import re
 
 from pyhive.sqlalchemy_hive import _type_map
@@ -31,9 +32,7 @@ _type_map.update(
 )
 
 
-def get_columns(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument,too-many-locals
+def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument,too-many-locals
     """
     Method to handle table columns
     """
@@ -88,9 +87,7 @@ def get_columns(
     return result
 
 
-def get_table_names_older_versions(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_names_older_versions(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
     query = "SHOW TABLES"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
@@ -107,9 +104,7 @@ def get_table_names_older_versions(
     return tables
 
 
-def get_table_names(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_names(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
     query = "SHOW TABLES"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
@@ -129,9 +124,7 @@ def get_table_names(
     return [table for table in tables if table not in views]
 
 
-def get_view_names(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_view_names(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
     query = "SHOW VIEWS"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
@@ -148,9 +141,7 @@ def get_view_names(
     return views
 
 
-def get_view_names_older_versions(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_view_names_older_versions(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
     # Hive does not provide functionality to query tableType for older version
     # This allows reflection to not crash at the cost of being inaccurate
     return []
@@ -163,9 +154,7 @@ def get_table_comment(  # pylint: disable=unused-argument
     """
     Returns comment of table.
     """
-    cursor = connection.execute(
-        text(HIVE_GET_COMMENTS.format(schema_name=schema_name, table_name=table_name))
-    )
+    cursor = connection.execute(text(HIVE_GET_COMMENTS.format(schema_name=schema_name, table_name=table_name)))
     try:
         for result in list(cursor):
             data = result.values()

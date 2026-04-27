@@ -12,6 +12,7 @@
 """
 Helpers module for db sources
 """
+
 import time
 import traceback
 from typing import Iterable, List, Union
@@ -112,35 +113,39 @@ def get_view_lineage(
             f"[{query_hash}] Time taken to parse view lineage for: {table_fqn} is {end_time - start_time} seconds"
         )
         if lineage_parser.source_tables and lineage_parser.target_tables:
-            yield from get_lineage_by_query(
-                metadata,
-                query=view_definition,
-                service_names=service_names,
-                database_name=db_name,
-                schema_name=schema_name,
-                dialect=dialect,
-                timeout_seconds=timeout_seconds,
-                lineage_source=LineageSource.ViewLineage,
-                lineage_parser=lineage_parser,
-                schema_fallback=schema_fallback,
-            ) or []
+            yield from (
+                get_lineage_by_query(
+                    metadata,
+                    query=view_definition,
+                    service_names=service_names,
+                    database_name=db_name,
+                    schema_name=schema_name,
+                    dialect=dialect,
+                    timeout_seconds=timeout_seconds,
+                    lineage_source=LineageSource.ViewLineage,
+                    lineage_parser=lineage_parser,
+                    schema_fallback=schema_fallback,
+                )
+                or []
+            )
 
         else:
-            yield from get_lineage_via_table_entity(
-                metadata,
-                table_entity=table_entity,
-                service_names=service_names,
-                database_name=db_name,
-                schema_name=schema_name,
-                query=view_definition,
-                dialect=dialect,
-                timeout_seconds=timeout_seconds,
-                lineage_source=LineageSource.ViewLineage,
-                lineage_parser=lineage_parser,
-                schema_fallback=schema_fallback,
-            ) or []
+            yield from (
+                get_lineage_via_table_entity(
+                    metadata,
+                    table_entity=table_entity,
+                    service_names=service_names,
+                    database_name=db_name,
+                    schema_name=schema_name,
+                    query=view_definition,
+                    dialect=dialect,
+                    timeout_seconds=timeout_seconds,
+                    lineage_source=LineageSource.ViewLineage,
+                    lineage_parser=lineage_parser,
+                    schema_fallback=schema_fallback,
+                )
+                or []
+            )
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(
-            f"Could not parse query [{view_definition}] ingesting lineage failed: {exc}"
-        )
+        logger.warning(f"Could not parse query [{view_definition}] ingesting lineage failed: {exc}")

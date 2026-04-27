@@ -12,6 +12,7 @@
 """
 Tests for path_pattern.py — glob matching, partition detection, table grouping.
 """
+
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.utils.path_pattern import (
     detect_hive_partitions,
@@ -31,10 +32,7 @@ class TestExtractStaticPrefix:
         assert extract_static_prefix("*/*.csv") == ""
 
     def test_no_wildcards(self):
-        assert (
-            extract_static_prefix("data/events/file.parquet")
-            == "data/events/file.parquet"
-        )
+        assert extract_static_prefix("data/events/file.parquet") == "data/events/file.parquet"
 
     def test_deep_static_prefix(self):
         assert extract_static_prefix("data/events/*.parquet") == "data/events/"
@@ -124,16 +122,10 @@ class TestPatternToRegex:
 
 class TestExtractTableRoot:
     def test_with_hive_partitions(self):
-        assert (
-            extract_table_root("data/events/year=2024/month=01/file.parquet")
-            == "data/events"
-        )
+        assert extract_table_root("data/events/year=2024/month=01/file.parquet") == "data/events"
 
     def test_with_multiple_partitions(self):
-        assert (
-            extract_table_root("data/events/year=2024/month=01/day=15/file.parquet")
-            == "data/events"
-        )
+        assert extract_table_root("data/events/year=2024/month=01/day=15/file.parquet") == "data/events"
 
     def test_without_partitions(self):
         assert extract_table_root("data/events/file.parquet") == "data/events"
@@ -152,23 +144,15 @@ class TestExtractTableRoot:
 
     def test_matches_manifest_datapath(self):
         """Table root must match what users put in manifest dataPath."""
-        assert (
-            extract_table_root("data/events/year=2024/month=01/part-00000.parquet")
-            == "data/events"
-        )
+        assert extract_table_root("data/events/year=2024/month=01/part-00000.parquet") == "data/events"
 
     def test_date_prefix_partition(self):
         """Non-Hive date prefix like 20230412 should be treated as partition."""
-        assert (
-            extract_table_root("cities_multiple_simple/20230412/State=AL/file.parquet")
-            == "cities_multiple_simple"
-        )
+        assert extract_table_root("cities_multiple_simple/20230412/State=AL/file.parquet") == "cities_multiple_simple"
 
     def test_date_with_dashes_partition(self):
         """Date with dashes like 2024-01-15 should be treated as partition."""
-        assert (
-            extract_table_root("data/events/2024-01-15/file.parquet") == "data/events"
-        )
+        assert extract_table_root("data/events/2024-01-15/file.parquet") == "data/events"
 
     def test_timestamp_partition(self):
         """Timestamp like 20240115T000000Z should be treated as partition."""
@@ -176,10 +160,7 @@ class TestExtractTableRoot:
 
     def test_mixed_non_hive_and_hive(self):
         """Date prefix followed by Hive partition."""
-        assert (
-            extract_table_root("data/events/20230412/State=AL/file.parquet")
-            == "data/events"
-        )
+        assert extract_table_root("data/events/20230412/State=AL/file.parquet") == "data/events"
 
     def test_short_number_not_treated_as_partition(self):
         """Short numbers like 'v2' or directory names should NOT be partitions."""

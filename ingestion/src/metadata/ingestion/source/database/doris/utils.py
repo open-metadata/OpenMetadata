@@ -12,6 +12,7 @@
 """
 MySQL SQLAlchemy Helper Methods
 """
+
 import textwrap
 
 from sqlalchemy import sql, text

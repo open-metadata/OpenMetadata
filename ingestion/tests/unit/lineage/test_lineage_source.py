@@ -51,9 +51,7 @@ class TestableLineageSource(LineageSource):
     def create(cls, config_dict, metadata):
         """Create method required by abstract class"""
         mock_config = Mock()
-        mock_config.sourceConfig.config = config_dict.get("sourceConfig", {}).get(
-            "config", {}
-        )
+        mock_config.sourceConfig.config = config_dict.get("sourceConfig", {}).get("config", {})
         return cls(mock_config, metadata)
 
     def get_engine(self):
@@ -97,9 +95,7 @@ class TestLineageSourceCore(unittest.TestCase):
         self.mock_config.sourceConfig.config.tableFilterPattern = None
         self.mock_config.sourceConfig.config.threads = 5
 
-        self.lineage_source = TestableLineageSource(
-            self.mock_config, self.mock_metadata
-        )
+        self.lineage_source = TestableLineageSource(self.mock_config, self.mock_metadata)
 
     def test_critical_methods_exist(self):
         """Ensure all critical methods exist and are callable"""
@@ -143,9 +139,7 @@ class TestQueryLineage(unittest.TestCase):
         self.mock_config.sourceConfig.config.parsingTimeoutLimit = 10
         self.mock_config.sourceConfig.config.threads = 5
 
-        self.lineage_source = TestableLineageSource(
-            self.mock_config, self.mock_metadata
-        )
+        self.lineage_source = TestableLineageSource(self.mock_config, self.mock_metadata)
 
     def test_yield_table_query_from_database(self):
         """Test yielding table queries from database"""
@@ -168,9 +162,7 @@ class TestQueryLineage(unittest.TestCase):
         mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_connection)
         mock_engine.connect.return_value.__exit__ = Mock(return_value=None)
 
-        with patch.object(
-            self.lineage_source, "get_engine", return_value=[mock_engine]
-        ):
+        with patch.object(self.lineage_source, "get_engine", return_value=[mock_engine]):
             queries = list(self.lineage_source.yield_table_query())
 
             self.assertEqual(len(queries), 2)
@@ -182,9 +174,7 @@ class TestQueryLineage(unittest.TestCase):
     def test_yield_table_queries_from_logs(self):
         """Test yielding table queries from CSV log files"""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
-            writer = csv.DictWriter(
-                f, fieldnames=["query_text", "database_name", "schema_name"]
-            )
+            writer = csv.DictWriter(f, fieldnames=["query_text", "database_name", "schema_name"])
             writer.writeheader()
             writer.writerow(
                 {
@@ -208,9 +198,7 @@ class TestQueryLineage(unittest.TestCase):
 
             self.assertEqual(len(queries), 2)
             self.assertEqual(queries[0].query, "SELECT * FROM logs_table")
-            self.assertEqual(
-                queries[1].query, "INSERT INTO target SELECT * FROM source"
-            )
+            self.assertEqual(queries[1].query, "INSERT INTO target SELECT * FROM source")
             self.assertEqual(queries[0].databaseName, "log_db")
         finally:
             os.unlink(temp_file)
@@ -218,9 +206,7 @@ class TestQueryLineage(unittest.TestCase):
     def test_query_lineage_producer_with_log_file(self):
         """Test query lineage producer uses log file when configured"""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
-            writer = csv.DictWriter(
-                f, fieldnames=["query_text", "database_name", "schema_name"]
-            )
+            writer = csv.DictWriter(f, fieldnames=["query_text", "database_name", "schema_name"])
             writer.writeheader()
             writer.writerow(
                 {
@@ -259,9 +245,7 @@ class TestQueryLineage(unittest.TestCase):
 
         self.lineage_source.config.sourceConfig.config.queryLogFilePath = None
 
-        with patch.object(
-            self.lineage_source, "get_engine", return_value=[mock_engine]
-        ):
+        with patch.object(self.lineage_source, "get_engine", return_value=[mock_engine]):
             producer = self.lineage_source.query_lineage_producer()
             queries = list(producer)
 
@@ -272,9 +256,7 @@ class TestQueryLineage(unittest.TestCase):
         """Test get_table_query delegates correctly based on config"""
         # Test with log file
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
-            writer = csv.DictWriter(
-                f, fieldnames=["query_text", "database_name", "schema_name"]
-            )
+            writer = csv.DictWriter(f, fieldnames=["query_text", "database_name", "schema_name"])
             writer.writeheader()
             writer.writerow(
                 {
@@ -304,14 +286,10 @@ class TestQueryLineage(unittest.TestCase):
                 },
             ]
             mock_connection.execute.return_value = mock_result
-            mock_engine.connect.return_value.__enter__ = Mock(
-                return_value=mock_connection
-            )
+            mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_connection)
             mock_engine.connect.return_value.__exit__ = Mock(return_value=None)
 
-            with patch.object(
-                self.lineage_source, "get_engine", return_value=[mock_engine]
-            ):
+            with patch.object(self.lineage_source, "get_engine", return_value=[mock_engine]):
                 queries = list(self.lineage_source.get_table_query())
                 self.assertEqual(len(queries), 1)
                 self.assertEqual(queries[0].query, "SELECT * FROM db_table")
@@ -334,9 +312,7 @@ class TestViewLineage(unittest.TestCase):
         self.mock_config.sourceConfig.config.schemaFilterPattern = None
         self.mock_config.sourceConfig.config.tableFilterPattern = None
 
-        self.lineage_source = TestableLineageSource(
-            self.mock_config, self.mock_metadata
-        )
+        self.lineage_source = TestableLineageSource(self.mock_config, self.mock_metadata)
 
     def test_view_lineage_producer(self):
         """Test view lineage producer yields views correctly"""
@@ -383,13 +359,9 @@ class TestViewLineage(unittest.TestCase):
         self.mock_metadata.yield_es_view_def = Mock(return_value=iter(mock_views))
         self.lineage_source.source_config.databaseFilterPattern = Mock()
         self.lineage_source.source_config.databaseFilterPattern.includes = []
-        self.lineage_source.source_config.databaseFilterPattern.excludes = [
-            "filtered_db"
-        ]
+        self.lineage_source.source_config.databaseFilterPattern.excludes = ["filtered_db"]
 
-        with patch(
-            "metadata.utils.filters.filter_by_database", side_effect=[False, True]
-        ):
+        with patch("metadata.utils.filters.filter_by_database", side_effect=[False, True]):
             views = list(self.lineage_source.view_lineage_producer())
 
             self.assertEqual(len(views), 1)
@@ -415,9 +387,7 @@ class TestProcessingMethods(unittest.TestCase):
             # Track what items are processed together
             processed_items.append(len(items))
             for item in items:
-                queue.put(
-                    Either(right=CreateQueryRequest(query=item.query, service="test"))
-                )
+                queue.put(Either(right=CreateQueryRequest(query=item.query, service="test")))
 
         # Test with chunk_size=2
         results = list(
@@ -447,9 +417,7 @@ class TestProcessingMethods(unittest.TestCase):
 
             time.sleep(2)  # Simulate slow processing
             for item in items:
-                queue.put(
-                    Either(right=CreateQueryRequest(query=item.query, service="test"))
-                )
+                queue.put(Either(right=CreateQueryRequest(query=item.query, service="test")))
 
         # Test with very short timeout
         results = list(
@@ -518,9 +486,7 @@ class TestIntegrationAndEdgeCases(unittest.TestCase):
         self.mock_config.sourceConfig.config.processQueryLineage = True
         self.mock_config.sourceConfig.config.threads = 5
 
-        self.lineage_source = TestableLineageSource(
-            self.mock_config, self.mock_metadata
-        )
+        self.lineage_source = TestableLineageSource(self.mock_config, self.mock_metadata)
 
     def test_yield_query_lineage_integration(self):
         """Test the full yield_query_lineage flow"""
@@ -549,7 +515,7 @@ class TestIntegrationAndEdgeCases(unittest.TestCase):
                     "generate_lineage_with_processes",
                     return_value=iter([]),
                 ):
-                    results = list(self.lineage_source.yield_query_lineage())
+                    results = list(self.lineage_source.yield_query_lineage())  # noqa: F841
 
                     # Verify generate_lineage_with_processes was called
                     LineageSource.generate_lineage_with_processes.assert_called_once()
@@ -561,9 +527,7 @@ class TestIntegrationAndEdgeCases(unittest.TestCase):
 
         # Test with log file
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
-            writer = csv.DictWriter(
-                f, fieldnames=["query_text", "database_name", "schema_name"]
-            )
+            writer = csv.DictWriter(f, fieldnames=["query_text", "database_name", "schema_name"])
             writer.writeheader()
             writer.writerow(
                 {

@@ -18,13 +18,9 @@ from metadata.generated.schema.type.basic import EntityName
 class TagFactory(factory.Factory):
     id = RootSubFactory(UuidFactory)
     name = factory.LazyAttribute(lambda o: EntityName(root=o.tag_name))
-    fullyQualifiedName = factory.LazyAttribute(
-        lambda o: f"{o.tag_classification.fullyQualifiedName.root}.{o.tag_name}"
-    )
+    fullyQualifiedName = factory.LazyAttribute(lambda o: f"{o.tag_classification.fullyQualifiedName.root}.{o.tag_name}")
     classification = factory.LazyAttribute(
-        lambda o: EntityReferenceFactory(entity=o.tag_classification)
-        if o.tag_classification
-        else None
+        lambda o: EntityReferenceFactory(entity=o.tag_classification) if o.tag_classification else None
     )
     description = RootSubFactory(MarkdownFactory)
     recognizers = factory.LazyFunction(list)
