@@ -195,14 +195,10 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             patch_body = str(patch) if patch is not None else "<patch not built>"
             if skip_on_failure:
                 entity_name = get_log_name(source)
-<<<<<<< automator_patch_error
                 logger.warning(
                     f"Failed to update {entity_name}. The patch operation was skipped. "
                     f"Reason: {exc} | Patch body: {patch_body}"
                 )
-=======
-                logger.warning(f"Failed to update {entity_name}. The patch operation was skipped. Reason: {exc}")
->>>>>>> main
                 return None
             else:
                 entity_name = get_log_name(source)
