@@ -219,6 +219,8 @@ public class MigrationUtil {
 
         insertTask(handle, suggestionId, taskJson.toString(), fqnHash, connectionType);
         insertTaskDomainRelationships(handle, suggestionId, inheritedDomains);
+        insertTaskLinkRelationships(
+            handle, suggestionId, null, null, null, createdByUserId, taskJson, connectionType);
         migrated++;
       } catch (Exception e) {
         LOG.warn("Error migrating suggestion: {}", e.getMessage());
@@ -379,6 +381,15 @@ public class MigrationUtil {
 
         insertTask(handle, threadId, taskJson.toString(), fqnHash, connectionType);
         insertTaskDomainRelationships(handle, threadId, inheritedDomains);
+        insertTaskLinkRelationships(
+            handle,
+            threadId,
+            taskDetails.has("assignees") ? taskDetails.get("assignees") : null,
+            taskDetails.has("reviewers") ? taskDetails.get("reviewers") : null,
+            taskDetails.has("watchers") ? taskDetails.get("watchers") : null,
+            createdByUserId,
+            taskJson,
+            connectionType);
         migrated++;
       } catch (Exception e) {
         LOG.warn("Error migrating thread task: {}", e.getMessage());
@@ -538,6 +549,10 @@ public class MigrationUtil {
       ObjectNode aboutRef = JsonUtils.getObjectNode();
       if (sourceJson.has("entityId") && !sourceJson.get("entityId").isNull()) {
         aboutRef.put("id", sourceJson.get("entityId").asText());
+      } else if (sourceJson.has("entityRef")
+          && sourceJson.get("entityRef").has("id")
+          && !sourceJson.get("entityRef").get("id").isNull()) {
+        aboutRef.put("id", sourceJson.get("entityRef").get("id").asText());
       }
       aboutRef.put("type", entityType);
       aboutRef.put("fullyQualifiedName", entityFQN);
@@ -1162,6 +1177,99 @@ public class MigrationUtil {
       return;
     }
     taskJson.set("domains", JsonUtils.valueToTree(domains));
+  }
+
+  private static void insertEntityRelationship(
+      Handle handle,
+      String fromId,
+      String fromEntity,
+      String toId,
+      String toEntity,
+      Relationship relation,
+      ConnectionType connectionType) {
+    String sql =
+        connectionType == ConnectionType.POSTGRES
+            ? "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) ON CONFLICT DO NOTHING"
+            : "INSERT IGNORE INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)";
+    try {
+      handle
+          .createUpdate(sql)
+          .bind("fromId", fromId)
+          .bind("toId", toId)
+          .bind("fromEntity", fromEntity)
+          .bind("toEntity", toEntity)
+          .bind("relation", relation.ordinal())
+          .execute();
+    } catch (Exception e) {
+      LOG.debug(
+          "Could not insert entity_relationship {}->{} relation={}: {}",
+          fromId,
+          toId,
+          relation,
+          e.getMessage());
+    }
+  }
+
+  private static void insertTaskUserListRelationships(
+      Handle handle,
+      String taskId,
+      JsonNode users,
+      Relationship relation,
+      ConnectionType connectionType) {
+    if (users == null || !users.isArray()) {
+      return;
+    }
+    for (JsonNode u : users) {
+      String id = u.path("id").asText(null);
+      if (id == null || id.isEmpty()) {
+        continue;
+      }
+      String type = u.path("type").asText("user");
+      insertEntityRelationship(handle, id, type, taskId, Entity.TASK, relation, connectionType);
+    }
+  }
+
+  private static void insertTaskLinkRelationships(
+      Handle handle,
+      String taskId,
+      JsonNode assignees,
+      JsonNode reviewers,
+      JsonNode watchers,
+      String createdByUserId,
+      ObjectNode taskJson,
+      ConnectionType connectionType) {
+    insertTaskUserListRelationships(
+        handle, taskId, assignees, Relationship.ASSIGNED_TO, connectionType);
+    insertTaskUserListRelationships(
+        handle, taskId, reviewers, Relationship.REVIEWS, connectionType);
+    insertTaskUserListRelationships(handle, taskId, watchers, Relationship.FOLLOWS, connectionType);
+    if (createdByUserId != null) {
+      insertEntityRelationship(
+          handle,
+          createdByUserId,
+          Entity.USER,
+          taskId,
+          Entity.TASK,
+          Relationship.CREATED,
+          connectionType);
+    }
+    JsonNode about = taskJson.get("about");
+    if (about != null && about.has("id") && !about.get("id").isNull() && about.has("type")) {
+      String aboutId = about.get("id").asText();
+      String aboutType = about.get("type").asText();
+      if (!aboutId.isEmpty() && !aboutType.isEmpty()) {
+        insertEntityRelationship(
+            handle,
+            aboutId,
+            aboutType,
+            taskId,
+            Entity.TASK,
+            Relationship.MENTIONED_IN,
+            connectionType);
+      }
+    }
   }
 
   /**
