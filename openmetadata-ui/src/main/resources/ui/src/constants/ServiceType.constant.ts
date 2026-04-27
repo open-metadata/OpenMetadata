@@ -189,6 +189,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Epic,
   DashboardServiceType.Grafana,
   DashboardServiceType.Hex,
+  DatabaseServiceType.SapSuccessFactors,
   DatabaseServiceType.ServiceNow,
   DatabaseServiceType.Timescale,
   DatabaseServiceType.Dremio,
