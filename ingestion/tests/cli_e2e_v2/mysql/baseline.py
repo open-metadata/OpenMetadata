@@ -57,7 +57,6 @@ from ..core.source.sql import (
 )
 from .enforcer import MySqlEnforcer
 
-
 # -----------------------------------------------------------------------------
 # all_types — MySQL-specific native types (exercises connector type mapping)
 # -----------------------------------------------------------------------------

@@ -31,15 +31,11 @@ class MySqlEnforcer(SqlBaselineEnforcer):
     )
 
     @classmethod
-    def from_url(
-        cls, url: str | URL, baseline: SqlSourceBaseline
-    ) -> "MySqlEnforcer":
+    def from_url(cls, url: str | URL, baseline: SqlSourceBaseline) -> "MySqlEnforcer":
         """Construct with a SQLAlchemy engine built from a connection URL."""
         return cls(create_engine(url), baseline)
 
-    def _apply_stored_procedure(
-        self, conn: Connection, sp: StoredProcedureDefinition
-    ) -> None:
+    def _apply_stored_procedure(self, conn: Connection, sp: StoredProcedureDefinition) -> None:
         logger.debug("[mysql] DROP+CREATE PROCEDURE %s.%s", sp.schema, sp.name)
         conn.execute(text(f"DROP PROCEDURE IF EXISTS {sp.schema}.{sp.name}"))
         conn.execute(text(sp.definition_sql))

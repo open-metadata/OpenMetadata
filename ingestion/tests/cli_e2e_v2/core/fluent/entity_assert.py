@@ -52,9 +52,7 @@ class EntityAssert(Generic[T]):
             fields=fields if fields is not None else self._default_fields,
         )
         if entity is None:
-            raise AssertionError(
-                f"{self._entity_cls.__name__} not found: {self._fqn}"
-            )
+            raise AssertionError(f"{self._entity_cls.__name__} not found: {self._fqn}")
         return entity
 
     def exists(self) -> None:
@@ -71,10 +69,8 @@ class EntityAssert(Generic[T]):
             desc = model_str(entity.description) if entity.description else ""
             if text not in desc:
                 raise AssertionError(
-                    f"{self._entity_cls.__name__} {self._fqn} description "
-                    f"does not contain {text!r}. Actual: {desc!r}"
+                    f"{self._entity_cls.__name__} {self._fqn} description does not contain {text!r}. Actual: {desc!r}"
                 )
-        self._eventually.run(
-            _check, name=f"has_description_containing({text!r})"
-        )
+
+        self._eventually.run(_check, name=f"has_description_containing({text!r})")
         return self

@@ -34,9 +34,7 @@ from .types import (
 )
 
 
-def derive_expected_tables(
-    metadata: MetaData, type_map: TypeMap
-) -> list[ExpectedTable]:
+def derive_expected_tables(metadata: MetaData, type_map: TypeMap) -> list[ExpectedTable]:
     """Build one ExpectedTable per Table in `metadata`.
 
     Columns come straight off the SQLAlchemy Column — name, type (via
@@ -101,8 +99,7 @@ def derive_expected_service(
                 schemas=[
                     ExpectedSchema(
                         name=schema_name,
-                        tables=derive_expected_tables(metadata, type_map)
-                                + (views or []),
+                        tables=derive_expected_tables(metadata, type_map) + (views or []),
                         stored_procedures=stored_procedures or [],
                     ),
                 ],

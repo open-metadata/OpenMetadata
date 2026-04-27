@@ -65,8 +65,8 @@ def pytest_assertrepr_compare(op, left, right):
     pytest would otherwise truncate the diff body to its short repr and
     swallow the path-grouped diagnostics we put in `__str__`.
     """
-    target = left if isinstance(left, StructuralMismatch) else (
-        right if isinstance(right, StructuralMismatch) else None
+    target = (
+        left if isinstance(left, StructuralMismatch) else (right if isinstance(right, StructuralMismatch) else None)
     )
     if target is None:
         return None

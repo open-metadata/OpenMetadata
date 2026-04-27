@@ -94,9 +94,7 @@ class ColumnProfileAssert:
                 if not _values_match(got, want):
                     mismatches.append(f"{field}: expected {want!r}, got {got!r}")
             if mismatches:
-                raise AssertionError(
-                    f"{label} metric mismatches:\n  " + "\n  ".join(mismatches)
-                )
+                raise AssertionError(f"{label} metric mismatches:\n  " + "\n  ".join(mismatches))
 
         self._eventually.run(_check, name=f"has_metrics({sorted(expected)})")
         return self
@@ -108,13 +106,9 @@ class ColumnProfileAssert:
         for c in table.columns or []:
             if model_str(c.name) == self._column_name:
                 if c.profile is None:
-                    raise AssertionError(
-                        f"Column {self._fqn}.{self._column_name} has no profile yet"
-                    )
+                    raise AssertionError(f"Column {self._fqn}.{self._column_name} has no profile yet")
                 return c.profile
-        raise AssertionError(
-            f"Column {self._column_name!r} not found on table {self._fqn}"
-        )
+        raise AssertionError(f"Column {self._column_name!r} not found on table {self._fqn}")
 
 
 class ProfileAssert:
@@ -166,9 +160,7 @@ class ProfileAssert:
         `.profile.eventually().column(...)` makes the next column-level
         terminal poll, just like `.row_count()` does.
         """
-        return ColumnProfileAssert(
-            self._om, self._fqn, name, runner=self._eventually
-        )
+        return ColumnProfileAssert(self._om, self._fqn, name, runner=self._eventually)
 
 
 def _values_match(actual: Any, expected: Any) -> bool:
@@ -181,8 +173,6 @@ def _values_match(actual: Any, expected: Any) -> bool:
     """
     if actual is None:
         return False
-    if isinstance(actual, (Decimal, float, int)) and isinstance(
-        expected, (Decimal, float, int)
-    ):
+    if isinstance(actual, (Decimal, float, int)) and isinstance(expected, (Decimal, float, int)):
         return float(actual) == float(expected)
     return actual == expected

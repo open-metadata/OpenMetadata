@@ -31,7 +31,7 @@ class EnforcementMode(Enum):
     comparison-lifecycle modes in the framework share one idiom.
     """
 
-    APPLY = "apply"            # drifts trigger enforcer.apply (mutates the source)
+    APPLY = "apply"  # drifts trigger enforcer.apply (mutates the source)
     CHECK_ONLY = "check_only"  # drifts raise SourceBaselineDrift
 
 
@@ -71,8 +71,7 @@ def ensure_baseline(
     """
     if policy is None or expected is None:
         logger.warning(
-            "[%s] running in TRUST MODE — no source baseline enforced. "
-            "Source state is assumed correct.",
+            "[%s] running in TRUST MODE — no source baseline enforced. Source state is assumed correct.",
             connector_name,
         )
         return
@@ -92,9 +91,7 @@ def ensure_baseline(
             f"with EnforcementMode.APPLY on a dedicated DB). Contact the connector owner if unsure."
         )
 
-    logger.info(
-        "[%s] applying %d baseline drift fixes", connector_name, len(drifts)
-    )
+    logger.info("[%s] applying %d baseline drift fixes", connector_name, len(drifts))
     policy.enforcer.apply(drifts)
 
 

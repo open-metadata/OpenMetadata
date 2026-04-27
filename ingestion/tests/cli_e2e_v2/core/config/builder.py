@@ -169,28 +169,21 @@ class WorkflowConfig:
     def pipeline_identifier(self) -> str:
         """Short id for artifact filenames and invocation counters."""
         if self._options is None:
-            raise PipelineNotSetError(
-                "pipeline not set — call .pipeline(options) before querying identifier"
-            )
+            raise PipelineNotSetError("pipeline not set — call .pipeline(options) before querying identifier")
         return pipeline_identifier(self._options)
 
     @property
     def cli_subcommand(self) -> str:
         """The `metadata <cmd>` subcommand CliRunner will invoke."""
         if self._options is None:
-            raise PipelineNotSetError(
-                "pipeline not set — call .pipeline(options) before querying subcommand"
-            )
+            raise PipelineNotSetError("pipeline not set — call .pipeline(options) before querying subcommand")
         return cli_subcommand_for(self._options)
 
     # --- rendering ------------------------------------------------------
     def write_tmp(self, tmp_path: Path, invocation: int = 0) -> Path:
         """Dump to `<tmp_path>/cfg_<id>_<invocation>.yaml` and return the path."""
         if self._options is None:
-            raise PipelineNotSetError(
-                "pipeline not set — call .pipeline(options) before rendering"
-            )
+            raise PipelineNotSetError("pipeline not set — call .pipeline(options) before rendering")
         path = tmp_path / f"cfg_{self.pipeline_identifier}_{invocation}.yaml"
         path.write_text(yaml.safe_dump(self._doc, sort_keys=False))
         return path
-

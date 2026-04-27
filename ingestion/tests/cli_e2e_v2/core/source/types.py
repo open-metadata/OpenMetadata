@@ -35,9 +35,9 @@ class DiffKind(Enum):
     one-liner vs. expected/actual block per kind.
     """
 
-    MISSING = "missing"            # entity declared expected, not found in actual
-    UNEXPECTED = "unexpected"      # STRICT mode: actual entity not in expected set
-    VALUE_MISMATCH = "value"       # both sides present, a field differs
+    MISSING = "missing"  # entity declared expected, not found in actual
+    UNEXPECTED = "unexpected"  # STRICT mode: actual entity not in expected set
+    VALUE_MISMATCH = "value"  # both sides present, a field differs
 
 
 @dataclass(frozen=True)
@@ -66,11 +66,7 @@ class Diff:
         if self.kind is DiffKind.UNEXPECTED:
             extra = f" ({self.actual!r})" if self.actual is not None else ""
             return f"  {self.path}: unexpected{extra}"
-        return (
-            f"  {self.path}:\n"
-            f"    expected: {self.expected!r}\n"
-            f"    actual:   {self.actual!r}"
-        )
+        return f"  {self.path}:\n    expected: {self.expected!r}\n    actual:   {self.actual!r}"
 
 
 @dataclass(frozen=True)
@@ -97,6 +93,6 @@ class SourceBaselineEnforcer(Protocol):
 
     def introspect(self) -> SourceState: ...
 
-    def compare(self, expected: BaselineSpec) -> list[Drift]: ...
+    def compare(self, expected: BaselineSpec) -> list[Diff]: ...
 
-    def apply(self, drifts: list[Drift]) -> None: ...
+    def apply(self, drifts: list[Diff]) -> None: ...

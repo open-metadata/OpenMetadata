@@ -58,8 +58,6 @@ class ServiceAssert(EntityAssert[DatabaseService]):
         def _check() -> None:
             actual = self._count_entities(kind)
             if actual < at_least:
-                raise AssertionError(
-                    f"Service {self._fqn}: expected >= {at_least} {kind}, got {actual}"
-                )
+                raise AssertionError(f"Service {self._fqn}: expected >= {at_least} {kind}, got {actual}")
 
         self._eventually.run(_check, name=f"has_entity_count({kind},{at_least})")

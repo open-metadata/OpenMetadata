@@ -34,7 +34,6 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
-from metadata.generated.schema.entity.data.table import DataType
 
 from ..core.config.builder import WorkflowConfig
 from ..core.config.pipelines import (
@@ -53,10 +52,8 @@ from ..core.filter_scenarios import (
 )
 from ..core.fluent.om_client import OmClient
 from ..core.runner.cli_runner import CliRunner
-from .baseline import MYSQL_BASELINE
 from .connector import build_mysql_config, mysql_service_name
 from .expected import mysql_expected
-
 
 # ---------------------------------------------------------------------------
 # Structural (metadata pipeline) — full Expected* tree walk
@@ -150,9 +147,7 @@ def test_profiler_metrics(
     fall through to the default-set which omits minLength/maxLength.
     """
     status = cli_runner.run(
-        mysql_cfg.pipeline(
-            ProfilerPipeline(metrics=_ALL_PROFILER_METRICS)
-        ).with_filter(schemas_include=["e2e"])
+        mysql_cfg.pipeline(ProfilerPipeline(metrics=_ALL_PROFILER_METRICS)).with_filter(schemas_include=["e2e"])
     )
     assert status.success, f"profiler failures: {status.all_failures}"
 
@@ -174,9 +169,7 @@ def test_profiler_metrics(
     # middle one. Pinned here intentionally so a future change to OM's
     # median definition (e.g. switch to quantile-continuous, swap to a
     # different SQL function) surfaces as a test failure to be triaged.
-    om_client.table(customers_fqn).profile.eventually().column(
-        "credit_score"
-    ).has_metrics(
+    om_client.table(customers_fqn).profile.eventually().column("credit_score").has_metrics(
         valuesCount=5,
         nullCount=0,
         distinctCount=5,
@@ -189,9 +182,7 @@ def test_profiler_metrics(
     )
 
     # String column — first_name: Alice(5), Bob(3), Charlie(7), Diana(5), Eve(3).
-    om_client.table(customers_fqn).profile.eventually().column(
-        "first_name"
-    ).has_metrics(
+    om_client.table(customers_fqn).profile.eventually().column("first_name").has_metrics(
         valuesCount=5,
         nullCount=0,
         minLength=3,
@@ -218,9 +209,7 @@ def test_stored_procedure_bodies(
     """
     base = f"{mysql_service}.default.e2e"
 
-    om_client.stored_procedure(
-        f"{base}.sp_active_customer_count"
-    ).has_code_containing("SELECT COUNT(*)")
+    om_client.stored_procedure(f"{base}.sp_active_customer_count").has_code_containing("SELECT COUNT(*)")
 
     # Parameterized SP with DML body — different code path than the
     # parameterless SELECT-only procedure above.
@@ -274,9 +263,7 @@ def test_lineage_view_references_tables(
     # not just that "some lineage edge was emitted" via a fallback.
     # `customer_id` is `c.id AS customer_id` (identity); `total_amount`
     # is `COALESCE(SUM(t.amount), 0)` (aggregate over transactions.amount).
-    om_client.table(view_fqn).lineage.eventually().has_column_lineage(
-        source="customers.id", target="customer_id"
-    )
+    om_client.table(view_fqn).lineage.eventually().has_column_lineage(source="customers.id", target="customer_id")
     om_client.table(view_fqn).lineage.eventually().has_column_lineage(
         source="transactions.amount", target="total_amount"
     )
@@ -343,9 +330,7 @@ def test_auto_classification_tags_pii_columns(
 
     # Positive — deterministic regex-based recognizers.
     om_client.table(customers_fqn).column("email").has_tag("PII.Sensitive")
-    om_client.table(customers_fqn).column(
-        "date_of_birth"
-    ).has_tag("PII.NonSensitive")
+    om_client.table(customers_fqn).column("date_of_birth").has_tag("PII.NonSensitive")
 
     # Negative — primary key and status enum should never be PII-flagged.
     # Catches regressions where the classifier becomes overconfident on
@@ -394,9 +379,7 @@ def test_mark_deleted_tables_on_reingest(
     all_types_fqn = f"{service}.default.e2e.all_types"
 
     # Phase 1: initial ingest — all_types present, alive.
-    status = cli_runner.run(
-        cfg.pipeline(pipeline_options).with_filter(schemas_include=["e2e"])
-    )
+    status = cli_runner.run(cfg.pipeline(pipeline_options).with_filter(schemas_include=["e2e"]))
     assert status.success, f"initial ingest: {status.all_failures}"
     om_client.table(all_types_fqn).is_not_deleted()
 
@@ -406,9 +389,7 @@ def test_mark_deleted_tables_on_reingest(
 
     try:
         # Phase 3: re-ingest — markDeletedTables flips the entity to deleted=True.
-        status = cli_runner.run(
-            cfg.pipeline(pipeline_options).with_filter(schemas_include=["e2e"])
-        )
+        status = cli_runner.run(cfg.pipeline(pipeline_options).with_filter(schemas_include=["e2e"]))
         assert status.success, f"re-ingest after drop: {status.all_failures}"
 
         # Phase 4: verify the soft-delete landed on the OM entity.
@@ -419,6 +400,7 @@ def test_mark_deleted_tables_on_reingest(
         # CREATE TABLE IF NOT EXISTS + the seed insert template's
         # ON DUPLICATE KEY UPDATE handle the re-create path.
         from .baseline import get_policy
+
         get_policy().enforcer.apply([])
 
 
@@ -455,17 +437,13 @@ def test_error_containment_one_broken_view(
 
     # Phase 1: synthesize a broken view.
     with mysql_admin_engine.begin() as conn:
-        conn.execute(text(
-            "CREATE TABLE IF NOT EXISTS e2e._helper_for_broken_view "
-            "(id INT PRIMARY KEY, doomed_col INT)"
-        ))
-        conn.execute(text(
-            "CREATE OR REPLACE VIEW e2e._broken_view AS "
-            "SELECT id, doomed_col FROM e2e._helper_for_broken_view"
-        ))
-        conn.execute(text(
-            "ALTER TABLE e2e._helper_for_broken_view DROP COLUMN doomed_col"
-        ))
+        conn.execute(
+            text("CREATE TABLE IF NOT EXISTS e2e._helper_for_broken_view (id INT PRIMARY KEY, doomed_col INT)")
+        )
+        conn.execute(
+            text("CREATE OR REPLACE VIEW e2e._broken_view AS SELECT id, doomed_col FROM e2e._helper_for_broken_view")
+        )
+        conn.execute(text("ALTER TABLE e2e._helper_for_broken_view DROP COLUMN doomed_col"))
         # _broken_view now references a non-existent column — DESCRIBE fails.
 
     try:
@@ -474,9 +452,7 @@ def test_error_containment_one_broken_view(
         # and inspect what landed.
         try:
             status = cli_runner.run(
-                cfg.pipeline(
-                    MetadataPipeline(includeStoredProcedures=False)
-                ).with_filter(schemas_include=["e2e"])
+                cfg.pipeline(MetadataPipeline(includeStoredProcedures=False)).with_filter(schemas_include=["e2e"])
             )
         except Exception:  # noqa: BLE001 — partial-failure path may exit non-zero
             status = None
@@ -485,23 +461,15 @@ def test_error_containment_one_broken_view(
         # tables must be in OM. That's the whole point of "error
         # containment" — one bad apple doesn't drop the rest.
         for table in ("customers", "transactions", "all_types"):
-            om_client.table(
-                f"{service}.default.e2e.{table}"
-            ).eventually(30).exists()
+            om_client.table(f"{service}.default.e2e.{table}").eventually(30).exists()
 
         # Phase 4: optionally check the broken view was either (a) reported
         # as a failure in the status JSON or (b) ingested with no columns.
         # We accept either outcome — the key invariant is that the rest
         # of the catalog made it.
         if status is not None and status.all_failures:
-            failure_text = " ".join(
-                str(f.get("error", "")) for f in status.all_failures
-            ).lower()
-            assert (
-                "_broken_view" in failure_text
-                or "doomed_col" in failure_text
-                or "invalid" in failure_text
-            ), (
+            failure_text = " ".join(str(f.get("error", "")) for f in status.all_failures).lower()
+            assert "_broken_view" in failure_text or "doomed_col" in failure_text or "invalid" in failure_text, (
                 f"broken view didn't surface in failures: {status.all_failures}"
             )
     finally:
@@ -521,16 +489,14 @@ def test_error_containment_one_broken_view(
 # excluded; dialect-specific tables (all_types) and the view
 # (customer_txn_summary) are MySQL-only and listed here.
 _EXPECTED_TABLES_BY_VARIANT: dict[str, list[str] | None] = {
-    "inc_exact":  ["customers"],
-    "exc_exact":  ["customers", "all_types", "customer_txn_summary"],
-    "sch_inc":    None,  # None = full baseline
+    "inc_exact": ["customers"],
+    "exc_exact": ["customers", "all_types", "customer_txn_summary"],
+    "sch_inc": None,  # None = full baseline
     "regex_prio": ["customers"],
 }
 
 
-@pytest.mark.parametrize(
-    "scenario", COMMON_FILTER_SCENARIOS, ids=lambda s: s.id
-)
+@pytest.mark.parametrize("scenario", COMMON_FILTER_SCENARIOS, ids=lambda s: s.id)
 def test_filter(
     scenario: FilterScenario,
     cli_runner: CliRunner,
@@ -547,21 +513,16 @@ def test_filter(
     doesn't cross-contaminate. Expected-tables for this connector's
     baseline live in `_EXPECTED_TABLES_BY_VARIANT` above.
     """
-    expected_tables = expected_tables_for(
-        scenario, _EXPECTED_TABLES_BY_VARIANT, connector="mysql"
-    )
+    expected_tables = expected_tables_for(scenario, _EXPECTED_TABLES_BY_VARIANT, connector="mysql")
 
     service = mysql_service_name(session_uuid, variant=f"filter_{scenario.variant}")
     registered_services.append(service)
 
     cfg = build_mysql_config(service, om_server_config)
     status = cli_runner.run(
-        cfg.pipeline(MetadataPipeline(includeStoredProcedures=True))
-           .with_filter(**scenario.filter_kwargs)
+        cfg.pipeline(MetadataPipeline(includeStoredProcedures=True)).with_filter(**scenario.filter_kwargs)
     )
-    assert status.success, (
-        f"filter[{scenario.variant}] failures: {status.all_failures}"
-    )
+    assert status.success, f"filter[{scenario.variant}] failures: {status.all_failures}"
 
     assert_service_matches(
         mysql_expected(service, tables=expected_tables),

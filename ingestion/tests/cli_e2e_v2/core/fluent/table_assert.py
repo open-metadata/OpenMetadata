@@ -69,9 +69,8 @@ class TableAssert(EntityAssert[Table]):
             table = self._fetch()
             actual = {model_str(t.tagFQN) for t in (table.tags or [])}
             if fqn not in actual:
-                raise AssertionError(
-                    f"Table {self._fqn} missing tag {fqn!r}. Actual tags: {sorted(actual)}"
-                )
+                raise AssertionError(f"Table {self._fqn} missing tag {fqn!r}. Actual tags: {sorted(actual)}")
+
         self._eventually.run(_check, name=f"has_tag({fqn})")
         return self
 
@@ -81,9 +80,8 @@ class TableAssert(EntityAssert[Table]):
             owners = table.owners.root if table.owners else []
             actual = {o.name for o in owners}
             if name not in actual:
-                raise AssertionError(
-                    f"Table {self._fqn} missing owner {name!r}. Actual owners: {sorted(actual)}"
-                )
+                raise AssertionError(f"Table {self._fqn} missing owner {name!r}. Actual owners: {sorted(actual)}")
+
         self._eventually.run(_check, name=f"has_owner({name})")
         return self
 
@@ -99,18 +97,17 @@ class TableAssert(EntityAssert[Table]):
         MySQL lands FK data here — not as a lineage edge. Matching delegates
         to `_fk_matches`.
         """
+
         def _check() -> None:
             constraints = list(self._fetch(fields=["tableConstraints"]).tableConstraints or [])
-            if any(
-                _fk_matches(c, column, referenced_table, referenced_column)
-                for c in constraints
-            ):
+            if any(_fk_matches(c, column, referenced_table, referenced_column) for c in constraints):
                 return
             raise AssertionError(
                 f"Table {self._fqn} missing FOREIGN_KEY({column}) -> "
                 f"{referenced_table}({referenced_column}). "
                 f"Constraints present: {constraints!r}"
             )
+
         self._eventually.run(
             _check,
             name=f"has_foreign_key_constraint({column}->{referenced_table}.{referenced_column})",
@@ -136,19 +133,14 @@ class TableAssert(EntityAssert[Table]):
 
         def _check() -> None:
             entity = self._fetch(fields=["schemaDefinition"])
-            actual = (
-                model_str(entity.schemaDefinition)
-                if entity.schemaDefinition
-                else ""
-            )
+            actual = model_str(entity.schemaDefinition) if entity.schemaDefinition else ""
             if wanted_lower not in actual.lower():
                 raise AssertionError(
                     f"Table {self._fqn} schemaDefinition does not contain "
                     f"{text!r} (case-insensitive). Actual: {actual!r}"
                 )
-        self._eventually.run(
-            _check, name=f"has_schema_definition_containing({text!r})"
-        )
+
+        self._eventually.run(_check, name=f"has_schema_definition_containing({text!r})")
         return self
 
     def is_soft_deleted(self) -> "TableAssert":
@@ -159,23 +151,22 @@ class TableAssert(EntityAssert[Table]):
         when soft-deleted, then check the `deleted` field. Used by
         mark-deleted tests after re-ingest with `markDeletedTables=True`.
         """
+
         def _check() -> None:
             if not self._fetch_any_state().deleted:
-                raise AssertionError(
-                    f"Table {self._fqn} is not soft-deleted (deleted=False)"
-                )
+                raise AssertionError(f"Table {self._fqn} is not soft-deleted (deleted=False)")
+
         self._eventually.run(_check, name="is_soft_deleted")
         return self
 
     def is_not_deleted(self) -> "TableAssert":
         """Assert the table exists in OM with `deleted=False`."""
+
         def _check() -> None:
             entity = self._fetch_any_state()
             if entity.deleted:
-                raise AssertionError(
-                    f"Table {self._fqn} is unexpectedly soft-deleted "
-                    f"(deleted=True)"
-                )
+                raise AssertionError(f"Table {self._fqn} is unexpectedly soft-deleted (deleted=True)")
+
         self._eventually.run(_check, name="is_not_deleted")
         return self
 
@@ -189,9 +180,7 @@ class TableAssert(EntityAssert[Table]):
             include="all",
         )
         if entity is None:
-            raise AssertionError(
-                f"Table not found (in any state): {self._fqn}"
-            )
+            raise AssertionError(f"Table not found (in any state): {self._fqn}")
         return entity
 
     # --- descent into column / namespaces -----------------------------
@@ -227,17 +216,14 @@ class ColumnAssert:
         for c in table.columns or []:
             if model_str(c.name) == self._column_name:
                 return c
-        raise AssertionError(
-            f"Column {self._column_name!r} not found on table {self._table_fqn}"
-        )
+        raise AssertionError(f"Column {self._column_name!r} not found on table {self._table_fqn}")
 
     def has_tag(self, fqn: str) -> "ColumnAssert":
         column = self._fetch_column()
         actual = {model_str(t.tagFQN) for t in (column.tags or [])}
         if fqn not in actual:
             raise AssertionError(
-                f"Column {self._table_fqn}.{self._column_name} missing tag {fqn!r}. "
-                f"Actual tags: {sorted(actual)}"
+                f"Column {self._table_fqn}.{self._column_name} missing tag {fqn!r}. Actual tags: {sorted(actual)}"
             )
         return self
 
@@ -262,8 +248,7 @@ class ColumnAssert:
         column = self._fetch_column()
         if column.dataType != data_type:
             raise AssertionError(
-                f"Column {self._table_fqn}.{self._column_name} has type {column.dataType}, "
-                f"expected {data_type}"
+                f"Column {self._table_fqn}.{self._column_name} has type {column.dataType}, expected {data_type}"
             )
         return self
 
@@ -272,7 +257,6 @@ class ColumnAssert:
         desc = model_str(column.description) if column.description else ""
         if text not in desc:
             raise AssertionError(
-                f"Column {self._table_fqn}.{self._column_name} description does not contain {text!r}. "
-                f"Actual: {desc!r}"
+                f"Column {self._table_fqn}.{self._column_name} description does not contain {text!r}. Actual: {desc!r}"
             )
         return self

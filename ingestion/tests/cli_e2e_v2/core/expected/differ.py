@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 
+from ..fluent.om_client import OmClient
 from ..source.types import Diff, DiffKind
 from .types import (
     ExpectedColumn,
@@ -41,7 +42,6 @@ from .types import (
     ExpectedTable,
     MatchMode,
 )
-from ..fluent.om_client import OmClient
 
 
 class StructuralMismatch(AssertionError):
@@ -69,13 +69,9 @@ class StructuralMismatch(AssertionError):
         for _, _, category in classified:
             counts[category] = counts.get(category, 0) + 1
         summary = ", ".join(
-            f"{n} {cat}{'' if n == 1 else 's'}"
-            for cat, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+            f"{n} {cat}{'' if n == 1 else 's'}" for cat, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
         )
-        header = (
-            f"StructuralMismatch: {len(sorted_diffs)} diff"
-            f"{'' if len(sorted_diffs) == 1 else 's'} ({summary})"
-        )
+        header = f"StructuralMismatch: {len(sorted_diffs)} diff{'' if len(sorted_diffs) == 1 else 's'} ({summary})"
 
         # Body: diffs grouped by owning-entity scope.
         body_lines: list[str] = []
@@ -99,14 +95,14 @@ class StructuralMismatch(AssertionError):
 # Ordered from finest-grained to coarsest; both passes walk top-to-bottom
 # so the first hit wins for category and scope alike.
 _PATH_LEVELS: tuple[tuple[str, str, bool], ...] = (
-    (".column[",    "column",    False),
-    (".seed",       "seed",      False),
-    ("procedure[",  "procedure", True),
-    ("view[",       "view",      True),
-    ("table[",      "table",     True),
-    ("schema[",     "schema",    True),
-    ("database[",   "database",  True),
-    ("service[",    "service",   True),
+    (".column[", "column", False),
+    (".seed", "seed", False),
+    ("procedure[", "procedure", True),
+    ("view[", "view", True),
+    ("table[", "table", True),
+    ("schema[", "schema", True),
+    ("database[", "database", True),
+    ("service[", "service", True),
 )
 
 
@@ -177,10 +173,7 @@ def _diff_node(
     """
     differ = _DIFFERS.get(type(node))
     if differ is None:
-        raise TypeError(
-            f"no differ registered for {type(node).__name__}; "
-            f"add an entry to _DIFFERS in differ.py"
-        )
+        raise TypeError(f"no differ registered for {type(node).__name__}; add an entry to _DIFFERS in differ.py")
     differ(node, parent_path, om, mode, diffs)
 
 
@@ -207,9 +200,7 @@ def _diff_service(
         diffs.append(Diff(path=path, kind=DiffKind.MISSING))
         return
     if actual.serviceType != node.service_type:
-        diffs.append(
-            Diff(path=f"{path}.serviceType", expected=node.service_type, actual=actual.serviceType)
-        )
+        diffs.append(Diff(path=f"{path}.serviceType", expected=node.service_type, actual=actual.serviceType))
 
     for child in node.databases:
         _diff_node(child, self_fqn, om, mode, diffs)
@@ -306,9 +297,7 @@ def _diff_table(
     self_fqn = f"{parent_path}.{node.name}"
     path = f"table[{node.name}]"
 
-    actual = om.get_by_name(
-        entity=Table, fqn=self_fqn, fields=["tags", "owners", "columns"]
-    )
+    actual = om.get_by_name(entity=Table, fqn=self_fqn, fields=["tags", "owners", "columns"])
     if actual is None:
         diffs.append(Diff(path=path, kind=DiffKind.MISSING))
         return
@@ -421,9 +410,7 @@ def _check_strict_extras(
     name at emit time. Pagination: capped at _STRICT_LIST_LIMIT — fine for
     e2e-sized services.
     """
-    for actual in om.list_all_entities(
-        entity=entity_cls, params=list_params, limit=_STRICT_LIST_LIMIT
-    ):
+    for actual in om.list_all_entities(entity=entity_cls, params=list_params, limit=_STRICT_LIST_LIMIT):
         name = model_str(actual.name)
         if name in expected_names:
             continue
@@ -433,9 +420,9 @@ def _check_strict_extras(
 # Registry is declared AFTER the per-node differs so it can reference them
 # by name. Adding a new node type = one function above + one entry here.
 _DIFFERS: dict[type, _NodeDiffer] = {
-    ExpectedService:          _diff_service,
-    ExpectedDatabase:         _diff_database,
-    ExpectedSchema:           _diff_schema,
-    ExpectedTable:            _diff_table,
-    ExpectedStoredProcedure:  _diff_stored_procedure,
+    ExpectedService: _diff_service,
+    ExpectedDatabase: _diff_database,
+    ExpectedSchema: _diff_schema,
+    ExpectedTable: _diff_table,
+    ExpectedStoredProcedure: _diff_stored_procedure,
 }

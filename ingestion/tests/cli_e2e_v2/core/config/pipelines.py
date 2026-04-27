@@ -41,7 +41,6 @@ from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline as TestPipeline,
 )
 
-
 PipelineOptions = Union[
     MetadataPipeline,
     ProfilerPipeline,
@@ -70,11 +69,11 @@ class _PipelineSpec:
 # Single source of truth for per-pipeline dispatch. Adding a pipeline
 # touches exactly this dict plus the re-export above.
 _SPECS: dict[type, _PipelineSpec] = {
-    MetadataPipeline:           _PipelineSpec("ingest",   "metadata", ""),
-    ProfilerPipeline:           _PipelineSpec("profile",  "profiler", ""),
-    LineagePipeline:            _PipelineSpec("ingest",   "lineage",  "-lineage"),
-    UsagePipeline:              _PipelineSpec("usage",    "usage",    "-usage"),
-    TestPipeline:               _PipelineSpec("test",     "test",     ""),
+    MetadataPipeline: _PipelineSpec("ingest", "metadata", ""),
+    ProfilerPipeline: _PipelineSpec("profile", "profiler", ""),
+    LineagePipeline: _PipelineSpec("ingest", "lineage", "-lineage"),
+    UsagePipeline: _PipelineSpec("usage", "usage", "-usage"),
+    TestPipeline: _PipelineSpec("test", "test", ""),
     AutoClassificationPipeline: _PipelineSpec("classify", "classify", ""),
 }
 

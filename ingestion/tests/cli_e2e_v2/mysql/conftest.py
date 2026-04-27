@@ -25,7 +25,6 @@ from __future__ import annotations
 from typing import Callable
 
 import pytest
-
 from sqlalchemy.engine import Engine
 
 from ..core.config.builder import WorkflowConfig
@@ -60,8 +59,10 @@ def mysql_expected_factory(
     `mysql_expected_factory(tables=[...])` returns a projection (used by
     filter tests to pass a pre-built expected tree into the differ).
     """
+
     def _factory(*, tables: list[str] | None = None) -> ExpectedService:
         return mysql_expected(mysql_service, tables=tables)
+
     return _factory
 
 

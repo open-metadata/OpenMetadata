@@ -308,9 +308,7 @@ def test_write_status_file_reports_failure_when_source_fails(tmp_path):
 
 
 def test_write_status_file_includes_ingestion_pipeline_fqn(tmp_path):
-    fqn_config = config.model_copy(
-        update={"ingestionPipelineFQN": "test_service.test_pipeline"}
-    )
+    fqn_config = config.model_copy(update={"ingestionPipelineFQN": "test_service.test_pipeline"})
     workflow = SimpleWorkflow(config=fqn_config)
     workflow.execute()
 

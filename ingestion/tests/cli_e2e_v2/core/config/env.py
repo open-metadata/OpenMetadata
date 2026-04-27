@@ -78,10 +78,7 @@ class Env(Generic[_Req]):
         if default is not None:
             os.environ.setdefault(key, default)
         if required and not os.environ.get(key):
-            raise EnvLoadError(
-                f"required env var {key} not set. "
-                f"Set it in your shell or GitHub Actions secrets."
-            )
+            raise EnvLoadError(f"required env var {key} not set. Set it in your shell or GitHub Actions secrets.")
 
     def ref(self) -> str:
         """Return '${KEY}' for embedding in YAML.

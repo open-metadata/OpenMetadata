@@ -107,10 +107,7 @@ class CliRunner:
             stdout_path.write_text(out)
             raise CliExecutionError(
                 exit_code=-1,
-                stderr=(
-                    f"CLI timed out after {timeout}s.\n"
-                    f"stderr so far:\n{err}"
-                ),
+                stderr=(f"CLI timed out after {timeout}s.\nstderr so far:\n{err}"),
                 stdout=out,
                 config_path=cfg_path,
                 status_path=status_path,
@@ -125,7 +122,12 @@ class CliRunner:
         # because pytest's tmp_path lives under a deep auto-generated dir.
         logger.info(
             "[cli] %s invocation=%d exit=%d cfg=%s status=%s stdout=%s",
-            identifier, n, result.returncode, cfg_path, status_path, stdout_path,
+            identifier,
+            n,
+            result.returncode,
+            cfg_path,
+            status_path,
+            stdout_path,
         )
 
         if result.returncode != 0:
@@ -145,9 +147,7 @@ class CliRunner:
         if not status_path.exists():
             raise CliExecutionError(
                 exit_code=0,
-                stderr=(
-                    f"CLI exited 0 but no status file was written at {status_path}."
-                ),
+                stderr=(f"CLI exited 0 but no status file was written at {status_path}."),
                 stdout=result.stdout,
                 config_path=cfg_path,
                 status_path=status_path,

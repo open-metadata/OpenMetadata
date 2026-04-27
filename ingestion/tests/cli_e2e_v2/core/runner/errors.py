@@ -71,8 +71,7 @@ class CliExecutionError(E2ESetupError):
         self.step_failures_summary = step_failures_summary
 
         status_line = (
-            f"  status:  {status_path} "
-            f"(exists={status_path.exists() if status_path else 'n/a'})\n"
+            f"  status:  {status_path} (exists={status_path.exists() if status_path else 'n/a'})\n"
             if status_path is not None
             else ""
         )
@@ -80,9 +79,7 @@ class CliExecutionError(E2ESetupError):
         # a developer scanning the exception sees the actionable content
         # first — the wall of capture logs is still below for deep dives.
         failures_block = (
-            f"  step failures (from status file):\n{step_failures_summary}\n"
-            if step_failures_summary
-            else ""
+            f"  step failures (from status file):\n{step_failures_summary}\n" if step_failures_summary else ""
         )
         super().__init__(
             f"metadata CLI exited with code {exit_code}\n"

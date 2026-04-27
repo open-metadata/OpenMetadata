@@ -36,10 +36,7 @@ class LineageAssert:
 
     def _check_edge(self, direction: _Direction, fqn: str) -> None:
         data = self._lineage()
-        edges = {
-            n.get("fullyQualifiedName")
-            for n in (data.get(f"{direction}Edges") or [])
-        }
+        edges = {n.get("fullyQualifiedName") for n in (data.get(f"{direction}Edges") or [])}
         if fqn in edges:
             return
         # Fallback: some responses put participants in `nodes` instead of
@@ -47,8 +44,7 @@ class LineageAssert:
         nodes = {n.get("fullyQualifiedName") for n in (data.get("nodes") or [])}
         if fqn not in nodes:
             raise AssertionError(
-                f"Table {self._fqn} has no {direction} {fqn!r}. "
-                f"{direction}s={sorted(edges)} nodes={sorted(nodes)}"
+                f"Table {self._fqn} has no {direction} {fqn!r}. {direction}s={sorted(edges)} nodes={sorted(nodes)}"
             )
 
     def has_upstream(self, fqn: str) -> "LineageAssert":
@@ -76,8 +72,7 @@ class LineageAssert:
                     to = col_edge.get("toColumn") or ""
                     if any(source in f for f in froms) and target in to:
                         return
-            raise AssertionError(
-                f"No column lineage {source!r} -> {target!r} on table {self._fqn}"
-            )
+            raise AssertionError(f"No column lineage {source!r} -> {target!r} on table {self._fqn}")
+
         self._eventually.run(_check, name=f"has_column_lineage({source}->{target})")
         return self

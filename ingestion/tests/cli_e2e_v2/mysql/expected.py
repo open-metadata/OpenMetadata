@@ -36,7 +36,6 @@ from ..core.expected.types import (
 )
 from .baseline import MYSQL_BASELINE
 
-
 # -----------------------------------------------------------------------------
 # MYSQL_TYPE_MAP — extends CORE with MySQL dialect classes + Boolean override.
 # Entries flagged TASK25 may need correction after the first live ingest.
@@ -45,31 +44,31 @@ from .baseline import MYSQL_BASELINE
 MYSQL_TYPE_MAP: TypeMap = {
     **CORE_TYPE_MAP,
     # Core overrides (dialect behaves differently than the generic mapping).
-    Boolean:            DataType.TINYINT,     # MySQL stores BOOL as TINYINT(1); TASK25
+    Boolean: DataType.TINYINT,  # MySQL stores BOOL as TINYINT(1); TASK25
     # Integer variants — MRO walks through Integer first, so we must
     # override before it resolves to DataType.INT.
-    mysql.TINYINT:      DataType.TINYINT,
-    mysql.MEDIUMINT:    DataType.INT,         # no MEDIUMINT in OM DataType
+    mysql.TINYINT: DataType.TINYINT,
+    mysql.MEDIUMINT: DataType.INT,  # no MEDIUMINT in OM DataType
     # Float variants — same reasoning; mysql.DOUBLE extends Float.
-    mysql.DOUBLE:       DataType.DOUBLE,
+    mysql.DOUBLE: DataType.DOUBLE,
     # String-family size variants — mysql.MEDIUMTEXT / LONGTEXT / TINYTEXT
     # extend `_StringType`, which MRO-walks to String (not Text), so CORE's
     # `String → VARCHAR` would give the wrong answer without these entries.
-    mysql.TINYTEXT:     DataType.TEXT,        # no TINYTEXT in OM DataType
-    mysql.MEDIUMTEXT:   DataType.MEDIUMTEXT,
-    mysql.LONGTEXT:     DataType.TEXT,        # LONGTEXT absent from enum; TASK25
+    mysql.TINYTEXT: DataType.TEXT,  # no TINYTEXT in OM DataType
+    mysql.MEDIUMTEXT: DataType.MEDIUMTEXT,
+    mysql.LONGTEXT: DataType.TEXT,  # LONGTEXT absent from enum; TASK25
     # Binary-family — mysql.BINARY / VARBINARY / *BLOB extend `_Binary`,
     # which MRO skips past `LargeBinary`, so CORE's `LargeBinary → BLOB`
     # doesn't help the binary/varbinary/tiny/medium/long variants.
-    mysql.BINARY:       DataType.BINARY,
-    mysql.VARBINARY:    DataType.VARBINARY,
-    mysql.TINYBLOB:     DataType.BLOB,        # no TINYBLOB in OM DataType
-    mysql.MEDIUMBLOB:   DataType.MEDIUMBLOB,
-    mysql.LONGBLOB:     DataType.LONGBLOB,
+    mysql.BINARY: DataType.BINARY,
+    mysql.VARBINARY: DataType.VARBINARY,
+    mysql.TINYBLOB: DataType.BLOB,  # no TINYBLOB in OM DataType
+    mysql.MEDIUMBLOB: DataType.MEDIUMBLOB,
+    mysql.LONGBLOB: DataType.LONGBLOB,
     # Dialect-only types with no generic SQLAlchemy parent in CORE.
-    mysql.YEAR:         DataType.YEAR,
-    mysql.BIT:          DataType.BIT,
-    mysql.SET:          DataType.SET,
+    mysql.YEAR: DataType.YEAR,
+    mysql.BIT: DataType.BIT,
+    mysql.SET: DataType.SET,
     # NOTE: mysql.JSON / mysql.ENUM / mysql.BLOB / mysql.TIMESTAMP are
     # resolved via CORE_TYPE_MAP through the MRO walk (see type_map.py).
     # mysql.VARCHAR / mysql.CHAR / mysql.TEXT likewise — no entries needed.

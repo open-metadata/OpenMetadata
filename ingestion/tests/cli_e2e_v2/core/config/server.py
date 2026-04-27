@@ -40,9 +40,7 @@ class TokenMintError(E2ESetupError):
     """Raised when the bot-token mint flow fails (login, lookup, or fetch)."""
 
 
-def _mint_ingestion_bot_token(
-    server_url: str, admin_email: str, admin_password: str
-) -> str:
+def _mint_ingestion_bot_token(server_url: str, admin_email: str, admin_password: str) -> str:
     """Mint a server-signed, long-lived ingestion-bot JWT.
 
     Three hops against the live OM server:
@@ -134,12 +132,8 @@ class ServerConfig:
 
         minted = _mint_ingestion_bot_token(
             server_url=server_url,
-            admin_email=Env(
-                "OM_ADMIN_EMAIL", default=_DEFAULT_ADMIN_EMAIL
-            ).get(),
-            admin_password=Env(
-                "OM_ADMIN_PASSWORD", default=_DEFAULT_ADMIN_PASSWORD
-            ).get(),
+            admin_email=Env("OM_ADMIN_EMAIL", default=_DEFAULT_ADMIN_EMAIL).get(),
+            admin_password=Env("OM_ADMIN_PASSWORD", default=_DEFAULT_ADMIN_PASSWORD).get(),
         )
         return cls(
             server_url=server_url,

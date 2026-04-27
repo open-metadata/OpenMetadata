@@ -74,6 +74,4 @@ def metadata_ingest_once(
 
     runner = CliRunner(tmp_path_factory.mktemp(f"{label}_ingest"))
     status = runner.run(pipeline_cfg)
-    assert status.success, (
-        f"module-scoped {label} metadata ingest failed: {status.all_failures}"
-    )
+    assert status.success, f"module-scoped {label} metadata ingest failed: {status.all_failures}"

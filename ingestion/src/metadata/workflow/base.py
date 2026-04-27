@@ -229,9 +229,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """Based on the internal workflow status, raise a WorkflowExecutionError"""
         for step in self.workflow_steps():
             if not self._step_meets_success_threshold(step):
-                raise WorkflowExecutionError(
-                    f"{step.name} reported errors: {Summary.from_step(step)}"
-                )
+                raise WorkflowExecutionError(f"{step.name} reported errors: {Summary.from_step(step)}")
 
             if raise_warnings and step.status.warnings:
                 raise WorkflowExecutionError(f"{step.name} reported warning: {Summary.from_step(step)}")
@@ -429,10 +427,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             }
         """
         ingestion_status = self.build_ingestion_status()
-        success = all(
-            self._step_meets_success_threshold(step)
-            for step in self.workflow_steps()
-        )
+        success = all(self._step_meets_success_threshold(step) for step in self.workflow_steps())
         payload = {
             "pipeline_type": self.config.source.type,
             "ingestion_pipeline_fqn": self.config.ingestionPipelineFQN,

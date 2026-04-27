@@ -62,19 +62,28 @@ def retry_until(
             if attempts == 1:
                 logger.debug(
                     "[eventually:%s] attempt %d failed: %s (retrying for up to %ds)",
-                    name, attempts, exc, timeout,
+                    name,
+                    attempts,
+                    exc,
+                    timeout,
                 )
             if verbose:
                 elapsed = time.monotonic() - start
                 logger.info(
                     "[eventually:%s] attempt %d failed at %.1fs: %s",
-                    name, attempts, elapsed, exc,
+                    name,
+                    attempts,
+                    elapsed,
+                    exc,
                 )
             if time.monotonic() >= deadline:
                 elapsed = time.monotonic() - start
                 logger.error(
                     "[eventually:%s] gave up after %d attempts in %.1fs: %s",
-                    name, attempts, elapsed, exc,
+                    name,
+                    attempts,
+                    elapsed,
+                    exc,
                 )
                 raise AssertionError(
                     f"eventually[{name}] timed out after {attempts} attempts "

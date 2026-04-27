@@ -48,22 +48,22 @@ TypeMap = dict[type, DataType]
 # `String` / `LargeBinary`, or they want a more-specific OM DataType than
 # the core parent yields.
 CORE_TYPE_MAP: TypeMap = {
-    Integer:      DataType.INT,
-    BigInteger:   DataType.BIGINT,
+    Integer: DataType.INT,
+    BigInteger: DataType.BIGINT,
     SmallInteger: DataType.SMALLINT,
-    String:       DataType.VARCHAR,
-    Text:         DataType.TEXT,
-    CHAR:         DataType.CHAR,
-    Date:         DataType.DATE,
-    DateTime:     DataType.DATETIME,
-    Time:         DataType.TIME,
-    TIMESTAMP:    DataType.TIMESTAMP,    # via MRO: mysql.TIMESTAMP, pg.TIMESTAMP
-    Numeric:      DataType.DECIMAL,
-    Float:        DataType.FLOAT,
-    Boolean:      DataType.BOOLEAN,      # dialect overrides (e.g. MySQL: TINYINT)
-    Enum:         DataType.ENUM,         # via MRO: mysql.ENUM, pg.ENUM
-    JSON:         DataType.JSON,         # via MRO: mysql.JSON, pg.JSON
-    LargeBinary:  DataType.BLOB,         # via MRO: mysql.BLOB
+    String: DataType.VARCHAR,
+    Text: DataType.TEXT,
+    CHAR: DataType.CHAR,
+    Date: DataType.DATE,
+    DateTime: DataType.DATETIME,
+    Time: DataType.TIME,
+    TIMESTAMP: DataType.TIMESTAMP,  # via MRO: mysql.TIMESTAMP, pg.TIMESTAMP
+    Numeric: DataType.DECIMAL,
+    Float: DataType.FLOAT,
+    Boolean: DataType.BOOLEAN,  # dialect overrides (e.g. MySQL: TINYINT)
+    Enum: DataType.ENUM,  # via MRO: mysql.ENUM, pg.ENUM
+    JSON: DataType.JSON,  # via MRO: mysql.JSON, pg.JSON
+    LargeBinary: DataType.BLOB,  # via MRO: mysql.BLOB
 }
 
 
@@ -78,6 +78,5 @@ def resolve_om_type(col_type: object, type_map: TypeMap) -> DataType:
         if cls in type_map:
             return type_map[cls]
     raise ValueError(
-        f"no OM DataType mapping for SQLAlchemy type "
-        f"{type(col_type).__name__}. Add an entry to the dialect's type map."
+        f"no OM DataType mapping for SQLAlchemy type {type(col_type).__name__}. Add an entry to the dialect's type map."
     )

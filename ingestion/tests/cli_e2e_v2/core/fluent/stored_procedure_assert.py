@@ -21,6 +21,7 @@ class StoredProcedureAssert(EntityAssert[StoredProcedure]):
 
     def has_code_containing(self, text: str) -> "StoredProcedureAssert":
         """Assert the stored procedure's SQL body contains the given substring."""
+
         def _check() -> None:
             sp = self._fetch()
             code = ""
@@ -28,8 +29,8 @@ class StoredProcedureAssert(EntityAssert[StoredProcedure]):
                 code = sp.storedProcedureCode.code
             if text not in code:
                 raise AssertionError(
-                    f"StoredProcedure {self._fqn} code does not contain {text!r}. "
-                    f"Actual code: {code!r}"
+                    f"StoredProcedure {self._fqn} code does not contain {text!r}. Actual code: {code!r}"
                 )
+
         self._eventually.run(_check, name=f"has_code_containing({text!r})")
         return self
