@@ -49,13 +49,11 @@ def install(session, *args, **kwargs):
     venv_backend="uv|venv",
 )
 def lint(session):
-    # Usually, we want just one Python version for linting and type check,
-    # so no need to specify them here
-    session.install(".[dev]")
-    # Configuration from pyproject.toml is taken into account out of the box
-    session.run("black", "--check", ".", "../openmetadata-airflow-apis/")
-    session.run("isort", "--check-only", ".", "../openmetadata-airflow-apis/")
-    session.run("pycln", "--diff", ".", "../openmetadata-airflow-apis/")
+    # Single-tool replacement for the old black + isort + pycln stack.
+    # Mirrors `make py_format_check` so local nox and Makefile stay in sync.
+    install(session, ".[dev]")
+    session.run("ruff", "check", ".", "../openmetadata-airflow-apis/")
+    session.run("ruff", "format", "--check", ".", "../openmetadata-airflow-apis/")
 
 
 @nox.session(name="unit", reuse_venv=True, venv_backend="uv|venv", python=get_python_versions())
