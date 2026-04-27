@@ -10,10 +10,11 @@
 #  limitations under the License.
 """Databricks legacy source module"""
 
+import json
 import re
 import traceback
 from copy import deepcopy
-from typing import Iterable, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
@@ -37,6 +38,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import Markdown
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -119,6 +121,111 @@ _type_map.update(
 )
 
 
+def _fetch_nested_descriptions_via_describe_json(
+    connection,
+    db_name: str,
+    schema: str,
+    table_name: str,
+) -> Dict[str, Dict[Tuple[str, ...], str]]:
+    """Run ``DESCRIBE TABLE EXTENDED <fqn> AS JSON`` and return a per-column
+    map of ``{field_path_tuple: comment}``.
+
+    ``DESCRIBE ... AS JSON`` is supported on Databricks Runtime 16.4+ and
+    returns a structured payload with ``columns[].type.fields[].comment`` on
+    nested struct fields — the only SQL path that exposes nested COMMENTs
+    (Spark's regular ``simpleString`` output strips them).
+
+    Returns an empty dict on any failure (older runtime, JSON parse error,
+    schema variation) so the caller cleanly degrades to top-level-only
+    descriptions.
+    """
+    try:
+        result = connection.execute(
+            text(
+                f"DESCRIBE TABLE EXTENDED `{db_name}`.`{schema}`.`{table_name}`"
+                f" AS JSON"
+            )
+        ).fetchone()
+        if not result or not result[0]:
+            return {}
+        payload = json.loads(result[0])
+    except Exception as err:  # pylint: disable=broad-except
+        logger.debug(
+            f"DESCRIBE AS JSON unavailable or unparseable for "
+            f"{db_name}.{schema}.{table_name}: {err}"
+        )
+        return {}
+
+    return _build_column_descriptions_map(payload)
+
+
+def _build_column_descriptions_map(
+    payload: dict,
+) -> Dict[str, Dict[Tuple[str, ...], str]]:
+    """From a DESCRIBE-AS-JSON payload, return ``{column_name: {path: comment}}``
+    for every top-level column whose type contains commented nested fields."""
+    if not isinstance(payload, dict):
+        return {}
+    result: Dict[str, Dict[Tuple[str, ...], str]] = {}
+    for col in payload.get("columns") or []:
+        if not isinstance(col, dict):
+            continue
+        col_name = col.get("name")
+        if not col_name:
+            continue
+        descriptions: Dict[Tuple[str, ...], str] = {}
+        _collect_nested_descriptions(col.get("type"), [], descriptions)
+        if descriptions:
+            result[col_name] = descriptions
+    return result
+
+
+def _collect_nested_descriptions(
+    type_node,
+    path: List[str],
+    descriptions: Dict[Tuple[str, ...], str],
+) -> None:
+    """Walk a JSON ``type`` node, collecting comments from struct fields.
+
+    OM does not surface map values as named children, so map types are not
+    descended. Array wrappers do not add a path level — children of an
+    ``array<struct<...>>`` column are the struct's fields directly."""
+    if not isinstance(type_node, dict):
+        return
+    type_name = (type_node.get("name") or "").lower()
+    if type_name == "struct":
+        for field in type_node.get("fields") or []:
+            if not isinstance(field, dict):
+                continue
+            field_name = field.get("name")
+            if not field_name:
+                continue
+            field_path = path + [field_name]
+            if field.get("comment"):
+                descriptions[tuple(field_path)] = field["comment"]
+            _collect_nested_descriptions(field.get("type"), field_path, descriptions)
+    elif type_name == "array":
+        _collect_nested_descriptions(type_node.get("element_type"), path, descriptions)
+
+
+def _apply_nested_descriptions(
+    column: "Column",
+    descriptions: Dict[Tuple[str, ...], str],
+    path: Tuple[str, ...],
+) -> None:
+    """Walk a parsed Column tree and assign descriptions from a path-keyed
+    map. Path matches struct-field-name nesting; arrays do not add a level
+    (children of an array column are the struct's fields)."""
+    if not column.children:
+        return
+    for child in column.children:
+        child_name = child.name.root if hasattr(child.name, "root") else str(child.name)
+        child_path = path + (child_name,)
+        if not child.description and child_path in descriptions:
+            child.description = Markdown(root=descriptions[child_path])
+        _apply_nested_descriptions(child, descriptions, child_path)
+
+
 # This method is from hive dialect originally but
 # is overridden to optimize DESCRIBE query execution
 def _get_table_columns(self, connection, table_name, schema, db_name):
@@ -181,6 +288,9 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     """
 
     rows = _get_column_rows(self, connection, table_name, schema, kw.get("db_name"))
+    nested_descriptions_by_column = _fetch_nested_descriptions_via_describe_json(
+        connection, kw.get("db_name"), schema, table_name
+    )
     result = []
     for col_name, col_type, _comment in rows:
         # DESCRIBE TABLE EXTENDED emits real columns first, then '#'-prefixed
@@ -235,6 +345,9 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     }
                     col_info["system_data_type"] = sub_rows["data_type"]
                     col_info["is_complex"] = True
+                    nested_descriptions = nested_descriptions_by_column.get(col_name)
+                    if nested_descriptions:
+                        col_info["nested_descriptions"] = nested_descriptions
                 except (DatabaseError, KeyError) as err:
                     logger.error(
                         f"Failed to fetch complex-type details for column "
@@ -337,7 +450,7 @@ def get_table_comment(  # pylint: disable=unused-argument
     )
     try:
         for result in list(cursor):
-            data = result.values()
+            data = tuple(result)
             if data[0] and data[0].strip() == "Comment":
                 return {"text": data[1] if data and data[1] else None}
     except Exception:
@@ -526,6 +639,13 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         except DatabaseError as soe:
             logger.debug(f"Failed to fetch catalogs due to: {soe}")
             self.is_older_version = True
+
+    def _process_complex_col_type(self, parsed_string: dict, column: dict) -> Column:
+        om_column = super()._process_complex_col_type(parsed_string, column)
+        nested_descriptions = column.get("nested_descriptions")
+        if nested_descriptions:
+            _apply_nested_descriptions(om_column, nested_descriptions, ())
+        return om_column
 
     @classmethod
     def create(
@@ -912,7 +1032,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 schema=schema_name,
             )
             for result in list(cursor):
-                data = result.values()
+                data = tuple(result)
                 if data[0] and data[0].strip() == "Comment":
                     description = data[1] if data and data[1] else None
                     return description
@@ -943,7 +1063,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 schema=schema_name,
             )
             for result in list(cursor):
-                data = result.values()
+                data = tuple(result)
                 if data[0] and data[0].strip() == "Comment":
                     description = data[1] if data and data[1] else None
                 elif data[0] and data[0].strip() == "Location":
