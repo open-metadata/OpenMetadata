@@ -452,6 +452,25 @@ jest.mock('@openmetadata/ui-core-components', () => {
         }),
         label
       ),
+    Input: ({
+      value,
+      onChange,
+      placeholder,
+      'data-testid': testId,
+      'aria-label': ariaLabel,
+      inputClassName,
+      isDisabled,
+    }) =>
+      React.createElement('input', {
+        'aria-label': ariaLabel,
+        className: inputClassName,
+        'data-testid': testId,
+        disabled: isDisabled,
+        onChange: (e) => onChange?.(e.target.value),
+        placeholder,
+        type: 'text',
+        value: value ?? '',
+      }),
   };
 });
 

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Input, InputProps } from 'antd';
+import { Input } from '@openmetadata/ui-core-components';
+import { X as XClose } from '@untitledui/icons';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
@@ -32,7 +32,6 @@ export type SearchBarProps = {
   removeMargin?: boolean;
   showLoadingStatus?: boolean;
   showClearSearch?: boolean;
-  inputProps?: InputProps;
   searchBarDataTestId?: string;
 };
 
@@ -48,11 +47,9 @@ const Searchbar = ({
   showLoadingStatus = false,
   showClearSearch = true,
   searchBarDataTestId,
-  inputProps,
 }: SearchBarProps) => {
   const [userSearch, setUserSearch] = useState(searchValue ?? '');
   const [loadingState, setLoadingState] = useState<LoadingState>('initial');
-  const [isSearchBlur, setIsSearchBlur] = useState(true);
   const searchTextRef = useRef(searchValue ?? '');
 
   useEffect(() => {
@@ -70,13 +67,22 @@ const Searchbar = ({
     [debouncedOnSearch, typingInterval]
   );
 
-  const handleChange = (e: React.ChangeEvent<{ value: string }>): void => {
-    const searchText = e.target.value;
-    searchTextRef.current = searchText;
-    setUserSearch(searchText);
+  const handleChange = (value: string): void => {
+    searchTextRef.current = value;
+    setUserSearch(value);
     setLoadingState((pre) => (pre !== 'waiting' ? 'waiting' : pre));
     debounceOnSearch();
   };
+
+  const handleClear = (): void => {
+    searchTextRef.current = '';
+    setUserSearch('');
+    setLoadingState('initial');
+    onSearch('');
+  };
+
+  const showClearButton = showClearSearch && userSearch.length > 0;
+  const showLoader = showLoadingStatus && loadingState === 'waiting';
 
   return (
     <div
@@ -85,40 +91,29 @@ const Searchbar = ({
       })}
       data-testid="search-bar-container">
       {label !== '' && <label>{label}</label>}
-      <div className="flex relative">
+      <div className="search-bar-input-wrapper">
         <Input
-          allowClear={showClearSearch}
-          className={classNames('p-y-xs', inputClassName)}
+          aria-label={label || placeholder || 'search'}
           data-testid={searchBarDataTestId ?? 'searchbar'}
+          icon={IconSearchV1}
+          inputClassName={inputClassName}
           placeholder={placeholder}
-          prefix={
-            <Icon
-              className={classNames('align-middle m-r-xss', {
-                'text-black': isSearchBlur,
-                'text-primary': !isSearchBlur,
-              })}
-              component={IconSearchV1}
-              style={{ fontSize: '16px' }}
-            />
-          }
-          suffix={
-            showLoadingStatus &&
-            loadingState === 'waiting' && (
-              <div className="absolute d-block text-center">
-                <Loader size="small" type="default" />
-              </div>
-            )
-          }
-          type="text"
           value={userSearch}
-          onBlur={() => setIsSearchBlur(true)}
           onChange={handleChange}
-          onFocus={() => setIsSearchBlur(false)}
-          {...inputProps}
         />
-        {showLoadingStatus && loadingState === 'waiting' && (
-          <div className="absolute d-block text-center">
-            <Loader size="small" type="default" />
+        {(showClearButton || showLoader) && (
+          <div className="search-bar-trailing">
+            {showLoader && <Loader size="small" type="default" />}
+            {showClearButton && (
+              <button
+                aria-label="Clear search"
+                className="search-bar-clear-btn"
+                data-testid="searchbar-clear"
+                type="button"
+                onClick={handleClear}>
+                <XClose size={14} />
+              </button>
+            )}
           </div>
         )}
       </div>
