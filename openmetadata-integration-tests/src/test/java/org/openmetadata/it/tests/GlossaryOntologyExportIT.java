@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
@@ -43,8 +44,12 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>Parallelization: Runs with @Execution(ExecutionMode.SAME_THREAD) because each test
  * blocks a server thread on synchronous Fuseki writes; concurrent execution can exhaust the
- * server thread pool and cause request timeouts.
+ * server thread pool and cause request timeouts. The class is also @Isolated because the
+ * @BeforeAll hook flips global RDF configuration to a test Fuseki container — any other
+ * test class running concurrently would inherit that state and contend for the same backend
+ * (matches the pattern used by RdfResourceIT for the same reason).
  */
+@Isolated
 @Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(TestNamespaceExtension.class)
 public class GlossaryOntologyExportIT {
