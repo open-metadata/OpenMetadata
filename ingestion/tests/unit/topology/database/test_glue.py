@@ -39,9 +39,7 @@ from metadata.ingestion.source.database.glue.models import (
     TablePage,
 )
 
-mock_file_path = (
-    Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
-)
+mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
 with open(mock_file_path) as file:
     mock_data: dict = json.load(file)
 
@@ -80,9 +78,7 @@ def mock_fqn_build(*args, **kwargs) -> str:
 MOCK_CUSTOM_DB_NAME = "NEW_DB"
 
 mock_glue_config_db_test = deepcopy(mock_glue_config)
-mock_glue_config_db_test["source"]["serviceConnection"]["config"][
-    "databaseName"
-] = MOCK_CUSTOM_DB_NAME
+mock_glue_config_db_test["source"]["serviceConnection"]["config"]["databaseName"] = MOCK_CUSTOM_DB_NAME
 
 MOCK_DATABASE_SERVICE = DatabaseService(
     id="85811038-099a-11ed-861d-0242ac120002",
@@ -142,9 +138,7 @@ EXPECTED_LOCATION_PATHS = [
 
 
 class GlueUnitTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection")
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
@@ -153,19 +147,13 @@ class GlueUnitTest(TestCase):
             mock_glue_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.glue_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.glue_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.glue_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.glue_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.glue_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
         self.glue_source._get_glue_database_and_schemas = lambda: [
             DatabasePage(**mock_data.get("mock_database_paginator"))
         ]
-        self.glue_source._get_glue_tables = lambda: [
-            TablePage(**mock_data.get("mock_table_paginator"))
-        ]
+        self.glue_source._get_glue_tables = lambda: [TablePage(**mock_data.get("mock_table_paginator"))]
 
     def get_table_requests(self):
         tables = self.glue_source.get_tables_name_and_type()
@@ -175,28 +163,20 @@ class GlueUnitTest(TestCase):
     def test_database_names(self):
         assert EXPECTED_DATABASE_NAMES == list(self.glue_source.get_database_names())
 
-    @patch(
-        "metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection")
     def test_custom_db_name(self, test_connection):
         test_connection.return_value = False
         glue_source_new = GlueSource.create(
             mock_glue_config_db_test["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.assertEqual(
-            list(glue_source_new.get_database_names()), [MOCK_CUSTOM_DB_NAME]
-        )
+        self.assertEqual(list(glue_source_new.get_database_names()), [MOCK_CUSTOM_DB_NAME])
 
     def test_database_schema_names(self):
-        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(
-            self.glue_source.get_database_schema_names()
-        )
+        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.glue_source.get_database_schema_names())
 
     def test_database_schema_names_filters_other_catalogs_before_schema_filter(self):
-        self.glue_source.source_config.schemaFilterPattern = FilterPattern(
-            includes=["default"]
-        )
+        self.glue_source.source_config.schemaFilterPattern = FilterPattern(includes=["default"])
         self.glue_source._get_glue_database_and_schemas = lambda: [
             DatabasePage(
                 DatabaseList=[
@@ -227,18 +207,12 @@ class GlueUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.glue.metadata.fqn")
     def test_file_formats(self, fqn):
         fqn.build = mock_fqn_build
-        assert (
-            list(map(lambda x: x.fileFormat, self.get_table_requests()))
-            == EXPECTED_FILE_FORMATS
-        )
+        assert list(map(lambda x: x.fileFormat, self.get_table_requests())) == EXPECTED_FILE_FORMATS
 
     @patch("metadata.ingestion.source.database.glue.metadata.fqn")
     def test_location_paths(self, fqn):
         fqn.build = mock_fqn_build
-        assert (
-            list(map(lambda x: x.locationPath, self.get_table_requests()))
-            == EXPECTED_LOCATION_PATHS
-        )
+        assert list(map(lambda x: x.locationPath, self.get_table_requests())) == EXPECTED_LOCATION_PATHS
 
     def test_iceberg_column_filtering_logic(self):
         """Test the Iceberg column filtering logic directly"""
@@ -267,8 +241,8 @@ class GlueUnitTest(TestCase):
         current_columns = []
         for col in [current_column, non_current_column, column_without_params]:
             col_name = col["Name"]
-            col_type = col["Type"]
-            col_comment = col.get("Comment", "")
+            col_type = col["Type"]  # noqa: F841
+            col_comment = col.get("Comment", "")  # noqa: F841
             col_parameters = col.get("Parameters", {})
 
             # Check if this is a non-current Iceberg column
@@ -307,18 +281,9 @@ class GlueUnitTest(TestCase):
         mock_no_params_table.Parameters = None
 
         # Test the detection logic
-        is_iceberg_1 = (
-            mock_iceberg_table.Parameters
-            and mock_iceberg_table.Parameters.table_type == "ICEBERG"
-        )
-        is_iceberg_2 = (
-            mock_regular_table.Parameters
-            and mock_regular_table.Parameters.table_type == "ICEBERG"
-        )
-        is_iceberg_3 = (
-            mock_no_params_table.Parameters
-            and mock_no_params_table.Parameters.table_type == "ICEBERG"
-        )
+        is_iceberg_1 = mock_iceberg_table.Parameters and mock_iceberg_table.Parameters.table_type == "ICEBERG"
+        is_iceberg_2 = mock_regular_table.Parameters and mock_regular_table.Parameters.table_type == "ICEBERG"
+        is_iceberg_3 = mock_no_params_table.Parameters and mock_no_params_table.Parameters.table_type == "ICEBERG"
 
         self.assertTrue(is_iceberg_1)
         self.assertFalse(is_iceberg_2)

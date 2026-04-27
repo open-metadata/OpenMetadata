@@ -21,7 +21,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 
-from ..conftest import ingestion_config as base_ingestion_config
+from ..conftest import ingestion_config as base_ingestion_config  # noqa: F401
 
 
 @pytest.fixture(scope="package")
@@ -30,7 +30,7 @@ def db_name():
 
 
 class CustomSqlServerContainer(SqlServerContainer):
-    def start(self) -> "DbContainer":
+    def start(self) -> "DbContainer":  # noqa: F821
         dockerfile = f"""
             FROM {self.image}
             USER root
@@ -53,9 +53,7 @@ class CustomSqlServerContainer(SqlServerContainer):
 
 @pytest.fixture(scope="package")
 def mssql_container(tmp_path_factory, db_name):
-    container = CustomSqlServerContainer(
-        "mcr.microsoft.com/mssql/server:2022-latest", dbname="master"
-    )
+    container = CustomSqlServerContainer("mcr.microsoft.com/mssql/server:2022-latest", dbname="master")
     data_dir = tmp_path_factory.mktemp("data")
     shutil.copy(
         os.path.join(os.path.dirname(__file__), "data", f"{db_name}.bak"),
@@ -108,11 +106,7 @@ GO
         )
         with engine.connect() as conn:
             transaciton = conn.begin()
-            conn.execute(
-                text(
-                    f"SELECT * INTO {db_name}.SalesLT.CustomerCopy FROM {db_name}.SalesLT.Customer;"
-                )
-            )
+            conn.execute(text(f"SELECT * INTO {db_name}.SalesLT.CustomerCopy FROM {db_name}.SalesLT.Customer;"))
             transaciton.commit()
         yield container
 
@@ -137,8 +131,7 @@ def create_service_request(mssql_container, scheme, db_name):
             config=MssqlConnection(
                 username=mssql_container.username,
                 password=mssql_container.password,
-                hostPort="localhost:"
-                + mssql_container.get_exposed_port(mssql_container.port),
+                hostPort="localhost:" + mssql_container.get_exposed_port(mssql_container.port),
                 database=db_name,
                 scheme=scheme,
                 ingestAllDatabases=True,
@@ -157,12 +150,10 @@ def ingestion_config(
     tmp_path_factory,
     workflow_config,
     sink_config,
-    base_ingestion_config,
+    base_ingestion_config,  # noqa: F811
     db_name,
 ):
-    base_ingestion_config["source"]["sourceConfig"]["config"][
-        "databaseFilterPattern"
-    ] = {
+    base_ingestion_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {
         "includes": ["TestDB", db_name],
     }
     return base_ingestion_config
@@ -171,9 +162,7 @@ def ingestion_config(
 @pytest.fixture(scope="module")
 def unmask_password(create_service_request):
     def inner(service: DatabaseService):
-        service.connection.config.password = (
-            create_service_request.connection.config.password
-        )
+        service.connection.config.password = create_service_request.connection.config.password
         return service
 
     return inner

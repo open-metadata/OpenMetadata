@@ -20,6 +20,7 @@ Supports:
 - Service Principal (ClientSecretCredential)
 - Managed Identity (DefaultAzureCredential)
 """
+
 import traceback
 from time import sleep
 from typing import Callable, Optional, Tuple
@@ -88,9 +89,7 @@ class FabricAuthenticator:
         expires_in = response_data.get("expires_in", 3600)
 
         if not access_token:
-            raise ValueError(
-                f"Failed to acquire token: {response_data.get('error_description', 'Unknown error')}"
-            )
+            raise ValueError(f"Failed to acquire token: {response_data.get('error_description', 'Unknown error')}")
 
         logger.info("Fabric access token generated successfully")
         return access_token, expires_in
@@ -113,10 +112,7 @@ class FabricAuthenticator:
                     )
                     sleep(AUTH_TOKEN_RETRY_WAIT)
                 else:
-                    logger.warning(
-                        "Could not generate new token after maximum retries, "
-                        "Please check provided configs"
-                    )
+                    logger.warning("Could not generate new token after maximum retries, Please check provided configs")
         return None
 
     def _get_token_from_cache(self, scopes: list) -> Optional[dict]:
@@ -124,9 +120,7 @@ class FabricAuthenticator:
         retry = AUTH_TOKEN_MAX_RETRIES
         while retry:
             try:
-                response_data = self.msal_client.acquire_token_silent(
-                    scopes=scopes, account=None
-                )
+                response_data = self.msal_client.acquire_token_silent(scopes=scopes, account=None)
                 return response_data
             except Exception as exc:
                 logger.debug(traceback.format_exc())
@@ -140,8 +134,7 @@ class FabricAuthenticator:
                     sleep(AUTH_TOKEN_RETRY_WAIT)
                 else:
                     logger.warning(
-                        "Could not get token from cache after maximum retries, "
-                        "Please check provided configs"
+                        "Could not get token from cache after maximum retries, Please check provided configs"
                     )
         return None
 

@@ -78,9 +78,7 @@ Mock_DATABASE_SCHEMA_DEFAULT = "<default>"
 EXAMPLE_DASHBOARD = LineageDashboard(
     id="7b3766b1-7eb4-4ad4-b7c8-15a8b16edfdd",
     name="lineage_dashboard",
-    service=EntityReference(
-        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"
-    ),
+    service=EntityReference(id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"),
 )
 
 EXAMPLE_TABLE = [
@@ -145,9 +143,7 @@ MOCK_CHARTS = [
         database_id=1,
         name="chart2",
         id="2",
-        dataset_query=DatasetQuery(
-            type="native", native=Native(query="select * from test_table")
-        ),
+        dataset_query=DatasetQuery(type="native", native=Native(query="select * from test_table")),
         display="chart2",
         dashboard_ids=[],
     ),
@@ -225,9 +221,7 @@ class MetabaseUnitTest(TestCase):
     Domo Dashboard Unit Test
     """
 
-    @patch(
-        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.metabase.connection.get_connection")
     def __init__(self, methodName, get_connection, test_connection) -> None:
         super().__init__(methodName)
@@ -239,25 +233,16 @@ class MetabaseUnitTest(TestCase):
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.metabase.client = SimpleNamespace()
-        self.metabase.context.get().__dict__[
-            "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+        self.metabase.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
         self.metabase.context.get().__dict__["project_name"] = "Test Collection"
         self.metabase.charts_dict = {str(chart.id): chart for chart in MOCK_CHARTS}
 
     def test_dashboard_name(self):
-        assert (
-            self.metabase.get_dashboard_name(MOCK_DASHBOARD_DETAILS)
-            == MOCK_DASHBOARD_DETAILS.name
-        )
+        assert self.metabase.get_dashboard_name(MOCK_DASHBOARD_DETAILS) == MOCK_DASHBOARD_DETAILS.name
 
     def test_check_database_schema_name(self):
-        self.assertEqual(
-            self.metabase.check_database_schema_name(Mock_DATABASE_SCHEMA), "my_schema"
-        )
-        self.assertIsNone(
-            self.metabase.check_database_schema_name(Mock_DATABASE_SCHEMA_DEFAULT)
-        )
+        self.assertEqual(self.metabase.check_database_schema_name(Mock_DATABASE_SCHEMA), "my_schema")
+        self.assertIsNone(self.metabase.check_database_schema_name(Mock_DATABASE_SCHEMA_DEFAULT))
 
     def test_yield_chart(self):
         """
@@ -282,17 +267,13 @@ class MetabaseUnitTest(TestCase):
     @patch.object(fqn, "build", return_value=None)
     @patch.object(OpenMetadata, "get_by_name", return_value=EXAMPLE_DASHBOARD)
     @patch.object(OpenMetadata, "search_in_any_service", return_value=EXAMPLE_TABLE)
-    @patch.object(
-        MetabaseSource, "_get_database_service", return_value=MOCK_DATABASE_SERVICE
-    )
+    @patch.object(MetabaseSource, "_get_database_service", return_value=MOCK_DATABASE_SERVICE)
     def test_yield_lineage(self, *_):
         """
         Function to test out lineage
         """
         self.metabase.client.get_database = lambda *_: None
-        self.metabase.client.get_table = lambda *_: MetabaseTable(
-            schema="test_schema", display_name="test_table"
-        )
+        self.metabase.client.get_table = lambda *_: MetabaseTable(schema="test_schema", display_name="test_table")
 
         # if no db service name then no lineage generated
         result = self.metabase.yield_dashboard_lineage_details(
@@ -380,27 +361,17 @@ class MetabaseUnitTest(TestCase):
         )
         self.assertIsNotNone(chart_with_dict.dataset_query)
         self.assertEqual(chart_with_dict.dataset_query.type, "native")
-        self.assertEqual(
-            chart_with_dict.dataset_query.native.query, "SELECT * FROM users"
-        )
+        self.assertEqual(chart_with_dict.dataset_query.native.query, "SELECT * FROM users")
 
         # Test 2: dataset_query as a JSON string
-        dataset_query_json = json.dumps(
-            {"type": "query", "database": 1, "query": {"source-table": 2}}
-        )
-        chart_with_json_string = MetabaseChart(
-            name="test_chart_json", id="101", dataset_query=dataset_query_json
-        )
+        dataset_query_json = json.dumps({"type": "query", "database": 1, "query": {"source-table": 2}})
+        chart_with_json_string = MetabaseChart(name="test_chart_json", id="101", dataset_query=dataset_query_json)
         self.assertIsNotNone(chart_with_json_string.dataset_query)
         self.assertEqual(chart_with_json_string.dataset_query.type, "query")
 
         # Test 3: dataset_query as a Python dict string (single quotes)
-        dataset_query_str = (
-            "{'type': 'native', 'native': {'query': 'SELECT COUNT(*) FROM orders'}}"
-        )
-        chart_with_dict_string = MetabaseChart(
-            name="test_chart_dict_str", id="102", dataset_query=dataset_query_str
-        )
+        dataset_query_str = "{'type': 'native', 'native': {'query': 'SELECT COUNT(*) FROM orders'}}"
+        chart_with_dict_string = MetabaseChart(name="test_chart_dict_str", id="102", dataset_query=dataset_query_str)
         self.assertIsNotNone(chart_with_dict_string.dataset_query)
         self.assertEqual(chart_with_dict_string.dataset_query.type, "native")
         self.assertEqual(
@@ -410,24 +381,18 @@ class MetabaseUnitTest(TestCase):
 
         # Test 4: dataset_query with None values as string
         dataset_query_with_none = "{'type': 'query', 'native': None, 'database': 1}"
-        chart_with_none = MetabaseChart(
-            name="test_chart_none", id="103", dataset_query=dataset_query_with_none
-        )
+        chart_with_none = MetabaseChart(name="test_chart_none", id="103", dataset_query=dataset_query_with_none)
         self.assertIsNotNone(chart_with_none.dataset_query)
         self.assertEqual(chart_with_none.dataset_query.type, "query")
         self.assertIsNone(chart_with_none.dataset_query.native)
 
         # Test 5: Invalid dataset_query string should return None
         invalid_dataset_query = "this is not valid json or dict"
-        chart_with_invalid = MetabaseChart(
-            name="test_chart_invalid", id="104", dataset_query=invalid_dataset_query
-        )
+        chart_with_invalid = MetabaseChart(name="test_chart_invalid", id="104", dataset_query=invalid_dataset_query)
         self.assertIsNone(chart_with_invalid.dataset_query)
 
         # Test 6: dataset_query as None
-        chart_with_none_value = MetabaseChart(
-            name="test_chart_none_value", id="105", dataset_query=None
-        )
+        chart_with_none_value = MetabaseChart(name="test_chart_none_value", id="105", dataset_query=None)
         self.assertIsNone(chart_with_none_value.dataset_query)
 
         # Test 7: New Metabase format with stages array
@@ -458,7 +423,7 @@ class MetabaseUnitTest(TestCase):
         self.metabase.chart_source_state = set()
         list(self.metabase.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS))
         assert len(self.metabase.chart_source_state) == 3
-        for fqn in self.metabase.chart_source_state:
+        for fqn in self.metabase.chart_source_state:  # noqa: F402
             assert "mock_metabase" in fqn
 
         # Test 8: New format with stages but no native query

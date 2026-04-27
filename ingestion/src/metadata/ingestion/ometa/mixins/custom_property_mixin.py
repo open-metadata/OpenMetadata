@@ -13,6 +13,7 @@ Mixin class containing Custom Property specific methods
 
 To be used by OpenMetadata class
 """
+
 from typing import Dict, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel
@@ -42,9 +43,7 @@ class OMetaCustomPropertyMixin:
 
     client: REST
 
-    def create_or_update_custom_property(
-        self, ometa_custom_property: OMetaCustomProperties
-    ) -> Dict:
+    def create_or_update_custom_property(self, ometa_custom_property: OMetaCustomProperties) -> Dict:
         """Create or update custom property. If custom property name matches an existing
         one then it will be updated.
 
@@ -52,12 +51,8 @@ class OMetaCustomPropertyMixin:
             ometa_custom_property (OMetaCustomProperties): custom property to be create or updated
         """
         # Get the json schema id of the entity to be updated
-        entity_type = ENTITY_REFERENCE_TYPE_MAP.get(
-            ometa_custom_property.entity_type.__name__
-        )
-        entity_schema = self.client.get(
-            f"/metadata/types/name/{entity_type}?category=field"
-        )
+        entity_type = ENTITY_REFERENCE_TYPE_MAP.get(ometa_custom_property.entity_type.__name__)
+        entity_schema = self.client.get(f"/metadata/types/name/{entity_type}?category=field")
 
         resp = self.client.put(
             f"/metadata/types/{entity_schema.get('id')}",
@@ -65,9 +60,7 @@ class OMetaCustomPropertyMixin:
         )
         return resp
 
-    def get_custom_property_type(
-        self, data_type: CustomPropertyDataTypes
-    ) -> CustomPropertyType:
+    def get_custom_property_type(self, data_type: CustomPropertyDataTypes) -> CustomPropertyType:
         """
         Get all the supported datatypes for the custom properties
         """

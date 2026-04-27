@@ -28,6 +28,7 @@ import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CreateThread;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -189,6 +190,17 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().glossaryTerms().getVersionList(id);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().glossaryTerms().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().glossaryTerms().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override
@@ -3196,5 +3208,46 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             "/v1/glossaryTerms/name/" + fqn + "/assets",
             null,
             optionsBuilder.build());
+  }
+
+  @Test
+  void softDeletedReviewer_notReturnedInListEndpoint(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    String userName = ns.shortPrefix("reviewer_list");
+    User reviewer =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withDescription("Reviewer user for glossary soft-delete list test"));
+
+    CreateGlossaryTerm create =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_softdel_reviewer"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term for soft-delete reviewer list test")
+            .withReviewers(List.of(reviewer.getEntityReference()));
+    GlossaryTerm term = createEntity(create);
+
+    client.users().delete(reviewer.getId().toString());
+
+    ListParams params =
+        new ListParams()
+            .setFields("reviewers")
+            .withLimit(100)
+            .addFilter("glossary", glossary.getId().toString());
+    ListResponse<GlossaryTerm> list = listEntities(params);
+    GlossaryTerm listed =
+        list.getData().stream()
+            .filter(t -> t.getId().equals(term.getId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("GlossaryTerm not found in list"));
+    assertTrue(
+        listed.getReviewers() == null || listed.getReviewers().isEmpty(),
+        "Soft-deleted reviewer must not appear in list endpoint");
   }
 }

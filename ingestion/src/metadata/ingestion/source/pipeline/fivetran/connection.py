@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -48,7 +49,7 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    test_fn = {"GetPipelines": client.list_groups}
+    test_fn = {"GetPipelines": lambda: list(client.list_groups())}
 
     return test_connection_steps(
         metadata=metadata,

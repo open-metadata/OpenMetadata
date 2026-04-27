@@ -11,6 +11,7 @@
 """
 Local Reader
 """
+
 import os
 import traceback
 from pathlib import Path
@@ -43,9 +44,7 @@ class LocalReader(Reader):
                 return file.read()
 
         except UnicodeDecodeError:
-            logger.debug(
-                "Cannot read the file with UTF-8 encoding. Trying to read bytes..."
-            )
+            logger.debug("Cannot read the file with UTF-8 encoding. Trying to read bytes...")
             with open(self.base_path / path, "rb") as file:
                 return file.read()
 
@@ -57,14 +56,9 @@ class LocalReader(Reader):
         """
         Return the tree with the files relative to the base path
         """
-        return [
-            str(path).replace(str(self.base_path) + "/", "")
-            for path in Path(self.base_path).rglob("*")
-        ]
+        return [str(path).replace(str(self.base_path) + "/", "") for path in Path(self.base_path).rglob("*")]
 
-    def get_local_files(
-        self, search_key: str, excluded_files: Optional[List[str]] = None
-    ) -> List[str]:
+    def get_local_files(self, search_key: str, excluded_files: Optional[List[str]] = None) -> List[str]:
         """Scan through local path recursively
         and retuns file path based on `search_key`"""
 

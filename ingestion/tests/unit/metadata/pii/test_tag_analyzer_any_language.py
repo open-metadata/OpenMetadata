@@ -11,6 +11,7 @@
 """
 Unit tests for TagAnalyzer "any language" mode.
 """
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -116,9 +117,7 @@ def _make_fr_tag(pii_classification):
 
 
 class TestGetRecognizersByAnyLanguage:
-    def test_any_language_includes_all_recognizers(
-        self, pii_classification, column, mock_nlp_engine
-    ):
+    def test_any_language_includes_all_recognizers(self, pii_classification, column, mock_nlp_engine):
         en_tag = _make_en_tag(pii_classification)
         analyzer = TagAnalyzer(
             tag=en_tag,
@@ -143,13 +142,9 @@ class TestGetRecognizersByAnyLanguage:
                 language=ClassificationLanguage.any,
             )
             recs = tag_analyzer.get_recognizers_by(recognizer.Target.content)
-            assert (
-                len(recs) == 1
-            ), f"Expected 1 recognizer for {tag.name}, got {len(recs)}"
+            assert len(recs) == 1, f"Expected 1 recognizer for {tag.name}, got {len(recs)}"
 
-    def test_specific_language_filters_out_other_languages(
-        self, pii_classification, column, mock_nlp_engine
-    ):
+    def test_specific_language_filters_out_other_languages(self, pii_classification, column, mock_nlp_engine):
         fr_tag = _make_fr_tag(pii_classification)
         analyzer = TagAnalyzer(
             tag=fr_tag,
@@ -160,9 +155,7 @@ class TestGetRecognizersByAnyLanguage:
         recognizers = analyzer.get_recognizers_by(recognizer.Target.content)
         assert len(recognizers) == 0
 
-    def test_specific_language_includes_matching_recognizer(
-        self, pii_classification, column, mock_nlp_engine
-    ):
+    def test_specific_language_includes_matching_recognizer(self, pii_classification, column, mock_nlp_engine):
         en_tag = _make_en_tag(pii_classification)
         analyzer = TagAnalyzer(
             tag=en_tag,
@@ -195,7 +188,7 @@ class TestAnalyzeWithAnyLanguage:
 
         analyzer.build_analyzer_with = tracking_build
 
-        result = analyzer.analyze_content(["john@example.com"])
+        result = analyzer.analyze_content(["john@example.com"])  # noqa: F841
 
         assert len(build_calls) == 1
         _, used_nlp_engine = build_calls[0]
@@ -204,9 +197,7 @@ class TestAnalyzeWithAnyLanguage:
             models=Contains(IsDict(lang_code="en", model_name="en_core_web_md")),
         )
 
-    def test_any_language_no_exception_raised(
-        self, pii_classification, column, mock_nlp_engine
-    ):
+    def test_any_language_no_exception_raised(self, pii_classification, column, mock_nlp_engine):
         en_tag = _make_en_tag(pii_classification)
         analyzer = TagAnalyzer(
             tag=en_tag,
@@ -218,9 +209,7 @@ class TestAnalyzeWithAnyLanguage:
         assert result is not None
         assert result.score >= 0
 
-    def test_any_language_empty_recognizers_returns_empty_analysis(
-        self, pii_classification, column, mock_nlp_engine
-    ):
+    def test_any_language_empty_recognizers_returns_empty_analysis(self, pii_classification, column, mock_nlp_engine):
         tag = TagFactory.create(
             tag_name="EmptyTag",
             tag_classification=pii_classification,
@@ -237,9 +226,7 @@ class TestAnalyzeWithAnyLanguage:
         assert result.score == 0
         assert result.recognizer_results == []
 
-    def test_any_language_analyze_column_no_exception(
-        self, pii_classification, column, mock_nlp_engine
-    ):
+    def test_any_language_analyze_column_no_exception(self, pii_classification, column, mock_nlp_engine):
         en_pattern = PatternFactory.create(
             name="column-pattern",
             regex=r"email",

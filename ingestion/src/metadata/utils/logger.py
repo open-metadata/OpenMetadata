@@ -40,9 +40,7 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.user import OMetaUserProfile
 
 METADATA_LOGGER = "metadata"
-BASE_LOGGING_FORMAT = (
-    "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
-)
+BASE_LOGGING_FORMAT = "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
 logging.basicConfig(format=BASE_LOGGING_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 
 REDACTED_KEYS = {"serviceConnection", "securityConfig"}
@@ -243,9 +241,7 @@ def _(record: AddLineageRequest) -> str:
     type_ = record.edge.fromEntity.type
 
     # name can be informed or not
-    name_str = (
-        f"name: {record.edge.fromEntity.name}, " if record.edge.fromEntity.name else ""
-    )
+    name_str = f"name: {record.edge.fromEntity.name}, " if record.edge.fromEntity.name else ""
 
     return f"{type_} [{name_str}id: {id_}]"
 

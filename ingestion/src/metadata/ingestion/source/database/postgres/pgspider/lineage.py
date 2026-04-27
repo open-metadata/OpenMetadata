@@ -12,6 +12,7 @@
 """
 PGSpider lineage module
 """
+
 from typing import Iterable, Iterator
 
 from sqlalchemy.sql import text
@@ -113,12 +114,8 @@ def get_lineage_from_multi_tenant_table(
                         left=None,
                         right=AddLineageRequest(
                             edge=EntitiesEdge(
-                                fromEntity=EntityReference(
-                                    id=source_entity.id, type="table"
-                                ),
-                                toEntity=EntityReference(
-                                    id=target_entity.id, type="table"
-                                ),
+                                fromEntity=EntityReference(id=source_entity.id, type="table"),
+                                toEntity=EntityReference(id=target_entity.id, type="table"),
                                 lineageDetails=lineage_details,
                             )
                         ),

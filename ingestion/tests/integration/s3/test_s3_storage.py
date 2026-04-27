@@ -17,23 +17,17 @@ from metadata.generated.schema.entity.services.storageService import StorageServ
 def test_s3_ingestion(metadata, ingest_s3_storage, service_name):
     """Test the ingestion is working as expected"""
 
-    service: StorageService = metadata.get_by_name(
-        entity=StorageService, fqn=service_name
-    )
+    service: StorageService = metadata.get_by_name(entity=StorageService, fqn=service_name)
     assert service
 
     # We should have the bucket and all its structured children
-    bucket: Container = metadata.get_by_name(
-        entity=Container, fqn=f"{service_name}.test-bucket", fields=["*"]
-    )
+    bucket: Container = metadata.get_by_name(entity=Container, fqn=f"{service_name}.test-bucket", fields=["*"])
     # The bucket has children and no dataModel
     assert 7 == len(bucket.children.root)
     assert not bucket.dataModel
 
     # We can validate the children
-    cities: Container = metadata.get_by_name(
-        entity=Container, fqn=f"{service_name}.test-bucket.cities", fields=["*"]
-    )
+    cities: Container = metadata.get_by_name(entity=Container, fqn=f"{service_name}.test-bucket.cities", fields=["*"])
     assert cities.dataModel.isPartitioned
     assert 9 == len(cities.dataModel.columns)
     assert FileFormat.parquet in cities.fileFormats

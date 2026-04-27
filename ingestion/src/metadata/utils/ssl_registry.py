@@ -11,6 +11,7 @@
 """
 Register SSL verification results
 """
+
 from typing import Callable, Optional
 
 from metadata.generated.schema.security.ssl.verifySSLConfig import SslConfig, VerifySSL
@@ -52,8 +53,6 @@ def get_verify_ssl_fn(verify_ssl: VerifySSL) -> Callable:
     """
     verify_ssl_fn = ssl_verification_registry.registry.get(verify_ssl.value)
     if not verify_ssl_fn:
-        raise InvalidSSLVerificationException(
-            f"Cannot find {verify_ssl.value} in {ssl_verification_registry.registry}"
-        )
+        raise InvalidSSLVerificationException(f"Cannot find {verify_ssl.value} in {ssl_verification_registry.registry}")
 
     return verify_ssl_fn

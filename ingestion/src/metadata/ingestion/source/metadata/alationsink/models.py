@@ -11,6 +11,7 @@
 """
 Alation Sink Data Models
 """
+
 from typing import List, Optional
 
 from pydantic import BaseModel

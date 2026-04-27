@@ -20,6 +20,9 @@ export type EntityVersionTimelineProps = {
   versionHandler: (v: string) => void;
   onBack: () => void;
   entityType?: EntityType;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
 };
 
 export type EntityVersionButtonProps = {

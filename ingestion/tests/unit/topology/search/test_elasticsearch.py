@@ -112,9 +112,7 @@ MOCK_DETAILS = {
                         "description": {"type": "text"},
                         "displayName": {
                             "type": "text",
-                            "fields": {
-                                "keyword": {"type": "keyword", "ignore_above": 256}
-                            },
+                            "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
                         },
                         "fullyQualifiedName": {"type": "text"},
                         "href": {"type": "text"},
@@ -122,9 +120,7 @@ MOCK_DETAILS = {
                         "name": {
                             "type": "keyword",
                             "normalizer": "lowercase_normalizer",
-                            "fields": {
-                                "keyword": {"type": "keyword", "ignore_above": 256}
-                            },
+                            "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
                         },
                         "type": {"type": "keyword"},
                     }
@@ -155,32 +151,18 @@ EXPECTED_RESULT = CreateSearchIndexRequest(
             name="owner",
             dataType=DataType.OBJECT,
             children=[
-                SearchIndexField(
-                    name="deleted", dataType=DataType.TEXT, dataTypeDisplay="text"
-                ),
-                SearchIndexField(
-                    name="description", dataType=DataType.TEXT, dataTypeDisplay="text"
-                ),
-                SearchIndexField(
-                    name="displayName", dataType=DataType.TEXT, dataTypeDisplay="text"
-                ),
+                SearchIndexField(name="deleted", dataType=DataType.TEXT, dataTypeDisplay="text"),
+                SearchIndexField(name="description", dataType=DataType.TEXT, dataTypeDisplay="text"),
+                SearchIndexField(name="displayName", dataType=DataType.TEXT, dataTypeDisplay="text"),
                 SearchIndexField(
                     name="fullyQualifiedName",
                     dataType=DataType.TEXT,
                     dataTypeDisplay="text",
                 ),
-                SearchIndexField(
-                    name="href", dataType=DataType.TEXT, dataTypeDisplay="text"
-                ),
-                SearchIndexField(
-                    name="id", dataType=DataType.TEXT, dataTypeDisplay="text"
-                ),
-                SearchIndexField(
-                    name="name", dataType=DataType.KEYWORD, dataTypeDisplay="keyword"
-                ),
-                SearchIndexField(
-                    name="type", dataType=DataType.KEYWORD, dataTypeDisplay="keyword"
-                ),
+                SearchIndexField(name="href", dataType=DataType.TEXT, dataTypeDisplay="text"),
+                SearchIndexField(name="id", dataType=DataType.TEXT, dataTypeDisplay="text"),
+                SearchIndexField(name="name", dataType=DataType.KEYWORD, dataTypeDisplay="keyword"),
+                SearchIndexField(name="type", dataType=DataType.KEYWORD, dataTypeDisplay="keyword"),
             ],
         ),
     ],
@@ -188,9 +170,7 @@ EXPECTED_RESULT = CreateSearchIndexRequest(
 
 
 class ElasticSearchUnitTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.search.search_service.SearchServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.search.search_service.SearchServiceSource.test_connection")
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
@@ -199,9 +179,7 @@ class ElasticSearchUnitTest(TestCase):
             mock_es_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.es_source.context.get().__dict__[
-            "search_service"
-        ] = MOCK_SEARCH_SERVICE.name.root
+        self.es_source.context.get().__dict__["search_service"] = MOCK_SEARCH_SERVICE.name.root
 
     def test_partition_parse_columns(self):
         actual_index = next(self.es_source.yield_search_index(MOCK_DETAILS)).right

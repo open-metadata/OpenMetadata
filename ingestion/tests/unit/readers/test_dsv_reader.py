@@ -12,6 +12,7 @@
 """
 Tests for DSVDataFrameReader (CSV/TSV)
 """
+
 import gzip
 import tempfile
 import unittest
@@ -211,9 +212,7 @@ class TestDSVReader(unittest.TestCase):
         }
 
         config = S3Config(
-            securityConfig=AWSCredentials(
-                awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1"
-            )
+            securityConfig=AWSCredentials(awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1")
         )
         reader = CSVDataFrameReader(config, mock_client)
 
@@ -224,9 +223,7 @@ class TestDSVReader(unittest.TestCase):
         self.assertEqual(len(chunks), 1)
         self.assertEqual(chunks[0].shape, (2, 2))
 
-        mock_client.get_object.assert_called_once_with(
-            Bucket="test-bucket", Key="test.csv"
-        )
+        mock_client.get_object.assert_called_once_with(Bucket="test-bucket", Key="test.csv")
 
     @patch("pandas.read_csv")
     @patch("metadata.readers.dataframe.dsv.return_azure_storage_options")
@@ -247,11 +244,7 @@ class TestDSVReader(unittest.TestCase):
 
         mock_read_csv.side_effect = mock_read_csv_impl
 
-        config = AzureConfig(
-            securityConfig=AzureCredentials(
-                accountName="test", clientId="test", tenantId="test"
-            )
-        )
+        config = AzureConfig(securityConfig=AzureCredentials(accountName="test", clientId="test", tenantId="test"))
         reader = CSVDataFrameReader(config, None)
 
         result = reader._read(key="test.csv", bucket_name="test-container")
@@ -337,19 +330,13 @@ class TestDSVReader(unittest.TestCase):
             # Row 2: both backslash and double-quote escaping in same fields
             self.assertEqual(chunks[0].iloc[1]["product"], "Component B")
             self.assertEqual(chunks[0].iloc[1]["quantity"], 10)
-            self.assertEqual(
-                chunks[0].iloc[1]["description"], 'Value with "quote" and, comma'
-            )
-            self.assertEqual(
-                chunks[0].iloc[1]["metadata"], 'Status: "Active" and "Ready"'
-            )
+            self.assertEqual(chunks[0].iloc[1]["description"], 'Value with "quote" and, comma')
+            self.assertEqual(chunks[0].iloc[1]["metadata"], 'Status: "Active" and "Ready"')
 
             # Row 3: Windows path with backslashes, double-quote in metadata
             self.assertEqual(chunks[0].iloc[2]["product"], "Item C")
             self.assertEqual(chunks[0].iloc[2]["quantity"], 3)
-            self.assertEqual(
-                chunks[0].iloc[2]["description"], "Windows path: C:\\Users\\data.txt"
-            )
+            self.assertEqual(chunks[0].iloc[2]["description"], "Windows path: C:\\Users\\data.txt")
             self.assertEqual(chunks[0].iloc[2]["metadata"], 'Mix of "both" styles')
         finally:
             import os
@@ -388,9 +375,7 @@ class TestDSVReader(unittest.TestCase):
 
             # Row 2: both types of escaping in same field
             self.assertEqual(chunks[0].iloc[1]["id"], 2)
-            self.assertEqual(
-                chunks[0].iloc[1]["text"], 'Text with "double" and "backslash" quotes'
-            )
+            self.assertEqual(chunks[0].iloc[1]["text"], 'Text with "double" and "backslash" quotes')
             self.assertEqual(chunks[0].iloc[1]["value"], "Complex, with comma")
         finally:
             import os

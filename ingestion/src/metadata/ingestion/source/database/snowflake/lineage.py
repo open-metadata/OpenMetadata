@@ -36,9 +36,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class SnowflakeLineageSource(
-    SnowflakeQueryParserSource, StoredProcedureLineageMixin, LineageSource
-):
+class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageMixin, LineageSource):
     """
     Snowflake class for Lineage
     """
@@ -79,15 +77,11 @@ class SnowflakeLineageSource(
             total_fetched = 0
             max_results = self.source_config.resultLimit
             while total_fetched < max_results:
-                batch_size = min(
-                    SNOWFLAKE_QUERY_BATCH_SIZE, max_results - total_fetched
-                )
+                batch_size = min(SNOWFLAKE_QUERY_BATCH_SIZE, max_results - total_fetched)
                 rows = []
                 row_count = 0
                 with engine.connect() as conn:
-                    rows = conn.execution_options(
-                        stream_results=True, max_row_buffer=100
-                    ).execute(
+                    rows = conn.execution_options(stream_results=True, max_row_buffer=100).execute(
                         text(
                             self.get_sql_statement(
                                 start_time=self.start,
@@ -111,9 +105,7 @@ class SnowflakeLineageSource(
                             )
                         except Exception as exc:
                             logger.debug(traceback.format_exc())
-                            logger.warning(
-                                f"Error processing query_dict {query_dict}: {exc}"
-                            )
+                            logger.warning(f"Error processing query_dict {query_dict}: {exc}")
                 total_fetched += row_count
                 if row_count < batch_size:
                     break

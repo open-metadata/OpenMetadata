@@ -14,10 +14,8 @@
 import { Popover, Space } from 'antd';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
 import { FC, useEffect, useRef, useState } from 'react';
 import { ReactionOperation } from '../../../enums/reactions.enum';
-import { AnnouncementDetails } from '../../../generated/api/feed/createThread';
 import { Post } from '../../../generated/entity/feed/thread';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -27,7 +25,6 @@ import {
   getEntityType,
 } from '../../../utils/FeedUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import EditAnnouncementModal from '../../Modals/AnnouncementModal/EditAnnouncementModal';
 import { ActivityFeedCardProp } from './ActivityFeedCard.interface';
 import FeedCardBody from './FeedCardBody/FeedCardBody';
 import FeedCardFooter from './FeedCardFooter/FeedCardFooter';
@@ -51,8 +48,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   updateThreadHandler,
   onReply,
   task,
-  announcementDetails,
-  editAnnouncementPermission,
   showUserAvatar = true,
 }) => {
   const entityType = getEntityType(entityLink ?? '');
@@ -63,7 +58,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   const [feedDetail, setFeedDetail] = useState<Post>(feed);
 
   const [visible, setVisible] = useState<boolean>(false);
-  const [isEditAnnouncement, setEditAnnouncement] = useState<boolean>(false);
   const [isEditPost, setEditPost] = useState<boolean>(false);
 
   const isAuthor = feedDetail.from === currentUser?.name;
@@ -112,27 +106,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
     onFeedUpdate(patch);
   };
 
-  const handleAnnouncementUpdate = (
-    title: string,
-    announcement: AnnouncementDetails
-  ) => {
-    const existingAnnouncement = {
-      ...feedDetail,
-      announcement: announcementDetails,
-    };
-
-    const updatedAnnouncement = {
-      ...feedDetail,
-      message: title,
-      announcement,
-    };
-
-    const patch = compare(existingAnnouncement, updatedAnnouncement);
-
-    onFeedUpdate(patch);
-    setEditAnnouncement(false);
-  };
-
   const handlePostUpdate = (message: string) => {
     const updatedPost = { ...feedDetail, message };
 
@@ -142,13 +115,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
     setEditPost(false);
   };
 
-  const handleThreadEdit = () => {
-    if (announcementDetails) {
-      setEditAnnouncement(true);
-    } else {
-      setEditPost(true);
-    }
-  };
+  const handleThreadEdit = () => setEditPost(true);
 
   const handleVisibleChange = (newVisible: boolean) => setVisible(newVisible);
 
@@ -173,8 +140,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           align={{ targetOffset: [0, -16] }}
           content={
             <PopoverContent
-              editAnnouncementPermission={editAnnouncementPermission}
-              isAnnouncement={!isUndefined(announcementDetails)}
               isAuthor={isAuthor}
               isThread={isThread}
               postId={feedDetail.id}
@@ -209,7 +174,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
                 timeStamp={feedDetail.postTs}
               />
               <FeedCardBody
-                announcementDetails={announcementDetails}
                 isEditPost={isEditPost}
                 isThread={isThread}
                 message={feedDetail.message}
@@ -232,15 +196,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           )}
         </Popover>
       </div>
-      {isEditAnnouncement && announcementDetails && (
-        <EditAnnouncementModal
-          announcement={announcementDetails}
-          announcementTitle={feedDetail.message}
-          open={isEditAnnouncement}
-          onCancel={() => setEditAnnouncement(false)}
-          onConfirm={handleAnnouncementUpdate}
-        />
-      )}
     </>
   );
 };
