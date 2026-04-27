@@ -56,6 +56,20 @@
           <groupId>com.fasterxml.jackson.core</groupId>
           <artifactId>jackson-databind</artifactId>
         </exclusion>
+        <!-- jsonschema2pojo 1.3.0 swapped its runtime to the Jackson 3 (tools.jackson.core) namespace;
+             we don't need it (we only consume the annotation API), and 3.0.2 ships several high-sev DoS CVEs. -->
+        <exclusion>
+          <groupId>tools.jackson.core</groupId>
+          <artifactId>jackson-databind</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>tools.jackson.core</groupId>
+          <artifactId>jackson-core</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>tools.jackson.core</groupId>
+          <artifactId>jackson-annotations</artifactId>
+        </exclusion>
         <exclusion>
           <groupId>com.google.code.gson</groupId>
           <artifactId>gson</artifactId>

@@ -23,7 +23,7 @@
         <!-- Kubernetes client version (should match openmetadata-service) -->
         <kubernetes-client.version>21.0.1</kubernetes-client.version>
         <!-- Jackson version (should match parent project) -->
-        <jackson.version>2.17.2</jackson.version>
+        <jackson.version>2.21.2</jackson.version>
     </properties>
     
     <dependencies>
