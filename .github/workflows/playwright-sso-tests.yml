@@ -34,25 +34,25 @@ on:
       - reopened
       - ready_for_review
     paths:
-      - 'openmetadata-ui/src/main/resources/ui/src/components/Auth/**'
-      - 'openmetadata-ui/src/main/resources/ui/src/rest/auth-API*'
-      - 'openmetadata-ui/src/main/resources/ui/src/utils/AuthProvider*'
-      - 'openmetadata-ui/src/main/resources/ui/src/utils/TokenServiceUtil*'
-      - 'openmetadata-ui/src/main/resources/ui/src/utils/UserDataUtils*'
-      - 'openmetadata-ui/src/main/resources/ui/src/hooks/useSignIn*'
-      - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Auth/**'
-      - 'openmetadata-ui/src/main/resources/ui/playwright/utils/mockOidc*'
-      - 'openmetadata-ui/src/main/resources/ui/playwright.sso.config.ts'
-      - 'docker/development/mock-oidc-provider/**'
-      - 'docker/development/docker-compose.yml'
-      - 'docker/development/.env.sso-test'
-      - '.github/workflows/playwright-sso-tests.yml'
+      - "openmetadata-ui/src/main/resources/ui/src/components/Auth/**"
+      - "openmetadata-ui/src/main/resources/ui/src/rest/auth-API*"
+      - "openmetadata-ui/src/main/resources/ui/src/utils/AuthProvider*"
+      - "openmetadata-ui/src/main/resources/ui/src/utils/TokenServiceUtil*"
+      - "openmetadata-ui/src/main/resources/ui/src/utils/UserDataUtils*"
+      - "openmetadata-ui/src/main/resources/ui/src/hooks/useSignIn*"
+      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Auth/**"
+      - "openmetadata-ui/src/main/resources/ui/playwright/utils/mockOidc*"
+      - "openmetadata-ui/src/main/resources/ui/playwright.sso.config.ts"
+      - "docker/development/mock-oidc-provider/**"
+      - "docker/development/docker-compose.yml"
+      - "docker/development/.env.sso-test"
+      - ".github/workflows/playwright-sso-tests.yml"
   workflow_dispatch:
     inputs:
       sso_provider:
-        description: 'SSO Provider to test'
+        description: "SSO Provider to test"
         required: true
-        default: 'mock-oidc'
+        default: "mock-oidc"
         type: choice
         options:
           - mock-oidc
@@ -107,9 +107,9 @@ jobs:
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
           disable-reviews: true
 
       - name: Checkout
@@ -146,9 +146,9 @@ jobs:
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: '3.10'
-          args: '-d postgresql -i false'
-          ingestion_dependency: 'all'
+          python-version: "3.10"
+          args: "-d postgresql -i false"
+          ingestion_dependency: "all"
         env:
           AUTHENTICATION_PROVIDER: ${{ matrix.provider == 'mock-oidc' && 'custom-oidc' || 'basic' }}
           CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME: ${{ matrix.provider == 'mock-oidc' && 'mock-oidc' || '' }}
@@ -192,8 +192,8 @@ jobs:
         run: npx playwright test --config=playwright.sso.config.ts --workers=1
         env:
           SSO_PROVIDER_TYPE: ${{ matrix.provider }}
-          SSO_USERNAME: ${{ matrix.provider == 'google' && secrets.GOOGLE_SSO_USERNAME || matrix.provider == 'okta' && secrets.OKTA_SSO_USERNAME || matrix.provider == 'azure' && secrets.AZURE_SSO_USERNAME || matrix.provider == 'auth0' && secrets.AUTH0_SSO_USERNAME || matrix.provider == 'saml' && secrets.SAML_SSO_USERNAME || matrix.provider == 'cognito' && secrets.COGNITO_SSO_USERNAME || '' }}
-          SSO_PASSWORD: ${{ matrix.provider == 'google' && secrets.GOOGLE_SSO_PASSWORD || matrix.provider == 'okta' && secrets.OKTA_SSO_PASSWORD || matrix.provider == 'azure' && secrets.AZURE_SSO_PASSWORD || matrix.provider == 'auth0' && secrets.AUTH0_SSO_PASSWORD || matrix.provider == 'saml' && secrets.SAML_SSO_PASSWORD || matrix.provider == 'cognito' && secrets.COGNITO_SSO_PASSWORD || '' }}
+          SSO_USERNAME: ${{ secrets[format('{0}_SSO_USERNAME', upper(matrix.provider))] }}
+          SSO_PASSWORD: ${{ secrets[format('{0}_SSO_PASSWORD', upper(matrix.provider))] }}
           PLAYWRIGHT_IS_OSS: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         timeout-minutes: 60
