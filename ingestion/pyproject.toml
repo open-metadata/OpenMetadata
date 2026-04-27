@@ -309,6 +309,7 @@ ignore = [
   "src/metadata/workflow/data_quality.py",
   "src/metadata/workflow/ingestion.py",
   "src/metadata/workflow/metadata.py",
+  "src/metadata/workflow/policy_agent.py",
   "src/metadata/workflow/profiler.py",
   "src/metadata/workflow/usage.py",
   "src/metadata/workflow/classification.py",

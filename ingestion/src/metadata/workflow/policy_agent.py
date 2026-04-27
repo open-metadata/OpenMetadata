@@ -12,8 +12,6 @@
 Policy Agent Workflow Definition
 """
 
-from typing import cast
-
 from metadata.config.common import WorkflowExecutionError
 from metadata.ingestion.api.steps import Source
 from metadata.utils.logger import ingestion_logger
@@ -31,7 +29,7 @@ class PolicyAgentWorkflow(IngestionWorkflow):
     def set_steps(self):
         self.source = self._get_source()
         # The Policy Agent has no downstream steps; the source applies the grants directly.
-        self.steps = ()  # type: ignore[assignment]
+        self.steps = ()
 
     def _get_source(self) -> Source:
         source_type = self.config.source.type.lower()
@@ -39,12 +37,9 @@ class PolicyAgentWorkflow(IngestionWorkflow):
             raise WorkflowExecutionError("ServiceName is required field for executing the Policy Agent Workflow.")
 
         source_class = self.import_source_class()
-        result = cast(
-            Source,
-            source_class.create(self.config.source.model_dump(), self.metadata),
-        )
+        source: Source = source_class.create(self.config.source.model_dump(), self.metadata)
         logger.debug(f"Source type:{source_type},{source_class} configured")
-        result.prepare()
+        source.prepare()
         logger.debug(f"Source type:{source_type},{source_class} prepared")
 
-        return result
+        return source
