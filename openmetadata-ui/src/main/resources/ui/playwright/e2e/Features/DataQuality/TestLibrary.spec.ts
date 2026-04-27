@@ -349,16 +349,16 @@ test.describe(
             .first()
             .click();
 
-        // Close dropdown
-        await page.keyboard.press('Escape');
+          // Close dropdown
+          await page.keyboard.press('Escape');
 
-        // Wait for the validation error to clear after removing OpenMetadata
-        const supportedDataTypesItem = page
-          .locator('.ant-form-item')
-          .filter({ hasText: 'Supported Data Types' });
-        await expect(
-          supportedDataTypesItem.locator('.ant-form-item-explain-error')
-        ).not.toBeVisible();
+          // Wait for the validation error to clear after removing OpenMetadata
+          const supportedDataTypesItem = page
+            .locator('.ant-form-item')
+            .filter({ hasText: 'Supported Data Types' });
+          await expect(
+            supportedDataTypesItem.locator('.ant-form-item-explain-error')
+          ).not.toBeVisible();
 
           // Submit the form — supportedDataTypes should no longer block submission
           const testDefinitionResponse = page.waitForResponse(
