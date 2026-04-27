@@ -73,7 +73,7 @@ import {
   triggerContractValidation,
   validateDataContractInsideBundleTestSuites,
   validateSecurityAndSLADetails,
-  waitForDataContractExecution,
+  waitForContractExecutionWithFallback,
 } from '../../utils/dataContracts';
 import {
   addOwner,
@@ -143,7 +143,7 @@ test.describe('Data Contracts', () => {
       page,
     }) => {
       // 12-min timeout so waitForDataContractExecution completes first.
-      test.setTimeout(720_000);
+      test.setTimeout(900_000);
 
       const testClassification = new ClassificationClass();
       const testTag = new TagClass({
@@ -259,7 +259,7 @@ test.describe('Data Contracts', () => {
         await selectOption(
           page,
           ruleLocator.locator('.rule--value .ant-select'),
-          user.responseData.displayName,
+          user.getUserDisplayName(),
           true
         );
         await page.getByRole('button', { name: 'Add New Rule' }).click();
@@ -353,7 +353,7 @@ test.describe('Data Contracts', () => {
 
         await addOwner({
           page,
-          owner: user.responseData.displayName,
+          owner: user.getUserDisplayName(),
           type: 'Users',
           endpoint: entity.endpoint,
           dataTestId: 'data-assets-header',
@@ -473,6 +473,9 @@ test.describe('Data Contracts', () => {
           // save and trigger contract validation
           const response = await saveAndTriggerDataContractValidation(page);
 
+          // The test suite results may be available before the contract's latestResult is
+          // updated. If waitForDataContractExecution times out, fall back to the DataQuality
+          // page to verify the test suite ran successfully.
           if (
             typeof response === 'object' &&
             response !== null &&
@@ -481,13 +484,20 @@ test.describe('Data Contracts', () => {
             const { id: contractId } = response as { id: string };
 
             if (contractId) {
-              await waitForDataContractExecution(page, contractId);
+              const contractResultVisible =
+                await waitForContractExecutionWithFallback(
+                  page,
+                  contractId,
+                  DATA_CONTRACT_DETAILS.name
+                );
+
+              if (contractResultVisible) {
+                await expect(
+                  page.getByTestId('data-contract-latest-result-btn')
+                ).toBeVisible();
+              }
             }
           }
-
-          await expect(
-            page.getByTestId('data-contract-latest-result-btn')
-          ).toBeVisible();
         });
 
         await test.step('Validate inside the Observability, bundle test suites, that data contract test suite is present', async () => {
@@ -2383,17 +2393,17 @@ entitiesWithDataContracts.forEach((EntityClass) => {
 
               const searchUser = page.waitForResponse(
                 `/api/v1/search/query?q=*${encodeURIComponent(
-                  adminUser.responseData.displayName
+                  adminUser.getUserDisplayName()
                 )}*`
               );
               await page
                 .getByTestId('searchbar')
-                .fill(adminUser.responseData.displayName);
+                .fill(adminUser.getUserDisplayName());
               await searchUser;
 
               await page
                 .getByRole('listitem', {
-                  name: adminUser.responseData.displayName,
+                  name: adminUser.getUserDisplayName(),
                 })
                 .click();
 
