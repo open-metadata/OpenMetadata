@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """S3 environment setup for integration tests"""
+
 import os
 import uuid
 from pathlib import Path
@@ -116,9 +117,5 @@ def ingest_s3_storage(minio, metadata, service_name, create_data):
 
     yield
 
-    service: StorageService = metadata.get_by_name(
-        entity=StorageService, fqn=service_name
-    )
-    metadata.delete(
-        entity=StorageService, entity_id=service.id, hard_delete=True, recursive=True
-    )
+    service: StorageService = metadata.get_by_name(entity=StorageService, fqn=service_name)
+    metadata.delete(entity=StorageService, entity_id=service.id, hard_delete=True, recursive=True)

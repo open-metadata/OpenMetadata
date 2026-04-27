@@ -11,6 +11,7 @@
 """
 Client to interact with Nifi apis
 """
+
 import traceback
 from typing import Dict, Iterable, List
 
@@ -111,9 +112,7 @@ class NifiClient:
                     raise HTTPError(res.text)
 
             except HTTPError as err:
-                logger.error(
-                    f"Connection error retrieving the Bearer Token to access Nifi - {err}"
-                )
+                logger.error(f"Connection error retrieving the Bearer Token to access Nifi - {err}")
                 raise err
 
             except ValueError as err:

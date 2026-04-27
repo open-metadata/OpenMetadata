@@ -79,9 +79,7 @@ class MixedCaseTable(_MixedCaseBase):
     """Mimics ometa_to_sqa_orm output: name keeps original case, key is lowercased."""
 
     __tablename__ = "mixed_case_test"
-    reservationid = Column(
-        "reservationId", Integer, primary_key=True, key="reservationid"
-    )
+    reservationid = Column("reservationId", Integer, primary_key=True, key="reservationid")
     username = Column("userName", String(256), key="username")
 
 
@@ -116,9 +114,7 @@ def sqa_profiler_interface(table_entity, sqlite_conn):
         )
 
     with patch.object(SQASampler, "build_table_orm", return_value=User):
-        interface = SQAProfilerInterface(
-            sqlite_conn, None, table_entity, None, sampler, 5, 43200
-        )
+        interface = SQAProfilerInterface(sqlite_conn, None, table_entity, None, sampler, 5, 43200)
     yield interface
     interface.close()
 
@@ -181,9 +177,7 @@ def setup_database(class_sqa_profiler_interface):
     """Setup test database and tables"""
     try:
         # Drop the table if it exists
-        User.__table__.drop(
-            bind=class_sqa_profiler_interface.session.get_bind(), checkfirst=True
-        )
+        User.__table__.drop(bind=class_sqa_profiler_interface.session.get_bind(), checkfirst=True)
         # Create the table
         User.__table__.create(bind=class_sqa_profiler_interface.session.get_bind())
     except Exception as e:
@@ -201,9 +195,7 @@ def setup_database(class_sqa_profiler_interface):
 
     # Cleanup
     try:
-        User.__table__.drop(
-            bind=class_sqa_profiler_interface.session.get_bind(), checkfirst=True
-        )
+        User.__table__.drop(bind=class_sqa_profiler_interface.session.get_bind(), checkfirst=True)
         class_sqa_profiler_interface.session.close()
     except Exception as e:
         print(f"Error during cleanup: {str(e)}")
@@ -216,19 +208,9 @@ def metrics(class_sqa_profiler_interface):
     return {
         "all": metrics,
         "static": [metric for metric in metrics if issubclass(metric, StaticMetric)],
-        "composed": [
-            metric for metric in metrics if issubclass(metric, ComposedMetric)
-        ],
-        "window": [
-            metric
-            for metric in metrics
-            if issubclass(metric, StaticMetric) and metric.is_window_metric()
-        ],
-        "query": [
-            metric
-            for metric in metrics
-            if issubclass(metric, QueryMetric) and metric.is_col_metric()
-        ],
+        "composed": [metric for metric in metrics if issubclass(metric, ComposedMetric)],
+        "window": [metric for metric in metrics if issubclass(metric, StaticMetric) and metric.is_window_metric()],
+        "query": [metric for metric in metrics if issubclass(metric, QueryMetric) and metric.is_col_metric()],
     }
 
 
@@ -241,9 +223,7 @@ def test_get_all_metrics(class_sqa_profiler_interface, metrics):
     table_metrics = [
         ThreadPoolMetrics(
             metrics=[
-                metric
-                for metric in metrics["all"]
-                if (not metric.is_col_metric() and not metric.is_system_metrics())
+                metric for metric in metrics["all"] if (not metric.is_col_metric() and not metric.is_system_metrics())
             ],
             metric_type=MetricTypes.Table,
             column=None,
@@ -257,9 +237,7 @@ def test_get_all_metrics(class_sqa_profiler_interface, metrics):
         column_metrics.append(
             ThreadPoolMetrics(
                 metrics=[
-                    metric
-                    for metric in metrics["static"]
-                    if metric.is_col_metric() and not metric.is_window_metric()
+                    metric for metric in metrics["static"] if metric.is_col_metric() and not metric.is_window_metric()
                 ],
                 metric_type=MetricTypes.Static,
                 column=col,
@@ -277,9 +255,7 @@ def test_get_all_metrics(class_sqa_profiler_interface, metrics):
             )
         window_metrics.append(
             ThreadPoolMetrics(
-                metrics=[
-                    metric for metric in metrics["window"] if metric.is_window_metric()
-                ],
+                metrics=[metric for metric in metrics["window"] if metric.is_window_metric()],
                 metric_type=MetricTypes.Window,
                 column=col,
                 table=User,
@@ -304,18 +280,12 @@ def test_get_all_metrics(class_sqa_profiler_interface, metrics):
         timestamp=Timestamp(int(datetime.now().timestamp())),
     )
 
-    profile_request = CreateTableProfileRequest(
-        tableProfile=table_profile, columnProfile=column_profile
-    )
+    profile_request = CreateTableProfileRequest(tableProfile=table_profile, columnProfile=column_profile)
 
     assert profile_request.tableProfile.columnCount == 6
     assert profile_request.tableProfile.rowCount == 2
-    name_column_profile = [
-        profile for profile in profile_request.columnProfile if profile.name == "name"
-    ][0]
-    id_column_profile = [
-        profile for profile in profile_request.columnProfile if profile.name == "id"
-    ][0]
+    name_column_profile = [profile for profile in profile_request.columnProfile if profile.name == "name"][0]
+    id_column_profile = [profile for profile in profile_request.columnProfile if profile.name == "id"][0]
     assert name_column_profile.nullCount == 0
     assert id_column_profile.median == 1.0
 
@@ -331,14 +301,10 @@ def test_compute_metrics_in_thread_success(sqa_profiler_interface):
     )
 
     # Mock the _get_metric_fn to return a known value
-    sqa_profiler_interface._get_metric_fn = {
-        MetricTypes.Table.value: Mock(return_value={"rowCount": 2})
-    }
+    sqa_profiler_interface._get_metric_fn = {MetricTypes.Table.value: Mock(return_value={"rowCount": 2})}
 
     # Execute the method
-    result, column, metric_type = sqa_profiler_interface.compute_metrics_in_thread(
-        mock_metric
-    )
+    result, column, metric_type = sqa_profiler_interface.compute_metrics_in_thread(mock_metric)
 
     # Verify results
     assert result == {"rowCount": 2}
@@ -357,9 +323,7 @@ def test_compute_metrics_in_thread_disconnect_retry_success(sqa_profiler_interfa
     )
 
     # Mock the _get_metric_fn to raise a disconnection error once, then succeed
-    mock_fn = Mock(
-        side_effect=[DBAPIError("disconnected", None, None), {"rowCount": 2}]
-    )
+    mock_fn = Mock(side_effect=[DBAPIError("disconnected", None, None), {"rowCount": 2}])
     sqa_profiler_interface._get_metric_fn = {MetricTypes.Table.value: mock_fn}
 
     # Mock the dialect's is_disconnect to return True
@@ -368,9 +332,7 @@ def test_compute_metrics_in_thread_disconnect_retry_success(sqa_profiler_interfa
         "is_disconnect",
         return_value=True,
     ):
-        result, column, metric_type = sqa_profiler_interface.compute_metrics_in_thread(
-            mock_metric
-        )
+        result, column, metric_type = sqa_profiler_interface.compute_metrics_in_thread(mock_metric)
 
     # Verify results
     assert result == {"rowCount": 2}
@@ -399,9 +361,7 @@ def test_compute_metrics_in_thread_max_retries_exceeded(sqa_profiler_interface):
         "is_disconnect",
         return_value=True,
     ):
-        result, column, metric_type = sqa_profiler_interface.compute_metrics_in_thread(
-            mock_metric
-        )
+        result, column, metric_type = sqa_profiler_interface.compute_metrics_in_thread(mock_metric)
 
     # Verify results - should return None values after max retries
     assert result is None
@@ -430,9 +390,7 @@ def test_compute_metrics_in_thread_other_exception(sqa_profiler_interface):
         "is_disconnect",
         return_value=False,
     ):
-        result, column, metric_type = sqa_profiler_interface.compute_metrics_in_thread(
-            mock_metric
-        )
+        result, column, metric_type = sqa_profiler_interface.compute_metrics_in_thread(mock_metric)
 
     # Verify results - should return None values after exception
     assert result is None
@@ -457,9 +415,7 @@ def test_compute_query_metrics_mixed_case_column(sqa_profiler_interface):
     interface = Mock(spec=SQAProfilerInterface)
     interface.session = sqa_profiler_interface.session
 
-    MixedCaseTable.__table__.create(
-        bind=sqa_profiler_interface.session.get_bind(), checkfirst=True
-    )
+    MixedCaseTable.__table__.create(bind=sqa_profiler_interface.session.get_bind(), checkfirst=True)
 
     runner = QueryRunner(
         session=sqa_profiler_interface.session,

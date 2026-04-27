@@ -13,6 +13,7 @@ Mixin class containing Server and client specific methods
 
 To be used by OpenMetadata class
 """
+
 from typing import Optional
 
 from metadata.__version__ import (
@@ -115,9 +116,7 @@ class OMetaServerMixin:
         Returns:
             Settings
         """
-        response = self.client.get(
-            f"{ROUTES.get(Settings.__name__)}/{setting_type.value}"
-        )
+        response = self.client.get(f"{ROUTES.get(Settings.__name__)}/{setting_type.value}")
         if not response:
             return None
         return Settings.model_validate(response)

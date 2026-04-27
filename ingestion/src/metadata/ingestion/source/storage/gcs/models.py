@@ -11,6 +11,7 @@
 """
 GCS custom pydantic models
 """
+
 from datetime import datetime
 from typing import List, Optional
 
@@ -48,9 +49,7 @@ class GCSContainerDetails(BaseModel):
 
     name: str = Field(..., description="Bucket name")
     prefix: str = Field(..., description="Prefix for the container")
-    description: Optional[basic.Markdown] = Field(
-        None, description="Description of the container instance."
-    )
+    description: Optional[basic.Markdown] = Field(None, description="Description of the container instance.")
     number_of_objects: Optional[float] = Field(
         None,
         description="Total nr. of objects",
@@ -76,15 +75,7 @@ class GCSContainerDetails(BaseModel):
         None,
         description="Reference to the parent container",
     )
-    sourceUrl: Optional[basic.SourceUrl] = Field(
-        None, description="Source URL of the container."
-    )
-    fullPath: Optional[str] = Field(
-        None, description="Full path of the container/file."
-    )
-    container_fqn: Optional[str] = Field(
-        None, description="Fully qualified name of the container."
-    )
-    leaf_container: Optional[bool] = Field(
-        None, description="Whether this is a leaf container."
-    )
+    sourceUrl: Optional[basic.SourceUrl] = Field(None, description="Source URL of the container.")
+    fullPath: Optional[str] = Field(None, description="Full path of the container/file.")
+    container_fqn: Optional[str] = Field(None, description="Fully qualified name of the container.")
+    leaf_container: Optional[bool] = Field(None, description="Whether this is a leaf container.")

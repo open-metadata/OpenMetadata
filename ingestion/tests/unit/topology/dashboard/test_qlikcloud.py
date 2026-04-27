@@ -232,30 +232,22 @@ class QlikCloudUnitTest(TestCase):
     Qlikcloud Unit Testtest_dbt
     """
 
-    @patch(
-        "metadata.ingestion.source.dashboard.qlikcloud.metadata.QlikcloudSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.dashboard.qlikcloud.metadata.QlikcloudSource.test_connection")
     def __init__(self, methodName, test_connection) -> None:
         with patch.object(QlikCloudClient, "get_dashboards_list", return_value=None):
             super().__init__(methodName)
             test_connection.return_value = False
-            self.config = OpenMetadataWorkflowConfig.model_validate(
-                mock_qlikcloud_config
-            )
+            self.config = OpenMetadataWorkflowConfig.model_validate(mock_qlikcloud_config)
             self.qlikcloud = QlikcloudSource.create(
                 mock_qlikcloud_config["source"],
                 OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
             )
-            self.qlikcloud.context.get().__dict__[
-                "dashboard_service"
-            ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+            self.qlikcloud.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
             self.qlikcloud.context.get().__dict__["project_name"] = None
 
     @pytest.mark.order(0)
     def test_prepare(self):
-        with patch.object(
-            QlikCloudClient, "get_projects_list", return_value=MOCK_PROJECTS
-        ):
+        with patch.object(QlikCloudClient, "get_projects_list", return_value=MOCK_PROJECTS):
             self.qlikcloud.prepare()
 
         assert len(self.qlikcloud.projects_map) == len(MOCK_PROJECTS_MAP), (
@@ -265,23 +257,15 @@ class QlikCloudUnitTest(TestCase):
 
         for space_id, expected_space in MOCK_PROJECTS_MAP.items():
             mapped_space = self.qlikcloud.projects_map.get(space_id)
-            assert (
-                mapped_space == expected_space
-            ), f"Expected {expected_space} for spaceId {space_id}, but got {mapped_space}"
+            assert mapped_space == expected_space, (
+                f"Expected {expected_space} for spaceId {space_id}, but got {mapped_space}"
+            )
 
         personal_space = self.qlikcloud.projects_map.get("")
-        assert (
-            personal_space is not None
-        ), "Expected the 'Personal' space to be added to the map."
-        assert (
-            personal_space.name == "Personal"
-        ), "The 'Personal' space name is incorrect."
-        assert (
-            personal_space.id == ""
-        ), "The 'Personal' space id should be empty string."
-        assert (
-            personal_space.type == QlikSpaceType.PERSONAL
-        ), "The 'Personal' space type is incorrect."
+        assert personal_space is not None, "Expected the 'Personal' space to be added to the map."
+        assert personal_space.name == "Personal", "The 'Personal' space name is incorrect."
+        assert personal_space.id == "", "The 'Personal' space id should be empty string."
+        assert personal_space.type == QlikSpaceType.PERSONAL, "The 'Personal' space type is incorrect."
 
     @pytest.mark.order(1)
     def test_dashboard(self):
@@ -296,17 +280,12 @@ class QlikCloudUnitTest(TestCase):
 
     @pytest.mark.order(2)
     def test_dashboard_name(self):
-        assert (
-            self.qlikcloud.get_dashboard_name(MOCK_DASHBOARD_DETAILS)
-            == MOCK_DASHBOARD_NAME
-        )
+        assert self.qlikcloud.get_dashboard_name(MOCK_DASHBOARD_DETAILS) == MOCK_DASHBOARD_NAME
 
     @pytest.mark.order(3)
     def test_chart(self):
         dashboard_details = MOCK_DASHBOARD_DETAILS
-        with patch.object(
-            QlikCloudClient, "get_dashboard_charts", return_value=MOCK_CHARTS
-        ):
+        with patch.object(QlikCloudClient, "get_dashboard_charts", return_value=MOCK_CHARTS):
             results = list(self.qlikcloud.yield_dashboard_chart(dashboard_details))
             chart_list = []
             for result in results:
@@ -325,9 +304,7 @@ class QlikCloudUnitTest(TestCase):
 
     @pytest.mark.order(5)
     def test_managed_app_dashboard(self):
-        with patch.object(
-            QlikCloudClient, "get_projects_list", return_value=MOCK_PROJECTS
-        ):
+        with patch.object(QlikCloudClient, "get_projects_list", return_value=MOCK_PROJECTS):
             self.qlikcloud.prepare()
 
         managed_app_dashboards_count = 0
@@ -343,9 +320,7 @@ class QlikCloudUnitTest(TestCase):
 
     @pytest.mark.order(6)
     def test_shared_app_dashboard(self):
-        with patch.object(
-            QlikCloudClient, "get_projects_list", return_value=MOCK_PROJECTS
-        ):
+        with patch.object(QlikCloudClient, "get_projects_list", return_value=MOCK_PROJECTS):
             self.qlikcloud.prepare()
 
         shared_app_dashboards_count = 0
@@ -361,9 +336,7 @@ class QlikCloudUnitTest(TestCase):
 
     @pytest.mark.order(7)
     def test_personal_app_dashboard(self):
-        with patch.object(
-            QlikCloudClient, "get_projects_list", return_value=MOCK_PROJECTS
-        ):
+        with patch.object(QlikCloudClient, "get_projects_list", return_value=MOCK_PROJECTS):
             self.qlikcloud.prepare()
 
         personal_app_dashboards_count = 0
@@ -375,15 +348,11 @@ class QlikCloudUnitTest(TestCase):
             space = self.qlikcloud.projects_map[dashboard.space_id]
             if self.qlikcloud.filter_projects_by_type(space):
                 personal_app_dashboards_count += 1
-        assert (
-            personal_app_dashboards_count == PERSONAL_APP_DASHBOARD_IN_MOCK_DASHBOARDS
-        )
+        assert personal_app_dashboards_count == PERSONAL_APP_DASHBOARD_IN_MOCK_DASHBOARDS
 
     @pytest.mark.order(8)
     def test_space_type_filter_dashboard(self):
-        with patch.object(
-            QlikCloudClient, "get_projects_list", return_value=MOCK_PROJECTS
-        ):
+        with patch.object(QlikCloudClient, "get_projects_list", return_value=MOCK_PROJECTS):
             self.qlikcloud.prepare()
 
         space_type_filtered_dashboards_count = 0
@@ -394,8 +363,7 @@ class QlikCloudUnitTest(TestCase):
                 space_type_filtered_dashboards_count += 1
         assert (
             space_type_filtered_dashboards_count
-            == MANAGED_APP_DASHBOARD_IN_MOCK_DASHBOARDS
-            + SHARED_APP_DASHBOARD_IN_MOCK_DASHBOARDS
+            == MANAGED_APP_DASHBOARD_IN_MOCK_DASHBOARDS + SHARED_APP_DASHBOARD_IN_MOCK_DASHBOARDS
         )
 
         space_type_filtered_dashboards_count = 0
@@ -406,8 +374,7 @@ class QlikCloudUnitTest(TestCase):
                 space_type_filtered_dashboards_count += 1
         assert (
             space_type_filtered_dashboards_count
-            == MANAGED_APP_DASHBOARD_IN_MOCK_DASHBOARDS
-            + PERSONAL_APP_DASHBOARD_IN_MOCK_DASHBOARDS
+            == MANAGED_APP_DASHBOARD_IN_MOCK_DASHBOARDS + PERSONAL_APP_DASHBOARD_IN_MOCK_DASHBOARDS
         )
 
         space_type_filtered_dashboards_count = 0
@@ -418,8 +385,7 @@ class QlikCloudUnitTest(TestCase):
                 space_type_filtered_dashboards_count += 1
         assert (
             space_type_filtered_dashboards_count
-            == SHARED_APP_DASHBOARD_IN_MOCK_DASHBOARDS
-            + PERSONAL_APP_DASHBOARD_IN_MOCK_DASHBOARDS
+            == SHARED_APP_DASHBOARD_IN_MOCK_DASHBOARDS + PERSONAL_APP_DASHBOARD_IN_MOCK_DASHBOARDS
         )
 
     @pytest.mark.order(9)
@@ -445,16 +411,16 @@ class QlikCloudUnitTest(TestCase):
             expected_table_names = ["sales_data", "customers"]
 
             # Verify that we got the expected number of tables
-            assert len(script_tables) == len(
-                expected_table_names
-            ), f"Expected {len(expected_table_names)} tables, but got {len(script_tables)}"
+            assert len(script_tables) == len(expected_table_names), (
+                f"Expected {len(expected_table_names)} tables, but got {len(script_tables)}"
+            )
 
             # Verify table names are correctly extracted
             actual_table_names = [table.tableName for table in script_tables]
             for expected_name in expected_table_names:
-                assert (
-                    expected_name in actual_table_names
-                ), f"Expected table '{expected_name}' not found in {actual_table_names}"
+                assert expected_name in actual_table_names, (
+                    f"Expected table '{expected_name}' not found in {actual_table_names}"
+                )
 
     @pytest.mark.order(10)
     def test_get_script_tables_empty(self):
@@ -469,9 +435,7 @@ class QlikCloudUnitTest(TestCase):
             script_tables = self.qlikcloud.client.get_script_tables()
 
             # Should return empty list for empty script
-            assert (
-                len(script_tables) == 0
-            ), f"Expected 0 tables for empty script, but got {len(script_tables)}"
+            assert len(script_tables) == 0, f"Expected 0 tables for empty script, but got {len(script_tables)}"
 
     @pytest.mark.order(11)
     def test_get_data_files(self):
@@ -531,9 +495,7 @@ class QlikCloudUnitTest(TestCase):
             data_files = self.qlikcloud.client.get_data_files()
 
             assert data_files is not None, "Expected data_files to be returned"
-            assert (
-                len(data_files) == 3
-            ), f"Expected 3 data files, but got {len(data_files)}"
+            assert len(data_files) == 3, f"Expected 3 data files, but got {len(data_files)}"
 
             expected_file_names = [
                 "Contract_QVD.qvd",
@@ -542,14 +504,12 @@ class QlikCloudUnitTest(TestCase):
             ]
             actual_file_names = [data_file.name for data_file in data_files]
             for expected_name in expected_file_names:
-                assert (
-                    expected_name in actual_file_names
-                ), f"Expected data file '{expected_name}' not found in {actual_file_names}"
+                assert expected_name in actual_file_names, (
+                    f"Expected data file '{expected_name}' not found in {actual_file_names}"
+                )
 
             for data_file in data_files:
-                assert isinstance(
-                    data_file, QlikDataFile
-                ), f"Expected QlikDataFile instance, but got {type(data_file)}"
+                assert isinstance(data_file, QlikDataFile), f"Expected QlikDataFile instance, but got {type(data_file)}"
                 assert data_file.id is not None, "Expected data file to have an id"
                 assert data_file.name is not None, "Expected data file to have a name"
                 assert data_file.folder is False, "Expected folder to be False"
@@ -569,9 +529,7 @@ class QlikCloudUnitTest(TestCase):
             ]
 
             # Enable includeDataModels for this test
-            original_include_data_models = (
-                self.qlikcloud.source_config.includeDataModels
-            )
+            original_include_data_models = self.qlikcloud.source_config.includeDataModels
             self.qlikcloud.source_config.includeDataModels = True
 
             try:
@@ -580,31 +538,23 @@ class QlikCloudUnitTest(TestCase):
                     "get_dashboard_models",
                     return_value=mock_data_files,
                 ):
-                    datamodel_results = list(
-                        self.qlikcloud.yield_datamodel(MOCK_DASHBOARD_DETAILS)
-                    )
+                    datamodel_results = list(self.qlikcloud.yield_datamodel(MOCK_DASHBOARD_DETAILS))
 
-                    assert (
-                        len(datamodel_results) == 2
-                    ), f"Expected 2 datamodel results, got {len(datamodel_results)}"
+                    assert len(datamodel_results) == 2, f"Expected 2 datamodel results, got {len(datamodel_results)}"
                     for i, result in enumerate(datamodel_results):
                         assert isinstance(result, Either), "Expected Either instance"
-                        assert (
-                            result.right is not None
-                        ), "Expected right value (success)"
+                        assert result.right is not None, "Expected right value (success)"
 
                         data_model_request = result.right
-                        assert isinstance(
-                            data_model_request, CreateDashboardDataModelRequest
-                        ), f"Expected CreateDashboardDataModelRequest, got {type(data_model_request)}"
+                        assert isinstance(data_model_request, CreateDashboardDataModelRequest), (
+                            f"Expected CreateDashboardDataModelRequest, got {type(data_model_request)}"
+                        )
 
                         assert data_model_request.name.root == mock_data_files[i].id
                         assert data_model_request.displayName == mock_data_files[i].name
                         assert data_model_request.columns == []
             finally:
-                self.qlikcloud.source_config.includeDataModels = (
-                    original_include_data_models
-                )
+                self.qlikcloud.source_config.includeDataModels = original_include_data_models
 
     @pytest.mark.order(12)
     def test_get_data_files_empty(self):
@@ -619,9 +569,7 @@ class QlikCloudUnitTest(TestCase):
             data_files = self.qlikcloud.client.get_data_files()
 
             assert data_files is not None, "Expected data_files list to be returned"
-            assert (
-                len(data_files) == 0
-            ), f"Expected 0 data files, but got {len(data_files)}"
+            assert len(data_files) == 0, f"Expected 0 data files, but got {len(data_files)}"
 
     @pytest.mark.order(13)
     def test_get_data_files_api_failure(self):
@@ -638,9 +586,7 @@ class QlikCloudUnitTest(TestCase):
     def test_chart_source_state_populated(self):
         """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
         self.qlikcloud.chart_source_state = set()
-        with patch.object(
-            QlikCloudClient, "get_dashboard_charts", return_value=MOCK_CHARTS
-        ):
+        with patch.object(QlikCloudClient, "get_dashboard_charts", return_value=MOCK_CHARTS):
             list(self.qlikcloud.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS))
         assert len(self.qlikcloud.chart_source_state) == 2
         for fqn in self.qlikcloud.chart_source_state:

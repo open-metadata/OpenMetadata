@@ -11,6 +11,7 @@
 """
 Neo4J helper
 """
+
 import importlib
 import traceback
 from typing import Any, Iterable, Iterator, Optional, Union
@@ -89,9 +90,7 @@ class Neo4jHelper:
         with self.driver.session() as session:
             neo4j_results = session.read_transaction(self._execute_query, query)
             if hasattr(self, "model_class"):
-                results = [
-                    self.model_class(**neo4j_result) for neo4j_result in neo4j_results
-                ]
+                results = [self.model_class(**neo4j_result) for neo4j_result in neo4j_results]
             else:
                 results = neo4j_results
             return iter(results)
@@ -104,6 +103,4 @@ class Neo4jHelper:
             self.driver.close()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Exception encountered while closing the graph driver: {exc}"
-            )
+            logger.warning(f"Exception encountered while closing the graph driver: {exc}")

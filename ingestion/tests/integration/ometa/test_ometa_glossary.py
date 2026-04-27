@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Glossary test
 """
+
 from copy import deepcopy
 
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -107,10 +108,7 @@ class TestOMetaGlossary:
 
         assert glossary_term_1 is not None
         assert glossary_term_1.name == create_glossary_term_1.name
-        assert (
-            glossary_term_1.fullyQualifiedName.root
-            == f"{glossary.name.root}.{glossary_term_1.name.root}"
-        )
+        assert glossary_term_1.fullyQualifiedName.root == f"{glossary.name.root}.{glossary_term_1.name.root}"
 
         # Create Glossary Term with Parent
         create_glossary_term_2 = CreateGlossaryTermRequest(
@@ -127,9 +125,7 @@ class TestOMetaGlossary:
         assert glossary_term_2.name == create_glossary_term_2.name
         assert glossary_term_2.parent.name == glossary_term_1.name.root
 
-    def test_patch_glossary_term_parent(
-        self, metadata, create_glossary, create_glossary_term
-    ):
+    def test_patch_glossary_term_parent(self, metadata, create_glossary, create_glossary_term):
         """
         Update parent via PATCH
         """
@@ -163,9 +159,7 @@ class TestOMetaGlossary:
         glossary_term_3 = create_glossary_term(create_glossary_term_3)
 
         updated_glossary_term_3 = deepcopy(glossary_term_3)
-        updated_glossary_term_3.parent = EntityReference(
-            id=glossary_term_2.id, type="glossaryTerm"
-        )
+        updated_glossary_term_3.parent = EntityReference(id=glossary_term_2.id, type="glossaryTerm")
 
         # Add parent
         patched_glossary_term_3 = metadata.patch(
@@ -178,9 +172,7 @@ class TestOMetaGlossary:
         assert patched_glossary_term_3.parent.id == glossary_term_2.id
 
         # Move parent
-        updated_glossary_term_3.parent = EntityReference(
-            id=glossary_term_1.id, type="glossaryTerm"
-        )
+        updated_glossary_term_3.parent = EntityReference(id=glossary_term_1.id, type="glossaryTerm")
 
         patched_glossary_term_3 = metadata.patch(
             entity=GlossaryTerm,
@@ -202,9 +194,7 @@ class TestOMetaGlossary:
         assert patched_glossary_term_3 is not None
         assert patched_glossary_term_3.parent is None
 
-    def test_patch_glossary_term_related_terms(
-        self, metadata, create_glossary, create_glossary_term
-    ):
+    def test_patch_glossary_term_related_terms(self, metadata, create_glossary, create_glossary_term):
         """
         Update related terms via PATCH
         """
@@ -245,9 +235,7 @@ class TestOMetaGlossary:
         assert len(patched_glossary_term_1.relatedTerms) == 1
         assert patched_glossary_term_1.relatedTerms[0].term.id == glossary_term_2.id
 
-    def test_patch_reviewer(
-        self, metadata, create_glossary, create_glossary_term, create_user
-    ):
+    def test_patch_reviewer(self, metadata, create_glossary, create_glossary_term, create_user):
         """
         Update reviewers via PATCH
         """
@@ -260,9 +248,7 @@ class TestOMetaGlossary:
         if updated_glossary.reviewers is None:
             updated_glossary.reviewers = []
         updated_glossary.reviewers.append(EntityReference(id=user_1.id, type="user"))
-        patched_glossary = metadata.patch(
-            entity=Glossary, source=glossary, destination=updated_glossary
-        )
+        patched_glossary = metadata.patch(entity=Glossary, source=glossary, destination=updated_glossary)
 
         assert patched_glossary is not None
         assert len(patched_glossary.reviewers) == 1
@@ -271,9 +257,7 @@ class TestOMetaGlossary:
         # Remove only Glossary reviewer
         updated_glossary = deepcopy(patched_glossary)
         updated_glossary.reviewers.pop(0)
-        patched_glossary = metadata.patch(
-            entity=Glossary, source=patched_glossary, destination=updated_glossary
-        )
+        patched_glossary = metadata.patch(entity=Glossary, source=patched_glossary, destination=updated_glossary)
 
         assert patched_glossary is not None
         assert len(patched_glossary.reviewers) == 0
@@ -287,19 +271,13 @@ class TestOMetaGlossary:
         updated_glossary.reviewers.append(EntityReference(id=user_1.id, type="user"))
         updated_glossary.reviewers.append(EntityReference(id=user_2.id, type="user"))
         updated_glossary.reviewers.append(EntityReference(id=user_3.id, type="user"))
-        patched_glossary = metadata.patch(
-            entity=Glossary, source=patched_glossary, destination=updated_glossary
-        )
+        patched_glossary = metadata.patch(entity=Glossary, source=patched_glossary, destination=updated_glossary)
 
         # Remove one Glossary reviewer when there are many
         # delete user_3
         updated_glossary = deepcopy(patched_glossary)
-        updated_glossary.reviewers = [
-            r for r in updated_glossary.reviewers if r.id != user_3.id
-        ]
-        patched_glossary = metadata.patch(
-            entity=Glossary, source=patched_glossary, destination=updated_glossary
-        )
+        updated_glossary.reviewers = [r for r in updated_glossary.reviewers if r.id != user_3.id]
+        patched_glossary = metadata.patch(entity=Glossary, source=patched_glossary, destination=updated_glossary)
 
         assert patched_glossary is not None
         assert len(patched_glossary.reviewers) == 2
@@ -316,9 +294,7 @@ class TestOMetaGlossary:
         glossary_term_1 = create_glossary_term(create_glossary_term_1)
 
         updated_glossary_term_1 = deepcopy(glossary_term_1)
-        updated_glossary_term_1.reviewers.root.append(
-            EntityReference(id=user_1.id, type="user")
-        )
+        updated_glossary_term_1.reviewers.root.append(EntityReference(id=user_1.id, type="user"))
         patched_glossary_term_1 = metadata.patch(
             entity=GlossaryTerm,
             source=glossary_term_1,
@@ -327,10 +303,7 @@ class TestOMetaGlossary:
 
         assert patched_glossary_term_1 is not None
         assert len(patched_glossary_term_1.reviewers.root) == 2
-        assert any(
-            reviewer.id == user_1.id
-            for reviewer in patched_glossary_term_1.reviewers.root
-        )
+        assert any(reviewer.id == user_1.id for reviewer in patched_glossary_term_1.reviewers.root)
 
         updated_glossary_term_1 = deepcopy(patched_glossary_term_1)
         updated_glossary_term_1.reviewers.root.pop(0)
@@ -354,9 +327,7 @@ class TestOMetaGlossary:
         # inherited reviewers from glossary
         assert len(patched_glossary_term_1.reviewers.root) == 2
 
-    def test_patch_glossary_term_synonyms(
-        self, metadata, create_glossary, create_glossary_term
-    ):
+    def test_patch_glossary_term_synonyms(self, metadata, create_glossary, create_glossary_term):
         """
         Update synonyms via PATCH
         """
@@ -419,9 +390,7 @@ class TestOMetaGlossary:
         assert len(patched_glossary_term_1.synonyms) == 3
         assert patched_glossary_term_1.synonyms[1].root == "GT1S2"
 
-    def test_patch_glossary_term_references(
-        self, metadata, create_glossary, create_glossary_term
-    ):
+    def test_patch_glossary_term_references(self, metadata, create_glossary, create_glossary_term):
         """
         Update GlossaryTerm references via PATCH
         """
@@ -439,9 +408,7 @@ class TestOMetaGlossary:
         updated_glossary_term_1 = deepcopy(glossary_term_1)
         if updated_glossary_term_1.references is None:
             updated_glossary_term_1.references = []
-        updated_glossary_term_1.references.append(
-            TermReference(name="GT1S1", endpoint="https://www.getcollate.io")
-        )
+        updated_glossary_term_1.references.append(TermReference(name="GT1S1", endpoint="https://www.getcollate.io"))
         patched_glossary_term_1 = metadata.patch(
             entity=GlossaryTerm,
             source=glossary_term_1,
@@ -475,16 +442,10 @@ class TestOMetaGlossary:
 
         # Add  many references
         updated_glossary_term_1 = deepcopy(patched_glossary_term_1)
+        updated_glossary_term_1.references.append(TermReference(name="GT1S1", endpoint="https://www.getcollate.io"))
+        updated_glossary_term_1.references.append(TermReference(name="GT1S2", endpoint="https://open-metadata.org/"))
         updated_glossary_term_1.references.append(
-            TermReference(name="GT1S1", endpoint="https://www.getcollate.io")
-        )
-        updated_glossary_term_1.references.append(
-            TermReference(name="GT1S2", endpoint="https://open-metadata.org/")
-        )
-        updated_glossary_term_1.references.append(
-            TermReference(
-                name="GT1S3", endpoint="https://github.com/open-metadata/OpenMetadata"
-            )
+            TermReference(name="GT1S3", endpoint="https://github.com/open-metadata/OpenMetadata")
         )
 
         patched_glossary_term_1 = metadata.patch(
@@ -497,9 +458,7 @@ class TestOMetaGlossary:
         assert len(patched_glossary_term_1.references) == 3
         assert patched_glossary_term_1.references[1].name == "GT1S2"
 
-    def test_get_glossary_term_assets(
-        self, metadata, create_glossary, create_glossary_term
-    ):
+    def test_get_glossary_term_assets(self, metadata, create_glossary, create_glossary_term):
         """We can get assets for a glossary term"""
         glossary = create_glossary(_glossary_request())
 
@@ -516,9 +475,7 @@ class TestOMetaGlossary:
                 name=generate_name(),
                 serviceType=DashboardServiceType.Looker,
                 connection=DashboardConnection(
-                    config=LookerConnection(
-                        hostPort="http://hostPort", clientId="id", clientSecret="secret"
-                    )
+                    config=LookerConnection(hostPort="http://hostPort", clientId="id", clientSecret="secret")
                 ),
             )
         )
@@ -549,9 +506,7 @@ class TestOMetaGlossary:
         )
 
         try:
-            assets_response = metadata.get_glossary_term_assets(
-                glossary_term_1.fullyQualifiedName.root, limit=100
-            )
+            assets_response = metadata.get_glossary_term_assets(glossary_term_1.fullyQualifiedName.root, limit=100)
             assert len(assets_response["data"]) >= 1
             assert assets_response["data"][0]["id"] == str(dashboard.id.root)
             assert assets_response["data"][0]["type"] == "dashboard"

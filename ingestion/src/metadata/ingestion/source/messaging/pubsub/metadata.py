@@ -11,6 +11,7 @@
 """
 Google Cloud Pub/Sub source ingestion
 """
+
 import traceback
 from typing import Iterable, List, Optional, Union
 
@@ -75,24 +76,17 @@ class PubsubSource(MessagingServiceSource):
     ):
         super().__init__(config, metadata)
         self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
-        if (
-            self.generate_sample_data
-            and self._is_sample_data_storing_globally_disabled()
-        ):
+        if self.generate_sample_data and self._is_sample_data_storing_globally_disabled():
             self.generate_sample_data = False
         self.pubsub = self.connection
         self.project_id = self.pubsub.project_id
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: PubSubConnection = config.serviceConnection.root.config
         if not isinstance(connection, PubSubConnection):
-            raise InvalidSourceException(
-                f"Expected PubSubConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected PubSubConnection, but got {connection}")
         return cls(config, metadata)
 
     def _get_dead_letter_topics(self) -> set:
@@ -103,17 +97,13 @@ class PubsubSource(MessagingServiceSource):
         dead_letter_topics = set()
         project_path = f"projects/{self.project_id}"
         try:
-            subscriptions = self.pubsub.subscriber.list_subscriptions(
-                request={"project": project_path}
-            )
+            subscriptions = self.pubsub.subscriber.list_subscriptions(request={"project": project_path})
             for sub in subscriptions:
                 if sub.dead_letter_policy and sub.dead_letter_policy.dead_letter_topic:
                     dead_letter_topics.add(sub.dead_letter_policy.dead_letter_topic)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to list subscriptions for dead letter detection: {err}"
-            )
+            logger.warning(f"Failed to list subscriptions for dead letter detection: {err}")
         return dead_letter_topics
 
     def get_topic_list(self) -> Iterable[BrokerTopicDetails]:
@@ -126,9 +116,7 @@ class PubsubSource(MessagingServiceSource):
 
         project_path = f"projects/{self.project_id}"
         try:
-            topics = self.pubsub.publisher.list_topics(
-                request={"project": project_path}
-            )
+            topics = self.pubsub.publisher.list_topics(request={"project": project_path})
             for topic in topics:
                 if topic.name in dead_letter_topics:
                     logger.debug(f"Skipping dead letter topic: {topic.name}")
@@ -142,9 +130,7 @@ class PubsubSource(MessagingServiceSource):
                     )
                 except Exception as err:
                     logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Failed to get metadata for topic {topic_name}: {err}"
-                    )
+                    logger.warning(f"Failed to get metadata for topic {topic_name}: {err}")
         except GoogleAPIError as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to list topics from Pub/Sub: {err}")
@@ -167,11 +153,7 @@ class PubsubSource(MessagingServiceSource):
             subscriptions = self._get_topic_subscriptions(topic.name)
 
         schema_info = None
-        if (
-            self.service_connection.schemaRegistryEnabled
-            and topic.schema_settings
-            and topic.schema_settings.schema
-        ):
+        if self.service_connection.schemaRegistryEnabled and topic.schema_settings and topic.schema_settings.schema:
             schema_info = self._get_schema_info(topic.schema_settings.schema)
 
         retention_ms = self._parse_retention(topic.message_retention_duration)
@@ -192,55 +174,32 @@ class PubsubSource(MessagingServiceSource):
         """
         subscriptions = []
         try:
-            subscription_paths = self.pubsub.publisher.list_topic_subscriptions(
-                request={"topic": topic_name}
-            )
+            subscription_paths = self.pubsub.publisher.list_topic_subscriptions(request={"topic": topic_name})
             for sub_path in subscription_paths:
                 try:
-                    sub_info = self.pubsub.subscriber.get_subscription(
-                        request={"subscription": sub_path}
-                    )
+                    sub_info = self.pubsub.subscriber.get_subscription(request={"subscription": sub_path})
                     bigquery_config = None
-                    if (
-                        hasattr(sub_info, "bigquery_config")
-                        and sub_info.bigquery_config
-                    ):
+                    if hasattr(sub_info, "bigquery_config") and sub_info.bigquery_config:
                         bigquery_config = PubSubBigQueryConfig(
                             table=sub_info.bigquery_config.table,
-                            use_topic_schema=getattr(
-                                sub_info.bigquery_config, "use_topic_schema", None
-                            ),
-                            write_metadata=getattr(
-                                sub_info.bigquery_config, "write_metadata", None
-                            ),
-                            drop_unknown_fields=getattr(
-                                sub_info.bigquery_config, "drop_unknown_fields", None
-                            ),
+                            use_topic_schema=getattr(sub_info.bigquery_config, "use_topic_schema", None),
+                            write_metadata=getattr(sub_info.bigquery_config, "write_metadata", None),
+                            drop_unknown_fields=getattr(sub_info.bigquery_config, "drop_unknown_fields", None),
                         )
 
                     subscriptions.append(
                         PubSubSubscription(
                             name=sub_path.split("/")[-1],
                             ack_deadline_seconds=sub_info.ack_deadline_seconds,
-                            message_retention_duration=self._parse_retention(
-                                sub_info.message_retention_duration
-                            )
+                            message_retention_duration=self._parse_retention(sub_info.message_retention_duration)
                             or None,
                             dead_letter_topic=(
-                                sub_info.dead_letter_policy.dead_letter_topic
-                                if sub_info.dead_letter_policy
-                                else None
+                                sub_info.dead_letter_policy.dead_letter_topic if sub_info.dead_letter_policy else None
                             ),
-                            push_endpoint=(
-                                sub_info.push_config.push_endpoint
-                                if sub_info.push_config
-                                else None
-                            ),
+                            push_endpoint=(sub_info.push_config.push_endpoint if sub_info.push_config else None),
                             filter=sub_info.filter if sub_info.filter else None,
                             bigquery_config=bigquery_config,
-                            enable_exactly_once_delivery=getattr(
-                                sub_info, "enable_exactly_once_delivery", None
-                            ),
+                            enable_exactly_once_delivery=getattr(sub_info, "enable_exactly_once_delivery", None),
                         )
                     )
                 except Exception as err:
@@ -271,9 +230,7 @@ class PubsubSource(MessagingServiceSource):
             logger.warning(f"Failed to get schema {schema_name}: {err}")
         return None
 
-    def yield_topic(
-        self, topic_details: BrokerTopicDetails
-    ) -> Iterable[Either[CreateTopicRequest]]:
+    def yield_topic(self, topic_details: BrokerTopicDetails) -> Iterable[Either[CreateTopicRequest]]:
         """
         Method to yield the create topic request
         """
@@ -296,9 +253,7 @@ class PubsubSource(MessagingServiceSource):
             )
 
             if metadata.schema_settings and metadata.schema_settings.definition:
-                schema_type = self._map_schema_type(
-                    metadata.schema_settings.schema_type
-                )
+                schema_type = self._map_schema_type(metadata.schema_settings.schema_type)
                 schema_fields = self._parse_schema(
                     topic_details.topic_name,
                     metadata.schema_settings.definition,
@@ -372,9 +327,7 @@ class PubsubSource(MessagingServiceSource):
         }
         return mapping.get(pubsub_type, SchemaType.Other)
 
-    def _parse_schema(
-        self, topic_name: str, schema_text: str, schema_type: SchemaType
-    ) -> Optional[List]:
+    def _parse_schema(self, topic_name: str, schema_text: str, schema_type: SchemaType) -> Optional[List]:
         """
         Parse schema text using the schema parser registry.
 
@@ -387,9 +340,7 @@ class PubsubSource(MessagingServiceSource):
             List of parsed schema fields or None if parsing fails.
         """
         try:
-            load_parser_fn = schema_parser_config_registry.registry.get(
-                schema_type.value.lower()
-            )
+            load_parser_fn = schema_parser_config_registry.registry.get(schema_type.value.lower())
             if load_parser_fn:
                 return load_parser_fn(topic_name, schema_text)
         except Exception as exc:
@@ -397,9 +348,7 @@ class PubsubSource(MessagingServiceSource):
             logger.warning(f"Failed to parse schema for {topic_name}: {exc}")
         return None
 
-    def yield_topic_sample_data(
-        self, topic_details: BrokerTopicDetails
-    ) -> Iterable[Either[OMetaTopicSampleData]]:
+    def yield_topic_sample_data(self, topic_details: BrokerTopicDetails) -> Iterable[Either[OMetaTopicSampleData]]:
         """
         Method to get sample data of topic entity.
 
@@ -421,9 +370,7 @@ class PubsubSource(MessagingServiceSource):
             "implemented in this version."
         )
 
-    def yield_topic_lineage(
-        self, topic_details: BrokerTopicDetails
-    ) -> Iterable[Either[AddLineageRequest]]:
+    def yield_topic_lineage(self, topic_details: BrokerTopicDetails) -> Iterable[Either[AddLineageRequest]]:
         """
         Yield lineage from Pub/Sub topic to BigQuery tables via BigQuery subscriptions.
         Overrides the base class method to provide BigQuery-specific lineage.
@@ -433,10 +380,7 @@ class PubsubSource(MessagingServiceSource):
             return
 
         for subscription in metadata.subscriptions:
-            if (
-                not subscription.bigquery_config
-                or not subscription.bigquery_config.table
-            ):
+            if not subscription.bigquery_config or not subscription.bigquery_config.table:
                 continue
 
             try:
@@ -470,8 +414,7 @@ class PubsubSource(MessagingServiceSource):
                 )
                 if not table_entity:
                     logger.debug(
-                        f"BigQuery table {bq_table_ref} not found for lineage from "
-                        f"topic {topic_details.topic_name}"
+                        f"BigQuery table {bq_table_ref} not found for lineage from topic {topic_details.topic_name}"
                     )
                     continue
 
@@ -508,6 +451,4 @@ class PubsubSource(MessagingServiceSource):
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Failed to create lineage for subscription {subscription.name}: {exc}"
-                )
+                logger.warning(f"Failed to create lineage for subscription {subscription.name}: {exc}")

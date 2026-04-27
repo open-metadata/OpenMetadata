@@ -12,6 +12,7 @@
 """
 Test Metrics behavior
 """
+
 import os
 import sys
 from unittest import TestCase, mock
@@ -78,9 +79,7 @@ class MetricsTest(TestCase):
         )
     )
 
-    dfs = [
-        pd.read_csv(os.path.join(resources_dir, "profiler_test_.csv"), parse_dates=[5])
-    ]
+    dfs = [pd.read_csv(os.path.join(resources_dir, "profiler_test_.csv"), parse_dates=[5])]
 
     table_entity = Table(
         id=uuid4(),
@@ -165,9 +164,7 @@ class MetricsTest(TestCase):
         table_entity = Table(
             id=uuid4(),
             name="user",
-            databaseSchema=EntityReference(
-                id=uuid4(), type="databaseSchema", name="name"
-            ),
+            databaseSchema=EntityReference(id=uuid4(), type="databaseSchema", name="name"),
             columns=[
                 EntityColumn(
                     name=ColumnName("id"),
@@ -258,9 +255,7 @@ class MetricsTest(TestCase):
         table_entity = Table(
             id=uuid4(),
             name="user",
-            databaseSchema=EntityReference(
-                id=uuid4(), type="databaseSchema", name="name"
-            ),
+            databaseSchema=EntityReference(id=uuid4(), type="databaseSchema", name="name"),
             columns=[
                 EntityColumn(
                     name=ColumnName("id"),

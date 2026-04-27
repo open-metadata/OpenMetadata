@@ -66,15 +66,11 @@ class HiveSource(CommonDbSourceService):
     service_connection: HiveConnection
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: HiveConnection = config.serviceConnection.root.config
         if not isinstance(connection, HiveConnection):
-            raise InvalidSourceException(
-                f"Expected HiveConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected HiveConnection, but got {connection}")
         return cls(config, metadata)
 
     def _parse_version(self, version: str) -> Tuple:
@@ -122,9 +118,7 @@ class HiveSource(CommonDbSourceService):
                 result = conn.execute(text("SELECT VERSION()")).fetchone()._asdict()
 
             version = result.get("_c0", "").split()
-            if version and self._parse_version(version[0]) >= self._parse_version(
-                HIVE_VERSION_WITH_VIEW_SUPPORT
-            ):
+            if version and self._parse_version(version[0]) >= self._parse_version(HIVE_VERSION_WITH_VIEW_SUPPORT):
                 HiveDialect.get_table_names = get_table_names
                 HiveDialect.get_view_names = get_view_names
                 HiveDialect.get_view_definition = get_view_definition
@@ -148,14 +142,8 @@ class HiveSource(CommonDbSourceService):
                 TableType.View,
                 TableType.MaterializedView,
             ):
-                schema_definition = inspector.get_view_definition(
-                    table_name, schema_name
-                )
-            schema_definition = (
-                str(schema_definition).strip()
-                if schema_definition is not None
-                else None
-            )
+                schema_definition = inspector.get_view_definition(table_name, schema_name)
+            schema_definition = str(schema_definition).strip() if schema_definition is not None else None
             return schema_definition
 
         except NotImplementedError:

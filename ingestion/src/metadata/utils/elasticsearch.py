@@ -79,9 +79,7 @@ ES_INDEX_MAP = {
 }
 
 
-def get_entity_from_es_result(
-    entity_list: Optional[List[T]], fetch_multiple_entities: bool = False
-) -> Optional[T]:
+def get_entity_from_es_result(entity_list: Optional[List[T]], fetch_multiple_entities: bool = False) -> Optional[T]:
     """
     Return a single element from an entity list obtained
     from an ES query

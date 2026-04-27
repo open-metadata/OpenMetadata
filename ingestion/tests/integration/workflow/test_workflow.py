@@ -30,9 +30,7 @@ from ..conftest import _safe_delete
 
 
 def delete_service(metadata):
-    service_entity = metadata.get_by_name(
-        entity=DatabaseService, fqn="local_mysql_test"
-    )
+    service_entity = metadata.get_by_name(entity=DatabaseService, fqn="local_mysql_test")
     if service_entity:
         _safe_delete(
             metadata,
@@ -69,9 +67,7 @@ def test_execute_200(metadata, mysql_config):
     assert metadata.get_by_name(entity=DatabaseService, fqn="local_mysql_test")
 
     # The service has an ingestion pipeline (since it has the ingestionPipelineFQN inside and the runId)
-    assert metadata.get_by_name(
-        entity=IngestionPipeline, fqn=workflow_config["ingestionPipelineFQN"]
-    )
+    assert metadata.get_by_name(entity=IngestionPipeline, fqn=workflow_config["ingestionPipelineFQN"])
 
     # The pipeline has the right status
     pipeline_status = metadata.get_pipeline_status(
@@ -90,9 +86,7 @@ def test_execute_200(metadata, mysql_config):
     workflow.execute()
     workflow.stop()
 
-    pipeline_status = metadata.get_pipeline_status(
-        workflow_config["ingestionPipelineFQN"], new_run_id
-    )
+    pipeline_status = metadata.get_pipeline_status(workflow_config["ingestionPipelineFQN"], new_run_id)
 
     # We have status for the source and sink
     assert len(pipeline_status.status.root) == 2
@@ -113,9 +107,7 @@ def test_fail_no_service_connection_and_overwrite():
     workflow_config = load_config_file(config_file)
 
     del workflow_config["source"]["serviceConnection"]
-    workflow_config["workflowConfig"]["openMetadataServerConfig"][
-        "forceEntityOverwriting"
-    ] = True
+    workflow_config["workflowConfig"]["openMetadataServerConfig"]["forceEntityOverwriting"] = True
 
     with pytest.raises(AttributeError):
         MetadataWorkflow.create(workflow_config)

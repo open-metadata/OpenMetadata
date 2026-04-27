@@ -37,8 +37,6 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, PandasValidatorMixin
                 matching_rows = df.query(sql_expression)
                 total_count += len(matching_rows)
             except Exception as exc:
-                logger.exception(
-                    f"Error executing pandas query expression on chunk: {exc}"
-                )
+                logger.exception(f"Error executing pandas query expression on chunk: {exc}")
                 raise exc
         return total_count

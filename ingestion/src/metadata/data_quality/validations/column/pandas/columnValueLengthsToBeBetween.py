@@ -13,7 +13,6 @@
 Validator for column value length to be between test case
 """
 
-
 from collections import defaultdict
 from typing import List, Optional, cast
 
@@ -65,9 +64,7 @@ class ColumnValueLengthsToBeBetweenValidator(
         return self.run_dataframe_results(self.runner, metric, column)
 
     def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
-        metric_values = self._build_metric_values_from_row(
-            row, metrics_to_compute, test_params
-        )
+        metric_values = self._build_metric_values_from_row(row, metrics_to_compute, test_params)
         metric_values[DIMENSION_TOTAL_COUNT_KEY] = row.get(DIMENSION_TOTAL_COUNT_KEY)
         metric_values[DIMENSION_FAILED_COUNT_KEY] = row.get(DIMENSION_FAILED_COUNT_KEY)
         return metric_values
@@ -126,47 +123,33 @@ class ColumnValueLengthsToBeBetweenValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    dimension_aggregates[dimension_value][
-                        Metrics.minLength.name
-                    ] = min_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.minLength.name] = min_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.minLength.name],
                         group_df,
                     )
-                    dimension_aggregates[dimension_value][
-                        Metrics.maxLength.name
-                    ] = max_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.maxLength.name] = max_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.maxLength.name],
                         group_df,
                     )
 
-                    dimension_aggregates[dimension_value][
-                        DIMENSION_TOTAL_COUNT_KEY
-                    ] = row_count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][
-                            DIMENSION_TOTAL_COUNT_KEY
-                        ],
-                        group_df,
+                    dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY] = (
+                        row_count_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY],
+                            group_df,
+                        )
                     )
 
                     # Count row-level violations by checking lengths against bounds
                     col_values = group_df[column.name]
                     col_lengths = col_values.str.len()
                     violations_mask = checker.get_violations_mask(col_lengths)
-                    dimension_aggregates[dimension_value][
-                        DIMENSION_FAILED_COUNT_KEY
-                    ] += violations_mask.sum()
+                    dimension_aggregates[dimension_value][DIMENSION_FAILED_COUNT_KEY] += violations_mask.sum()
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                min_length_value = min_impl.aggregate_accumulator(
-                    agg[Metrics.minLength.name]
-                )
-                max_length_value = max_impl.aggregate_accumulator(
-                    agg[Metrics.maxLength.name]
-                )
-                total_rows = row_count_impl.aggregate_accumulator(
-                    agg[DIMENSION_TOTAL_COUNT_KEY]
-                )
+                min_length_value = min_impl.aggregate_accumulator(agg[Metrics.minLength.name])
+                max_length_value = max_impl.aggregate_accumulator(agg[Metrics.maxLength.name])
+                total_rows = row_count_impl.aggregate_accumulator(agg[DIMENSION_TOTAL_COUNT_KEY])
                 failed_count = agg[DIMENSION_FAILED_COUNT_KEY]
 
                 if min_length_value is None or max_length_value is None:
@@ -239,11 +222,7 @@ class ColumnValueLengthsToBeBetweenValidator(
         """
         row_count = self._compute_row_count(self.runner, column)
         failed_rows = sum(
-            len(
-                runner.query(
-                    f"`{column.name}`.str.len() > {max_bound} or `{column.name}`.str.len() < {min_bound}"
-                )
-            )
+            len(runner.query(f"`{column.name}`.str.len() > {max_bound} or `{column.name}`.str.len() < {min_bound}"))
             for runner in self.runner  # type: ignore
         )
 
@@ -254,13 +233,9 @@ class ColumnValueLengthsToBeBetweenValidator(
         max_bound = self.get_max_bound("maxLength")
         filters = []
         if min_bound is not None and min_bound > float("-inf"):
-            filters.append(
-                f"{self.get_column().name}.astype('str').str.len() < {min_bound}"
-            )
+            filters.append(f"{self.get_column().name}.astype('str').str.len() < {min_bound}")
         if max_bound is not None and max_bound < float("inf"):
-            filters.append(
-                f"{self.get_column().name}.astype('str').str.len() > {max_bound}"
-            )
+            filters.append(f"{self.get_column().name}.astype('str').str.len() > {max_bound}")
         return " or ".join(filters)
 
     def fetch_failed_rows_sample(self):

@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional, Union
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -42,9 +43,7 @@ def get_connection(
     Create connection - returns appropriate client based on auth type.
     OAuth authentication indicates Airbyte Cloud, otherwise self-hosted instance.
     """
-    if connection.auth and isinstance(
-        connection.auth, Oauth20ClientCredentialsAuthentication
-    ):
+    if connection.auth and isinstance(connection.auth, Oauth20ClientCredentialsAuthentication):
         return AirbyteCloudClient(connection)
     return AirbyteClient(connection)
 

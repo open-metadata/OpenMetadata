@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API endpoint test
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createTableProfile import (
@@ -99,18 +100,10 @@ class OMetaEndpointTest(TestCase):
         """
         Pass Services and test their suffix generation
         """
-        self.assertEqual(
-            self.metadata.get_suffix(DashboardService), "/services/dashboardServices"
-        )
-        self.assertEqual(
-            self.metadata.get_suffix(DatabaseService), "/services/databaseServices"
-        )
-        self.assertEqual(
-            self.metadata.get_suffix(MessagingService), "/services/messagingServices"
-        )
-        self.assertEqual(
-            self.metadata.get_suffix(PipelineService), "/services/pipelineServices"
-        )
+        self.assertEqual(self.metadata.get_suffix(DashboardService), "/services/dashboardServices")
+        self.assertEqual(self.metadata.get_suffix(DatabaseService), "/services/databaseServices")
+        self.assertEqual(self.metadata.get_suffix(MessagingService), "/services/messagingServices")
+        self.assertEqual(self.metadata.get_suffix(PipelineService), "/services/pipelineServices")
 
     def test_teams_suffix(self):
         """
