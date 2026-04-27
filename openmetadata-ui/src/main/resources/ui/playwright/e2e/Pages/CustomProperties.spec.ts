@@ -290,9 +290,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             dashboardTopic2
           );
           cpasTestData.createdCPData.forEach((cp) => {
-            propertyNames[
-              cp.propertyType.name
-            ] = `${cp.name}.test%%$^@*(||:{<>{}})`;
+            propertyNames[cp.propertyType.name] = cp.name;
           });
         }
       }
