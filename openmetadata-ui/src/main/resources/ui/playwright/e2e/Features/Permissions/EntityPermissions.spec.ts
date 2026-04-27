@@ -15,10 +15,9 @@ import { Page, test as base } from '@playwright/test';
 import { EntityClass } from '../../../support/entity/EntityClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { getApiContext, uuid } from '../../../utils/common';
+import { getApiContext } from '../../../utils/common';
 import {
   ALL_OPERATIONS,
-  createCustomPropertyForEntity,
   entityConfig,
   runCommonPermissionTests,
   runEntitySpecificPermissionTests,
@@ -76,22 +75,9 @@ Object.entries(entityConfig).forEach(([, config]) => {
   const entityType = entity.getType();
 
   test.describe(`${entityType} Permissions`, () => {
-    const customPropertyName = `pw${entityType.replace(
-      /\s+/g,
-      ''
-    )}CustomProperty${uuid()}`;
-
     test.beforeAll('Setup entity', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await entity.create(apiContext);
-
-      // Create custom property for this entity type
-      await createCustomPropertyForEntity(
-        browser,
-        entityType,
-        customPropertyName,
-        adminUser
-      );
 
       await afterAction();
     });

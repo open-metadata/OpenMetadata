@@ -251,7 +251,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await page.click('[data-testid="configuration"]');
 
-      await expect(page.locator('#search-indexing-application')).toContainText(
+      await expect(page.getByTestId('service-requirements')).toContainText(
         'Search Indexing Application'
       );
 

@@ -623,7 +623,7 @@ def _sort_array_entity_fields(
             source_attributes = getattr(source, field)
 
             source_dict = {
-                _get_attribute_name(attr): attr for attr in source_attributes
+                _get_attribute_name(attr): attr for attr in (source_attributes or [])
             }
 
             updated_attributes = []

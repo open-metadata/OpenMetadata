@@ -204,6 +204,11 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
+    "sampleData": {
+      "description": "Sample data for the container.",
+      "$ref": "../data/table.json#/definitions/tableData",
+      "default": null
+    },
     "sourceUrl": {
       "description": "Source URL of container.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"

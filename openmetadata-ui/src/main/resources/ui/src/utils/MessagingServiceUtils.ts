@@ -34,6 +34,12 @@ export const getBrokers = (config: MessagingConnection['config']) => {
   return isUndefined(retVal) ? '--' : retVal;
 };
 
+const SCHEMA_REGISTRY_SUFFIX_UI_SCHEMA = {
+  schemaRegistryTopicSuffixName: {
+    'ui:emptyValue': '',
+  },
+};
+
 export const getMessagingConfig = (type: MessagingServiceType) => {
   let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
@@ -41,11 +47,13 @@ export const getMessagingConfig = (type: MessagingServiceType) => {
   switch (type) {
     case MessagingServiceType.Kafka:
       schema = kafkaConnection;
+      Object.assign(uiSchema, SCHEMA_REGISTRY_SUFFIX_UI_SCHEMA);
 
       break;
 
     case MessagingServiceType.Redpanda:
       schema = redpandaConnection;
+      Object.assign(uiSchema, SCHEMA_REGISTRY_SUFFIX_UI_SCHEMA);
 
       break;
 

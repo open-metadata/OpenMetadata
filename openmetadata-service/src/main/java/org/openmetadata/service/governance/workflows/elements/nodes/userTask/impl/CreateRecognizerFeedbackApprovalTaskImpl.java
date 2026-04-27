@@ -170,7 +170,7 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
           .withUpdatedAt(System.currentTimeMillis());
 
       // Save the updated thread to database
-      Entity.getCollectionDAO().feedDAO().update(thread.getId(), JsonUtils.pojoToJson(thread));
+      feedRepository.updateLegacyThread(thread);
 
       // Now terminate the old workflow instance
       WorkflowHandler.getInstance()

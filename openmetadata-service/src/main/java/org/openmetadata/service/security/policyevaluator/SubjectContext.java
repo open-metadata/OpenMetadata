@@ -270,6 +270,11 @@ public record SubjectContext(User user, String impersonatedBy) {
     return hasRole(user, roles);
   }
 
+  /** Returns true if the user has domain-only access role. */
+  public boolean hasDomainOnlyAccessRole() {
+    return hasAnyRole("DomainOnlyAccessRole");
+  }
+
   /** Return true if the given user has any roles the list of roles */
   public static boolean hasRole(User user, String role) {
     Deque<EntityReference> stack = new ArrayDeque<>();
