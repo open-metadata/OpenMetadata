@@ -18,6 +18,8 @@ import { DataAssetOption } from '../../../../DataAssets/DataAssetAsyncSelectList
 const AsyncSelectWidget = ({ onChange, schema, ...props }: WidgetProps) => {
   const handleChange = (value: DataAssetOption | DataAssetOption[] | null) => {
     if (!value) {
+      onChange(undefined);
+
       return;
     }
     if (Array.isArray(value)) {

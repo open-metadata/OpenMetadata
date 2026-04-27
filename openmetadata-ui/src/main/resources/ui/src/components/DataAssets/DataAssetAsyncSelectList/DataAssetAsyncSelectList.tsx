@@ -245,11 +245,15 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
 
   useEffect(() => {
     if (!selectedValue) {
+      setSelectedItems([]);
+
       return;
     }
     if (isArray(selectedValue)) {
       const arr = selectedValue as (string | DataAssetOption)[];
       if (arr.length === 0) {
+        setSelectedItems([]);
+
         return;
       }
       if (isString(arr[0])) {
