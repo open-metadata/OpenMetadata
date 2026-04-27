@@ -287,12 +287,6 @@ exclude = [
 # Keep this in sync with `requires-python` above.
 pythonVersion = "3.10"
 
-# Pin the analysis platform to Linux. CI runs on ubuntu-latest, so Linux is
-# the target platform for our deployment. This makes the baseline file
-# deterministic across developer machines (Darwin, Windows, Linux) by
-# always using the Linux subset of type stubs.
-pythonPlatform = "Linux"
-
 # Existing violations are grandfathered via .basedpyright/baseline.json
 # (regenerate with `basedpyright -p ingestion/pyproject.toml --writebaseline`
 # from the ingestion/ directory). New violations in any file fail CI.
