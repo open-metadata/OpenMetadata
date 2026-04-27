@@ -21,7 +21,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Tabs } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toLower, toString } from 'lodash';
@@ -424,9 +423,13 @@ const DataProductsDetailsPage = ({
     }
   }, [dataProduct.fullyQualifiedName, enqueueSnackbar]);
 
-  const manageButtonContent: ItemType[] = [
+  const manageButtonContent: Array<{
+    label: ReactNode;
+    key: string;
+    onClick: () => void;
+  }> = [
     ...(editAllPermission
-      ? ([
+      ? [
           {
             label: (
               <ManageButtonItemLabel
@@ -437,16 +440,15 @@ const DataProductsDetailsPage = ({
               />
             ),
             key: 'announcement-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
+            onClick: () => {
               handleOpenAnnouncementDrawer();
               setShowActions(false);
             },
           },
-        ] as ItemType[])
+        ]
       : []),
     ...(editDisplayNamePermission
-      ? ([
+      ? [
           {
             label: (
               <ManageButtonItemLabel
@@ -459,16 +461,15 @@ const DataProductsDetailsPage = ({
               />
             ),
             key: 'rename-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
+            onClick: () => {
               setIsNameEditing(true);
               setShowActions(false);
             },
           },
-        ] as ItemType[])
+        ]
       : []),
     ...(editAllPermission
-      ? ([
+      ? [
           {
             label: (
               <ManageButtonItemLabel
@@ -481,16 +482,15 @@ const DataProductsDetailsPage = ({
               />
             ),
             key: 'edit-style-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
+            onClick: () => {
               setIsStyleEditing(true);
               setShowActions(false);
             },
           },
-        ] as ItemType[])
+        ]
       : []),
     ...(deleteDataProductPermission
-      ? ([
+      ? [
           {
             label: (
               <ManageButtonItemLabel
@@ -506,13 +506,12 @@ const DataProductsDetailsPage = ({
               />
             ),
             key: 'delete-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
+            onClick: () => {
               setIsDelete(true);
               setShowActions(false);
             },
           },
-        ] as ItemType[])
+        ]
       : []),
   ];
 
@@ -848,13 +847,10 @@ const DataProductsDetailsPage = ({
                       <Dropdown.Menu>
                         {manageButtonContent.map((item) => (
                           <Dropdown.Item
-                            unstyled
-                            id={String(item?.key)}
-                            key={String(item?.key)}
-                            onAction={
-                              (item as { onClick?: () => void })?.onClick
-                            }>
-                            {(item as { label?: ReactNode })?.label}
+                            id={item.key}
+                            key={item.key}
+                            onAction={item.onClick}>
+                            {item.label}
                           </Dropdown.Item>
                         ))}
                       </Dropdown.Menu>

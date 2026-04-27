@@ -21,7 +21,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@untitledui/icons';
 import { Form, Tabs } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, toString } from 'lodash';
@@ -726,9 +725,13 @@ const DomainDetails = ({
     []
   );
 
-  const manageButtonContent: ItemType[] = [
+  const manageButtonContent: Array<{
+    label: ReactNode;
+    key: string;
+    onClick: () => void;
+  }> = [
     ...(domainPermission?.EditAll
-      ? ([
+      ? [
           {
             label: (
               <ManageButtonItemLabel
@@ -739,16 +742,15 @@ const DomainDetails = ({
               />
             ),
             key: 'announcement-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
+            onClick: () => {
               handleOpenAnnouncementDrawer();
               setShowActions(false);
             },
           },
-        ] as ItemType[])
+        ]
       : []),
     ...(editDisplayNamePermission
-      ? ([
+      ? [
           {
             label: (
               <ManageButtonItemLabel
@@ -761,16 +763,15 @@ const DomainDetails = ({
               />
             ),
             key: 'rename-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
+            onClick: () => {
               setIsNameEditing(true);
               setShowActions(false);
             },
           },
-        ] as ItemType[])
+        ]
       : []),
     ...(domainPermission?.EditAll
-      ? ([
+      ? [
           {
             label: (
               <ManageButtonItemLabel
@@ -783,16 +784,15 @@ const DomainDetails = ({
               />
             ),
             key: 'edit-style-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
+            onClick: () => {
               setIsStyleEditing(true);
               setShowActions(false);
             },
           },
-        ] as ItemType[])
+        ]
       : []),
     ...(domainPermission.Delete
-      ? ([
+      ? [
           {
             label: (
               <ManageButtonItemLabel
@@ -808,13 +808,12 @@ const DomainDetails = ({
               />
             ),
             key: 'delete-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
+            onClick: () => {
               setIsDelete(true);
               setShowActions(false);
             },
           },
-        ] as ItemType[])
+        ]
       : []),
   ];
 
@@ -958,13 +957,10 @@ const DomainDetails = ({
                     <Dropdown.Menu>
                       {addButtonContent.map((item) => (
                         <Dropdown.Item
-                          unstyled
-                          id={String(item?.key)}
-                          key={String(item?.key)}
-                          onAction={
-                            (item as { onClick?: () => void })?.onClick
-                          }>
-                          {(item as { label?: ReactNode })?.label}
+                          id={item.key}
+                          key={item.key}
+                          onAction={item.onClick}>
+                          {item.label}
                         </Dropdown.Item>
                       ))}
                     </Dropdown.Menu>
@@ -1028,13 +1024,10 @@ const DomainDetails = ({
                       <Dropdown.Menu>
                         {manageButtonContent.map((item) => (
                           <Dropdown.Item
-                            unstyled
-                            id={String(item?.key)}
-                            key={String(item?.key)}
-                            onAction={
-                              (item as { onClick?: () => void })?.onClick
-                            }>
-                            {(item as { label?: ReactNode })?.label}
+                            id={item.key}
+                            key={item.key}
+                            onAction={item.onClick}>
+                            {item.label}
                           </Dropdown.Item>
                         ))}
                       </Dropdown.Menu>

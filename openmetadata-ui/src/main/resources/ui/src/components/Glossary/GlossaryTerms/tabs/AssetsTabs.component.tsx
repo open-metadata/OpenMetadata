@@ -767,7 +767,6 @@ const AssetsTabs = forwardRef(
                         <Dropdown.Menu>
                           {items.map((item) => (
                             <Dropdown.Item
-                              unstyled
                               id={item.key}
                               key={item.key}
                               onAction={item.onClick}>
