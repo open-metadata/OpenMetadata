@@ -176,21 +176,12 @@ export const SERVICE_TYPES_ENUM = {
 };
 
 export const BETA_SERVICES = [
-  PipelineServiceType.OpenLineage,
-  PipelineServiceType.Wherescape,
-  DatabaseServiceType.Cassandra,
-  MetadataServiceType.AlationSink,
-  DatabaseServiceType.Cockroach,
-  SearchServiceType.OpenSearch,
   PipelineServiceType.Ssis,
   DatabaseServiceType.Ssas,
-  DashboardServiceType.ThoughtSpot,
-  SecurityServiceType.Ranger,
   DatabaseServiceType.Epic,
-  DashboardServiceType.Grafana,
   DashboardServiceType.Hex,
+  DatabaseServiceType.SapSuccessFactors,
   DatabaseServiceType.ServiceNow,
-  DatabaseServiceType.Timescale,
   DatabaseServiceType.Dremio,
   MetadataServiceType.Collibra,
   PipelineServiceType.Mulesoft,
@@ -199,8 +190,10 @@ export const BETA_SERVICES = [
   DatabaseServiceType.BurstIQ,
   DatabaseServiceType.StarRocks,
   DriveServiceType.SFTP,
+  DriveServiceType.GoogleDrive,
   DatabaseServiceType.Informix,
   DatabaseServiceType.MicrosoftAccess,
+  DashboardServiceType.SapS4Hana,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =

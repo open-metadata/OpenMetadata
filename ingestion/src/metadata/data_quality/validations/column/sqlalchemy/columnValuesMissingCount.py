@@ -35,9 +35,7 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class ColumnValuesMissingCountValidator(
-    BaseColumnValuesMissingCountValidator, SQAValidatorMixin
-):
+class ColumnValuesMissingCountValidator(BaseColumnValuesMissingCountValidator, SQAValidatorMixin):
     """Validator for column value missing count to be equal test case"""
 
     def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:
@@ -90,23 +88,16 @@ class ColumnValuesMissingCountValidator(
 
             if missing_values:
                 total_missing_expr = (
-                    total_missing_expr
-                    + add_props(values=missing_values)(Metrics.countInSet.value)(
-                        column
-                    ).fn()
+                    total_missing_expr + add_props(values=missing_values)(Metrics.countInSet.value)(column).fn()
                 )
 
             metric_expressions = {
                 self.TOTAL_MISSING_COUNT: total_missing_expr,
                 DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
-                DIMENSION_FAILED_COUNT_KEY: func.abs(
-                    total_missing_expr - expected_missing_count
-                ),
+                DIMENSION_FAILED_COUNT_KEY: func.abs(total_missing_expr - expected_missing_count),
             }
 
-            normalized_dimension = self._get_normalized_dimension_expression(
-                dimension_col
-            )
+            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
             result_rows = self._run_dimensional_validation_query(
                 source=self.runner.dataset,
@@ -115,9 +106,7 @@ class ColumnValuesMissingCountValidator(
                 top_n=top_n,
             )
 
-            return self._process_dimension_rows(
-                result_rows, dimension_col.name, metrics_to_compute, test_params
-            )
+            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

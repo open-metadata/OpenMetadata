@@ -180,7 +180,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   const handleStatusSubmit = (value: TestCaseResolutionStatus) => {
     setTestCaseStatus((prev) => {
       return prev.map((item) => {
-        if (item.stateId === value.stateId) {
+        if (
+          item.testCaseReference?.fullyQualifiedName ===
+          value.testCaseReference?.fullyQualifiedName
+        ) {
           return value;
         }
 

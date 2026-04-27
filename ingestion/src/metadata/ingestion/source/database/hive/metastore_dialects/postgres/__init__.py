@@ -11,6 +11,7 @@
 """
 Hive Metastore Postgres Dialect
 """
+
 from sqlalchemy.dialects import registry
 
 from .dialect import HivePostgresMetaStoreDialect

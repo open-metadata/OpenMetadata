@@ -26,11 +26,7 @@ class DatabricksBaseTableParameter(BaseTableParameter):
 
         host_port = getattr(service_connection_config, "hostPort", "localhost:443")
         token = getattr(service_connection_config, "token", "")
-        token_value = (
-            token.get_secret_value()
-            if hasattr(token, "get_secret_value")
-            else str(token)
-        )
+        token_value = token.get_secret_value() if hasattr(token, "get_secret_value") else str(token)
 
         # Include httpPath if available (required for data_diff library)
         http_path = getattr(service_connection_config, "httpPath", "")

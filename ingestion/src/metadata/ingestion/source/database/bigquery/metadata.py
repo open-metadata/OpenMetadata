@@ -12,6 +12,7 @@
 """
 Bigquery source module
 """
+
 import os
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -147,14 +148,7 @@ def _array_sys_data_type_repr(col_type):
     Args:
         col_type (_type_): column type
     """
-    return (
-        repr(col_type)
-        .replace("(", "<")
-        .replace(")", ">")
-        .replace("=", ":")
-        .replace("<>", "")
-        .lower()
-    )
+    return repr(col_type).replace("(", "<").replace(")", ">").replace("=", ":").replace("<>", "").lower()
 
 
 def get_system_data_type(col_type):
@@ -243,9 +237,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
         self.context.get_global().deleted_tables = []
         self.incremental = incremental_configuration
-        self.incremental_table_processor: Optional[
-            BigQueryIncrementalTableProcessor
-        ] = None
+        self.incremental_table_processor: Optional[BigQueryIncrementalTableProcessor] = None
 
         self._current_schema_tables = {}
         self._current_dataset_obj = None
@@ -268,18 +260,12 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             )
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: BigQueryConnection = config.serviceConnection.root.config
         if not isinstance(connection, BigQueryConnection):
-            raise InvalidSourceException(
-                f"Expected BigQueryConnection, but got {connection}"
-            )
-        incremental_config = IncrementalConfig.create(
-            config.sourceConfig.config.incremental, pipeline_name, metadata
-        )
+            raise InvalidSourceException(f"Expected BigQueryConnection, but got {connection}")
+        incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)
         return cls(config, metadata, incremental_config)
 
     @staticmethod
@@ -299,7 +285,6 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             InvalidSourceException: If unable to get project IDs from either config or ADC
         """
         try:
-
             # TODO: Add support for fetching project ids from resource manager
             # Bigquery resource manager for fetching project ids
             # "google-cloud-resource-manager~=1.14.1",
@@ -314,9 +299,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 gcp_config = service_connection.credentials.gcpConfig
                 try:
                     # Allow for multiple project IDs in the service connection
-                    if not isinstance(gcp_config, GcpExternalAccount) and getattr(
-                        gcp_config, "projectId", None
-                    ):
+                    if not isinstance(gcp_config, GcpExternalAccount) and getattr(gcp_config, "projectId", None):
                         if isinstance(gcp_config.projectId.root, list):
                             return gcp_config.projectId.root
                         return [gcp_config.projectId.root]
@@ -368,17 +351,13 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 database_name=project_id, service_connection=self.service_connection
             )
             test_connection_fn = get_test_connection_fn(self.service_connection)
-            test_connection_fn(
-                self.metadata, inspector_details.engine, self.service_connection
-            )
+            test_connection_fn(self.metadata, inspector_details.engine, self.service_connection)
             # GOOGLE_CREDENTIALS may not have been set,
             # to avoid key error, we use `get` for dict
             if os.environ.get(GOOGLE_CREDENTIALS):
                 self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Use client.list_tables() API to get the table names and types and also fetching table DDLs if includeDDL is set to true.
         """
@@ -400,16 +379,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 ):
                     continue
 
-                if (
-                    self.incremental.enabled
-                    and not self.incremental_table_processor.query_failed
-                ):
-                    if (
-                        table.table_id
-                        not in self.incremental_table_processor.get_not_deleted(
-                            schema_name
-                        )
-                    ):
+                if self.incremental.enabled and not self.incremental_table_processor.query_failed:
+                    if table.table_id not in self.incremental_table_processor.get_not_deleted(schema_name):
                         logger.debug(
                             "Skipping unchanged table '%s.%s'",
                             schema_name,
@@ -419,18 +390,14 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
                 yield TableNameAndType(
                     name=table.table_id,
-                    type_=_bigquery_table_types.get(
-                        table.table_type, TableType.Regular
-                    ),
+                    type_=_bigquery_table_types.get(table.table_type, TableType.Regular),
                 )
 
         except Exception as exc:
             logger.error(f"Error listing tables for {dataset_ref}: {exc}")
             raise
 
-    def query_view_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Connect to the source database to get the view
         name and type. By default, use the inspector method
@@ -443,21 +410,15 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
     # pylint: disable=arguments-differ
     @calculate_execution_time()
-    def get_table_description(
-        self, schema_name: str, table_name: str, inspector: Inspector
-    ) -> str:
+    def get_table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> str:
         schema_name = f"{self.context.get().database}.{schema_name}"
-        return super().get_table_description(
-            schema_name=schema_name, table_name=table_name, inspector=inspector
-        )
+        return super().get_table_description(schema_name=schema_name, table_name=table_name, inspector=inspector)
 
     def get_dataset_obj(self, schema_name: str):
         """Get dataset object with per-schema caching"""
         if self._current_dataset_obj is None:
             database = self.context.get().database
-            self._current_dataset_obj = self.client.get_dataset(
-                f"{database}.{schema_name}"
-            )
+            self._current_dataset_obj = self.client.get_dataset(f"{database}.{schema_name}")
         return self._current_dataset_obj
 
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
@@ -476,10 +437,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             try:
                 dataset_obj = self.get_dataset_obj(schema_name)
                 dataset_location = getattr(dataset_obj, "location", None)
-                if (
-                    dataset_location
-                    and dataset_location.upper() != usage_location.upper()
-                ):
+                if dataset_location and dataset_location.upper() != usage_location.upper():
                     logger.debug(
                         "Skipping lifecycle data for schema '%s': dataset location '%s' "
                         "differs from configured usageLocation '%s'. "
@@ -491,8 +449,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     return
             except Exception as exc:
                 logger.debug(
-                    "Could not verify dataset location for schema '%s', "
-                    "proceeding with lifecycle query: %s",
+                    "Could not verify dataset location for schema '%s', proceeding with lifecycle query: %s",
                     schema_name,
                     exc,
                 )
@@ -508,9 +465,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self._taxonomy_to_tags.clear()
 
         if not self._policy_tag_client:
-            logger.warning(
-                "PolicyTagManagerClient not initialized, skipping policy tag fetch"
-            )
+            logger.warning("PolicyTagManagerClient not initialized, skipping policy tag fetch")
             return
 
         list_project_ids = [self.context.get().database]
@@ -520,9 +475,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         for project_id in list_project_ids:
             try:
                 parent = f"projects/{project_id}/locations/{self.service_connection.taxonomyLocation}"
-                taxonomies = list(
-                    self._policy_tag_client.list_taxonomies(parent=parent)
-                )
+                taxonomies = list(self._policy_tag_client.list_taxonomies(parent=parent))
 
                 for taxonomy in taxonomies:
                     self._taxonomy_cache[taxonomy.name] = taxonomy.display_name
@@ -530,22 +483,16 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     if taxonomy.display_name not in self._taxonomy_to_tags:
                         self._taxonomy_to_tags[taxonomy.display_name] = []
 
-                    policy_tags = list(
-                        self._policy_tag_client.list_policy_tags(parent=taxonomy.name)
-                    )
+                    policy_tags = list(self._policy_tag_client.list_policy_tags(parent=taxonomy.name))
 
                     for tag in policy_tags:
                         self._policy_tag_cache[tag.name] = {
                             "display_name": tag.display_name,
                             "taxonomy": taxonomy.display_name,
                         }
-                        self._taxonomy_to_tags[taxonomy.display_name].append(
-                            tag.display_name
-                        )
+                        self._taxonomy_to_tags[taxonomy.display_name].append(tag.display_name)
             except Exception as exc:
-                logger.warning(
-                    f"Error pre-fetching policy tags for {project_id}: {exc}"
-                )
+                logger.warning(f"Error pre-fetching policy tags for {project_id}: {exc}")
 
     def _prefetch_table_ddls(self, schema_name: str):
         """Pre-fetch all table DDLs at schema level using INFORMATION_SCHEMA"""
@@ -562,8 +509,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.debug(
-                "Could not retrieve dataset location for '%s.%s', "
-                "falling back to dataset-scoped query: %s",
+                "Could not retrieve dataset location for '%s.%s', falling back to dataset-scoped query: %s",
                 database,
                 schema_name,
                 exc,
@@ -597,9 +543,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             )
             logger.debug(traceback.format_exc())
 
-    def yield_tag(
-        self, schema_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Build tag context"""
         try:
             dataset_obj = self.get_dataset_obj(schema_name)
@@ -616,9 +560,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     )
 
             if not self.service_connection.includePolicyTags:
-                logger.info(
-                    "'includePolicyTags' is set to false so skipping policy tag ingestion"
-                )
+                logger.info("'includePolicyTags' is set to false so skipping policy tag ingestion")
                 return
 
             self._prefetch_policy_tags()
@@ -651,9 +593,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             return dataset_obj.description or ""
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.debug(
-                f"Failed to fetch dataset description for [{schema_name}]: {err}"
-            )
+            logger.debug(f"Failed to fetch dataset description for [{schema_name}]: {err}")
         return ""
 
     def _prepare_schema_incremental_data(self, schema_name: str):
@@ -664,19 +604,15 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         """
         if self.incremental_table_processor.query_failed:
             logger.debug(
-                "Skipping incremental data for schema '%s' — "
-                "Cloud Logging query failed, using full extraction",
+                "Skipping incremental data for schema '%s' — Cloud Logging query failed, using full extraction",
                 schema_name,
             )
             return
 
         deleted_tables = self.incremental_table_processor.get_deleted(schema_name)
-        not_deleted_tables = self.incremental_table_processor.get_not_deleted(
-            schema_name
-        )
+        not_deleted_tables = self.incremental_table_processor.get_not_deleted(schema_name)
         logger.info(
-            "Incremental extraction for schema '%s': "
-            "%d changed table(s), %d deleted table(s)",
+            "Incremental extraction for schema '%s': %d changed table(s), %d deleted table(s)",
             schema_name,
             len(not_deleted_tables),
             len(deleted_tables),
@@ -726,9 +662,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             )
         ]
 
-    def _get_filtered_schema_names(
-        self, return_fqn: bool = False, add_to_status: bool = True
-    ) -> Iterable[str]:
+    def _get_filtered_schema_names(self, return_fqn: bool = False, add_to_status: bool = True) -> Iterable[str]:
         for schema_name in self.get_raw_database_schema_names():
             schema_fqn = fqn.build(
                 self.metadata,
@@ -750,9 +684,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
             yield schema_fqn if return_fqn else schema_name
 
-    def yield_database_schema(
-        self, schema_name: str
-    ) -> Iterable[CreateDatabaseSchemaRequest]:
+    def yield_database_schema(self, schema_name: str) -> Iterable[CreateDatabaseSchemaRequest]:
         """
         From topology.
         Prepare a database schema request and pass it to the sink
@@ -794,9 +726,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
         schema_name = self.context.get().database_schema
         database = self.context.get().database
-        logger.debug(
-            f"Fetching table object for {database}.{schema_name}.{table_name} using BigQuery API"
-        )
+        logger.debug(f"Fetching table object for {database}.{schema_name}.{table_name} using BigQuery API")
         bq_table_fqn = fqn._build(database, schema_name, table_name)
         table_obj = self.client.get_table(bq_table_fqn)
 
@@ -847,37 +777,23 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     column["policy_tags"] = cached["display_name"]
                     return column
 
-                logger.debug(
-                    f"Policy tag {policy_tag_name} not in cache, fetching from API"
-                )
+                logger.debug(f"Policy tag {policy_tag_name} not in cache, fetching from API")
 
                 if not self._policy_tag_client:
-                    logger.warning(
-                        "PolicyTagManagerClient not available for fallback fetch"
-                    )
+                    logger.warning("PolicyTagManagerClient not available for fallback fetch")
                     return column
 
-                taxonomy_name = (
-                    policy_tag_name.split("/policyTags/")[0] if policy_tag_name else ""
-                )
+                taxonomy_name = policy_tag_name.split("/policyTags/")[0] if policy_tag_name else ""
                 if not taxonomy_name:
-                    raise NotImplementedError(
-                        f"Taxonomy Name not present for {column['name']}"
-                    )
-                column["taxonomy"] = self._policy_tag_client.get_taxonomy(
-                    name=taxonomy_name
-                ).display_name
-                column["policy_tags"] = self._policy_tag_client.get_policy_tag(
-                    name=policy_tag_name
-                ).display_name
+                    raise NotImplementedError(f"Taxonomy Name not present for {column['name']}")
+                column["taxonomy"] = self._policy_tag_client.get_taxonomy(name=taxonomy_name).display_name
+                column["policy_tags"] = self._policy_tag_client.get_policy_tag(name=policy_tag_name).display_name
                 return column
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Skipping Policy Tag: {exc}")
 
-    def get_column_tag_labels(
-        self, table_name: str, column: dict
-    ) -> Optional[List[TagLabel]]:
+    def get_column_tag_labels(self, table_name: str, column: dict) -> Optional[List[TagLabel]]:
         """
         This will only get executed if the tags context
         is properly informed
@@ -888,8 +804,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 metadata=self.metadata,
                 tags=[column["policy_tags"]],
                 classification_name=column["taxonomy"],
-                include_tags=self.source_config.includeTags
-                and self.service_connection.includePolicyTags,
+                include_tags=self.source_config.includeTags and self.service_connection.includePolicyTags,
             )
         return None
 
@@ -927,13 +842,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 try:
                     self.set_inspector(database_name=project_id)
                     if self.incremental.enabled:
-                        self.incremental_table_processor = (
-                            BigQueryIncrementalTableProcessor.from_project(project_id)
-                        )
+                        self.incremental_table_processor = BigQueryIncrementalTableProcessor.from_project(project_id)
                         filtered_datasets = self._get_filtered_datasets(project_id)
                         logger.info(
-                            "Starting incremental extraction for project '%s' "
-                            "with %d datasets",
+                            "Starting incremental extraction for project '%s' with %d datasets",
                             project_id,
                             len(filtered_datasets),
                         )
@@ -944,16 +856,13 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                         )
                         if self.incremental_table_processor.query_failed:
                             logger.warning(
-                                "Cloud Logging query failed for project '%s'. "
-                                "Falling back to full extraction.",
+                                "Cloud Logging query failed for project '%s'. Falling back to full extraction.",
                                 project_id,
                             )
                     yield project_id
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(
-                        f"Error trying to connect to database {project_id}: {exc}"
-                    )
+                    logger.error(f"Error trying to connect to database {project_id}: {exc}")
 
     def get_schema_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
@@ -986,34 +895,24 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             if self.source_config.includeDDL:
                 return self._table_ddl_cache.get(table_name)
         except NotImplementedError:
-            logger.warning(
-                f"Schema definition not implemented for {schema_name}.{table_name}"
-            )
+            logger.warning(f"Schema definition not implemented for {schema_name}.{table_name}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error getting schema definition for {schema_name}.{table_name}: {exc}"
-            )
+            logger.warning(f"Error getting schema definition for {schema_name}.{table_name}: {exc}")
         return None
 
-    def _get_partition_column_name(
-        self, columns: List[Dict], partition_field_name: str
-    ):
+    def _get_partition_column_name(self, columns: List[Dict], partition_field_name: str):
         """
         Method to get the correct partition column name
         """
         try:
             for column in columns or []:
                 column_name = column.get("name")
-                if column_name and (
-                    column_name.lower() == partition_field_name.lower()
-                ):
+                if column_name and (column_name.lower() == partition_field_name.lower()):
                     return column_name
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error getting partition column name for {partition_field_name}: {exc}"
-            )
+            logger.warning(f"Error getting partition column name for {partition_field_name}: {exc}")
         return None
 
     @calculate_execution_time()
@@ -1071,9 +970,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     HivePartitioningOptions,
                 )
 
-                partition_details: HivePartitioningOptions = (
-                    table.external_data_configuration.hive_partitioning
-                )
+                partition_details: HivePartitioningOptions = table.external_data_configuration.hive_partitioning
                 return True, TablePartition(
                     columns=[
                         PartitionColumnDetails(
@@ -1107,9 +1004,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     columns=[
                         PartitionColumnDetails(
                             columnName=(
-                                "_PARTITIONTIME"
-                                if table.time_partitioning.type_ == "HOUR"
-                                else "_PARTITIONDATE"
+                                "_PARTITIONTIME" if table.time_partitioning.type_ == "HOUR" else "_PARTITIONDATE"
                             ),
                             interval=str(table.time_partitioning.type_),
                             intervalType=PartitionIntervalTypes.INGESTION_TIME,
@@ -1125,20 +1020,15 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     intervalType=PartitionIntervalTypes.INTEGER_RANGE,
                     interval=None,
                 )
-                if hasattr(table.range_partitioning, "range_") and hasattr(
-                    table.range_partitioning.range_, "interval"
-                ):
+                if hasattr(table.range_partitioning, "range_") and hasattr(table.range_partitioning.range_, "interval"):
                     table_partition.interval = table.range_partitioning.range_.interval
                 table_partition.columnName = table.range_partitioning.field
                 return True, TablePartition(columns=[table_partition])
             if (
                 hasattr(table, "_properties")
                 and table._properties.get("partitionDefinition")
-                and table._properties.get("partitionDefinition").get(
-                    "partitionedColumn"
-                )
+                and table._properties.get("partitionDefinition").get("partitionedColumn")
             ):
-
                 return True, TablePartition(
                     columns=[
                         PartitionColumnDetails(
@@ -1148,18 +1038,14 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                             ),
                             intervalType=PartitionIntervalTypes.OTHER,
                         )
-                        for field in table._properties.get("partitionDefinition").get(
-                            "partitionedColumn"
-                        )
+                        for field in table._properties.get("partitionDefinition").get("partitionedColumn")
                         if field and field.get("field")
                     ]
                 )
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error getting table partition details for {table_name}: {exc}"
-            )
+            logger.warning(f"Error getting table partition details for {table_name}: {exc}")
         return False, None
 
     def clean_raw_data_type(self, raw_data_type):
@@ -1177,9 +1063,9 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         clear_constraint_cache()
 
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")
-        if isinstance(
-            self.service_connection.credentials.gcpConfig, GcpCredentialsValues
-        ) and (GOOGLE_CREDENTIALS in os.environ):
+        if isinstance(self.service_connection.credentials.gcpConfig, GcpCredentialsValues) and (
+            GOOGLE_CREDENTIALS in os.environ
+        ):
             del os.environ[GOOGLE_CREDENTIALS]
             for temp_file_path in self.temp_credentials_file_path:
                 if os.path.exists(temp_file_path):
@@ -1203,10 +1089,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             if schema_name:
                 schema_table_url = f"&ws=!1m4!1m3!3m2!1s{database_name}!2s{schema_name}"
             if table_name:
-                schema_table_url = (
-                    f"&ws=!1m5!1m4!{type_infix}!1s{database_name}"
-                    f"!2s{schema_name}!3s{table_name}"
-                )
+                schema_table_url = f"&ws=!1m5!1m4!{type_infix}!1s{database_name}!2s{schema_name}!3s{table_name}"
             if schema_table_url:
                 return f"{database_url}{schema_table_url}"
             return database_url
@@ -1255,8 +1138,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.debug(
-                    "Could not retrieve dataset location for '%s.%s', "
-                    "falling back to dataset-scoped query: %s",
+                    "Could not retrieve dataset location for '%s.%s', falling back to dataset-scoped query: %s",
                     database,
                     schema,
                     exc,
@@ -1339,14 +1221,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         """
         if self.incremental.enabled:
             if not self.context.get().__dict__.get("database"):
-                raise ValueError(
-                    "No Database found in the context. We cannot run the table deletion."
-                )
+                raise ValueError("No Database found in the context. We cannot run the table deletion.")
 
             if self.source_config.markDeletedTables:
-                logger.info(
-                    f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]"
-                )
+                logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")
                 yield from delete_entity_by_name(
                     self.metadata,
                     entity_type=Table,

@@ -59,6 +59,7 @@ import RolesDetailPage from '../../pages/RolesPage/RolesDetailPage/RolesDetailPa
 import RolesListPage from '../../pages/RolesPage/RolesListPage/RolesListPage';
 import SearchSettingsPage from '../../pages/SearchSettingsPage/SearchSettingsPage';
 import ServicesPage from '../../pages/ServicesPage/ServicesPage';
+import TaskFormSettingsPage from '../../pages/TaskFormSettingsPage/TaskFormSettingsPage';
 import ImportTeamsPage from '../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage';
 import TeamsPage from '../../pages/TeamsPage/TeamsPage';
 import UserListPageV1 from '../../pages/UserListPage/UserListPageV1';
@@ -706,6 +707,17 @@ const SettingsRouter = () => {
           GlobalSettingsMenuCategory.GOVERNANCE,
           GlobalSettingOptions.WORKFLOW_DEFINITIONS,
           true
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <TaskFormSettingsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.GOVERNANCE,
+          GlobalSettingOptions.TASK_FORMS
         )}
       />
     </Routes>

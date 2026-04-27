@@ -223,8 +223,8 @@ public class EntityCsvTest {
 
     CsvImportResult importResult = testCsv.importCsv(csv, true, callback);
 
-    // 4 rows: 1 header + 3 data rows (numberOfRowsProcessed = last record number = 4)
-    assertSummary(importResult, ApiStatus.SUCCESS, 4, 4, 0);
+    // 3 data rows (header excluded from counts)
+    assertSummary(importResult, ApiStatus.SUCCESS, 3, 3, 0);
     assertTrue(callbackCount.get() >= 1, "Callback should be called at least once");
     assertFalse(progressValues.isEmpty(), "Progress values should be recorded");
     assertEquals(3, totalValues.get(0), "Total rows should be 3 (excluding header)");
@@ -252,8 +252,8 @@ public class EntityCsvTest {
 
     CsvImportResult importResult = testCsv.importCsv(csv, true, callback);
 
-    // numberOfRowsProcessed = header row (1) + totalRecords data rows
-    int expectedRowsProcessed = totalRecords + 1;
+    // numberOfRowsProcessed = data rows only (header excluded)
+    int expectedRowsProcessed = totalRecords;
     assertSummary(importResult, ApiStatus.SUCCESS, expectedRowsProcessed, expectedRowsProcessed, 0);
     assertEquals(2, callbackCount.get(), "Callback should be called twice for 2 batches");
     assertEquals(1, batchNumbers.get(0), "First batch number should be 1");
@@ -292,8 +292,8 @@ public class EntityCsvTest {
     TestCsv testCsv = new TestCsv();
     CsvImportResult importResult = testCsv.importCsv(csv, true, null);
 
-    // 2 rows: 1 header + 1 data row
-    assertSummary(importResult, ApiStatus.SUCCESS, 2, 2, 0);
+    // 1 data row (header excluded from counts)
+    assertSummary(importResult, ApiStatus.SUCCESS, 1, 1, 0);
   }
 
   @Test
@@ -385,15 +385,51 @@ public class EntityCsvTest {
 
     assertNull(extension);
     assertFalse(missingSeparatorCsv.isProcessRecord());
+  }
 
-    TestCsv emptyValueCsv = new TestCsv();
-    emptyValueCsv.enableProcessing();
+  @Test
+  void test_extensionValidationSkipsEmptyValues() throws IOException {
+    TestCsv allEmptyCsv = new TestCsv();
+    allEmptyCsv.enableProcessing();
 
-    Map<String, Object> emptyValueExtension =
-        emptyValueCsv.parseExtension(singleRecord(emptyValueCsv, "", "key:", ""), 1);
+    Map<String, Object> allEmptyExtension =
+        allEmptyCsv.parseExtension(singleRecord(allEmptyCsv, "", "key:", ""), 1);
 
-    assertNull(emptyValueExtension);
-    assertFalse(emptyValueCsv.isProcessRecord());
+    assertNotNull(allEmptyExtension);
+    assertTrue(allEmptyExtension.isEmpty());
+    assertTrue(allEmptyCsv.isProcessRecord());
+  }
+
+  @Test
+  void test_extensionValidationSkipsEmptyValuesInMixedInput() throws IOException {
+    Schema schema = mock(Schema.class);
+    Mockito.when(schema.validate(Mockito.any())).thenReturn(List.of());
+
+    TypeRegistry registry = mock(TypeRegistry.class);
+    Mockito.when(registry.getSchema(Entity.TABLE, "region")).thenReturn(schema);
+
+    try (MockedStatic<TypeRegistry> typeRegistry = Mockito.mockStatic(TypeRegistry.class)) {
+      typeRegistry.when(TypeRegistry::instance).thenReturn(registry);
+      typeRegistry
+          .when(() -> TypeRegistry.getCustomPropertyType(Entity.TABLE, "region"))
+          .thenReturn("string");
+      typeRegistry
+          .when(() -> TypeRegistry.getCustomPropertyConfig(Entity.TABLE, "region"))
+          .thenReturn(null);
+
+      TestCsv testCsv = new TestCsv();
+      testCsv.enableProcessing();
+
+      Map<String, Object> extension =
+          testCsv.parseExtension(
+              singleRecord(testCsv, "", "inputformat:;outputformat:;region:eu-west-1", ""), 1);
+
+      assertNotNull(extension);
+      assertFalse(extension.containsKey("inputformat"));
+      assertFalse(extension.containsKey("outputformat"));
+      assertEquals("eu-west-1", extension.get("region"));
+      assertTrue(testCsv.isProcessRecord());
+    }
   }
 
   @Test
@@ -2470,6 +2506,63 @@ public class EntityCsvTest {
     }
   }
 
+  @Test
+  void test_headerNotCountedInRowCounts() throws IOException {
+    List<String> records = new ArrayList<>();
+    records.add("value1,value2,value3");
+    records.add("value4,value5,value6");
+    String csv = createCsv(CSV_HEADERS, records);
+
+    TestCsv testCsv = new TestCsv();
+    CsvImportResult importResult = testCsv.importCsv(csv, true);
+
+    assertSummary(importResult, ApiStatus.SUCCESS, 2, 2, 0);
+  }
+
+  @Test
+  void test_multipleFieldFailuresOnSameRowCountedOnce() throws Exception {
+    TestCsv testCsv = new TestCsv();
+    CSVRecord record = testCsv.parse("value1,value2,value3").get(0);
+
+    Method deferredFailureMethod =
+        EntityCsv.class.getDeclaredMethod("deferredFailure", CSVRecord.class, String.class);
+    deferredFailureMethod.setAccessible(true);
+    deferredFailureMethod.invoke(testCsv, record, "first field error");
+    deferredFailureMethod.invoke(testCsv, record, "second field error");
+
+    assertEquals(1, testCsv.importResult.getNumberOfRowsFailed());
+  }
+
+  @Test
+  void test_rowEntityTypeOverridesEntityTypeInExtensionValidation() throws IOException {
+    TestCsv testCsv = new TestCsv();
+    testCsv.enableProcessing();
+    testCsv.rowEntityType = Entity.DATABASE;
+
+    Schema schemaForDatabase = mock(Schema.class);
+    Mockito.when(schemaForDatabase.validate(Mockito.any())).thenReturn(List.of());
+
+    TypeRegistry registry = mock(TypeRegistry.class);
+    Mockito.when(registry.getSchema(Entity.TABLE, "potato")).thenReturn(null);
+    Mockito.when(registry.getSchema(Entity.DATABASE, "potato")).thenReturn(schemaForDatabase);
+
+    try (MockedStatic<TypeRegistry> typeRegistry = Mockito.mockStatic(TypeRegistry.class)) {
+      typeRegistry.when(TypeRegistry::instance).thenReturn(registry);
+      typeRegistry
+          .when(() -> TypeRegistry.getCustomPropertyType(Entity.DATABASE, "potato"))
+          .thenReturn("string");
+      typeRegistry
+          .when(() -> TypeRegistry.getCustomPropertyConfig(Entity.DATABASE, "potato"))
+          .thenReturn(null);
+
+      Map<String, Object> extension =
+          testCsv.parseExtension(singleRecord(testCsv, "", "potato:s3://bucket/file.csv", ""), 1);
+
+      assertNotNull(extension);
+      assertTrue(testCsv.isProcessRecord());
+    }
+  }
+
   private static class TestCsv extends EntityCsv<EntityInterface> {
     private final Map<String, EntityInterface> entitiesByTypeAndName = new HashMap<>();
 
@@ -2517,7 +2610,7 @@ public class EntityCsvTest {
       context.csvRecords.add(record);
       pendingTableUpdates.put(tableFqn, context);
       pendingCsvResults.put(record, ENTITY_UPDATED);
-      importResult.withNumberOfRowsProcessed((int) record.getRecordNumber());
+      importResult.withNumberOfRowsProcessed((int) record.getRecordNumber() - 1);
       importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
 

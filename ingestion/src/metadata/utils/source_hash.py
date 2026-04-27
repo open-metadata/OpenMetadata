@@ -145,9 +145,7 @@ def _normalize_for_hash(data: Dict[str, Any]) -> Dict[str, Any]:
         result["tags"] = sorted(result["tags"], key=_get_tag_sort_key)
 
     if "tableConstraints" in result and isinstance(result["tableConstraints"], list):
-        result["tableConstraints"] = sorted(
-            result["tableConstraints"], key=_get_constraint_sort_key
-        )
+        result["tableConstraints"] = sorted(result["tableConstraints"], key=_get_constraint_sort_key)
 
     if "owners" in result and isinstance(result["owners"], list):
         result["owners"] = sorted(result["owners"], key=_get_entity_reference_sort_key)
@@ -158,9 +156,7 @@ def _normalize_for_hash(data: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-def generate_source_hash(
-    create_request: C, exclude_fields: Optional[Dict] = None
-) -> Optional[str]:
+def generate_source_hash(create_request: C, exclude_fields: Optional[Dict] = None) -> Optional[str]:
     """
     Given a create_request model convert it to a normalized json string
     and generate a stable hash value.

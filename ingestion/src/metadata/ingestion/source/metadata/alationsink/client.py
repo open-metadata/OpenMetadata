@@ -11,6 +11,7 @@
 """
 Client to interact with Alation apis
 """
+
 import json
 import traceback
 from typing import Any, Dict, List, Optional
@@ -66,9 +67,7 @@ class AlationSinkAuthenticationProvider(AuthenticationProvider):
         Generate the auth token
         """
         if isinstance(self.config.authType, ApiAccessTokenAuth):
-            self.generated_auth_token = (
-                self.config.authType.accessToken.get_secret_value()
-            )
+            self.generated_auth_token = self.config.authType.accessToken.get_secret_value()
             self.expiry = 0
         else:
             self._get_access_token_from_basic_auth()
@@ -90,18 +89,14 @@ class AlationSinkAuthenticationProvider(AuthenticationProvider):
             "password": self.config.authType.password.get_secret_value(),
             "name": self.config.projectName,
         }
-        refresh_token_response = self.client.post(
-            "/createRefreshToken/", json.dumps(refresh_token_data)
-        )
+        refresh_token_response = self.client.post("/createRefreshToken/", json.dumps(refresh_token_data))
 
         # Get the access token
         access_token_data = {
             "refresh_token": refresh_token_response["refresh_token"],
             "user_id": refresh_token_response["user_id"],
         }
-        access_token_response = self.client.post(
-            "/createAPIAccessToken/", json.dumps(access_token_data)
-        )
+        access_token_response = self.client.post("/createAPIAccessToken/", json.dumps(access_token_data))
 
         self.generated_auth_token = access_token_response["api_access_token"]
         self.expiry = 0
@@ -164,9 +159,7 @@ class AlationSinkClient:
         Method to list all the connectors used by OCF data sources
         """
         response = self.client.get("/v2/connectors/")
-        return {
-            response_data["name"]: response_data["id"] for response_data in response
-        }
+        return {response_data["name"]: response_data["id"] for response_data in response}
 
     def write_entity(self, create_request: Any) -> Optional[Any]:
         """
@@ -193,9 +186,7 @@ class AlationSinkClient:
         Method to write the entities to Alation
         """
         try:
-            entity_names = [
-                create_request.key for create_request in create_requests.root or []
-            ]
+            entity_names = [create_request.key for create_request in create_requests.root or []]
             url = f"/v2{ROUTES.get(type(create_requests))}/"
             if ds_id:
                 url = f"{url}?ds_id={str(ds_id)}"

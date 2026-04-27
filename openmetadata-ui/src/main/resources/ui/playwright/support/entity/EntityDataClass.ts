@@ -12,8 +12,11 @@
  */
 import { APIRequestContext } from '@playwright/test';
 import * as fs from 'fs';
+import { isUndefined } from 'lodash';
 import * as path from 'path';
+import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { uuid } from '../../utils/common';
+import { getCustomPropertyCreationData } from '../../utils/customPropertyAdvancedSearchUtils';
 import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { Glossary } from '../glossary/Glossary';
@@ -118,19 +121,14 @@ export class EntityDataClass {
   static readonly dashboard2 = new DashboardClass(undefined, 'LookMlExplore');
   static readonly mlModel1 = new MlModelClass();
   static readonly mlModel2 = new MlModelClass();
-  static readonly pipeline1 = new PipelineClass();
-  static readonly pipeline2 = (() => {
-    const pipeline = new PipelineClass();
-    // Keep task criteria values distinct between pipeline1 and pipeline2 so
-    // Advanced Search "AND + !=" assertions are deterministic.
-    pipeline.children = [
-      { name: 'presto_task', displayName: 'Presto Task' },
-      { name: 'databricks_task', displayName: 'Databricks Task' },
-    ];
-    pipeline.entity.tasks = pipeline.children;
-
-    return pipeline;
-  })();
+  static readonly pipeline1 = new PipelineClass(undefined, [
+    { name: 'snowflake_task', displayName: 'Snowflake Task' },
+    { name: 'bigquery_task', displayName: 'BigQuery Task' },
+  ]);
+  static readonly pipeline2 = new PipelineClass(undefined, [
+    { name: 'presto_task', displayName: 'Presto Task' },
+    { name: 'databricks_task', displayName: 'Databricks Task' },
+  ]);
   static readonly dashboardDataModel1 = new DashboardDataModelClass();
   static readonly dashboardDataModel2 = new DashboardDataModelClass();
   static readonly apiCollection1 = new ApiCollectionClass();
@@ -167,6 +165,69 @@ export class EntityDataClass {
   static readonly spreadsheet2 = new SpreadsheetClass();
   static readonly worksheet1 = new WorksheetClass();
   static readonly worksheet2 = new WorksheetClass();
+  static readonly customProperties: Record<
+    string,
+    Record<string, string | number | boolean | object>
+  > = {};
+
+  static async setupCustomPropertyData(
+    apiContext: APIRequestContext,
+    entityType: string
+  ) {
+    // Get the metadata types info required to create custom properties
+    const typesInfo = await apiContext.get(
+      '/api/v1/metadata/types?category=field&limit=20'
+    );
+
+    // Get the entity metadata types info to add custom properties to it
+    const cpMetadataType = await apiContext.get(
+      `/api/v1/metadata/types/name/${entityType}?fields=customProperties`
+    );
+
+    const typesData = (await typesInfo.json()).data;
+    const createdMetadataType = await cpMetadataType.json();
+
+    // Map and prepare the data required for creating custom properties of different types
+    const cpCreationData = getCustomPropertyCreationData(typesData);
+
+    this.customProperties[entityType] = cpCreationData;
+
+    // The API calls need to be sequential as the server replaces some types with others
+    // due to simultaneous requests causing conflicts.
+    for (const type of typesData) {
+      const typeData = cpCreationData[type.name as keyof typeof cpCreationData];
+
+      if (!isUndefined(typeData)) {
+        await apiContext.put(
+          `/api/v1/metadata/types/${createdMetadataType.id}`,
+          {
+            data: typeData,
+          }
+        );
+      }
+    }
+  }
+
+  static async cleanupCustomPropertyData(
+    apiContext: APIRequestContext,
+    entityType: string
+  ) {
+    const entitySchemaResponse = await apiContext.get(
+      `/api/v1/metadata/types/name/${entityType}`
+    );
+    const entitySchema = await entitySchemaResponse.json();
+    await apiContext.patch(`/api/v1/metadata/types/${entitySchema.id}`, {
+      data: [
+        {
+          op: 'remove',
+          path: '/customProperties',
+        },
+      ],
+      headers: {
+        'Content-Type': 'application/json-patch+json',
+      },
+    });
+  }
 
   static async preRequisitesForTests(apiContext: APIRequestContext) {
     // Add pre-requisites for tests
@@ -243,12 +304,84 @@ export class EntityDataClass {
     ];
 
     await Promise.allSettled(dependentEntityCreationPromises);
+
+    const entityTypesToSetup = Object.values(CUSTOM_PROPERTIES_ENTITIES).map(
+      (entity) => entity.name
+    );
+
+    for (const entityType of entityTypesToSetup) {
+      await this.setupCustomPropertyData(apiContext, entityType);
+    }
   }
 
-  static async postRequisitesForTests(_apiContext: APIRequestContext) {
-    // Temporary: entity teardown removed to prevent OOM kills (exit 137)
-    // caused by 60+ concurrent cascade DELETE requests spiking memory.
-    // Monitoring AUT runs to confirm stability before deciding on permanent approach.
+  static async postRequisitesForTests(apiContext: APIRequestContext) {
+    const promises = [
+      this.domain1.delete(apiContext),
+      this.domain2.delete(apiContext),
+      this.glossary1.delete(apiContext),
+      this.glossary2.delete(apiContext),
+      this.user1.delete(apiContext),
+      this.user2.delete(apiContext),
+      this.user3.delete(apiContext),
+      this.team1.delete(apiContext),
+      this.team2.delete(apiContext),
+      this.certificationTag1.delete(apiContext),
+      this.certificationTag2.delete(apiContext),
+      this.tierTag1.delete(apiContext),
+      this.classification1.delete(apiContext),
+      this.tag1.delete(apiContext),
+      this.table1.delete(apiContext),
+      this.table2.delete(apiContext),
+      this.topic1.delete(apiContext),
+      this.topic2.delete(apiContext),
+      this.dashboard1.delete(apiContext),
+      this.dashboard2.delete(apiContext),
+      this.mlModel1.delete(apiContext),
+      this.mlModel2.delete(apiContext),
+      this.pipeline1.delete(apiContext),
+      this.pipeline2.delete(apiContext),
+      this.dashboardDataModel1.delete(apiContext),
+      this.dashboardDataModel2.delete(apiContext),
+      this.apiCollection1.delete(apiContext),
+      this.apiCollection2.delete(apiContext),
+      this.apiEndpoint1.delete(apiContext),
+      this.apiEndpoint2.delete(apiContext),
+      this.storedProcedure1.delete(apiContext),
+      this.storedProcedure2.delete(apiContext),
+      this.searchIndex1.delete(apiContext),
+      this.searchIndex2.delete(apiContext),
+      this.container1.delete(apiContext),
+      this.container2.delete(apiContext),
+      this.databaseService.delete(apiContext),
+      this.database.delete(apiContext),
+      this.databaseSchema.delete(apiContext),
+      this.apiService.delete(apiContext),
+      this.dashboardService.delete(apiContext),
+      this.messagingService.delete(apiContext),
+      this.mlmodelService.delete(apiContext),
+      this.pipelineService.delete(apiContext),
+      this.searchIndexService.delete(apiContext),
+      this.storageService.delete(apiContext),
+      this.metric1.delete(apiContext),
+      this.chart1.delete(apiContext),
+      this.driveService.delete(apiContext),
+      this.directory1.delete(apiContext),
+      this.directory2.delete(apiContext),
+      this.file1.delete(apiContext),
+      this.file2.delete(apiContext),
+      this.spreadsheet1.delete(apiContext),
+      this.spreadsheet2.delete(apiContext),
+      this.worksheet1.delete(apiContext),
+      this.worksheet2.delete(apiContext),
+    ];
+
+    for (const entityType of Object.values(CUSTOM_PROPERTIES_ENTITIES).map(
+      (entity) => entity.name
+    )) {
+      await this.cleanupCustomPropertyData(apiContext, entityType);
+    }
+
+    return await Promise.allSettled(promises);
   }
 
   static saveResponseData() {
@@ -315,6 +448,7 @@ export class EntityDataClass {
       spreadsheet2: this.spreadsheet2.get(),
       worksheet1: this.worksheet1.get(),
       worksheet2: this.worksheet2.get(),
+      customProperties: this.customProperties,
     };
 
     const filePath = path.join(
@@ -533,6 +667,9 @@ export class EntityDataClass {
         }
         if (responseData.worksheet2) {
           this.worksheet2.set(responseData.worksheet2);
+        }
+        if (responseData.customProperties) {
+          Object.assign(this.customProperties, responseData.customProperties);
         }
       }
     } catch (error) {

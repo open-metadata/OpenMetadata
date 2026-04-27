@@ -117,17 +117,13 @@ MOCK_DATABRICKS_NATIVE_QUERY_EXP = """let
 in 
     "Source" """
 
-EXPECTED_DATABRICKS_RESULT = [
-    {"database": "DEMO_STAGE", "schema": "PUBLIC", "table": "STG_CUSTOMERS"}
-]
+EXPECTED_DATABRICKS_RESULT = [{"database": "DEMO_STAGE", "schema": "PUBLIC", "table": "STG_CUSTOMERS"}]
 
 MOCK_DATABRICKS_NATIVE_QUERY_EXP_WITH_EXPRESSION = """let
     Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [   Catalog=   "DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name=DB, Kind=   "Database"]}[Data], "SELECT * FROM PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true])
 in
     Source"""
-EXPECTED_DATABRICKS_RESULT_WITH_EXPRESSION = [
-    {"database": "MY_DB", "schema": "PUBLIC", "table": "STG_CUSTOMERS"}
-]
+EXPECTED_DATABRICKS_RESULT_WITH_EXPRESSION = [{"database": "MY_DB", "schema": "PUBLIC", "table": "STG_CUSTOMERS"}]
 
 
 MOCK_DATABRICKS_NATIVE_INVALID_QUERY_EXP = """let
@@ -148,9 +144,7 @@ MOCK_BIGQUERY_DIRECT_EXP = """let
 in
     table"""
 
-EXPECTED_BIGQUERY_DIRECT_RESULT = [
-    {"database": "my-gcp-project", "schema": "my_dataset", "table": "my_table"}
-]
+EXPECTED_BIGQUERY_DIRECT_RESULT = [{"database": "my-gcp-project", "schema": "my_dataset", "table": "my_table"}]
 
 MOCK_BIGQUERY_DIRECT_VIEW_EXP = """let
     Source = GoogleBigQuery.Database([BillingProject="my-gcp-project"]),
@@ -160,9 +154,7 @@ MOCK_BIGQUERY_DIRECT_VIEW_EXP = """let
 in
     view"""
 
-EXPECTED_BIGQUERY_DIRECT_VIEW_RESULT = [
-    {"database": "my-gcp-project", "schema": "analytics", "table": "daily_stats"}
-]
+EXPECTED_BIGQUERY_DIRECT_VIEW_RESULT = [{"database": "my-gcp-project", "schema": "analytics", "table": "daily_stats"}]
 
 MOCK_BIGQUERY_NATIVE_QUERY_EXP = (
     "let\n"
@@ -474,9 +466,7 @@ MOCK_DATAFLOW_EXPORT = DataflowExportResponse(
             description="",
             attributes=[
                 DataflowEntityAttribute(name="AccountID", dataType="int64"),
-                DataflowEntityAttribute(
-                    name="SalesForceBroadVertical", dataType="string"
-                ),
+                DataflowEntityAttribute(name="SalesForceBroadVertical", dataType="string"),
             ],
         ),
     ],
@@ -683,9 +673,7 @@ class PowerBIUnitTest(TestCase):
     powerbi Dashboard Unit Test
     """
 
-    @patch(
-        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.powerbi.connection.get_connection")
     def __init__(self, methodName, get_connection, test_connection) -> None:
         super().__init__(methodName)
@@ -717,26 +705,18 @@ class PowerBIUnitTest(TestCase):
         self.assertEqual(result, None)
 
         # Test with valid snowflake source
-        result = self.powerbi._parse_snowflake_source(
-            MOCK_SNOWFLAKE_EXP, MOCK_DASHBOARD_DATA_MODEL
-        )
+        result = self.powerbi._parse_snowflake_source(MOCK_SNOWFLAKE_EXP, MOCK_DASHBOARD_DATA_MODEL)
         self.assertEqual(result, EXPECTED_SNOWFLAKE_RESULT)
 
         # Test with invalid snowflake source
-        result = self.powerbi._parse_snowflake_source(
-            MOCK_SNOWFLAKE_EXP_INVALID, MOCK_DASHBOARD_DATA_MODEL
-        )
+        result = self.powerbi._parse_snowflake_source(MOCK_SNOWFLAKE_EXP_INVALID, MOCK_DASHBOARD_DATA_MODEL)
         self.assertEqual(result, None)
 
-        result = self.powerbi._parse_snowflake_source(
-            MOCK_SNOWFLAKE_EXP_V2, MOCK_DASHBOARD_DATA_MODEL
-        )
+        result = self.powerbi._parse_snowflake_source(MOCK_SNOWFLAKE_EXP_V2, MOCK_DASHBOARD_DATA_MODEL)
         self.assertEqual(result, EXPECTED_SNOWFLAKE_RESULT_V2)
 
         test_snowflaek_query_expression = 'let\n    Source = Value.NativeQuery(Snowflake.Databases("dummy_host",(Warehouse)){[Name=(Database)]}[Data], "select * from "& Database &".""STG"".""STATIC_AOPANDLE""", null, [EnableFolding=true]),\n    #"Renamed Columns" = Table.RenameColumns(Source,{{"AOP_IMPRESSIONS", "AOP Impressions"}, {"AOP_ORDERS", "AOP Orders"}, {"AOP_SPEND", "AOP Spend"}, {"AOP_TOTAL_REV", "AOP Total Revenue"}, {"AOP_UNITS", "AOP Units"}, {"AOP_VISITS", "AOP Visits"}, {"LE_IMPRESSIONS", "LE Impressions"}, {"LE_ORDERS", "LE Orders"}, {"LE_SPEND", "LE Spend"}, {"LE_TOTAL_REV", "LE Total Revenue"}, {"LE_UNITS", "LE Units"}, {"LE_VISITS", "LE Visits"}, {"SITEID", "SiteID"}, {"COUNTRY", "Country"}, {"REGION", "Region"}, {"CHANNEL", "Channel"}, {"DATE", "Date"}, {"AOP_CONV", "AOP_Conv"}, {"LE_CONV", "LE_Conv"}}),\n    #"Changed Type" = Table.TransformColumnTypes(#"Renamed Columns",{{"SiteID", type text}, {"AOP Impressions", type number}, {"AOP Visits", type number}, {"AOP Orders", type number}, {"AOP Units", type number}, {"AOP Total Revenue", type number}, {"AOP Spend", type number}, {"AOP_Conv", type number}, {"AOP_UPT", type number}, {"AOP_ASP", type number}, {"AOP_AOV", type number}, {"AOP_CTR", type number}, {"LE Impressions", type number}, {"LE Visits", type number}, {"LE Orders", type number}, {"LE Units", type number}, {"LE Total Revenue", type number}, {"LE Spend", type number}, {"LE_Conv", type number}, {"LE_UPT", type number}, {"LE_ASP", type number}, {"LE_AOV", type number}, {"LE_CTR", type number}}),\n    #"Duplicated Column" = Table.DuplicateColumn(#"Changed Type", "Date", "Date - Copy"),\n    #"Split Column by Delimiter" = Table.SplitColumn(#"Duplicated Column", "Date - Copy", Splitter.SplitTextByDelimiter("-", QuoteStyle.None), {"Date - Copy.1", "Date - Copy.2", "Date - Copy.3"}),\n    #"Changed Type1" = Table.TransformColumnTypes(#"Split Column by Delimiter",{{"Date - Copy.1", type text}, {"Date - Copy.2", type text}, {"Date - Copy.3", type text}}),\n    #"Inserted Merged Column" = Table.AddColumn(#"Changed Type1", "Merged", each Text.Combine({[#"Date - Copy.1"], [#"Date - Copy.2"], [#"Date - Copy.3"]}, ""), type text),\n    #"Renamed Columns1" = Table.RenameColumns(#"Inserted Merged Column",{{"Merged", "DateKey"}}),\n    #"Removed Columns" = Table.RemoveColumns(#"Renamed Columns1",{"Date - Copy.1", "Date - Copy.2", "Date - Copy.3"}),\n    #"Added Custom" = Table.AddColumn(#"Removed Columns", "Brand", each "CROCS"),\n    #"Changed Type2" = Table.TransformColumnTypes(#"Added Custom",{{"Brand", type text}})\nin\n    #"Changed Type2"'
-        result = self.powerbi._parse_snowflake_source(
-            test_snowflaek_query_expression, MOCK_DASHBOARD_DATA_MODEL
-        )
+        result = self.powerbi._parse_snowflake_source(test_snowflaek_query_expression, MOCK_DASHBOARD_DATA_MODEL)
         # Test should parse the Snowflake query and extract table info
         self.assertIsNotNone(result)
         self.assertEqual(len(result), 1)
@@ -750,19 +730,13 @@ class PowerBIUnitTest(TestCase):
         )
         self.assertEqual(result, EXPECTED_DATABRICKS_RESULT_WITH_EXPRESSION)
 
-        result = self.powerbi._parse_databricks_source(
-            MOCK_DATABRICKS_NATIVE_EXP, MOCK_DASHBOARD_DATA_MODEL
-        )
+        result = self.powerbi._parse_databricks_source(MOCK_DATABRICKS_NATIVE_EXP, MOCK_DASHBOARD_DATA_MODEL)
         self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
 
-        result = self.powerbi._parse_databricks_source(
-            MOCK_DATABRICKS_NATIVE_QUERY_EXP, MOCK_DASHBOARD_DATA_MODEL
-        )
+        result = self.powerbi._parse_databricks_source(MOCK_DATABRICKS_NATIVE_QUERY_EXP, MOCK_DASHBOARD_DATA_MODEL)
         self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
 
-        result = self.powerbi._parse_databricks_source(
-            MOCK_DATABRICKS_EXP, MOCK_DASHBOARD_DATA_MODEL
-        )
+        result = self.powerbi._parse_databricks_source(MOCK_DATABRICKS_EXP, MOCK_DASHBOARD_DATA_MODEL)
         self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
 
         result = self.powerbi._parse_databricks_source(
@@ -771,28 +745,20 @@ class PowerBIUnitTest(TestCase):
         # sqlglot parses this sql and returns empty source list vs sqlfluff raising the error, hence adjusting test
         self.assertEqual(result, [])
 
-        result = self.powerbi._parse_databricks_source(
-            MOCK_DATABRICKS_NATIVE_INVALID_EXP, MOCK_DASHBOARD_DATA_MODEL
-        )
+        result = self.powerbi._parse_databricks_source(MOCK_DATABRICKS_NATIVE_INVALID_EXP, MOCK_DASHBOARD_DATA_MODEL)
         self.assertIsNone(result)
 
         # Test with valid BigQuery direct navigation source
         table = PowerBiTable(name="test_table")
-        result = self.powerbi._parse_bigquery_source(
-            MOCK_BIGQUERY_DIRECT_EXP, MOCK_DASHBOARD_DATA_MODEL, table
-        )
+        result = self.powerbi._parse_bigquery_source(MOCK_BIGQUERY_DIRECT_EXP, MOCK_DASHBOARD_DATA_MODEL, table)
         self.assertEqual(result, EXPECTED_BIGQUERY_DIRECT_RESULT)
 
         # Test with BigQuery direct navigation source (View)
-        result = self.powerbi._parse_bigquery_source(
-            MOCK_BIGQUERY_DIRECT_VIEW_EXP, MOCK_DASHBOARD_DATA_MODEL, table
-        )
+        result = self.powerbi._parse_bigquery_source(MOCK_BIGQUERY_DIRECT_VIEW_EXP, MOCK_DASHBOARD_DATA_MODEL, table)
         self.assertEqual(result, EXPECTED_BIGQUERY_DIRECT_VIEW_RESULT)
 
         # Test with BigQuery Value.NativeQuery source
-        result = self.powerbi._parse_bigquery_source(
-            MOCK_BIGQUERY_NATIVE_QUERY_EXP, MOCK_DASHBOARD_DATA_MODEL, table
-        )
+        result = self.powerbi._parse_bigquery_source(MOCK_BIGQUERY_NATIVE_QUERY_EXP, MOCK_DASHBOARD_DATA_MODEL, table)
         self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_RESULT)
 
         # Test with BigQuery NativeQuery containing SQL comments and #(tab)
@@ -812,9 +778,7 @@ class PowerBIUnitTest(TestCase):
         self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_MULTI_CTE_RESULT)
 
         # Test with non-BigQuery expression returns None
-        result = self.powerbi._parse_bigquery_source(
-            MOCK_BIGQUERY_INVALID_EXP, MOCK_DASHBOARD_DATA_MODEL, table
-        )
+        result = self.powerbi._parse_bigquery_source(MOCK_BIGQUERY_INVALID_EXP, MOCK_DASHBOARD_DATA_MODEL, table)
         self.assertIsNone(result)
 
         # Test with BigQuery NativeQuery followed by Table transforms
@@ -860,18 +824,12 @@ class PowerBIUnitTest(TestCase):
         self.assertEqual(owner_ref.root[1].name, "Jane Smith")
 
         # Verify get_reference_by_email was called with correct emails
-        self.powerbi.metadata.get_reference_by_email.assert_any_call(
-            "john.doe@example.com"
-        )
-        self.powerbi.metadata.get_reference_by_email.assert_any_call(
-            "jane.smith@example.com"
-        )
+        self.powerbi.metadata.get_reference_by_email.assert_any_call("john.doe@example.com")
+        self.powerbi.metadata.get_reference_by_email.assert_any_call("jane.smith@example.com")
 
         # Reset mock for dataset test
         self.powerbi.metadata.get_reference_by_email.reset_mock()
-        self.powerbi.metadata.get_reference_by_email.side_effect = [
-            MOCK_USER_1_ENITYTY_REF_LIST
-        ]
+        self.powerbi.metadata.get_reference_by_email.side_effect = [MOCK_USER_1_ENITYTY_REF_LIST]
 
         # Test dataset owner ingestion
         dataset = Dataset.model_validate(MOCK_DATASET_WITH_OWNERS)
@@ -881,9 +839,7 @@ class PowerBIUnitTest(TestCase):
         self.assertEqual(owner_ref.root[0].name, "John Doe")
 
         # Verify get_reference_by_email was called with correct email
-        self.powerbi.metadata.get_reference_by_email.assert_called_once_with(
-            "john.doe@example.com"
-        )
+        self.powerbi.metadata.get_reference_by_email.assert_called_once_with("john.doe@example.com")
 
         # Reset mock for no owners test
         self.powerbi.metadata.get_reference_by_email.reset_mock()
@@ -937,9 +893,7 @@ class PowerBIUnitTest(TestCase):
             name="test_table",
             source=[PowerBITableSource(expression=MOCK_REDSHIFT_EXP)],
         )
-        result = self.powerbi._parse_table_info_from_source_exp(
-            table, MOCK_DASHBOARD_DATA_MODEL
-        )
+        result = self.powerbi._parse_table_info_from_source_exp(table, MOCK_DASHBOARD_DATA_MODEL)
         self.assertEqual(result, EXPECTED_REDSHIFT_RESULT)
 
         # no source expression
@@ -947,9 +901,7 @@ class PowerBIUnitTest(TestCase):
             name="test_table",
             source=[PowerBITableSource(expression=None)],
         )
-        result = self.powerbi._parse_table_info_from_source_exp(
-            table, MOCK_DASHBOARD_DATA_MODEL
-        )
+        result = self.powerbi._parse_table_info_from_source_exp(table, MOCK_DASHBOARD_DATA_MODEL)
         self.assertEqual(result, None)
 
         # no source
@@ -957,9 +909,7 @@ class PowerBIUnitTest(TestCase):
             name="test_table",
             source=[],
         )
-        result = self.powerbi._parse_table_info_from_source_exp(
-            table, MOCK_DASHBOARD_DATA_MODEL
-        )
+        result = self.powerbi._parse_table_info_from_source_exp(table, MOCK_DASHBOARD_DATA_MODEL)
         self.assertEqual(result, None)
 
     @pytest.mark.order(4)
@@ -971,9 +921,7 @@ class PowerBIUnitTest(TestCase):
     def test_parse_dataset_expressions(self, *_):
         # test with valid snowflake source but no
         # dataset expression value
-        result = self.powerbi._parse_snowflake_source(
-            MOCK_SNOWFLAKE_EXP_V2, MOCK_DASHBOARD_DATA_MODEL
-        )
+        result = self.powerbi._parse_snowflake_source(MOCK_SNOWFLAKE_EXP_V2, MOCK_DASHBOARD_DATA_MODEL)
         result = result[0]
         self.assertIsNone(result["database"])
         self.assertIsNone(result["schema"])
@@ -999,9 +947,7 @@ class PowerBIUnitTest(TestCase):
             ],
         )
         lineage_request = list(
-            self.powerbi.create_dataflow_upstream_dataflow_lineage(
-                MOCK_DATAMODEL_2, MOCK_DATAMODEL_ENTITY_2
-            )
+            self.powerbi.create_dataflow_upstream_dataflow_lineage(MOCK_DATAMODEL_2, MOCK_DATAMODEL_ENTITY_2)
         )
         assert lineage_request[0].right is not None
 
@@ -1017,32 +963,16 @@ class PowerBIUnitTest(TestCase):
         self.assertTrue(self.powerbi.source_config.includeOwners)
 
         # Test with a dashboard that has owners
-        dashboard_with_owners = PowerBIDashboard.model_validate(
-            MOCK_DASHBOARD_WITH_OWNERS
-        )
+        dashboard_with_owners = PowerBIDashboard.model_validate(MOCK_DASHBOARD_WITH_OWNERS)
 
         # Mock the metadata.get_reference_by_email method to return different users for different emails
-        with patch.object(
-            self.powerbi.metadata, "get_reference_by_email"
-        ) as mock_get_ref:
+        with patch.object(self.powerbi.metadata, "get_reference_by_email") as mock_get_ref:
 
             def mock_get_ref_by_email(email):
                 if email == "john.doe@example.com":
-                    return EntityReferenceList(
-                        root=[
-                            EntityReference(
-                                id=uuid.uuid4(), name="John Doe", type="user"
-                            )
-                        ]
-                    )
+                    return EntityReferenceList(root=[EntityReference(id=uuid.uuid4(), name="John Doe", type="user")])
                 elif email == "jane.smith@example.com":
-                    return EntityReferenceList(
-                        root=[
-                            EntityReference(
-                                id=uuid.uuid4(), name="Jane Smith", type="user"
-                            )
-                        ]
-                    )
+                    return EntityReferenceList(root=[EntityReference(id=uuid.uuid4(), name="Jane Smith", type="user")])
                 return EntityReferenceList(root=[])
 
             mock_get_ref.side_effect = mock_get_ref_by_email
@@ -1070,9 +1000,7 @@ class PowerBIUnitTest(TestCase):
         self.assertFalse(self.powerbi.source_config.includeOwners)
 
         # Test with a dashboard that has owners
-        dashboard_with_owners = PowerBIDashboard.model_validate(
-            MOCK_DASHBOARD_WITH_OWNERS
-        )
+        dashboard_with_owners = PowerBIDashboard.model_validate(MOCK_DASHBOARD_WITH_OWNERS)
 
         # Test get_owner_ref with includeOwners = False
         result = self.powerbi.get_owner_ref(dashboard_with_owners)
@@ -1125,9 +1053,7 @@ class PowerBIUnitTest(TestCase):
         self.powerbi.source_config.includeOwners = True
 
         # Test with a dashboard that has owners
-        dashboard_with_owners = PowerBIDashboard.model_validate(
-            MOCK_DASHBOARD_WITH_OWNERS
-        )
+        dashboard_with_owners = PowerBIDashboard.model_validate(MOCK_DASHBOARD_WITH_OWNERS)
 
         # Mock the metadata.get_reference_by_email method to raise an exception
         with patch.object(
@@ -1150,9 +1076,7 @@ class PowerBIUnitTest(TestCase):
     def test_parse_dataset_expressions_v2(self, *_):
         # test with valid snowflake source but no
         # dataset expression value
-        result = self.powerbi._parse_snowflake_source(
-            MOCK_SNOWFLAKE_EXP_V3, MOCK_DASHBOARD_DATA_MODEL
-        )
+        result = self.powerbi._parse_snowflake_source(MOCK_SNOWFLAKE_EXP_V3, MOCK_DASHBOARD_DATA_MODEL)
         result = result[0]
         self.assertEqual(result["database"], "MANUFACTURING_BUSINESS_DATA_PRODUCTS")
         self.assertEqual(result["schema"], "INVENTORY_BY_PURPOSE")
@@ -1219,12 +1143,8 @@ class PowerBIUnitTest(TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(len(result), 2)
         self.assertIsInstance(result[0], ColumnLineage)
-        self.assertEqual(
-            result[0].fromColumns[0].root, "service.upstream_dataset.orders.order_id"
-        )
-        self.assertEqual(
-            result[0].toColumn.root, "service.downstream_dataset.orders.order_id"
-        )
+        self.assertEqual(result[0].fromColumns[0].root, "service.upstream_dataset.orders.order_id")
+        self.assertEqual(result[0].toColumn.root, "service.downstream_dataset.orders.order_id")
 
     @pytest.mark.order(13)
     def test_get_report_url(self):
@@ -1245,9 +1165,7 @@ class PowerBIUnitTest(TestCase):
         dashboard_details = PowerBIReport(id=dashboard_id, name="Test Report")
 
         # Test with multiple pages - should use first page name
-        with patch(
-            "metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri"
-        ) as mock_clean_uri:
+        with patch("metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri") as mock_clean_uri:
             mock_clean_uri.return_value = "https://app.powerbi.com"
             mock_api_client.fetch_report_pages.return_value = [
                 ReportPage(name="page1", displayName="Page 1"),
@@ -1257,18 +1175,14 @@ class PowerBIUnitTest(TestCase):
 
             result = self.powerbi._get_report_url(workspace_id, dashboard_details)
 
-            mock_api_client.fetch_report_pages.assert_called_once_with(
-                workspace_id, dashboard_id
-            )
+            mock_api_client.fetch_report_pages.assert_called_once_with(workspace_id, dashboard_id)
             self.assertEqual(
                 result,
                 f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}/page1?experience=power-bi",
             )
 
         # Test with single page - should use that page name
-        with patch(
-            "metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri"
-        ) as mock_clean_uri:
+        with patch("metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri") as mock_clean_uri:
             mock_clean_uri.return_value = "https://app.powerbi.com"
             mock_api_client.fetch_report_pages.reset_mock()
             mock_api_client.fetch_report_pages.return_value = [
@@ -1283,9 +1197,7 @@ class PowerBIUnitTest(TestCase):
             )
 
         # Test with no pages - should not add page_id
-        with patch(
-            "metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri"
-        ) as mock_clean_uri:
+        with patch("metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri") as mock_clean_uri:
             mock_clean_uri.return_value = "https://app.powerbi.com"
             mock_api_client.fetch_report_pages.reset_mock()
             mock_api_client.fetch_report_pages.return_value = []
@@ -1298,9 +1210,7 @@ class PowerBIUnitTest(TestCase):
             )
 
         # Test with exception during fetch_report_pages - should handle gracefully
-        with patch(
-            "metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri"
-        ) as mock_clean_uri:
+        with patch("metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri") as mock_clean_uri:
             mock_clean_uri.return_value = "https://app.powerbi.com"
             mock_api_client.fetch_report_pages.reset_mock()
             mock_api_client.fetch_report_pages.side_effect = Exception("API Error")
@@ -1503,21 +1413,18 @@ class PowerBIUnitTest(TestCase):
 
         mock_table_entity = MagicMock()
         mock_table_entity.id = uuid.uuid4()
-        mock_table_entity.fullyQualifiedName = (
-            "service.database.schema.my_powerbi_table"
-        )
+        mock_table_entity.fullyQualifiedName = "service.database.schema.my_powerbi_table"
 
-        with patch.object(
-            self.powerbi, "_parse_table_info_from_source_exp", return_value=None
-        ), patch.object(
-            self.powerbi.metadata,
-            "search_in_any_service",
-            return_value=mock_table_entity,
-        ) as mock_search, patch.object(
-            self.powerbi, "_get_column_lineage", return_value=[]
-        ), patch.object(
-            self.powerbi, "_get_add_lineage_request"
-        ) as mock_lineage_request:
+        with (
+            patch.object(self.powerbi, "_parse_table_info_from_source_exp", return_value=None),
+            patch.object(
+                self.powerbi.metadata,
+                "search_in_any_service",
+                return_value=mock_table_entity,
+            ) as mock_search,
+            patch.object(self.powerbi, "_get_column_lineage", return_value=[]),
+            patch.object(self.powerbi, "_get_add_lineage_request") as mock_lineage_request,
+        ):
             mock_lineage_request.return_value = MagicMock()
 
             list(
@@ -1530,9 +1437,7 @@ class PowerBIUnitTest(TestCase):
 
             mock_search.assert_called_once()
             call_args = mock_search.call_args
-            fqn_search_string = call_args.kwargs.get("fqn_search_string") or call_args[
-                1
-            ].get("fqn_search_string")
+            fqn_search_string = call_args.kwargs.get("fqn_search_string") or call_args[1].get("fqn_search_string")
             self.assertIn("my_powerbi_table", fqn_search_string)
 
     @pytest.mark.order(24)
@@ -1551,19 +1456,17 @@ class PowerBIUnitTest(TestCase):
 
         mock_table_entity = MagicMock()
         mock_table_entity.id = uuid.uuid4()
-        mock_table_entity.fullyQualifiedName = (
-            "service.dev.demo_dbt_jaffle.customers_clean"
-        )
+        mock_table_entity.fullyQualifiedName = "service.dev.demo_dbt_jaffle.customers_clean"
 
-        with patch.object(
-            self.powerbi.metadata,
-            "search_in_any_service",
-            return_value=mock_table_entity,
-        ) as mock_search, patch.object(
-            self.powerbi, "_get_column_lineage", return_value=[]
-        ), patch.object(
-            self.powerbi, "_get_add_lineage_request"
-        ) as mock_lineage_request:
+        with (
+            patch.object(
+                self.powerbi.metadata,
+                "search_in_any_service",
+                return_value=mock_table_entity,
+            ) as mock_search,
+            patch.object(self.powerbi, "_get_column_lineage", return_value=[]),
+            patch.object(self.powerbi, "_get_add_lineage_request") as mock_lineage_request,
+        ):
             mock_lineage_request.return_value = MagicMock()
 
             list(
@@ -1576,9 +1479,7 @@ class PowerBIUnitTest(TestCase):
 
             mock_search.assert_called_once()
             call_args = mock_search.call_args
-            fqn_search_string = call_args.kwargs.get("fqn_search_string") or call_args[
-                1
-            ].get("fqn_search_string")
+            fqn_search_string = call_args.kwargs.get("fqn_search_string") or call_args[1].get("fqn_search_string")
             self.assertIn("customers_clean", fqn_search_string)
             self.assertNotIn("powerbi_table_name", fqn_search_string)
 
@@ -1702,9 +1603,7 @@ class PowerBIUnitTest(TestCase):
         mock_context = MagicMock()
         mock_context.workspace.id = "test-workspace-id"
 
-        with patch.object(
-            type(self.powerbi), "context", new_callable=PropertyMock
-        ) as mock_ctx:
+        with patch.object(type(self.powerbi), "context", new_callable=PropertyMock) as mock_ctx:
             mock_ctx.return_value.get.return_value = mock_context
 
             mock_api_client.fetch_report_datasources.return_value = [
@@ -1720,9 +1619,7 @@ class PowerBIUnitTest(TestCase):
                 ),
             ]
 
-            result = self.powerbi._get_dataset_ids_from_report_datasources(
-                report_id="test-report-id"
-            )
+            result = self.powerbi._get_dataset_ids_from_report_datasources(report_id="test-report-id")
 
             self.assertEqual(len(result), 1)
             self.assertEqual(result[0], "45812303-926b-49b3-9eb2-8c8209acfaa2")
@@ -1741,15 +1638,11 @@ class PowerBIUnitTest(TestCase):
                 ),
             ]
 
-            result = self.powerbi._get_dataset_ids_from_report_datasources(
-                report_id="test-report-id"
-            )
+            result = self.powerbi._get_dataset_ids_from_report_datasources(report_id="test-report-id")
             self.assertEqual(result, [])
 
             mock_api_client.fetch_report_datasources.return_value = None
-            result = self.powerbi._get_dataset_ids_from_report_datasources(
-                report_id="test-report-id"
-            )
+            result = self.powerbi._get_dataset_ids_from_report_datasources(report_id="test-report-id")
             self.assertEqual(result, [])
 
     @pytest.mark.order(29)
@@ -1868,9 +1761,7 @@ class PowerBIUnitTest(TestCase):
         assert accounts_entry["tables"][0]["table"] == "DimAccounts"
         assert accounts_entry["sql"] is None
 
-        booktobill_entry = next(
-            r for r in result if r["entity_name"] == "BookToBill_Unite"
-        )
+        booktobill_entry = next(r for r in result if r["entity_name"] == "BookToBill_Unite")
         assert booktobill_entry["tables"][0]["database"] == "DW_Integration"
         assert booktobill_entry["sql"] is not None
 
@@ -1895,7 +1786,7 @@ class PowerBIUnitTest(TestCase):
         """
         Test that entities without loadEnabled=true are filtered out
         """
-        doc = "section Section1;\r\n" "shared " + MOCK_DATAFLOW_CATALOG_ACCESS_BLOCK
+        doc = "section Section1;\r\nshared " + MOCK_DATAFLOW_CATALOG_ACCESS_BLOCK
         queries_metadata_disabled = {
             "Accounts": {
                 "queryId": "q1",
@@ -1948,9 +1839,7 @@ class PowerBIUnitTest(TestCase):
 
         mock_table_entity = MagicMock()
         mock_table_entity.id = uuid.uuid4()
-        mock_table_entity.fullyQualifiedName = (
-            "sql_service.dw_datawarehouse.dbo.DimAccounts"
-        )
+        mock_table_entity.fullyQualifiedName = "sql_service.dw_datawarehouse.dbo.DimAccounts"
         mock_table_entity.columns = [
             Column(
                 name="AccountKey",
@@ -1988,13 +1877,14 @@ class PowerBIUnitTest(TestCase):
             objectId="test_dataflow_id",
         )
 
-        with patch.object(
-            self.powerbi.metadata,
-            "search_in_any_service",
-            return_value=mock_table_entity,
-        ) as mock_search, patch.object(
-            self.powerbi, "_get_add_lineage_request"
-        ) as mock_lineage_request:
+        with (
+            patch.object(
+                self.powerbi.metadata,
+                "search_in_any_service",
+                return_value=mock_table_entity,
+            ) as mock_search,
+            patch.object(self.powerbi, "_get_add_lineage_request") as mock_lineage_request,
+        ):
             mock_lineage_request.return_value = MagicMock()
 
             results = list(
@@ -2279,9 +2169,7 @@ class PowerBIUnitTest(TestCase):
         mock_context.dashboard_service = "test_powerbi_service"
         self.powerbi.context.get = MagicMock(return_value=mock_context)
 
-        list(
-            self.powerbi.yield_dashboard_chart(Group(id="ws-1", name="Test Workspace"))
-        )
+        list(self.powerbi.yield_dashboard_chart(Group(id="ws-1", name="Test Workspace")))
 
         assert "stale-dash" not in self.powerbi.dashboard_charts
         assert self.powerbi.dashboard_charts["fresh-dash"] == ["fresh-tile"]
@@ -2303,25 +2191,19 @@ class PowerBIUnitTest(TestCase):
             ],
         )
         self.powerbi.filtered_dashboards = [dashboard]
-        self.powerbi.source_config.chartFilterPattern = FilterPattern(
-            excludes=["Skip Me"]
-        )
+        self.powerbi.source_config.chartFilterPattern = FilterPattern(excludes=["Skip Me"])
 
         mock_context = MagicMock()
         mock_context.workspace = Group(id="ws-1", name="Test Workspace")
         mock_context.dashboard_service = "test_powerbi_service"
         self.powerbi.context.get = MagicMock(return_value=mock_context)
 
-        list(
-            self.powerbi.yield_dashboard_chart(Group(id="ws-1", name="Test Workspace"))
-        )
+        list(self.powerbi.yield_dashboard_chart(Group(id="ws-1", name="Test Workspace")))
 
         assert self.powerbi.dashboard_charts["dash-filter"] == ["tile-keep"]
 
     @pytest.mark.order(50)
-    @patch.object(
-        fqn, "build", side_effect=lambda *args, **kwargs: kwargs.get("chart_name")
-    )
+    @patch.object(fqn, "build", side_effect=lambda *args, **kwargs: kwargs.get("chart_name"))
     def test_yield_dashboard_uses_per_dashboard_charts(self, *_):
         """
         Test that yield_dashboard associates only the correct charts with each

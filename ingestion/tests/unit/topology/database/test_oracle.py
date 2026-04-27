@@ -115,9 +115,7 @@ MOCK_DATABASE = Database(
     fullyQualifiedName="oracle_source_test.sample_database",
     displayName="sample_database",
     description="",
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"
-    ),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"),
 )
 
 MOCK_DATABASE_SCHEMA = DatabaseSchema(
@@ -165,9 +163,7 @@ EXPECTED_STORED_PROCEDURE = [
         name=EntityName("sample_procedure"),
         storedProcedureCode=StoredProcedureCode(language="SQL", code="SAMPLE_SQL_TEXT"),
         storedProcedureType=StoredProcedureType.StoredProcedure,
-        databaseSchema=FullyQualifiedEntityName(
-            "oracle_source_test.sample_database.sample_schema"
-        ),
+        databaseSchema=FullyQualifiedEntityName("oracle_source_test.sample_database.sample_schema"),
     )
 ]
 
@@ -176,9 +172,7 @@ EXPECTED_STORED_PACKAGE = [
         name=EntityName("sample_package"),
         storedProcedureCode=StoredProcedureCode(language="SQL", code="SAMPLE_SQL_TEXT"),
         storedProcedureType=StoredProcedureType.StoredPackage,
-        databaseSchema=FullyQualifiedEntityName(
-            "oracle_source_test.sample_database.sample_schema"
-        ),
+        databaseSchema=FullyQualifiedEntityName("oracle_source_test.sample_database.sample_schema"),
     )
 ]
 
@@ -189,9 +183,7 @@ class OracleUnitTest(TestCase):
     Oracle Unit Test
     """
 
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def __init__(
         self,
         methodName,
@@ -201,51 +193,35 @@ class OracleUnitTest(TestCase):
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_oracle_config)
         self.metadata = OpenMetadata(
-            OpenMetadataConnection.model_validate(
-                mock_oracle_config["workflowConfig"]["openMetadataServerConfig"]
-            )
+            OpenMetadataConnection.model_validate(mock_oracle_config["workflowConfig"]["openMetadataServerConfig"])
         )
         self.oracle = OracleSource.create(
             mock_oracle_config["source"],
             self.metadata,
         )
-        self.oracle.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.oracle.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.oracle.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.oracle.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.oracle.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_database(self):
-        assert EXPECTED_DATABASE == [
-            either.right
-            for either in self.oracle.yield_database(MOCK_DATABASE.name.root)
-        ]
+        assert EXPECTED_DATABASE == [either.right for either in self.oracle.yield_database(MOCK_DATABASE.name.root)]
 
         self.oracle.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     def test_yield_schema(self):
         assert EXPECTED_DATABASE_SCHEMA == [
-            either.right
-            for either in self.oracle.yield_database_schema(
-                MOCK_DATABASE_SCHEMA.name.root
-            )
+            either.right for either in self.oracle.yield_database_schema(MOCK_DATABASE_SCHEMA.name.root)
         ]
-        self.oracle.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.oracle.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_stored_procedure(self):
         assert EXPECTED_STORED_PROCEDURE == [
-            either.right
-            for either in self.oracle.yield_stored_procedure(MOCK_STORED_PROCEDURE)
+            either.right for either in self.oracle.yield_stored_procedure(MOCK_STORED_PROCEDURE)
         ]
 
     def test_yield_stored_package(self):
         assert EXPECTED_STORED_PACKAGE == [
-            either.right
-            for either in self.oracle.yield_stored_procedure(MOCK_STORED_PACKAGE)
+            either.right for either in self.oracle.yield_stored_procedure(MOCK_STORED_PACKAGE)
         ]
 
     def test_stored_procedure_queries_have_order_by(self):
@@ -320,26 +296,22 @@ class OracleUnitTest(TestCase):
             "test_schema",
         ) in mock_dialect.all_view_definitions
 
-        expected_view_def_definition = "CREATE OR REPLACE VIEW test_view_with_def AS SELECT * FROM test_table WHERE id > 0"
-        expected_view_ddl_definition = "CREATE OR REPLACE FORCE VIEW test_schema.test_view_with_ddl AS SELECT * FROM complex_table"
+        expected_view_def_definition = (
+            "CREATE OR REPLACE VIEW test_view_with_def AS SELECT * FROM test_table WHERE id > 0"
+        )
+        expected_view_ddl_definition = (
+            "CREATE OR REPLACE FORCE VIEW test_schema.test_view_with_ddl AS SELECT * FROM complex_table"
+        )
 
-        assert (
-            mock_dialect.all_view_definitions[("test_view_with_def", "test_schema")]
-            == expected_view_def_definition
-        )
-        assert (
-            mock_dialect.all_view_definitions[("test_view_with_ddl", "test_schema")]
-            == expected_view_ddl_definition
-        )
+        assert mock_dialect.all_view_definitions[("test_view_with_def", "test_schema")] == expected_view_def_definition
+        assert mock_dialect.all_view_definitions[("test_view_with_ddl", "test_schema")] == expected_view_ddl_definition
 
     def test_get_stored_procedures(self):
         """
         Test fetching stored procedures with filter
         """
         self.oracle.source_config.includeStoredProcedures = True
-        self.oracle.source_config.storedProcedureFilterPattern = FilterPattern(
-            includes=["sp_include"]
-        )
+        self.oracle.source_config.storedProcedureFilterPattern = FilterPattern(includes=["sp_include"])
         self.oracle.context.get().__dict__["database"] = "test_db"
         self.oracle.context.get().__dict__["database_schema"] = "test_schema"
 
@@ -387,11 +359,7 @@ class OracleUnitTest(TestCase):
         mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
-        list(
-            self.oracle._get_stored_procedures_internal(
-                "SELECT * WHERE owner = '{schema}'"
-            )
-        )
+        list(self.oracle._get_stored_procedures_internal("SELECT * WHERE owner = '{schema}'"))
 
         executed_query = str(mock_conn.execute.call_args[0][0])
         assert "SAMPLE_SCHEMA" in executed_query
@@ -402,24 +370,18 @@ class TestOraclePreserveIdentifierCase:
     """Test Oracle source behavior when preserveIdentifierCase=True."""
 
     def setup_method(self):
-        patcher = patch(
-            "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-        )
+        patcher = patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
         patcher.start()
         metadata = OpenMetadata(
             OpenMetadataConnection.model_validate(
-                mock_oracle_config_preserve_case["workflowConfig"][
-                    "openMetadataServerConfig"
-                ]
+                mock_oracle_config_preserve_case["workflowConfig"]["openMetadataServerConfig"]
             )
         )
         self.oracle = OracleSource.create(
             mock_oracle_config_preserve_case["source"],
             metadata,
         )
-        self.oracle.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.oracle.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         patcher.stop()
 
     def test_normalize_name_returns_name_as_is(self):
@@ -448,11 +410,7 @@ class TestOraclePreserveIdentifierCase:
         mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
-        list(
-            self.oracle._get_stored_procedures_internal(
-                "SELECT * WHERE owner = '{schema}'"
-            )
-        )
+        list(self.oracle._get_stored_procedures_internal("SELECT * WHERE owner = '{schema}'"))
 
         executed_query = str(mock_conn.execute.call_args[0][0])
         assert "sample_Schema" in executed_query
@@ -472,9 +430,7 @@ class TestOraclePreserveIdentifierCase:
         mock_connection = MagicMock()
         mock_dialect = OracleDialect()
         mock_dialect.normalize_name = types.MethodType(normalize_name, mock_dialect)
-        mock_dialect._prepare_reflection_args = MagicMock(
-            return_value=("MyTable", "MySchema", "", None)
-        )
+        mock_dialect._prepare_reflection_args = MagicMock(return_value=("MyTable", "MySchema", "", None))
         mock_dialect.get_pk_constraint = MagicMock(return_value={"name": "PK_MYTABLE"})
 
         class MockRow:
@@ -505,9 +461,7 @@ class TestOraclePreserveIdentifierCase:
         ]
         mock_connection.execute.return_value = rows
 
-        result = get_indexes_preserve_case(
-            mock_dialect, mock_connection, "MyTable", schema="MySchema"
-        )
+        result = get_indexes_preserve_case(mock_dialect, mock_connection, "MyTable", schema="MySchema")
 
         assert len(result) == 1
         assert result[0]["name"] == "IDX_EMPLOYEE_ID"
@@ -528,9 +482,7 @@ class TestOraclePreserveIdentifierCase:
         mock_connection = MagicMock()
         mock_dialect = OracleDialect()
         mock_dialect.normalize_name = types.MethodType(normalize_name, mock_dialect)
-        mock_dialect._prepare_reflection_args = MagicMock(
-            return_value=("MyTable", "MySchema", "", None)
-        )
+        mock_dialect._prepare_reflection_args = MagicMock(return_value=("MyTable", "MySchema", "", None))
         mock_dialect.get_pk_constraint = MagicMock(return_value={"name": "PK_MYTABLE"})
 
         class MockRow:
@@ -551,9 +503,7 @@ class TestOraclePreserveIdentifierCase:
         ]
         mock_connection.execute.return_value = rows
 
-        result = get_indexes_preserve_case(
-            mock_dialect, mock_connection, "MyTable", schema="MySchema"
-        )
+        result = get_indexes_preserve_case(mock_dialect, mock_connection, "MyTable", schema="MySchema")
 
         assert len(result) == 1
         assert result[0]["name"] == "IDX_DEPARTMENT"

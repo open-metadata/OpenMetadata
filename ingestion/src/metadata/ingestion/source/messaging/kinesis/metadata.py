@@ -11,6 +11,7 @@
 """
 Kinesis source ingestion
 """
+
 import binascii
 import traceback
 from base64 import b64decode
@@ -73,23 +74,16 @@ class KinesisSource(MessagingServiceSource):
     ):
         super().__init__(config, metadata)
         self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
-        if (
-            self.generate_sample_data
-            and self._is_sample_data_storing_globally_disabled()
-        ):
+        if self.generate_sample_data and self._is_sample_data_storing_globally_disabled():
             self.generate_sample_data = False
         self.kinesis = self.connection
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: KinesisConnection = config.serviceConnection.root.config
         if not isinstance(connection, KinesisConnection):
-            raise InvalidSourceException(
-                f"Expected KinesisConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected KinesisConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_stream_names_list(self) -> List[str]:
@@ -124,9 +118,7 @@ class KinesisSource(MessagingServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.error(f"Failed to yield kinesis topic - {err}")
 
-    def yield_topic(
-        self, topic_details: BrokerTopicDetails
-    ) -> Iterable[Either[CreateTopicRequest]]:
+    def yield_topic(self, topic_details: BrokerTopicDetails) -> Iterable[Either[CreateTopicRequest]]:
         """Method to yield the create topic request"""
         try:
             logger.info(f"Fetching topic details {topic_details.topic_name}")
@@ -141,9 +133,7 @@ class KinesisSource(MessagingServiceSource):
                 name=EntityName(topic_details.topic_name),
                 service=FullyQualifiedEntityName(self.context.get().messaging_service),
                 partitions=len(topic_details.topic_metadata.partitions),
-                retentionTime=self._compute_retention_time(
-                    topic_details.topic_metadata.summary
-                ),
+                retentionTime=self._compute_retention_time(topic_details.topic_metadata.summary),
                 maximumMessageSize=MAX_MESSAGE_SIZE,
                 sourceUrl=SourceUrl(source_url),
             )
@@ -165,9 +155,7 @@ class KinesisSource(MessagingServiceSource):
     def _compute_retention_time(self, summary: Optional[KinesisSummaryModel]) -> float:
         retention_time = 0
         if summary:
-            retention_time = (
-                summary.StreamDescriptionSummary.RetentionPeriodHours * 3600000
-            )
+            retention_time = summary.StreamDescriptionSummary.RetentionPeriodHours * 3600000
         return float(retention_time)
 
     def _get_topic_details(self, topic_name: str) -> Optional[KinesisSummaryModel]:
@@ -176,9 +164,7 @@ class KinesisSource(MessagingServiceSource):
             return KinesisSummaryModel(**topic_summary)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error while fetching topic partitions for topic: {topic_name} - {err}"
-            )
+            logger.warning(f"Error while fetching topic partitions for topic: {topic_name} - {err}")
         return None
 
     def _get_topic_partitions(self, topic_name: str) -> List[str]:
@@ -194,24 +180,15 @@ class KinesisSource(MessagingServiceSource):
                 if "NextToken" not in partitions:
                     partitions["NextToken"] = None
                 kinesis_partitions_model = KinesisPartitions(**partitions)
-                all_partitions.extend(
-                    [
-                        partition.ShardId
-                        for partition in kinesis_partitions_model.Shards or []
-                    ]
-                )
+                all_partitions.extend([partition.ShardId for partition in kinesis_partitions_model.Shards or []])
                 has_more_partitions = kinesis_partitions_model.NextToken
                 args.NextToken = has_more_partitions
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error while fetching topic partitions for topic: {topic_name} - {err}"
-            )
+            logger.warning(f"Error while fetching topic partitions for topic: {topic_name} - {err}")
         return all_partitions
 
-    def yield_topic_sample_data(
-        self, topic_details: BrokerTopicDetails
-    ) -> Iterable[OMetaTopicSampleData]:
+    def yield_topic_sample_data(self, topic_details: BrokerTopicDetails) -> Iterable[OMetaTopicSampleData]:
         """Method to Get Sample Data of Messaging Entity"""
         try:
             topic_fqn = fqn.build(
@@ -252,22 +229,16 @@ class KinesisSource(MessagingServiceSource):
                 shard_iterator_model = KinesisShardIterator(**shard_iterator)
 
                 if shard_iterator_model.ShardIterator:
-                    records = self.kinesis.get_records(
-                        ShardIterator=shard_iterator_model.ShardIterator
-                    )
+                    records = self.kinesis.get_records(ShardIterator=shard_iterator_model.ShardIterator)
                     records_model = KinesisRecords(**records)
                     if records_model.Records:
-                        data.extend(
-                            self._get_sample_records(records=records_model.Records)
-                        )
+                        data.extend(self._get_sample_records(records=records_model.Records))
 
                 if data:
                     break
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error while fetching sample data for topic: {topic_name} - {err}"
-            )
+            logger.warning(f"Error while fetching sample data for topic: {topic_name} - {err}")
         return TopicSampleData(messages=data)
 
     def _get_sample_records(self, records: List[KinesisData]) -> List:

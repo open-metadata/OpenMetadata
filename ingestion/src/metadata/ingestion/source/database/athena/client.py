@@ -11,6 +11,7 @@
 """
 Wrapper module of Athena client
 """
+
 import traceback
 from typing import List, Optional
 
@@ -46,16 +47,12 @@ class AthenaLakeFormationClient:
             resource = {"Database": {"Name": name}}
             if self.catalog_id:
                 resource["Database"]["CatalogId"] = self.catalog_id
-            response = self.lake_formation_client.get_resource_lf_tags(
-                Resource=resource
-            )
+            response = self.lake_formation_client.get_resource_lf_tags(Resource=resource)
             lf_tags = LFTags(**response)
             return lf_tags.LFTagOnDatabase
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unable to get LF-Tags for database resource [{name}] due to: {exc}. Skipping."
-            )
+            logger.warning(f"Unable to get LF-Tags for database resource [{name}] due to: {exc}. Skipping.")
         return None
 
     def get_table_and_column_tags(self, schema_name: str, table_name: str) -> LFTags:
@@ -83,7 +80,5 @@ class AthenaLakeFormationClient:
             return LFTags(**response)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unable to get LF-Tags for table resource [{table_name}] due to: {exc}. Skipping."
-            )
+            logger.warning(f"Unable to get LF-Tags for table resource [{table_name}] due to: {exc}. Skipping.")
         return LFTags()

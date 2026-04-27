@@ -254,6 +254,7 @@ const ContainerPage = () => {
     viewBasicPermission,
     viewAllPermission,
     viewCustomPropertiesPermission,
+    viewSampleDataPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -289,6 +290,10 @@ const ContainerPage = () => {
       viewCustomPropertiesPermission: getPrioritizedViewPermission(
         containerPermissions,
         Operation.ViewCustomFields
+      ),
+      viewSampleDataPermission: getPrioritizedViewPermission(
+        containerPermissions,
+        Operation.ViewSampleData
       ),
     }),
     [containerPermissions, deleted]
@@ -537,12 +542,14 @@ const ContainerPage = () => {
       editCustomAttributePermission,
       viewAllPermission,
       viewCustomPropertiesPermission,
+      viewSampleDataPermission,
       feedCount: feedCount ?? { totalCount: 0 },
       getEntityFeedCount,
       handleFeedCount,
       tab,
       deleted: deleted ?? false,
       containerData,
+      containerPermissions,
       fetchContainerDetail,
       labelMap: tabLabelMap,
       childrenCount,
@@ -556,16 +563,19 @@ const ContainerPage = () => {
   }, [
     isDataModelEmpty,
     containerData,
+    containerPermissions,
     decodedEntityFqn,
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
     viewCustomPropertiesPermission,
+    viewSampleDataPermission,
     deleted,
     feedCount.totalCount,
     handleFeedCount,
     handleExtensionUpdate,
     customizedPage?.tabs,
+    childrenCount,
   ]);
 
   const updateVote = async (data: QueryVote, id: string) => {

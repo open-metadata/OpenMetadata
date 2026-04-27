@@ -11,11 +11,13 @@
 """
 Base class for the Auto Classification Processor.
 """
+
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Sequence, Type, TypeVar, cast, final
+from typing import Any, List, Optional, Sequence, Type, TypeVar, cast, final
 
-from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.entity.data.container import Container
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -63,9 +65,7 @@ class AutoClassificationProcessor(Processor, ABC):
         )  # Used to satisfy type checked
 
     @abstractmethod
-    def create_column_tag_labels(
-        self, column: Column, sample_data: Sequence[Any]
-    ) -> Sequence[TagLabel]:
+    def create_column_tag_labels(self, column: Column, sample_data: Sequence[Any]) -> Sequence[TagLabel]:
         """
         Create tags for the column based on the sample data.
         """
@@ -88,6 +88,15 @@ class AutoClassificationProcessor(Processor, ABC):
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
 
+    @staticmethod
+    def _get_entity_columns(entity) -> Optional[List[Column]]:
+        """Get columns from a classifiable entity"""
+        if isinstance(entity, Table):
+            return entity.columns
+        if isinstance(entity, Container):
+            return entity.dataModel.columns if entity.dataModel else None
+        return None
+
     @final
     def _run(self, record: SamplerResponse) -> Either[SamplerResponse]:
         """
@@ -98,25 +107,31 @@ class AutoClassificationProcessor(Processor, ABC):
         if not self.source_config.enableAutoClassification:
             return Either(right=record, left=None)
 
+        entity = record.entity
+        columns = self._get_entity_columns(entity)
+
+        if not columns:
+            return Either(right=record, left=None)
+
         column_tags = []
 
         for idx, column_name in enumerate(record.sample_data.data.columns):
-            column = next(c for c in record.table.columns if c.name == column_name)
+            column = next((c for c in columns if c.name == column_name), None)
+            if not column:
+                continue
+
             try:
                 tags = self.create_column_tag_labels(
                     column=column,
                     sample_data=[row[idx] for row in record.sample_data.data.rows],
                 )
                 for tag in tags:
-                    column_tag = ColumnTag(
-                        column_fqn=column.fullyQualifiedName.root, tag_label=tag
-                    )
+                    column_tag = ColumnTag(column_fqn=column.fullyQualifiedName.root, tag_label=tag)
                     column_tags.append(column_tag)
             except Exception as err:
-                # TODO: Shouldn't we return a Left here?
                 self.status.failed(
                     StackTraceError(
-                        name=record.table.fullyQualifiedName.root,
+                        name=entity.fullyQualifiedName.root,
                         error=f"Error in Processor {self.name} computing tags for [{column}] - [{err}]",
                         stackTrace=traceback.format_exc(),
                     )

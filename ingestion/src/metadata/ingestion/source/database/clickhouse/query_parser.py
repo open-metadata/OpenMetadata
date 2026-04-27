@@ -39,15 +39,11 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: ClickhouseConnection = config.serviceConnection.root.config
         if not isinstance(connection, ClickhouseConnection):
-            raise InvalidSourceException(
-                f"Expected ClickhouseConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected ClickhouseConnection, but got {connection}")
         return cls(config, metadata)
 
     @staticmethod
@@ -98,7 +94,5 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
 
         if self.schema_field and schema_name_list:
             self.filters += (  # pylint: disable=no-member
-                f" AND hasAny({self.schema_field}, ['"
-                + "','".join(schema_name_list)
-                + "'])"
+                f" AND hasAny({self.schema_field}, ['" + "','".join(schema_name_list) + "'])"
             )

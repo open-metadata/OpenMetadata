@@ -104,9 +104,7 @@ class DatabricksEngineWrapper:
             self.get_schemas()  # This will set first_schema
         if self.first_schema:
             with self.engine.connect() as connection:
-                tables = connection.execute(
-                    text(f"SHOW TABLES IN `{self.first_catalog}`.`{self.first_schema}`")
-                )
+                tables = connection.execute(text(f"SHOW TABLES IN `{self.first_catalog}`.`{self.first_schema}`"))
             return tables
         return []
 
@@ -116,9 +114,7 @@ class DatabricksEngineWrapper:
             self.get_schemas()  # This will set first_schema
         if self.first_schema:
             with self.engine.connect() as connection:
-                views = connection.execute(
-                    text(f"SHOW VIEWS IN `{self.first_catalog}`.`{self.first_schema}`")
-                )
+                views = connection.execute(text(f"SHOW VIEWS IN `{self.first_catalog}`.`{self.first_schema}`"))
             return views
         return []
 
@@ -205,20 +201,14 @@ def test_connection(
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, connection),
-        "GetSchemas": partial(
-            engine_wrapper.get_schemas, schema_name=service_connection.databaseSchema
-        ),
+        "GetSchemas": partial(engine_wrapper.get_schemas, schema_name=service_connection.databaseSchema),
         "GetTables": engine_wrapper.get_tables,
         "GetViews": engine_wrapper.get_views,
-        "GetDatabases": partial(
-            engine_wrapper.get_catalogs, catalog_name=service_connection.catalog
-        ),
+        "GetDatabases": partial(engine_wrapper.get_catalogs, catalog_name=service_connection.catalog),
         "GetQueries": partial(
             test_database_query,
             engine=connection,
-            statement=DATABRICKS_SQL_STATEMENT_TEST.format(
-                query_history=service_connection.queryHistoryTable
-            ),
+            statement=DATABRICKS_SQL_STATEMENT_TEST.format(query_history=service_connection.queryHistoryTable),
         ),
         "GetViewDefinitions": partial(
             test_database_query,
