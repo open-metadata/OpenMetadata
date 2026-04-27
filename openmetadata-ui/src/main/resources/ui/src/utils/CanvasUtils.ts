@@ -251,7 +251,7 @@ function getColumnLineageCoordinates(
 function getEntityLineageCoordinates(
   sourceNode: Node,
   targetNode: Node,
-  isColumnLineage: boolean
+  _isColumnLineage: boolean
 ): EdgeCoordinates {
   const sourceHeight = sourceNode.height ?? 0;
   const targetHeight = targetNode.height ?? 0;
