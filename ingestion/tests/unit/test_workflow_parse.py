@@ -61,6 +61,9 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline import (
     PipelineServiceMetadataPipeline,
 )
+from metadata.generated.schema.metadataIngestion.policyAgentPipeline import (
+    PolicyAgentPipeline,
+)
 from metadata.ingestion.api.parser import (
     ParsingConfigurationError,
     get_connection_class,
@@ -162,6 +165,10 @@ class TestWorkflowParse(TestCase):
         source_config_type = "ApiMetadata"
         connection = get_source_config_class(source_config_type)
         self.assertEqual(connection, ApiServiceMetadataPipeline)
+
+        source_config_type = "PolicyAgent"
+        connection = get_source_config_class(source_config_type)
+        self.assertEqual(connection, PolicyAgentPipeline)
 
     def test_parsing_ok(self):
         """
@@ -929,3 +936,194 @@ class TestWorkflowParse(TestCase):
             "We encountered an error parsing the configuration of your DbtPipeline.\nYou might need to review your config based on the original cause of this failure:\n\t - Extra parameter 'extraParameter'",
             str(err.exception),
         )
+
+    def test_parsing_policy_agent_ok(self):
+        """Policy Agent config with grants at all three scopes parses cleanly."""
+
+        config_dict = {
+            "source": {
+                "type": "snowflake-policy",
+                "serviceName": "test_snowflake",
+                "serviceConnection": {
+                    "config": {
+                        "type": "Snowflake",
+                        "username": "user",
+                        "password": "pwd",
+                        "account": "acc",
+                        "warehouse": "wh",
+                    }
+                },
+                "sourceConfig": {
+                    "config": {
+                        "type": "PolicyAgent",
+                        "policies": [
+                            {
+                                "id": "11111111-1111-1111-1111-111111111111",
+                                "principalType": "ROLE",
+                                "principal": "ANALYST",
+                                "databaseName": "DB",
+                                "privilege": "USAGE",
+                            },
+                            {
+                                "id": "22222222-2222-2222-2222-222222222222",
+                                "principal": "ANALYST",
+                                "databaseName": "DB",
+                                "schemaName": "PUBLIC",
+                                "privilege": "USAGE",
+                            },
+                            {
+                                "id": "33333333-3333-3333-3333-333333333333",
+                                "principal": "ANALYST",
+                                "databaseName": "DB",
+                                "schemaName": "PUBLIC",
+                                "tableName": "ORDERS",
+                                "privilege": "SELECT",
+                            },
+                        ],
+                    }
+                },
+            },
+            "sink": {"type": "metadata-rest", "config": {}},
+            "workflowConfig": {
+                "openMetadataServerConfig": {
+                    "hostPort": "http://localhost:8585/api",
+                    "authProvider": "openmetadata",
+                    "securityConfig": {"jwtToken": "token"},
+                },
+            },
+        }
+
+        workflow_config = parse_workflow_config_gracefully(config_dict)
+        source_config = workflow_config.source.sourceConfig.config
+        self.assertIsInstance(source_config, PolicyAgentPipeline)
+        self.assertEqual(len(source_config.policies), 3)
+
+    def test_parsing_policy_agent_ko_missing_required(self):
+        """A policy entry missing the required databaseName surfaces a scoped error."""
+
+        config_dict = {
+            "source": {
+                "type": "snowflake-policy",
+                "serviceName": "test_snowflake",
+                "serviceConnection": {
+                    "config": {
+                        "type": "Snowflake",
+                        "username": "user",
+                        "password": "pwd",
+                        "account": "acc",
+                        "warehouse": "wh",
+                    }
+                },
+                "sourceConfig": {
+                    "config": {
+                        "type": "PolicyAgent",
+                        "policies": [
+                            {
+                                "id": "11111111-1111-1111-1111-111111111111",
+                                "principal": "ANALYST",
+                                "privilege": "USAGE",
+                            }
+                        ],
+                    }
+                },
+            },
+            "sink": {"type": "metadata-rest", "config": {}},
+            "workflowConfig": {
+                "openMetadataServerConfig": {
+                    "hostPort": "http://localhost:8585/api",
+                    "authProvider": "openmetadata",
+                    "securityConfig": {"jwtToken": "token"},
+                },
+            },
+        }
+
+        with self.assertRaises(ParsingConfigurationError) as err:
+            parse_workflow_config_gracefully(config_dict)
+        self.assertIn("databaseName", str(err.exception))
+
+    def test_parsing_policy_agent_ko_table_without_schema(self):
+        """tableName without schemaName violates the JSON schema dependency."""
+
+        config_dict = {
+            "source": {
+                "type": "snowflake-policy",
+                "serviceName": "test_snowflake",
+                "serviceConnection": {
+                    "config": {
+                        "type": "Snowflake",
+                        "username": "user",
+                        "password": "pwd",
+                        "account": "acc",
+                        "warehouse": "wh",
+                    }
+                },
+                "sourceConfig": {
+                    "config": {
+                        "type": "PolicyAgent",
+                        "policies": [
+                            {
+                                "id": "11111111-1111-1111-1111-111111111111",
+                                "principal": "ANALYST",
+                                "databaseName": "DB",
+                                "tableName": "ORDERS",
+                                "privilege": "SELECT",
+                            }
+                        ],
+                    }
+                },
+            },
+            "sink": {"type": "metadata-rest", "config": {}},
+            "workflowConfig": {
+                "openMetadataServerConfig": {
+                    "hostPort": "http://localhost:8585/api",
+                    "authProvider": "openmetadata",
+                    "securityConfig": {"jwtToken": "token"},
+                },
+            },
+        }
+
+        with self.assertRaises(ParsingConfigurationError):
+            parse_workflow_config_gracefully(config_dict)
+
+    def test_parsing_policy_agent_ko_invalid_principal(self):
+        """Principal with disallowed characters fails the schema regex."""
+
+        config_dict = {
+            "source": {
+                "type": "snowflake-policy",
+                "serviceName": "test_snowflake",
+                "serviceConnection": {
+                    "config": {
+                        "type": "Snowflake",
+                        "username": "user",
+                        "password": "pwd",
+                        "account": "acc",
+                        "warehouse": "wh",
+                    }
+                },
+                "sourceConfig": {
+                    "config": {
+                        "type": "PolicyAgent",
+                        "policies": [
+                            {
+                                "id": "11111111-1111-1111-1111-111111111111",
+                                "principal": "DROP TABLE; --",
+                                "databaseName": "DB",
+                                "privilege": "USAGE",
+                            }
+                        ],
+                    }
+                },
+            },
+            "sink": {"type": "metadata-rest", "config": {}},
+            "workflowConfig": {
+                "openMetadataServerConfig": {
+                    "hostPort": "http://localhost:8585/api",
+                    "authProvider": "openmetadata",
+                    "securityConfig": {"jwtToken": "token"},
+                },
+            },
+        }
+
+        with self.assertRaises(ParsingConfigurationError):
+            parse_workflow_config_gracefully(config_dict)
