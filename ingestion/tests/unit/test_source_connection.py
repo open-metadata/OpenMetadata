@@ -176,10 +176,7 @@ class SourceConnectionTest(TestCase):
             token="dapi1234567890",
         )
         url = get_connection_url(conn_obj)
-        assert (
-            url
-            == "databricks://token:dapi1234567890@my-workspace.cloud.databricks.com:443"
-        )
+        assert url == "databricks://token:dapi1234567890@my-workspace.cloud.databricks.com:443"
         assert "databricks+connector" not in url
 
     def test_databricks_url_with_special_chars_in_catalog(self):
@@ -236,10 +233,7 @@ class SourceConnectionTest(TestCase):
             catalog="production",
         )
         url = get_connection_url(conn_obj)
-        assert (
-            url
-            == "databricks://my-workspace.cloud.databricks.com:443?catalog=production"
-        )
+        assert url == "databricks://my-workspace.cloud.databricks.com:443?catalog=production"
 
     def test_unity_catalog_url_with_special_chars_in_catalog(self):
         from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
@@ -260,10 +254,7 @@ class SourceConnectionTest(TestCase):
             catalog="my catalog&name=val",
         )
         url = get_connection_url(conn_obj)
-        assert (
-            url
-            == "databricks://my-workspace.cloud.databricks.com:443?catalog=my+catalog%26name%3Dval"
-        )
+        assert url == "databricks://my-workspace.cloud.databricks.com:443?catalog=my+catalog%26name%3Dval"
 
     def test_hive_url(self):
         from metadata.ingestion.source.database.hive.connection import (

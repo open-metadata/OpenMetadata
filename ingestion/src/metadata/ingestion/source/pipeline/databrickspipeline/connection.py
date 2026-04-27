@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 import logging
 from typing import Optional
 

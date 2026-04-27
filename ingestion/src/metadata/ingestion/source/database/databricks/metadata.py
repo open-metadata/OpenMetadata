@@ -15,7 +15,6 @@ import traceback
 from copy import deepcopy
 from typing import Iterable, Optional, Tuple, Union
 
-from databricks.sqlalchemy import DatabricksDialect
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
 from sqlalchemy import exc, text, types, util
@@ -24,6 +23,7 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql.sqltypes import String
 
+from databricks.sqlalchemy import DatabricksDialect
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table, TableType

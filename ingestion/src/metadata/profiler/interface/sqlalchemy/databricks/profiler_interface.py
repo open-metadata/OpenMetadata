@@ -99,12 +99,8 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         self.set_catalog(self.session)
         from databricks.sqlalchemy._ddl import DatabricksStatementCompiler
 
-        DatabricksStatementCompiler.visit_column = (
-            DatabricksProfilerInterface.visit_column
-        )
-        DatabricksStatementCompiler.visit_table = (
-            DatabricksProfilerInterface.visit_table
-        )
+        DatabricksStatementCompiler.visit_column = DatabricksProfilerInterface.visit_column
+        DatabricksStatementCompiler.visit_table = DatabricksProfilerInterface.visit_table
 
     def _get_struct_columns(self, columns: List[OMColumn], parent: str):
         """Get struct columns"""

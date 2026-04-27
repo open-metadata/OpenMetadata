@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 import logging
 from copy import deepcopy
 from functools import partial
