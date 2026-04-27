@@ -12,6 +12,7 @@
 Definition of tags for the PII algorithms.
 These tags currently belong to the layer logic of the algorithms.
 """
+
 import enum
 from typing import List
 

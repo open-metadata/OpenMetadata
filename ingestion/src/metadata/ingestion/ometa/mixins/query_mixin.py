@@ -13,6 +13,7 @@ Mixin class containing Query specific methods
 
 To be used by OpenMetadata class
 """
+
 import hashlib
 import json
 from functools import lru_cache
@@ -58,9 +59,7 @@ class OMetaQueryMixin:
                 query_entity = Query(**resp)
         return query_entity
 
-    def ingest_entity_queries_data(
-        self, entity: Union[Table, Dashboard], queries: List[CreateQueryRequest]
-    ) -> None:
+    def ingest_entity_queries_data(self, entity: Union[Table, Dashboard], queries: List[CreateQueryRequest]) -> None:
         """
         PUT queries for an entity
 
@@ -69,9 +68,7 @@ class OMetaQueryMixin:
         """
         for create_query in queries:
             if not create_query.exclude_usage:
-                create_query.query.root = mask_query(
-                    create_query.query.root, create_query.dialect
-                )
+                create_query.query.root = mask_query(create_query.query.root, create_query.dialect)
                 query = self._get_or_create_query(create_query)
                 if query:
                     # Add Query Usage
@@ -88,9 +85,7 @@ class OMetaQueryMixin:
                     if user_fqn_list:
                         self.client.put(
                             f"{self.get_suffix(Query)}/{model_str(query.id)}/users",
-                            data=json.dumps(
-                                [model_str(user_fqn) for user_fqn in user_fqn_list]
-                            ),
+                            data=json.dumps([model_str(user_fqn) for user_fqn in user_fqn_list]),
                         )
 
                     # Add Query used by
@@ -115,17 +110,13 @@ class OMetaQueryMixin:
             Optional[List[Query]]: List of queries
         """
         fields_str = "&fields=" + ",".join(fields) if fields else ""
-        res = self.client.get(
-            f"{self.get_suffix(Query)}?entityId={model_str(entity_id)}&{fields_str}"
-        )
+        res = self.client.get(f"{self.get_suffix(Query)}?entityId={model_str(entity_id)}&{fields_str}")
         if res and res.get("data"):
             return [Query(**query) for query in res.get("data")]
         return None
 
     @lru_cache(maxsize=5000)
-    def __get_query_by_hash(
-        self, query_hash: str, service_name: str
-    ) -> Optional[Query]:
+    def __get_query_by_hash(self, query_hash: str, service_name: str) -> Optional[Query]:
         return self.get_by_name(entity=Query, fqn=f"{service_name}.{query_hash}")
 
     def publish_query_cost(self, query_cost_data: QueryCostWrapper, service_name: str):
@@ -145,9 +136,7 @@ class OMetaQueryMixin:
 
         query_hash = self._get_query_hash(masked_query)
 
-        query = self.__get_query_by_hash(
-            query_hash=query_hash, service_name=service_name
-        )
+        query = self.__get_query_by_hash(query_hash=query_hash, service_name=service_name)
         if not query:
             return None
 
@@ -160,6 +149,4 @@ class OMetaQueryMixin:
             totalDuration=query_cost_data.totalDuration,
         )
 
-        return self.client.post(
-            self.get_suffix(QueryCostRecord), data=create_request.model_dump_json()
-        )
+        return self.client.post(self.get_suffix(QueryCostRecord), data=create_request.model_dump_json())

@@ -12,6 +12,7 @@
 """
 Unique Count Metric definition
 """
+
 import json
 from collections import Counter
 from typing import TYPE_CHECKING, Optional
@@ -56,9 +57,7 @@ class UniqueCount(QueryMetric):
         Build the Unique Count metric
         """
         if not session:
-            raise AttributeError(
-                "We are missing the session attribute to compute the UniqueCount."
-            )
+            raise AttributeError("We are missing the session attribute to compute the UniqueCount.")
 
         if self.col.type.__class__.__name__ in NOT_COMPUTE:
             return None
@@ -70,9 +69,7 @@ class UniqueCount(QueryMetric):
         if session.get_bind().dialect.name == Dialects.BigQuery:
             return func.countif(col == 1).label(self.name())
 
-        unique_count_query = _unique_count_query_mapper[
-            session.get_bind().dialect.name
-        ](col, session, sample)
+        unique_count_query = _unique_count_query_mapper[session.get_bind().dialect.name](col, session, sample)
         only_once_sub = unique_count_query.subquery("only_once")
         return session.query(func.count().label(self.name())).select_from(only_once_sub)
 
@@ -89,19 +86,14 @@ class UniqueCount(QueryMetric):
                 accumulator = computation.update_accumulator(accumulator, df)
             return computation.aggregate_accumulator(accumulator)
         except Exception as err:
-            logger.debug(
-                f"Don't know how to process type {self.col.type}"
-                f" when computing Unique Count.\n Error: {err}"
-            )
+            logger.debug(f"Don't know how to process type {self.col.type} when computing Unique Count.\n Error: {err}")
             return 0
 
     def get_pandas_computation(self):
         """Returns the logic to compute this metrics using Pandas"""
         return PandasComputation[Counter, int](
             create_accumulator=Counter,
-            update_accumulator=lambda counter, df: UniqueCount.update_accumulator(
-                counter, df, self.col
-            ),
+            update_accumulator=lambda counter, df: UniqueCount.update_accumulator(counter, df, self.col),
             aggregate_accumulator=UniqueCount.aggregate_accumulator,
         )
 

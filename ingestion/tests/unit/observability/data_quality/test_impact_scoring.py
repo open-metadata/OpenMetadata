@@ -175,27 +175,21 @@ class TestImpactScorePandas:
     def test_impact_score_edge_cases(self):
         """Test impact score calculation with edge cases"""
         # Test with single row
-        df_single = pd.DataFrame(
-            {"dimension": ["single"], "failed_count": [1], "total_count": [1]}
-        )
+        df_single = pd.DataFrame({"dimension": ["single"], "failed_count": [1], "total_count": [1]})
 
         result = calculate_impact_score_pandas(df_single)
         # Single row with 100% failure should have low score due to sample weight
         assert result["impact_score"].iloc[0] < 0.1
 
         # Test with zero failures
-        df_zero = pd.DataFrame(
-            {"dimension": ["perfect"], "failed_count": [0], "total_count": [1000]}
-        )
+        df_zero = pd.DataFrame({"dimension": ["perfect"], "failed_count": [0], "total_count": [1000]})
 
         result = calculate_impact_score_pandas(df_zero)
         # Zero failures should have zero impact score
         assert result["impact_score"].iloc[0] == 0.0
 
         # Test with all failures
-        df_all_fail = pd.DataFrame(
-            {"dimension": ["all_fail"], "failed_count": [1000], "total_count": [1000]}
-        )
+        df_all_fail = pd.DataFrame({"dimension": ["all_fail"], "failed_count": [1000], "total_count": [1000]})
 
         result = calculate_impact_score_pandas(df_all_fail)
         # 100% failure with large sample should have high score
@@ -261,8 +255,7 @@ class TestImpactScoreFormula:
                 score = min(1.0, max(0.0, raw_impact / DEFAULT_NORMALIZATION_FACTOR))
 
             assert expected_range[0] <= score <= expected_range[1], (
-                f"Score {score} not in range {expected_range} for "
-                f"failed={failed}, total={total}"
+                f"Score {score} not in range {expected_range} for failed={failed}, total={total}"
             )
 
     def test_formula_monotonicity(self):
@@ -286,17 +279,13 @@ class TestImpactScoreFormula:
 
         # Scores should be monotonically increasing
         for i in range(1, len(scores)):
-            assert (
-                scores[i] > scores[i - 1]
-            ), f"Score not increasing: {scores[i-1]} -> {scores[i]}"
+            assert scores[i] > scores[i - 1], f"Score not increasing: {scores[i - 1]} -> {scores[i]}"
 
 
 class TestDimensionalValidatorIntegration:
     """Test impact scoring integration with dimensional validators"""
 
-    @patch(
-        "metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeUnique.ColumnValuesToBeUniqueValidator"
-    )
+    @patch("metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeUnique.ColumnValuesToBeUniqueValidator")
     def test_dimensional_validator_with_impact_scoring(self, mock_validator_class):
         """Test that dimensional validators properly calculate impact scores"""
         # This is a high-level integration test to verify the validators
@@ -325,9 +314,7 @@ class TestDimensionalValidatorIntegration:
             },
         ]
 
-        mock_validator._execute_with_others_aggregation = Mock(
-            return_value=mock_results
-        )
+        mock_validator._execute_with_others_aggregation = Mock(return_value=mock_results)
 
         # Verify results are sorted by impact score
         assert mock_results[0]["impact_score"] > mock_results[1]["impact_score"]

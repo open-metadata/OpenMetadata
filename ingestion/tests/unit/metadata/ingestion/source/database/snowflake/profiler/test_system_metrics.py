@@ -1,7 +1,9 @@
-from datetime import datetime
-from unittest.mock import MagicMock, Mock, patch
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
+from sqlalchemy.engine.result import IteratorResult, SimpleResultMetaData
+from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.table import (
     DmlOperationType,
@@ -13,6 +15,7 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 )
 from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeDynamicTableRefreshEntry,
+    SnowflakeQueryLogEntry,
 )
 from metadata.profiler.metrics.system.snowflake.system import (
     PUBLIC_SCHEMA,
@@ -44,10 +47,7 @@ def test_resolve_snoflake_fqn(schema_name, existing_tables):
                 return "db", "test_schema", "test_table"
             if "db.PUBLIC.test_table" in existing_tables:
                 return "db", PUBLIC_SCHEMA, "test_table"
-        if (
-            schema_name in [None, PUBLIC_SCHEMA]
-            and "db.PUBLIC.test_table" in existing_tables
-        ):
+        if schema_name in [None, PUBLIC_SCHEMA] and "db.PUBLIC.test_table" in existing_tables:
             return "db", PUBLIC_SCHEMA, "test_table"
         return RuntimeError
 
@@ -113,18 +113,14 @@ def test_get_identifiers(
     if isinstance(resolved_schema, RuntimeError):
         resolver.resolve_implicit_fqn = MagicMock(side_effect=resolved_schema)
     else:
-        resolver.resolve_implicit_fqn = MagicMock(
-            return_value=(context_database, resolved_schema, identifier)
-        )
+        resolver.resolve_implicit_fqn = MagicMock(return_value=(context_database, resolved_schema, identifier))
 
     expected_value = expected_result()
     if isinstance(expected_value, RuntimeError):
-        with pytest.raises(type(expected_value), match=str(expected_value)) as e:
+        with pytest.raises(type(expected_value), match=str(expected_value)) as e:  # noqa: F841
             resolver.resolve_snowflake_fqn(context_database, context_schema, identifier)
     else:
-        assert expected_value == resolver.resolve_snowflake_fqn(
-            context_database, context_schema, identifier
-        )
+        assert expected_value == resolver.resolve_snowflake_fqn(context_database, context_schema, identifier)
 
 
 class TestSnowflakeSystemMetricsComputerDynamicTable:
@@ -223,9 +219,7 @@ class TestSnowflakeSystemMetricsComputerDynamicTable:
             ),
         ]
 
-        with patch.object(
-            computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries
-        ):
+        with patch.object(computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries):
             result = computer.get_inserts()
 
         assert len(result) == 2
@@ -257,9 +251,7 @@ class TestSnowflakeSystemMetricsComputerDynamicTable:
             ),
         ]
 
-        with patch.object(
-            computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries
-        ):
+        with patch.object(computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries):
             result = computer.get_updates()
 
         assert len(result) == 1
@@ -290,9 +282,7 @@ class TestSnowflakeSystemMetricsComputerDynamicTable:
             ),
         ]
 
-        with patch.object(
-            computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries
-        ):
+        with patch.object(computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries):
             result = computer.get_deletes()
 
         assert len(result) == 1
@@ -323,9 +313,7 @@ class TestSnowflakeSystemMetricsComputerDynamicTable:
             ),
         ]
 
-        with patch.object(
-            computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries
-        ):
+        with patch.object(computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries):
             inserts = computer.get_inserts()
             updates = computer.get_updates()
             deletes = computer.get_deletes()
@@ -365,10 +353,115 @@ class TestSnowflakeSystemMetricsComputerDynamicTable:
             ),
         ]
 
-        with patch.object(
-            computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries
-        ):
+        with patch.object(computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries):
             inserts = computer.get_inserts()
 
         assert len(inserts) == 1
         assert inserts[0].rowsAffected == 10
+
+
+def test_it_turns_sql_alchemy_response_to_snowflake_query_log_entries() -> None:
+    start_time = datetime.now()
+
+    session = create_autospec(Session, instance=True)
+
+    # Set up test data
+    row_metadata = SimpleResultMetaData(
+        [
+            "query_id",
+            "query_text",
+            "query_type",
+            "start_time",
+            "database_name",
+            "schema_name",
+            "rows_inserted",
+            "rows_updated",
+            "rows_deleted",
+        ]
+    )
+    result = IteratorResult(
+        row_metadata,
+        iter(
+            [
+                (
+                    "1",
+                    "INSERT INTO Foo (c, b) VALUES (1, 2), (2, 3)",
+                    "INSERT",
+                    start_time,
+                    "TEST",
+                    "TEST_SCHEMA",
+                    2,
+                    0,
+                    0,
+                ),
+                (
+                    "2",
+                    "DELETE FROM Foo WHERE c = 1",
+                    "DELETE",
+                    start_time + timedelta(hours=1),
+                    "TEST",
+                    "TEST_SCHEMA",
+                    0,
+                    0,
+                    1,
+                ),
+                (
+                    "3",
+                    "UPDATE Foo SET b = 5",
+                    "UPDATE",
+                    start_time + timedelta(hours=2),
+                    "TEST",
+                    "TEST_SCHEMA",
+                    0,
+                    1,
+                    0,
+                ),
+            ]
+        ),
+    )
+    session.execute.return_value = result
+
+    # Mock connection
+    snowflake_connection = SnowflakeConnection.model_construct(accountUsageSchema="SNOWFLAKE.ACCOUNT_USAGE")
+
+    queries = SnowflakeQueryLogEntry.get_for_table(
+        session=session,
+        tablename="Foo",
+        service_connection_config=snowflake_connection,
+    )
+
+    assert queries == [
+        SnowflakeQueryLogEntry(
+            query_id="1",
+            query_text="INSERT INTO Foo (c, b) VALUES (1, 2), (2, 3)",
+            query_type="INSERT",
+            start_time=start_time,
+            database_name="TEST",
+            schema_name="TEST_SCHEMA",
+            rows_inserted=2,
+            rows_updated=0,
+            rows_deleted=0,
+        ),
+        SnowflakeQueryLogEntry(
+            query_id="2",
+            query_text="DELETE FROM Foo WHERE c = 1",
+            query_type="DELETE",
+            start_time=start_time + timedelta(hours=1),
+            database_name="TEST",
+            schema_name="TEST_SCHEMA",
+            rows_inserted=0,
+            rows_updated=0,
+            rows_deleted=1,
+        ),
+        SnowflakeQueryLogEntry(
+            query_id="3",
+            query_text="UPDATE Foo SET b = 5",
+            query_type="UPDATE",
+            start_time=start_time + timedelta(hours=2),
+            database_name="TEST",
+            schema_name="TEST_SCHEMA",
+            rows_inserted=0,
+            rows_updated=1,
+            rows_deleted=0,
+        ),
+    ]

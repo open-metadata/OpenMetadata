@@ -13,6 +13,7 @@
 MF4 DataFrame reader for processing MF4 (Measurement Data Format) files.
 Extracts header metadata (small data) with streaming where possible.
 """
+
 import tempfile
 from functools import singledispatchmethod
 from typing import Optional
@@ -54,28 +55,20 @@ class MF4DataFrameReader(DataFrameReader):
             common_props = mdf.header._common_properties
 
             if common_props:
-                schema_dict = {
-                    key: pd.Series(value) for key, value in common_props.items()
-                }
+                schema_dict = {key: pd.Series(value) for key, value in common_props.items()}
                 schema_df = pd.DataFrame(schema_dict, index=[0])
                 logger.info(f"Extracted {len(schema_dict)} properties from MF4 header")
 
                 def chunk_generator():
                     yield schema_df
 
-                return DatalakeColumnWrapper(
-                    dataframes=chunk_generator, raw_data=common_props, columns=None
-                )
+                return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=common_props, columns=None)
 
         logger.debug("No _common_properties found in header.")
-        return DatalakeColumnWrapper(
-            dataframes=lambda: iter([]), raw_data=None, columns=None
-        )
+        return DatalakeColumnWrapper(dataframes=lambda: iter([]), raw_data=None, columns=None)
 
     @singledispatchmethod
-    def _read_mf4_dispatch(
-        self, config_source: ConfigSource, key: str, bucket_name: str
-    ) -> DatalakeColumnWrapper:
+    def _read_mf4_dispatch(self, config_source: ConfigSource, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         raise FileFormatException(config_source=config_source, file_name=key)
 
     @_read_mf4_dispatch.register
@@ -138,6 +131,4 @@ class MF4DataFrameReader(DataFrameReader):
         return self._extract_header_from_mdf(mdf)
 
     def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
-        return self._read_mf4_dispatch(
-            self.config_source, key=key, bucket_name=bucket_name
-        )
+        return self._read_mf4_dispatch(self.config_source, key=key, bucket_name=bucket_name)

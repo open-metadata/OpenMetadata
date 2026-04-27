@@ -11,6 +11,7 @@
 """
 Test lineage parser to get inlets and outlets information
 """
+
 from datetime import datetime
 from typing import List, Set
 

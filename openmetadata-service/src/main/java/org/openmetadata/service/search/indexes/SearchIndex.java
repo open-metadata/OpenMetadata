@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
@@ -142,8 +141,11 @@ public interface SearchIndex {
     doc.put("domains", getEntitiesWithDisplayName(entity.getDomains()));
     doc.put("reviewers", getEntitiesWithDisplayName(entity.getReviewers()));
     doc.put("followers", SearchIndexUtils.parseFollowers(entity.getFollowers()));
-    Optional.ofNullable(entity.getEntityStatus())
-        .ifPresent(status -> doc.put("entityStatus", status.value()));
+    doc.put(
+        "entityStatus",
+        entity.getEntityStatus() != null
+            ? entity.getEntityStatus().value()
+            : org.openmetadata.schema.type.EntityStatus.UNPROCESSED.value());
     if (entity.getVotes() != null) {
       int upVotes = entity.getVotes().getUpVotes() != null ? entity.getVotes().getUpVotes() : 0;
       int downVotes =
@@ -252,6 +254,23 @@ public interface SearchIndex {
       }
     }
     return data;
+  }
+
+  /**
+   * Populates upstreamLineage and lineageSqlQueries in the given search doc map.
+   *
+   * <p>Identical SQL queries across edges are deduplicated: the full text is stored once in
+   * lineageSqlQueries keyed by a sequential integer, and each edge carries only the key via
+   * sqlQueryKey. Edges with unique SQL still get their SQL stored (and keyed). The authoritative
+   * per-edge SQL remains in the database; this deduplication is search-doc-local.
+   */
+  static void populateLineageData(Map<String, Object> doc, EntityReference entity) {
+    List<EsLineageData> edges = getLineageData(entity);
+    Map<String, String> sqlQueries = SearchIndexUtils.deduplicateSqlAcrossEdges(edges);
+    doc.put("upstreamLineage", edges);
+    if (!sqlQueries.isEmpty()) {
+      doc.put("lineageSqlQueries", sqlQueries);
+    }
   }
 
   static List<Map<String, Object>> populateUpstreamEntityRelationshipData(Table entity) {

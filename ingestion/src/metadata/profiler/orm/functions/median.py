@@ -12,6 +12,7 @@
 """
 Define Median function
 """
+
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
 from sqlalchemy.ext.compiler import compiles
@@ -52,17 +53,13 @@ def _(elements, compiler, **kwargs):
 
 @compiles(MedianFn, Dialects.BigQuery)
 def _(elements, compiler, **kwargs):
-    col, _, percentile = [
-        compiler.process(element, **kwargs) for element in elements.clauses
-    ]
+    col, _, percentile = [compiler.process(element, **kwargs) for element in elements.clauses]
     return "percentile_cont(%s , %s) OVER()" % (col, percentile)
 
 
 @compiles(MedianFn, Dialects.Databricks)
 def _(elements, compiler, **kwargs):
-    col, _, percentile = [
-        compiler.process(element, **kwargs) for element in elements.clauses
-    ]
+    col, _, percentile = [compiler.process(element, **kwargs) for element in elements.clauses]
     return "percentile_approx(%s , %s)" % (col, percentile)
 
 
@@ -79,21 +76,15 @@ def _(elements, compiler, **kwargs):
 
 @compiles(MedianFn, Dialects.ClickHouse)
 def _(elements, compiler, **kwargs):
-    col, _, percentile = [
-        compiler.process(element, **kwargs) for element in elements.clauses
-    ]
+    col, _, percentile = [compiler.process(element, **kwargs) for element in elements.clauses]
     quantile_str = f"quantile({percentile})({col})"
-    null_check = (
-        "isNull" if isinstance(elements.clauses.clauses[0].type, DECIMAL) else "isNaN"
-    )
+    null_check = "isNull" if isinstance(elements.clauses.clauses[0].type, DECIMAL) else "isNaN"
     return f"if({null_check}({quantile_str}), null, {quantile_str})"
 
 
 @compiles(MedianFn, Dialects.Druid)
 def _(elements, compiler, **kwargs):
-    col, _, percentile = [
-        compiler.process(element, **kwargs) for element in elements.clauses
-    ]
+    col, _, percentile = [compiler.process(element, **kwargs) for element in elements.clauses]
     return f"APPROX_QUANTILE({col}, {percentile})"
 
 
@@ -132,9 +123,7 @@ def _(elements, compiler, **kwargs):
 @compiles(MedianFn, Dialects.Hive)
 def _(elements, compiler, **kwargs):
     """Median computation for Hive"""
-    col, _, percentile = [
-        compiler.process(element, **kwargs) for element in elements.clauses
-    ]
+    col, _, percentile = [compiler.process(element, **kwargs) for element in elements.clauses]
     return "percentile(cast(%s as BIGINT), %s)" % (col, percentile)
 
 
@@ -165,9 +154,7 @@ def _(elements, compiler, **kwargs):
         group by grp
         ;
     """
-    col, _, percentile = [
-        compiler.process(element, **kwargs) for element in elements.clauses
-    ]
+    col, _, percentile = [compiler.process(element, **kwargs) for element in elements.clauses]
     return f"if({percentile} = .5, appx_median({col}), null)"
 
 
@@ -207,18 +194,16 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
                 {col},
                 ROW_NUMBER() OVER () AS row_num
             FROM
-                {table} AS median_inner,
+                `{table}` AS median_inner,
                 (SELECT @counter := COUNT(*)
-                 FROM {table} AS median_count
-                 WHERE median_count.{dimension_col} = {table}.{dimension_col}) t_count
-            WHERE median_inner.{dimension_col} = {table}.{dimension_col}
+                 FROM `{table}` AS median_count
+                 WHERE median_count.{dimension_col} = `{table}`.{dimension_col}) t_count
+            WHERE median_inner.{dimension_col} = `{table}`.{dimension_col}
             ORDER BY {col}
             ) temp
         WHERE temp.row_num = ROUND({percentile} * @counter)
         )
-        """.format(
-            col=col, table=table, percentile=percentile, dimension_col=dimension_col
-        )
+        """.format(col=col, table=table, percentile=percentile, dimension_col=dimension_col)
     else:
         # NON-CORRELATED MODE: Original behavior (profiler)
         return """
@@ -229,15 +214,13 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
                 {col},
                 ROW_NUMBER() OVER () AS row_num
             FROM
-                {table},
-                (SELECT @counter := COUNT(*) FROM {table}) t_count
+                `{table}`,
+                (SELECT @counter := COUNT(*) FROM `{table}`) t_count
             ORDER BY {col}
             ) temp
         WHERE temp.row_num = ROUND({percentile} * @counter)
         )
-        """.format(
-            col=col, table=table, percentile=percentile
-        )
+        """.format(col=col, table=table, percentile=percentile)
 
 
 @compiles(MedianFn, Dialects.SQLite)
@@ -275,8 +258,8 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
            SELECT {col},
                   ROW_NUMBER() OVER (ORDER BY {col}) as rn,
                   COUNT(*) OVER () as cnt
-           FROM {table} AS median_inner
-           WHERE median_inner.{dimension_col} = {table}.{dimension_col}
+           FROM "{table}" AS median_inner
+           WHERE median_inner.{dimension_col} = "{table}".{dimension_col}
              AND {col} IS NOT NULL
          )
          WHERE rn IN (
@@ -284,27 +267,23 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
            CAST(cnt * {percentile} + 1 AS INTEGER)
          )
         )
-        """.format(
-            col=col, table=table, percentile=percentile, dimension_col=dimension_col
-        )
+        """.format(col=col, table=table, percentile=percentile, dimension_col=dimension_col)
     else:
         # NON-CORRELATED MODE: Original behavior (profiler)
         return """
         (SELECT
             {col}
-        FROM {table}
+        FROM "{table}"
         WHERE {col} IS NOT NULL
         ORDER BY {col}
         LIMIT 1
         OFFSET (
                 SELECT ROUND(COUNT(*) * {percentile} -1)
-                FROM {table}
+                FROM "{table}"
                 WHERE {col} IS NOT NULL
             )
         )
-        """.format(
-            col=col, table=table, percentile=percentile
-        )
+        """.format(col=col, table=table, percentile=percentile)
 
 
 @compiles(MedianFn, Dialects.Doris)
@@ -356,9 +335,7 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
         pos1 = "CAST((3 * cnt + 3) / 4 AS INTEGER)"
         pos2 = "CAST((3 * cnt + 4) / 4 AS INTEGER)"
     else:
-        raise ValueError(
-            f"Unsupported percentile {percentile} for Informix — expected 0.25, 0.5, or 0.75"
-        )
+        raise ValueError(f"Unsupported percentile {percentile} for Informix — expected 0.25, 0.5, or 0.75")
 
     return (
         "(SELECT AVG(CASE WHEN rn = {pos1} OR rn = {pos2} "

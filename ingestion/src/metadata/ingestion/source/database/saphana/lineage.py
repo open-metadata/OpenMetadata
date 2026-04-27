@@ -11,6 +11,7 @@
 """
 SAP Hana lineage module
 """
+
 import traceback
 from typing import Iterable, Optional
 
@@ -69,9 +70,7 @@ class SaphanaLineageSource(Source):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config = self.config.sourceConfig.config
-        self.engine = (
-            get_ssl_connection(self.service_connection) if get_engine else None
-        )
+        self.engine = get_ssl_connection(self.service_connection) if get_engine else None
 
         logger.info(
             "Initializing SAP Hana Lineage Source. Note that we'll parse the lineage from CDATA XML definition "
@@ -82,15 +81,11 @@ class SaphanaLineageSource(Source):
         """By default, there's nothing to prepare"""
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SapHanaConnection = config.serviceConnection.root.config
         if not isinstance(connection, SapHanaConnection):
-            raise InvalidSourceException(
-                f"Expected SapHanaConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected SapHanaConnection, but got {connection}")
         return cls(config, metadata)
 
     def close(self) -> None:
@@ -102,9 +97,7 @@ class SaphanaLineageSource(Source):
         and send it to the sink
         """
         with self.engine.connect() as conn:
-            result = conn.execution_options(
-                stream_results=True, max_row_buffer=100
-            ).execute(text(SAPHANA_LINEAGE))
+            result = conn.execution_options(stream_results=True, max_row_buffer=100).execute(text(SAPHANA_LINEAGE))
             for row in result:
                 try:
                     lineage_model = SapHanaLineageModel.validate(row._asdict())
@@ -120,9 +113,7 @@ class SaphanaLineageSource(Source):
                         continue
 
                     logger.debug(f"Processing lineage for view: {lineage_model.name}")
-                    yield from self.parse_cdata(
-                        metadata=self.metadata, lineage_model=lineage_model
-                    )
+                    yield from self.parse_cdata(metadata=self.metadata, lineage_model=lineage_model)
                 except Exception as exc:
                     self.status.failed(
                         error=StackTraceError(

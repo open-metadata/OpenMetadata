@@ -19,6 +19,7 @@ To be extended by any other workflow:
 - test suite
 - data insights
 """
+
 import traceback
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Type, cast
@@ -78,9 +79,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
     def __init__(self, config: OpenMetadataWorkflowConfig):
         self.config = config
 
-        self.service_type: ServiceType = get_service_type_from_source_type(
-            self.config.source.type
-        )
+        self.service_type: ServiceType = get_service_type_from_source_type(self.config.source.type)
 
         super().__init__(
             config=config,
@@ -123,15 +122,11 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             processed_record = record
             for step in self.steps:
                 # We only process the records for these Step types
-                if processed_record is not None and isinstance(
-                    step, (Processor, Stage, Sink)
-                ):
+                if processed_record is not None and isinstance(step, (Processor, Stage, Sink)):
                     processed_record = step.run(processed_record)
 
         # Try to pick up the BulkSink and execute it, if needed
-        bulk_sink = next(
-            (step for step in self.steps if isinstance(step, BulkSink)), None
-        )
+        bulk_sink = next((step for step in self.steps if isinstance(step, BulkSink)), None)
         if bulk_sink:
             bulk_sink.run()
 
@@ -150,10 +145,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         :param service_type: source workflow service type
         :return:
         """
-        if (
-            not self.config.source.serviceConnection
-            and not self.metadata.config.forceEntityOverwriting
-        ):
+        if not self.config.source.serviceConnection and not self.metadata.config.forceEntityOverwriting:
             service_name = self.config.source.serviceName
             try:
                 service: ServiceWithConnectionType = cast(
@@ -164,9 +156,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                     ),
                 )
                 if service:
-                    self.config.source.serviceConnection = ServiceConnection(
-                        service.connection
-                    )
+                    self.config.source.serviceConnection = ServiceConnection(service.connection)
                 else:
                     raise InvalidWorkflowJSONException(
                         f"Error getting the service [{service_name}] from the API. If it exists in OpenMetadata,"
@@ -184,9 +174,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                 )
 
     @inject
-    def validate(
-        self, profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None
-    ):
+    def validate(self, profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None):
         if profiler_config_class is None:
             raise DependencyNotFoundError(
                 "ProfilerProcessorConfig class not found. Please ensure the ProfilerProcessorConfig is properly registered."
@@ -196,9 +184,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             if not self.config.source.serviceConnection.root.config.supportsProfiler:
                 raise AttributeError()
         except AttributeError:
-            if profiler_config_class.model_validate(
-                self.config.processor.model_dump().get("config")
-            ).ignoreValidation:
+            if profiler_config_class.model_validate(self.config.processor.model_dump().get("config")).ignoreValidation:
                 logger.debug(
                     f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"
                 )
@@ -211,13 +197,9 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         source_type = self.config.source.type.lower()
         try:
             return (
-                import_from_module(
-                    self.config.source.serviceConnection.root.config.sourcePythonClass
-                )
+                import_from_module(self.config.source.serviceConnection.root.config.sourcePythonClass)
                 if source_type.startswith(CUSTOM_CONNECTOR_PREFIX)
-                else import_source_class(
-                    service_type=self.service_type, source_type=source_type
-                )
+                else import_source_class(service_type=self.service_type, source_type=source_type)
             )
         except DynamicImportException as e:
             if source_type.startswith(CUSTOM_CONNECTOR_PREFIX):

@@ -11,6 +11,7 @@
 """
 SFTP Service Spec
 """
+
 from metadata.ingestion.source.drive.sftp.metadata import SftpSource
 from metadata.utils.service_spec import BaseSpec
 

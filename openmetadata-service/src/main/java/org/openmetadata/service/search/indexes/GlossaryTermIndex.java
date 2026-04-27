@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.Include;
@@ -21,6 +22,11 @@ public class GlossaryTermIndex implements TaggableIndex {
   @Override
   public String getEntityTypeName() {
     return Entity.GLOSSARY_TERM;
+  }
+
+  @Override
+  public Set<String> getExcludedFields() {
+    return Set.of("children");
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {

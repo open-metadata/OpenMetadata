@@ -14,6 +14,7 @@
 
 name: Postgresql PR Playwright E2E Tests
 on:
+  merge_group:
   workflow_dispatch:
   pull_request_target:
     types:
@@ -66,7 +67,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Setup JDK 21
         uses: actions/setup-java@v4
@@ -120,7 +121,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Download Maven build artifact
         uses: actions/download-artifact@v4

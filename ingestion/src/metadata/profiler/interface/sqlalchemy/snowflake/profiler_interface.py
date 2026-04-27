@@ -47,9 +47,7 @@ class SnowflakeProfilerInterface(SQAProfilerInterface):
     def _compute_system_metrics(
         self, metrics: Type[System], runner: QueryRunner, *args, **kwargs
     ) -> List[SystemProfile]:
-        self.system_metrics_class = cast(
-            Type[SnowflakeSystemMetricsComputer], self.system_metrics_class
-        )
+        self.system_metrics_class = cast(Type[SnowflakeSystemMetricsComputer], self.system_metrics_class)
         instance = self.system_metrics_class(
             session=self.session,
             runner=runner,
@@ -59,11 +57,7 @@ class SnowflakeProfilerInterface(SQAProfilerInterface):
         return instance.get_system_metrics()
 
     def _programming_error_static_metric(self, runner, column, exc, session, metrics):
-        if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
-            session.get_bind().dialect.name
-        ):
-            logger.info(
-                f"Computing metrics without sum for {runner.table_name}.{column.name}"
-            )
+        if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(session.get_bind().dialect.name):
+            logger.info(f"Computing metrics without sum for {runner.table_name}.{column.name}")
             return self._compute_static_metrics_wo_sum(metrics, runner, session, column)
         return None

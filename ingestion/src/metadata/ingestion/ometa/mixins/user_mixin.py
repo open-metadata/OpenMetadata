@@ -13,10 +13,12 @@ Mixin class containing User specific methods
 
 To be used by OpenMetadata class
 """
+
 import json
 import traceback
 from functools import lru_cache
 from typing import Optional, Type
+from urllib.parse import quote
 
 from metadata.generated.schema.entity.teams.team import Team, TeamType
 from metadata.generated.schema.entity.teams.user import User
@@ -42,10 +44,7 @@ class OMetaUserMixin:
 
     @staticmethod
     def email_search_query_es(entity: Type[T]) -> str:
-        return (
-            "/search/query?q=email.keyword:{email}&from={from_}&size={size}&index="
-            + ES_INDEX_MAP[entity.__name__]
-        )
+        return "/search/query?q=email.keyword:{email}&from={from_}&size={size}&index=" + ES_INDEX_MAP[entity.__name__]
 
     @staticmethod
     def name_search_query_es(entity: Type[T], name: str, from_: int, size: int) -> str:
@@ -69,7 +68,7 @@ class OMetaUserMixin:
         }
 
         return (
-            f"""/search/query?query_filter={json.dumps(query_filter)}"""
+            f"""/search/query?query_filter={quote(json.dumps(query_filter), safe="")}"""
             f"&from={from_}&size={size}&index=" + ES_INDEX_MAP[entity.__name__]
         )
 
@@ -91,12 +90,8 @@ class OMetaUserMixin:
             fields: Optional field list to pass to ES request
         """
         if email:
-            query_string = self.email_search_query_es(entity=entity).format(
-                email=email, from_=from_count, size=size
-            )
-            return self.get_entity_from_es(
-                entity=entity, query_string=query_string, fields=fields
-            )
+            query_string = self.email_search_query_es(entity=entity).format(email=email, from_=from_count, size=size)
+            return self.get_entity_from_es(entity=entity, query_string=query_string, fields=fields)
 
         return None
 
@@ -118,12 +113,8 @@ class OMetaUserMixin:
             fields: Optional field list to pass to ES request
         """
         if name:
-            query_string = self.name_search_query_es(
-                entity=entity, name=name, from_=from_count, size=size
-            )
-            return self.get_entity_from_es(
-                entity=entity, query_string=query_string, fields=fields
-            )
+            query_string = self.name_search_query_es(entity=entity, name=name, from_=from_count, size=size)
+            return self.get_entity_from_es(entity=entity, query_string=query_string, fields=fields)
 
         return None
 
@@ -138,9 +129,7 @@ class OMetaUserMixin:
         """
         Get a User or Team Entity Reference by searching by its mail
         """
-        maybe_user = self._search_by_email(
-            entity=User, email=email, from_count=from_count, size=size, fields=fields
-        )
+        maybe_user = self._search_by_email(entity=User, email=email, from_count=from_count, size=size, fields=fields)
         if maybe_user:
             return EntityReferenceList(
                 root=[
@@ -153,9 +142,7 @@ class OMetaUserMixin:
                 ]
             )
 
-        maybe_team = self._search_by_email(
-            entity=Team, email=email, from_count=from_count, size=size, fields=fields
-        )
+        maybe_team = self._search_by_email(entity=Team, email=email, from_count=from_count, size=size, fields=fields)
         if maybe_team:
             return EntityReferenceList(
                 root=[
@@ -180,39 +167,58 @@ class OMetaUserMixin:
         is_owner: bool = False,
     ) -> Optional[EntityReferenceList]:
         """
-        Get a User or Team Entity Reference by searching by its name
+        Get a User or Team Entity Reference by searching by its name.
         """
-        maybe_team = self._search_by_name(
-            entity=Team, name=name, from_count=from_count, size=size, fields=fields
-        )
-        if maybe_team:
-            # if is_owner is True, we only want to return the team if it is a group
-            if is_owner and maybe_team.teamType != TeamType.Group:
-                return None
-            return EntityReferenceList(
-                root=[
-                    EntityReference(
-                        id=maybe_team.id.root,
-                        type=ENTITY_REFERENCE_TYPE_MAP[Team.__name__],
-                        name=maybe_team.name.root,
-                        displayName=maybe_team.displayName,
-                    )
-                ]
-            )
-        maybe_user = self._search_by_name(
-            entity=User, name=name, from_count=from_count, size=size, fields=fields
-        )
-        if maybe_user:
-            return EntityReferenceList(
-                root=[
-                    EntityReference(
-                        id=maybe_user.id.root,
-                        type=ENTITY_REFERENCE_TYPE_MAP[User.__name__],
-                        name=maybe_user.name.root,
-                        displayName=maybe_user.displayName,
-                    )
-                ]
-            )
+        if not name:
+            return None
+
+        try:
+            maybe_team = self.get_by_name(entity=Team, fqn=name)
+            if maybe_team is None:
+                maybe_team = self._search_by_name(
+                    entity=Team,
+                    name=name,
+                    from_count=from_count,
+                    size=size,
+                    fields=fields,
+                )
+            if maybe_team:
+                if is_owner and maybe_team.teamType != TeamType.Group:
+                    return None
+                return EntityReferenceList(
+                    root=[
+                        EntityReference(
+                            id=maybe_team.id.root,
+                            type=ENTITY_REFERENCE_TYPE_MAP[Team.__name__],
+                            name=maybe_team.name.root,
+                            displayName=maybe_team.displayName,
+                        )
+                    ]
+                )
+            maybe_user = self.get_by_name(entity=User, fqn=name)
+            if maybe_user is None:
+                maybe_user = self._search_by_name(
+                    entity=User,
+                    name=name,
+                    from_count=from_count,
+                    size=size,
+                    fields=fields,
+                )
+            if maybe_user:
+                return EntityReferenceList(
+                    root=[
+                        EntityReference(
+                            id=maybe_user.id.root,
+                            type=ENTITY_REFERENCE_TYPE_MAP[User.__name__],
+                            name=maybe_user.name.root,
+                            displayName=maybe_user.displayName,
+                        )
+                    ]
+                )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to resolve owner reference for '{name}' due to: {err}. Skipping owner assignment.")
+
         return None
 
     def get_user_assets(self, name: str, limit: int = 10, offset: int = 0) -> dict:

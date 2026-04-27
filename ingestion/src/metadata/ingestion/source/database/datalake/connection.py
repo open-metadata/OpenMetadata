@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -86,17 +87,13 @@ class DatalakeConnection(BaseConnection[DatalakeConnectionConfig, DatalakeBaseCl
         of a metadata workflow or during an Automation Workflow
         """
         test_fn = {
-            "ListBuckets": self.client.get_test_list_buckets_fn(
-                self.service_connection.bucketName
-            ),
+            "ListBuckets": self.client.get_test_list_buckets_fn(self.service_connection.bucketName),
         }
 
         return test_connection_steps(
             metadata=metadata,
             test_fn=test_fn,
-            service_type=self.service_connection.type.value
-            if self.service_connection.type
-            else "Datalake",
+            service_type=self.service_connection.type.value if self.service_connection.type else "Datalake",
             automation_workflow=automation_workflow,
             timeout_seconds=timeout_seconds,
         )

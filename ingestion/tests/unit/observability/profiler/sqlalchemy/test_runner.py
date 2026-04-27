@@ -12,6 +12,7 @@
 """
 Test Sample behavior
 """
+
 import sys
 import time
 from unittest import TestCase, mock
@@ -24,7 +25,12 @@ from sqlalchemy.orm import DeclarativeBase
 
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.sampler.models import SampleConfig
+from metadata.sampler.models import (
+    ProfileSampleConfig,
+    ProfileSampleConfigType,
+    SampleConfig,
+    StaticSamplingConfig,
+)
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.timeout import cls_timeout
 
@@ -92,13 +98,16 @@ class RunnerTest(TestCase):
                 service_connection_config=Mock(),
                 ometa_client=None,
                 entity=None,
-                sample_config=SampleConfig(profileSample=50.0),
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(profileSample=50.0),
+                    )
+                ),
             )
             cls.dataset = sampler.get_dataset()
 
-        cls.raw_runner = QueryRunner(
-            session=cls.session, dataset=cls.dataset, raw_dataset=sampler.raw_dataset
-        )
+        cls.raw_runner = QueryRunner(session=cls.session, dataset=cls.dataset, raw_dataset=sampler.raw_dataset)
         cls.timeout_runner: Timer = cls_timeout(1)(Timer())
 
         # Insert 30 rows

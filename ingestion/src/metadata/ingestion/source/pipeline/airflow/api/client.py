@@ -66,9 +66,7 @@ class AirflowApiClient:
         if isinstance(auth_config, MwaaAuthentication):
             # Use MWAA client for AWS managed Airflow
             environment_name = auth_config.mwaaConfig.mwaaEnvironmentName
-            self.mwaa_client = MWAAClient(
-                auth_config.mwaaConfig.awsConfig, environment_name
-            )
+            self.mwaa_client = MWAAClient(auth_config.mwaaConfig.awsConfig, environment_name)
             self.client = None  # No need for TrackedREST client with MWAA
         else:
             # Use standard REST client for other authentication types
@@ -76,9 +74,7 @@ class AirflowApiClient:
             auth_token_mode = "Bearer"
 
             if isinstance(auth_config, AccessToken):
-                auth_token_fn = build_access_token_callback(
-                    auth_config.token.get_secret_value()
-                )
+                auth_token_fn = build_access_token_callback(auth_config.token.get_secret_value())
             elif isinstance(auth_config, BasicAuth):
                 auth_token_fn, auth_token_mode = build_basic_auth_callback(
                     host=clean_uri(str(config.hostPort)),
@@ -112,9 +108,7 @@ class AirflowApiClient:
             return self._detected_version
 
         rest_config = self.config.connection
-        configured = (
-            str(rest_config.apiVersion.value) if rest_config.apiVersion else "auto"
-        )
+        configured = str(rest_config.apiVersion.value) if rest_config.apiVersion else "auto"
         if configured != "auto":
             self._detected_version = configured
             return self._detected_version
@@ -153,9 +147,7 @@ class AirflowApiClient:
                 return response.json()
             except Exception as exc:
                 logger.warning(f"Failed to parse JSON response: {exc}")
-                logger.warning(
-                    f"Response content type: {response.headers.get('content-type')}"
-                )
+                logger.warning(f"Response content type: {response.headers.get('content-type')}")
                 logger.debug(f"Response status code: {response.status_code}")
                 logger.debug(f"Response text: {response.text[:500]}")
                 return {}
@@ -179,9 +171,7 @@ class AirflowApiClient:
         if self.mwaa_client:
             return self.mwaa_client.get_dag_tasks(dag_id)
 
-        response = self.client.get(
-            f"{self._prefix}/dags/{quote(dag_id, safe='')}/tasks"
-        )
+        response = self.client.get(f"{self._prefix}/dags/{quote(dag_id, safe='')}/tasks")
         return self._parse_response(response)
 
     def list_dag_runs(self, dag_id: str, limit: int = 10) -> dict:
@@ -189,8 +179,7 @@ class AirflowApiClient:
             return self.mwaa_client.list_dag_runs(dag_id, limit=limit)
 
         response = self.client.get(
-            f"{self._prefix}/dags/{quote(dag_id, safe='')}/dagRuns"
-            f"?limit={limit}&order_by=-{self._date_field}"
+            f"{self._prefix}/dags/{quote(dag_id, safe='')}/dagRuns?limit={limit}&order_by=-{self._date_field}"
         )
         return self._parse_response(response)
 
@@ -199,8 +188,7 @@ class AirflowApiClient:
             return self.mwaa_client.get_task_instances(dag_id, dag_run_id)
 
         response = self.client.get(
-            f"{self._prefix}/dags/{quote(dag_id, safe='')}"
-            f"/dagRuns/{quote(dag_run_id, safe='')}/taskInstances"
+            f"{self._prefix}/dags/{quote(dag_id, safe='')}/dagRuns/{quote(dag_run_id, safe='')}/taskInstances"
         )
         return self._parse_response(response)
 
@@ -209,9 +197,7 @@ class AirflowApiClient:
         offset = 0
         while True:
             separator = "&" if "?" in path else "?"
-            response = self.client.get(
-                f"{path}{separator}limit={limit}&offset={offset}"
-            )
+            response = self.client.get(f"{path}{separator}limit={limit}&offset={offset}")
 
             response = self._parse_response(response)
             if not response:
@@ -322,22 +308,15 @@ class AirflowApiClient:
             )
         return result
 
-    def get_task_instances_for_run(
-        self, dag_id: str, dag_run_id: str
-    ) -> List[AirflowApiTaskInstance]:
+    def get_task_instances_for_run(self, dag_id: str, dag_run_id: str) -> List[AirflowApiTaskInstance]:
         if self.mwaa_client:
             return self.mwaa_client.get_task_instances_for_run(dag_id, dag_run_id)
 
         try:
-            path = (
-                f"{self._prefix}/dags/{quote(dag_id, safe='')}"
-                f"/dagRuns/{quote(dag_run_id, safe='')}/taskInstances"
-            )
+            path = f"{self._prefix}/dags/{quote(dag_id, safe='')}/dagRuns/{quote(dag_run_id, safe='')}/taskInstances"
             instances_data = self._paginate(path, key="task_instances")
         except Exception as exc:
-            logger.warning(
-                f"Could not fetch task instances for {dag_id}/{dag_run_id}: {exc}"
-            )
+            logger.warning(f"Could not fetch task instances for {dag_id}/{dag_run_id}: {exc}")
             return []
 
         return [

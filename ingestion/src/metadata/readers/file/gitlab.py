@@ -11,6 +11,7 @@
 """
 Gitlab client to read files with token auth
 """
+
 import base64
 import traceback
 from enum import Enum
@@ -58,9 +59,7 @@ class GitlabReader(ApiReader):
         to the API
         """
         if self._auth_headers is None and self.credentials.token:
-            self._auth_headers = {
-                "PRIVATE-TOKEN": self.credentials.token.root.get_secret_value()
-            }
+            self._auth_headers = {"PRIVATE-TOKEN": self.credentials.token.root.get_secret_value()}
 
         return self._auth_headers
 

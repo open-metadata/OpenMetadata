@@ -11,6 +11,7 @@
 """
 MSSQL usage module
 """
+
 from abc import ABC
 from typing import Optional
 
@@ -33,14 +34,10 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
     filters: str
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: MssqlConnection = config.serviceConnection.root.config
         if not isinstance(connection, MssqlConnection):
-            raise InvalidSourceException(
-                f"Expected MssqlConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected MssqlConnection, but got {connection}")
         return cls(config, metadata)

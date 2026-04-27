@@ -77,9 +77,7 @@ class SapErpClient:
         )
         if response_data:
             return response_data
-        raise SapErpApiException(
-            "Unable to fetch data from SAP ERP tables API check your connection."
-        )
+        raise SapErpApiException("Unable to fetch data from SAP ERP tables API check your connection.")
 
     def test_column_api(self):
         """
@@ -93,9 +91,7 @@ class SapErpClient:
         )
         if response_data:
             return response_data
-        raise SapErpApiException(
-            "Unable to fetch data from SAP ERP columns API check your connection."
-        )
+        raise SapErpApiException("Unable to fetch data from SAP ERP columns API check your connection.")
 
     def paginate(
         self, api_url: str, params_data: dict, entities_per_page: int, model_class: Any
@@ -117,9 +113,7 @@ class SapErpClient:
                         "$skip": str(index * entities_per_page),
                     }
                 )
-                response_data = self.client.get(
-                    path=api_url, headers=HEADERS, data=params_data
-                )
+                response_data = self.client.get(path=api_url, headers=HEADERS, data=params_data)
                 response = model_class(**response_data)
                 entities_list.extend(response.d.results)
             except Exception as exc:
@@ -149,9 +143,7 @@ class SapErpClient:
         """
         try:
             logger.debug(f"Fetching columns for table {table_name}")
-            params_data = {
-                "$filter": f"tabname eq '{table_name}' and fieldname ne '.INCLUDE'"
-            }
+            params_data = {"$filter": f"tabname eq '{table_name}' and fieldname ne '.INCLUDE'"}
             table_columns = self.paginate(
                 api_url="/ECC/DDIC/ZZ_I_DDIC_COL_CDS/",
                 params_data=params_data,
