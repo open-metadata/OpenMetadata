@@ -12,6 +12,7 @@ defined here so future families plug in without rework.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Protocol
 
 
@@ -24,17 +25,52 @@ class BaselineSpec:
     """
 
 
-@dataclass(frozen=True)
-class Drift:
-    """One discrepancy between declared baseline and observed source state.
+class DiffKind(Enum):
+    """Why a `Diff` was produced.
 
-    Path uses bracket notation mirroring the structural-diff Diff class:
-    `schema[e2e].table[users].column[email].type` etc.
+    Replaces brittle string sentinels (``expected="present", actual="missing"``)
+    with a typed discriminator. Lets downstream code filter diffs by kind
+    (``[d for d in diffs if d.kind is DiffKind.MISSING]``) without re-parsing
+    the human-readable expected/actual fields, and lets the renderer pick a
+    one-liner vs. expected/actual block per kind.
+    """
+
+    MISSING = "missing"            # entity declared expected, not found in actual
+    UNEXPECTED = "unexpected"      # STRICT mode: actual entity not in expected set
+    VALUE_MISMATCH = "value"       # both sides present, a field differs
+
+
+@dataclass(frozen=True)
+class Diff:
+    """One path-qualified discrepancy between expected and actual.
+
+    Used for both source-side baseline drift (schema / tables / seeds)
+    and OM-side catalog diffing (service / database / schema / table /
+    column). Path uses bracket notation — `schema[e2e].table[users].column
+    [email].type` — so failure output from either domain is scannable by
+    eye and sortable for grouping.
+
+    `expected` / `actual` are the human-readable values for VALUE_MISMATCH
+    kinds; for MISSING / UNEXPECTED they are usually omitted (the kind
+    itself carries the meaning). `__str__` renders accordingly.
     """
 
     path: str
-    expected: Any
-    actual: Any
+    kind: DiffKind = DiffKind.VALUE_MISMATCH
+    expected: Any = None
+    actual: Any = None
+
+    def __str__(self) -> str:
+        if self.kind is DiffKind.MISSING:
+            return f"  {self.path}: missing"
+        if self.kind is DiffKind.UNEXPECTED:
+            extra = f" ({self.actual!r})" if self.actual is not None else ""
+            return f"  {self.path}: unexpected{extra}"
+        return (
+            f"  {self.path}:\n"
+            f"    expected: {self.expected!r}\n"
+            f"    actual:   {self.actual!r}"
+        )
 
 
 @dataclass(frozen=True)

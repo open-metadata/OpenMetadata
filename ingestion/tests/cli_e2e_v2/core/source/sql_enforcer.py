@@ -14,7 +14,7 @@ subclass responsibility (SQLAlchemy doesn't model SPs uniformly).
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, TypedDict
 
 from sqlalchemy import bindparam, inspect, text
 from sqlalchemy.engine import Connection, Engine
@@ -26,9 +26,29 @@ from .sql import (
     TableSeed,
     ViewDefinition,
 )
-from .types import BaselineSpec, Drift, SourceState
+from .types import BaselineSpec, Diff, DiffKind, SourceState
 
 logger = logging.getLogger(__name__)
+
+
+class _TableSnapshot(TypedDict):
+    """Per-table metadata collected by the Inspector snapshot."""
+
+    columns: dict[str, dict[str, Any]]
+
+
+class _SqlSnapshot(TypedDict):
+    """Typed shape of `_snapshot()`'s return payload.
+
+    Lets the `_diff_*` methods take a real type (not `dict`) so typos like
+    `state["tabels"]` are caught by the type checker rather than silently
+    at runtime.
+    """
+
+    schemas: set[str]
+    tables: dict[tuple[str, str], _TableSnapshot]
+    views: set[tuple[str, str]]
+    stored_procedures: set[tuple[str, str]]
 
 _TYPE_ALIASES: dict[str, str] = {
     "INTEGER": "INT",
@@ -66,25 +86,24 @@ class SqlBaselineEnforcer:
 
     def introspect(self) -> SourceState:
         if not self._baseline.schemas:
-            return SourceState(
-                payload={
-                    "schemas": set(),
-                    "tables": {},
-                    "views": set(),
-                    "stored_procedures": set(),
-                }
-            )
+            empty: _SqlSnapshot = {
+                "schemas": set(),
+                "tables": {},
+                "views": set(),
+                "stored_procedures": set(),
+            }
+            return SourceState(payload=empty)
         with self._engine.connect() as conn:
             return SourceState(payload=self._snapshot(conn))
 
-    def _snapshot(self, conn: Connection) -> dict[str, Any]:
+    def _snapshot(self, conn: Connection) -> _SqlSnapshot:
         inspector = inspect(conn)
         wanted = set(self._baseline.schemas)
         logger.debug("[sql] snapshotting schemas=%s", sorted(wanted))
 
         schemas = {s for s in inspector.get_schema_names() if s in wanted}
 
-        tables: dict[tuple[str, str], dict[str, Any]] = {}
+        tables: dict[tuple[str, str], _TableSnapshot] = {}
         for schema in schemas:
             for table in inspector.get_table_names(schema=schema):
                 pk_cols = set(
@@ -133,14 +152,14 @@ class SqlBaselineEnforcer:
 
     # --- compare --------------------------------------------------------
 
-    def compare(self, expected: BaselineSpec) -> list[Drift]:
+    def compare(self, expected: BaselineSpec) -> list[Diff]:
         assert isinstance(expected, SqlSourceBaseline), (
             f"expected SqlSourceBaseline, got {type(expected).__name__}"
         )
         if not expected.schemas:
             return []
 
-        drifts: list[Drift] = []
+        drifts: list[Diff] = []
         with self._engine.connect() as conn:
             state = self._snapshot(conn)
             drifts.extend(self._diff_schemas(expected, state))
@@ -153,26 +172,26 @@ class SqlBaselineEnforcer:
         return drifts
 
     @staticmethod
-    def _diff_schemas(expected: SqlSourceBaseline, state: dict) -> list[Drift]:
-        actual: set[str] = state["schemas"]
+    def _diff_schemas(
+        expected: SqlSourceBaseline, state: _SqlSnapshot
+    ) -> list[Diff]:
         return [
-            Drift(path=f"schema[{s}]", expected="present", actual="missing")
+            Diff(path=f"schema[{s}]", kind=DiffKind.MISSING)
             for s in expected.schemas
-            if s not in actual
+            if s not in state["schemas"]
         ]
 
     def _diff_tables(
-        self, expected: SqlSourceBaseline, state: dict
-    ) -> list[Drift]:
-        drifts: list[Drift] = []
-        actual_tables: dict[tuple[str, str], dict[str, Any]] = state["tables"]
+        self, expected: SqlSourceBaseline, state: _SqlSnapshot
+    ) -> list[Diff]:
+        drifts: list[Diff] = []
+        actual_tables = state["tables"]
         for tbl in expected.metadata.sorted_tables:
-            key = (tbl.schema, tbl.name)
-            actual_tbl = actual_tables.get(key)
             fqn = tbl.fullname
+            actual_tbl = actual_tables.get((tbl.schema, tbl.name))
             if actual_tbl is None:
                 drifts.append(
-                    Drift(path=f"table[{fqn}]", expected="present", actual="missing")
+                    Diff(path=f"table[{fqn}]", kind=DiffKind.MISSING)
                 )
                 continue
             drifts.extend(self._diff_columns(tbl, actual_tbl["columns"], fqn))
@@ -181,20 +200,20 @@ class SqlBaselineEnforcer:
     @staticmethod
     def _diff_columns(
         tbl: Table, actual_cols: dict[str, dict[str, Any]], fqn: str
-    ) -> list[Drift]:
-        drifts: list[Drift] = []
+    ) -> list[Diff]:
+        drifts: list[Diff] = []
         for col in tbl.columns:
             actual_col = actual_cols.get(col.name)
             col_path = f"table[{fqn}].column[{col.name}]"
             if actual_col is None:
                 drifts.append(
-                    Drift(path=col_path, expected="present", actual="missing")
+                    Diff(path=col_path, kind=DiffKind.MISSING)
                 )
                 continue
             expected_type_str = str(col.type).upper()
             if _normalize_type(actual_col["sql_type"]) != _normalize_type(expected_type_str):
                 drifts.append(
-                    Drift(
+                    Diff(
                         path=f"{col_path}.type",
                         expected=expected_type_str,
                         actual=actual_col["sql_type"],
@@ -202,7 +221,7 @@ class SqlBaselineEnforcer:
                 )
             if actual_col["primary_key"] != col.primary_key:
                 drifts.append(
-                    Drift(
+                    Diff(
                         path=f"{col_path}.primary_key",
                         expected=col.primary_key,
                         actual=actual_col["primary_key"],
@@ -211,8 +230,8 @@ class SqlBaselineEnforcer:
         return drifts
 
     def _diff_seeds(
-        self, expected: SqlSourceBaseline, state: dict, conn: Connection
-    ) -> list[Drift]:
+        self, expected: SqlSourceBaseline, state: _SqlSnapshot, conn: Connection
+    ) -> list[Diff]:
         """Compare seed row counts for tables that already exist.
 
         Skips seeds whose target table isn't in the snapshot — the missing
@@ -221,8 +240,8 @@ class SqlBaselineEnforcer:
         pass creates the tables + seeds them; next compare() can then
         verify row counts.
         """
-        drifts: list[Drift] = []
-        actual_tables: dict[tuple[str, str], dict] = state["tables"]
+        drifts: list[Diff] = []
+        actual_tables = state["tables"]
         schema = expected.metadata.schema
         for seed in expected.seeds:
             if (schema, seed.table_name) not in actual_tables:
@@ -231,7 +250,7 @@ class SqlBaselineEnforcer:
             count = conn.execute(text(f"SELECT COUNT(*) FROM {fqn}")).scalar_one()
             if count != seed.expected_row_count:
                 drifts.append(
-                    Drift(
+                    Diff(
                         path=f"table[{fqn}].seed.row_count",
                         expected=seed.expected_row_count,
                         actual=count,
@@ -240,36 +259,28 @@ class SqlBaselineEnforcer:
         return drifts
 
     @staticmethod
-    def _diff_views(expected: SqlSourceBaseline, state: dict) -> list[Drift]:
-        actual: set[tuple[str, str]] = state["views"]
+    def _diff_views(
+        expected: SqlSourceBaseline, state: _SqlSnapshot
+    ) -> list[Diff]:
         return [
-            Drift(
-                path=f"view[{v.schema}.{v.name}]",
-                expected="present",
-                actual="missing",
-            )
+            Diff(path=f"view[{v.schema}.{v.name}]", kind=DiffKind.MISSING)
             for v in expected.views
-            if (v.schema, v.name) not in actual
+            if (v.schema, v.name) not in state["views"]
         ]
 
     @staticmethod
     def _diff_stored_procedures(
-        expected: SqlSourceBaseline, state: dict
-    ) -> list[Drift]:
-        actual: set[tuple[str, str]] = state.get("stored_procedures", set())
+        expected: SqlSourceBaseline, state: _SqlSnapshot
+    ) -> list[Diff]:
         return [
-            Drift(
-                path=f"procedure[{sp.schema}.{sp.name}]",
-                expected="present",
-                actual="missing",
-            )
+            Diff(path=f"procedure[{sp.schema}.{sp.name}]", kind=DiffKind.MISSING)
             for sp in expected.stored_procedures
-            if (sp.schema, sp.name) not in actual
+            if (sp.schema, sp.name) not in state["stored_procedures"]
         ]
 
     # --- apply orchestration --------------------------------------------
 
-    def apply(self, drifts: list[Drift]) -> None:
+    def apply(self, drifts: list[Diff]) -> None:
         logger.debug("[sql] applying %d drifts", len(drifts))
         with self._engine.begin() as conn:
             for schema_name in self._baseline.schemas:

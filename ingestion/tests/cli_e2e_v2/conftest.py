@@ -24,6 +24,7 @@ Fixture graph:
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from pathlib import Path
 from typing import Iterator
@@ -41,10 +42,37 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 from .core.config.server import ServerConfig
+from .core.expected.differ import StructuralMismatch
 from .core.fluent.om_client import OmClient
 from .core.runner.cli_runner import CliRunner
 
 logger = logging.getLogger(__name__)
+
+
+# -----------------------------------------------------------------------------
+# pytest hooks
+# -----------------------------------------------------------------------------
+
+
+def pytest_assertrepr_compare(op, left, right):
+    """Render `StructuralMismatch` in full when it appears in an `assert ==` /
+    `assert is` comparison instead of pytest's default short repr.
+
+    `StructuralMismatch` is normally raised, in which case pytest displays
+    its `__str__` directly via the exception path. This hook covers the
+    less-common but still real case where a test compares a captured
+    mismatch against a sentinel (e.g. `assert run_diff() == NO_DIFFS`) —
+    pytest would otherwise truncate the diff body to its short repr and
+    swallow the path-grouped diagnostics we put in `__str__`.
+    """
+    target = left if isinstance(left, StructuralMismatch) else (
+        right if isinstance(right, StructuralMismatch) else None
+    )
+    if target is None:
+        return None
+    # Each line of the rendered mismatch becomes its own report line so
+    # pytest's terminal writer wraps cleanly and indentation survives.
+    return [f"StructuralMismatch ({op}):"] + str(target).splitlines()
 
 
 # -----------------------------------------------------------------------------
@@ -65,8 +93,22 @@ def session_uuid() -> str:
 
 @pytest.fixture(scope="session")
 def om_server_config() -> ServerConfig:
-    """Shared OM server URL + JWT, read from env once per session."""
-    return ServerConfig.from_env()
+    """Shared OM server URL + JWT, read from env once per session.
+
+    This fixture is also the SINGLE place in the framework that installs
+    the resolved JWT into `os.environ["OM_JWT_TOKEN"]`. CLI subprocesses
+    inherit the parent env, and their rendered YAMLs carry
+    `${OM_JWT_TOKEN}` refs that `os.path.expandvars` resolves at load
+    time — so the install is necessary, but keeping it here (rather than
+    in `ServerConfig.from_env()`) leaves the factory pure and makes the
+    mutation explicit and named.
+    """
+    cfg = ServerConfig.from_env()
+    # Bridge to subprocesses: the rendered cfg_*.yaml uses ${OM_JWT_TOKEN}
+    # so the subprocess needs it in its env. A pre-exported OM_JWT_TOKEN
+    # and a minted one both land at the same key.
+    os.environ["OM_JWT_TOKEN"] = cfg.jwt_token
+    return cfg
 
 
 @pytest.fixture(scope="session")
@@ -145,9 +187,16 @@ def registered_services(om_http_client: OpenMetadata) -> Iterator[list[str]]:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def _posture_log(session_uuid: str) -> None:
-    """Print session UUID at session start so developers can correlate services
-    in OM UI with specific test runs."""
+def _posture_log(session_uuid: str, om_server_config: ServerConfig) -> None:
+    """Print session UUID + server URL + token provenance at session start.
+
+    The three lines are the minimum needed to answer post-mortem questions
+    like "did that run actually hit the server I expected?" and "was the
+    failure a stale env token or a freshly minted one?" — cheap to log
+    once, invaluable when triaging a flake.
+    """
     print("\n==== CLI E2E v2 session start ====")
     print(f"session uuid: {session_uuid}")
+    print(f"server url:   {om_server_config.server_url}")
+    print(f"token source: {om_server_config.token_source}")
     print("==================================\n")
