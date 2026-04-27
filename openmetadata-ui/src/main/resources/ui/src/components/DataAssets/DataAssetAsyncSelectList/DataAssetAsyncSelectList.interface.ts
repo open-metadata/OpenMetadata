@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import type { SelectItemType } from '@openmetadata/ui-core-components';
-import { ReactNode } from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
@@ -43,5 +42,4 @@ export interface DataAssetAsyncSelectListProps {
   onChange?: (option: DataAssetOption | DataAssetOption[]) => void;
   filterFqns?: string[];
   queryFilter?: Record<string, unknown>;
-  renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
 }

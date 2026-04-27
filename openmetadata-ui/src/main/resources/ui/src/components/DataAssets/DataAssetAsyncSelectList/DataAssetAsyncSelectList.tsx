@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { debounce, isArray, isString } from 'lodash';
 import {
   FC,
+  Key,
   ReactNode,
   UIEvent,
   useCallback,
@@ -53,7 +54,6 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   value: selectedValue,
   filterFqns = [],
   queryFilter,
-  renderTag,
   ...props
 }) => {
   const [paging, setPaging] = useState<Paging>({} as Paging);
@@ -61,11 +61,17 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   const [options, setOptions] = useState<DataAssetOption[]>(
     initialOptions ?? []
   );
-  const [selectedItems, setSelectedItems] = useState<DataAssetOption[]>(
-    initialOptions ?? []
+  const [selectedItems, setSelectedItems] = useState<string[]>(
+    initialOptions?.map((options) => options.value) ?? []
   );
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchValue, setSearchValue] = useState<string>('');
+  const hasInitiallyLoaded = useRef(false);
+
+  const defaultQueryFilter = useMemo(
+    () => ({ query: { bool: { must_not: [{ match: { isBot: true } }] } } }),
+    []
+  );
 
   const fetchOptions = useCallback(
     async (
@@ -78,9 +84,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         pageSize: PAGE_SIZE,
         searchIndex: searchIndex,
         // Filter out bots from user search
-        queryFilter: queryFilter ?? {
-          query: { bool: { must_not: [{ match: { isBot: true } }] } },
-        },
+        queryFilter: queryFilter ?? defaultQueryFilter,
       });
 
       const hits = dataAssetsResponse.hits.hits;
@@ -103,7 +107,10 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
           },
           displayName: entityName,
           name: entityRef.name,
-          icon: searchClassBase.getEntityIcon(entityRef.type) as ReactNode,
+          icon: searchClassBase.getEntityIcon(
+            entityRef.type,
+            'tw:text-sm tw:h-4'
+          ) as ReactNode,
         };
       });
 
@@ -114,7 +121,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         },
       };
     },
-    [searchIndex, queryFilter]
+    [searchIndex, queryFilter, defaultQueryFilter]
   );
 
   const loadOptions = useCallback(
@@ -176,7 +183,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   );
 
   const handleItemInserted = useCallback(
-    (key: string) => {
+    (key: Key) => {
       const item = filteredOptions.find((opt) => opt.id === key);
       if (!item) {
         return;
@@ -195,7 +202,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   );
 
   const handleItemCleared = useCallback(
-    (key: string) => {
+    (key: Key) => {
       const updatedSelection = selectedItems.filter((item) => item.id !== key);
       setSelectedItems(updatedSelection);
       onChange?.(multiple ? updatedSelection : updatedSelection[0]);
@@ -218,29 +225,11 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   }, [selectedValue, filteredOptions]);
 
   useEffect(() => {
-    loadOptions('');
-  }, [loadOptions]);
-
-  const renderCustomTag = useCallback(
-    (item: SelectItemType, onRemove: () => void) => {
-      const dataAssetItem = item as DataAssetOption;
-      if (renderTag) {
-        return renderTag(item, onRemove);
-      }
-
-      if (
-        searchIndex === SearchIndex.USER ||
-        searchIndex === SearchIndex.TEAM ||
-        dataAssetItem.reference?.type === EntityType.USER ||
-        dataAssetItem.reference?.type === EntityType.TEAM
-      ) {
-        return null;
-      }
-
-      return null;
-    },
-    [renderTag, searchIndex]
-  );
+    if (!hasInitiallyLoaded.current) {
+      hasInitiallyLoaded.current = true;
+      loadOptions('');
+    }
+  }, []);
 
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -311,13 +300,12 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       multiple={multiple}
       placeholder={props.placeholder}
       popoverClassName={customPopoverClassName}
-      renderTag={renderCustomTag}
       selectedItems={selectedItems}
       onItemCleared={handleItemCleared}
       onItemInserted={handleItemInserted}
       onSearchChange={handleSearchChange}
       {...props}>
-      {(item: DataAssetOption) => {
+      {(item: SelectItemType) => {
         const dataAssetItem = item as DataAssetOption;
         const { reference, displayName, name } = dataAssetItem;
 

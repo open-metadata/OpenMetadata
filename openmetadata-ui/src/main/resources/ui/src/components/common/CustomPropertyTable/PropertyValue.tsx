@@ -630,8 +630,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
       case 'entityReference':
       case 'entityReferenceList': {
-        const mode =
-          propertyType.name === 'entityReferenceList' ? 'multiple' : undefined;
+        const multiple = propertyType.name === 'entityReferenceList';
 
         const index = (property.customPropertyConfig?.config as string[]) ?? [];
 
@@ -711,9 +710,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               <Form.Item name="entityReference" style={commonStyle}>
                 <DataAssetAsyncSelectList
                   initialOptions={initialOptions}
-                  mode={mode}
+                  multiple={multiple}
                   placeholder={
-                    mode === 'multiple'
+                    multiple
                       ? t('label.entity-reference')
                       : t('label.entity-reference-plural')
                   }
