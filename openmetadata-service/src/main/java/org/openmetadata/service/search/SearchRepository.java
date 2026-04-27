@@ -595,25 +595,50 @@ public class SearchRepository {
   }
 
   /**
-   * Returns the index targets a write that normally goes through a multi-entity alias (e.g.
-   * {@code GLOBAL_SEARCH_ALIAS}, {@code DATA_ASSET_SEARCH_ALIAS}) should fan out to: the alias
-   * itself plus every currently-staged index. During an in-flight reindex, update-by-query
-   * operations rooted on shared aliases (asset domain reassignments, FQN renames, …) would
-   * otherwise update the about-to-be-discarded active index only — by including the staged
-   * index in the same request, the change is applied to whichever index ends up serving the
-   * alias after promotion.
+   * Returns the index targets a write should fan out to so it survives an in-flight reindex.
    *
-   * <p>Calling with an alias that is already a canonical entity index name is fine; the staged
-   * index for that canonical name will be added as expected.
+   * <ul>
+   *   <li>When {@code aliasOrIndex} is a known canonical entity index name (i.e. matches the
+   *       value of {@link IndexMapping#getIndexName(String)} for some registered entity), the
+   *       result is the input plus the single staged index for that entity (if any). Avoids
+   *       fanning out an entity-scoped update-by-query — e.g. {@code updateDomainFqnByPrefix}
+   *       targeting only the domain index — onto unrelated staged indices.
+   *   <li>When {@code aliasOrIndex} is a multi-entity alias such as {@code GLOBAL_SEARCH_ALIAS}
+   *       or {@code DATA_ASSET_SEARCH_ALIAS}, the result is the input plus every currently
+   *       staged index, since the original update can match documents whose owning entity
+   *       type is being reindexed.
+   * </ul>
+   *
+   * <p>Without this fan-out, update-by-query operations rooted on shared aliases would update
+   * only the about-to-be-discarded active index and lose their effect on alias swap.
    */
   public List<String> getWriteFanoutTargets(String aliasOrIndex) {
     if (aliasOrIndex == null) {
       return new ArrayList<>(activeStagedIndices.values());
     }
-    List<String> targets = new ArrayList<>(activeStagedIndices.size() + 1);
+    List<String> targets = new ArrayList<>();
     targets.add(aliasOrIndex);
-    targets.addAll(activeStagedIndices.values());
+    if (isKnownCanonicalIndex(aliasOrIndex)) {
+      String staged = activeStagedIndices.get(aliasOrIndex);
+      if (staged != null) {
+        targets.add(staged);
+      }
+    } else {
+      targets.addAll(activeStagedIndices.values());
+    }
     return targets;
+  }
+
+  private boolean isKnownCanonicalIndex(String name) {
+    if (entityIndexMap == null || name == null) {
+      return false;
+    }
+    for (IndexMapping mapping : entityIndexMap.values()) {
+      if (mapping != null && name.equals(mapping.getIndexName(clusterAlias))) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public String getIndexOrAliasName(String name) {
