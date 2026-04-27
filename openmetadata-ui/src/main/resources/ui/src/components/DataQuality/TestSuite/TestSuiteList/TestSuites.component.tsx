@@ -15,18 +15,12 @@ import {
   ButtonGroupItem,
   Table,
 } from '@openmetadata/ui-core-components';
-import {
-  Col,
-  Form,
-  Row,
-  Select,
-  Space,
-  Typography,
-} from 'antd';
+import { Col, Form, Row, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
@@ -58,7 +52,6 @@ import {
   ListTestSuitePramsBySearch,
 } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import type { SortDescriptor } from 'react-aria-components';
 import { getPopupContainer } from '../../../../utils/formUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
@@ -73,11 +66,11 @@ import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
+import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
 import { TestSuiteSearchParams } from '../../DataQuality.interface';
 import PieChartSummaryPanel from '../../SummaryPannel/PieChartSummaryPanel.component';
-import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import './test-suites.style.less';
 
 export const TestSuites = () => {
@@ -112,9 +105,9 @@ export const TestSuites = () => {
   const { permissions } = usePermissionProvider();
   const { testSuite: testSuitePermission } = permissions;
   const [testSuites, setTestSuites] = useState<TestSuite[]>([]);
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>(
-    {} as SortDescriptor
-  );
+  const [sortDescriptor, setSortDescriptor] = useState<
+    SortDescriptor | undefined
+  >();
   const {
     currentPage,
     pageSize,
@@ -147,19 +140,19 @@ export const TestSuites = () => {
   );
 
   const sortedData = useMemo(() => {
-    if (!sortDescriptor.column || !sortDescriptor.direction) {
+    if (!sortDescriptor?.column || !sortDescriptor?.direction) {
       return testSuites;
     }
 
     return [...testSuites].sort((a, b) => {
-      const getFqn = (item: TestSuite) =>
-        item.basic
-          ? (item.basicEntityReference?.fullyQualifiedName ?? '')
-          : (item.fullyQualifiedName ?? '');
-
-      const aVal = getFqn(a);
-      const bVal = getFqn(b);
-      const cmp = aVal.localeCompare(bVal);
+      let cmp = 0;
+      if (sortDescriptor.column === 'name') {
+        const getFqn = (item: TestSuite) =>
+          item.basic
+            ? item.basicEntityReference?.fullyQualifiedName ?? ''
+            : item.fullyQualifiedName ?? '';
+        cmp = getFqn(a).localeCompare(getFqn(b));
+      }
 
       return sortDescriptor.direction === 'descending' ? -cmp : cmp;
     });
@@ -277,7 +270,9 @@ export const TestSuites = () => {
         {renderNameCell(record)}
       </Table.Cell>
       <Table.Cell>
-        <Typography.Text>{(record.summary as TestSummary)?.total ?? 0}</Typography.Text>
+        <Typography.Text>
+          {(record.summary as TestSummary)?.total ?? 0}
+        </Typography.Text>
       </Table.Cell>
       <Table.Cell>{renderSuccessCell(record.summary)}</Table.Cell>
       <Table.Cell>
@@ -423,9 +418,7 @@ export const TestSuites = () => {
             </Table.Header>
             <Table.Body
               items={isLoading ? [] : sortedData}
-              renderEmptyState={() =>
-                isLoading ? <></> : noDataPlaceholder
-              }>
+              renderEmptyState={() => (isLoading ? <></> : noDataPlaceholder)}>
               {(record) => renderRow(record as TestSuite)}
             </Table.Body>
           </Table>

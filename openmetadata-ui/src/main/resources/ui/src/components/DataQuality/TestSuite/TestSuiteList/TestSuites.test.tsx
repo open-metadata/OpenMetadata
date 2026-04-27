@@ -84,8 +84,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       }
       const currentDir =
         sortDescriptor?.column === id ? sortDescriptor.direction : undefined;
-      const newDir =
-        currentDir === 'ascending' ? 'descending' : 'ascending';
+      const newDir = currentDir === 'ascending' ? 'descending' : 'ascending';
       onSortChange({ column: id, direction: newDir });
     };
 
@@ -149,9 +148,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   MockTable.Row = ({
     children,
     id,
-  }: React.PropsWithChildren<{ id?: string }>) => (
-    <tr id={id}>{children}</tr>
-  );
+  }: React.PropsWithChildren<{ id?: string }>) => <tr id={id}>{children}</tr>;
 
   MockTable.Cell = ({
     children,
@@ -184,9 +181,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
           }>,
           {
             onClick: () => {
-              const id = (
-                child as React.ReactElement<{ id?: string }>
-              ).props.id;
+              const id = (child as React.ReactElement<{ id?: string }>).props
+                .id;
               if (id !== undefined) {
                 onSelectionChange?.(new Set([id]));
               }
@@ -260,19 +256,16 @@ jest.mock('../../../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
 
-jest.mock(
-  '../../../../utils/ObservabilityRouterClassBase',
-  () => ({
-    __esModule: true,
-    default: {
-      getDataQualityPagePath: jest
-        .fn()
-        .mockImplementation(
-          (tab: string, subTab: string) => `/data-quality/${tab}/${subTab}`
-        ),
-    },
-  })
-);
+jest.mock('../../../../utils/ObservabilityRouterClassBase', () => ({
+  __esModule: true,
+  default: {
+    getDataQualityPagePath: jest
+      .fn()
+      .mockImplementation(
+        (tab: string, subTab: string) => `/data-quality/${tab}/${subTab}`
+      ),
+  },
+}));
 
 const mockDataQualityContext = {
   isTestCaseSummaryLoading: false,
@@ -331,9 +324,7 @@ jest.mock(
     __esModule: true,
     default: jest
       .fn()
-      .mockImplementation(() => (
-        <div data-testid="filter-table-placeholder" />
-      )),
+      .mockImplementation(() => <div data-testid="filter-table-placeholder" />),
   })
 );
 
@@ -348,9 +339,7 @@ jest.mock(
   () =>
     jest
       .fn()
-      .mockImplementation(() => (
-        <div data-testid="profiler-progress-widget" />
-      ))
+      .mockImplementation(() => <div data-testid="profiler-progress-widget" />)
 );
 
 describe('TestSuites component', () => {
@@ -544,6 +533,8 @@ describe('TestSuites component', () => {
 
     await screen.findByTestId('test-suite-container');
 
-    expect(screen.queryByText('NextPrevious.component')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('NextPrevious.component')
+    ).not.toBeInTheDocument();
   });
 });
