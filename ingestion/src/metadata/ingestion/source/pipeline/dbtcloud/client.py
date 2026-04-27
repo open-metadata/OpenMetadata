@@ -187,9 +187,7 @@ class DBTCloudClient:
                 "status": "10",  # 10 = Success in dbt Cloud API
             }
 
-            result = self.client.get(
-                f"/accounts/{self.config.accountId}/runs/", data=query_params
-            )
+            result = self.client.get(f"/accounts/{self.config.accountId}/runs/", data=query_params)
             run_list_response = DBTRunList.model_validate(result)
 
             if run_list_response.Runs:
@@ -199,9 +197,7 @@ class DBTCloudClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unable to get latest successful run for job {job_id}: {exc}"
-            )
+            logger.warning(f"Unable to get latest successful run for job {job_id}: {exc}")
             return None
 
     def get_runs(self, job_id: int) -> Iterable[DBTRun]:
@@ -220,9 +216,7 @@ class DBTCloudClient:
                 "order_by": "-created_at",
             }
 
-            result = self.client.get(
-                f"/accounts/{self.config.accountId}/runs/", data=query_params
-            )
+            result = self.client.get(f"/accounts/{self.config.accountId}/runs/", data=query_params)
             run_list_response = DBTRunList.model_validate(result)
 
             for run in run_list_response.Runs or []:
@@ -260,14 +254,11 @@ class DBTCloudClient:
 
     def get_models_with_lineage(
         self, job_id: int, run_id: int
-    ) -> Tuple[
-        Optional[List[DBTModel]], Optional[List[DBTModel]], Optional[List[DBTModel]]
-    ]:
+    ) -> Tuple[Optional[List[DBTModel]], Optional[List[DBTModel]], Optional[List[DBTModel]]]:
         """
         Get models with dependsOn and seeds in a single GraphQL call.
         """
         try:
-
             query_params = {
                 "query": DBT_GET_MODELS_WITH_LINEAGE,
                 "variables": {"jobId": job_id, "runId": run_id},

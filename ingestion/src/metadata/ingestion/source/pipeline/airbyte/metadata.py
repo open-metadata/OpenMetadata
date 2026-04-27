@@ -100,20 +100,14 @@ class AirbyteSource(PipelineServiceSource):
             self.source_url_prefix = clean_uri(self.service_connection.hostPort)
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AirbyteConnection = config.serviceConnection.root.config
         if not isinstance(connection, AirbyteConnection):
-            raise InvalidSourceException(
-                f"Expected AirbyteConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected AirbyteConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_connections_jobs(
-        self, connection: AirbyteConnectionModel, connection_url: str
-    ):
+    def get_connections_jobs(self, connection: AirbyteConnectionModel, connection_url: str):
         """
         Returns the list of tasks linked to connection
         """
@@ -125,9 +119,7 @@ class AirbyteSource(PipelineServiceSource):
             )
         ]
 
-    def yield_pipeline(
-        self, pipeline_details: AirbytePipelineDetails
-    ) -> Iterable[Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details: AirbytePipelineDetails) -> Iterable[Either[CreatePipelineRequest]]:
         """
         Convert a Connection into a Pipeline Entity
         :param pipeline_details: pipeline_details object from airbyte
@@ -142,17 +134,13 @@ class AirbyteSource(PipelineServiceSource):
             name=EntityName(pipeline_details.connection.connectionId),
             displayName=pipeline_details.connection.name,
             sourceUrl=SourceUrl(connection_url),
-            tasks=self.get_connections_jobs(
-                pipeline_details.connection, connection_url
-            ),
+            tasks=self.get_connections_jobs(pipeline_details.connection, connection_url),
             service=FullyQualifiedEntityName(self.context.get().pipeline_service),
         )
         yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
 
-    def yield_pipeline_status(
-        self, pipeline_details: AirbytePipelineDetails
-    ) -> Iterable[Either[OMetaPipelineStatus]]:
+    def yield_pipeline_status(self, pipeline_details: AirbytePipelineDetails) -> Iterable[Either[OMetaPipelineStatus]]:
         """
         Method to get task & pipeline status
         """
@@ -188,18 +176,14 @@ class AirbyteSource(PipelineServiceSource):
                 task_status = [
                     TaskStatus(
                         name=str(pipeline_details.connection.connectionId),
-                        executionStatus=STATUS_MAP.get(
-                            attempt.status.lower(), StatusType.Pending
-                        ).value,
+                        executionStatus=STATUS_MAP.get(attempt.status.lower(), StatusType.Pending).value,
                         startTime=created_at,
                         endTime=ended_at,
                         logLink=log_link,
                     )
                 ]
                 pipeline_status = PipelineStatus(
-                    executionStatus=STATUS_MAP.get(
-                        attempt.status.lower(), StatusType.Pending
-                    ).value,
+                    executionStatus=STATUS_MAP.get(attempt.status.lower(), StatusType.Pending).value,
                     taskStatus=task_status,
                     timestamp=Timestamp(created_at) if created_at is not None else None,
                 )
@@ -237,18 +221,14 @@ class AirbyteSource(PipelineServiceSource):
 
             if job.startTime:
                 try:
-                    start_dt = datetime.fromisoformat(
-                        job.startTime.replace("Z", "+00:00")
-                    )
+                    start_dt = datetime.fromisoformat(job.startTime.replace("Z", "+00:00"))
                     created_at = datetime_to_timestamp(start_dt, milliseconds=True)
                 except (ValueError, AttributeError) as exc:
                     logger.warning(f"Failed to parse startTime: {exc}")
 
             if job.lastUpdatedAt:
                 try:
-                    end_dt = datetime.fromisoformat(
-                        job.lastUpdatedAt.replace("Z", "+00:00")
-                    )
+                    end_dt = datetime.fromisoformat(job.lastUpdatedAt.replace("Z", "+00:00"))
                     ended_at = datetime_to_timestamp(end_dt, milliseconds=True)
                 except (ValueError, AttributeError) as exc:
                     logger.warning(f"Failed to parse lastUpdatedAt: {exc}")
@@ -256,9 +236,7 @@ class AirbyteSource(PipelineServiceSource):
             task_status = [
                 TaskStatus(
                     name=str(pipeline_details.connection.connectionId),
-                    executionStatus=STATUS_MAP.get(
-                        job.status.lower(), StatusType.Pending
-                    ).value,
+                    executionStatus=STATUS_MAP.get(job.status.lower(), StatusType.Pending).value,
                     startTime=created_at,
                     endTime=ended_at,
                     logLink=log_link,
@@ -266,9 +244,7 @@ class AirbyteSource(PipelineServiceSource):
             ]
 
             pipeline_status = PipelineStatus(
-                executionStatus=STATUS_MAP.get(
-                    job.status.lower(), StatusType.Pending
-                ).value,
+                executionStatus=STATUS_MAP.get(job.status.lower(), StatusType.Pending).value,
                 taskStatus=task_status,
                 timestamp=Timestamp(created_at) if created_at else None,
             )
@@ -324,10 +300,7 @@ class AirbyteSource(PipelineServiceSource):
         )
         logger.debug(f"Pipeline connection details: {pipeline_details.connection}")
 
-        if (
-            not pipeline_details.connection.sourceId
-            or not pipeline_details.connection.destinationId
-        ):
+        if not pipeline_details.connection.sourceId or not pipeline_details.connection.destinationId:
             logger.warning(
                 f"Skipping lineage for connection"
                 f" [{pipeline_details.connection.connectionId}]"
@@ -336,9 +309,7 @@ class AirbyteSource(PipelineServiceSource):
             return
 
         source_connection = self.client.get_source(pipeline_details.connection.sourceId)
-        destination_connection = self.client.get_destination(
-            pipeline_details.connection.destinationId
-        )
+        destination_connection = self.client.get_destination(pipeline_details.connection.destinationId)
 
         logger.debug(f"Source connection response: {source_connection}")
         logger.debug(f"Destination connection response: {destination_connection}")
@@ -348,8 +319,7 @@ class AirbyteSource(PipelineServiceSource):
 
         streams = (
             pipeline_details.connection.syncCatalog.streams
-            if pipeline_details.connection.syncCatalog
-            and pipeline_details.connection.syncCatalog.streams
+            if pipeline_details.connection.syncCatalog and pipeline_details.connection.syncCatalog.streams
             else []
         )
 
@@ -359,9 +329,7 @@ class AirbyteSource(PipelineServiceSource):
                 continue
 
             source_table_details = get_source_table_details(stream, source_connection)
-            destination_table_details = get_destination_table_details(
-                stream, destination_connection
-            )
+            destination_table_details = get_destination_table_details(stream, destination_connection)
 
             if not source_table_details or not destination_table_details:
                 continue
@@ -410,9 +378,7 @@ class AirbyteSource(PipelineServiceSource):
                 service_name=self.context.get().pipeline_service,
                 pipeline_name=self.context.get().pipeline,
             )
-            pipeline_entity = self.metadata.get_by_name(
-                entity=Pipeline, fqn=pipeline_fqn
-            )
+            pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
             lineage_details = LineageDetails(
                 pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
@@ -434,9 +400,7 @@ class AirbyteSource(PipelineServiceSource):
         Get List of all pipelines
         """
         for workspace in self.client.list_workspaces():
-            for connection in self.client.list_connections(
-                workflow_id=workspace.workspaceId
-            ):
+            for connection in self.client.list_connections(workflow_id=workspace.workspaceId):
                 yield AirbytePipelineDetails(workspace=workspace, connection=connection)
 
     def get_pipeline_name(self, pipeline_details: AirbytePipelineDetails) -> str:

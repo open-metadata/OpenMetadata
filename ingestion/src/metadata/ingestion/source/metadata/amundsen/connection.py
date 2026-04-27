@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from functools import partial
 from typing import Optional
 
@@ -67,9 +68,7 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    test_fn = {
-        "CheckAccess": partial(client.execute_query, query=NEO4J_AMUNDSEN_USER_QUERY)
-    }
+    test_fn = {"CheckAccess": partial(client.execute_query, query=NEO4J_AMUNDSEN_USER_QUERY)}
 
     return test_connection_steps(
         metadata=metadata,

@@ -13,6 +13,7 @@ Mixin class containing Role and Policy specific methods
 
 To be used by OpenMetadata class
 """
+
 import json
 import traceback
 from typing import Dict, List, Optional, Union
@@ -70,21 +71,15 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
             data.append(
                 {
                     PatchField.OPERATION: PatchOperation.REMOVE,
-                    PatchField.PATH: path.format(
-                        rule_index=rule_index - 1, index=index
-                    ),
+                    PatchField.PATH: path.format(rule_index=rule_index - 1, index=index),
                 }
             )
         index: int = 0
         for item in current:
             data.append(
                 {
-                    PatchField.OPERATION: PatchOperation.REPLACE
-                    if index < len(previous)
-                    else PatchOperation.ADD,
-                    PatchField.PATH: path.format(
-                        rule_index=rule_index - 1, index=index
-                    ),
+                    PatchField.OPERATION: PatchOperation.REPLACE if index < len(previous) else PatchOperation.ADD,
+                    PatchField.PATH: path.format(rule_index=rule_index - 1, index=index),
                     PatchField.VALUE: item.name if is_enum else item,
                 }
             )
@@ -121,9 +116,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
         else:
             data = [
                 {
-                    PatchField.OPERATION: PatchOperation.ADD
-                    if previous is None
-                    else PatchOperation.REPLACE,
+                    PatchField.OPERATION: PatchOperation.ADD if previous is None else PatchOperation.REPLACE,
                     PatchField.PATH: path.format(rule_index=rule_index),
                     PatchField.VALUE: str(current.root),
                 }
@@ -138,9 +131,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
         self,
         entity_id: Union[str, basic.Uuid],
         policy_id: Union[str, basic.Uuid],
-        operation: Union[
-            PatchOperation.ADD, PatchOperation.REMOVE
-        ] = PatchOperation.ADD,
+        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,
     ) -> Optional[Role]:
         """
         Given a Role ID, JSON PATCH the policies.
@@ -152,9 +143,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance: Role = self._fetch_entity_if_exists(
-            entity=Role, entity_id=entity_id, fields=["policies"]
-        )
+        instance: Role = self._fetch_entity_if_exists(entity=Role, entity_id=entity_id, fields=["policies"])
         if not instance:
             return None
 
@@ -162,10 +151,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
         data: List
         if operation is PatchOperation.REMOVE:
             if len(instance.policies.root) == 1:
-                logger.error(
-                    f"The Role with id [{model_str(entity_id)}] has only one (1)"
-                    f" policy. Unable to remove."
-                )
+                logger.error(f"The Role with id [{model_str(entity_id)}] has only one (1) policy. Unable to remove.")
                 return None
 
             data = [
@@ -184,23 +170,15 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
                 data.append(
                     {
                         PatchField.OPERATION: PatchOperation.REPLACE,
-                        PatchField.PATH: PatchPath.POLICIES_DESCRIPTION.format(
-                            index=index
-                        ),
+                        PatchField.PATH: PatchPath.POLICIES_DESCRIPTION.format(index=index),
                         PatchField.VALUE: model_str(policy.description.root),
                     }
                 )
                 data.append(
                     {
-                        PatchField.OPERATION: PatchOperation.REPLACE
-                        if policy.displayName
-                        else PatchOperation.ADD,
-                        PatchField.PATH: PatchPath.POLICIES_DISPLAY_NAME.format(
-                            index=index
-                        ),
-                        PatchField.VALUE: model_str(
-                            policy.displayName if policy.displayName else policy.name
-                        ),
+                        PatchField.OPERATION: PatchOperation.REPLACE if policy.displayName else PatchOperation.ADD,
+                        PatchField.PATH: PatchPath.POLICIES_DISPLAY_NAME.format(index=index),
+                        PatchField.VALUE: model_str(policy.displayName if policy.displayName else policy.name),
                     }
                 )
                 data.append(
@@ -235,8 +213,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
 
             if not is_policy_found:
                 logger.error(
-                    f"Policy [{model_str(policy_id)}] not found for Role [{model_str(entity_id)}]."
-                    " No policies removed."
+                    f"Policy [{model_str(policy_id)}] not found for Role [{model_str(entity_id)}]. No policies removed."
                 )
                 return None
         else:
@@ -260,9 +237,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error trying to PATCH policies for Role [{model_str(entity_id)}]: {exc}"
-            )
+            logger.error(f"Error trying to PATCH policies for Role [{model_str(entity_id)}]: {exc}")
 
         return None
 
@@ -274,9 +249,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
         self,
         entity_id: Union[str, basic.Uuid],
         rule: Optional[Rule] = None,
-        operation: Union[
-            PatchOperation.ADD, PatchOperation.REMOVE
-        ] = PatchOperation.ADD,
+        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,
     ) -> Optional[Policy]:
         """
         Given a Policy ID, JSON PATCH the rule (add or remove).
@@ -288,9 +261,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance: Policy = self._fetch_entity_if_exists(
-            entity=Policy, entity_id=entity_id
-        )
+        instance: Policy = self._fetch_entity_if_exists(entity=Policy, entity_id=entity_id)
         if not instance:
             return None
 
@@ -305,22 +276,16 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
                         PatchValue.NAME: rule.name,
                         PatchValue.CONDITION: rule.condition.root,
                         PatchValue.EFFECT: rule.effect.name,
-                        PatchValue.OPERATIONS: [
-                            operation.name for operation in rule.operations
-                        ],
+                        PatchValue.OPERATIONS: [operation.name for operation in rule.operations],
                         PatchValue.RESOURCES: list(rule.resources),
                     },
                 }
             ]
             if rule.description is not None:
-                data[0][PatchField.VALUE][PatchValue.DESCRIPTION] = str(
-                    rule.description.root
-                )
+                data[0][PatchField.VALUE][PatchValue.DESCRIPTION] = str(rule.description.root)
 
             if rule.fullyQualifiedName is not None:
-                data[0][PatchField.VALUE][PatchValue.FQN] = str(
-                    rule.fullyQualifiedName.root
-                )
+                data[0][PatchField.VALUE][PatchValue.FQN] = str(rule.fullyQualifiedName.root)
 
         else:
             if rule_index == 0:
@@ -340,9 +305,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
                     break
 
                 if rule_index == 0:
-                    logger.error(
-                        f"Rule [{rule.name}] not found in Policy [{entity_id}]. Unable to remove rule."
-                    )
+                    logger.error(f"Rule [{rule.name}] not found in Policy [{entity_id}]. Unable to remove rule.")
                     return None
 
                 previous_rule: Rule = instance.rules.root[rule_index - 1]
@@ -350,9 +313,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
                 data.append(
                     {
                         PatchField.OPERATION: PatchOperation.REPLACE,
-                        PatchField.PATH: PatchPath.RULES_CONDITION.format(
-                            rule_index=rule_index - 1
-                        ),
+                        PatchField.PATH: PatchPath.RULES_CONDITION.format(rule_index=rule_index - 1),
                         PatchField.VALUE: current_rule.condition.root,
                     }
                 )
@@ -368,9 +329,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
                 data.append(
                     {
                         PatchField.OPERATION: PatchOperation.REPLACE,
-                        PatchField.PATH: PatchPath.RULES_EFFECT.format(
-                            rule_index=rule_index - 1
-                        ),
+                        PatchField.PATH: PatchPath.RULES_EFFECT.format(rule_index=rule_index - 1),
                         PatchField.VALUE: current_rule.effect.name,
                     }
                 )
@@ -387,9 +346,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
                 data.append(
                     {
                         PatchField.OPERATION: PatchOperation.REPLACE,
-                        PatchField.PATH: PatchPath.RULES_NAME.format(
-                            rule_index=rule_index - 1
-                        ),
+                        PatchField.PATH: PatchPath.RULES_NAME.format(rule_index=rule_index - 1),
                         PatchField.VALUE: current_rule.name,
                     }
                 )
@@ -419,8 +376,6 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error trying to PATCH description for Role [{model_str(entity_id)}]: {exc}"
-            )
+            logger.error(f"Error trying to PATCH description for Role [{model_str(entity_id)}]: {exc}")
 
         return None

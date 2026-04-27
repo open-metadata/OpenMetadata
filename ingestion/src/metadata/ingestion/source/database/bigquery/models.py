@@ -11,6 +11,7 @@
 """
 BigQuery models
 """
+
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -35,9 +36,7 @@ class BigQueryStoredProcedure(BaseModel):
 
     name: str
     definition: str
-    language: Optional[str] = Field(
-        None, description="Will only be informed for non-SQL routines."
-    )
+    language: Optional[str] = Field(None, description="Will only be informed for non-SQL routines.")
 
 
 class BigQueryTable(BaseModel):
@@ -68,11 +67,7 @@ class BigQueryTableMap:
             schema_tables[table_name] = deleted
 
     def get_deleted(self, schema_name: SchemaName) -> List[TableName]:
-        return [
-            name
-            for name, deleted in self._table_map.get(schema_name, {}).items()
-            if deleted
-        ]
+        return [name for name, deleted in self._table_map.get(schema_name, {}).items() if deleted]
 
     def get_all_deleted(self) -> Dict[SchemaName, List[TableName]]:
         result = {}
@@ -83,8 +78,4 @@ class BigQueryTableMap:
         return result
 
     def get_not_deleted(self, schema_name: SchemaName) -> List[TableName]:
-        return [
-            name
-            for name, deleted in self._table_map.get(schema_name, {}).items()
-            if not deleted
-        ]
+        return [name for name, deleted in self._table_map.get(schema_name, {}).items() if not deleted]

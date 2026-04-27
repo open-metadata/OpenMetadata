@@ -1,4 +1,4 @@
-import contextlib
+import contextlib  # noqa: I001
 import logging
 import os
 import re

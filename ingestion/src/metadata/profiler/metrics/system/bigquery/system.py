@@ -103,14 +103,10 @@ class BigQuerySystemMetricsComputer(SystemMetricsComputer, CacheProvider):
     ) -> List[BigQueryQueryResult]:
         ops = {op.value for op in operations}
         yield from (
-            query
-            for query in self.get_queries(usage_location, project_id, dataset_id)
-            if query.statement_type in ops
+            query for query in self.get_queries(usage_location, project_id, dataset_id) if query.statement_type in ops
         )
 
-    def get_queries(
-        self, usage_location: str, project_id: str, dataset_id: str
-    ) -> List[BigQueryQueryResult]:
+    def get_queries(self, usage_location: str, project_id: str, dataset_id: str) -> List[BigQueryQueryResult]:
         return self.get_or_update_cache(
             f"{project_id}.{dataset_id}",
             BigQueryQueryResult.get_for_table,

@@ -179,20 +179,14 @@ class PiiProcessorTest(TestCase):
     )
 
     metadata = OpenMetadata(server_config)
-    pii_processor = PIIProcessor(
-        config=workflow_config, metadata=OpenMetadata(server_config)
-    )
+    pii_processor = PIIProcessor(config=workflow_config, metadata=OpenMetadata(server_config))
 
     @classmethod
     def tearDownClass(cls) -> None:
         """
         Clean up
         """
-        service_id = str(
-            cls.metadata.get_by_name(
-                entity=DatabaseService, fqn="test-service-table-patch"
-            ).id.root
-        )
+        service_id = str(cls.metadata.get_by_name(entity=DatabaseService, fqn="test-service-table-patch").id.root)
 
         cls.metadata.delete(
             entity=DatabaseService,
@@ -266,6 +260,6 @@ class PiiProcessorTest(TestCase):
             self.assertRegex(
                 updated.tag_label.reason,
                 expected_regex=re.compile(
-                    f"Detected by `[A-Za-z]+Recognizer` \d+ times? with an average score of \d+([.,]?\d{{1,2}})?"
+                    f"Detected by `[A-Za-z]+Recognizer` \d+ times? with an average score of \d+([.,]?\d{{1,2}})?"  # noqa: F541
                 ),
             )

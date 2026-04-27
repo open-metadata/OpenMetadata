@@ -41,9 +41,9 @@ def run_test_on_pii_classifier(pii_classifier: ColumnClassifier[PIITag]) -> str:
         expected_classes = set(column_data["pii_tags"])
         selected_classes = get_top_classes(predicted_scores, len(expected_classes), 0.0)
         predicted_classes = set(selected_classes)
-        assert (
-            predicted_classes == expected_classes
-        ), f"Failed on dataset {name}: {expected_classes} but got {predicted_classes} with scores {predicted_scores}"
+        assert predicted_classes == expected_classes, (
+            f"Failed on dataset {name}: {expected_classes} but got {predicted_classes} with scores {predicted_scores}"
+        )
         tested_datasets += 1
 
     return f"PII Classifier {pii_classifier.__class__.__name__} tested with {tested_datasets} datasets."

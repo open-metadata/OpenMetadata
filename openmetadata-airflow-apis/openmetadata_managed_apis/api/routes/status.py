@@ -47,9 +47,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     @blueprint.route("/status", methods=["GET"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
     def dag_status() -> Response:
         """
         Check the status of a DAG runs

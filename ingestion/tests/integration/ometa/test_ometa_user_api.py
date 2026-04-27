@@ -11,6 +11,7 @@
 """
 OMeta User Mixin integration tests. The API needs to be up
 """
+
 import logging
 import time
 
@@ -50,9 +51,7 @@ def check_es_index(metadata) -> None:
 def test_team(metadata):
     """Create a test team for user API tests."""
     team = metadata.create_or_update(
-        data=CreateTeamRequest(
-            teamType=TeamType.Group, name="ops.team", email="ops.team@getcollate.io"
-        )
+        data=CreateTeamRequest(teamType=TeamType.Group, name="ops.team", email="ops.team@getcollate.io")
     )
 
     yield team
@@ -164,33 +163,16 @@ class TestOMetaUserAPI:
         # Non existing email returns, even if they have the same domain
         # To get this fixed, we had to update the `email` field in the
         # index as a `keyword` and search by `email.keyword` in ES.
-        assert (
-            metadata.get_reference_by_email(email="idonotexist@getcollate.io") is None
-        )
+        assert metadata.get_reference_by_email(email="idonotexist@getcollate.io") is None
 
         # I can get User 1, who has the name equal to its email
-        assert (
-            test_user_1.id
-            == metadata.get_reference_by_email(email="random.user.es@getcollate.io")
-            .root[0]
-            .id
-        )
+        assert test_user_1.id == metadata.get_reference_by_email(email="random.user.es@getcollate.io").root[0].id
 
         # I can get User 2, who has an email not matching the name
-        assert (
-            test_user_2.id
-            == metadata.get_reference_by_email(email="user2.1234@getcollate.io")
-            .root[0]
-            .id
-        )
+        assert test_user_2.id == metadata.get_reference_by_email(email="user2.1234@getcollate.io").root[0].id
 
         # I can get the team by its mail
-        assert (
-            test_team.id
-            == metadata.get_reference_by_email(email="ops.team@getcollate.io")
-            .root[0]
-            .id
-        )
+        assert test_team.id == metadata.get_reference_by_email(email="ops.team@getcollate.io").root[0].id
 
     def test_es_search_from_name(self, metadata, test_user_1, test_user_2, test_team):
         """
@@ -208,42 +190,27 @@ class TestOMetaUserAPI:
         assert team_data.type == "team"
 
         # We can get the user matching its name
-        assert (
-            test_user_1.id
-            == metadata.get_reference_by_name(name="random.user.es").root[0].id
-        )
+        assert test_user_1.id == metadata.get_reference_by_name(name="random.user.es").root[0].id
 
         # Casing does not matter
         assert test_user_2.id == metadata.get_reference_by_name(name="levy").root[0].id
 
         assert test_user_2.id == metadata.get_reference_by_name(name="Levy").root[0].id
 
-        assert (
-            test_user_1.id
-            == metadata.get_reference_by_name(name="Random User Es").root[0].id
-        )
+        assert test_user_1.id == metadata.get_reference_by_name(name="Random User Es").root[0].id
 
         # I can get the team by its name
-        assert (
-            test_team.id == metadata.get_reference_by_name(name="OPS Team").root[0].id
-        )
+        assert test_team.id == metadata.get_reference_by_name(name="OPS Team").root[0].id
 
         # if team is not group, return none
-        assert (
-            metadata.get_reference_by_name(name="Organization", is_owner=True) is None
-        )
+        assert metadata.get_reference_by_name(name="Organization", is_owner=True) is None
 
         # description should not affect in search
-        assert (
-            metadata.get_reference_by_name(name="desc_only_marker", is_owner=True)
-            is None
-        )
+        assert metadata.get_reference_by_name(name="desc_only_marker", is_owner=True) is None
 
     def test_get_user_assets(self, metadata, test_user_1, test_dashboard_for_assets):
         """We can get assets for a user"""
-        owners_ref = EntityReferenceList(
-            root=[EntityReference(id=test_user_1.id, type="user")]
-        )
+        owners_ref = EntityReferenceList(root=[EntityReference(id=test_user_1.id, type="user")])
         metadata.patch(
             entity=Dashboard,
             source=test_dashboard_for_assets,
@@ -257,16 +224,12 @@ class TestOMetaUserAPI:
 
         assets_response = metadata.get_user_assets(test_user_1.name.root, limit=100)
         assert len(assets_response["data"]) >= 1
-        assert assets_response["data"][0]["id"] == str(
-            test_dashboard_for_assets.id.root
-        )
+        assert assets_response["data"][0]["id"] == str(test_dashboard_for_assets.id.root)
         assert assets_response["data"][0]["type"] == "dashboard"
 
     def test_get_team_assets(self, metadata, test_team, test_dashboard_for_assets):
         """We can get assets for a team"""
-        owners_ref = EntityReferenceList(
-            root=[EntityReference(id=test_team.id, type="team")]
-        )
+        owners_ref = EntityReferenceList(root=[EntityReference(id=test_team.id, type="team")])
         metadata.patch(
             entity=Dashboard,
             source=test_dashboard_for_assets,
@@ -280,7 +243,5 @@ class TestOMetaUserAPI:
 
         assets_response = metadata.get_team_assets(test_team.name.root, limit=100)
         assert len(assets_response["data"]) >= 1
-        assert assets_response["data"][0]["id"] == str(
-            test_dashboard_for_assets.id.root
-        )
+        assert assets_response["data"][0]["id"] == str(test_dashboard_for_assets.id.root)
         assert assets_response["data"][0]["type"] == "dashboard"

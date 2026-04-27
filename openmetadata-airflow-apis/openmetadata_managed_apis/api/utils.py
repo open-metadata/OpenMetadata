@@ -35,9 +35,7 @@ class MissingArgException(Exception):
 
 def import_path(path):
     module_name = os.path.basename(path).replace("-", "_")
-    spec = importlib.util.spec_from_loader(
-        module_name, importlib.machinery.SourceFileLoader(module_name, path)
-    )
+    spec = importlib.util.spec_from_loader(module_name, importlib.machinery.SourceFileLoader(module_name, path))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     sys.modules[module_name] = module
@@ -132,9 +130,7 @@ def get_dagbag():
     dagbag = DagBag(**dagbag_kwargs)
     dagbag.collect_dags()
 
-    if airflow_server < version.parse("3.0.0") and hasattr(
-        dagbag, "collect_dags_from_db"
-    ):
+    if airflow_server < version.parse("3.0.0") and hasattr(dagbag, "collect_dags_from_db"):
         dagbag.collect_dags_from_db()
 
     return dagbag
@@ -175,7 +171,7 @@ class ScanDagsTask(Process):
         processor_manager.run()
 
     @staticmethod
-    def _run_new_scheduler_job() -> "Job":
+    def _run_new_scheduler_job() -> "Job":  # noqa: F821
         """
         Run the new scheduler job from Airflow 2.6
         """
@@ -195,7 +191,7 @@ class ScanDagsTask(Process):
         return scheduler_job
 
     @staticmethod
-    def _run_old_scheduler_job() -> "SchedulerJob":
+    def _run_old_scheduler_job() -> "SchedulerJob":  # noqa: F821
         """
         Run the old scheduler job before 2.6
         """

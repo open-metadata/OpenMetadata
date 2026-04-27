@@ -41,9 +41,7 @@ def get_test_suite_config(workflow_config, sink_config, db_service):
             },
             "processor": {
                 "type": "orm-test-runner",
-                "config": {
-                    "testCases": [obj.model_dump() for obj in test_case_definitions]
-                },
+                "config": {"testCases": [obj.model_dump() for obj in test_case_definitions]},
             },
             "sink": sink_config,
             "workflowConfig": workflow_config,
@@ -68,9 +66,7 @@ class TestColumnParameter:
                 testDefinitionName="columnValuesToBeInSet",
                 computePassedFailedRowCount=True,
                 columnName="first_name",
-                parameterValues=[
-                    {"name": "allowedValues", "value": "['Tom', 'Jerry']"}
-                ],
+                parameterValues=[{"name": "allowedValues", "value": "['Tom', 'Jerry']"}],
             ),
             expected_result=TestCaseResult(
                 timestamp=int(datetime.now().timestamp() * 1000),
@@ -198,9 +194,7 @@ class TestColumnParameter:
     ids=lambda x: x.test_case_definition.name,
 )
 def parameters(request, db_service):
-    request.param.entity_fqn = request.param.entity_fqn.format(
-        database_service_fqn=db_service.fullyQualifiedName.root
-    )
+    request.param.entity_fqn = request.param.entity_fqn.format(database_service_fqn=db_service.fullyQualifiedName.root)
     return request.param
 
 
@@ -225,9 +219,7 @@ def test_column_test_cases(
         fields=["*"],
         nullable=False,
     )
-    parameters.expected_result.timestamp = (
-        test_case.testCaseResult.timestamp
-    )  # timestamp is not deterministic
+    parameters.expected_result.timestamp = test_case.testCaseResult.timestamp  # timestamp is not deterministic
     assert_equal_pydantic_objects(
         parameters.expected_result,
         test_case.testCaseResult,

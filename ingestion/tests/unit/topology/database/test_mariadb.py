@@ -63,9 +63,7 @@ mock_mariadb_config = {
 
 
 class MariaDBUnitTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     @patch("metadata.ingestion.source.database.mariadb.metadata.MariadbSource.__init__")
     def __init__(self, methodName, mock_init, test_connection) -> None:
         super().__init__(methodName)
@@ -122,9 +120,7 @@ class MariaDBUnitTest(TestCase):
 
         # Configure filter
         self.mariadb_source.source_config.includeStoredProcedures = True
-        self.mariadb_source.source_config.storedProcedureFilterPattern = FilterPattern(
-            excludes=["exclude_procedure"]
-        )
+        self.mariadb_source.source_config.storedProcedureFilterPattern = FilterPattern(excludes=["exclude_procedure"])
 
         mock_engine = MagicMock()
         self.mariadb_source.engine = mock_engine
@@ -173,10 +169,8 @@ class MariaDBUnitTest(TestCase):
         )
 
         with (
-            patch.object(self.mariadb_source, "metadata") as mock_metadata,
-            patch.object(
-                self.mariadb_source, "register_record_stored_proc_request"
-            ) as mock_register,
+            patch.object(self.mariadb_source, "metadata") as mock_metadata,  # noqa: F841
+            patch.object(self.mariadb_source, "register_record_stored_proc_request") as mock_register,
         ):
             results = list(self.mariadb_source.yield_stored_procedure(stored_proc))
 
@@ -189,7 +183,5 @@ class MariaDBUnitTest(TestCase):
             self.assertEqual(request.name, EntityName("test_procedure"))
             self.assertEqual(request.description, Markdown("Test procedure"))
             self.assertEqual(request.storedProcedureCode.code, "BEGIN SELECT 1; END")
-            self.assertEqual(
-                request.storedProcedureType, StoredProcedureType.StoredProcedure
-            )
+            self.assertEqual(request.storedProcedureType, StoredProcedureType.StoredProcedure)
             mock_register.assert_called_once_with(request)

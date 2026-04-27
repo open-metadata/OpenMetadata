@@ -51,9 +51,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     @blueprint.route("/trigger", methods=["POST"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)])
     def trigger_dag() -> Response:
         """
         Trigger a dag run with optional configuration

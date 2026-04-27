@@ -11,6 +11,7 @@
 """
 Bigtable source models.
 """
+
 from typing import Dict, List
 
 from google.cloud.bigtable.row import PartialRowData
@@ -42,9 +43,7 @@ class Row(BaseModel):
         for column_family, cf_cells in row.cells.items():
             cells.setdefault(column_family, {})
             for column, cell in cf_cells.items():
-                cells[column_family][column] = Cell(
-                    values=[Value(timestamp=c.timestamp, value=c.value) for c in cell]
-                )
+                cells[column_family][column] = Cell(values=[Value(timestamp=c.timestamp, value=c.value) for c in cell])
         return cls(cells=cells, row_key=row.row_key)
 
     def to_record(self) -> Dict[str, bytes]:

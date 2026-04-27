@@ -11,6 +11,7 @@
 """
 Classification run manager for auto-classification workflows.
 """
+
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Protocol
 
@@ -25,13 +26,9 @@ logger = profiler_logger()
 
 
 class ClassificationManagerInterface(Protocol):
-    def get_enabled_classifications(
-        self, filter_names: Optional[List[str]] = None
-    ) -> List[Classification]:
-        ...
+    def get_enabled_classifications(self, filter_names: Optional[List[str]] = None) -> List[Classification]: ...
 
-    def get_enabled_tags(self, classifications: List[Classification]) -> List[Tag]:
-        ...
+    def get_enabled_tags(self, classifications: List[Classification]) -> List[Tag]: ...
 
 
 class ClassificationManager:
@@ -45,9 +42,7 @@ class ClassificationManager:
         self._classification_cache: Dict[str, List[Classification]] = defaultdict(list)
         self._tags_cache: Dict[str, List[Tag]] = {}
 
-    def get_enabled_classifications(
-        self, filter_names: Optional[List[str]] = None
-    ) -> List[Classification]:
+    def get_enabled_classifications(self, filter_names: Optional[List[str]] = None) -> List[Classification]:
         """
         Fetch classifications that have auto-classification enabled.
 
@@ -63,9 +58,7 @@ class ClassificationManager:
         cached_classifications = self._classification_cache[cache_key]
 
         if cached_classifications:
-            logger.debug(
-                f"Returning cached enabled classifications for filter: {cache_key}"
-            )
+            logger.debug(f"Returning cached enabled classifications for filter: {cache_key}")
             return cached_classifications
 
         logger.debug("Fetching enabled classifications from OpenMetadata")
@@ -87,16 +80,12 @@ class ClassificationManager:
 
         for classification in classifications:
             if filter_names and classification.name.root not in filter_names:
-                logger.debug(
-                    f"Skipping classification {classification.name.root} (not in filter)"
-                )
+                logger.debug(f"Skipping classification {classification.name.root} (not in filter)")
                 continue
 
             auto_config = classification.autoClassificationConfig
             if not auto_config or not auto_config.enabled:
-                logger.debug(
-                    f"Skipping classification {classification.name.root} (auto-classification disabled)"
-                )
+                logger.debug(f"Skipping classification {classification.name.root} (auto-classification disabled)")
                 continue
 
             cached_classifications.append(classification)
@@ -127,9 +116,7 @@ class ClassificationManager:
             logger.debug(f"Returning cached tags for classifications: {cache_key}")
             return self._tags_cache[cache_key]
 
-        logger.info(
-            f"Fetching enabled tags from classifications: {classification_names}"
-        )
+        logger.info(f"Fetching enabled tags from classifications: {classification_names}")
 
         candidate_tags: List[Tag] = []
 
@@ -154,23 +141,17 @@ class ClassificationManager:
 
                 for tag in tags:
                     if not tag.autoClassificationEnabled:
-                        logger.debug(
-                            f"Skipping tag {tag.fullyQualifiedName} (auto-classification disabled)"
-                        )
+                        logger.debug(f"Skipping tag {tag.fullyQualifiedName} (auto-classification disabled)")
                         continue
 
                     if not tag.recognizers:
-                        logger.debug(
-                            f"Skipping tag {tag.fullyQualifiedName} (no recognizers configured)"
-                        )
+                        logger.debug(f"Skipping tag {tag.fullyQualifiedName} (no recognizers configured)")
                         continue
 
                     candidate_tags.append(tag)
 
             except Exception as exc:
-                logger.error(
-                    f"Failed to fetch tags for classification {classification_name}: {exc}"
-                )
+                logger.error(f"Failed to fetch tags for classification {classification_name}: {exc}")
                 continue
 
         logger.info(

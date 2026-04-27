@@ -11,6 +11,7 @@
 """
 Airbyte source to extract metadata
 """
+
 import traceback
 from typing import Any, Iterable, List, Optional
 
@@ -64,20 +65,14 @@ class FlinkSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: FlinkConnection = config.serviceConnection.root.config
         if not isinstance(connection, FlinkConnection):
-            raise InvalidSourceException(
-                f"Expected FlinkConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected FlinkConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_connections_jobs(
-        self, pipeline_details: FlinkPipeline
-    ) -> Optional[List[Task]]:
+    def get_connections_jobs(self, pipeline_details: FlinkPipeline) -> Optional[List[Task]]:
         """Returns the list of tasks linked to connection"""
         pipeline_info = self.client.get_pipeline_info(pipeline_details.id)
         return [
@@ -88,9 +83,7 @@ class FlinkSource(PipelineServiceSource):
             for task in pipeline_info.tasks
         ]
 
-    def yield_pipeline(
-        self, pipeline_details: FlinkPipeline
-    ) -> Iterable[Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details: FlinkPipeline) -> Iterable[Either[CreatePipelineRequest]]:
         """
         Convert a Connection into a Pipeline Entity
         :param pipeline_details: pipeline_details object from Flink
@@ -122,14 +115,10 @@ class FlinkSource(PipelineServiceSource):
     def get_pipeline_name(self, pipeline_details: FlinkPipeline) -> str:
         return pipeline_details.name
 
-    def yield_pipeline_lineage_details(
-        self, pipeline_details: Any
-    ) -> Iterable[Either[AddLineageRequest]]:
+    def yield_pipeline_lineage_details(self, pipeline_details: Any) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage between pipeline and data sources"""
 
-    def yield_pipeline_status(
-        self, pipeline_details: FlinkPipeline
-    ) -> Iterable[Either[OMetaPipelineStatus]]:
+    def yield_pipeline_status(self, pipeline_details: FlinkPipeline) -> Iterable[Either[OMetaPipelineStatus]]:
         """
         Get Pipeline Status
         """

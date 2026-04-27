@@ -78,9 +78,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
             )
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(
-            metric_values, test_params=test_params
-        )
+        result_message = self._format_result_message(metric_values, test_params=test_params)
         test_result_values = self._get_test_result_values(metric_values)
 
         return self.get_test_case_result_object(
@@ -128,9 +126,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
 
         return metrics
 
-    def _evaluate_test_condition(
-        self, metric_values: dict, test_params: Optional[dict] = None
-    ) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:
         """Evaluate the not regex match test condition
 
         For not regex match test, pass if NO values match the forbidden regex pattern
@@ -150,9 +146,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
                 - total_rows: int - total row count for reporting
         """
         if test_params is None:
-            raise ValueError(
-                "test_params is required for columnValuesToNotMatchRegex._evaluate_test_condition"
-            )
+            raise ValueError("test_params is required for columnValuesToNotMatchRegex._evaluate_test_condition")
         not_match_count = metric_values[Metrics.notRegexCount.name]
         total_rows = metric_values.get(Metrics.rowCount.name)
 
@@ -213,9 +207,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         ]
 
     @abstractmethod
-    def _run_results(
-        self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs
-    ):
+    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):
         raise NotImplementedError
 
     @abstractmethod

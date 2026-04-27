@@ -12,6 +12,7 @@
 """
 Test looker view extends lineage functionality
 """
+
 import uuid
 from unittest import TestCase
 from unittest.mock import Mock, patch
@@ -35,9 +36,7 @@ class LookerExtendsLineageTest(TestCase):
     Test looker view extends lineage functionality
     """
 
-    @patch(
-        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
@@ -93,15 +92,11 @@ class LookerExtendsLineageTest(TestCase):
 
         # Filter for AddLineageRequest results
         lineage_requests = [
-            result.right
-            for result in lineage_results
-            if result.right and isinstance(result.right, AddLineageRequest)
+            result.right for result in lineage_results if result.right and isinstance(result.right, AddLineageRequest)
         ]
 
         # Should have at least one lineage request for the extends relationship
-        self.assertGreater(
-            len(lineage_requests), 0, f"Got lineage requests: {lineage_requests}"
-        )
+        self.assertGreater(len(lineage_requests), 0, f"Got lineage requests: {lineage_requests}")
 
         # Check that one of the lineage requests is from base_view to extended_view
         extends_lineage = None
@@ -113,9 +108,7 @@ class LookerExtendsLineageTest(TestCase):
                 extends_lineage = lineage_req
                 break
 
-        self.assertIsNotNone(
-            extends_lineage, "Should have lineage from base view to extended view"
-        )
+        self.assertIsNotNone(extends_lineage, "Should have lineage from base view to extended view")
 
     def test_view_extends_multiple_views(self):
         """
@@ -173,9 +166,7 @@ class LookerExtendsLineageTest(TestCase):
 
         # Filter for AddLineageRequest results
         lineage_requests = [
-            result.right
-            for result in lineage_results
-            if result.right and isinstance(result.right, AddLineageRequest)
+            result.right for result in lineage_results if result.right and isinstance(result.right, AddLineageRequest)
         ]
 
         # Should have lineage requests for both extended views
@@ -225,11 +216,7 @@ class LookerExtendsLineageTest(TestCase):
         lineage_results = list(self.looker.add_view_lineage(view, mock_explore))
 
         # Should not have any errors
-        errors = [
-            result.left
-            for result in lineage_results
-            if result.left and isinstance(result.left, StackTraceError)
-        ]
+        errors = [result.left for result in lineage_results if result.left and isinstance(result.left, StackTraceError)]
         self.assertEqual(len(errors), 0, "Should not have errors for missing views")
 
 

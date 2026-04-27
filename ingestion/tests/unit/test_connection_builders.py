@@ -11,6 +11,7 @@
 """
 Validate connection builder utilities
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
@@ -56,9 +57,7 @@ class ConnectionBuilderTest(TestCase):
         With null and existing params
         """
         self.assertEqual(get_connection_args_common(self.connection), {})
-        self.assertEqual(
-            get_connection_args_common(self.connection_with_args), {"hello": "world"}
-        )
+        self.assertEqual(get_connection_args_common(self.connection_with_args), {"hello": "world"})
 
     def test_get_connection_options_dict(self):
         """

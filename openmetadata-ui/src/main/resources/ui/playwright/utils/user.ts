@@ -451,6 +451,15 @@ export const permanentDeleteUser = async (
   // Click on delete user button
   await page.click(`[data-testid="delete-user-btn-${username}"]`);
 
+  if (!isUserSoftDeleted) {
+    // Modal opens with soft-delete as default; wait for the form's
+    // initialization effect before switching, otherwise the click races
+    // with setFieldsValue and the selection gets clobbered.
+    await page
+      .locator('.ant-radio-wrapper-checked [data-testid="soft-delete"]')
+      .waitFor();
+  }
+
   // Click on hard delete
   await page.click('[data-testid="hard-delete"]');
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');

@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from simple_salesforce.api import Salesforce
@@ -40,18 +41,13 @@ def get_connection(connection: SalesforceConnection) -> Salesforce:
     return Salesforce(
         username=connection.username,
         password=connection.password and connection.password.get_secret_value(),
-        security_token=connection.securityToken
-        and connection.securityToken.get_secret_value(),
+        security_token=connection.securityToken and connection.securityToken.get_secret_value(),
         consumer_key=connection.consumerKey,
-        consumer_secret=connection.consumerSecret
-        and connection.consumerSecret.get_secret_value(),
+        consumer_secret=connection.consumerSecret and connection.consumerSecret.get_secret_value(),
         organizationId=connection.organizationId,
         domain=connection.salesforceDomain,
         version=connection.salesforceApiVersion,
-        **(
-            (connection.connectionArguments and connection.connectionArguments.root)
-            or {}
-        ),
+        **((connection.connectionArguments and connection.connectionArguments.root) or {}),
     )
 
 

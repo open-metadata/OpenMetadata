@@ -56,16 +56,12 @@ class AthenaQueryParserSource(QueryParserSource, ABC):
         self.client = AWSClient(self.service_connection.awsConfig).get_athena_client()
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AthenaConnection = config.serviceConnection.root.config
         if not isinstance(connection, AthenaConnection):
-            raise InvalidSourceException(
-                f"Expected AthenaConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected AthenaConnection, but got {connection}")
         return cls(config, metadata)
 
     def _get_work_group_response(self, next_token: str, is_first_call: bool = False):
@@ -81,15 +77,10 @@ class AthenaQueryParserSource(QueryParserSource, ABC):
         is_first_call = True
         try:
             while True:
-                work_group_list = self._get_work_group_response(
-                    next_token, is_first_call
-                )
+                work_group_list = self._get_work_group_response(next_token, is_first_call)
                 response_obj = WorkGroupsList(**work_group_list)
                 for work_group in response_obj.WorkGroups:
-                    if (
-                        work_group.State
-                        and work_group.State.upper() == ATHENA_ENABLED_WORK_GROUP_STATE
-                    ):
+                    if work_group.State and work_group.State.upper() == ATHENA_ENABLED_WORK_GROUP_STATE:
                         yield work_group.Name
                 next_token = response_obj.NextToken
                 is_first_call = False
@@ -108,9 +99,7 @@ class AthenaQueryParserSource(QueryParserSource, ABC):
         Method to fetch queries from all work groups
         """
         for work_group in self.get_work_groups():
-            query_limit = ceil(
-                self.source_config.resultLimit / ATHENA_QUERY_PAGINATOR_LIMIT
-            )
+            query_limit = ceil(self.source_config.resultLimit / ATHENA_QUERY_PAGINATOR_LIMIT)
             paginator = self.client.get_paginator("list_query_executions")
             if work_group:
                 paginator_response = paginator.paginate(WorkGroup=work_group)
@@ -122,16 +111,11 @@ class AthenaQueryParserSource(QueryParserSource, ABC):
                     query_details_response = self.client.batch_get_query_execution(
                         QueryExecutionIds=response_obj.QueryExecutionIds
                     )
-                    query_details_list = AthenaQueryExecutionList(
-                        **query_details_response
-                    )
+                    query_details_list = AthenaQueryExecutionList(**query_details_response)
                     yield query_details_list
                 query_limit -= 1
                 if not query_limit:
                     break
 
     def is_not_dbt_or_om_query(self, query_text: str) -> bool:
-        return not (
-            query_text.startswith(QUERY_WITH_DBT)
-            or query_text.startswith(QUERY_WITH_OM_VERSION)
-        )
+        return not (query_text.startswith(QUERY_WITH_DBT) or query_text.startswith(QUERY_WITH_OM_VERSION))

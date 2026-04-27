@@ -1,4 +1,5 @@
 """OpenMetadata SDK Client - Main client class."""
+
 from __future__ import annotations
 
 from typing import ClassVar, Optional, cast
@@ -58,18 +59,14 @@ class OpenMetadata:
     def get_instance(cls) -> "OpenMetadata":
         """Get the default client instance."""
         if cls._instance is None:
-            raise RuntimeError(
-                "OpenMetadata client not initialized. Call initialize() first"
-            )
+            raise RuntimeError("OpenMetadata client not initialized. Call initialize() first")
         return cls._instance
 
     @classmethod
     def get_default_client(cls) -> OMetaClient:
         """Get the default OMeta client for internal use."""
         if cls._default_client is None:
-            raise RuntimeError(
-                "OpenMetadata client not initialized. Call initialize() first"
-            )
+            raise RuntimeError("OpenMetadata client not initialized. Call initialize() first")
         return cls._default_client
 
     @property
