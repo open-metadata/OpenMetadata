@@ -11,6 +11,7 @@
 """
 Policy Agent Workflow Definition
 """
+
 from typing import Tuple
 
 from metadata.config.common import WorkflowExecutionError
@@ -37,14 +38,10 @@ class PolicyAgentWorkflow(IngestionWorkflow):
     def _get_source(self) -> Source:
         source_type = self.config.source.type.lower()
         if not self.config.source.serviceName:
-            raise WorkflowExecutionError(
-                "ServiceName is required field for executing the Policy Agent Workflow."
-            )
+            raise WorkflowExecutionError("ServiceName is required field for executing the Policy Agent Workflow.")
 
         source_class = self.import_source_class()
-        result: Source = source_class.create(
-            self.config.source.model_dump(), self.metadata
-        )
+        result: Source = source_class.create(self.config.source.model_dump(), self.metadata)
         logger.debug(f"Source type:{source_type},{source_class} configured")
         result.prepare()
         logger.debug(f"Source type:{source_type},{source_class} prepared")

@@ -12,6 +12,7 @@
 """
 Policy Agent utility for the metadata CLI
 """
+
 import sys
 import traceback
 from pathlib import Path
@@ -42,9 +43,7 @@ def run_policy(config_path: Path) -> None:
         workflow = PolicyAgentWorkflow.create(config_dict)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        WorkflowInitErrorHandler.print_init_error(
-            exc, config_dict, PipelineType.policyAgent
-        )
+        WorkflowInitErrorHandler.print_init_error(exc, config_dict, PipelineType.policyAgent)
         sys.exit(1)
 
     execute_workflow(workflow=workflow, config_dict=config_dict)

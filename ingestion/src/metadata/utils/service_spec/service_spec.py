@@ -118,9 +118,7 @@ class DefaultSourceLoader(SourceLoader):
         )
 
 
-def import_source_class(
-    service_type: ServiceType, source_type: str, from_: str = "ingestion"
-) -> Type[Source]:
+def import_source_class(service_type: ServiceType, source_type: str, from_: str = "ingestion") -> Type[Source]:
     """
     Import the source class for a given service type and source type.
 
