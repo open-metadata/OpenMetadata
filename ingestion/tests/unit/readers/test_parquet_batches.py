@@ -12,6 +12,7 @@
 """
 Tests for ParquetDataFrameReader _read_parquet_in_batches method
 """
+
 import unittest
 from unittest.mock import Mock, patch
 
@@ -39,12 +40,8 @@ class TestParquetBatchReading(unittest.TestCase):
         mock_parquet_file = Mock()
         mock_parquet_file.iter_batches = Mock()
 
-        batch1_data = pd.DataFrame(
-            {"id": [1, 2, 3], "name": ["Alice", "Bob", "Charlie"], "age": [25, 30, 35]}
-        )
-        batch2_data = pd.DataFrame(
-            {"id": [4, 5], "name": ["David", "Eve"], "age": [40, 45]}
-        )
+        batch1_data = pd.DataFrame({"id": [1, 2, 3], "name": ["Alice", "Bob", "Charlie"], "age": [25, 30, 35]})
+        batch2_data = pd.DataFrame({"id": [4, 5], "name": ["David", "Eve"], "age": [40, 45]})
 
         mock_batch1 = Mock()
         mock_batch1.to_pandas.return_value = batch1_data
@@ -53,14 +50,10 @@ class TestParquetBatchReading(unittest.TestCase):
 
         mock_parquet_file.iter_batches.return_value = iter([mock_batch1, mock_batch2])
 
-        with patch(
-            "metadata.readers.dataframe.parquet.dataframe_to_chunks"
-        ) as mock_chunks:
+        with patch("metadata.readers.dataframe.parquet.dataframe_to_chunks") as mock_chunks:
             mock_chunks.side_effect = lambda df: [df] if not df.empty else []
 
-            result = list(
-                self.reader._read_parquet_in_batches(mock_parquet_file, batch_size=1000)
-            )
+            result = list(self.reader._read_parquet_in_batches(mock_parquet_file, batch_size=1000))
 
             mock_parquet_file.iter_batches.assert_called_once_with(batch_size=1000)
 
@@ -85,9 +78,7 @@ class TestParquetBatchReading(unittest.TestCase):
 
         mock_parquet_file.iter_batches.return_value = iter([mock_batch1, mock_batch2])
 
-        with patch(
-            "metadata.readers.dataframe.parquet.dataframe_to_chunks"
-        ) as mock_chunks:
+        with patch("metadata.readers.dataframe.parquet.dataframe_to_chunks") as mock_chunks:
             mock_chunks.side_effect = lambda df: [df] if not df.empty else []
 
             result = list(self.reader._read_parquet_in_batches(mock_parquet_file))
@@ -106,17 +97,13 @@ class TestParquetBatchReading(unittest.TestCase):
         mock_arrow_table.to_pandas.return_value = sample_data
         mock_parquet_file.read.return_value = mock_arrow_table
 
-        with patch(
-            "metadata.readers.dataframe.parquet.dataframe_to_chunks"
-        ) as mock_chunks:
+        with patch("metadata.readers.dataframe.parquet.dataframe_to_chunks") as mock_chunks:
             mock_chunks.return_value = [sample_data]
 
             with patch("metadata.readers.dataframe.parquet.logger") as mock_logger:
                 result = list(self.reader._read_parquet_in_batches(mock_parquet_file))
 
-                mock_logger.warning.assert_called_with(
-                    "No chunking methods available, falling back to regular reading"
-                )
+                mock_logger.warning.assert_called_with("No chunking methods available, falling back to regular reading")
 
                 mock_parquet_file.read.assert_called_once()
 
@@ -133,9 +120,7 @@ class TestParquetBatchReading(unittest.TestCase):
 
             self.assertEqual(str(context.exception), "Regular read failed")
 
-            mock_logger.error.assert_called_with(
-                "Failed to read parquet file: Regular read failed"
-            )
+            mock_logger.error.assert_called_with("Failed to read parquet file: Regular read failed")
 
     def test_custom_batch_size(self):
         """Test that custom batch size is properly passed to iter_batches"""
@@ -148,21 +133,13 @@ class TestParquetBatchReading(unittest.TestCase):
 
         mock_parquet_file.iter_batches.return_value = iter([mock_batch])
 
-        with patch(
-            "metadata.readers.dataframe.parquet.dataframe_to_chunks"
-        ) as mock_chunks:
+        with patch("metadata.readers.dataframe.parquet.dataframe_to_chunks") as mock_chunks:
             mock_chunks.return_value = [batch_data]
 
             custom_batch_size = 5000
-            list(
-                self.reader._read_parquet_in_batches(
-                    mock_parquet_file, batch_size=custom_batch_size
-                )
-            )
+            list(self.reader._read_parquet_in_batches(mock_parquet_file, batch_size=custom_batch_size))
 
-            mock_parquet_file.iter_batches.assert_called_once_with(
-                batch_size=custom_batch_size
-            )
+            mock_parquet_file.iter_batches.assert_called_once_with(batch_size=custom_batch_size)
 
     def test_batch_counting_and_logging(self):
         """Test that batch counting and logging work correctly"""
@@ -183,20 +160,14 @@ class TestParquetBatchReading(unittest.TestCase):
 
         mock_parquet_file.iter_batches.return_value = iter(mock_batches)
 
-        with patch(
-            "metadata.readers.dataframe.parquet.dataframe_to_chunks"
-        ) as mock_chunks:
+        with patch("metadata.readers.dataframe.parquet.dataframe_to_chunks") as mock_chunks:
             mock_chunks.side_effect = lambda df: [df] if not df.empty else []
 
             with patch("metadata.readers.dataframe.parquet.logger") as mock_logger:
                 result = list(self.reader._read_parquet_in_batches(mock_parquet_file))
 
-                mock_logger.info.assert_any_call(
-                    "Reading large parquet file in batches to avoid memory issues"
-                )
-                mock_logger.info.assert_any_call(
-                    "Successfully processed 3 batches from large parquet file"
-                )
+                mock_logger.info.assert_any_call("Reading large parquet file in batches to avoid memory issues")
+                mock_logger.info.assert_any_call("Successfully processed 3 batches from large parquet file")
 
                 self.assertEqual(len(result), 3)
 
@@ -236,9 +207,7 @@ class TestParquetBatchReading(unittest.TestCase):
 
         from pyarrow.parquet import ParquetFile
 
-        test_file_path = os.path.join(
-            os.path.dirname(__file__), "test_files", "flights-1m.parquet"
-        )
+        test_file_path = os.path.join(os.path.dirname(__file__), "test_files", "flights-1m.parquet")
 
         if not os.path.exists(test_file_path):
             self.skipTest(f"Test file not found: {test_file_path}")
@@ -249,18 +218,12 @@ class TestParquetBatchReading(unittest.TestCase):
             file_size = os.path.getsize(test_file_path)
             total_rows = parquet_file.metadata.num_rows
 
-            print(
-                f"Testing with real parquet file: {file_size} bytes, {total_rows} rows"
-            )
+            print(f"Testing with real parquet file: {file_size} bytes, {total_rows} rows")
 
             result = list(self.reader._read_parquet_in_batches(parquet_file))
-            fallback_method_result = dataframe_to_chunks(
-                parquet_file.read().to_pandas()
-            )
+            fallback_method_result = dataframe_to_chunks(parquet_file.read().to_pandas())
             result_processed_rows = sum(len(chunk) for chunk in result)
-            fallback_method_processed_rows = sum(
-                len(chunk) for chunk in fallback_method_result
-            )
+            fallback_method_processed_rows = sum(len(chunk) for chunk in fallback_method_result)
 
             self.assertEqual(result_processed_rows, fallback_method_processed_rows)
 

@@ -47,15 +47,11 @@ class DynamodbSource(CommonNoSQLSource):
         self.dynamodb = self.connection_obj
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DynamoDBConnection = config.serviceConnection.root.config
         if not isinstance(connection, DynamoDBConnection):
-            raise InvalidSourceException(
-                f"Expected DynamoDBConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected DynamoDBConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_schema_name_list(self) -> List[str]:
@@ -65,9 +61,7 @@ class DynamodbSource(CommonNoSQLSource):
         """
         return [DEFAULT_DATABASE]
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Method to get list of table names available within schema db
         need to be overridden by sources
@@ -80,9 +74,7 @@ class DynamodbSource(CommonNoSQLSource):
             logger.error(f"Failed to list DynamoDB table names: {err}")
         return []
 
-    def get_table_columns_dict(
-        self, schema_name: str, table_name: str
-    ) -> Union[List[Dict], Dict]:
+    def get_table_columns_dict(self, schema_name: str, table_name: str) -> Union[List[Dict], Dict]:
         """
         Method to get actual data available within table
         need to be overridden by sources
@@ -103,9 +95,7 @@ class DynamodbSource(CommonNoSQLSource):
             return attributes
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to read DynamoDB attributes for [{table_name}]: {err}"
-            )
+            logger.warning(f"Failed to read DynamoDB attributes for [{table_name}]: {err}")
         return attributes
 
     def get_source_url(

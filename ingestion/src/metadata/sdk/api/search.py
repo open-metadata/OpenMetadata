@@ -1,4 +1,5 @@
 """Search API with fluent interface."""
+
 from __future__ import annotations
 
 import asyncio
@@ -69,16 +70,14 @@ def _build_query_filter(filters: Mapping[str, Any]) -> Mapping[str, Any]:
 class RestClientProtocol(Protocol):
     """Structural protocol describing the REST client behaviour we use."""
 
-    def get(self, path: str, data: Mapping[str, Any] | None = None) -> RestReturn:
-        ...
+    def get(self, path: str, data: Mapping[str, Any] | None = None) -> RestReturn: ...
 
     def post(
         self,
         path: str,
         data: Mapping[str, Any] | None = None,
         json: JsonDict | None = None,  # pylint: disable=redefined-outer-name
-    ) -> RestReturn:
-        ...
+    ) -> RestReturn: ...
 
 
 def _http_get(client: OMetaClient, path: str, params: Mapping[str, Any]) -> JsonDict:
@@ -129,9 +128,7 @@ class Search:
     @classmethod
     def set_default_client(cls, client: Union[OpenMetadata, OMetaClient]) -> None:
         """Set the default client for static methods."""
-        cls._default_client = (
-            client.ometa if isinstance(client, OpenMetadata) else client
-        )
+        cls._default_client = client.ometa if isinstance(client, OpenMetadata) else client
 
     @classmethod
     def _get_client(cls) -> OMetaClient:
@@ -168,9 +165,7 @@ class Search:
             Search results as JSON dict
         """
         client = cls._get_client()
-        resolved_filters: Mapping[str, Any] = (
-            _build_query_filter(filters) if filters else {}
-        )
+        resolved_filters: Mapping[str, Any] = _build_query_filter(filters) if filters else {}
         params: JsonDict = {
             "query_string": query,
             "index": index,
@@ -241,9 +236,7 @@ class Search:
             "field": field,
         }
         if callable(aggregate_fn_raw):
-            aggregate_callback: AggregateCallback = cast(
-                AggregateCallback, aggregate_fn_raw
-            )
+            aggregate_callback: AggregateCallback = cast(AggregateCallback, aggregate_fn_raw)
             return aggregate_callback(**params)  # pylint: disable=not-callable
 
         body: JsonDict = {
@@ -282,9 +275,7 @@ class Search:
         client = cls._get_client()
         reindex_all_fn_raw = getattr(client, "reindex_all", None)
         if callable(reindex_all_fn_raw):
-            reindex_all_callback: ReindexAllCallback = cast(
-                ReindexAllCallback, reindex_all_fn_raw
-            )
+            reindex_all_callback: ReindexAllCallback = cast(ReindexAllCallback, reindex_all_fn_raw)
             return reindex_all_callback()  # pylint: disable=not-callable
         return _http_post(client, "/search/reindex", {})
 

@@ -23,8 +23,8 @@ class FivetranPipelineDetails(BaseModel):
 
     @property
     def pipeline_name(self) -> str:
-        return f'{self.group.get("id")}_{self.source.get("id")}'
+        return f"{self.group.get('id')}_{self.source.get('id')}"
 
     @property
     def pipeline_display_name(self) -> str:
-        return f'{self.source.get("schema")} <> {self.group.get("name")}'
+        return f"{self.source.get('schema')} <> {self.group.get('name')}"

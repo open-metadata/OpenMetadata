@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """Automations integration tests"""
+
 import uuid
 
 import pytest
@@ -54,9 +55,7 @@ pipelineRunId: 948eba5d-94ec-4fc5-b233-29038722db16
 
 @pytest.fixture(scope="package")
 def mysql_container():
-    with get_mysql_container(
-        MySqlContainerConfigs(container_name=str(uuid.uuid4()))
-    ) as container:
+    with get_mysql_container(MySqlContainerConfigs(container_name=str(uuid.uuid4()))) as container:
         yield container
 
 

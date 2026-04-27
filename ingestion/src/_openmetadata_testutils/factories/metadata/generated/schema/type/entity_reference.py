@@ -37,9 +37,7 @@ class EntityReferenceFactory(factory.Factory):
     id = factory.LazyAttribute(lambda x: x.entity.id.root)
     type = factory.LazyAttribute(lambda x: type(x.entity).__name__.lower())
     name = factory.LazyAttribute(lambda x: x.entity.name.root)
-    fullyQualifiedName = factory.LazyAttribute(
-        lambda x: x.entity.fullyQualifiedName.root
-    )
+    fullyQualifiedName = factory.LazyAttribute(lambda x: x.entity.fullyQualifiedName.root)
     description = factory.LazyAttribute(lambda x: x.entity.description.root)
 
     class Meta:

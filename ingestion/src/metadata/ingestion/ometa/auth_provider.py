@@ -11,6 +11,7 @@
 """
 Interface definition for an Auth provider
 """
+
 import os.path
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass

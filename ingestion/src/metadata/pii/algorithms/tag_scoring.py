@@ -109,9 +109,7 @@ class TagScorer:
 
         return results
 
-    def _build_reason(
-        self, content_analysis: TagAnalysis, column_analysis: Optional[TagAnalysis]
-    ) -> str:
+    def _build_reason(self, content_analysis: TagAnalysis, column_analysis: Optional[TagAnalysis]) -> str:
         """Build a human-readable reason for why this tag was matched."""
         reason = f"Content analysis:\n{content_analysis.explanation}\n"
 
@@ -158,16 +156,12 @@ class TagScorer:
 
         pattern_matches = [
             PatternMatch(name=name, regex=pattern, score=score)
-            for name, pattern, score in sorted(
-                patterns_matched, key=lambda o: o[1], reverse=True
-            )
+            for name, pattern, score in sorted(patterns_matched, key=lambda o: o[1], reverse=True)
         ]
 
         recognizer_id = None
         for recognizer_config in content_analysis.tag.recognizers or []:
-            if isinstance(
-                recognizer_config.recognizerConfig.root, PredefinedRecognizer
-            ):
+            if isinstance(recognizer_config.recognizerConfig.root, PredefinedRecognizer):
                 name = recognizer_config.recognizerConfig.root.name.value
             else:
                 name = recognizer_config.name.root
@@ -183,9 +177,7 @@ class TagScorer:
             recognizerId=recognizer_id,
             recognizerName=recognizer_name,
             score=min(total_score, 1),
-            target=TARGET_MAP[content_analysis.target]
-            if content_analysis.target
-            else None,
+            target=TARGET_MAP[content_analysis.target] if content_analysis.target else None,
             patterns=pattern_matches if pattern_matches else None,
         )
 
@@ -204,9 +196,7 @@ class ScoreTagsForColumnService:
         self._nlp_engine = nlp_engine
         self._language = language
 
-    def __call__(
-        self, column: Column, data: Sequence[Any], tags_to_analyze: List[Tag]
-    ) -> List[ScoredTag]:
+    def __call__(self, column: Column, data: Sequence[Any], tags_to_analyze: List[Tag]) -> List[ScoredTag]:
         # Create analyzers for remaining candidate tags
         tag_analyzers = (
             TagAnalyzer(
@@ -219,9 +209,7 @@ class ScoreTagsForColumnService:
         )
 
         classifier = TagScorer(tag_analyzers=tag_analyzers)
-        column_name_str = (
-            column.fullyQualifiedName.root if column.fullyQualifiedName else None
-        )
+        column_name_str = column.fullyQualifiedName.root if column.fullyQualifiedName else None
         return classifier.predict_scores(
             sample_data=data,
             column_name=column_name_str,

@@ -11,6 +11,7 @@
 """
 Defines the topology for ingesting sources
 """
+
 import queue
 import threading
 from functools import cache, singledispatchmethod
@@ -43,9 +44,7 @@ class NodeStage(BaseModel, Generic[T]):
     )
 
     # Required fields to define the yielded entity type and the function processing it
-    type_: Type[T] = Field(
-        ..., description="Entity Type. E.g., DatabaseService, Database or Table"
-    )
+    type_: Type[T] = Field(..., description="Entity Type. E.g., DatabaseService, Database or Table")
     processor: str = Field(
         ...,
         description="Has the producer results as an argument. Here is where filters happen. It will yield an Entity.",
@@ -67,12 +66,8 @@ class NodeStage(BaseModel, Generic[T]):
     )
 
     # Context-related flags
-    context: Optional[str] = Field(
-        None, description="Context key storing stage state, if needed"
-    )
-    store_all_in_context: bool = Field(
-        False, description="If we need to store all values being yielded in the context"
-    )
+    context: Optional[str] = Field(None, description="Context key storing stage state, if needed")
+    store_all_in_context: bool = Field(False, description="If we need to store all values being yielded in the context")
     clear_context: bool = Field(
         False,
         description="If we need to clean the values in the context for each produced element",
@@ -157,14 +152,9 @@ class TopologyContext(BaseModel):
         """
         nodes = get_topology_nodes(topology)
         ctx_fields = {
-            stage.context: (Optional[stage.type_], None)
-            for node in nodes
-            for stage in node.stages
-            if stage.context
+            stage.context: (Optional[stage.type_], None) for node in nodes for stage in node.stages if stage.context
         }
-        return create_model(
-            "GeneratedContext", **ctx_fields, __base__=TopologyContext
-        )()
+        return create_model("GeneratedContext", **ctx_fields, __base__=TopologyContext)()
 
     def upsert(self, key: str, value: Any) -> None:
         """
@@ -264,9 +254,7 @@ class TopologyContextManager:
         # Due to our code strucutre, the first time the ContextManager is called will be within the MainThread.
         # We can leverage this to guarantee we keep track of the MainThread ID.
         self.main_thread = self.get_current_thread_id()
-        self.contexts: Dict[int, TopologyContext] = {
-            self.main_thread: TopologyContext.create(topology)
-        }
+        self.contexts: Dict[int, TopologyContext] = {self.main_thread: TopologyContext.create(topology)}
 
         # Starts with the Multithreading disabled
         self.threads = 0
@@ -301,9 +289,7 @@ class TopologyContextManager:
         thread_id = self.get_current_thread_id()
 
         # If it does not exist yet, copies the Parent Context in order to have all context gathered until this point.
-        self.contexts.setdefault(
-            thread_id, self.contexts[parent_thread_id].model_copy(deep=True)
-        )
+        self.contexts.setdefault(thread_id, self.contexts[parent_thread_id].model_copy(deep=True))
 
 
 class Queue:
@@ -401,9 +387,7 @@ def _build_hierarchy_from_topology(
 
     if node.children:
         for child_name in node.children:
-            child_hierarchy = _build_hierarchy_from_topology(
-                topology, child_name, current_depth + 1
-            )
+            child_hierarchy = _build_hierarchy_from_topology(topology, child_name, current_depth + 1)
             for entity_type, depth in child_hierarchy.items():
                 if entity_type not in hierarchy or depth < hierarchy[entity_type]:
                     hierarchy[entity_type] = depth
@@ -470,9 +454,7 @@ def get_entity_hierarchy() -> Dict[Type[BaseModel], int]:
     for topology in all_topologies:
         root_nodes = get_topology_root(topology)
         for root_node in root_nodes:
-            root_name = [
-                key for key, value in topology.__dict__.items() if value == root_node
-            ][0]
+            root_name = [key for key, value in topology.__dict__.items() if value == root_node][0]
             topology_hierarchy = _build_hierarchy_from_topology(topology, root_name, 0)
 
             for entity_type, depth in topology_hierarchy.items():

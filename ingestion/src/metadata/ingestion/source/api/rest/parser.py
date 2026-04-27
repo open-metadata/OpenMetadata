@@ -12,6 +12,7 @@
 """
 OpenAPI schema parser for both JSON and YAML formats
 """
+
 import json
 import re
 from pathlib import Path
@@ -188,14 +189,13 @@ def _parse_s3_url(s3_url: str) -> tuple:
         )
 
     raise OpenAPIParseError(
-        f"Unable to parse S3 URL '{s3_url}'. "
-        "Expected format: https://bucket.s3.amazonaws.com/path/to/file"
+        f"Unable to parse S3 URL '{s3_url}'. Expected format: https://bucket.s3.amazonaws.com/path/to/file"
     )
 
 
 def parse_openapi_schema_from_s3(
     s3_url: str,
-    aws_credentials: "AWSCredentials",
+    aws_credentials: "AWSCredentials",  # noqa: F821
 ) -> Dict[str, Any]:
     """
     Download and parse an OpenAPI schema file from S3.
@@ -212,9 +212,7 @@ def parse_openapi_schema_from_s3(
         response = s3_client.get_object(Bucket=bucket, Key=key)
         content = response["Body"].read().decode("utf-8")
     except Exception as e:
-        raise OpenAPIParseError(
-            f"Failed to download S3 object s3://{bucket}/{key}: {e}"
-        ) from e
+        raise OpenAPIParseError(f"Failed to download S3 object s3://{bucket}/{key}: {e}") from e
 
     suffix = Path(key).suffix.lower()
 

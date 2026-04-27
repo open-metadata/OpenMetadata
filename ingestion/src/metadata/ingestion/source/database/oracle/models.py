@@ -1,6 +1,7 @@
 """
 Oracle models
 """
+
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
@@ -11,9 +12,7 @@ class OracleStoredObject(BaseModel):
 
     name: str
     definition: str
-    language: Optional[str] = Field(
-        None, description="Will only be informed for non-SQL routines."
-    )
+    language: Optional[str] = Field(None, description="Will only be informed for non-SQL routines.")
     owner: str
     procedure_type: Optional[str] = Field(None, alias="procedure_type")
 

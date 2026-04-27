@@ -12,7 +12,8 @@
 """
 This module provides authentication utilities for Databricks and Unity Catalog connections.
 """
-from typing import Union
+
+from typing import Union  # noqa: I001
 
 from databricks.sdk.core import Config, azure_service_principal, oauth_service_principal
 
@@ -92,8 +93,6 @@ def get_auth_config(
     }.get(type(connection.authType))
 
     if not auth_method:
-        raise ValueError(
-            f"Unsupported authentication type: {type(connection.authType)}"
-        )
+        raise ValueError(f"Unsupported authentication type: {type(connection.authType)}")
 
     return auth_method(connection)

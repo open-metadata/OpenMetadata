@@ -44,9 +44,7 @@ masked_query_cache = LRUCache(maxsize=128)
 
 
 @calculate_execution_time(context="MaskLiteralsSqlParse")
-def mask_literals_with_sqlparse(
-    query: str, parser: LineageRunner, query_hash: Optional[str] = None
-):
+def mask_literals_with_sqlparse(query: str, parser: LineageRunner, query_hash: Optional[str] = None):
     """
     Mask literals in a query using SqlParse.
     """
@@ -136,9 +134,7 @@ def mask_literals_with_sqlparse(
 
 
 @calculate_execution_time(context="MaskLiteralsSqlFluff")
-def mask_literals_with_sqlfluff(
-    query: str, parser: LineageRunner, query_hash: Optional[str] = None
-) -> str:
+def mask_literals_with_sqlfluff(query: str, parser: LineageRunner, query_hash: Optional[str] = None) -> str:
     """
     Mask literals in a query using SqlFluff.
     """
@@ -150,9 +146,7 @@ def mask_literals_with_sqlfluff(
 
         if parsed is None:
             hash_prefix = f"[{query_hash}] " if query_hash else ""
-            logger.debug(
-                f"{hash_prefix}Skipping SqlFluff query masking as parsed result is None"
-            )
+            logger.debug(f"{hash_prefix}Skipping SqlFluff query masking as parsed result is None")
             return query
 
         def _is_ordinal_context(segment) -> bool:
@@ -195,16 +189,11 @@ def mask_literals_with_sqlfluff(
                 return MASK_TOKEN
             if segment.segments:
                 # Recursively process sub-segments
-                return "".join(
-                    replace_literals(sub_seg, in_groupby_orderby)
-                    for sub_seg in segment.segments
-                )
+                return "".join(replace_literals(sub_seg, in_groupby_orderby) for sub_seg in segment.segments)
             return segment.raw
 
         # Reconstruct the query with masked literals
-        masked_query = "".join(
-            replace_literals(segment) for segment in parsed.tree.segments
-        )
+        masked_query = "".join(replace_literals(segment) for segment in parsed.tree.segments)
         return masked_query
     except Exception as exc:
         hash_prefix = f"[{query_hash}] " if query_hash else ""
@@ -223,9 +212,7 @@ def get_sqlparse_lineage_runner(query: str) -> LineageRunner:
 
 @calculate_execution_time(context="GetSqlFluffLineageRunner")
 def get_sqlfluff_lineage_runner(query: str, dialect: str) -> LineageRunner:
-    lr_sqlfluff = LineageRunner(
-        query, dialect=dialect, analyzer=SqlFluffLineageAnalyzer
-    )
+    lr_sqlfluff = LineageRunner(query, dialect=dialect, analyzer=SqlFluffLineageAnalyzer)
     len(lr_sqlfluff.source_tables)
     return lr_sqlfluff
 
@@ -274,9 +261,7 @@ def mask_query_impl(
         masking_parser = None
 
         # Only reuse parser if it's already SqlParse or SqlFluff
-        if parser and isinstance(
-            parser._analyzer, (SqlParseLineageAnalyzer, SqlFluffLineageAnalyzer)
-        ):
+        if parser and isinstance(parser._analyzer, (SqlParseLineageAnalyzer, SqlFluffLineageAnalyzer)):
             masking_parser = parser
 
         # If no suitable parser, create one with fallback: SqlParse → SqlFluff
@@ -293,13 +278,9 @@ def mask_query_impl(
 
         # Dispatch to appropriate masking function
         if isinstance(masking_parser._analyzer, SqlFluffLineageAnalyzer):
-            masked_query = mask_literals_with_sqlfluff(
-                query, masking_parser, query_hash
-            )
+            masked_query = mask_literals_with_sqlfluff(query, masking_parser, query_hash)
         elif isinstance(masking_parser._analyzer, SqlParseLineageAnalyzer):
-            masked_query = mask_literals_with_sqlparse(
-                query, masking_parser, query_hash
-            )
+            masked_query = mask_literals_with_sqlparse(query, masking_parser, query_hash)
         else:
             logger.debug(
                 f"{hash_prefix}Query masking skipped as no supported analyzer available."

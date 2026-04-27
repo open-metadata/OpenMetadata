@@ -98,22 +98,13 @@ class TestInferResourceType:
 
     def test_database_uri(self):
         assert infer_resource_type("postgres://localhost/db") == ResourceType.Database
-        assert (
-            infer_resource_type("mysql://localhost:3306/mydb") == ResourceType.Database
-        )
-        assert (
-            infer_resource_type("sqlite:///path/to/db.sqlite") == ResourceType.Database
-        )
+        assert infer_resource_type("mysql://localhost:3306/mydb") == ResourceType.Database
+        assert infer_resource_type("sqlite:///path/to/db.sqlite") == ResourceType.Database
         assert infer_resource_type("mongodb://localhost/test") == ResourceType.Database
 
     def test_mime_type_document(self):
-        assert (
-            infer_resource_type("custom://doc", "text/plain") == ResourceType.Document
-        )
-        assert (
-            infer_resource_type("custom://doc", "application/json")
-            == ResourceType.Document
-        )
+        assert infer_resource_type("custom://doc", "text/plain") == ResourceType.Document
+        assert infer_resource_type("custom://doc", "application/json") == ResourceType.Document
         assert infer_resource_type("custom://doc", "text/html") == ResourceType.Document
 
     def test_mime_type_blob(self):

@@ -11,6 +11,7 @@
 """
 Integration tests for Rule Library Pandas Expression validator on Datalake (S3/MinIO)
 """
+
 from copy import deepcopy
 
 import pytest
@@ -56,9 +57,7 @@ def rule_library_pandas_test_definition(metadata) -> TestDefinition:
     test_def = metadata.create_or_update(
         CreateTestDefinitionRequest(
             name=TestCaseEntityName("columnRuleLibrarySqlExpressionValidator"),
-            description=Markdown(
-                root="Rule library test definition for pandas query expression validation"
-            ),
+            description=Markdown(root="Rule library test definition for pandas query expression validation"),
             entityType=EntityType.COLUMN,
             testPlatforms=[TestPlatform.OpenMetadata],
             supportedDataTypes=NUMERIC_DATA_TYPES,
@@ -79,9 +78,7 @@ def rule_library_pandas_test_definition(metadata) -> TestDefinition:
     yield test_def
     # Clean up: delete associated test cases first, then the test definition
     try:
-        test_cases = metadata.list_entities(
-            TestCase, fields=["*"], skip_on_failure=True
-        ).entities
+        test_cases = metadata.list_entities(TestCase, fields=["*"], skip_on_failure=True).entities
         for tc in test_cases:
             if tc.testDefinition and tc.testDefinition.name == test_def.name:
                 try:
@@ -149,9 +146,9 @@ class TestRuleLibraryPandas:
         workflow_config = deepcopy(RULE_LIBRARY_DATA_QUALITY_CONFIG)
         service_name = ingestion_config["source"]["serviceName"]
         workflow_config["source"]["serviceName"] = service_name
-        workflow_config["source"]["sourceConfig"]["config"][
-            "entityFullyQualifiedName"
-        ] = f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
+        workflow_config["source"]["sourceConfig"]["config"]["entityFullyQualifiedName"] = (
+            f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
+        )
         workflow_config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
             {
                 "serviceName": service_name,
@@ -212,6 +209,6 @@ class TestRuleLibraryPandas:
             nullable=False,
         )
         assert test_case.testCaseResult is not None, "Test case result is None"
-        assert (
-            test_case.testCaseResult.testCaseStatus == expected_status
-        ), f"Expected {expected_status}, got {test_case.testCaseResult.testCaseStatus}"
+        assert test_case.testCaseResult.testCaseStatus == expected_status, (
+            f"Expected {expected_status}, got {test_case.testCaseResult.testCaseStatus}"
+        )

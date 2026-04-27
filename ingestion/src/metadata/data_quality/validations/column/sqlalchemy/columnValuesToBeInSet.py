@@ -84,9 +84,7 @@ class ColumnValuesToBeInSetValidator(
         dimension_results = []
 
         try:
-            allowed_values = test_params[
-                BaseColumnValuesToBeInSetValidator.ALLOWED_VALUES
-            ]
+            allowed_values = test_params[BaseColumnValuesToBeInSetValidator.ALLOWED_VALUES]
             match_enum = test_params[BaseColumnValuesToBeInSetValidator.MATCH_ENUM]
 
             # Build metric expressions using enum names as keys
@@ -99,23 +97,16 @@ class ColumnValuesToBeInSetValidator(
 
             if match_enum and Metrics.rowCount.name in metric_expressions:
                 # Enum mode: failed = total - matched
-                metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions[
-                    Metrics.rowCount.name
-                ]
+                metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions[Metrics.rowCount.name]
                 metric_expressions[DIMENSION_FAILED_COUNT_KEY] = (
-                    metric_expressions[Metrics.rowCount.name]
-                    - metric_expressions[Metrics.countInSet.name]
+                    metric_expressions[Metrics.rowCount.name] - metric_expressions[Metrics.countInSet.name]
                 )
             else:
                 # Non-enum mode: no real concept of failure, use count_in_set for ordering
-                metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions[
-                    Metrics.countInSet.name
-                ]
+                metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions[Metrics.countInSet.name]
                 metric_expressions[DIMENSION_FAILED_COUNT_KEY] = literal(0)
 
-            normalized_dimension = self._get_normalized_dimension_expression(
-                dimension_col
-            )
+            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
             result_rows = self._run_dimensional_validation_query(
                 source=self.runner.dataset,
@@ -124,9 +115,7 @@ class ColumnValuesToBeInSetValidator(
                 top_n=top_n,
             )
 
-            return self._process_dimension_rows(
-                result_rows, dimension_col.name, metrics_to_compute, test_params
-            )
+            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

@@ -77,9 +77,7 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
                     values=test_params[self.MISSING_VALUE_MATCH],
                 )
                 metric_values[Metrics.countInSet.name] = count_in_set
-                metric_values[self.TOTAL_MISSING_COUNT] = (
-                    null_missing_count + count_in_set
-                )
+                metric_values[self.TOTAL_MISSING_COUNT] = null_missing_count + count_in_set
             else:
                 metric_values[self.TOTAL_MISSING_COUNT] = null_missing_count
 
@@ -95,9 +93,7 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
             )
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(
-            metric_values, test_params=test_params
-        )
+        result_message = self._format_result_message(metric_values, test_params=test_params)
         test_result_values = self._get_test_result_values(metric_values)
 
         return self.get_test_case_result_object(
@@ -148,9 +144,7 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
 
         return metrics
 
-    def _evaluate_test_condition(
-        self, metric_values: dict, test_params: Optional[dict] = None
-    ) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:
         """Evaluate the missing count test condition
 
         Test passes if total_missing_count == expected missing_count_value
@@ -168,9 +162,7 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
                 - total_rows: None - not computed for this validator
         """
         if test_params is None:
-            raise ValueError(
-                "test_params is required for columnValuesMissingCount._evaluate_test_condition"
-            )
+            raise ValueError("test_params is required for columnValuesMissingCount._evaluate_test_condition")
 
         total_missing_count = metric_values[self.TOTAL_MISSING_COUNT]
         expected_missing_count = test_params[self.MISSING_COUNT_VALUE]
@@ -201,9 +193,7 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
             str: Formatted result message
         """
         if test_params is None:
-            raise ValueError(
-                "test_params is required for columnValuesMissingCount._format_result_message"
-            )
+            raise ValueError("test_params is required for columnValuesMissingCount._format_result_message")
 
         total_missing_count = metric_values[self.TOTAL_MISSING_COUNT]
         expected_missing_count = test_params[self.MISSING_COUNT_VALUE]
@@ -233,7 +223,5 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
         ]
 
     @abstractmethod
-    def _run_results(
-        self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs
-    ):
+    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):
         raise NotImplementedError

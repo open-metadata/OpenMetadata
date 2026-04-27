@@ -11,6 +11,7 @@
 """
 Cassandra source helpers.
 """
+
 from __future__ import annotations
 
 from metadata.generated.schema.entity.data.table import Column, DataType
@@ -65,13 +66,9 @@ class CassandraColumnParser:
                     continue
 
                 if not data_type:
-                    data_type = cls.datatype_mapping.get(
-                        raw_data_type.lower(), DataType.UNKNOWN
-                    )
+                    data_type = cls.datatype_mapping.get(raw_data_type.lower(), DataType.UNKNOWN)
                 elif not array_data_type:
-                    array_data_type = cls.datatype_mapping.get(
-                        raw_data_type.lower(), DataType.UNKNOWN
-                    )
+                    array_data_type = cls.datatype_mapping.get(raw_data_type.lower(), DataType.UNKNOWN)
 
                 raw_data_type = ""
                 if data_type != DataType.ARRAY or array_data_type:
@@ -79,9 +76,7 @@ class CassandraColumnParser:
 
             elif letter == ">":
                 if not array_data_type and data_type:
-                    array_data_type = cls.datatype_mapping.get(
-                        raw_data_type.lower(), DataType.UNKNOWN
-                    )
+                    array_data_type = cls.datatype_mapping.get(raw_data_type.lower(), DataType.UNKNOWN)
                     break
 
             else:
