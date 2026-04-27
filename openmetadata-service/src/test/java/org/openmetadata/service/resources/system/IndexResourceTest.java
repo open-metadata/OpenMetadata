@@ -27,18 +27,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.CspNonceHandler;
 
 class IndexResourceTest {
   private IndexResource resource;
-  private OpenMetadataApplicationConfig config;
 
   @BeforeEach
   void setUp() {
     resource = new IndexResource();
-    config = mock(OpenMetadataApplicationConfig.class);
-    when(config.getBasePath()).thenReturn("/");
   }
 
   @Test
@@ -76,8 +72,6 @@ class IndexResourceTest {
 
   @Test
   void testGetIndexWithRequest() {
-    resource.initialize(config);
-
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
     String testNonce = Base64.getEncoder().encodeToString("test-nonce-bytes".getBytes());
     when(mockRequest.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE)).thenReturn(testNonce);
@@ -97,8 +91,6 @@ class IndexResourceTest {
 
   @Test
   void testGetIndexWithNullNonce() {
-    resource.initialize(config);
-
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
     when(mockRequest.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE)).thenReturn(null);
 
@@ -111,8 +103,6 @@ class IndexResourceTest {
 
   @Test
   void testGetIndexWithEmptyNonce() {
-    resource.initialize(config);
-
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
     when(mockRequest.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE)).thenReturn("");
 
