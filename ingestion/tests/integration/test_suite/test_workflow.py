@@ -105,9 +105,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                 )
             ),
         )
-        cls.service_entity: DatabaseService = cls.metadata.create_or_update(
-            data=service
-        )
+        cls.service_entity: DatabaseService = cls.metadata.create_or_update(data=service)
 
         create_db = CreateDatabaseRequest(
             name=str(uuid.uuid4()),
@@ -185,9 +183,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
 
         table: Table = workflow.source._get_table_entity()
 
-        table_and_tests: TableAndTests = list(
-            workflow.source._process_table_suite(table=table)
-        )[0]
+        table_and_tests: TableAndTests = list(workflow.source._process_table_suite(table=table))[0]
 
         # If the table already has a test suite, we won't be generating one
         self.assertIsNotNone(table.testSuite)
@@ -197,11 +193,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         # We will pick up the tests from it
         self.assertTrue(
             next(
-                (
-                    test
-                    for test in table_and_tests.right.test_cases
-                    if test.name.root == "testCaseForIntegration"
-                ),
+                (test for test in table_and_tests.right.test_cases if test.name.root == "testCaseForIntegration"),
                 None,
             )
         )
@@ -219,9 +211,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         # If the table does not have a test suite, we'll prepare the request to create one
         table: Table = workflow.source._get_table_entity()
 
-        table_and_tests: Either[TableAndTests] = list(
-            workflow.source._process_table_suite(table=table)
-        )[0]
+        table_and_tests: Either[TableAndTests] = list(workflow.source._process_table_suite(table=table))[0]
 
         self.assertIsNone(table.testSuite)
         self.assertEqual(
@@ -259,9 +249,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         workflow = TestSuiteWorkflow.create(_test_suite_config)
 
         table: Table = workflow.source._get_table_entity()
-        table_and_tests: Either[TableAndTests] = list(
-            workflow.source._process_table_suite(table=table)
-        )[0]
+        table_and_tests: Either[TableAndTests] = list(workflow.source._process_table_suite(table=table))[0]
 
         test_cases: List[TestCase] = workflow.steps[0].get_test_cases(
             test_cases=table_and_tests.right.test_cases,
@@ -271,9 +259,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         # 1 defined test cases + the new one in the YAML
         self.assertTrue(len(table_and_tests.right.test_cases) >= 1)
 
-        new_test_case = next(
-            (test for test in test_cases if test.name.root == "my_test_case"), None
-        )
+        new_test_case = next((test for test in test_cases if test.name.root == "my_test_case"), None)
         self.assertIsNotNone(new_test_case)
 
         # cleanup
@@ -375,9 +361,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         )
 
         table: Table = workflow.source._get_table_entity()
-        table_and_tests: Either[TableAndTests] = list(
-            workflow.source._process_table_suite(table=table)
-        )[0]
+        table_and_tests: Either[TableAndTests] = list(workflow.source._process_table_suite(table=table))[0]
 
         config_test_cases_def = workflow.steps[0].get_test_case_from_cli_config()
         created_test_case = workflow.steps[0].compare_and_create_test_cases(

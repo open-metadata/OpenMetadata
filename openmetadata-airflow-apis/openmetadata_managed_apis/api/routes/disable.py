@@ -47,9 +47,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     @blueprint.route("/disable", methods=["POST"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)])
     def disable() -> Response:
         """
         Given a DAG ID, mark the dag as disabled

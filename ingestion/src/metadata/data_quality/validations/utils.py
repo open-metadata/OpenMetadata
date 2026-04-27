@@ -26,9 +26,7 @@ def get_test_case_param_value(
         default (_type_, optional): Default value to return if column is not found
         pre_processor: pre processor function/type to use against the value before casting to type_
     """
-    value = next(
-        (param.value for param in test_case_param_vals if param.name == name), None
-    )
+    value = next((param.value for param in test_case_param_vals if param.name == name), None)
 
     if not value:
         return default if default is not None else None

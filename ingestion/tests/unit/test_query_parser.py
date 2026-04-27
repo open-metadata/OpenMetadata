@@ -65,9 +65,7 @@ class QueryParserTests(TestCase):
 
     def test_bracketed_parser_table_list(self):
         expected_tables = {"test_schema.test_view", "test_table"}
-        parser = LineageParser(
-            "create view [test_schema].[test_view] as select * from [test_table];"
-        )
+        parser = LineageParser("create view [test_schema].[test_view] as select * from [test_table];")
         clean_tables = set(parser.clean_table_list)
         self.assertEqual(clean_tables, expected_tables)
         parser = LineageParser(
@@ -141,13 +139,9 @@ class QueryParserTests(TestCase):
 
         expected_joins = [
             TableColumnJoin(
-                tableColumn=TableColumn(
-                    table="testdb.public.users", column="id"
-                ),  # lowercase col
+                tableColumn=TableColumn(table="testdb.public.users", column="id"),  # lowercase col
                 joinedWith=[
-                    TableColumn(
-                        table="testdb.public.lowercase_users", column="ID"
-                    ),  # uppercase col
+                    TableColumn(table="testdb.public.lowercase_users", column="ID"),  # uppercase col
                 ],
             ),
         ]
@@ -204,9 +198,7 @@ class QueryParserTests(TestCase):
         )
 
     # TODO: Fix this case at the earliest
-    @pytest.mark.skip(
-        reason="Flaky with sqlglot parser, returns no column lineage or correct column lineage randomly."
-    )
+    @pytest.mark.skip(reason="Flaky with sqlglot parser, returns no column lineage or correct column lineage randomly.")
     def test_ctes_column_lineage(self):
         """
         Validate we obtain information from Common Table Expressions
@@ -373,7 +365,9 @@ class QueryParserTests(TestCase):
         )
 
         # Test with OR REPLACE
-        query_or_replace = "CREATE OR REPLACE TRIGGER my_trigger AFTER INSERT ON my_table FOR EACH ROW EXECUTE FUNCTION my_func()"
+        query_or_replace = (
+            "CREATE OR REPLACE TRIGGER my_trigger AFTER INSERT ON my_table FOR EACH ROW EXECUTE FUNCTION my_func()"
+        )
         self.assertEqual(
             LineageParser.clean_raw_query(query_or_replace),
             None,
@@ -396,7 +390,9 @@ END $$"""
         )
 
         # Test with OR REPLACE
-        query_or_replace = "CREATE OR REPLACE FUNCTION my_schema.my_func() RETURNS void AS $$ BEGIN NULL; END $$ LANGUAGE plpgsql"
+        query_or_replace = (
+            "CREATE OR REPLACE FUNCTION my_schema.my_func() RETURNS void AS $$ BEGIN NULL; END $$ LANGUAGE plpgsql"
+        )
         self.assertEqual(
             LineageParser.clean_raw_query(query_or_replace),
             None,
@@ -406,9 +402,7 @@ END $$"""
         """
         Validate CREATE PROCEDURE query cleaning logic - should return None
         """
-        query = (
-            "CREATE PROCEDURE my_procedure() LANGUAGE plpgsql AS $$ BEGIN NULL; END $$"
-        )
+        query = "CREATE PROCEDURE my_procedure() LANGUAGE plpgsql AS $$ BEGIN NULL; END $$"
         self.assertEqual(
             LineageParser.clean_raw_query(query),
             None,
@@ -539,9 +533,7 @@ END $$"""
         """
         Validate COPY INTO table FROM @db.schema.stage with fully qualified stage name.
         """
-        query = (
-            "COPY INTO my_table FROM @my_db.my_schema.my_stage FILE_FORMAT=(TYPE=CSV)"
-        )
+        query = "COPY INTO my_table FROM @my_db.my_schema.my_stage FILE_FORMAT=(TYPE=CSV)"
         parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
 
         self.assertEqual(len(parser.source_tables), 1)

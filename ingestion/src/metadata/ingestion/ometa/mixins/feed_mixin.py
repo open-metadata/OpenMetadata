@@ -92,20 +92,14 @@ class OMetaFeedMixin:
     def create_thread(self, create_request: CreateThreadRequest) -> Thread:
         resp = self.client.post(
             self._feed_path,
-            create_request.model_dump_json(
-                context={"mask_secrets": False}, by_alias=True
-            ),
+            create_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         return Thread.model_validate(resp)
 
-    def create_post(
-        self, thread_id: Union[str, UUID], create_request: CreatePostRequest
-    ) -> Post:
+    def create_post(self, thread_id: Union[str, UUID], create_request: CreatePostRequest) -> Post:
         resp = self.client.post(
             f"{self._feed_path}/{model_str(thread_id)}/posts",
-            create_request.model_dump_json(
-                context={"mask_secrets": False}, by_alias=True
-            ),
+            create_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         return Post.model_validate(resp)
 
@@ -120,9 +114,7 @@ class OMetaFeedMixin:
             params["after"] = after
         if before:
             params["before"] = before
-        resp = self.client.get(
-            f"{self._feed_path}/{model_str(thread_id)}/posts", params or None
-        )
+        resp = self.client.get(f"{self._feed_path}/{model_str(thread_id)}/posts", params or None)
         return EntityList(
             entities=[Post.model_validate(item) for item in resp["data"]],
             total=resp["paging"]["total"],
@@ -130,24 +122,16 @@ class OMetaFeedMixin:
             before=resp["paging"].get("before"),
         )
 
-    def resolve_feed_task(
-        self, task_id: Union[str, int], resolve_request: ResolveTaskRequest
-    ) -> Thread:
+    def resolve_feed_task(self, task_id: Union[str, int], resolve_request: ResolveTaskRequest) -> Thread:
         resp = self.client.put(
             f"{self._feed_path}/tasks/{model_str(task_id)}/resolve",
-            resolve_request.model_dump_json(
-                context={"mask_secrets": False}, by_alias=True
-            ),
+            resolve_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         return Thread.model_validate(resp)
 
-    def close_feed_task(
-        self, task_id: Union[str, int], close_request: CloseTaskRequest
-    ) -> Thread:
+    def close_feed_task(self, task_id: Union[str, int], close_request: CloseTaskRequest) -> Thread:
         resp = self.client.put(
             f"{self._feed_path}/tasks/{model_str(task_id)}/close",
-            close_request.model_dump_json(
-                context={"mask_secrets": False}, by_alias=True
-            ),
+            close_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         return Thread.model_validate(resp)

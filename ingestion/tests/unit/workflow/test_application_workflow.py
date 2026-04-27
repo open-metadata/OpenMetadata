@@ -11,6 +11,7 @@
 """
 Validate the initialization of the App Workflow
 """
+
 import yaml
 
 from metadata.workflow.application import ApplicationWorkflow, AppRunner

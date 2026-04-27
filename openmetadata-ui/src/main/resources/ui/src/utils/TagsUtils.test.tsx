@@ -114,4 +114,20 @@ describe('getTagAssetsQueryFilter', () => {
 
     expect(result).toEqual(queryFilter);
   });
+
+  it('returns common query filter when classification name ends with "Tier"', () => {
+    const tagFQN = 'DataTier.Bronze';
+    const result = getTagAssetsQueryFilter(tagFQN);
+    const queryFilter = getTermQuery({ 'tags.tagFQN': tagFQN });
+
+    expect(result).toEqual(queryFilter);
+  });
+
+  it('returns common query filter when classification name ends with "Certification"', () => {
+    const tagFQN = 'DataCertification.Gold';
+    const result = getTagAssetsQueryFilter(tagFQN);
+    const queryFilter = getTermQuery({ 'tags.tagFQN': tagFQN });
+
+    expect(result).toEqual(queryFilter);
+  });
 });

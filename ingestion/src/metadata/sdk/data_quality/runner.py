@@ -150,9 +150,9 @@ class TestRunner:
     ) -> Self:
         """Build TestRunner from a YAML workflow string."""
 
-        assert (
-            yaml_string is not None or file_path is not None
-        ), "`TestRunner.from_yaml` expects either `yaml_string` or `file_path` to be provided."
+        assert yaml_string is not None or file_path is not None, (
+            "`TestRunner.from_yaml` expects either `yaml_string` or `file_path` to be provided."
+        )
 
         if file_path is not None:
             with open(file_path, "r", encoding="utf-8") as stream:
@@ -163,24 +163,22 @@ class TestRunner:
         config = OpenMetadataWorkflowConfig(**data)
         source = config.source
 
-        assert (
-            source.type == TestSuiteConfigType.TestSuite.value
-        ), f"Can't create test suite for source type: {source.type}"
+        assert source.type == TestSuiteConfigType.TestSuite.value, (
+            f"Can't create test suite for source type: {source.type}"
+        )
 
         source_config = source.sourceConfig.config
-        assert isinstance(
-            source_config, TestSuitePipeline
-        ), f"Can't create test suite for source config type: {type(source.sourceConfig.config)}"
-        assert (
-            source_config.entityFullyQualifiedName is not None
-        ), "TestSuitePipeline config must have entity fully qualified name"
+        assert isinstance(source_config, TestSuitePipeline), (
+            f"Can't create test suite for source config type: {type(source.sourceConfig.config)}"
+        )
+        assert source_config.entityFullyQualifiedName is not None, (
+            "TestSuitePipeline config must have entity fully qualified name"
+        )
 
         if use_connection_from_yaml:
             client = OMeta(config=config.workflowConfig.openMetadataServerConfig)
 
-        runner = cls.for_table(
-            source_config.entityFullyQualifiedName.root, client=client
-        )
+        runner = cls.for_table(source_config.entityFullyQualifiedName.root, client=client)
 
         processor: Optional[TestSuiteProcessorConfig] = None
         if config.processor and config.processor.config:
@@ -215,9 +213,7 @@ class TestRunner:
         Returns:
             Self for method chaining
         """
-        self.config_builder = self.config_builder.add_test_definition(
-            test_definition.to_test_case_definition()
-        )
+        self.config_builder = self.config_builder.add_test_definition(test_definition.to_test_case_definition())
 
     def add_tests(self, *test_definitions: BaseTest) -> None:
         """Add multiple test definitions at once.

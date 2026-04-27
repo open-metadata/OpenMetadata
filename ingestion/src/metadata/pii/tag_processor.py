@@ -67,21 +67,15 @@ class TagProcessor(AutoClassificationProcessor):
         self.conflict_resolver = ConflictResolver()
 
         # Get enabled classifications and their configs
-        self.enabled_classifications = self.run_manager.get_enabled_classifications(
-            filter_names=classification_filter
-        )
+        self.enabled_classifications = self.run_manager.get_enabled_classifications(filter_names=classification_filter)
 
         # Get all enabled tags with recognizers from enabled classifications
-        self.candidate_tags = self.run_manager.get_enabled_tags(
-            classifications=self.enabled_classifications
-        )
+        self.candidate_tags = self.run_manager.get_enabled_tags(classifications=self.enabled_classifications)
 
         # Service that runs analyzers
         if score_tags_for_column is None:
             score_tags_for_column = ScoreTagsForColumnService(
-                nlp_engine=load_nlp_engine(
-                    classification_language=self.classification_language
-                ),
+                nlp_engine=load_nlp_engine(classification_language=self.classification_language),
                 language=self.classification_language,
             )
         self.score_tags_for_column = score_tags_for_column
@@ -110,23 +104,18 @@ class TagProcessor(AutoClassificationProcessor):
 
         return tag_label
 
-    def filter_tags_to_analyze(
-        self, column: Column, candidate_tags: List[Tag]
-    ) -> List[Tag]:
+    def filter_tags_to_analyze(self, column: Column, candidate_tags: List[Tag]) -> List[Tag]:
         """
         Filter candidate tags based on already-applied tags and mutually exclusive
         classification constraints.
 
         Returns only tags that should be analyzed for this column.
         """
-        existing_tag_fqns = {
-            tag.tagFQN.root for tag in (column.tags or []) if tag.tagFQN
-        }
+        existing_tag_fqns = {tag.tagFQN.root for tag in (column.tags or []) if tag.tagFQN}
 
         # Build classification lookup map
         classification_map = {
-            classification.fullyQualifiedName.root: classification
-            for classification in self.enabled_classifications
+            classification.fullyQualifiedName.root: classification for classification in self.enabled_classifications
         }
 
         # Identify mutually exclusive classifications that already have tags applied
@@ -162,9 +151,7 @@ class TagProcessor(AutoClassificationProcessor):
 
         return tags_to_analyze
 
-    def create_column_tag_labels(
-        self, column: Column, sample_data: Sequence[Any]
-    ) -> Sequence[TagLabel]:
+    def create_column_tag_labels(self, column: Column, sample_data: Sequence[Any]) -> Sequence[TagLabel]:
         """
         Create tags for the column based on sample data.
         Supports multiple tags from different classifications.
@@ -185,22 +172,14 @@ class TagProcessor(AutoClassificationProcessor):
             )
             return []
 
-        logger.debug(
-            f"Analyzing {len(tags_to_analyze)} tags for column {column.name.root}"
-        )
+        logger.debug(f"Analyzing {len(tags_to_analyze)} tags for column {column.name.root}")
 
         # Run analyzers
         scored_tags = self.score_tags_for_column(column, sample_data, tags_to_analyze)
-        scored_tags = [
-            scored_tag
-            for scored_tag in scored_tags
-            if scored_tag.score >= self.confidence_threshold
-        ]
+        scored_tags = [scored_tag for scored_tag in scored_tags if scored_tag.score >= self.confidence_threshold]
 
         if not scored_tags:
-            logger.debug(
-                f"No tags scored above threshold for column {column.name.root}"
-            )
+            logger.debug(f"No tags scored above threshold for column {column.name.root}")
             return []
 
         logger.debug(
@@ -217,12 +196,9 @@ class TagProcessor(AutoClassificationProcessor):
         # Limit total tags per column
         if len(resolved_tags) > self.max_tags_per_column:
             logger.warning(
-                f"Column {column.name.root} has {len(resolved_tags)} tags, "
-                f"limiting to {self.max_tags_per_column}"
+                f"Column {column.name.root} has {len(resolved_tags)} tags, limiting to {self.max_tags_per_column}"
             )
-            resolved_tags = sorted(resolved_tags, key=lambda t: t.score, reverse=True)[
-                : self.max_tags_per_column
-            ]
+            resolved_tags = sorted(resolved_tags, key=lambda t: t.score, reverse=True)[: self.max_tags_per_column]
 
         logger.debug(
             f"Applied {len(resolved_tags)} tags to column {column.name.root}: "

@@ -17,6 +17,7 @@ This test is coupled with the example DAG `lineage_tutorial_operator`.
 With the `docker compose up` setup, you can debug the progress
 by setting breakpoints in this file.
 """
+
 import time
 from typing import Optional
 from unittest import TestCase
@@ -72,9 +73,7 @@ def get_airflow_jwt_token() -> str:
     response = requests.post(token_url, json=payload, timeout=10)
     if response.status_code in (200, 201):
         return response.json().get("access_token")
-    raise RuntimeError(
-        f"Failed to get JWT token: {response.status_code} - {response.text}"
-    )
+    raise RuntimeError(f"Failed to get JWT token: {response.status_code} - {response.text}")
 
 
 def get_airflow_headers() -> dict:
@@ -91,11 +90,7 @@ def get_task_status_type_by_name(pipeline: Pipeline, name: str) -> Optional[Stat
     Given a pipeline, get its status by name
     """
     return next(
-        (
-            status.executionStatus
-            for status in pipeline.pipelineStatus.taskStatus
-            if status.name == name
-        ),
+        (status.executionStatus for status in pipeline.pipelineStatus.taskStatus if status.name == name),
         None,
     )
 
@@ -179,9 +174,7 @@ class AirflowLineageTest(TestCase):
         Clean up
         """
 
-        db_service = cls.metadata.get_by_name(
-            entity=DatabaseService, fqn="test-service-table-lineage"
-        )
+        db_service = cls.metadata.get_by_name(entity=DatabaseService, fqn="test-service-table-lineage")
         if db_service:
             service_id = str(db_service.id.root)
             cls.metadata.delete(
@@ -193,9 +186,7 @@ class AirflowLineageTest(TestCase):
 
         # Service ID created from the Airflow Lineage Operator in the
         # example DAG
-        pipeline_service = cls.metadata.get_by_name(
-            entity=PipelineService, fqn=PIPELINE_SERVICE_NAME
-        )
+        pipeline_service = cls.metadata.get_by_name(entity=PipelineService, fqn=PIPELINE_SERVICE_NAME)
         if pipeline_service:
             pipeline_service_id = str(pipeline_service.id.root)
             cls.metadata.delete(
@@ -233,9 +224,7 @@ class AirflowLineageTest(TestCase):
             headers=headers,
         )
         if res.status_code != 200:
-            raise RuntimeError(
-                f"Could not enable {OM_LINEAGE_DAG_NAME} DAG: {res.status_code} - {res.text}"
-            )
+            raise RuntimeError(f"Could not enable {OM_LINEAGE_DAG_NAME} DAG: {res.status_code} - {res.text}")
 
         # 3. Trigger the DAG (Airflow 3.x requires logical_date)
         from datetime import datetime, timezone
@@ -246,9 +235,7 @@ class AirflowLineageTest(TestCase):
             headers=headers,
         )
         if res.status_code != 200:
-            raise RuntimeError(
-                f"Could not trigger {OM_LINEAGE_DAG_NAME} DAG: {res.status_code} - {res.text}"
-            )
+            raise RuntimeError(f"Could not trigger {OM_LINEAGE_DAG_NAME} DAG: {res.status_code} - {res.text}")
         dag_run_id = res.json()["dag_run_id"]
 
         # 4. Wait until the DAG is flagged as `successful` or `failed`
@@ -268,17 +255,13 @@ class AirflowLineageTest(TestCase):
             print(f"Try {tries}/{max_tries}: DAG state = {state}")
 
         if state not in ("success", "failed"):
-            raise RuntimeError(
-                f"DAG {OM_LINEAGE_DAG_NAME} has not finished on time. Last state: {state}"
-            )
+            raise RuntimeError(f"DAG {OM_LINEAGE_DAG_NAME} has not finished on time. Last state: {state}")
 
     def test_pipeline_created(self) -> None:
         """
         Validate that the pipeline has been created
         """
-        pipeline_service: PipelineService = self.metadata.get_by_name(
-            entity=PipelineService, fqn=PIPELINE_SERVICE_NAME
-        )
+        pipeline_service: PipelineService = self.metadata.get_by_name(entity=PipelineService, fqn=PIPELINE_SERVICE_NAME)
         self.assertIsNotNone(pipeline_service)
 
         pipeline: Pipeline = self.metadata.get_by_name(
@@ -289,25 +272,15 @@ class AirflowLineageTest(TestCase):
         self.assertIsNotNone(pipeline)
 
         expected_task_names = set((task.name for task in pipeline.tasks))
-        self.assertEqual(
-            expected_task_names, {"print_date", "sleep", "templated", "lineage_op"}
-        )
+        self.assertEqual(expected_task_names, {"print_date", "sleep", "templated", "lineage_op"})
 
         self.assertEqual(pipeline.description.root, "A simple tutorial DAG")
 
         # Validate status
-        self.assertIsNotNone(
-            pipeline.pipelineStatus, "Pipeline status should be collected via REST API"
-        )
-        self.assertEqual(
-            get_task_status_type_by_name(pipeline, "print_date"), StatusType.Successful
-        )
-        self.assertEqual(
-            get_task_status_type_by_name(pipeline, "sleep"), StatusType.Successful
-        )
-        self.assertEqual(
-            get_task_status_type_by_name(pipeline, "templated"), StatusType.Successful
-        )
+        self.assertIsNotNone(pipeline.pipelineStatus, "Pipeline status should be collected via REST API")
+        self.assertEqual(get_task_status_type_by_name(pipeline, "print_date"), StatusType.Successful)
+        self.assertEqual(get_task_status_type_by_name(pipeline, "sleep"), StatusType.Successful)
+        self.assertEqual(get_task_status_type_by_name(pipeline, "templated"), StatusType.Successful)
 
     def test_pipeline_lineage(self) -> None:
         """
@@ -332,8 +305,6 @@ class AirflowLineageTest(TestCase):
                 str(self.table_outlet.id.root),
             )
             self.assertEqual(
-                lineage["downstreamEdges"][0]["lineageDetails"]["pipeline"][
-                    "fullyQualifiedName"
-                ],
+                lineage["downstreamEdges"][0]["lineageDetails"]["pipeline"]["fullyQualifiedName"],
                 f"{PIPELINE_SERVICE_NAME}.{OM_LINEAGE_DAG_NAME}",
             )

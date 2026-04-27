@@ -51,9 +51,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     @blueprint.route("/last_dag_logs", methods=["GET"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
     def last_logs() -> Response:
         """
         Retrieve all logs from the task instances of a last DAG run

@@ -12,6 +12,7 @@
 """
 Check context manager operations
 """
+
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -72,9 +73,7 @@ class TopologyContextManagerTest(TestCase):
         with patch("threading.get_ident", return_value=OTHER_THREAD):
             self.manager.copy_from(MAIN_THREAD)
 
-        self.assertEqual(
-            list(self.manager.contexts.keys()), [MAIN_THREAD, OTHER_THREAD]
-        )
+        self.assertEqual(list(self.manager.contexts.keys()), [MAIN_THREAD, OTHER_THREAD])
 
         self.manager.pop(OTHER_THREAD)
 

@@ -11,6 +11,7 @@
 """
 Websocket Auth & Client for QlikSense
 """
+
 import json
 import re
 import traceback
@@ -109,10 +110,7 @@ class QlikSenseClient:
         self.socket_connection = create_connection(
             f"{clean_uri(self.config.hostPort)}/app/{app_id or ''}",
             sslopt=ssl_conext,
-            header={
-                f"{QLIK_USER_HEADER}: "
-                f"UserDirectory={self.config.userDirectory}; UserId={self.config.userId}"
-            },
+            header={f"{QLIK_USER_HEADER}: UserDirectory={self.config.userDirectory}; UserId={self.config.userId}"},
         )
         if app_id:
             # get doc list needs to be executed before extracting data from app
@@ -132,9 +130,7 @@ class QlikSenseClient:
         self.config = config
         self.socket_connection = None
 
-    def _websocket_send_request(
-        self, request: dict, response: bool = False
-    ) -> Optional[Dict]:
+    def _websocket_send_request(self, request: dict, response: bool = False) -> Optional[Dict]:
         """
         Method to send request to websocket
 
@@ -147,9 +143,7 @@ class QlikSenseClient:
             return json.loads(resp)
         return None
 
-    def get_dashboards_list(
-        self, create_new_socket: bool = True
-    ) -> List[QlikDashboard]:
+    def get_dashboards_list(self, create_new_socket: bool = True) -> List[QlikDashboard]:
         """
         Get List of all dashboards
         """
@@ -204,8 +198,7 @@ class QlikSenseClient:
                 QlikTable(
                     tableName=table_record.qName,
                     id=table_record.qName,
-                    connectorProperties=table_record.qConnectorProperties
-                    or QlikTableConnectionProp(),
+                    connectorProperties=table_record.qConnectorProperties or QlikTableConnectionProp(),
                     fields=fields,
                 )
             )
@@ -294,11 +287,7 @@ class QlikSenseClient:
                     stripped,
                     re.IGNORECASE,
                 )
-                sql_tables = {
-                    re.sub(r"[\[\]]", "", t)
-                    for t in from_join_tables
-                    if "." in re.sub(r"[\[\]]", "", t)
-                }
+                sql_tables = {re.sub(r"[\[\]]", "", t) for t in from_join_tables if "." in re.sub(r"[\[\]]", "", t)}
                 if sql_tables:
                     table_source_map.setdefault(current_table, set()).update(sql_tables)
 

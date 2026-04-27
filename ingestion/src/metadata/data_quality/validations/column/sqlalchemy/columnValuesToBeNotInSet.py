@@ -84,9 +84,7 @@ class ColumnValuesToBeNotInSetValidator(
         dimension_results = []
 
         try:
-            forbidden_values = test_params[
-                BaseColumnValuesToBeNotInSetValidator.FORBIDDEN_VALUES
-            ]
+            forbidden_values = test_params[BaseColumnValuesToBeNotInSetValidator.FORBIDDEN_VALUES]
 
             # Build metric expressions using enum names as keys
             metric_expressions = {}
@@ -97,13 +95,9 @@ class ColumnValuesToBeNotInSetValidator(
                 metric_expressions[metric_name] = metric_instance.fn()
 
             metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = Metrics.rowCount().fn()
-            metric_expressions[DIMENSION_FAILED_COUNT_KEY] = metric_expressions[
-                Metrics.countInSet.name
-            ]
+            metric_expressions[DIMENSION_FAILED_COUNT_KEY] = metric_expressions[Metrics.countInSet.name]
 
-            normalized_dimension = self._get_normalized_dimension_expression(
-                dimension_col
-            )
+            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
             result_rows = self._run_dimensional_validation_query(
                 source=self.runner.dataset,
@@ -112,9 +106,7 @@ class ColumnValuesToBeNotInSetValidator(
                 top_n=top_n,
             )
 
-            return self._process_dimension_rows(
-                result_rows, dimension_col.name, metrics_to_compute, test_params
-            )
+            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

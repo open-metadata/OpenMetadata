@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """Unit tests for ValidationResult."""
+
 from datetime import datetime
 from uuid import UUID
 
@@ -100,9 +101,7 @@ class TestValidationResultMerge:
             total_tests=1,
             passed_tests=1,
             failed_tests=0,
-            test_cases_and_results=[
-                (test_case, create_test_result(TestCaseStatus.Success, passed_rows=50))
-            ],
+            test_cases_and_results=[(test_case, create_test_result(TestCaseStatus.Success, passed_rows=50))],
             execution_time_ms=10.0,
         )
 
@@ -111,9 +110,7 @@ class TestValidationResultMerge:
             total_tests=1,
             passed_tests=1,
             failed_tests=0,
-            test_cases_and_results=[
-                (test_case, create_test_result(TestCaseStatus.Success, passed_rows=30))
-            ],
+            test_cases_and_results=[(test_case, create_test_result(TestCaseStatus.Success, passed_rows=30))],
             execution_time_ms=8.0,
         )
 
@@ -143,9 +140,7 @@ class TestValidationResultMerge:
             test_cases_and_results=[
                 (
                     test_case,
-                    create_test_result(
-                        TestCaseStatus.Failed, passed_rows=40, failed_rows=10
-                    ),
+                    create_test_result(TestCaseStatus.Failed, passed_rows=40, failed_rows=10),
                 )
             ],
             execution_time_ms=10.0,
@@ -159,9 +154,7 @@ class TestValidationResultMerge:
             test_cases_and_results=[
                 (
                     test_case,
-                    create_test_result(
-                        TestCaseStatus.Failed, passed_rows=30, failed_rows=20
-                    ),
+                    create_test_result(TestCaseStatus.Failed, passed_rows=30, failed_rows=20),
                 )
             ],
             execution_time_ms=12.0,
@@ -231,10 +224,7 @@ class TestValidationResultMerge:
         assert merged.execution_time_ms == 27.0
         assert len(merged.test_cases_and_results) == 2
 
-        fqns_to_results = {
-            tc.fullyQualifiedName.root: result
-            for tc, result in merged.test_cases_and_results
-        }
+        fqns_to_results = {tc.fullyQualifiedName.root: result for tc, result in merged.test_cases_and_results}
 
         assert fqns_to_results["test.case.one"].passedRows == 75
         assert fqns_to_results["test.case.two"].passedRows == 65
@@ -248,9 +238,7 @@ class TestValidationResultMerge:
             total_tests=1,
             passed_tests=1,
             failed_tests=0,
-            test_cases_and_results=[
-                (test_case, create_test_result(TestCaseStatus.Success, passed_rows=50))
-            ],
+            test_cases_and_results=[(test_case, create_test_result(TestCaseStatus.Success, passed_rows=50))],
             execution_time_ms=10.0,
         )
 
@@ -262,9 +250,7 @@ class TestValidationResultMerge:
             test_cases_and_results=[
                 (
                     test_case,
-                    create_test_result(
-                        TestCaseStatus.Failed, passed_rows=20, failed_rows=10
-                    ),
+                    create_test_result(TestCaseStatus.Failed, passed_rows=20, failed_rows=10),
                 )
             ],
             execution_time_ms=10.0,
@@ -290,9 +276,7 @@ class TestValidationResultMerge:
             test_cases_and_results=[
                 (
                     test_case,
-                    create_test_result(
-                        TestCaseStatus.Failed, passed_rows=40, failed_rows=10
-                    ),
+                    create_test_result(TestCaseStatus.Failed, passed_rows=40, failed_rows=10),
                 )
             ],
             execution_time_ms=10.0,
@@ -303,9 +287,7 @@ class TestValidationResultMerge:
             total_tests=1,
             passed_tests=0,
             failed_tests=1,
-            test_cases_and_results=[
-                (test_case, create_test_result(TestCaseStatus.Aborted))
-            ],
+            test_cases_and_results=[(test_case, create_test_result(TestCaseStatus.Aborted))],
             execution_time_ms=5.0,
         )
 
@@ -342,9 +324,7 @@ class TestValidationResultMerge:
             total_tests=1,
             passed_tests=1,
             failed_tests=0,
-            test_cases_and_results=[
-                (test_case, create_test_result(TestCaseStatus.Success))
-            ],
+            test_cases_and_results=[(test_case, create_test_result(TestCaseStatus.Success))],
             execution_time_ms=10.0,
         )
 
@@ -360,9 +340,7 @@ class TestValidationResultMerge:
             total_tests=1,
             passed_tests=1,
             failed_tests=0,
-            test_cases_and_results=[
-                (test_case, create_test_result(TestCaseStatus.Success, passed_rows=50))
-            ],
+            test_cases_and_results=[(test_case, create_test_result(TestCaseStatus.Success, passed_rows=50))],
             execution_time_ms=10.0,
         )
 
@@ -371,9 +349,7 @@ class TestValidationResultMerge:
             total_tests=1,
             passed_tests=1,
             failed_tests=0,
-            test_cases_and_results=[
-                (test_case, create_test_result(TestCaseStatus.Success, passed_rows=30))
-            ],
+            test_cases_and_results=[(test_case, create_test_result(TestCaseStatus.Success, passed_rows=30))],
             execution_time_ms=8.0,
         )
 

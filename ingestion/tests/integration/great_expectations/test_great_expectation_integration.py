@@ -43,9 +43,7 @@ class Base(DeclarativeBase):
     pass
 
 
-TEST_CASE_FQN = (
-    "test_sqlite.default.main.users.name.expect_column_values_to_not_be_null"
-)
+TEST_CASE_FQN = "test_sqlite.default.main.users.name.expect_column_values_to_not_be_null"
 SQLLITE_SHARD = "file:cachedb?mode=memory&cache=shared&check_same_thread=False"
 LOGGER = logging.getLogger(__name__)
 
@@ -107,9 +105,7 @@ class TestGreatExpectationIntegration(TestCase):
         hostPort=WORKFLOW_CONFIG["openMetadataServerConfig"]["hostPort"],
         authProvider=WORKFLOW_CONFIG["openMetadataServerConfig"]["authProvider"],
         securityConfig=OpenMetadataJWTClientConfig(
-            jwtToken=WORKFLOW_CONFIG["openMetadataServerConfig"]["securityConfig"][
-                "jwtToken"
-            ]
+            jwtToken=WORKFLOW_CONFIG["openMetadataServerConfig"]["securityConfig"]["jwtToken"]
         ),
     )  # type: ignore
     metadata = OpenMetadata(server_config)
@@ -211,9 +207,7 @@ class TestGreatExpectationIntegration(TestCase):
         Clean up
         """
 
-        service_entity = cls.metadata.get_by_name(
-            entity=DatabaseService, fqn="test_sqlite"
-        )
+        service_entity = cls.metadata.get_by_name(entity=DatabaseService, fqn="test_sqlite")
         if service_entity:
             _safe_delete(
                 cls.metadata,
@@ -323,9 +317,7 @@ class TestGreatExpectationIntegration(TestCase):
                         "data_connector_name": "default_runtime_data_connector_name",
                         "data_asset_name": "orders_query_asset",
                         "runtime_parameters": {"query": orders_query},
-                        "batch_identifiers": {
-                            "default_identifier_name": "orders_check"
-                        },
+                        "batch_identifiers": {"default_identifier_name": "orders_check"},
                     },
                     "expectation_suite_name": "orders_query_suite",
                 },
@@ -362,9 +354,7 @@ class TestGreatExpectationIntegration(TestCase):
             entity=TestSuite, entity_id=users_table.testSuite.id, fields=["tests"]
         )
         assert len(users_test_suite.tests) >= 1
-        assert any(
-            "name" in str(test.fullyQualifiedName) for test in users_test_suite.tests
-        )
+        assert any("name" in str(test.fullyQualifiedName) for test in users_test_suite.tests)
 
         # Verify orders table received its test results
         orders_table = self.metadata.get_by_name(
@@ -377,12 +367,8 @@ class TestGreatExpectationIntegration(TestCase):
             entity=TestSuite, entity_id=orders_table.testSuite.id, fields=["tests"]
         )
         assert len(orders_test_suite.tests) >= 1
-        assert any(
-            "amount" in str(test.fullyQualifiedName) for test in orders_test_suite.tests
-        )
+        assert any("amount" in str(test.fullyQualifiedName) for test in orders_test_suite.tests)
 
     def install_gx_018x(self):
         """Install GX 0.18.x at runtime as we support 0.18.x and 1.x.x and setup will install 1 default version"""
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "great-expectations~=0.18.0"]
-        )
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "great-expectations~=0.18.0"])

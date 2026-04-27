@@ -218,9 +218,7 @@ class ProfilerInterface(Root, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _compute_custom_metrics(
-        self, metrics: List[CustomMetric], runner, *args, **kwargs
-    ):
+    def _compute_custom_metrics(self, metrics: List[CustomMetric], runner, *args, **kwargs):
         """Compute custom metrics"""
         raise NotImplementedError
 
@@ -230,16 +228,12 @@ class ProfilerInterface(Root, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_composed_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict
-    ) -> dict:
+    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: Dict) -> dict:
         """run profiler metrics"""
         raise NotImplementedError
 
     @abstractmethod
-    def get_hybrid_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict
-    ) -> dict:
+    def get_hybrid_metrics(self, column: Column, metric: Metrics, column_results: Dict) -> dict:
         """run profiler metrics"""
         raise NotImplementedError
 

@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """BigTable connection"""
+
 from typing import List, Optional
 
 from google.cloud.bigtable import Client
@@ -80,9 +81,7 @@ class Tester:
 
     def list_tables(self):
         if not self.instance:
-            raise SourceConnectionException(
-                f"No instances found in project {self.project_id}"
-            )
+            raise SourceConnectionException(f"No instances found in project {self.project_id}")
         tables = list(self.instance.list_tables())
         self.table = tables[0]
 

@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """Connections integration tests"""
+
 import uuid
 
 import pytest
@@ -19,7 +20,5 @@ from ..containers import MySqlContainerConfigs, get_mysql_container
 
 @pytest.fixture(scope="package")
 def mysql_container():
-    with get_mysql_container(
-        MySqlContainerConfigs(container_name=str(uuid.uuid4()))
-    ) as container:
+    with get_mysql_container(MySqlContainerConfigs(container_name=str(uuid.uuid4()))) as container:
         yield container

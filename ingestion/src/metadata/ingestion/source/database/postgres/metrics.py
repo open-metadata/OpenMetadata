@@ -31,9 +31,7 @@ def stddev(element, compiler, **kw):
 
 @compiles(MedianFn, Dialects.Postgres)
 def median(elements, compiler, **kwargs):  # pylint: disable=unused-argument
-    col, _, percentile = [
-        compiler.process(element, **kwargs) for element in elements.clauses
-    ]
+    col, _, percentile = [compiler.process(element, **kwargs) for element in elements.clauses]
     if isinstance(list(elements.clauses)[0], PostgresMoney):
         return "percentile_cont(%.2f) WITHIN GROUP (ORDER BY %s ASC)" % (
             percentile,

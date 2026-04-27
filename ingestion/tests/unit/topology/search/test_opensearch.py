@@ -116,9 +116,7 @@ MOCK_DETAILS = {
                         "description": {"type": "text"},
                         "displayName": {
                             "type": "text",
-                            "fields": {
-                                "keyword": {"type": "keyword", "ignore_above": 256}
-                            },
+                            "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
                         },
                         "fullyQualifiedName": {"type": "text"},
                         "href": {"type": "text"},
@@ -126,9 +124,7 @@ MOCK_DETAILS = {
                         "name": {
                             "type": "keyword",
                             "normalizer": "lowercase_normalizer",
-                            "fields": {
-                                "keyword": {"type": "keyword", "ignore_above": 256}
-                            },
+                            "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
                         },
                         "type": {"type": "keyword"},
                     }
@@ -160,32 +156,18 @@ EXPECTED_RESULT = CreateSearchIndexRequest(
             name="owner",
             dataType=DataType.OBJECT,
             children=[
-                SearchIndexField(
-                    name="deleted", dataType=DataType.TEXT, dataTypeDisplay="text"
-                ),
-                SearchIndexField(
-                    name="description", dataType=DataType.TEXT, dataTypeDisplay="text"
-                ),
-                SearchIndexField(
-                    name="displayName", dataType=DataType.TEXT, dataTypeDisplay="text"
-                ),
+                SearchIndexField(name="deleted", dataType=DataType.TEXT, dataTypeDisplay="text"),
+                SearchIndexField(name="description", dataType=DataType.TEXT, dataTypeDisplay="text"),
+                SearchIndexField(name="displayName", dataType=DataType.TEXT, dataTypeDisplay="text"),
                 SearchIndexField(
                     name="fullyQualifiedName",
                     dataType=DataType.TEXT,
                     dataTypeDisplay="text",
                 ),
-                SearchIndexField(
-                    name="href", dataType=DataType.TEXT, dataTypeDisplay="text"
-                ),
-                SearchIndexField(
-                    name="id", dataType=DataType.TEXT, dataTypeDisplay="text"
-                ),
-                SearchIndexField(
-                    name="name", dataType=DataType.KEYWORD, dataTypeDisplay="keyword"
-                ),
-                SearchIndexField(
-                    name="type", dataType=DataType.KEYWORD, dataTypeDisplay="keyword"
-                ),
+                SearchIndexField(name="href", dataType=DataType.TEXT, dataTypeDisplay="text"),
+                SearchIndexField(name="id", dataType=DataType.TEXT, dataTypeDisplay="text"),
+                SearchIndexField(name="name", dataType=DataType.KEYWORD, dataTypeDisplay="keyword"),
+                SearchIndexField(name="type", dataType=DataType.KEYWORD, dataTypeDisplay="keyword"),
             ],
         ),
     ],
@@ -193,9 +175,7 @@ EXPECTED_RESULT = CreateSearchIndexRequest(
 
 
 class OpenSearchUnitTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.search.search_service.SearchServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.search.search_service.SearchServiceSource.test_connection")
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         # Set the test_connection to return False so that test_connection doesn't interfere.
@@ -206,9 +186,7 @@ class OpenSearchUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
         # Manually set the search_service context to our mock search service name.
-        self.os_source.context.get().__dict__[
-            "search_service"
-        ] = MOCK_SEARCH_SERVICE.name.root
+        self.os_source.context.get().__dict__["search_service"] = MOCK_SEARCH_SERVICE.name.root
 
     def test_partition_parse_columns(self):
         actual_index = next(self.os_source.yield_search_index(MOCK_DETAILS)).right

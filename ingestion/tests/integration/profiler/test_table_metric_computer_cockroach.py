@@ -49,16 +49,12 @@ class NonExistentModel(Base):
 def crdb_engine():
     container = CockroachDBContainer(image="cockroachdb/cockroach:v23.1.0")
     with container as container:
-        container.exec(
-            "cockroach sql --insecure -e "
-            "'GRANT SELECT ON TABLE system.table_statistics TO cockroach'"
-        )
+        container.exec("cockroach sql --insecure -e 'GRANT SELECT ON TABLE system.table_statistics TO cockroach'")
         engine = create_engine(container.get_connection_url())
         with engine.connect() as conn:
             conn.execute(
                 text(
-                    "CREATE TABLE IF NOT EXISTS public.metric_computer_test "
-                    "(id INTEGER PRIMARY KEY, name VARCHAR(256))"
+                    "CREATE TABLE IF NOT EXISTS public.metric_computer_test (id INTEGER PRIMARY KEY, name VARCHAR(256))"
                 )
             )
             conn.execute(

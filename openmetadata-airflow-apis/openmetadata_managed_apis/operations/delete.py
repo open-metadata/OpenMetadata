@@ -11,6 +11,7 @@
 """
 Module containing the logic to delete a DAG
 """
+
 import os
 from pathlib import Path
 
@@ -49,9 +50,7 @@ def delete_dag_id(dag_id: str) -> Response:
         os.remove(config_file.absolute())
 
     with settings.Session() as session:
-        deleted_dags = (
-            session.query(DagModel).filter(DagModel.dag_id == dag_id).delete()
-        )
+        deleted_dags = session.query(DagModel).filter(DagModel.dag_id == dag_id).delete()
         session.query(DagRun).filter(DagRun.dag_id == dag_id).delete()
         session.commit()
 
