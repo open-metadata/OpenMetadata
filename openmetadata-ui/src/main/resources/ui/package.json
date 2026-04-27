@@ -287,7 +287,6 @@
     "cookie": "0.7.0",
     "cross-spawn": "7.0.5",
     "serialize-javascript": "7.0.5",
-    "dompurify": "3.3.2",
     "immutable": "4.3.8",
     "@tootallnate/once": "3.0.1",
     "on-headers": "1.1.0",
@@ -296,6 +295,7 @@
     "js-yaml": "4.1.1",
     "lodash": "4.18.1",
     "lodash-es": "4.18.1",
-    "markdown-it": ">=14.1.1"
+    "markdown-it": ">=14.1.1",
+    "uuid": "^14.0.0"
   }
 }
