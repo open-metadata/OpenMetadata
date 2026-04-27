@@ -65,8 +65,12 @@ public class ElasticSearchVectorService implements VectorIndexService {
   }
 
   private static Rest5Client extractRestClient(ElasticsearchClient client) {
-    Rest5ClientTransport transport = (Rest5ClientTransport) client._transport();
-    return transport.restClient();
+    if (!(client._transport() instanceof Rest5ClientTransport rest5)) {
+      throw new IllegalArgumentException(
+          "ElasticSearchVectorService requires Rest5ClientTransport, got: "
+              + client._transport().getClass().getName());
+    }
+    return rest5.restClient();
   }
 
   public static synchronized void init(
