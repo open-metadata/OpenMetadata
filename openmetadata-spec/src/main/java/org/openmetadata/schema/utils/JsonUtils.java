@@ -14,14 +14,18 @@
 package org.openmetadata.schema.utils;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -50,10 +54,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -80,6 +87,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.exception.JsonParsingException;
+import org.openmetadata.schema.type.TagLabel;
 
 @Slf4j
 public final class JsonUtils {
@@ -122,6 +130,11 @@ public final class JsonUtils {
     OBJECT_MAPPER.registerModule(new JSR353Module());
     // Java 21 optimized introspection/accessors for faster convertValue/read/write paths.
     OBJECT_MAPPER.registerModule(new BlackbirdModule());
+
+    // Accept TagLabel.appliedAt with or without fractional seconds. Python clients
+    // serialize datetimes with microsecond=0 as "…ssZ" (no fractional), which the
+    // strict global SimpleDateFormat("…SSSSSS'Z'") rejects.
+    OBJECT_MAPPER.addMixIn(TagLabel.class, TagLabelDateMixin.class);
 
     // Lenient ObjectMapper to ignore unknown properties
     OBJECT_MAPPER_LENIENT = OBJECT_MAPPER.copy();
@@ -886,5 +899,34 @@ public final class JsonUtils {
       // Ignored exception
     }
     return retval;
+  }
+
+  /**
+   * Lenient deserializer for ISO-8601 instants. Accepts strings with or without
+   * fractional seconds, e.g. "2026-04-24T10:27:06Z" and "2026-04-24T10:27:06.918000Z".
+   * Java's {@link SimpleDateFormat} configured globally with pattern "…SSSSSS'Z'"
+   * rejects the no-fractional form, which Python clients can emit when a datetime's
+   * microsecond is 0.
+   */
+  public static final class LenientIsoDateDeserializer extends JsonDeserializer<Date> {
+    @Override
+    public Date deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+      String value = p.getValueAsString();
+      if (value == null || value.isEmpty()) {
+        return null;
+      }
+      try {
+        return Date.from(Instant.parse(value));
+      } catch (DateTimeParseException e) {
+        return (Date)
+            ctxt.handleWeirdStringValue(
+                Date.class, value, "Expected ISO-8601 date-time: %s", e.getMessage());
+      }
+    }
+  }
+
+  abstract static class TagLabelDateMixin {
+    @JsonDeserialize(using = LenientIsoDateDeserializer.class)
+    Date appliedAt;
   }
 }

@@ -39,6 +39,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /** This test provides examples of how to use applyPatch */
@@ -271,5 +272,39 @@ class JsonUtilsTest {
             testCase, patchBuilder.build(), org.openmetadata.schema.tests.TestCase.class);
 
     assertEquals("New Display Name", result.getDisplayName());
+  }
+
+  /**
+   * Python clients drop fractional seconds when a datetime's microsecond is 0,
+   * sending "…ssZ" instead of "…ss.SSSSSSZ". The strict global SimpleDateFormat
+   * rejects that form. Verify the lenient mixin on TagLabel.appliedAt accepts both.
+   */
+  @Test
+  void testTagLabelAppliedAtAcceptsBareSecondPrecision() {
+    String withoutFractional = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"2026-04-24T10:27:06Z\"}";
+    String withMicros = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"2026-04-24T10:27:06.918000Z\"}";
+
+    TagLabel bare = JsonUtils.readValue(withoutFractional, TagLabel.class);
+    TagLabel withFrac = JsonUtils.readValue(withMicros, TagLabel.class);
+
+    assertEquals(0L, bare.getAppliedAt().getTime() % 1000, "bare-second form parses to ms=0");
+    assertEquals(918L, withFrac.getAppliedAt().getTime() % 1000, "fractional form preserves ms");
+    assertEquals(
+        918L,
+        withFrac.getAppliedAt().getTime() - bare.getAppliedAt().getTime(),
+        "both forms parse the same second");
+  }
+
+  /** Malformed ISO strings should surface as JsonMappingException with the JSON path. */
+  @Test
+  void testTagLabelAppliedAtMalformedRaisesMappingException() {
+    String malformed = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"not-a-date\"}";
+    com.fasterxml.jackson.databind.JsonMappingException ex =
+        assertThrows(
+            com.fasterxml.jackson.databind.JsonMappingException.class,
+            () -> JsonUtils.readValue(malformed, TagLabel.class));
+    assertTrue(
+        ex.getMessage().contains("appliedAt") || ex.getMessage().contains("ISO-8601"),
+        "error should mention the field or expected format: " + ex.getMessage());
   }
 }
