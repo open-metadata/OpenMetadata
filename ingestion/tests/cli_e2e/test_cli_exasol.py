@@ -224,14 +224,3 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @staticmethod
     def expected_filtered_mix() -> int:
         return 2
-
-    @pytest.mark.skip(VANILLA_INGESTION_SKIP_REASON)
-    @pytest.mark.order(1)
-    def test_vanilla_ingestion(self) -> None:
-        """1. Deploy vanilla ingestion"""
-        # build config file for ingest
-        self.build_config_file(E2EType.INGEST)
-        # run ingest with new tables
-        result = self.run_command()
-        sink_status, source_status = self.retrieve_statuses(result)
-        self.assert_for_vanilla_ingestion(source_status, sink_status)

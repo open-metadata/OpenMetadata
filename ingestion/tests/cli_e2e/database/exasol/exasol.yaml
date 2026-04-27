@@ -16,7 +16,7 @@ source:
       markDeletedTables: true
       includeTables: true
       includeViews: true
-      includeDDL: false
+      includeDDL: true
 sink:
   type: metadata-rest
   config: {}

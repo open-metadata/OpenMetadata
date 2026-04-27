@@ -20,7 +20,8 @@ EXASOL_SQL_STATEMENT = textwrap.dedent(
     """
 )
 
-EXASOL_TEST_GET_QUERIES = """
+EXASOL_TEST_GET_QUERIES = textwrap.dedent(
+    """
     SELECT
       s.sql_text,
       s.command_name,
@@ -33,3 +34,15 @@ EXASOL_TEST_GET_QUERIES = """
     ON s.SESSION_ID = se.SESSION_ID
     LIMIT 1
     """
+)
+
+EXASOL_GET_TABLE_COMMENTS = textwrap.dedent(
+    """
+    SELECT
+      root_name AS "schema",
+      object_name AS "table_name",
+      object_comment AS "table_comment"
+    FROM EXA_ALL_OBJECTS
+    WHERE object_type IN ('TABLE', 'VIEW')
+"""
+)
