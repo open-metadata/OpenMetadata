@@ -12,6 +12,7 @@
 """
 OpenMetadata Airflow Lineage Backend
 """
+
 import logging
 import traceback
 from typing import TYPE_CHECKING, Dict
@@ -39,7 +40,7 @@ def failure_callback(context: Dict[str, str]) -> None:
         metadata = OpenMetadata(config.metadata_config)
 
         operator: "BaseOperator" = context["task"]
-        dag: "DAG" = context["dag"]
+        dag: "DAG" = context["dag"]  # noqa: F821
 
         operator.log.info("Updating pipeline status on error...")
 
@@ -81,7 +82,7 @@ def success_callback(context: Dict[str, str]) -> None:
         metadata = OpenMetadata(config.metadata_config)
 
         operator: "BaseOperator" = context["task"]
-        dag: "DAG" = context["dag"]
+        dag: "DAG" = context["dag"]  # noqa: F821
 
         operator.log.info("Updating pipeline status on success...")
 

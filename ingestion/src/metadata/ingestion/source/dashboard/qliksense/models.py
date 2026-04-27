@@ -11,6 +11,7 @@
 """
 QlikSense Models
 """
+
 from typing import List, Optional, Union
 
 from pydantic import BaseModel
@@ -95,9 +96,7 @@ class QlikDataModelValue(BaseModel):
 
 
 class QlikDataModelLayout(BaseModel):
-    qLayout: Optional[
-        Union[QlikTablesList, List[QlikDataModelValue]]
-    ] = QlikTablesList()
+    qLayout: Optional[Union[QlikTablesList, List[QlikDataModelValue]]] = QlikTablesList()
 
 
 class QlikDataModelResult(BaseModel):

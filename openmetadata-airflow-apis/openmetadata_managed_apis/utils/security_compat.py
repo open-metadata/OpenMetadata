@@ -11,6 +11,7 @@
 """
 Compatibility layer for Airflow security decorators across versions
 """
+
 from functools import wraps
 from typing import Callable
 

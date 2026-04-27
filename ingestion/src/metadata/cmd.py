@@ -11,6 +11,7 @@
 """
 This module defines the CLI commands for OpenMetadata
 """
+
 import argparse
 import logging
 import sys
@@ -99,9 +100,7 @@ def webhook_args(parser: argparse.ArgumentParser):
     """
     Additional Parser Arguments for Webhook
     """
-    parser.add_argument(
-        "-H", "--host", help="Webserver Host", type=str, default="0.0.0.0"
-    )
+    parser.add_argument("-H", "--host", help="Webserver Host", type=str, default="0.0.0.0")
     parser.add_argument("-p", "--port", help="Webserver Port", type=int, default=8000)
 
 
@@ -109,9 +108,7 @@ def add_metadata_args(parser: argparse.ArgumentParser):
     """
     Additional Parser Arguments for Metadata
     """
-    parser.add_argument(
-        "-v", "--version", action="version", version=get_metadata_version()
-    )
+    parser.add_argument("-v", "--version", action="version", version=get_metadata_version())
 
     parser.add_argument(
         "-l",
@@ -128,17 +125,9 @@ def get_parser(args: Optional[List[str]] = None):
     parser = argparse.ArgumentParser(prog="metadata", description="Ingestion Framework")
     sub_parser = parser.add_subparsers(dest="command")
 
-    create_common_config_parser_args(
-        sub_parser.add_parser(MetadataCommands.INGEST.value, help="Ingestion Workflow")
-    )
-    create_dbt_parser_args(
-        sub_parser.add_parser(
-            MetadataCommands.INGEST_DBT.value, help="DBT Artifacts Ingestion"
-        )
-    )
-    create_common_config_parser_args(
-        sub_parser.add_parser(MetadataCommands.LINEAGE.value, help="Lineage Workflow")
-    )
+    create_common_config_parser_args(sub_parser.add_parser(MetadataCommands.INGEST.value, help="Ingestion Workflow"))
+    create_dbt_parser_args(sub_parser.add_parser(MetadataCommands.INGEST_DBT.value, help="DBT Artifacts Ingestion"))
+    create_common_config_parser_args(sub_parser.add_parser(MetadataCommands.LINEAGE.value, help="Lineage Workflow"))
     create_common_config_parser_args(
         sub_parser.add_parser(
             MetadataCommands.USAGE.value,
@@ -152,9 +141,7 @@ def get_parser(args: Optional[List[str]] = None):
         )
     )
     create_common_config_parser_args(
-        sub_parser.add_parser(
-            MetadataCommands.TEST.value, help="Workflow for running test suites"
-        )
+        sub_parser.add_parser(MetadataCommands.TEST.value, help="Workflow for running test suites")
     )
     create_common_config_parser_args(
         sub_parser.add_parser(
@@ -184,12 +171,8 @@ def get_parser(args: Optional[List[str]] = None):
         MetadataCommands.SCAFFOLD_CONNECTOR.value,
         help="Scaffold a new connector (interactive or with flags)",
     )
-    scaffold_parser.add_argument(
-        "--name", help="Connector name in snake_case (e.g., my_db)"
-    )
-    scaffold_parser.add_argument(
-        "--service-type", choices=SERVICE_TYPES, help="Service type"
-    )
+    scaffold_parser.add_argument("--name", help="Connector name in snake_case (e.g., my_db)")
+    scaffold_parser.add_argument("--service-type", choices=SERVICE_TYPES, help="Service type")
     scaffold_parser.add_argument(
         "--connection-type",
         choices=CONNECTION_TYPES,
@@ -213,12 +196,8 @@ def get_parser(args: Optional[List[str]] = None):
     )
     scaffold_parser.add_argument("--display-name", help="Display name")
     scaffold_parser.add_argument("--description", help="Short description")
-    scaffold_parser.add_argument(
-        "--docs-url", help="API/SDK documentation URL (included in AI context)"
-    )
-    scaffold_parser.add_argument(
-        "--sdk-package", help="Python SDK package name (included in AI context)"
-    )
+    scaffold_parser.add_argument("--docs-url", help="API/SDK documentation URL (included in AI context)")
+    scaffold_parser.add_argument("--sdk-package", help="Python SDK package name (included in AI context)")
     scaffold_parser.add_argument(
         "--api-endpoints",
         help="Key API endpoints (included in AI context)",
@@ -272,9 +251,7 @@ def metadata(args: Optional[List[str]] = None):
         if has_name and has_type:
             run_scaffold_cli(argparse.Namespace(**contains_args))
         elif has_name or has_type:
-            logger.error(
-                "Both --name and --service-type are required for non-interactive mode."
-            )
+            logger.error("Both --name and --service-type are required for non-interactive mode.")
             sys.exit(1)
         else:
             run_scaffold_interactive()
@@ -299,10 +276,6 @@ def metadata(args: Optional[List[str]] = None):
                 self.send_header("Content-type", "application/json")
                 self.end_headers()
 
-        logger.info(
-            f"Starting server at {contains_args.get('host')}:{contains_args.get('port')}"
-        )
-        with HTTPServer(
-            (contains_args["host"], contains_args["port"]), WebhookHandler
-        ) as server:
+        logger.info(f"Starting server at {contains_args.get('host')}:{contains_args.get('port')}")
+        with HTTPServer((contains_args["host"], contains_args["port"]), WebhookHandler) as server:
             server.serve_forever()

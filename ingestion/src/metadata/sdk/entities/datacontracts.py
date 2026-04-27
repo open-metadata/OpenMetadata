@@ -266,33 +266,23 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         )
 
     @classmethod
-    def get_by_entity(
-        cls, entity_id: UuidLike, entity_type: str
-    ) -> Optional[DataContract]:
+    def get_by_entity(cls, entity_id: UuidLike, entity_type: str) -> Optional[DataContract]:
         """
         Get the effective data contract for an entity
         """
         client = cls._get_client()
-        return client.get_data_contract_by_entity_id(
-            ensure_uuid(entity_id), entity_type
-        )
+        return client.get_data_contract_by_entity_id(ensure_uuid(entity_id), entity_type)
 
     @classmethod
-    def validate_by_entity(
-        cls, entity_id: UuidLike, entity_type: str
-    ) -> Optional[DataContractResult]:
+    def validate_by_entity(cls, entity_id: UuidLike, entity_type: str) -> Optional[DataContractResult]:
         """
         Validate a data contract for an entity
         """
         client = cls._get_client()
-        return client.validate_data_contract_by_entity_id(
-            ensure_uuid(entity_id), entity_type
-        )
+        return client.validate_data_contract_by_entity_id(ensure_uuid(entity_id), entity_type)
 
     @classmethod
-    def validate_request(
-        cls, request: CreateDataContractRequest
-    ) -> Optional[DataContractResult]:
+    def validate_request(cls, request: CreateDataContractRequest) -> Optional[DataContractResult]:
         """
         Validate a CreateDataContract request without creating
         """
@@ -340,6 +330,4 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         Delete all data contract results before a specific timestamp
         """
         client = cls._get_client()
-        return client.delete_data_contract_results_before(
-            ensure_uuid(contract_id), timestamp
-        )
+        return client.delete_data_contract_results_before(ensure_uuid(contract_id), timestamp)

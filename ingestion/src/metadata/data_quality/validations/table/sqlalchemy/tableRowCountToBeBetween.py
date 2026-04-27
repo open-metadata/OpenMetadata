@@ -27,9 +27,7 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class TableRowCountToBeBetweenValidator(
-    BaseTableRowCountToBeBetweenValidator, SQAValidatorMixin
-):
+class TableRowCountToBeBetweenValidator(BaseTableRowCountToBeBetweenValidator, SQAValidatorMixin):
     """Validator for table row count to be between test case"""
 
     def _run_results(self, metric: Metrics) -> Optional[int]:

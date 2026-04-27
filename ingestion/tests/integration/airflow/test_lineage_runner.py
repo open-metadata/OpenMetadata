@@ -11,6 +11,7 @@
 """
 Test lineage parser to get inlets and outlets information
 """
+
 from datetime import datetime
 from typing import List
 from unittest import TestCase
@@ -127,9 +128,7 @@ class TestAirflowLineageRuner(TestCase):
         Clean up
         """
 
-        db_service = cls.metadata.get_by_name(
-            entity=DatabaseService, fqn=DB_SERVICE_NAME
-        )
+        db_service = cls.metadata.get_by_name(entity=DatabaseService, fqn=DB_SERVICE_NAME)
         if db_service:
             service_id = str(db_service.id.root)
             cls.metadata.delete(
@@ -141,9 +140,7 @@ class TestAirflowLineageRuner(TestCase):
 
         # Service ID created from the Airflow Lineage Operator in the
         # example DAG
-        pipeline_service = cls.metadata.get_by_name(
-            entity=PipelineService, fqn=PIPELINE_SERVICE_NAME
-        )
+        pipeline_service = cls.metadata.get_by_name(entity=PipelineService, fqn=PIPELINE_SERVICE_NAME)
         if pipeline_service:
             pipeline_service_id = str(pipeline_service.id.root)
             cls.metadata.delete(
@@ -182,9 +179,7 @@ class TestAirflowLineageRuner(TestCase):
             )
 
         # skip the statuses since they require getting data from airflow's db
-        with patch.object(
-            AirflowLineageRunner, "add_all_pipeline_status", return_value=None
-        ):
+        with patch.object(AirflowLineageRunner, "add_all_pipeline_status", return_value=None):
             runner = AirflowLineageRunner(
                 metadata=self.metadata,
                 service_name=PIPELINE_SERVICE_NAME,
@@ -205,9 +200,7 @@ class TestAirflowLineageRuner(TestCase):
                 down_depth=1,
             )
 
-            upstream_ids = [
-                edge["fromEntity"] for edge in lineage_data["upstreamEdges"]
-            ]
+            upstream_ids = [edge["fromEntity"] for edge in lineage_data["upstreamEdges"]]
             self.assertIn(str(self.table_inlet1.id.root), upstream_ids)
             self.assertIn(str(self.table_inlet2.id.root), upstream_ids)
 

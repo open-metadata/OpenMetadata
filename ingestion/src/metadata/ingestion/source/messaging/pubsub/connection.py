@@ -11,6 +11,7 @@
 """
 Source connection handler for Google Cloud Pub/Sub
 """
+
 import os
 from dataclasses import dataclass
 from typing import Optional
@@ -113,9 +114,7 @@ def get_connection(connection: PubSubConnection) -> PubSubClient:
 
         project_id = _get_project_id(connection)
         if not project_id:
-            raise ValueError(
-                "Project ID is required. Provide it via 'projectId' config or in GCP credentials."
-            )
+            raise ValueError("Project ID is required. Provide it via 'projectId' config or in GCP credentials.")
 
         return PubSubClient(
             publisher=publisher,
@@ -143,9 +142,7 @@ def test_connection(
     def list_topics_test():
         project_path = f"projects/{client.project_id}"
         try:
-            topics_iter = client.publisher.list_topics(
-                request={"project": project_path}
-            )
+            topics_iter = client.publisher.list_topics(request={"project": project_path})
             next(iter(topics_iter), None)
         except GoogleAPIError as err:
             raise err
@@ -154,9 +151,7 @@ def test_connection(
         if client.schema_client:
             project_path = f"projects/{client.project_id}"
             try:
-                schemas_iter = client.schema_client.list_schemas(
-                    request={"parent": project_path}
-                )
+                schemas_iter = client.schema_client.list_schemas(request={"parent": project_path})
                 next(iter(schemas_iter), None)
             except GoogleAPIError as err:
                 raise err

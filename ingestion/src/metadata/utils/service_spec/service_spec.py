@@ -29,9 +29,7 @@ logger = utils_logger()
 
 class SourceLoader(ABC):
     @abstractmethod
-    def __call__(
-        self, service_type: ServiceType, source_type: str, from_: str
-    ) -> Type[Any]:
+    def __call__(self, service_type: ServiceType, source_type: str, from_: str) -> Type[Any]:
         """Load the service spec for a given service type and source type."""
 
 
@@ -177,14 +175,10 @@ def import_source_class(
     )
 
 
-def import_profiler_class(
-    service_type: ServiceType, source_type: str
-) -> Type[ProfilerInterface]:
+def import_profiler_class(service_type: ServiceType, source_type: str) -> Type[ProfilerInterface]:
     class_path = BaseSpec.get_for_source(service_type, source_type).profiler_class
     if not class_path:
-        raise ValueError(
-            f"Profiler class not found for service type {service_type} and source type {source_type}"
-        )
+        raise ValueError(f"Profiler class not found for service type {service_type} and source type {source_type}")
     return cast(Type[ProfilerInterface], import_from_module(class_path))
 
 
@@ -197,15 +191,11 @@ def import_test_suite_class(
         class_path = BaseSpec.get_for_source(service_type, source_type).test_suite_class
     except DynamicImportException:
         if source_config_type:
-            class_path = BaseSpec.get_for_source(
-                service_type, source_config_type.lower()
-            ).test_suite_class
+            class_path = BaseSpec.get_for_source(service_type, source_config_type.lower()).test_suite_class
         else:
             raise
     if not class_path:
-        raise ValueError(
-            f"Test suite class not found for service type {service_type} and source type {source_type}"
-        )
+        raise ValueError(f"Test suite class not found for service type {service_type} and source type {source_type}")
     return cast(Type[TestSuiteInterface], import_from_module(class_path))
 
 
@@ -218,15 +208,11 @@ def import_sampler_class(
         class_path = BaseSpec.get_for_source(service_type, source_type).sampler_class
     except DynamicImportException:
         if source_config_type:
-            class_path = BaseSpec.get_for_source(
-                service_type, source_config_type.lower()
-            ).sampler_class
+            class_path = BaseSpec.get_for_source(service_type, source_config_type.lower()).sampler_class
         else:
             raise
     if not class_path:
-        raise ValueError(
-            f"Sampler class not found for service type {service_type} and source type {source_type}"
-        )
+        raise ValueError(f"Sampler class not found for service type {service_type} and source type {source_type}")
     return cast(Type[SamplerInterface], import_from_module(class_path))
 
 
@@ -239,7 +225,5 @@ def import_connection_class(
     """
     class_path = BaseSpec.get_for_source(service_type, source_type).connection_class
     if not class_path:
-        raise ValueError(
-            f"Connection class not found for service type {service_type} and source type {source_type}"
-        )
+        raise ValueError(f"Connection class not found for service type {service_type} and source type {source_type}")
     return cast(Type[BaseConnection], import_from_module(class_path))

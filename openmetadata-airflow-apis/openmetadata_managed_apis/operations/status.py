@@ -11,6 +11,7 @@
 """
 Module containing the logic to check a DAG status
 """
+
 import json
 
 from airflow import settings
@@ -47,9 +48,6 @@ def status(dag_id: str, only_queued: str = None) -> Response:
 
         runs = query.limit(10).all()
 
-        formatted = [
-            json.loads(ResponseFormat.format_dag_run_state(dag_run).json())
-            for dag_run in runs
-        ]
+        formatted = [json.loads(ResponseFormat.format_dag_run_state(dag_run).json()) for dag_run in runs]
 
         return ApiResponse.success(formatted)

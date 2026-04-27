@@ -13,6 +13,7 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
+
 from typing import List, Type, cast
 
 from pyhive.sqlalchemy_hive import HiveCompiler
@@ -53,14 +54,10 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         **kwargs,
     ) -> List[SystemProfile]:
         if self.table_entity.tableType in (TableType.View, TableType.MaterializedView):
-            logger.debug(
-                f"Skipping {metrics.name()} metric for view {runner.table_name}"
-            )
+            logger.debug(f"Skipping {metrics.name()} metric for view {runner.table_name}")
             return []
         logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
-        self.system_metrics_class = cast(
-            Type[DatabricksSystemMetricsComputer], self.system_metrics_class
-        )
+        self.system_metrics_class = cast(Type[DatabricksSystemMetricsComputer], self.system_metrics_class)
         instance = self.system_metrics_class(
             session=self.session,
             runner=runner,
@@ -130,9 +127,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
                 )
                 columns_list.append(sqa_col)
             else:
-                cols = self._get_struct_columns(
-                    col.children, f"{parent}.{col.name.root}"
-                )
+                cols = self._get_struct_columns(col.children, f"{parent}.{col.name.root}")
                 columns_list.extend(cols)
         return columns_list
 
@@ -141,9 +136,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         columns = []
         for idx, column_obj in enumerate(self.table_entity.columns):
             if column_obj.dataType == DataType.STRUCT:
-                columns.extend(
-                    self._get_struct_columns(column_obj.children, column_obj.name.root)
-                )
+                columns.extend(self._get_struct_columns(column_obj.children, column_obj.name.root))
             else:
                 col = build_orm_col(idx, column_obj, DatabaseServiceType.Databricks)
                 col._set_parent(  # pylint: disable=protected-access

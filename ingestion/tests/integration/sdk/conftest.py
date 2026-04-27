@@ -2,7 +2,8 @@
 Minimal conftest for SDK integration tests.
 Override the parent conftest to avoid testcontainers dependency.
 """
-import uuid
+
+import uuid  # noqa: I001
 
 import pytest
 from sqlalchemy import Column as SQAColumn
@@ -11,7 +12,7 @@ from sqlalchemy import Table as SQATable
 from sqlalchemy import create_engine, text
 
 from _openmetadata_testutils.ometa import int_admin_ometa
-from _openmetadata_testutils.postgres.conftest import postgres_container
+from _openmetadata_testutils.postgres.conftest import postgres_container  # noqa: F401
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -40,7 +41,7 @@ def metadata():
 
 
 @pytest.fixture(scope="module")
-def create_postgres_service(postgres_container):
+def create_postgres_service(postgres_container):  # noqa: F811
     return CreateDatabaseServiceRequest(
         name=f"dq_test_service_{uuid.uuid4().hex[:8]}",
         serviceType=DatabaseServiceType.Postgres,
@@ -48,8 +49,7 @@ def create_postgres_service(postgres_container):
             config=PostgresConnection(
                 username=postgres_container.username,
                 authType=BasicAuth(password=postgres_container.password),
-                hostPort="localhost:"
-                + str(postgres_container.get_exposed_port(postgres_container.port)),
+                hostPort="localhost:" + str(postgres_container.get_exposed_port(postgres_container.port)),
                 database="dq_test_db",
             )
         ),
@@ -57,23 +57,17 @@ def create_postgres_service(postgres_container):
 
 
 @pytest.fixture(scope="module")
-def db_service(metadata, create_postgres_service, postgres_container):
-    engine = create_engine(
-        postgres_container.get_connection_url(), isolation_level="AUTOCOMMIT"
-    )
+def db_service(metadata, create_postgres_service, postgres_container):  # noqa: F811
+    engine = create_engine(postgres_container.get_connection_url(), isolation_level="AUTOCOMMIT")
     with engine.connect() as conn:
         conn.execute(text("CREATE DATABASE dq_test_db"))
         conn.commit()
 
     service_entity = metadata.create_or_update(data=create_postgres_service)
-    service_entity.connection.config.authType.password = (
-        create_postgres_service.connection.config.authType.password
-    )
+    service_entity.connection.config.authType.password = create_postgres_service.connection.config.authType.password
     yield service_entity
 
-    service = metadata.get_by_name(
-        DatabaseService, service_entity.fullyQualifiedName.root
-    )
+    service = metadata.get_by_name(DatabaseService, service_entity.fullyQualifiedName.root)
     if service:
         metadata.delete(DatabaseService, service.id, recursive=True, hard_delete=True)
 
@@ -101,10 +95,8 @@ def schema(metadata, database):
 
 
 @pytest.fixture(scope="module")
-def test_data(db_service, postgres_container):
-    engine = create_engine(
-        postgres_container.get_connection_url().replace("/dvdrental", "/dq_test_db")
-    )
+def test_data(db_service, postgres_container):  # noqa: F811
+    engine = create_engine(postgres_container.get_connection_url().replace("/dvdrental", "/dq_test_db"))
 
     sql_metadata = MetaData()
 
@@ -234,9 +226,7 @@ def patch_passwords(db_service, monkeymodule):
             result = getter(*args, **kwargs)
             if isinstance(result, DatabaseService):
                 if result.fullyQualifiedName.root == db_service.fullyQualifiedName.root:
-                    result.connection.config.authType.password = (
-                        db_service.connection.config.authType.password
-                    )
+                    result.connection.config.authType.password = db_service.connection.config.authType.password
             return result
 
         return inner

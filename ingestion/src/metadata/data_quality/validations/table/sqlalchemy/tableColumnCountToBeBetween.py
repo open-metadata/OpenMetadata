@@ -25,17 +25,13 @@ from metadata.data_quality.validations.table.base.tableColumnCountToBeBetween im
 )
 
 
-class TableColumnCountToBeBetweenValidator(
-    BaseTableColumnCountToBeBetweenValidator, SQAValidatorMixin
-):
+class TableColumnCountToBeBetweenValidator(BaseTableColumnCountToBeBetweenValidator, SQAValidatorMixin):
     """Validator for table column count to be between test case"""
 
     def _run_results(self) -> Optional[int]:
         """compute result of the test case"""
         count = len(inspect(self.runner.table).c)
         if not count:
-            raise ValueError(
-                f"Column Count for test case {self.test_case.name} returned None"
-            )
+            raise ValueError(f"Column Count for test case {self.test_case.name} returned None")
 
         return count

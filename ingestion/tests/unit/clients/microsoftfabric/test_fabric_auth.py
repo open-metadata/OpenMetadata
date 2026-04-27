@@ -135,17 +135,13 @@ class FabricAuthenticatorTest(TestCase):
         from metadata.clients.microsoftfabric.fabric_auth import FABRIC_API_SCOPE
 
         # Verify the scope is for Microsoft Fabric API
-        self.assertEqual(
-            FABRIC_API_SCOPE, ["https://api.fabric.microsoft.com/.default"]
-        )
+        self.assertEqual(FABRIC_API_SCOPE, ["https://api.fabric.microsoft.com/.default"])
 
     def test_power_bi_scope(self):
         """Test that Power BI scope is defined"""
         from metadata.clients.microsoftfabric.fabric_auth import POWER_BI_SCOPE
 
-        self.assertEqual(
-            POWER_BI_SCOPE, ["https://analysis.windows.net/powerbi/api/.default"]
-        )
+        self.assertEqual(POWER_BI_SCOPE, ["https://analysis.windows.net/powerbi/api/.default"])
 
     def test_database_scope(self):
         """Test that database scope is defined"""

@@ -11,6 +11,7 @@
 """
 Test Looker standalone views functionality
 """
+
 from unittest import TestCase
 from unittest.mock import Mock
 
@@ -109,9 +110,7 @@ class TestLookerStandaloneViewsLogic(TestCase):
         ]
 
         # Calculate total explores
-        total_explores = sum(
-            len(m.explores) if m.explores else 0 for m in all_lookml_models
-        )
+        total_explores = sum(len(m.explores) if m.explores else 0 for m in all_lookml_models)
 
         self.assertEqual(total_explores, 3)
 
@@ -312,9 +311,7 @@ class TestStandaloneViewsIntegrationScenarios(TestCase):
         """Test scenario where model has no explores, only standalone views"""
         all_lookml_models = [LookmlModel(name="model1", explores=[])]
 
-        total_explores = sum(
-            len(m.explores) if m.explores else 0 for m in all_lookml_models
-        )
+        total_explores = sum(len(m.explores) if m.explores else 0 for m in all_lookml_models)
 
         # With 0 explores, standalone views would be processed immediately
         self.assertEqual(total_explores, 0)

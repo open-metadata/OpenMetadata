@@ -124,9 +124,7 @@ class OMetaVersionMixin(Generic[T]):
         if field_changed is not None:
             params["fieldChanged"] = field_changed
 
-        resp = self.client.get(
-            f"{self.get_suffix(entity)}/{path}", data=params if params else None
-        )
+        resp = self.client.get(f"{self.get_suffix(entity)}/{path}", data=params if params else None)
 
         if self._use_raw_data:
             return resp

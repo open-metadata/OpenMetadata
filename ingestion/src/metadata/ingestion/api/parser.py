@@ -11,6 +11,7 @@
 """
 Helper to parse workflow configurations
 """
+
 from typing import Type, TypeVar, Union
 
 from pydantic import BaseModel, ValidationError
@@ -360,9 +361,7 @@ def _unsafe_parse_config(config: dict, cls: Type[T], message: str) -> None:
     try:
         cls.model_validate(config)
     except ValidationError as err:
-        logger.debug(
-            f"The supported properties for {cls.__name__} are {list(cls.model_fields.keys())}"
-        )
+        logger.debug(f"The supported properties for {cls.__name__} are {list(cls.model_fields.keys())}")
         raise err
 
 
@@ -381,9 +380,7 @@ def _unsafe_parse_dbt_config(config: dict, cls: Type[T], message: str) -> None:
         # Parse the entire dbtPipeline object
         cls.model_validate(config)
     except ValidationError as err:
-        logger.debug(
-            f"The supported properties for {cls.__name__} are {list(cls.model_fields.keys())}"
-        )
+        logger.debug(f"The supported properties for {cls.__name__} are {list(cls.model_fields.keys())}")
         raise err
 
 
@@ -415,13 +412,9 @@ def parse_service_connection(config_dict: dict) -> None:
     if config_dict["source"].get("serviceConnection"):
         source_type = config_dict["source"]["serviceConnection"]["config"].get("type")
         if source_type is None:
-            raise InvalidWorkflowException(
-                "Missing type in the serviceConnection config"
-            )
+            raise InvalidWorkflowException("Missing type in the serviceConnection config")
 
-        logger.debug(
-            f"Error parsing the Workflow Configuration for {source_type} ingestion"
-        )
+        logger.debug(f"Error parsing the Workflow Configuration for {source_type} ingestion")
 
         service_type = get_service_type(source_type)
         connection_class = get_connection_class(source_type, service_type)
@@ -429,9 +422,7 @@ def parse_service_connection(config_dict: dict) -> None:
         if source_type in HAS_INNER_CONNECTION:
             # We will first parse the inner `connection` configuration
             _parse_inner_connection(
-                config_dict["source"]["serviceConnection"]["config"]["connection"][
-                    "config"
-                ]["connection"],
+                config_dict["source"]["serviceConnection"]["config"]["connection"]["config"]["connection"],
                 source_type,
             )
 
@@ -496,12 +487,7 @@ def _preprocess_auto_classification_config(config_dict: dict) -> None:
     :param config_dict: Workflow config dict (mutated in place)
     """
     try:
-        source_config_type = (
-            config_dict.get("source", {})
-            .get("sourceConfig", {})
-            .get("config", {})
-            .get("type")
-        )
+        source_config_type = config_dict.get("source", {}).get("sourceConfig", {}).get("config", {}).get("type")
 
         if source_config_type == "AutoClassification":
             source_type = config_dict["source"].get("type")
@@ -566,9 +552,7 @@ def parse_workflow_config_gracefully(
                     f"{_parse_validation_err(scoped_error)}"
                 )
             raise scoped_error
-        except (
-            Exception
-        ):  # Let's just raise the original error if any internal logic fails
+        except Exception:  # Let's just raise the original error if any internal logic fails
             raise ParsingConfigurationError(
                 f"We encountered an error parsing the configuration of your workflow.\n"
                 "You might need to review your config based on the original cause of this failure:\n"
@@ -608,9 +592,7 @@ def parse_ingestion_pipeline_config_gracefully(
             message="Error parsing the source config",
         )
 
-    raise ParsingConfigurationError(
-        "Uncaught error when parsing the Ingestion Pipeline!"
-    )
+    raise ParsingConfigurationError("Uncaught error when parsing the Ingestion Pipeline!")
 
 
 def parse_automation_workflow_gracefully(
@@ -635,9 +617,7 @@ def parse_automation_workflow_gracefully(
         if source_type is None:
             raise InvalidWorkflowException("Missing type in the connection config")
 
-        logger.debug(
-            f"Error parsing the Workflow Configuration for {source_type} ingestion"
-        )
+        logger.debug(f"Error parsing the Workflow Configuration for {source_type} ingestion")
 
         service_type = get_service_type(source_type)
         connection_class = get_connection_class(source_type, service_type)
@@ -657,6 +637,4 @@ def parse_automation_workflow_gracefully(
         )
 
     #
-    raise ParsingConfigurationError(
-        "Uncaught error when parsing the Ingestion Pipeline!"
-    )
+    raise ParsingConfigurationError("Uncaught error when parsing the Ingestion Pipeline!")

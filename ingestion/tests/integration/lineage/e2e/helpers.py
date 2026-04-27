@@ -35,9 +35,7 @@ def get_target_tables(lineage: dict) -> set:
     return target_tables
 
 
-def assert_lineage_sources(
-    lineage: dict, expected_source_tables: Optional[set[str]]
-) -> None:
+def assert_lineage_sources(lineage: dict, expected_source_tables: Optional[set[str]]) -> None:
     if expected_source_tables is None:
         return
 
@@ -49,9 +47,7 @@ def assert_lineage_sources(
     )
 
 
-def assert_lineage_targets(
-    lineage: dict, expected_target_tables: Optional[set[str]]
-) -> None:
+def assert_lineage_targets(lineage: dict, expected_target_tables: Optional[set[str]]) -> None:
     if expected_target_tables is None:
         return
 
@@ -63,9 +59,7 @@ def assert_lineage_targets(
     )
 
 
-def assert_column_lineage(
-    lineage: dict, expected_column_lineage: Optional[list[tuple[str, str]]]
-) -> None:
+def assert_column_lineage(lineage: dict, expected_column_lineage: Optional[list[tuple[str, str]]]) -> None:
     if expected_column_lineage is None:
         return
 
@@ -75,9 +69,9 @@ def assert_column_lineage(
         to_column = edge["toColumn"]["name"]
         actual_column_lineage.append((from_column, to_column))
 
-    assert set(actual_column_lineage) == set(
-        expected_column_lineage
-    ), f"Expected column lineage: {expected_column_lineage}, but got: {actual_column_lineage}"
+    assert set(actual_column_lineage) == set(expected_column_lineage), (
+        f"Expected column lineage: {expected_column_lineage}, but got: {actual_column_lineage}"
+    )
 
 
 def assert_lineage(
@@ -102,13 +96,9 @@ def print_lineage(lineage: dict) -> None:
 
     print("\nUpstream Edges:")
     for edge in lineage["upstreamEdges"]:
-        print(
-            f" - From {edge['fromEntity']['name']} to {edge['toEntity']['name']} (Edge ID: {edge['id']})"
-        )
+        print(f" - From {edge['fromEntity']['name']} to {edge['toEntity']['name']} (Edge ID: {edge['id']})")
 
     print("\nDownstream Edges:")
     for edge in lineage["downstreamEdges"]:
-        print(
-            f" - From {edge['fromEntity']['name']} to {edge['toEntity']['name']} (Edge ID: {edge['id']})"
-        )
+        print(f" - From {edge['fromEntity']['name']} to {edge['toEntity']['name']} (Edge ID: {edge['id']})")
     print("\n")

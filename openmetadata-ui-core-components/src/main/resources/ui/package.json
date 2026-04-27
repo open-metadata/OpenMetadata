@@ -154,7 +154,8 @@
   "resolutions": {
     "lodash": "4.18.1",
     "minimatch": "10.2.3",
-    "rollup": "4.59.0"
+    "rollup": "4.59.0",
+    "uuid": "^14.0.0"
   },
   "publishConfig": {
     "access": "restricted",
