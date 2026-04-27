@@ -680,7 +680,6 @@ test.describe('SSO Configuration Tests', () => {
       page,
     }) => {
       await selectSSOProvider(page, 'ldap');
-      await page.waitForResponse('/api/v1/roles/search?*');
 
       const addMappingButton = page.getByTestId('add-mapping-btn');
       const ldapGroupInputs = page.locator(
@@ -748,7 +747,6 @@ test.describe('SSO Configuration Tests', () => {
       page,
     }) => {
       await selectSSOProvider(page, 'ldap');
-      await page.waitForResponse('/api/v1/roles/search?*');
 
       const field = page.getByTestId(
         'sso-configuration-form-array-field-template-authReassignRoles'
@@ -762,13 +760,8 @@ test.describe('SSO Configuration Tests', () => {
       // Opening the dropdown shows API-fetched role options
       await field.click();
       await expect(dropdown).toBeVisible();
-      await field.locator('input').fill('');
-      await page.waitForResponse('/api/v1/roles/search?*');
       await expect(dropdown.locator('.ant-select-item-option')).not.toHaveCount(
-        0,
-        {
-          timeout: 15000,
-        }
+        0
       );
 
       // Select the first available role — it appears as a selection tag
