@@ -58,6 +58,9 @@ public class IndexResource {
                 "${sentryEnvironment}",
                 System.getenv().getOrDefault("SENTRY_ENVIRONMENT", "development"))
             .replace(
+                "${sentryTraceSampleRate}",
+                System.getenv().getOrDefault("SENTRY_TRACE_SAMPLE_RATE", "0.5"))
+            .replace(
                 "${clusterName}",
                 System.getenv().getOrDefault("OPENMETADATA_CLUSTER_NAME", "openmetadata"))
             .replace("${appVersion}", new VersionResource().getCatalogVersion().getVersion());
