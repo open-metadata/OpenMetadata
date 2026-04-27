@@ -363,15 +363,12 @@ class Profiler(Generic[TMetric]):
         columns = [
             column
             for column in self.columns
-            if column.type.__class__.__name__ not in NOT_COMPUTE
-            and not is_complex_type(column.type.__class__.__name__)
+            if column.type.__class__.__name__ not in NOT_COMPUTE and not is_complex_type(column.type.__class__.__name__)
         ]
 
         # Complex type columns: only safe metrics (nullCount, valuesCount)
         # See: https://github.com/open-metadata/OpenMetadata/issues/15627
-        complex_columns = [
-            column for column in self.columns if is_complex_type(column.type.__class__.__name__)
-        ]
+        complex_columns = [column for column in self.columns if is_complex_type(column.type.__class__.__name__)]
 
         static_metrics = [
             ThreadPoolMetrics(
@@ -446,8 +443,7 @@ class Profiler(Generic[TMetric]):
                     column,
                     self.profiler_interface.table_entity.serviceType,
                 )
-                if not metric.is_window_metric()
-                and metric.name() in COMPLEX_TYPE_METRICS
+                if not metric.is_window_metric() and metric.name() in COMPLEX_TYPE_METRICS
             ]
             if safe_metrics:
                 column_metrics_for_thread_pool.append(
