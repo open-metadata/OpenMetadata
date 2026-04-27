@@ -210,14 +210,11 @@ export const getTruncatedPath = (path: string, className?: string) => {
 export const addBaseNodeDepthToNodes = (
   baseNodeDepth: number,
   nodes: Record<string, NodeData>
-) => {
-  const nodeKeys = Object.keys(nodes);
-
-  nodeKeys.forEach((key) => {
-    if (nodes[key]) {
-      nodes[key].nodeDepth = (nodes[key].nodeDepth ?? 0) + baseNodeDepth;
-    }
-  });
-
-  return nodes;
+): Record<string, NodeData> => {
+  return Object.fromEntries(
+    Object.entries(nodes).map(([key, nodeData]) => [
+      key,
+      { ...nodeData, nodeDepth: (nodeData.nodeDepth ?? 0) + baseNodeDepth },
+    ])
+  );
 };
