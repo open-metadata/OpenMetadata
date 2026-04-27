@@ -569,10 +569,12 @@ public class SearchRepository {
   }
 
   /**
-   * Centralized routing for writes that already hold a resolved canonical index name (e.g. the
-   * caller resolved {@link IndexMapping#getIndexName(String)} earlier or holds an alias). If a
-   * reindex has registered a staged index for {@code canonicalIndexName}, returns the staged
-   * name; otherwise returns {@code canonicalIndexName} unchanged.
+   * Centralized routing for writes that already hold a resolved canonical index name — i.e. the
+   * value of {@link IndexMapping#getIndexName(String)}, NOT a short alias such as the result of
+   * {@link IndexMapping#getAlias(String)} or any of the parent aliases. If a reindex has
+   * registered a staged index for {@code canonicalIndexName}, returns the staged name; otherwise
+   * returns {@code canonicalIndexName} unchanged. Pass non-canonical aliases through unchanged
+   * since the routing map only knows about canonical names.
    */
   public String routeToStagedIfActive(String canonicalIndexName) {
     if (canonicalIndexName == null) {
@@ -583,9 +585,11 @@ public class SearchRepository {
   }
 
   /**
-   * Convenience for callers that have the entity type but not the {@link IndexMapping}.
-   * Equivalent to {@code getWriteIndexName(getIndexMapping(entityType))}.
+   * @deprecated Use {@link #getWriteIndexName(IndexMapping)} directly. The {@code entityType}
+   *     argument is ignored; the canonical name is resolved from the supplied {@code
+   *     indexMapping}.
    */
+  @Deprecated(forRemoval = true)
   public String resolveWriteIndex(String entityType, IndexMapping indexMapping) {
     return getWriteIndexName(indexMapping);
   }
