@@ -1926,4 +1926,216 @@ public class SearchResourceIT {
     String[] lines = response.body().split("\n");
     assertEquals(1, lines.length, "Export beyond results should only contain header");
   }
+
+  // ===================================================================
+  // FETCH PARENT/CHILD ALIASES TESTS
+  // ===================================================================
+
+  private HttpResponse<String> httpGetJson(String path) throws Exception {
+    String baseUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(baseUrl + path))
+            .header("Authorization", "Bearer " + token)
+            .header("Accept", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  /**
+   * Bug regression: the UI now passes the alias {@code "table"} (instead of the legacy
+   * {@code table_search_index}). ES alias expansion bleeds {@code column_search_index} into the
+   * results because tableColumn declares {@code "table"} as a parent alias. Setting
+   * {@code fetchChildAliases=false} must restore "tables only".
+   */
+  @Test
+  void testFetchChildAliasesFalseExcludesColumns(TestNamespace ns) throws Exception {
+    String unique = "fetchchild_excl_" + ns.shortPrefix();
+    Column uniqueColumn =
+        new Column()
+            .withName(unique + "_col")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(64);
+    createTestTableWithColumns(ns, ns.prefix("fetchchild_excl_t"), List.of(uniqueColumn));
+
+    Awaitility.await()
+        .atMost(60, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              HttpResponse<String> r =
+                  httpGetJson("/v1/search/query?q=" + unique + "&index=tableColumn&size=20");
+              if (r.statusCode() != 200) {
+                return false;
+              }
+              return OBJECT_MAPPER.readTree(r.body()).path("hits").path("hits").size() > 0;
+            });
+
+    HttpResponse<String> filtered =
+        httpGetJson(
+            "/v1/search/query?q=" + unique + "&index=table&fetchChildAliases=false&size=20");
+    assertEquals(200, filtered.statusCode());
+    JsonNode filteredHits = OBJECT_MAPPER.readTree(filtered.body()).path("hits").path("hits");
+    for (JsonNode hit : filteredHits) {
+      String entityType = hit.path("_source").path("entityType").asText();
+      assertFalse(
+          "column".equalsIgnoreCase(entityType),
+          "fetchChildAliases=false must not return column hits when index=table; got: "
+              + hit.path("_source"));
+    }
+  }
+
+  /**
+   * Default behavior is preserved: with no flags, querying {@code index=table} still returns the
+   * entity types that ES alias expansion previously surfaced (including columns).
+   */
+  @Test
+  void testFetchChildAliasesDefaultIncludesColumns(TestNamespace ns) throws Exception {
+    String unique = "fetchchild_def_" + ns.shortPrefix();
+    Column uniqueColumn =
+        new Column()
+            .withName(unique + "_col")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(64);
+    createTestTableWithColumns(ns, ns.prefix("fetchchild_def_t"), List.of(uniqueColumn));
+
+    Awaitility.await()
+        .atMost(60, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              HttpResponse<String> r =
+                  httpGetJson("/v1/search/query?q=" + unique + "&index=table&size=20");
+              if (r.statusCode() != 200) {
+                return false;
+              }
+              JsonNode hits = OBJECT_MAPPER.readTree(r.body()).path("hits").path("hits");
+              for (JsonNode hit : hits) {
+                if ("column".equalsIgnoreCase(hit.path("_source").path("entityType").asText())) {
+                  return true;
+                }
+              }
+              return false;
+            });
+  }
+
+  @Test
+  void testFetchParentsAliasesTrueIncludesParents(TestNamespace ns) throws Exception {
+    String unique = "fetchparents_" + ns.shortPrefix();
+    Column uniqueColumn =
+        new Column()
+            .withName(unique + "_col")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(64);
+    Table parentTable =
+        createTestTableWithColumns(ns, ns.prefix("fetchparents_" + unique), List.of(uniqueColumn));
+    String tableName = parentTable.getName();
+
+    Awaitility.await()
+        .atMost(60, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              HttpResponse<String> r =
+                  httpGetJson(
+                      "/v1/search/query?q="
+                          + tableName
+                          + "&index=tableColumn&fetchParentsAliases=true&fetchChildAliases=false&size=20");
+              if (r.statusCode() != 200) {
+                return false;
+              }
+              JsonNode hits = OBJECT_MAPPER.readTree(r.body()).path("hits").path("hits");
+              for (JsonNode hit : hits) {
+                if ("table".equalsIgnoreCase(hit.path("_source").path("entityType").asText())) {
+                  return true;
+                }
+              }
+              return false;
+            });
+  }
+
+  /**
+   * The flag must also be honored on the streaming export endpoint, not just /query.
+   */
+  @Test
+  void testFetchChildAliasesFalseOnExportEndpoint(TestNamespace ns) throws Exception {
+    String unique = "fetchchild_exp_" + ns.shortPrefix();
+    Column uniqueColumn =
+        new Column()
+            .withName(unique + "_col")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(64);
+    createTestTableWithColumns(ns, ns.prefix("fetchchild_exp_t"), List.of(uniqueColumn));
+
+    Awaitility.await()
+        .atMost(60, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              HttpResponse<String> r =
+                  httpGetJson("/v1/search/query?q=" + unique + "&index=tableColumn&size=20");
+              return r.statusCode() == 200
+                  && OBJECT_MAPPER.readTree(r.body()).path("hits").path("hits").size() > 0;
+            });
+
+    HttpResponse<String> response =
+        httpGetExport(
+            "/v1/search/export?q=" + unique + "&index=table&fetchChildAliases=false&size=50");
+    assertEquals(200, response.statusCode());
+    String body = response.body();
+    String[] lines = body.split("\n");
+    for (int i = 1; i < lines.length; i++) {
+      String row = lines[i];
+      assertFalse(
+          row.toLowerCase().startsWith("column,"),
+          "fetchChildAliases=false on /export must drop column rows, got: " + row);
+    }
+  }
+
+  /**
+   * The flag must propagate to /aggregate so bucket counts aren't polluted by child entity types.
+   */
+  @Test
+  void testFetchChildAliasesFalseOnAggregate(TestNamespace ns) throws Exception {
+    String unique = "fetchchild_agg_" + ns.shortPrefix();
+    Column uniqueColumn =
+        new Column()
+            .withName(unique + "_col")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(64);
+    createTestTableWithColumns(ns, ns.prefix("fetchchild_agg_t"), List.of(uniqueColumn));
+
+    Awaitility.await()
+        .atMost(60, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              HttpResponse<String> r =
+                  httpGetJson("/v1/search/query?q=" + unique + "&index=tableColumn&size=20");
+              return r.statusCode() == 200
+                  && OBJECT_MAPPER.readTree(r.body()).path("hits").path("hits").size() > 0;
+            });
+
+    HttpResponse<String> response =
+        httpGetJson(
+            "/v1/search/aggregate?index=table&field=entityType.keyword&q="
+                + unique
+                + "&fetchChildAliases=false&size=20");
+    assertEquals(200, response.statusCode(), "Aggregate must return 200");
+    JsonNode root = OBJECT_MAPPER.readTree(response.body());
+    JsonNode buckets = root.findPath("buckets");
+    if (buckets.isArray()) {
+      for (JsonNode bucket : buckets) {
+        String key = bucket.path("key").asText();
+        assertFalse(
+            "column".equalsIgnoreCase(key),
+            "fetchChildAliases=false on /aggregate must not include 'column' bucket: " + bucket);
+      }
+    }
+  }
 }

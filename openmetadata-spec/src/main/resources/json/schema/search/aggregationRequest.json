@@ -73,6 +73,16 @@
         "sortField": "_doc",
         "sortOrder": "asc"
       }
+    },
+    "fetchParentsAliases": {
+      "description": "If true, expand the requested index to also include the actual indexes of its parent aliases declared in indexMapping.json. Defaults to false.",
+      "type": "boolean",
+      "default": false
+    },
+    "fetchChildAliases": {
+      "description": "If true, expand the requested index to also include the actual indexes of its child aliases declared in indexMapping.json. Defaults to true to preserve backward-compatible behavior.",
+      "type": "boolean",
+      "default": true
     }
   },
   "required": ["fieldName"],

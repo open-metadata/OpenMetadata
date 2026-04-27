@@ -154,6 +154,13 @@ public class SearchRepository {
 
   @Getter private Map<String, IndexMapping> entityIndexMap;
 
+  /**
+   * Reverse map: alias name -> entity types whose IndexMapping declares this alias as a parent.
+   * Lets us answer "what are the children of alias X?" in O(1). Built from indexMapping.json on
+   * load and used by {@link #getIndexOrAliasName(String, boolean, boolean)}.
+   */
+  private Map<String, List<String>> aliasToChildEntityTypes = Map.of();
+
   private final String language;
 
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
@@ -256,6 +263,23 @@ public class SearchRepository {
   private void loadIndexMappings() {
     IndexMappingLoader mappingLoader = IndexMappingLoader.getInstance();
     entityIndexMap = mappingLoader.getIndexMapping();
+    aliasToChildEntityTypes = buildAliasToChildEntityTypes(entityIndexMap);
+  }
+
+  static Map<String, List<String>> buildAliasToChildEntityTypes(
+      Map<String, IndexMapping> indexMap) {
+    Map<String, List<String>> reverse = new HashMap<>();
+    for (Map.Entry<String, IndexMapping> entry : indexMap.entrySet()) {
+      String entityType = entry.getKey();
+      List<String> parentAliases = entry.getValue().getParentAliases();
+      if (parentAliases == null) {
+        continue;
+      }
+      for (String parentAlias : parentAliases) {
+        reverse.computeIfAbsent(parentAlias, k -> new ArrayList<>()).add(entityType);
+      }
+    }
+    return reverse;
   }
 
   public SearchClient buildSearchClient(ElasticSearchConfiguration config) {
@@ -492,6 +516,150 @@ public class SearchRepository {
     }
     return Arrays.stream(name.split(","))
         .map(index -> clusterAlias + INDEX_NAME_SEPARATOR + index.trim())
+        .collect(Collectors.joining(","));
+  }
+
+  /**
+   * Resolve a UI-facing alias (e.g. {@code "table"}) into an explicit comma-separated list of the
+   * actual Elasticsearch index names to query. Bypasses ES alias expansion so that we don't bleed
+   * results from indexes that happen to share an alias because of the parent/child graph in
+   * {@code indexMapping.json}.
+   *
+   * <p>For each comma-separated token in {@code name}:
+   *
+   * <ul>
+   *   <li>If the token matches an entity type in {@code entityIndexMap}, its actual indexName is
+   *       always included. When {@code fetchParents} is true, the indexNames of every entity
+   *       listed in this entity's {@code parentAliases} are also included. When
+   *       {@code fetchChildren} is true, the indexNames of every entity that lists this alias in
+   *       its own {@code parentAliases} (i.e. logical children) are also included.
+   *   <li>If the token is a compound alias (e.g. {@code "all"}, {@code "dataAsset"}) — not a key
+   *       in {@code entityIndexMap} — and {@code fetchChildren} is true, all entities that list
+   *       this alias as a parent are expanded. Otherwise the token is passed through with the
+   *       cluster prefix applied, preserving the legacy behavior.
+   * </ul>
+   */
+  public String getIndexOrAliasName(String name, boolean fetchParents, boolean fetchChildren) {
+    return resolveIndexes(
+        name, fetchParents, fetchChildren, entityIndexMap, aliasToChildEntityTypes, clusterAlias);
+  }
+
+  /**
+   * Stateless resolver kept here so it can be exercised from unit tests by passing a mapping
+   * loaded from {@link IndexMappingLoader} directly, without constructing a SearchRepository.
+   */
+  static String resolveIndexes(
+      String name,
+      boolean fetchParents,
+      boolean fetchChildren,
+      Map<String, IndexMapping> entityIndexMap,
+      Map<String, List<String>> aliasToChildEntityTypes,
+      String clusterAlias) {
+    if (nullOrEmpty(name)) {
+      return name;
+    }
+    java.util.LinkedHashSet<String> resolved = new java.util.LinkedHashSet<>();
+    for (String rawToken : name.split(",")) {
+      String token = rawToken.trim();
+      if (token.isEmpty()) {
+        continue;
+      }
+      expandSingleAlias(
+          token,
+          fetchParents,
+          fetchChildren,
+          entityIndexMap,
+          aliasToChildEntityTypes,
+          clusterAlias,
+          resolved);
+    }
+    if (resolved.isEmpty()) {
+      return prefixCommaList(name, clusterAlias);
+    }
+    return String.join(",", resolved);
+  }
+
+  private static void expandSingleAlias(
+      String token,
+      boolean fetchParents,
+      boolean fetchChildren,
+      Map<String, IndexMapping> entityIndexMap,
+      Map<String, List<String>> aliasToChildEntityTypes,
+      String clusterAlias,
+      java.util.Set<String> resolved) {
+    IndexMapping mapping = entityIndexMap == null ? null : entityIndexMap.get(token);
+    if (mapping != null) {
+      resolved.add(mapping.getIndexName(clusterAlias));
+      if (fetchParents) {
+        addParentIndexes(mapping, entityIndexMap, clusterAlias, resolved);
+      }
+      if (fetchChildren) {
+        addChildIndexes(token, entityIndexMap, aliasToChildEntityTypes, clusterAlias, resolved);
+      }
+      return;
+    }
+    if (fetchChildren) {
+      addChildIndexes(token, entityIndexMap, aliasToChildEntityTypes, clusterAlias, resolved);
+    }
+    boolean alreadyExpanded =
+        fetchChildren
+            && aliasToChildEntityTypes != null
+            && aliasToChildEntityTypes.containsKey(token);
+    if (!alreadyExpanded) {
+      resolved.add(prefixWithClusterAlias(token, clusterAlias));
+    }
+  }
+
+  private static void addParentIndexes(
+      IndexMapping mapping,
+      Map<String, IndexMapping> entityIndexMap,
+      String clusterAlias,
+      java.util.Set<String> resolved) {
+    List<String> parents = mapping.getParentAliases();
+    if (parents == null) {
+      return;
+    }
+    for (String parentAlias : parents) {
+      IndexMapping parentMapping = entityIndexMap.get(parentAlias);
+      if (parentMapping != null) {
+        resolved.add(parentMapping.getIndexName(clusterAlias));
+      }
+    }
+  }
+
+  private static void addChildIndexes(
+      String alias,
+      Map<String, IndexMapping> entityIndexMap,
+      Map<String, List<String>> aliasToChildEntityTypes,
+      String clusterAlias,
+      java.util.Set<String> resolved) {
+    if (aliasToChildEntityTypes == null) {
+      return;
+    }
+    List<String> childTypes = aliasToChildEntityTypes.get(alias);
+    if (childTypes == null) {
+      return;
+    }
+    for (String childType : childTypes) {
+      IndexMapping childMapping = entityIndexMap.get(childType);
+      if (childMapping != null) {
+        resolved.add(childMapping.getIndexName(clusterAlias));
+      }
+    }
+  }
+
+  private static String prefixWithClusterAlias(String token, String clusterAlias) {
+    return clusterAlias == null || clusterAlias.isEmpty()
+        ? token
+        : clusterAlias + INDEX_NAME_SEPARATOR + token;
+  }
+
+  private static String prefixCommaList(String name, String clusterAlias) {
+    if (clusterAlias == null || clusterAlias.isEmpty()) {
+      return name;
+    }
+    return Arrays.stream(name.split(","))
+        .map(t -> clusterAlias + INDEX_NAME_SEPARATOR + t.trim())
         .collect(Collectors.joining(","));
   }
 

@@ -219,7 +219,19 @@ public class SearchResource {
                   "Include aggregations in the search response. Defaults to true. Set to false to skip aggregations for faster response times when only search results are needed.")
           @DefaultValue("true")
           @QueryParam("include_aggregations")
-          boolean includeAggregations)
+          boolean includeAggregations,
+      @Parameter(
+              description =
+                  "If true, expand the requested index to include the actual indexes of its parent aliases declared in indexMapping.json. Defaults to false.")
+          @DefaultValue("false")
+          @QueryParam("fetchParentsAliases")
+          boolean fetchParentsAliases,
+      @Parameter(
+              description =
+                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to true to preserve backward-compatible behavior; pass false to return only the requested index's documents.")
+          @DefaultValue("true")
+          @QueryParam("fetchChildAliases")
+          boolean fetchChildAliases)
       throws IOException {
 
     if (nullOrEmpty(query)) {
@@ -236,7 +248,9 @@ public class SearchResource {
         new SearchRequest()
             .withQuery(query)
             .withSize(size)
-            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+            .withIndex(
+                Entity.getSearchRepository()
+                    .getIndexOrAliasName(index, fetchParentsAliases, fetchChildAliases))
             .withFrom(from)
             .withQueryFilter(queryFilter)
             .withPostFilter(postFilter)
@@ -310,7 +324,19 @@ public class SearchResource {
                   "Starting offset for export. Use with size to export a specific page of results (e.g., from=30&size=15 for page 3).")
           @DefaultValue("0")
           @QueryParam("from")
-          int from)
+          int from,
+      @Parameter(
+              description =
+                  "If true, expand the requested index to include the actual indexes of its parent aliases declared in indexMapping.json. Defaults to false.")
+          @DefaultValue("false")
+          @QueryParam("fetchParentsAliases")
+          boolean fetchParentsAliases,
+      @Parameter(
+              description =
+                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to true to preserve backward-compatible behavior.")
+          @DefaultValue("true")
+          @QueryParam("fetchChildAliases")
+          boolean fetchChildAliases)
       throws IOException {
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
@@ -323,7 +349,9 @@ public class SearchResource {
             queryFilter,
             postFilter,
             sortFieldParam,
-            sortOrder);
+            sortOrder,
+            fetchParentsAliases,
+            fetchChildAliases);
 
     int totalHits = searchRepository.countSearchResults(request, subjectContext);
     final int effectiveTotal =
@@ -358,7 +386,9 @@ public class SearchResource {
       String queryFilter,
       String postFilter,
       String sortFieldParam,
-      String sortOrder) {
+      String sortOrder,
+      boolean fetchParentsAliases,
+      boolean fetchChildAliases) {
     String resolvedQuery = nullOrEmpty(query) ? "*" : query;
 
     List<EntityReference> domains = new ArrayList<>();
@@ -368,7 +398,9 @@ public class SearchResource {
 
     return new SearchRequest()
         .withQuery(resolvedQuery)
-        .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+        .withIndex(
+            Entity.getSearchRepository()
+                .getIndexOrAliasName(index, fetchParentsAliases, fetchChildAliases))
         .withQueryFilter(queryFilter)
         .withPostFilter(postFilter)
         .withDeleted(deleted)
@@ -409,7 +441,13 @@ public class SearchResource {
         new SearchRequest()
             .withQuery(previewRequest.getQuery())
             .withSize(previewRequest.getSize())
-            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(previewRequest.getIndex()))
+            .withIndex(
+                Entity.getSearchRepository()
+                    .getIndexOrAliasName(
+                        previewRequest.getIndex(),
+                        Boolean.TRUE.equals(previewRequest.getFetchParentsAliases()),
+                        previewRequest.getFetchChildAliases() == null
+                            || Boolean.TRUE.equals(previewRequest.getFetchChildAliases())))
             .withFrom(previewRequest.getFrom())
             .withQueryFilter(previewRequest.getQueryFilter())
             .withPostFilter(previewRequest.getPostFilter())
@@ -498,7 +536,19 @@ public class SearchResource {
       @Parameter(description = "Explain the results of the query")
           @DefaultValue("false")
           @QueryParam("explain")
-          boolean explain)
+          boolean explain,
+      @Parameter(
+              description =
+                  "If true, expand the requested index to include the actual indexes of its parent aliases declared in indexMapping.json. Defaults to false.")
+          @DefaultValue("false")
+          @QueryParam("fetchParentsAliases")
+          boolean fetchParentsAliases,
+      @Parameter(
+              description =
+                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to true to preserve backward-compatible behavior.")
+          @DefaultValue("true")
+          @QueryParam("fetchChildAliases")
+          boolean fetchChildAliases)
       throws IOException {
 
     // Add Domain Filter
@@ -512,7 +562,9 @@ public class SearchResource {
         new SearchRequest()
             .withQuery(nlqQuery)
             .withSize(size)
-            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+            .withIndex(
+                Entity.getSearchRepository()
+                    .getIndexOrAliasName(index, fetchParentsAliases, fetchChildAliases))
             .withFrom(from)
             .withQueryFilter(queryFilter)
             .withPostFilter(postFilter)
@@ -584,10 +636,24 @@ public class SearchResource {
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @DefaultValue("false")
           @QueryParam("deleted")
-          boolean deleted)
+          boolean deleted,
+      @Parameter(
+              description =
+                  "If true, expand the requested index to include the actual indexes of its parent aliases declared in indexMapping.json. Defaults to false.")
+          @DefaultValue("false")
+          @QueryParam("fetchParentsAliases")
+          boolean fetchParentsAliases,
+      @Parameter(
+              description =
+                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to true to preserve backward-compatible behavior.")
+          @DefaultValue("true")
+          @QueryParam("fetchChildAliases")
+          boolean fetchChildAliases)
       throws IOException {
 
-    return searchRepository.searchByField(fieldName, fieldValue, index, deleted);
+    String resolvedIndex =
+        searchRepository.getIndexOrAliasName(index, fetchParentsAliases, fetchChildAliases);
+    return searchRepository.searchByField(fieldName, fieldValue, resolvedIndex, deleted);
   }
 
   @GET
@@ -664,19 +730,34 @@ public class SearchResource {
       @DefaultValue("false") @QueryParam("deleted") boolean deleted,
       @Parameter(description = "Free-text search query to scope aggregation results")
           @QueryParam("queryText")
-          String queryText)
+          String queryText,
+      @Parameter(
+              description =
+                  "If true, expand the requested index to include the actual indexes of its parent aliases declared in indexMapping.json. Defaults to false.")
+          @DefaultValue("false")
+          @QueryParam("fetchParentsAliases")
+          boolean fetchParentsAliases,
+      @Parameter(
+              description =
+                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to true to preserve backward-compatible behavior.")
+          @DefaultValue("true")
+          @QueryParam("fetchChildAliases")
+          boolean fetchChildAliases)
       throws IOException {
 
     AggregationRequest aggregationRequest =
         new AggregationRequest()
             .withQuery(query)
             .withSize(size)
-            .withIndex(index)
+            .withIndex(
+                searchRepository.getIndexOrAliasName(index, fetchParentsAliases, fetchChildAliases))
             .withFieldName(fieldName)
             .withFieldValue(value)
             .withSourceFields(SearchUtils.sourceFields(sourceFieldsParam))
             .withDeleted(deleted)
-            .withQueryText(queryText);
+            .withQueryText(queryText)
+            .withFetchParentsAliases(fetchParentsAliases)
+            .withFetchChildAliases(fetchChildAliases);
 
     return searchRepository.aggregate(aggregationRequest);
   }
@@ -701,6 +782,13 @@ public class SearchResource {
       @Context SecurityContext securityContext,
       @Valid AggregationRequest aggregationRequest)
       throws IOException {
+    boolean fetchParents = Boolean.TRUE.equals(aggregationRequest.getFetchParentsAliases());
+    boolean fetchChildren =
+        aggregationRequest.getFetchChildAliases() == null
+            || Boolean.TRUE.equals(aggregationRequest.getFetchChildAliases());
+    aggregationRequest.setIndex(
+        searchRepository.getIndexOrAliasName(
+            aggregationRequest.getIndex(), fetchParents, fetchChildren));
     return searchRepository.aggregate(aggregationRequest);
   }
 
@@ -738,7 +826,19 @@ public class SearchResource {
           String queryFilter,
       @Parameter(description = "Elasticsearch query that will be used as a post_filter")
           @QueryParam("post_filter")
-          String postFilter)
+          String postFilter,
+      @Parameter(
+              description =
+                  "If true, expand the requested index to include the actual indexes of its parent aliases declared in indexMapping.json. Defaults to false.")
+          @DefaultValue("false")
+          @QueryParam("fetchParentsAliases")
+          boolean fetchParentsAliases,
+      @Parameter(
+              description =
+                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to true to preserve backward-compatible behavior.")
+          @DefaultValue("true")
+          @QueryParam("fetchChildAliases")
+          boolean fetchChildAliases)
       throws IOException {
 
     if (nullOrEmpty(query)) {
@@ -763,7 +863,9 @@ public class SearchResource {
             .withPostFilter(postFilter)
             .withDomains(domains);
 
-    return searchRepository.getEntityTypeCounts(request, index);
+    String resolvedIndex =
+        searchRepository.getIndexOrAliasName(index, fetchParentsAliases, fetchChildAliases);
+    return searchRepository.getEntityTypeCounts(request, resolvedIndex);
   }
 
   @POST
