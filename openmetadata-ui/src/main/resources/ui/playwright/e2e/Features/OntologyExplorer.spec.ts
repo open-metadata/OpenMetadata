@@ -93,7 +93,6 @@ async function clickFirstGraphNode(page: Page): Promise<void> {
   await page.mouse.click(firstPos.x, firstPos.y);
 }
 
-
 async function createApiContext(browser: Browser) {
   const page = await browser.newPage({
     storageState: 'playwright/.auth/admin.json',
@@ -948,9 +947,7 @@ test.describe('Ontology Explorer', () => {
       await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
 
       await searchInput.clear();
-      await expect(
-        page.getByTestId('ontology-graph-empty')
-      ).not.toBeVisible();
+      await expect(page.getByTestId('ontology-graph-empty')).not.toBeVisible();
     });
   });
 

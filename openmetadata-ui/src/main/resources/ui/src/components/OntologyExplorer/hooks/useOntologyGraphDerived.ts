@@ -350,7 +350,9 @@ export function useOntologyGraphDerived({
 
   const graphSearchHighlight = useMemo(() => {
     const baseData =
-      isHierarchyView && hierarchyGraphData ? hierarchyGraphData : filteredGraphData;
+      isHierarchyView && hierarchyGraphData
+        ? hierarchyGraphData
+        : filteredGraphData;
 
     if (!baseData) {
       return null;
@@ -400,7 +402,12 @@ export function useOntologyGraphDerived({
       nodes: data.nodes.filter((n) => visibleNodeIds.has(n.id)),
       edges: data.edges.filter((e) => visibleEdgeKeys.has(ontologyEdgeKey(e))),
     };
-  }, [isHierarchyView, hierarchyGraphData, filteredGraphData, graphSearchHighlight]);
+  }, [
+    isHierarchyView,
+    hierarchyGraphData,
+    filteredGraphData,
+    graphSearchHighlight,
+  ]);
 
   const exportableGlossaryId =
     scope === 'glossary'
