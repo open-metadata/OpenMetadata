@@ -213,27 +213,6 @@ export class EntityDataClass {
     }
   }
 
-  static async cleanupCustomPropertyData(
-    apiContext: APIRequestContext,
-    entityType: string
-  ) {
-    const entitySchemaResponse = await apiContext.get(
-      `/api/v1/metadata/types/name/${entityType}`
-    );
-    const entitySchema = await entitySchemaResponse.json();
-    await apiContext.patch(`/api/v1/metadata/types/${entitySchema.id}`, {
-      data: [
-        {
-          op: 'remove',
-          path: '/customProperties',
-        },
-      ],
-      headers: {
-        'Content-Type': 'application/json-patch+json',
-      },
-    });
-  }
-
   static async preRequisitesForTests(apiContext: APIRequestContext) {
     // Add pre-requisites for tests
     const promises = [
@@ -379,12 +358,6 @@ export class EntityDataClass {
       this.worksheet1.delete(apiContext),
       this.worksheet2.delete(apiContext),
     ];
-
-    for (const entityType of Object.values(CUSTOM_PROPERTIES_ENTITIES).map(
-      (entity) => entity.name
-    )) {
-      await this.cleanupCustomPropertyData(apiContext, entityType);
-    }
 
     return await Promise.allSettled(promises);
   }
