@@ -132,10 +132,7 @@ class CircuitBreaker:
 
     def _should_attempt_reset(self) -> bool:
         """Check if enough time has passed to attempt reset"""
-        return (
-            self.last_failure_time
-            and time.time() - self.last_failure_time >= self.recovery_timeout
-        )
+        return self.last_failure_time and time.time() - self.last_failure_time >= self.recovery_timeout
 
     def _on_success(self):
         """Handle successful call"""
@@ -234,9 +231,7 @@ class StreamableLogHandler(logging.Handler):
     def _initialize_log_stream(self):
         """Initialize log stream with the server"""
         if hasattr(self.metadata, "create_log_stream"):
-            self.session_id = self.metadata.create_log_stream(
-                self.pipeline_fqn, self.run_id
-            )
+            self.session_id = self.metadata.create_log_stream(self.pipeline_fqn, self.run_id)
 
     def _start_worker(self):
         """Start the background worker thread for log shipping"""
@@ -265,11 +260,7 @@ class StreamableLogHandler(logging.Handler):
         while True:
             try:
                 # Use timeout for first call, then get_nowait for remaining
-                log_entry = (
-                    self.log_queue.get(timeout=timeout)
-                    if timeout
-                    else self.log_queue.get_nowait()
-                )
+                log_entry = self.log_queue.get(timeout=timeout) if timeout else self.log_queue.get_nowait()
 
                 if log_entry is None:
                     # Flush marker encountered
@@ -352,9 +343,7 @@ class StreamableLogHandler(logging.Handler):
 
     def _send_logs_to_server(self, log_content: str):
         """Send logs to the OpenMetadata server using the logs mixin"""
-        enable_compression = (
-            os.getenv("ENABLE_LOG_COMPRESSION", "false").lower() == "true"
-        )
+        enable_compression = os.getenv("ENABLE_LOG_COMPRESSION", "false").lower() == "true"
         # Use the centralized logs mixin method which handles both new and legacy approaches
         metrics = self.metadata.send_logs_batch(
             pipeline_fqn=self.pipeline_fqn,
@@ -412,9 +401,7 @@ class StreamableLogHandler(logging.Handler):
             **self.metrics,
             "circuit_state": self.circuit_breaker.state.value,
             "queue_size": self.log_queue.qsize(),
-            "worker_alive": self.worker_thread.is_alive()
-            if self.worker_thread
-            else False,
+            "worker_alive": self.worker_thread.is_alive() if self.worker_thread else False,
         }
 
     def close(self):
@@ -550,9 +537,7 @@ def setup_streamable_logging_for_workflow(
         # Register with the manager
         StreamableLogHandlerManager.set_handler(handler)
 
-        logger.info(
-            f"Streamable logging configured for pipeline: {pipeline_fqn}, run_id: {model_str(run_id)}"
-        )
+        logger.info(f"Streamable logging configured for pipeline: {pipeline_fqn}, run_id: {model_str(run_id)}")
         metadata.validate_versions()  # Send the version check log
 
         return handler

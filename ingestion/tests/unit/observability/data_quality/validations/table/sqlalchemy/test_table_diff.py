@@ -82,9 +82,7 @@ def table2_parameter() -> TableParameter:
 
 
 @pytest.fixture
-def parameters(
-    table1_parameter: TableParameter, table2_parameter: TableParameter
-) -> TableDiffRuntimeParameters:
+def parameters(table1_parameter: TableParameter, table2_parameter: TableParameter) -> TableDiffRuntimeParameters:
     return TableDiffRuntimeParameters(
         table1=table1_parameter,
         table2=table2_parameter,
@@ -99,9 +97,7 @@ def parameters(
 def validator(
     parameters: TableDiffRuntimeParameters,
 ) -> Generator[TableDiffValidator, None, None]:
-    with patch(
-        "metadata.data_quality.validations.table.sqlalchemy.tableDiff.data_diff"
-    ) as data_diff:
+    with patch("metadata.data_quality.validations.table.sqlalchemy.tableDiff.data_diff") as data_diff:
         mock_table = MagicMock()
         mock_table.key_columns = []
         mock_table.extra_columns = []

@@ -11,6 +11,7 @@
 """
 Tests for PresidioRecognizerFactory and RecognizerRegistry
 """
+
 import re
 from unittest.mock import patch
 from uuid import uuid4
@@ -59,9 +60,7 @@ class TestPresidioRecognizerFactory:
             ),
         )
 
-        result = PresidioRecognizerFactory.create_recognizer(
-            recognizer_config, "PII.Test"
-        )
+        result = PresidioRecognizerFactory.create_recognizer(recognizer_config, "PII.Test")
         assert result is None
 
     def test_create_pattern_recognizer(self):
@@ -172,9 +171,7 @@ class TestPresidioRecognizerFactory:
             ),
         )
 
-        result = PresidioRecognizerFactory.create_recognizer(
-            recognizer_config, "PII.Person"
-        )
+        result = PresidioRecognizerFactory.create_recognizer(recognizer_config, "PII.Person")
         assert result is None
 
     def test_create_predefined_recognizer(self):
@@ -192,9 +189,7 @@ class TestPresidioRecognizerFactory:
             ),
         )
 
-        result = PresidioRecognizerFactory.create_recognizer(
-            recognizer_config, "Some.Tag"
-        )
+        result = PresidioRecognizerFactory.create_recognizer(recognizer_config, "Some.Tag")
 
         assert isinstance(result, EntityRecognizer)
 
@@ -213,9 +208,7 @@ class TestPresidioRecognizerFactory:
 
         recognizer_config.recognizerConfig.root.name = "InvalidRecognizer"
 
-        result = PresidioRecognizerFactory.create_recognizer(
-            recognizer_config, "Some.Tag"
-        )
+        result = PresidioRecognizerFactory.create_recognizer(recognizer_config, "Some.Tag")
         assert result is None
 
     @pytest.mark.parametrize(
@@ -329,9 +322,7 @@ class TestPresidioRecognizerFactory:
             recognizerConfig=RecognizerConfig(
                 root=PatternRecognizerConfig(
                     type="pattern",
-                    patterns=[
-                        Pattern(name="test", regex=r"test@example\.com", score=0.8)
-                    ],
+                    patterns=[Pattern(name="test", regex=r"test@example\.com", score=0.8)],
                     regexFlags=RegexFlags(),
                     context=[],
                     supportedLanguage=ClassificationLanguage.en,
@@ -400,9 +391,7 @@ class TestPresidioRecognizerFactory:
             "metadata.pii.algorithms.presidio_recognizer_factory.enhance_using_context",
             wraps=lambda r: r,
         ) as mock_enhance:
-            result = PresidioRecognizerFactory.create_recognizer(
-                recognizer_config, "PII.Token"
-            )
+            result = PresidioRecognizerFactory.create_recognizer(recognizer_config, "PII.Token")
 
         assert result is not None
         mock_enhance.assert_called_once()
@@ -426,9 +415,7 @@ class TestPresidioRecognizerFactory:
             ),
         )
 
-        result = PresidioRecognizerFactory.create_recognizer(
-            recognizer_config, "PII.Token"
-        )
+        result = PresidioRecognizerFactory.create_recognizer(recognizer_config, "PII.Token")
 
         assert result is not None
         nlp_artifacts = NlpArtifacts(
@@ -442,9 +429,7 @@ class TestPresidioRecognizerFactory:
         matches = result.analyze("TOKEN-123", ["PII.Token"], nlp_artifacts)
         assert len(matches) == 1
 
-        matches = result.enhance_using_context(
-            "TOKEN-123", matches, [], nlp_artifacts, []
-        )
+        matches = result.enhance_using_context("TOKEN-123", matches, [], nlp_artifacts, [])
         assert matches == []
 
     def test_create_recognizer_no_threshold_filtering_when_not_set(self):
@@ -464,9 +449,7 @@ class TestPresidioRecognizerFactory:
             ),
         )
 
-        result = PresidioRecognizerFactory.create_recognizer(
-            recognizer_config, "PII.Token"
-        )
+        result = PresidioRecognizerFactory.create_recognizer(recognizer_config, "PII.Token")
 
         assert result is not None
         nlp_artifacts = NlpArtifacts(
@@ -497,14 +480,11 @@ class TestPresidioRecognizerFactory:
             ),
         )
 
-        with patch(
-            "metadata.pii.algorithms.presidio_recognizer_factory.enhance_using_context"
-        ) as mock_enhance, patch(
-            "metadata.pii.algorithms.presidio_recognizer_factory.decorate_recognizer"
-        ) as mock_decorate:
-            result = PresidioRecognizerFactory.create_recognizer(
-                recognizer_config, "PII.Token"
-            )
+        with (
+            patch("metadata.pii.algorithms.presidio_recognizer_factory.enhance_using_context") as mock_enhance,
+            patch("metadata.pii.algorithms.presidio_recognizer_factory.decorate_recognizer") as mock_decorate,
+        ):
+            result = PresidioRecognizerFactory.create_recognizer(recognizer_config, "PII.Token")
 
         assert result is None
         mock_enhance.assert_not_called()
@@ -541,9 +521,7 @@ class TestRecognizerRegistry:
             recognizerConfig=RecognizerConfig(
                 root=PatternRecognizerConfig(
                     type="pattern",
-                    patterns=[
-                        Pattern(name="email", regex=r"[\w\.]+@example\.com", score=0.9)
-                    ],
+                    patterns=[Pattern(name="email", regex=r"[\w\.]+@example\.com", score=0.9)],
                     regexFlags=RegexFlags(),
                     context=[],
                     supportedLanguage=ClassificationLanguage.en,

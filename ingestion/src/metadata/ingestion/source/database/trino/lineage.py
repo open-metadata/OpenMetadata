@@ -88,9 +88,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                             )
                         except Exception as exc:
                             logger.debug(traceback.format_exc())
-                            logger.warning(
-                                f"Error processing query_dict {query_dict}: {exc}"
-                            )
+                            logger.warning(f"Error processing query_dict {query_dict}: {exc}")
                 total_fetched += row_count
                 if row_count < batch_size:
                     break
@@ -105,9 +103,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
         return [
             database.fullyQualifiedName.root
             for service in database_service_names
-            for database in self.metadata.list_all_entities(
-                entity=Database, params={"service": service}
-            )
+            for database in self.metadata.list_all_entities(entity=Database, params={"service": service})
         ]
 
     def check_same_table(self, table1: Table, table2: Table) -> bool:
@@ -136,11 +132,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
         if trino_table.databaseSchema and trino_table.databaseSchema.name:
             trino_schema_name = trino_table.databaseSchema.name.root
 
-        if (
-            not trino_schema_name
-            and trino_table.fullyQualifiedName
-            and trino_table.fullyQualifiedName.root
-        ):
+        if not trino_schema_name and trino_table.fullyQualifiedName and trino_table.fullyQualifiedName.root:
             trino_table_fqn_parts = fqn.split(trino_table.fullyQualifiedName.root)
             if len(trino_table_fqn_parts) >= 4:
                 trino_schema_name = trino_table_fqn_parts[-2]
@@ -151,9 +143,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
         if cross_database_fqn not in cross_database_schema_mapping:
             cross_database_schema_mapping[cross_database_fqn] = {}
 
-        cross_database_schema_fqn = cross_database_schema_mapping[
-            cross_database_fqn
-        ].get(trino_schema_name.lower())
+        cross_database_schema_fqn = cross_database_schema_mapping[cross_database_fqn].get(trino_schema_name.lower())
         if cross_database_schema_fqn:
             return cross_database_schema_fqn
 
@@ -170,18 +160,13 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
             )
             if cross_database_schemas:
                 for cross_database_schema in cross_database_schemas:
-                    if (
-                        cross_database_schema.name
-                        and cross_database_schema.fullyQualifiedName
-                    ):
-                        cross_database_schema_mapping[cross_database_fqn][
-                            cross_database_schema.name.root.lower()
-                        ] = cross_database_schema.fullyQualifiedName.root
+                    if cross_database_schema.name and cross_database_schema.fullyQualifiedName:
+                        cross_database_schema_mapping[cross_database_fqn][cross_database_schema.name.root.lower()] = (
+                            cross_database_schema.fullyQualifiedName.root
+                        )
 
         return (
-            cross_database_schema_mapping[cross_database_fqn].get(
-                trino_schema_name.lower()
-            )
+            cross_database_schema_mapping[cross_database_fqn].get(trino_schema_name.lower())
             or f"{cross_database_fqn}.{fqn.quote_name(trino_schema_name)}"
         )
 
@@ -195,13 +180,8 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
             cross_database_table_schema_mapping[cross_database_schema_fqn] = {}
 
         table_key = trino_table.name.root.lower()
-        if (
-            table_key
-            not in cross_database_table_schema_mapping[cross_database_schema_fqn]
-        ):
-            cross_database_table_schema_mapping[cross_database_schema_fqn][
-                table_key
-            ] = []
+        if table_key not in cross_database_table_schema_mapping[cross_database_schema_fqn]:
+            cross_database_table_schema_mapping[cross_database_schema_fqn][table_key] = []
             cross_database_schema_fqn_parts = fqn.split(cross_database_schema_fqn)
             if len(cross_database_schema_fqn_parts) == 3:
                 (
@@ -219,29 +199,21 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                     fields="fullyQualifiedName,name,columns,databaseSchema",
                 )
                 if cross_database_tables:
-                    cross_database_table_schema_mapping[cross_database_schema_fqn][
-                        table_key
-                    ] = cross_database_tables
+                    cross_database_table_schema_mapping[cross_database_schema_fqn][table_key] = cross_database_tables
 
-        for cross_database_table in cross_database_table_schema_mapping[
-            cross_database_schema_fqn
-        ].get(table_key, []):
+        for cross_database_table in cross_database_table_schema_mapping[cross_database_schema_fqn].get(table_key, []):
             if self.check_same_table(trino_table, cross_database_table):
                 return cross_database_table
 
         return None
 
-    def get_cross_database_lineage(
-        self, from_table: Table, to_table: Table
-    ) -> Either[AddLineageRequest]:
+    def get_cross_database_lineage(self, from_table: Table, to_table: Table) -> Either[AddLineageRequest]:
         """
         Method to return cross database lineage request object
         """
         column_lineage = None
         if from_table and from_table.columns and to_table and to_table.columns:
-            column_lineage = self.get_column_lineage(
-                from_table=from_table, to_table=to_table
-            )
+            column_lineage = self.get_column_lineage(from_table=from_table, to_table=to_table)
         return self.get_add_cross_database_lineage_request(
             from_entity=from_table, to_entity=to_table, column_lineage=column_lineage
         )
@@ -265,9 +237,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
         for cross_database_fqn in all_cross_database_fqns:
             cross_database_table_fqn = f"{cross_database_fqn}{trino_table_suffix}"
             if cross_database_table_fqn not in cross_database_table_fqn_mapping:
-                cross_database_table = self.metadata.get_by_name(
-                    Table, fqn=cross_database_table_fqn
-                )
+                cross_database_table = self.metadata.get_by_name(Table, fqn=cross_database_table_fqn)
                 if not cross_database_table:
                     cross_database_schema_fqn = self._get_cross_database_schema_fqn(
                         cross_database_fqn,
@@ -275,26 +245,16 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                         cross_database_schema_fqn_mapping,
                     )
                     if cross_database_schema_fqn:
-                        cross_database_table = (
-                            self._get_case_insensitive_cross_database_table(
-                                cross_database_schema_fqn,
-                                trino_table,
-                                cross_database_table_schema_mapping,
-                            )
+                        cross_database_table = self._get_case_insensitive_cross_database_table(
+                            cross_database_schema_fqn,
+                            trino_table,
+                            cross_database_table_schema_mapping,
                         )
-                cross_database_table_fqn_mapping[
-                    cross_database_table_fqn
-                ] = cross_database_table
+                cross_database_table_fqn_mapping[cross_database_table_fqn] = cross_database_table
 
-            cross_database_table = cross_database_table_fqn_mapping[
-                cross_database_table_fqn
-            ]
-            if cross_database_table and self.check_same_table(
-                trino_table, cross_database_table
-            ):
-                return self.get_cross_database_lineage(
-                    cross_database_table, trino_table
-                )
+            cross_database_table = cross_database_table_fqn_mapping[cross_database_table_fqn]
+            if cross_database_table and self.check_same_table(trino_table, cross_database_table):
+                return self.get_cross_database_lineage(cross_database_table, trino_table)
 
         return None
 
@@ -313,9 +273,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                 trino_database_fqn = trino_database.fullyQualifiedName.root
 
                 # Get all tables for the specified Trino database schema
-                trino_tables = self.metadata.list_all_entities(
-                    entity=Table, params={"database": trino_database_fqn}
-                )
+                trino_tables = self.metadata.list_all_entities(entity=Table, params={"database": trino_database_fqn})
                 # NOTE: Currently, tables in system-defined schemas will also be checked for lineage.
                 for trino_table in trino_tables:
                     cross_database_lineage = self._get_cross_database_lineage_for_table(
@@ -333,8 +291,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                 left=StackTraceError(
                     name=f"{self.config.serviceName} Cross Database Lineage",
                     error=(
-                        "Error to yield cross database lineage details "
-                        f"service name [{self.config.serviceName}]: {exc}"
+                        f"Error to yield cross database lineage details service name [{self.config.serviceName}]: {exc}"
                     ),
                     stackTrace=traceback.format_exc(),
                 )

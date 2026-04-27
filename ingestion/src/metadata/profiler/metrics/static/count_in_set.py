@@ -12,6 +12,7 @@
 """
 CountInSet Metric definition
 """
+
 # pylint: disable=duplicate-code
 import traceback
 from typing import TYPE_CHECKING, List, Optional
@@ -65,9 +66,7 @@ class CountInSet(StaticMetric):
 
         try:
             set_values = set(self.values)
-            return SumFn(
-                case((column(self.col.name, self.col.type).in_(set_values), 1), else_=0)
-            )
+            return SumFn(case((column(self.col.name, self.col.type).in_(set_values), 1), else_=0))
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -85,9 +84,7 @@ class CountInSet(StaticMetric):
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error trying to run countInSet for {self.col.name}: {err}"
-                )
+                logger.warning(f"Error trying to run countInSet for {self.col.name}: {err}")
                 return None
         return computation.aggregate_accumulator(accumulator)
 
@@ -100,16 +97,12 @@ class CountInSet(StaticMetric):
 
         return PandasComputation[int, int](
             create_accumulator=lambda: 0,
-            update_accumulator=lambda acc, df: CountInSet.update_accumulator(
-                acc, df, self.col, self.values
-            ),
+            update_accumulator=lambda acc, df: CountInSet.update_accumulator(acc, df, self.col, self.values),
             aggregate_accumulator=lambda acc: acc,
         )
 
     @staticmethod
-    def update_accumulator(
-        running_count: int, df: "pd.DataFrame", column, values: List[str]
-    ) -> int:
+    def update_accumulator(running_count: int, df: "pd.DataFrame", column, values: List[str]) -> int:
         """Computes one DataFrame chunk and updates the running count
 
         Maintains a single running total (not a list). Adds chunk's count

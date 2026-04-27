@@ -12,6 +12,7 @@
 """
 Validate workflow configs and filters
 """
+
 import uuid
 from copy import deepcopy
 from unittest.mock import patch
@@ -64,9 +65,7 @@ TABLE = Table(
         Column(name="age", dataType=DataType.INT),
     ],
     database=EntityReference(id=uuid.uuid4(), name="db", type="database"),
-    databaseSchema=EntityReference(
-        id=uuid.uuid4(), name="schema", type="databaseSchema"
-    ),
+    databaseSchema=EntityReference(id=uuid.uuid4(), name="schema", type="databaseSchema"),
     tableProfilerConfig=TableProfilerConfig(
         profileSample=80.0,
     ),  # type: ignore
@@ -167,9 +166,7 @@ def test_build_regex_from_filter():
     assert result.mode == "include"
 
     # Includes take precedence over excludes
-    result = _build_regex_from_filter(
-        FilterPattern(includes=["finance"], excludes=["temp.*"])
-    )
+    result = _build_regex_from_filter(FilterPattern(includes=["finance"], excludes=["temp.*"]))
     assert result is not None
     assert result.regex == "finance"
     assert result.mode == "include"
@@ -192,9 +189,7 @@ def test_build_database_params():
 
     # Include filter -> databaseRegex with include mode
     include_config = deepcopy(config)
-    include_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {
-        "includes": ["db.*"]
-    }
+    include_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {"includes": ["db.*"]}
     fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**include_config), None, None, Status())  # type: ignore
     params = fetcher._build_database_params()
     assert params["databaseRegex"] == "db.*"
@@ -203,9 +198,7 @@ def test_build_database_params():
 
     # Exclude filter -> databaseRegex with exclude mode
     exclude_config = deepcopy(config)
-    exclude_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {
-        "excludes": ["temp.*"]
-    }
+    exclude_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {"excludes": ["temp.*"]}
     fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**exclude_config), None, None, Status())  # type: ignore
     params = fetcher._build_database_params()
     assert params["databaseRegex"] == "temp.*"
@@ -213,9 +206,7 @@ def test_build_database_params():
 
     # Multiple includes -> combined with OR
     multi_config = deepcopy(config)
-    multi_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {
-        "includes": ["finance.*", "sales.*"]
-    }
+    multi_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {"includes": ["finance.*", "sales.*"]}
     fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**multi_config), None, None, Status())  # type: ignore
     params = fetcher._build_database_params()
     assert params["databaseRegex"] == "(finance.*)|(sales.*)"
@@ -224,9 +215,7 @@ def test_build_database_params():
     # useFqnForFiltering -> regexFilterByFqn param
     fqn_config = deepcopy(config)
     fqn_config["source"]["sourceConfig"]["config"]["useFqnForFiltering"] = True
-    fqn_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {
-        "includes": ["my_service.db.*"]
-    }
+    fqn_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {"includes": ["my_service.db.*"]}
     fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**fqn_config), None, None, Status())  # type: ignore
     params = fetcher._build_database_params()
     assert params["regexFilterByFqn"] == "true"
@@ -238,9 +227,7 @@ def test_build_table_params():
         id=uuid.uuid4(),
         name="db",
         fullyQualifiedName="my_service.db",
-        service=EntityReference(
-            id=uuid.uuid4(), name="my_service", type="databaseService"
-        ),
+        service=EntityReference(id=uuid.uuid4(), name="my_service", type="databaseService"),
     )
 
     # No filter pattern -> only service and database params
@@ -250,9 +237,7 @@ def test_build_table_params():
 
     # Schema include filter
     schema_config = deepcopy(config)
-    schema_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
-        "includes": ["one_schema"]
-    }
+    schema_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {"includes": ["one_schema"]}
     fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**schema_config), None, None, Status())  # type: ignore
     params = fetcher._build_table_params(database)
     assert params["databaseSchemaRegex"] == "one_schema"
@@ -261,9 +246,7 @@ def test_build_table_params():
 
     # Table exclude filter
     table_config = deepcopy(config)
-    table_config["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {
-        "excludes": ["temp.*"]
-    }
+    table_config["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {"excludes": ["temp.*"]}
     fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**table_config), None, None, Status())  # type: ignore
     params = fetcher._build_table_params(database)
     assert params["tableRegex"] == "temp.*"
@@ -272,12 +255,8 @@ def test_build_table_params():
 
     # Both schema and table filters
     both_config = deepcopy(config)
-    both_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
-        "includes": ["finance"]
-    }
-    both_config["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {
-        "includes": ["orders.*"]
-    }
+    both_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {"includes": ["finance"]}
+    both_config["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {"includes": ["orders.*"]}
     fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**both_config), None, None, Status())  # type: ignore
     params = fetcher._build_table_params(database)
     assert params["databaseSchemaRegex"] == "finance"
@@ -297,12 +276,8 @@ def test_build_table_params():
     assert params["regexFilterByFqn"] == "true"
 
     conflict_config = deepcopy(config)
-    conflict_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
-        "includes": ["finance"]
-    }
-    conflict_config["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {
-        "excludes": ["temp.*"]
-    }
+    conflict_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {"includes": ["finance"]}
+    conflict_config["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {"excludes": ["temp.*"]}
     fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**conflict_config), None, None, Status())  # type: ignore
     params = fetcher._build_table_params(database)
     assert params["databaseSchemaRegex"] == "finance"
@@ -311,12 +286,8 @@ def test_build_table_params():
 
     # Conflicting modes: schema=exclude, table=include -> only include goes to backend
     conflict_config2 = deepcopy(config)
-    conflict_config2["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
-        "excludes": ["hr"]
-    }
-    conflict_config2["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {
-        "includes": ["orders.*"]
-    }
+    conflict_config2["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {"excludes": ["hr"]}
+    conflict_config2["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {"includes": ["orders.*"]}
     fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**conflict_config2), None, None, Status())  # type: ignore
     params = fetcher._build_table_params(database)
     assert params["tableRegex"] == "orders.*"
@@ -389,18 +360,14 @@ def test_filter_classifications():
 
     # Include classification -> only tables with matching tags
     include_config = deepcopy(config)
-    include_config["source"]["sourceConfig"]["config"][
-        "classificationFilterPattern"
-    ] = {"includes": ["tag*"]}
+    include_config["source"]["sourceConfig"]["config"]["classificationFilterPattern"] = {"includes": ["tag*"]}
     fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**include_config), None, None, Status())  # type: ignore
     filtered = [t for t in all_tables if not fetcher.filter_classifications(t)]
     assert len(filtered) == 2
 
     # Exclude classification
     exclude_config = deepcopy(config)
-    exclude_config["source"]["sourceConfig"]["config"][
-        "classificationFilterPattern"
-    ] = {"excludes": ["tag2"]}
+    exclude_config["source"]["sourceConfig"]["config"]["classificationFilterPattern"] = {"excludes": ["tag2"]}
     fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**exclude_config), None, None, Status())  # type: ignore
     filtered = [t for t in all_tables if not fetcher.filter_classifications(t)]
     assert len(filtered) == 1
@@ -438,9 +405,7 @@ def test_filter_classifications():
     return_value=True,
 )
 @patch("metadata.profiler.source.database.base.profiler_source.get_context_entities")
-def test_profile_def(
-    mock_context_entities, mocked_method, *_
-):  # pylint: disable=unused-argument
+def test_profile_def(mock_context_entities, mocked_method, *_):  # pylint: disable=unused-argument
     """
     Validate the definitions of the profile in the JSON
     """
@@ -464,16 +429,12 @@ def test_profile_def(
         Database(
             id=uuid.uuid4(),
             name="myDataBaseService",
-            service=EntityReference(
-                id=uuid.uuid4(), name="my_service", type="databaseService"
-            ),
+            service=EntityReference(id=uuid.uuid4(), name="my_service", type="databaseService"),
         ),
         profile_workflow.metadata,
         None,
     )
-    profiler_runner = profiler_source.get_profiler_runner(
-        TABLE, profiler_processor_step.profiler_config
-    )
+    profiler_runner = profiler_source.get_profiler_runner(TABLE, profiler_processor_step.profiler_config)
 
     # profile_workflow.create_profiler(TABLE, profiler_interface)
     profiler_obj_metrics = [metric.name() for metric in profiler_runner.metrics]

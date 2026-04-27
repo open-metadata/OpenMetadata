@@ -11,6 +11,7 @@
 """
 Snowflake usage module
 """
+
 import traceback
 from datetime import timedelta
 from typing import Iterable
@@ -73,9 +74,7 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
             try:
                 for engine in self.get_engine():
                     while total_fetched < max_results:
-                        batch_size = min(
-                            SNOWFLAKE_QUERY_BATCH_SIZE, max_results - total_fetched
-                        )
+                        batch_size = min(SNOWFLAKE_QUERY_BATCH_SIZE, max_results - total_fetched)
                         query = self.get_sql_statement(
                             start_time=self.start + timedelta(days=days),
                             end_time=self.start + timedelta(days=days + 1),
@@ -117,9 +116,7 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
                                     )
                                 except Exception as exc:
                                     logger.debug(traceback.format_exc())
-                                    logger.warning(
-                                        f"Unexpected exception processing row [{row}]: {exc}"
-                                    )
+                                    logger.warning(f"Unexpected exception processing row [{row}]: {exc}")
                         if queries:
                             yield TableQueries(queries=queries)
                         total_fetched += row_count

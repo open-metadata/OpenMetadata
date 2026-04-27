@@ -13,6 +13,7 @@
 """
 Query tracking implementation using SQLAlchemy event listeners
 """
+
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple, Union
 
@@ -75,9 +76,7 @@ class QueryLogger:
         if self._current_query:
             query = self._current_query
             query.end_time = datetime.now(timezone.utc)
-            query.duration_ms = (
-                query.end_time - query.start_time
-            ).total_seconds() * 1000
+            query.duration_ms = (query.end_time - query.start_time).total_seconds() * 1000
 
             logger.debug(
                 "Query execution details:\n"
@@ -105,9 +104,7 @@ class QueryLogger:
 
         statement_str = statement.strip().upper() if statement else ""
         if statement_str:
-            first_word = (
-                statement_str.split()[0] if statement_str.split() else "UNKNOWN"
-            )
+            first_word = statement_str.split()[0] if statement_str.split() else "UNKNOWN"
             return first_word
         return "UNKNOWN"
 

@@ -218,13 +218,9 @@ def unmask_password(create_service_request):
 
     def patch_password(service: DatabaseService):
         if hasattr(service.connection.config, "authType"):
-            service.connection.config.authType.password = (
-                create_service_request.connection.config.authType.password
-            )
+            service.connection.config.authType.password = create_service_request.connection.config.authType.password
             return service
-        service.connection.config.password = (
-            create_service_request.connection.config.password
-        )
+        service.connection.config.password = create_service_request.connection.config.password
         return service
 
     return patch_password
@@ -321,9 +317,7 @@ def ingestion_config(db_service, metadata, workflow_config, sink_config):
         "source": {
             "type": db_service.connection.config.type.value.lower(),
             "serviceName": db_service.fullyQualifiedName.root,
-            "sourceConfig": {
-                "config": {"type": DatabaseMetadataConfigType.DatabaseMetadata.value}
-            },
+            "sourceConfig": {"config": {"type": DatabaseMetadataConfigType.DatabaseMetadata.value}},
             "serviceConnection": db_service.connection.model_dump(),
         },
         "sink": sink_config,

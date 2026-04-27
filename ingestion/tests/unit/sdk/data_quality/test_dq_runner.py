@@ -232,9 +232,7 @@ def test_run_without_tests(mock_builder_class, mock_workflow_class, mock_get_cli
 
 @patch("metadata.sdk.data_quality.runner.TestSuiteWorkflow")
 @patch("metadata.sdk.data_quality.runner.WorkflowConfigBuilder")
-def test_run_executes_workflow(
-    mock_builder_class, mock_workflow_class, mock_get_client
-):
+def test_run_executes_workflow(mock_builder_class, mock_workflow_class, mock_get_client):
     """Test that run() creates and executes workflow"""
     mock_config = MagicMock(spec=OpenMetadataWorkflowConfig)
     mock_config.model_dump.return_value = {"test": "config"}
