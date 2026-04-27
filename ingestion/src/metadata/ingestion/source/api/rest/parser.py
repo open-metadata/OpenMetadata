@@ -54,12 +54,12 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:
         try:
             return json.loads(content)
         except json.JSONDecodeError as e:
-            logger.warning(f"Failed to parse as JSON despite content-type: {e}")
+            logger.error(f"Failed to parse as JSON despite content-type: {e}")
     elif "yaml" in content_type or "yml" in content_type:
         try:
             return yaml.safe_load(content)
         except yaml.YAMLError as e:
-            logger.warning(f"Failed to parse as YAML despite content-type: {e}")
+            logger.error(f"Failed to parse as YAML despite content-type: {e}")
 
     # If content-type is not definitive or parsing failed, try both formats
 

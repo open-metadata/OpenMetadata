@@ -242,7 +242,7 @@ class AirbyteSource(PipelineServiceSource):
                     )
                     created_at = datetime_to_timestamp(start_dt, milliseconds=True)
                 except (ValueError, AttributeError) as exc:
-                    logger.warning(f"Failed to parse startTime: {exc}")
+                    logger.error(f"Failed to parse startTime: {exc}")
 
             if job.lastUpdatedAt:
                 try:
@@ -251,7 +251,7 @@ class AirbyteSource(PipelineServiceSource):
                     )
                     ended_at = datetime_to_timestamp(end_dt, milliseconds=True)
                 except (ValueError, AttributeError) as exc:
-                    logger.warning(f"Failed to parse lastUpdatedAt: {exc}")
+                    logger.error(f"Failed to parse lastUpdatedAt: {exc}")
 
             task_status = [
                 TaskStatus(

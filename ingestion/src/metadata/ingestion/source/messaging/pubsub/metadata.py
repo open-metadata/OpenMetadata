@@ -245,10 +245,10 @@ class PubsubSource(MessagingServiceSource):
                     )
                 except Exception as err:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Failed to get subscription {sub_path}: {err}")
+                    logger.error(f"Failed to get subscription {sub_path}: {err}")
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to list subscriptions for {topic_name}: {err}")
+            logger.error(f"Failed to list subscriptions for {topic_name}: {err}")
         return subscriptions
 
     def _get_schema_info(self, schema_name: str) -> Optional[PubSubSchemaInfo]:
@@ -268,7 +268,7 @@ class PubsubSource(MessagingServiceSource):
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get schema {schema_name}: {err}")
+            logger.error(f"Failed to get schema {schema_name}: {err}")
         return None
 
     def yield_topic(
@@ -394,7 +394,7 @@ class PubsubSource(MessagingServiceSource):
                 return load_parser_fn(topic_name, schema_text)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to parse schema for {topic_name}: {exc}")
+            logger.error(f"Failed to parse schema for {topic_name}: {exc}")
         return None
 
     def yield_topic_sample_data(

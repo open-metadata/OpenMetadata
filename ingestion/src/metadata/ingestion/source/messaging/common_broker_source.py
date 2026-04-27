@@ -244,7 +244,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 return schema_text
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get schema with references: {exc}")
+            logger.error(f"Failed to get schema with references: {exc}")
         return None
 
     def _parse_topic_metadata(self, topic_name: str) -> Optional[Schema]:

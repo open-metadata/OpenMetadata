@@ -95,7 +95,7 @@ class ExternalTableLineageMixin(ABC):
                         )
                     )
             except Exception as exc:
-                logger.warning(f"Failed to yield external table lineage due to - {exc}")
+                logger.error(f"Failed to yield external table lineage due to - {exc}")
                 logger.debug(traceback.format_exc())
 
     def _get_data_model_column_fqn(

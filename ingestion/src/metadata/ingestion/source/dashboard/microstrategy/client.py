@@ -147,7 +147,7 @@ class MicroStrategyClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to close the api sesison due to [{exc}]")
+            logger.error(f"Failed to close the api sesison due to [{exc}]")
 
     def is_project_name(self) -> bool:
         return bool(self.config.projectName)
@@ -166,7 +166,7 @@ class MicroStrategyClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the project list due to [{exc}]")
+            logger.error(f"Failed to fetch the project list due to [{exc}]")
 
         return []
 
@@ -184,7 +184,7 @@ class MicroStrategyClient:
 
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the project list")
+            logger.error("Failed to fetch the project list")
 
         return None
 
@@ -218,7 +218,7 @@ class MicroStrategyClient:
 
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the Search Result list")
+            logger.error("Failed to fetch the Search Result list")
 
         return []
 
@@ -242,7 +242,7 @@ class MicroStrategyClient:
 
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard list")
+            logger.error("Failed to fetch the dashboard list")
 
         return []
 
@@ -264,7 +264,7 @@ class MicroStrategyClient:
 
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the dashboard with id: {dashboard_id}")
+            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")
 
         return None
 
@@ -285,6 +285,6 @@ class MicroStrategyClient:
 
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the cube with id: {cube_id}")
+            logger.error(f"Failed to fetch the cube with id: {cube_id}")
 
         return None

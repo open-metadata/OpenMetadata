@@ -33,7 +33,7 @@ def parse_dbfs_path(path: str) -> Optional[str]:
     try:
         return path.split("/")[-1]
     except Exception as exc:
-        logger.warning(f"Failed to parse dbfs: {exc}")
+        logger.error(f"Failed to parse dbfs: {exc}")
         logger.error(traceback.format_exc())
     return None
 
@@ -80,7 +80,7 @@ def parse_jdbc_url(url: str) -> Tuple[Optional[str], Optional[str], Optional[str
 
         return DEFAULT_DATABASE, database, table
     except Exception as exc:
-        logger.warning(f"Failed to parse jdbc url: {exc}")
+        logger.error(f"Failed to parse jdbc url: {exc}")
         logger.error(traceback.format_exc())
 
     return None, None, None

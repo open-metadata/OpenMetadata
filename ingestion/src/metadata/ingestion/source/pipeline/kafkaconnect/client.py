@@ -251,7 +251,7 @@ class KafkaConnectClient:
             return self.client.list_connector_plugins()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get connector plugins  {exc}")
+            logger.error(f"Unable to get connector plugins  {exc}")
 
     def get_connector_config(self, connector: str) -> Optional[dict]:
         """
@@ -343,7 +343,7 @@ class KafkaConnectClient:
 
         except (KeyError, AttributeError, ValueError) as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to extract column mappings: {exc}")
+            logger.error(f"Unable to extract column mappings: {exc}")
 
         return None
 
@@ -404,7 +404,7 @@ class KafkaConnectClient:
                     return topics
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get connector Topics {exc}")
+            logger.error(f"Unable to get connector Topics {exc}")
 
         return None
 
