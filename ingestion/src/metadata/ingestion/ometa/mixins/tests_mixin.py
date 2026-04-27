@@ -85,9 +85,7 @@ class OMetaTestsMixin:
     def get_or_create_test_suite(
         self,
         test_suite_name: str,
-        test_suite_description: Optional[
-            str
-        ] = f"Test Suite created on {datetime.now().strftime('%Y-%m-%d')}",
+        test_suite_description: Optional[str] = f"Test Suite created on {datetime.now().strftime('%Y-%m-%d')}",
     ) -> TestSuite:
         """Get or create a TestSuite
 
@@ -107,9 +105,7 @@ class OMetaTestsMixin:
         if test_suite:
             return test_suite
 
-        logger.info(
-            f"TestSuite {test_suite_name} not found. Creating new TestSuite: {test_suite_name}"
-        )
+        logger.info(f"TestSuite {test_suite_name} not found. Creating new TestSuite: {test_suite_name}")
 
         return self.create_or_update(
             CreateTestSuiteRequest(
@@ -124,9 +120,7 @@ class OMetaTestsMixin:
         test_definition_description: Optional[str] = None,
         entity_type: Optional[EntityType] = None,
         test_platforms: Optional[List[TestPlatform]] = None,
-        test_case_parameter_definition: Optional[
-            List[TestCaseParameterDefinition]
-        ] = None,
+        test_case_parameter_definition: Optional[List[TestCaseParameterDefinition]] = None,
     ) -> TestDefinition:
         """Get or create a test definition
 
@@ -189,9 +183,7 @@ class OMetaTestsMixin:
         if test_case:
             return test_case
 
-        logger.info(
-            f"TestCase {test_case_fqn} not found. Creating TestCase {test_case_fqn}"
-        )
+        logger.info(f"TestCase {test_case_fqn} not found. Creating TestCase {test_case_fqn}")
 
         test_case = self.create_or_update(
             CreateTestCaseRequest(
@@ -213,9 +205,7 @@ class OMetaTestsMixin:
         Returns:
             An instance of TestSuite or None
         """
-        table_entity = self.get_by_name(
-            entity=Table, fqn=table_fqn, fields=["testSuite"]
-        )
+        table_entity = self.get_by_name(entity=Table, fqn=table_fqn, fields=["testSuite"])
         if not table_entity:
             raise RuntimeError(
                 f"Unable to find table {table_fqn} in OpenMetadata. "
@@ -232,9 +222,7 @@ class OMetaTestsMixin:
             nullable=False,
         )
 
-    def get_or_create_executable_test_suite(
-        self, entity_fqn: str
-    ) -> Union[EntityReference, TestSuite]:
+    def get_or_create_executable_test_suite(self, entity_fqn: str) -> Union[EntityReference, TestSuite]:
         """Given an entity fqn, retrieve the link test suite if it exists or create a new one
 
         Args:
@@ -243,9 +231,7 @@ class OMetaTestsMixin:
         Returns:
             TestSuite:
         """
-        table_entity = self.get_by_name(
-            entity=Table, fqn=entity_fqn, fields=["testSuite"]
-        )
+        table_entity = self.get_by_name(entity=Table, fqn=entity_fqn, fields=["testSuite"])
         if not table_entity:
             raise RuntimeError(
                 f"Unable to find table {entity_fqn} in OpenMetadata. "
@@ -290,9 +276,7 @@ class OMetaTestsMixin:
             return [TestCaseResult.model_validate(entity) for entity in resp["data"]]
         return None
 
-    def create_or_update_executable_test_suite(
-        self, data: CreateTestSuiteRequest
-    ) -> TestSuite:
+    def create_or_update_executable_test_suite(self, data: CreateTestSuiteRequest) -> TestSuite:
         """Create or update an executable test suite
 
         Args:
@@ -336,9 +320,7 @@ class OMetaTestsMixin:
         path = self.get_suffix(TestCase) + "/logicalTestCases"
         self.client.put(path, data=data.model_dump_json())
 
-    def create_test_case_resolution(
-        self, data: CreateTestCaseResolutionStatus
-    ) -> TestCaseResolutionStatus:
+    def create_test_case_resolution(self, data: CreateTestCaseResolutionStatus) -> TestCaseResolutionStatus:
         """Create a test case resolution
 
         Args:
@@ -373,9 +355,7 @@ class OMetaTestsMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to PUT sample data for {test_case.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Error trying to PUT sample data for {test_case.fullyQualifiedName.root}: {exc}")
 
         if resp:
             try:
@@ -383,8 +363,7 @@ class OMetaTestsMixin:
             except UnicodeError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unicode Error parsing the sample data response from {test_case.fullyQualifiedName.root}: "
-                    f"{err}"
+                    f"Unicode Error parsing the sample data response from {test_case.fullyQualifiedName.root}: {err}"
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
@@ -407,26 +386,18 @@ class OMetaTestsMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to GET failed rows sample for "
-                f"{test_case.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Error trying to GET failed rows sample for {test_case.fullyQualifiedName.root}: {exc}")
 
         if resp:
             try:
                 return TableData(**resp)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error parsing failed rows sample for "
-                    f"{test_case.fullyQualifiedName.root}: {exc}"
-                )
+                logger.warning(f"Error parsing failed rows sample for {test_case.fullyQualifiedName.root}: {exc}")
 
         return None
 
-    def ingest_inspection_query(
-        self, test_case: TestCase, inspection_query: str
-    ) -> Optional[TestCase]:
+    def ingest_inspection_query(self, test_case: TestCase, inspection_query: str) -> Optional[TestCase]:
         """
         PUT inspection query for a test case.
 

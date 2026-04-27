@@ -11,6 +11,7 @@
 """
 Test Dagster using the topology
 """
+
 import json
 from pathlib import Path
 from unittest import TestCase
@@ -55,9 +56,7 @@ from metadata.ingestion.source.pipeline.dagster.models import (
     TableResolutionResult,
 )
 
-mock_file_path = (
-    Path(__file__).parent.parent.parent / "resources/datasets/dagster_dataset.json"
-)
+mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/dagster_dataset.json"
 with open(mock_file_path, encoding="UTF-8") as file:
     mock_data: dict = json.load(file)
 
@@ -65,9 +64,7 @@ mock_dagster_config = {
     "source": {
         "type": "dagster",
         "serviceName": "dagster_source",
-        "serviceConnection": {
-            "config": {"type": "Dagster", "host": "http://lolhost:3000"}
-        },
+        "serviceConnection": {"config": {"type": "Dagster", "host": "http://lolhost:3000"}},
         "sourceConfig": {"config": {"type": "PipelineMetadata"}},
     },
     "sink": {"type": "metadata-rest", "config": {}},
@@ -187,18 +184,13 @@ EXPECTED_CREATED_PIPELINES = [
         owners=None,
         service="dagster_source_test",
         extension=None,
-        sourceUrl=SourceUrl(
-            "http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/"
-        ),
+        sourceUrl=SourceUrl("http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/"),
     ),
 ]
 MOCK_CONNECTION_URI_PATH = (
-    "/workspace/__repository__do_it_all_with_default_config"
-    "@cereal.py/jobs/do_it_all_with_default_config/"
+    "/workspace/__repository__do_it_all_with_default_config@cereal.py/jobs/do_it_all_with_default_config/"
 )
-MOCK_LOG_URL = (
-    "http://localhost:8080/instance/runs/a6ebb16c-505f-446d-8642-171c3320ccef"
-)
+MOCK_LOG_URL = "http://localhost:8080/instance/runs/a6ebb16c-505f-446d-8642-171c3320ccef"
 
 EXPTECTED_PIPELINE_NAME = ["story_recommender_job"]
 
@@ -259,9 +251,7 @@ MOCK_PIPELINE = Pipeline(
             displayName="do_it_all_with_default_config",
         )
     ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"),
 )
 
 
@@ -271,9 +261,7 @@ class DagsterUnitTest(TestCase):
     Dagster Pipeline Unit Test
     """
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("dagster_graphql.DagsterGraphQLClient")
     # @patch("metadata.ingestion.source.pipeline.dagster.get_tag_labels")
     def __init__(self, methodName, graphql_client, test_connection) -> None:
@@ -286,19 +274,12 @@ class DagsterUnitTest(TestCase):
             config.workflowConfig.openMetadataServerConfig,
         )
         self.dagster.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        self.dagster.context.get().__dict__[
-            "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.root
+        self.dagster.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
         self.dagster.context.get().__dict__["repository_name"] = "hacker_new_repository"
-        self.dagster.context.get().__dict__[
-            "repository_location"
-        ] = "project_fully_featured"
+        self.dagster.context.get().__dict__["repository_location"] = "project_fully_featured"
 
     def test_pipeline_name(self):
-        assert (
-            self.dagster.get_pipeline_name(GraphOrError(**EXPECTED_DAGSTER_DETAILS))
-            in EXPTECTED_PIPELINE_NAME
-        )
+        assert self.dagster.get_pipeline_name(GraphOrError(**EXPECTED_DAGSTER_DETAILS)) in EXPTECTED_PIPELINE_NAME
 
     @patch("metadata.ingestion.source.pipeline.dagster.client.DagsterClient.get_jobs")
     @patch("metadata.utils.tag_utils.get_tag_label")
@@ -315,9 +296,7 @@ class DagsterUnitTest(TestCase):
         for result in results:
             pipelines_list.append(result.right)
 
-        for _, (expected, original) in enumerate(
-            zip(EXPECTED_CREATED_PIPELINES, pipelines_list)
-        ):
+        for _, (expected, original) in enumerate(zip(EXPECTED_CREATED_PIPELINES, pipelines_list)):
             self.assertEqual(expected, original)
 
 
@@ -384,13 +363,9 @@ class TestTableResolutionResult(TestCase):
             id="a58b1856-729c-493b-bc87-6d2269b43ec0",
             name="test_table",
             columns=[],
-            databaseSchema=EntityReference(
-                id="85811038-099a-11ed-861d-0242ac120002", type="databaseSchema"
-            ),
+            databaseSchema=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="databaseSchema"),
         )
-        result = TableResolutionResult(
-            table_fqn="service.db.schema.table", table_entity=mock_table
-        )
+        result = TableResolutionResult(table_fqn="service.db.schema.table", table_entity=mock_table)
         self.assertTrue(result.is_resolved)
 
     def test_is_resolved_without_table(self):
@@ -422,9 +397,7 @@ class TestDagsterAssetModels(TestCase):
 
     def test_dagster_asset_node_with_dependencies(self):
         """Test DagsterAssetNode with dependencies"""
-        upstream_ref = DagsterAssetReference(
-            assetKey=AssetKey(path=["source_db", "source_schema", "source_table"])
-        )
+        upstream_ref = DagsterAssetReference(assetKey=AssetKey(path=["source_db", "source_schema", "source_table"]))
         asset = DagsterAssetNode(
             id="asset-456",
             assetKey=AssetKey(path=["target_db", "target_schema", "target_table"]),
@@ -456,9 +429,7 @@ class TestDagsterAssetModels(TestCase):
 
     def test_metadata_entry_with_alias(self):
         """Test MetadataEntry with __typename alias"""
-        entry = MetadataEntry(
-            **{"__typename": "TextMetadataEntry", "label": "database", "text": "my_db"}
-        )
+        entry = MetadataEntry(**{"__typename": "TextMetadataEntry", "label": "database", "text": "my_db"})
         self.assertEqual(entry.typename, "TextMetadataEntry")
         self.assertEqual(entry.label, "database")
         self.assertEqual(entry.text, "my_db")
@@ -492,9 +463,7 @@ class TestDagsterAssetModels(TestCase):
 class TestDagsterLineageHelpers(TestCase):
     """Test Dagster lineage helper methods"""
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("dagster_graphql.DagsterGraphQLClient")
     def setUp(self, graphql_client, test_connection):
         test_connection.return_value = False
@@ -505,13 +474,9 @@ class TestDagsterLineageHelpers(TestCase):
             config.workflowConfig.openMetadataServerConfig,
         )
         self.dagster.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        self.dagster.context.get().__dict__[
-            "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.root
+        self.dagster.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
         self.dagster.context.get().__dict__["repository_name"] = "hacker_new_repository"
-        self.dagster.context.get().__dict__[
-            "repository_location"
-        ] = "project_fully_featured"
+        self.dagster.context.get().__dict__["repository_location"] = "project_fully_featured"
 
     def test_is_asset_in_pipeline_true(self):
         """Test _is_asset_in_pipeline returns True when asset has matching job"""
@@ -660,9 +625,7 @@ class TestDagsterLineageHelpers(TestCase):
 class TestDagsterSourceWithStripping(TestCase):
     """Test DagsterSource with asset key prefix stripping"""
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("dagster_graphql.DagsterGraphQLClient")
     def test_dagster_source_with_strip_prefix(self, graphql_client, test_connection):
         """Test DagsterSource correctly loads stripAssetKeyPrefixLength config"""

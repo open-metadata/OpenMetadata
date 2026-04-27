@@ -12,6 +12,7 @@
 """
 Cardinality Distribution Metric definition
 """
+
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from sqlalchemy import case, column, desc, func, or_
@@ -81,9 +82,7 @@ class CardinalityDistribution(HybridMetric):
             return None
 
         if total_count == distinct_count:
-            logger.debug(
-                f"CardinalityDistribution not applicable for {self.col.name} because all values are distinct."
-            )
+            logger.debug(f"CardinalityDistribution not applicable for {self.col.name} because all values are distinct.")
             return {"allValuesUnique": True}
 
         col = column(self.col.name, self.col.type)
@@ -161,9 +160,7 @@ class CardinalityDistribution(HybridMetric):
             return None
 
         if total_count == distinct_count:
-            logger.debug(
-                f"CardinalityDistribution not applicable for {self.col.name} because all values are distinct."
-            )
+            logger.debug(f"CardinalityDistribution not applicable for {self.col.name} because all values are distinct.")
             return {"allValuesUnique": True}
 
         try:
@@ -176,9 +173,7 @@ class CardinalityDistribution(HybridMetric):
 
             for df in dfs:
                 df_value_counts = df[self.col.name].value_counts()
-                combined_value_counts = combined_value_counts.add(
-                    df_value_counts, fill_value=0
-                )
+                combined_value_counts = combined_value_counts.add(df_value_counts, fill_value=0)
 
             top_categories = {}
             others_count = 0
@@ -212,7 +207,5 @@ class CardinalityDistribution(HybridMetric):
             }
 
         except Exception as err:
-            logger.debug(
-                f"Error computing CardinalityDistribution for {self.col.name}: {err}"
-            )
+            logger.debug(f"Error computing CardinalityDistribution for {self.col.name}: {err}")
             return None

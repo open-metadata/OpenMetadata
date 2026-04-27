@@ -32,9 +32,7 @@ class Lineage:
     @classmethod
     def set_default_client(cls, client: Union[OpenMetadata, OMetaClient]) -> None:
         """Set the default client for static methods."""
-        cls._default_client = (
-            client.ometa if isinstance(client, OpenMetadata) else client
-        )
+        cls._default_client = client.ometa if isinstance(client, OpenMetadata) else client
 
     @classmethod
     def _get_client(cls) -> OMetaClient:
@@ -371,12 +369,7 @@ class LineageBuilder:
 
     def execute(self) -> Union[Optional[EntityLineage], JsonDict]:
         """Execute the lineage operation synchronously."""
-        if (
-            self._from_entity_id
-            and self._to_entity_id
-            and self._from_entity_type
-            and self._to_entity_type
-        ):
+        if self._from_entity_id and self._to_entity_id and self._from_entity_type and self._to_entity_type:
             return Lineage.add_lineage(
                 from_entity_id=self._from_entity_id,
                 from_entity_type=self._from_entity_type,
@@ -402,12 +395,7 @@ class LineageBuilder:
 
     async def execute_async(self) -> Union[Optional[EntityLineage], JsonDict]:
         """Execute the lineage operation asynchronously."""
-        if (
-            self._from_entity_id
-            and self._to_entity_id
-            and self._from_entity_type
-            and self._to_entity_type
-        ):
+        if self._from_entity_id and self._to_entity_id and self._from_entity_type and self._to_entity_type:
             return await Lineage.add_lineage_async(
                 from_entity_id=self._from_entity_id,
                 from_entity_type=self._from_entity_type,

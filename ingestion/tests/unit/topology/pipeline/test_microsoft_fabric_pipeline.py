@@ -79,9 +79,7 @@ MOCK_PIPELINE = Pipeline(
     fullyQualifiedName="test_fabric_pipeline_service.test_etl_pipeline",
     displayName="Test ETL Pipeline",
     description="A test ETL pipeline",
-    service=EntityReference(
-        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="pipelineService"
-    ),
+    service=EntityReference(id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="pipelineService"),
 )
 
 # Mock Fabric API responses
@@ -134,9 +132,7 @@ MOCK_PIPELINE_ACTIVITIES: List[FabricActivity] = [
         name="Load to Warehouse",
         type="Copy",
         description="Load transformed data to warehouse",
-        depends_on=[
-            {"activity": "Transform Data", "dependencyConditions": ["Succeeded"]}
-        ],
+        depends_on=[{"activity": "Transform Data", "dependencyConditions": ["Succeeded"]}],
     ),
 ]
 
@@ -173,9 +169,7 @@ class MicrosoftFabricPipelineUnitTest(TestCase):
     @patch(
         "metadata.ingestion.source.pipeline.microsoftfabricpipeline.metadata.MicrosoftFabricPipelineSource.test_connection"
     )
-    @patch(
-        "metadata.ingestion.source.pipeline.microsoftfabricpipeline.connection.get_connection"
-    )
+    @patch("metadata.ingestion.source.pipeline.microsoftfabricpipeline.connection.get_connection")
     def __init__(
         self,
         methodName,
@@ -189,9 +183,7 @@ class MicrosoftFabricPipelineUnitTest(TestCase):
         self.mock_client = MagicMock()
         mock_get_connection.return_value = self.mock_client
 
-        self.config = OpenMetadataWorkflowConfig.model_validate(
-            mock_fabric_pipeline_config
-        )
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_fabric_pipeline_config)
         self.fabric_pipeline = MicrosoftFabricPipelineSource.create(
             mock_fabric_pipeline_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
@@ -239,9 +231,7 @@ class MicrosoftFabricPipelineUnitTest(TestCase):
         self.assertEqual(STATUS_MAP.get("Cancelled"), StatusType.Skipped)
         self.assertEqual(STATUS_MAP.get("Deduped"), StatusType.Skipped)
         # Unknown statuses default to Pending
-        self.assertEqual(
-            STATUS_MAP.get("Unknown", StatusType.Pending), StatusType.Pending
-        )
+        self.assertEqual(STATUS_MAP.get("Unknown", StatusType.Pending), StatusType.Pending)
 
     def test_get_tasks_from_activities(self):
         """Test converting activities to tasks"""
@@ -315,9 +305,7 @@ class MicrosoftFabricPipelineClientTest(TestCase):
             name="Copy Data",
             type="Copy",
             description="Copy data from source",
-            depends_on=[
-                {"activity": "Previous Activity", "dependencyConditions": ["Succeeded"]}
-            ],
+            depends_on=[{"activity": "Previous Activity", "dependencyConditions": ["Succeeded"]}],
         )
 
         self.assertEqual(activity.name, "Copy Data")

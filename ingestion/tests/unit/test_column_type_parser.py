@@ -11,6 +11,7 @@
 """
 Test column type in column_type_parser
 """
+
 import json
 import logging
 import os
@@ -130,9 +131,7 @@ def test_check_datalake_type():
     }
     df = pd.read_csv(root + "/test_column_type_parser.csv")
     for column_name in df.columns.values.tolist():
-        assert assert_col_type_dict.get(
-            column_name
-        ) == GenericDataFrameColumnParser.fetch_col_types(df, column_name)
+        assert assert_col_type_dict.get(column_name) == GenericDataFrameColumnParser.fetch_col_types(df, column_name)
 
 
 def test_superset_parse_array_data_type():

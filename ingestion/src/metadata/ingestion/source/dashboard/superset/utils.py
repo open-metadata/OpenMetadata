@@ -17,9 +17,7 @@ from typing import Optional
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 
 
-def get_dashboard_data_model_column_fqn(
-    dashboard_data_model_entity: DashboardDataModel, column: str
-) -> Optional[str]:
+def get_dashboard_data_model_column_fqn(dashboard_data_model_entity: DashboardDataModel, column: str) -> Optional[str]:
     """
     Get fqn of column if exist in dashboard data model entity.
 

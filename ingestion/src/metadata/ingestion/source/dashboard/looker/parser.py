@@ -11,6 +11,7 @@
 """
 .lkml files parser
 """
+
 import fnmatch
 import traceback
 from pathlib import Path
@@ -101,9 +102,7 @@ class LkmlParser:
             logger.debug(traceback.format_exc())
             logger.error(f"Error trying to read the file [{path}]: {err}")
         except ValidationError as err:
-            logger.error(
-                f"Validation error building the .lkml file from [{path}]: {err}"
-            )
+            logger.error(f"Validation error building the .lkml file from [{path}]: {err}")
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Unknown error building the .lkml file from [{path}]: {err}")
@@ -127,9 +126,7 @@ class LkmlParser:
 
         return expanded_includes
 
-    def _expand_includes(
-        self, includes: Optional[List[Includes]]
-    ) -> Optional[List[Includes]]:
+    def _expand_includes(self, includes: Optional[List[Includes]]) -> Optional[List[Includes]]:
         """
         If we have * in includes, expand them based on the file tree
         """
@@ -181,9 +178,7 @@ class LkmlParser:
         Otherwise, return None
         """
         if view_name in self._views_cache:
-            logger.debug(
-                f"Found view [{view_name}] in cache: \n{self._views_cache[view_name]}"
-            )
+            logger.debug(f"Found view [{view_name}] in cache: \n{self._views_cache[view_name]}")
             return self._views_cache[view_name]
 
         return None
@@ -214,6 +209,5 @@ class LkmlParser:
         Customize string repr for logs
         """
         return (
-            f"Parser at [{self.reader.credentials.repositoryOwner.root}/"
-            f"{self.reader.credentials.repositoryName.root}]"
+            f"Parser at [{self.reader.credentials.repositoryOwner.root}/{self.reader.credentials.repositoryName.root}]"
         )

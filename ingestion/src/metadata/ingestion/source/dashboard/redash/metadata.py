@@ -11,6 +11,7 @@
 """
 Redash source module
 """
+
 import traceback
 from typing import Iterable, List, Optional
 
@@ -84,9 +85,7 @@ class RedashSource(DashboardServiceSource):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: RedashConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedashConnection):
-            raise InvalidSourceException(
-                f"Expected RedashConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected RedashConnection, but got {connection}")
         return cls(config, metadata)
 
     def prepare(self):
@@ -128,9 +127,7 @@ class RedashSource(DashboardServiceSource):
             if not self.source_config.includeOwners:
                 return None
             if dashboard_details.get("user") and dashboard_details["user"].get("email"):
-                return self.metadata.get_reference_by_email(
-                    dashboard_details["user"].get("email")
-                )
+                return self.metadata.get_reference_by_email(dashboard_details["user"].get("email"))
             return None
         except Exception as err:
             logger.debug(traceback.format_exc())
@@ -139,23 +136,17 @@ class RedashSource(DashboardServiceSource):
 
     def get_dashboard_url(self, dashboard_details: dict) -> str:
         """Build source URL"""
-        if version.parse(self.service_connection.redashVersion) > version.parse(
-            INCOMPATIBLE_REDASH_VERSION
-        ):
+        if version.parse(self.service_connection.redashVersion) > version.parse(INCOMPATIBLE_REDASH_VERSION):
             dashboard_url = (
-                f"{clean_uri(self.service_connection.hostPort)}/dashboards"
-                f"/{dashboard_details.get('id', '')}"
+                f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.get('id', '')}"
             )
         else:
             dashboard_url = (
-                f"{clean_uri(self.service_connection.hostPort)}/dashboards"
-                f"/{dashboard_details.get('slug', '')}"
+                f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.get('slug', '')}"
             )
         return dashboard_url
 
-    def yield_dashboard(
-        self, dashboard_details: dict
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def yield_dashboard(self, dashboard_details: dict) -> Iterable[Either[CreateDashboardRequest]]:
         """Method to Get Dashboard Entity"""
         try:
             dashboard_description = ""
@@ -165,9 +156,7 @@ class RedashSource(DashboardServiceSource):
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(str(dashboard_details["id"])),
                 displayName=dashboard_details.get("name"),
-                description=(
-                    Markdown(dashboard_description) if dashboard_description else None
-                ),
+                description=(Markdown(dashboard_description) if dashboard_description else None),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -243,16 +232,13 @@ class RedashSource(DashboardServiceSource):
                         table_name = str(table)
                         database_schema_table = fqn.split_table_name(table_name)
                         database_schema = database_schema_table.get("database_schema")
-                        database_schema_name = self.check_database_schema_name(
-                            database_schema
-                        )
+                        database_schema_name = self.check_database_schema_name(database_schema)
                         if not database_schema_table.get("table"):
                             continue
 
                         if (
                             prefix_table_name
-                            and prefix_table_name.lower()
-                            != database_schema_table.get("table").lower()
+                            and prefix_table_name.lower() != database_schema_table.get("table").lower()
                         ):
                             logger.debug(
                                 f"[{query_hash}] Table {database_schema_table.get('table')} does not match"
@@ -263,8 +249,7 @@ class RedashSource(DashboardServiceSource):
                         if (
                             prefix_schema_name
                             and database_schema_name
-                            and prefix_schema_name.lower()
-                            != database_schema_name.lower()
+                            and prefix_schema_name.lower() != database_schema_name.lower()
                         ):
                             logger.debug(
                                 f"[{query_hash}] Schema {database_schema_name} does not match"
@@ -275,8 +260,7 @@ class RedashSource(DashboardServiceSource):
                         if (
                             prefix_database_name
                             and database_schema_table.get("database")
-                            and prefix_database_name.lower()
-                            != database_schema_table.get("database").lower()
+                            and prefix_database_name.lower() != database_schema_table.get("database").lower()
                         ):
                             logger.debug(
                                 f"[{query_hash}] Database {database_schema_table.get('database')} does not match"
@@ -285,23 +269,17 @@ class RedashSource(DashboardServiceSource):
                             continue
 
                         fqn_search_string = build_es_fqn_search_string(
-                            database_name=(
-                                prefix_database_name
-                                or database_schema_table.get("database")
-                            ),
+                            database_name=(prefix_database_name or database_schema_table.get("database")),
                             schema_name=(prefix_schema_name or database_schema_name),
                             service_name=prefix_service_name,
-                            table_name=prefix_table_name
-                            or database_schema_table.get("table"),
+                            table_name=prefix_table_name or database_schema_table.get("table"),
                         )
                         from_entity = self.metadata.search_in_any_service(
                             entity_type=Table,
                             fqn_search_string=fqn_search_string,
                         )
                         if from_entity and to_entity:
-                            yield self._get_add_lineage_request(
-                                to_entity=to_entity, from_entity=from_entity
-                            )
+                            yield self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
@@ -314,41 +292,23 @@ class RedashSource(DashboardServiceSource):
                     )
                 )
 
-    def yield_dashboard_chart(
-        self, dashboard_details: dict
-    ) -> Iterable[Either[CreateChartRequest]]:
+    def yield_dashboard_chart(self, dashboard_details: dict) -> Iterable[Either[CreateChartRequest]]:
         """Method to fetch charts linked to dashboard"""
         for widgets in dashboard_details.get("widgets") or []:
             try:
                 visualization = widgets.get("visualization")
-                chart_display_name = str(
-                    visualization["query"]["name"] if visualization else widgets["id"]
-                )
-                if filter_by_chart(
-                    self.source_config.chartFilterPattern, chart_display_name
-                ):
+                chart_display_name = str(visualization["query"]["name"] if visualization else widgets["id"])
+                if filter_by_chart(self.source_config.chartFilterPattern, chart_display_name):
                     self.status.filter(chart_display_name, "Chart Pattern not allowed")
                     continue
 
                 chart_request = CreateChartRequest(
                     name=EntityName(str(widgets["id"])),
-                    displayName=(
-                        chart_display_name
-                        if visualization and visualization["query"]
-                        else ""
-                    ),
-                    chartType=get_standard_chart_type(
-                        visualization["type"] if visualization else ""
-                    ),
-                    service=FullyQualifiedEntityName(
-                        self.context.get().dashboard_service
-                    ),
+                    displayName=(chart_display_name if visualization and visualization["query"] else ""),
+                    chartType=get_standard_chart_type(visualization["type"] if visualization else ""),
+                    service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                     sourceUrl=SourceUrl(self.get_dashboard_url(dashboard_details)),
-                    description=(
-                        Markdown(visualization["description"])
-                        if visualization
-                        else None
-                    ),
+                    description=(Markdown(visualization["description"]) if visualization else None),
                 )
                 yield Either(right=chart_request)
                 self.register_record_chart(chart_request=chart_request)

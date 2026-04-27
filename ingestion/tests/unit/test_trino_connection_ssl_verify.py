@@ -11,6 +11,7 @@
 """
 Test Trino connection SSL verify parameter handling
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (

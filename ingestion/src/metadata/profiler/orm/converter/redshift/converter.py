@@ -30,10 +30,7 @@ class RedshiftMapTypes(CommonMapTypes):
         self._TYPE_MAP.update({DataType.GEOMETRY: DataType.GEOMETRY.value})
 
     def return_custom_type(self, col: Column, table_service_type):
-        if (
-            table_service_type == databaseService.DatabaseServiceType.Redshift
-            and col.dataType == DataType.GEOMETRY
-        ):
+        if table_service_type == databaseService.DatabaseServiceType.Redshift and col.dataType == DataType.GEOMETRY:
             # pylint: disable=import-outside-toplevel
             from sqlalchemy_redshift.dialect import GEOMETRY
 

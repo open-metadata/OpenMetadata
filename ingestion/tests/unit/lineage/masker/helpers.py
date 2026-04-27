@@ -50,6 +50,5 @@ def assert_masked_query(sql: str, masked_query: str, dialect: str, parser_name: 
     expected = masked_query
 
     assert actual == expected, (
-        f"\n\t{parser_prefix}Expected Masked Query: {expected}"
-        f"\n\t{parser_prefix}Actual Masked Query:   {actual}"
+        f"\n\t{parser_prefix}Expected Masked Query: {expected}\n\t{parser_prefix}Actual Masked Query:   {actual}"
     )

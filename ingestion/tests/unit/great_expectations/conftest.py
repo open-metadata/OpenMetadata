@@ -100,9 +100,7 @@ def mocked_ge_table_result():
 
 @fixture(scope="module")
 def fixture_jinja_environment():
-    return create_jinja_environment(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources")
-    )
+    return create_jinja_environment(os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources"))
 
 
 @fixture(scope="module")

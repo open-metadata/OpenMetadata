@@ -10,9 +10,10 @@
 #  limitations under the License.
 """
 Module that defines the RuntimeParameterFactory class.
-This class is responsible for creating instances of the RuntimeParameterSetter 
+This class is responsible for creating instances of the RuntimeParameterSetter
 based on the test case.
 """
+
 import sys
 from typing import Dict, Set, Type
 
@@ -67,9 +68,7 @@ def removesuffix(s: str, suffix: str) -> str:
 
 
 def validator_name(test_case_class: Type) -> str:
-    return removesuffix(
-        test_case_class.__name__[0].lower() + test_case_class.__name__[1:], "Validator"
-    )
+    return removesuffix(test_case_class.__name__[0].lower() + test_case_class.__name__[1:], "Validator")
 
 
 class RuntimeParameterSetterFactory:
@@ -80,18 +79,12 @@ class RuntimeParameterSetterFactory:
         # Map test definition FQN to param setters (for built-in validators)
         self._setter_map: Dict[str, Set[Type[RuntimeParameterSetter]]] = {
             validator_name(TableDiffValidator): {TableDiffParamsSetter},
-            validator_name(TableCustomSQLQueryValidator): {
-                TableCustomSQLQueryParamsSetter
-            },
+            validator_name(TableCustomSQLQueryValidator): {TableCustomSQLQueryParamsSetter},
         }
         # Map validatorClass names to param setters (for rule library validators)
         self._validator_class_map: Dict[str, Set[Type[RuntimeParameterSetter]]] = {
-            ColumnRuleLibrarySqlExpressionValidator.__name__: {
-                RuleLibrarySqlExpressionParamsSetter
-            },
-            TableRuleLibrarySqlExpressionValidator.__name__: {
-                RuleLibrarySqlExpressionParamsSetter
-            },
+            ColumnRuleLibrarySqlExpressionValidator.__name__: {RuleLibrarySqlExpressionParamsSetter},
+            TableRuleLibrarySqlExpressionValidator.__name__: {RuleLibrarySqlExpressionParamsSetter},
         }
 
     def get_runtime_param_setters(
@@ -119,9 +112,7 @@ class RuntimeParameterSetterFactory:
                     fqn=name,
                 )
                 if test_definition and test_definition.validatorClass:
-                    setter_classes = self._validator_class_map.get(
-                        test_definition.validatorClass, set()
-                    )
+                    setter_classes = self._validator_class_map.get(test_definition.validatorClass, set())
             except Exception as exc:
                 logger.debug(f"Could not fetch test definition {name}: {exc}")
 

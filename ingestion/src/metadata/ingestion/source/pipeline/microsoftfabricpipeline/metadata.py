@@ -13,6 +13,7 @@ Microsoft Fabric Pipeline Source Module
 
 Extracts metadata from Microsoft Fabric Data Factory pipelines.
 """
+
 import traceback
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -88,17 +89,13 @@ def get_tasks_from_activities(activities: List[FabricActivity]) -> List[Task]:
         return []
 
     # Build a map of activity name -> downstream activities
-    downstream_map: Dict[str, List[str]] = {
-        activity.name: [] for activity in activities
-    }
+    downstream_map: Dict[str, List[str]] = {activity.name: [] for activity in activities}
 
     for activity in activities:
         if activity.depends_on:
             for dependency in activity.depends_on:
                 # depends_on contains dicts like {"activity": "name", "dependencyConditions": [...]}
-                upstream_name = (
-                    dependency.get("activity") if isinstance(dependency, dict) else None
-                )
+                upstream_name = dependency.get("activity") if isinstance(dependency, dict) else None
                 if upstream_name and upstream_name in downstream_map:
                     downstream_map[upstream_name].append(activity.name)
 
@@ -123,13 +120,9 @@ class MicrosoftFabricPipelineSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: MicrosoftFabricPipelineConnection = (
-            config.serviceConnection.root.config
-        )
+        connection: MicrosoftFabricPipelineConnection = config.serviceConnection.root.config
         if not isinstance(connection, MicrosoftFabricPipelineConnection):
             raise InvalidSourceException(
                 f"Expected MicrosoftFabricPipelineConnection, but got {type(connection).__name__}"
@@ -166,19 +159,13 @@ class MicrosoftFabricPipelineSource(PipelineServiceSource):
         # Return empty list instead of None
         return []
 
-    def yield_pipeline(
-        self, pipeline_details: FabricPipeline
-    ) -> Iterable[Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details: FabricPipeline) -> Iterable[Either[CreatePipelineRequest]]:
         """Method to Get Pipeline Entity"""
         try:
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(pipeline_details.display_name),
-                description=Markdown(pipeline_details.description)
-                if pipeline_details.description
-                else None,
-                sourceUrl=SourceUrl(
-                    self.client.get_pipeline_url(pipeline_id=pipeline_details.id)
-                ),
+                description=Markdown(pipeline_details.description) if pipeline_details.description else None,
+                sourceUrl=SourceUrl(self.client.get_pipeline_url(pipeline_id=pipeline_details.id)),
                 tasks=self._get_task_list(pipeline_id=pipeline_details.id),
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
             )
@@ -187,9 +174,7 @@ class MicrosoftFabricPipelineSource(PipelineServiceSource):
 
             # Store task names in context for filtering activity runs
             # This handles cases where pipeline definitions change over time
-            self.context.get().task_names = {
-                task.name for task in pipeline_request.tasks or []
-            }
+            self.context.get().task_names = {task.name for task in pipeline_request.tasks or []}
         except Exception as exc:
             # Set empty task names on error to prevent attribute errors
             self.context.get().task_names = set()
@@ -219,14 +204,8 @@ class MicrosoftFabricPipelineSource(PipelineServiceSource):
             runs = self.client.get_pipeline_runs(pipeline_details.id)
 
             for run in runs or []:
-                run_start = (
-                    Timestamp(datetime_to_ts(run.start_time))
-                    if run.start_time
-                    else None
-                )
-                run_end = (
-                    Timestamp(datetime_to_ts(run.end_time)) if run.end_time else None
-                )
+                run_start = Timestamp(datetime_to_ts(run.start_time)) if run.start_time else None
+                run_end = Timestamp(datetime_to_ts(run.end_time)) if run.end_time else None
 
                 execution_status = STATUS_MAP.get(run.status, StatusType.Pending)
 
@@ -236,16 +215,11 @@ class MicrosoftFabricPipelineSource(PipelineServiceSource):
                     # Microsoft Fabric pipelines can have old tasks that were removed/renamed
                     # We only include tasks that exist in the current pipeline definition
                     try:
-                        activity_runs = self.client.get_pipeline_activity_runs(
-                            run.id, run
-                        )
+                        activity_runs = self.client.get_pipeline_activity_runs(run.id, run)
 
                         for activity_run in activity_runs:
                             # Only include tasks that exist in current pipeline definition
-                            if (
-                                activity_run.activity_name
-                                not in self.context.get().task_names
-                            ):
+                            if activity_run.activity_name not in self.context.get().task_names:
                                 logger.debug(
                                     f"Skipping task '{activity_run.activity_name}' from run {run.id} "
                                     f"as it no longer exists in current pipeline definition"
@@ -253,15 +227,11 @@ class MicrosoftFabricPipelineSource(PipelineServiceSource):
                                 continue
 
                             # Map activity status to OpenMetadata status
-                            activity_status = ACTIVITY_STATUS_MAP.get(
-                                activity_run.status, StatusType.Pending
-                            )
+                            activity_status = ACTIVITY_STATUS_MAP.get(activity_run.status, StatusType.Pending)
 
                             # Convert activity run times to timestamps
                             activity_start = (
-                                Timestamp(
-                                    datetime_to_ts(activity_run.activity_run_start)
-                                )
+                                Timestamp(datetime_to_ts(activity_run.activity_run_start))
                                 if activity_run.activity_run_start
                                 else None
                             )
@@ -282,9 +252,7 @@ class MicrosoftFabricPipelineSource(PipelineServiceSource):
                     except Exception as activity_exc:
                         # If we can't fetch activity runs, log warning and continue
                         # This maintains backward compatibility if the API fails
-                        logger.warning(
-                            f"Could not fetch activity runs for pipeline run {run.id}: {activity_exc}"
-                        )
+                        logger.warning(f"Could not fetch activity runs for pipeline run {run.id}: {activity_exc}")
                         logger.debug(traceback.format_exc())
 
                 pipeline_status = PipelineStatus(
@@ -316,7 +284,5 @@ class MicrosoftFabricPipelineSource(PipelineServiceSource):
                 )
             )
 
-    def yield_pipeline_lineage_details(
-        self, pipeline_details: Any
-    ) -> Iterable[Either[AddLineageRequest]]:
+    def yield_pipeline_lineage_details(self, pipeline_details: Any) -> Iterable[Either[AddLineageRequest]]:
         return

@@ -107,6 +107,7 @@ class ServiceUtilClassBase {
     PipelineServiceType.Mulesoft,
     DatabaseServiceType.MicrosoftAccess,
     DashboardServiceType.SapS4Hana,
+    DatabaseServiceType.SapSuccessFactors,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<

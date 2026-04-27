@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Lineage test
 """
+
 import time
 
 import pytest
@@ -196,9 +197,7 @@ def lineage_schema(metadata, lineage_database):
 
     yield schema
 
-    metadata.delete(
-        entity=DatabaseSchema, entity_id=schema.id, recursive=True, hard_delete=True
-    )
+    metadata.delete(entity=DatabaseSchema, entity_id=schema.id, recursive=True, hard_delete=True)
 
 
 @pytest.fixture(scope="module")
@@ -336,9 +335,7 @@ class TestOMetaLineageAPI:
 
         assert from_id == res["entity"]["id"]
 
-        node_id = next(
-            iter([node["id"] for node in res["nodes"] if node["id"] == to_id]), None
-        )
+        node_id = next(iter([node["id"] for node in res["nodes"] if node["id"] == to_id]), None)
         assert node_id is not None
 
         linage_request_1 = AddLineageRequest(
@@ -356,9 +353,7 @@ class TestOMetaLineageAPI:
 
         res["entity"]["id"] = str(res["entity"]["id"])
         assert len(res["downstreamEdges"]) == 1
-        assert res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"] == str(
-            lineage_pipeline.id.root
-        )
+        assert res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"] == str(lineage_pipeline.id.root)
 
         linage_request_2 = AddLineageRequest(
             edge=EntitiesEdge(
@@ -368,9 +363,7 @@ class TestOMetaLineageAPI:
                     description="test lineage",
                     columnsLineage=[
                         ColumnLineage(
-                            fromColumns=[
-                                f"{lineage_table1.fullyQualifiedName.root}.id"
-                            ],
+                            fromColumns=[f"{lineage_table1.fullyQualifiedName.root}.id"],
                             toColumn=f"{lineage_table2.fullyQualifiedName.root}.id",
                         )
                     ],
@@ -382,9 +375,7 @@ class TestOMetaLineageAPI:
 
         res["entity"]["id"] = str(res["entity"]["id"])
         assert len(res["downstreamEdges"]) == 1
-        assert res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"] == str(
-            lineage_pipeline.id.root
-        )
+        assert res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"] == str(lineage_pipeline.id.root)
         assert len(res["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]) == 1
 
         linage_request_2 = AddLineageRequest(
@@ -395,9 +386,7 @@ class TestOMetaLineageAPI:
                     description="test lineage",
                     columnsLineage=[
                         ColumnLineage(
-                            fromColumns=[
-                                f"{lineage_table1.fullyQualifiedName.root}.another"
-                            ],
+                            fromColumns=[f"{lineage_table1.fullyQualifiedName.root}.another"],
                             toColumn=f"{lineage_table2.fullyQualifiedName.root}.another",
                         )
                     ],
@@ -409,29 +398,19 @@ class TestOMetaLineageAPI:
 
         res["entity"]["id"] = str(res["entity"]["id"])
         assert len(res["downstreamEdges"]) == 1
-        assert res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"] == str(
-            lineage_pipeline.id.root
-        )
+        assert res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"] == str(lineage_pipeline.id.root)
         assert len(res["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]) == 2
 
-        lineage_id = metadata.get_lineage_by_id(
-            entity=Table, entity_id=lineage_table2.id.root
-        )
+        lineage_id = metadata.get_lineage_by_id(entity=Table, entity_id=lineage_table2.id.root)
         assert lineage_id["entity"]["id"] == str(lineage_table2.id.root)
 
-        lineage_uuid = metadata.get_lineage_by_id(
-            entity=Table, entity_id=lineage_table2.id
-        )
+        lineage_uuid = metadata.get_lineage_by_id(entity=Table, entity_id=lineage_table2.id)
         assert lineage_uuid["entity"]["id"] == str(lineage_table2.id.root)
 
-        lineage_str = metadata.get_lineage_by_name(
-            entity=Table, fqn=lineage_table2.fullyQualifiedName.root
-        )
+        lineage_str = metadata.get_lineage_by_name(entity=Table, fqn=lineage_table2.fullyQualifiedName.root)
         assert lineage_str["entity"]["id"] == str(lineage_table2.id.root)
 
-        lineage_fqn = metadata.get_lineage_by_name(
-            entity=Table, fqn=lineage_table2.fullyQualifiedName
-        )
+        lineage_fqn = metadata.get_lineage_by_name(entity=Table, fqn=lineage_table2.fullyQualifiedName)
         assert lineage_fqn["entity"]["id"] == str(lineage_table2.id.root)
 
     def test_delete_by_source(self, metadata, lineage_table2):
@@ -444,22 +423,14 @@ class TestOMetaLineageAPI:
         type, table ID, and lineage source. Finally, it asserts that the length of the upstream edges
         in the lineage has decreased by 1.
         """
-        lineage = metadata.get_lineage_by_id(
-            entity="table", entity_id=lineage_table2.id.root
-        )
+        lineage = metadata.get_lineage_by_id(entity="table", entity_id=lineage_table2.id.root)
         original_len = len(lineage.get("upstreamEdges") or [])
-        metadata.delete_lineage_by_source(
-            "table", lineage_table2.id.root, LineageSource.Manual.value
-        )
-        lineage = metadata.get_lineage_by_id(
-            entity="table", entity_id=lineage_table2.id.root
-        )
+        metadata.delete_lineage_by_source("table", lineage_table2.id.root, LineageSource.Manual.value)
+        lineage = metadata.get_lineage_by_id(entity="table", entity_id=lineage_table2.id.root)
         updated_len = len(lineage.get("upstreamEdges") or [])
         assert updated_len == original_len - 1
 
-    def test_table_datamodel_lineage(
-        self, metadata, lineage_table1, lineage_dashboard_datamodel
-    ):
+    def test_table_datamodel_lineage(self, metadata, lineage_table1, lineage_dashboard_datamodel):
         """We can create and get lineage for a table to a dashboard datamodel"""
 
         from_id = str(lineage_table1.id.root)
@@ -469,9 +440,7 @@ class TestOMetaLineageAPI:
             data=AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(id=lineage_table1.id, type="table"),
-                    toEntity=EntityReference(
-                        id=lineage_dashboard_datamodel.id, type="dashboardDataModel"
-                    ),
+                    toEntity=EntityReference(id=lineage_dashboard_datamodel.id, type="dashboardDataModel"),
                     lineageDetails=LineageDetails(description="test lineage"),
                 ),
             ),
@@ -497,9 +466,7 @@ class TestOMetaLineageAPI:
             )
         )
 
-        res: Table = metadata.get_by_name(
-            entity=Table, fqn=new_table.fullyQualifiedName
-        )
+        res: Table = metadata.get_by_name(entity=Table, fqn=new_table.fullyQualifiedName)
 
         assert res.name == name
 
@@ -511,9 +478,7 @@ class TestOMetaLineageAPI:
                     lineageDetails=LineageDetails(
                         columnsLineage=[
                             ColumnLineage(
-                                fromColumns=[
-                                    lineage_table1.columns[0].fullyQualifiedName
-                                ],
+                                fromColumns=[lineage_table1.columns[0].fullyQualifiedName],
                                 toColumn=new_table.columns[0].fullyQualifiedName,
                             )
                         ]
@@ -529,18 +494,14 @@ class TestOMetaLineageAPI:
         entity_lineage = EntityLineage.model_validate(lineage)
         assert entity_lineage.upstreamEdges[0].fromEntity.root == lineage_table1.id.root
 
-    def test_api_endpoint_to_table_lineage(
-        self, metadata, lineage_api_endpoint, lineage_table1
-    ):
+    def test_api_endpoint_to_table_lineage(self, metadata, lineage_api_endpoint, lineage_table1):
         """
         Test lineage from APIEndpoint to Table with column-level lineage using get_entity_ref
         """
         api_endpoint_ref = metadata.get_entity_reference(
             entity=APIEndpoint, fqn=lineage_api_endpoint.fullyQualifiedName
         )
-        table_ref = metadata.get_entity_reference(
-            entity=Table, fqn=lineage_table1.fullyQualifiedName
-        )
+        table_ref = metadata.get_entity_reference(entity=Table, fqn=lineage_table1.fullyQualifiedName)
 
         assert api_endpoint_ref.type == "apiEndpoint"
         assert table_ref.type == "table"
@@ -561,13 +522,7 @@ class TestOMetaLineageAPI:
         assert str(lineage_api_endpoint.id.root) == res["entity"]["id"]
 
         table_node = next(
-            iter(
-                [
-                    node
-                    for node in res["nodes"]
-                    if node["id"] == str(lineage_table1.id.root)
-                ]
-            ),
+            iter([node for node in res["nodes"] if node["id"] == str(lineage_table1.id.root)]),
             None,
         )
         assert table_node is not None
@@ -576,15 +531,10 @@ class TestOMetaLineageAPI:
         assert len(res["downstreamEdges"]) == 1
         downstream_edge = res["downstreamEdges"][0]
         assert downstream_edge["lineageDetails"] is not None
-        assert (
-            downstream_edge["lineageDetails"]["description"]
-            == "API response data flows to table"
-        )
+        assert downstream_edge["lineageDetails"]["description"] == "API response data flows to table"
         assert isinstance(downstream_edge["lineageDetails"]["columnsLineage"], list)
 
-        table_lineage = metadata.get_lineage_by_name(
-            entity=Table, fqn=lineage_table1.fullyQualifiedName.root
-        )
+        table_lineage = metadata.get_lineage_by_name(entity=Table, fqn=lineage_table1.fullyQualifiedName.root)
 
         entity_lineage = EntityLineage.model_validate(table_lineage)
         assert len(entity_lineage.upstreamEdges) >= 1
@@ -599,13 +549,8 @@ class TestOMetaLineageAPI:
         )
         assert api_upstream_edge is not None
 
-        assert (
-            api_upstream_edge.lineageDetails.description
-            == "API response data flows to table"
-        )
+        assert api_upstream_edge.lineageDetails.description == "API response data flows to table"
 
-        api_lineage = metadata.get_lineage_by_id(
-            entity=APIEndpoint, entity_id=lineage_api_endpoint.id.root
-        )
+        api_lineage = metadata.get_lineage_by_id(entity=APIEndpoint, entity_id=lineage_api_endpoint.id.root)
         assert str(api_lineage["entity"]["id"]) == str(lineage_api_endpoint.id.root)
         assert len(api_lineage["downstreamEdges"]) == 1

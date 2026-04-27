@@ -42,10 +42,8 @@ class TestHexApiClient(TestCase):
 
     def test_client_initialization_with_personal_token(self):
         """Test client initialization with personal token"""
-        with patch(
-            "metadata.ingestion.source.dashboard.hex.client.TrackedREST"
-        ) as mock_rest:
-            client = HexApiClient(self.config)
+        with patch("metadata.ingestion.source.dashboard.hex.client.TrackedREST") as mock_rest:
+            client = HexApiClient(self.config)  # noqa: F841
 
             # Verify TrackedREST client was initialized with correct config
             mock_rest.assert_called_once()
@@ -70,10 +68,8 @@ class TestHexApiClient(TestCase):
             tokenType="workspace",
         )
 
-        with patch(
-            "metadata.ingestion.source.dashboard.hex.client.TrackedREST"
-        ) as mock_rest:
-            client = HexApiClient(workspace_config)
+        with patch("metadata.ingestion.source.dashboard.hex.client.TrackedREST") as mock_rest:
+            client = HexApiClient(workspace_config)  # noqa: F841
 
             mock_rest.assert_called_once()
             call_args = mock_rest.call_args[0][0]
@@ -122,31 +118,23 @@ class TestHexApiClient(TestCase):
         """Test fetching projects with multiple pages"""
         # First page response
         page1_response = {
-            "values": [
-                {"id": f"proj_{i}", "title": f"Dashboard {i}"} for i in range(100)
-            ],
+            "values": [{"id": f"proj_{i}", "title": f"Dashboard {i}"} for i in range(100)],
             "pagination": {"after": "cursor_page2"},
         }
 
         # Second page response
         page2_response = {
-            "values": [
-                {"id": f"proj_{i}", "title": f"Dashboard {i}"} for i in range(100, 150)
-            ],
+            "values": [{"id": f"proj_{i}", "title": f"Dashboard {i}"} for i in range(100, 150)],
             "pagination": {"after": "cursor_page3"},
         }
 
         # Third page response (last page)
         page3_response = {
-            "values": [
-                {"id": f"proj_{i}", "title": f"Dashboard {i}"} for i in range(150, 175)
-            ],
+            "values": [{"id": f"proj_{i}", "title": f"Dashboard {i}"} for i in range(150, 175)],
             "pagination": None,
         }
 
-        self.client.client.get = MagicMock(
-            side_effect=[page1_response, page2_response, page3_response]
-        )
+        self.client.client.get = MagicMock(side_effect=[page1_response, page2_response, page3_response])
 
         projects = self.client.get_projects()
 
@@ -167,9 +155,7 @@ class TestHexApiClient(TestCase):
 
     def test_get_projects_empty_response(self):
         """Test fetching projects with empty response"""
-        self.client.client.get = MagicMock(
-            return_value={"values": [], "pagination": None}
-        )
+        self.client.client.get = MagicMock(return_value={"values": [], "pagination": None})
 
         projects = self.client.get_projects()
 
@@ -177,9 +163,7 @@ class TestHexApiClient(TestCase):
 
     def test_get_projects_api_error(self):
         """Test handling API errors when fetching projects"""
-        self.client.client.get = MagicMock(
-            side_effect=APIError({"message": "Server error"})
-        )
+        self.client.client.get = MagicMock(side_effect=APIError({"message": "Server error"}))
 
         projects = self.client.get_projects()
 
@@ -187,9 +171,7 @@ class TestHexApiClient(TestCase):
 
     def test_get_projects_network_error(self):
         """Test handling network errors when fetching projects"""
-        self.client.client.get = MagicMock(
-            side_effect=ConnectionError("Network unreachable")
-        )
+        self.client.client.get = MagicMock(side_effect=ConnectionError("Network unreachable"))
 
         projects = self.client.get_projects()
 
@@ -205,9 +187,7 @@ class TestHexApiClient(TestCase):
 
     def test_get_projects_missing_values_key(self):
         """Test handling response without 'values' key"""
-        self.client.client.get = MagicMock(
-            return_value={"data": [], "pagination": None}
-        )
+        self.client.client.get = MagicMock(return_value={"data": [], "pagination": None})
 
         projects = self.client.get_projects()
 
@@ -242,9 +222,7 @@ class TestHexApiClient(TestCase):
 
     def test_rate_limiting_handling(self):
         """Test handling rate limiting (429 error)"""
-        self.client.client.get = MagicMock(
-            side_effect=APIError({"message": "Too Many Requests"})
-        )
+        self.client.client.get = MagicMock(side_effect=APIError({"message": "Too Many Requests"}))
 
         projects = self.client.get_projects()
 
@@ -343,26 +321,22 @@ class TestHexApiClient(TestCase):
         mock_clean_uri.return_value = "https://app.hex.tech"
 
         with patch("metadata.ingestion.source.dashboard.hex.client.TrackedREST"):
-            client = HexApiClient(self.config)
+            client = HexApiClient(self.config)  # noqa: F841
 
             # Verify clean_uri was called for initialization
             mock_clean_uri.assert_called()
 
     def test_headers_configuration(self):
         """Test that proper headers are configured"""
-        with patch(
-            "metadata.ingestion.source.dashboard.hex.client.TrackedREST"
-        ) as mock_rest:
-            client = HexApiClient(self.config)
+        with patch("metadata.ingestion.source.dashboard.hex.client.TrackedREST") as mock_rest:
+            client = HexApiClient(self.config)  # noqa: F841
 
             call_args = mock_rest.call_args[0][0]
 
             self.assertIn("accept", call_args.extra_headers)
             self.assertEqual(call_args.extra_headers["accept"], "application/json")
             self.assertIn("Content-Type", call_args.extra_headers)
-            self.assertEqual(
-                call_args.extra_headers["Content-Type"], "application/json"
-            )
+            self.assertEqual(call_args.extra_headers["Content-Type"], "application/json")
 
 
 class TestHexApiClientIntegration(TestCase):
@@ -376,9 +350,7 @@ class TestHexApiClientIntegration(TestCase):
             token="test_token",
         )
 
-        with patch(
-            "metadata.ingestion.source.dashboard.hex.client.TrackedREST"
-        ) as mock_rest:
+        with patch("metadata.ingestion.source.dashboard.hex.client.TrackedREST") as mock_rest:
             mock_client = MagicMock()
             mock_rest.return_value = mock_client
 
@@ -395,27 +367,21 @@ class TestHexApiClientIntegration(TestCase):
                     {
                         "id": f"proj_{i:04d}",
                         "title": f"Dashboard {i}",
-                        "description": f"Description for dashboard {i}"
-                        if i % 2 == 0
-                        else None,
+                        "description": f"Description for dashboard {i}" if i % 2 == 0 else None,
                         "owner": {
                             "email": f"user{i % 10}@company.com",
                         }
                         if i % 3 != 0
                         else None,
                         "categories": [{"name": f"Category{j}"} for j in range(i % 4)],
-                        "status": {"name": "Published"}
-                        if i % 5 == 0
-                        else {"name": "Draft"},
+                        "status": {"name": "Published"} if i % 5 == 0 else {"name": "Draft"},
                     }
                     for i in range(start_idx, end_idx)
                 ]
 
                 response = {
                     "values": values,
-                    "pagination": {"after": f"cursor_page{page + 2}"}
-                    if end_idx < total_projects
-                    else None,
+                    "pagination": {"after": f"cursor_page{page + 2}"} if end_idx < total_projects else None,
                 }
                 responses.append(response)
 
@@ -442,23 +408,17 @@ class TestHexApiClientIntegration(TestCase):
             token="test_token",
         )
 
-        with patch(
-            "metadata.ingestion.source.dashboard.hex.client.TrackedREST"
-        ) as mock_rest:
+        with patch("metadata.ingestion.source.dashboard.hex.client.TrackedREST") as mock_rest:
             mock_client = MagicMock()
             mock_rest.return_value = mock_client
 
             # First page succeeds, second page fails
             page1 = {
-                "values": [
-                    {"id": f"proj_{i}", "title": f"Dashboard {i}"} for i in range(50)
-                ],
+                "values": [{"id": f"proj_{i}", "title": f"Dashboard {i}"} for i in range(50)],
                 "pagination": {"after": "cursor_2"},
             }
 
-            mock_client.get = MagicMock(
-                side_effect=[page1, APIError({"message": "Server error"})]
-            )
+            mock_client.get = MagicMock(side_effect=[page1, APIError({"message": "Server error"})])
 
             client = HexApiClient(config)
             projects = client.get_projects()

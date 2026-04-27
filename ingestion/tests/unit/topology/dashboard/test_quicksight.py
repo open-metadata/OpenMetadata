@@ -37,9 +37,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.dashboard.quicksight.metadata import QuicksightSource
 from metadata.ingestion.source.dashboard.quicksight.models import DashboardDetail
 
-mock_file_path = (
-    Path(__file__).parent.parent.parent / "resources/datasets/quicksight_dataset.json"
-)
+mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/quicksight_dataset.json"
 with open(mock_file_path, encoding="UTF-8") as file:
     mock_data: dict = json.load(file)
 
@@ -56,9 +54,7 @@ MOCK_DASHBOARD = Dashboard(
     name="do_it_all_with_default_config",
     fullyQualifiedName="quicksight_source.do_it_all_with_default_config",
     displayName="do_it_all_with_default_config",
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="dashboardService"
-    ),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="dashboardService"),
 )
 
 mock_quicksight_config = {
@@ -152,9 +148,7 @@ class QuickSightUnitTest(TestCase):
     QuickSight Unit Test
     """
 
-    @patch(
-        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
@@ -163,22 +157,14 @@ class QuickSightUnitTest(TestCase):
             mock_quicksight_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.quicksight.dashboard_url = (
-            "https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335"
-        )
-        self.quicksight.context.get().__dict__[
-            "dashboard"
-        ] = MOCK_DASHBOARD.fullyQualifiedName.root
-        self.quicksight.context.get().__dict__[
-            "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+        self.quicksight.dashboard_url = "https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335"
+        self.quicksight.context.get().__dict__["dashboard"] = MOCK_DASHBOARD.fullyQualifiedName.root
+        self.quicksight.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     @pytest.mark.order(1)
     def test_dashboard(self):
         dashboard_list = []
-        results = self.quicksight.yield_dashboard(
-            DashboardDetail(**MOCK_DASHBOARD_DETAILS)
-        )
+        results = self.quicksight.yield_dashboard(DashboardDetail(**MOCK_DASHBOARD_DETAILS))
         for result in results:
             if isinstance(result, Either) and result.right:
                 dashboard_list.append(result.right)
@@ -186,12 +172,7 @@ class QuickSightUnitTest(TestCase):
 
     @pytest.mark.order(2)
     def test_dashboard_name(self):
-        assert (
-            self.quicksight.get_dashboard_name(
-                DashboardDetail(**MOCK_DASHBOARD_DETAILS)
-            )
-            == mock_data["Name"]
-        )
+        assert self.quicksight.get_dashboard_name(DashboardDetail(**MOCK_DASHBOARD_DETAILS)) == mock_data["Name"]
 
     @pytest.mark.order(3)
     def test_chart(self):
@@ -258,9 +239,7 @@ class QuickSightUnitTest(TestCase):
         each dataset should produce its own DataModel.
         """
         shared_datasource_id = "shared-datasource-001"
-        shared_datasource_arn = (
-            "arn:aws:quicksight:us-east-2:123456789:datasource/shared-datasource-001"
-        )
+        shared_datasource_arn = "arn:aws:quicksight:us-east-2:123456789:datasource/shared-datasource-001"
 
         mock_list_data_sets_response = {
             "DataSetSummaries": [
@@ -343,9 +322,7 @@ class QuickSightUnitTest(TestCase):
         mock_client.list_data_sets.return_value = mock_list_data_sets_response
         mock_client.describe_data_set.side_effect = describe_data_set_side_effect
         mock_client.list_data_sources.return_value = mock_list_data_sources_response
-        mock_client.describe_data_source.return_value = (
-            mock_describe_data_source_response
-        )
+        mock_client.describe_data_source.return_value = mock_describe_data_source_response
 
         self.quicksight.client = mock_client
 
@@ -363,9 +340,7 @@ class QuickSightUnitTest(TestCase):
 
         results = list(self.quicksight.yield_datamodel(dashboard_details))
 
-        datamodel_requests = [
-            r.right for r in results if isinstance(r, Either) and r.right
-        ]
+        datamodel_requests = [r.right for r in results if isinstance(r, Either) and r.right]
 
         assert len(datamodel_requests) == 2
 
@@ -391,13 +366,9 @@ class QuickSightUnitTest(TestCase):
 
     def test_chart_source_state_populated(self):
         """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
-        dashboard_details = DashboardDetail(
-            **{**MOCK_DASHBOARD_DETAILS, "Version": mock_data["Version"]}
-        )
+        dashboard_details = DashboardDetail(**{**MOCK_DASHBOARD_DETAILS, "Version": mock_data["Version"]})
         self.quicksight.chart_source_state = set()
         list(self.quicksight.yield_dashboard_chart(dashboard_details))
-        assert len(self.quicksight.chart_source_state) == len(
-            mock_data["Version"]["Sheets"]
-        )
+        assert len(self.quicksight.chart_source_state) == len(mock_data["Version"]["Sheets"])
         for fqn in self.quicksight.chart_source_state:
             assert "quicksight_source_test" in fqn

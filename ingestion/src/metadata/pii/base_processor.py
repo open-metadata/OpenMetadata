@@ -11,6 +11,7 @@
 """
 Base class for the Auto Classification Processor.
 """
+
 import traceback
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional, Sequence, Type, TypeVar, cast, final
@@ -64,9 +65,7 @@ class AutoClassificationProcessor(Processor, ABC):
         )  # Used to satisfy type checked
 
     @abstractmethod
-    def create_column_tag_labels(
-        self, column: Column, sample_data: Sequence[Any]
-    ) -> Sequence[TagLabel]:
+    def create_column_tag_labels(self, column: Column, sample_data: Sequence[Any]) -> Sequence[TagLabel]:
         """
         Create tags for the column based on the sample data.
         """
@@ -127,9 +126,7 @@ class AutoClassificationProcessor(Processor, ABC):
                     sample_data=[row[idx] for row in record.sample_data.data.rows],
                 )
                 for tag in tags:
-                    column_tag = ColumnTag(
-                        column_fqn=column.fullyQualifiedName.root, tag_label=tag
-                    )
+                    column_tag = ColumnTag(column_fqn=column.fullyQualifiedName.root, tag_label=tag)
                     column_tags.append(column_tag)
             except Exception as err:
                 self.status.failed(

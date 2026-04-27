@@ -11,6 +11,7 @@
 """
 Superset source module
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
@@ -43,9 +44,7 @@ class SupersetSource:
         config = WorkflowSource.model_validate(config_dict)
         connection: SupersetConnection = config.serviceConnection.root.config
         if not isinstance(connection, SupersetConnection):
-            raise InvalidSourceException(
-                f"Expected SupersetConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected SupersetConnection, but got {connection}")
         if isinstance(connection.connection, SupersetApiConnection):
             return SupersetAPISource(config, metadata)
         return SupersetDBSource(config, metadata)
