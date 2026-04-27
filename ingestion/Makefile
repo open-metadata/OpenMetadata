@@ -45,15 +45,8 @@ lint:  ## Run pylint on the Python sources to analyze the codebase
 	PYTHONPATH="${PYTHONPATH}:$(INGESTION_DIR)/plugins" find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint --rcfile=$(INGESTION_DIR)/pyproject.toml
 
 .PHONY: static-checks
-static-checks:
-	# For Python 3.9, optionally skip SDK type checks if OM_SKIP_SDK_PY39=1
-	PY_VER=$$(python -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")'); \
-    if [ "$$PY_VER" = "3.9" ] && [ "$$OM_SKIP_SDK_PY39" = "1" ]; then \
-        echo "[static-checks] Python $$PY_VER detected with OM_SKIP_SDK_PY39=1 — excluding sdk/ from type checks"; \
-        basedpyright $$(find $(INGESTION_DIR)/src/metadata -maxdepth 1 -mindepth 1 -type d \( -not -name sdk -a -not -name __pycache__ \) | tr '\n' ' ') $$(find $(INGESTION_DIR)/src/metadata -maxdepth 1 -type f -name '*.py' | tr '\n' ' '); \
-    else \
-        basedpyright -p $(INGESTION_DIR)/pyproject.toml; \
-    fi
+static-checks:  ## Run basedpyright type checks (delegates to nox so local matches CI)
+	cd $(INGESTION_DIR) && nox --no-venv -s static-checks
 
 .PHONY: precommit_install
 precommit_install:  ## Install the project's precommit hooks from .pre-commit-config.yaml
