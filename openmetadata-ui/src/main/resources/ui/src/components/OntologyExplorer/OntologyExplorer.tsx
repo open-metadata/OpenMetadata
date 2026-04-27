@@ -56,8 +56,8 @@ const ONTOLOGY_TOOLBAR_CARD_CLASS =
 const ONTOLOGY_ENTITY_SUMMARY_SLIDEOUT_WIDTH = 576;
 
 interface GraphEmptyStateProps {
-  message: string;
-  testId: string;
+  readonly message: string;
+  readonly testId: string;
 }
 
 function GraphEmptyState({ message, testId }: GraphEmptyStateProps) {
@@ -104,7 +104,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     filteredGraphData,
     hierarchyGraphData,
     hierarchyBakedPositions,
-    graphSearchHighlight,
     glossaryColorMap,
     isHierarchyView,
     exportableGlossaryId,
@@ -223,71 +222,59 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     }
 
     return (
-      <>
-        {filters.searchQuery.trim() ? (
-          <div
-            aria-hidden
-            className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-1 tw:bg-gray-950/6"
-            data-testid="ontology-search-overlay"
-          />
-        ) : null}
-        <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0">
-          <OntologyGraph
-            edges={graphDataToShow.edges}
-            expandedTermIds={
-              explorationMode === 'data' ? expandedTermIds : undefined
-            }
-            explorationMode={isHierarchyView ? 'hierarchy' : explorationMode}
-            focusNodeId={
-              explorationMode === 'data'
-                ? selectedNode?.id ?? entityId
-                : entityId
-            }
-            glossaries={glossaries}
-            glossaryColorMap={glossaryColorMap}
-            graphSearchHighlight={graphSearchHighlight}
-            hierarchyCombos={
-              isHierarchyView && hierarchyGraphData
-                ? hierarchyGraphData.combos.map((c) => ({
-                    glossaryId: c.glossaryId,
-                    id: c.id,
-                    label: c.label,
-                  }))
-                : undefined
-            }
-            nodePositions={hierarchyBakedPositions}
-            nodes={graphDataToShow.nodes}
-            ref={graphRef}
-            selectedNodeId={
-              explorationMode === 'data' && expandedTermIds.size > 1
-                ? null
-                : selectedNode?.id
-            }
-            settings={settings}
-            onNodeClick={handleGraphNodeClick}
-            onNodeDoubleClick={handleGraphNodeDoubleClick}
-            onPaneClick={handleGraphPaneClick}
-            onScrollNearEdge={handleScrollNearEdge}
-          />
-          {isLoadingMore && (
-            <>
-              <div className="tw:absolute tw:inset-0 tw:z-1 tw:cursor-wait" />
-              <div className="tw:pointer-events-none tw:absolute tw:bottom-20 tw:left-1/2 tw:z-2 tw:-translate-x-1/2">
-                <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-full tw:border tw:border-utility-gray-blue-100 tw:bg-white tw:px-4 tw:py-2 tw:shadow-md">
-                  <div
-                    aria-label={t('label.loading')}
-                    className="tw:h-4 tw:w-4 tw:animate-spin tw:rounded-full tw:border-2 tw:border-border-secondary tw:border-t-(--color-bg-brand-solid)"
-                    role="status"
-                  />
-                  <Typography size="text-sm" weight="medium">
-                    {t('label.loading-more-terms')}
-                  </Typography>
-                </div>
+      <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0">
+        <OntologyGraph
+          edges={graphDataToShow.edges}
+          expandedTermIds={
+            explorationMode === 'data' ? expandedTermIds : undefined
+          }
+          explorationMode={isHierarchyView ? 'hierarchy' : explorationMode}
+          focusNodeId={
+            explorationMode === 'data' ? selectedNode?.id ?? entityId : entityId
+          }
+          glossaries={glossaries}
+          glossaryColorMap={glossaryColorMap}
+          hierarchyCombos={
+            isHierarchyView && hierarchyGraphData
+              ? hierarchyGraphData.combos.map((c) => ({
+                  glossaryId: c.glossaryId,
+                  id: c.id,
+                  label: c.label,
+                }))
+              : undefined
+          }
+          nodePositions={hierarchyBakedPositions}
+          nodes={graphDataToShow.nodes}
+          ref={graphRef}
+          selectedNodeId={
+            explorationMode === 'data' && expandedTermIds.size > 1
+              ? null
+              : selectedNode?.id
+          }
+          settings={settings}
+          onNodeClick={handleGraphNodeClick}
+          onNodeDoubleClick={handleGraphNodeDoubleClick}
+          onPaneClick={handleGraphPaneClick}
+          onScrollNearEdge={handleScrollNearEdge}
+        />
+        {isLoadingMore && (
+          <>
+            <div className="tw:absolute tw:inset-0 tw:z-1 tw:cursor-wait" />
+            <div className="tw:pointer-events-none tw:absolute tw:bottom-20 tw:left-1/2 tw:z-2 tw:-translate-x-1/2">
+              <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-full tw:border tw:border-utility-gray-blue-100 tw:bg-white tw:px-4 tw:py-2 tw:shadow-md">
+                <div
+                  aria-label={t('label.loading')}
+                  className="tw:h-4 tw:w-4 tw:animate-spin tw:rounded-full tw:border-2 tw:border-border-secondary tw:border-t-(--color-bg-brand-solid)"
+                  role="status"
+                />
+                <Typography size="text-sm" weight="medium">
+                  {t('label.loading-more-terms')}
+                </Typography>
               </div>
-            </>
-          )}
-        </div>
-      </>
+            </div>
+          </>
+        )}
+      </div>
     );
   };
 
