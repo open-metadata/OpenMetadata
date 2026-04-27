@@ -18,7 +18,7 @@ import {
   descriptionBox,
   generateRandomUsername,
   redirectToHomePage,
-  uuid
+  uuid,
 } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 import { visitUserProfilePage } from '../../utils/user';
@@ -80,9 +80,9 @@ test.describe.serial('Add role and assign it to the user', () => {
   test('Create new user and assign new role to him', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.USERS);
 
-    await page.waitForLoadState('networkidle');
-
+    const initialRolesResponse = page.waitForResponse('/api/v1/roles/search?*');
     await page.click('[data-testid="add-user"]');
+    await initialRolesResponse;
 
     await page.fill('[data-testid="email"]', user.email);
     await page.fill('[data-testid="displayName"]', userDisplayName);
@@ -99,7 +99,9 @@ test.describe.serial('Add role and assign it to the user', () => {
     await page.waitForSelector('.ant-select-dropdown', {
       state: 'visible',
     });
+    const rolesSearchResponse = page.waitForResponse('/api/v1/roles/search?*');
     await page.fill('#roles', roleName);
+    await rolesSearchResponse;
     await page.click(`[title="${roleName}"]`);
 
     await page.keyboard.press('Escape');
