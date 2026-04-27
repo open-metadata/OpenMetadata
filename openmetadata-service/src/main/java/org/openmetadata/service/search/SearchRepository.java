@@ -594,6 +594,28 @@ public class SearchRepository {
     return getWriteIndexName(indexMapping);
   }
 
+  /**
+   * Returns the index targets a write that normally goes through a multi-entity alias (e.g.
+   * {@code GLOBAL_SEARCH_ALIAS}, {@code DATA_ASSET_SEARCH_ALIAS}) should fan out to: the alias
+   * itself plus every currently-staged index. During an in-flight reindex, update-by-query
+   * operations rooted on shared aliases (asset domain reassignments, FQN renames, …) would
+   * otherwise update the about-to-be-discarded active index only — by including the staged
+   * index in the same request, the change is applied to whichever index ends up serving the
+   * alias after promotion.
+   *
+   * <p>Calling with an alias that is already a canonical entity index name is fine; the staged
+   * index for that canonical name will be added as expected.
+   */
+  public List<String> getWriteFanoutTargets(String aliasOrIndex) {
+    if (aliasOrIndex == null) {
+      return new ArrayList<>(activeStagedIndices.values());
+    }
+    List<String> targets = new ArrayList<>(activeStagedIndices.size() + 1);
+    targets.add(aliasOrIndex);
+    targets.addAll(activeStagedIndices.values());
+    return targets;
+  }
+
   public String getIndexOrAliasName(String name) {
     if (clusterAlias == null || clusterAlias.isEmpty()) {
       return name;
