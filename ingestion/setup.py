@@ -189,7 +189,7 @@ plugins: Dict[str, Set[str]] = {
     },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {VERSIONS["pyathena"]},
-    "atlas": {},
+    "atlas": set(),
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
     "microsoftfabric": {VERSIONS["pyodbc"], VERSIONS["msal"]},
@@ -231,9 +231,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["azure-identity"],
     },
     "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=3.2.6"},
-    "db2-ibmi": {
-        # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict)
-    },
+    "db2-ibmi": set(),  # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict),
     "databricks": {
         # sqlalchemy-databricks is pre-installed with --no-deps (SA<2 metadata conflict)
         VERSIONS["databricks-sdk"],
@@ -341,7 +339,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["cloud-sql-python-connector-pymysql"],
         DATA_DIFF["mysql"],
     },
-    "nifi": {},  # uses requests
+    "nifi": set(),  # uses requests
     "openlineage": {*COMMONS["kafka"]},
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2", DATA_DIFF["oracle"]},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
@@ -374,12 +372,12 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["presidio-analyzer"],
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
-    "sas": {},
+    "sas": set(),
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {VERSIONS["snowflake"], DATA_DIFF["snowflake"]},
     "ssrs": {"requests-ntlm"},
-    "superset": {},  # uses requests
+    "superset": set(),  # uses requests
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
     "teradata": {VERSIONS["teradata"]},
     "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},

@@ -44,6 +44,7 @@ from metadata.generated.schema.type.schema import SchemaType, Topic
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.messaging.kafka.connection import KafkaClient
 from metadata.ingestion.source.messaging.messaging_service import (
     BrokerTopicDetails,
     MessagingServiceSource,
@@ -86,6 +87,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             and self._is_sample_data_storing_globally_disabled()
         ):
             self.generate_sample_data = False
+        self.connection: KafkaClient
         self.service_connection = self.config.serviceConnection.root.config
         self.admin_client = self.connection.admin_client
         self.schema_registry_client = self.connection.schema_registry_client
@@ -219,6 +221,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         """
         Returns the schema text with references resolved using recursive calls
         """
+        if not self.schema_registry_client:
+            logger.warning("Failed to get schema. Client is missing configuration.")
+            return None
         try:
             if schema:
                 schema_text = schema.schema_str
@@ -249,7 +254,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
     def _parse_topic_metadata(self, topic_name: str) -> Optional[Schema]:
 
-        # To find topic in artifact registry, dafault is "<topic_name>-value"
+        # To find topic in schema registry, default is "<topic_name>-value"
         # But suffix can be overridden using schemaRegistryTopicSuffixName
         topic_schema_registry_name = (
             topic_name + self.service_connection.schemaRegistryTopicSuffixName
@@ -276,7 +281,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
     def yield_topic_sample_data(
         self, topic_details: BrokerTopicDetails
-    ) -> Iterable[Either[TopicSampleData]]:
+    ) -> Iterable[Either[OMetaTopicSampleData]]:
         """
         Method to Get Sample Data of Messaging Entity
         """
@@ -311,17 +316,17 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                             if remaining <= 0:
                                 break
                             msg = self.consumer_client.poll(timeout=remaining)
-                        except ConsumeError as exc:
-                            logger.warning(
-                                f"Consumer error polling topic {topic_name}: {exc}"
-                            )
-                            continue
                         except (
                             KeyDeserializationError,
                             ValueDeserializationError,
                         ) as exc:
                             logger.warning(
                                 f"Failed to deserialize message from topic {topic_name}: {exc}"
+                            )
+                            continue
+                        except ConsumeError as exc:
+                            logger.warning(
+                                f"Consumer error polling topic {topic_name}: {exc}"
                             )
                             continue
                         if msg is None:

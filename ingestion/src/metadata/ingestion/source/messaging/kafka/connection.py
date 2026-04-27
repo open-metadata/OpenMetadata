@@ -58,14 +58,19 @@ TIMEOUT_SECONDS = 10
 
 @dataclass
 class KafkaClient:
-    def __init__(self, admin_client, schema_registry_client, consumer_client) -> None:
+    def __init__(
+        self,
+        admin_client: AdminClient,
+        schema_registry_client: SchemaRegistryClient | None,
+        consumer_client: DeserializingConsumer | None,
+    ) -> None:
         self.admin_client = admin_client
         self.schema_registry_client = schema_registry_client  # Optional
         self.consumer_client = consumer_client
 
 
 def get_connection(
-    connection: Union[KafkaConnection, RedpandaConnection]
+    connection: Union[KafkaConnection, RedpandaConnection],
 ) -> KafkaClient:
     """
     Create connection
@@ -73,21 +78,22 @@ def get_connection(
     consumer_config = deepcopy(connection.consumerConfig) or {}
     schema_registry_config = deepcopy(connection.schemaRegistryConfig) or {}
 
-    if connection.saslUsername or connection.saslPassword or connection.saslMechanism:
-        if connection.saslUsername:
-            consumer_config["sasl.username"] = connection.saslUsername
-        if connection.saslPassword:
-            consumer_config[
-                "sasl.password"
-            ] = connection.saslPassword.get_secret_value()
-        if connection.saslMechanism:
-            consumer_config["sasl.mechanism"] = connection.saslMechanism.value
+    has_sasl = (
+        connection.saslUsername or connection.saslPassword or connection.saslMechanism
+    )
+    if connection.saslUsername:
+        consumer_config["sasl.username"] = connection.saslUsername
+    if connection.saslPassword:
+        consumer_config["sasl.password"] = connection.saslPassword.get_secret_value()
+    if connection.saslMechanism:
+        consumer_config["sasl.mechanism"] = connection.saslMechanism.value
 
-        if (
-            connection.consumerConfig.get("security.protocol") is None
-            and connection.securityProtocol
-        ):
-            consumer_config["security.protocol"] = connection.securityProtocol.value
+    if (
+        has_sasl
+        and connection.consumerConfig.get("security.protocol") is None
+        and connection.securityProtocol
+    ):
+        consumer_config["security.protocol"] = connection.securityProtocol.value
 
     if connection.basicAuthUserInfo:
         schema_registry_config[
