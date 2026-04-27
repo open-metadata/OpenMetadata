@@ -1,4 +1,5 @@
 """Metrics entity SDK."""
+
 from __future__ import annotations
 
 from typing import Any, Sequence, Type, cast
@@ -17,9 +18,7 @@ class Metrics(BaseEntity[Metric, CreateMetricRequest]):
         return Metric
 
     @classmethod
-    def add_related_metrics(
-        cls, metric_id: UuidLike, related_metric_ids: Sequence[UuidLike]
-    ) -> Metric:
+    def add_related_metrics(cls, metric_id: UuidLike, related_metric_ids: Sequence[UuidLike]) -> Metric:
         """Attach related metrics to the provided metric identifier."""
 
         if not related_metric_ids:

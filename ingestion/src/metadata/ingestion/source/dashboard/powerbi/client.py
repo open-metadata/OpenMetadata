@@ -11,6 +11,7 @@
 """
 REST Auth & Client for PowerBi
 """
+
 import json
 import math
 import traceback
@@ -60,6 +61,8 @@ GETGROUPS_DEFAULT_PARAMS = {"$top": "1", "$skip": "0"}
 API_RESPONSE_MESSAGE_KEY = "message"
 AUTH_TOKEN_MAX_RETRIES = 5
 AUTH_TOKEN_RETRY_WAIT = 120
+
+
 # Similar inner methods with mode client. That's fine.
 # pylint: disable=duplicate-code
 class PowerBiApiClient:
@@ -71,9 +74,7 @@ class PowerBiApiClient:
 
     def __init__(self, config: PowerBIConnection):
         self.config = config
-        self.pagination_entity_per_page = min(
-            100, self.config.pagination_entity_per_page
-        )
+        self.pagination_entity_per_page = min(100, self.config.pagination_entity_per_page)
         self.msal_client = msal.ConfidentialClientApplication(
             client_id=self.config.clientId,
             client_credential=self.config.clientSecret.get_secret_value(),
@@ -116,9 +117,7 @@ class PowerBiApiClient:
         retry = AUTH_TOKEN_MAX_RETRIES
         while retry:
             try:
-                response_data = self.msal_client.acquire_token_for_client(
-                    scopes=self.config.scope
-                )
+                response_data = self.msal_client.acquire_token_for_client(scopes=self.config.scope)
                 return response_data
             except Exception as exc:
                 logger.debug(traceback.format_exc())
@@ -132,10 +131,7 @@ class PowerBiApiClient:
                     )
                     sleep(AUTH_TOKEN_RETRY_WAIT)
                 else:
-                    logger.warning(
-                        "Could not generate new token after maximum retries, "
-                        "Please check provided configs"
-                    )
+                    logger.warning("Could not generate new token after maximum retries, Please check provided configs")
         return None
 
     def get_auth_token_from_cache(self) -> Optional[dict]:
@@ -143,9 +139,7 @@ class PowerBiApiClient:
         retry = AUTH_TOKEN_MAX_RETRIES
         while retry:
             try:
-                response_data = self.msal_client.acquire_token_silent(
-                    scopes=self.config.scope, account=None
-                )
+                response_data = self.msal_client.acquire_token_silent(scopes=self.config.scope, account=None)
                 return response_data
             except Exception as exc:
                 logger.debug(traceback.format_exc())
@@ -159,8 +153,7 @@ class PowerBiApiClient:
                     sleep(AUTH_TOKEN_RETRY_WAIT)
                 else:
                     logger.warning(
-                        "Could not get token from cache after maximum retries, "
-                        "Please check provided configs"
+                        "Could not get token from cache after maximum retries, Please check provided configs"
                     )
         return None
 
@@ -180,9 +173,7 @@ class PowerBiApiClient:
         group = self.fetch_all_workspaces()[0]
         return self.fetch_all_org_dashboards(group_id=group.id)
 
-    def fetch_all_org_dashboards(
-        self, group_id: str
-    ) -> Optional[List[PowerBIDashboard]]:
+    def fetch_all_org_dashboards(self, group_id: str) -> Optional[List[PowerBIDashboard]]:
         """Method to fetch all powerbi dashboards within the group
         Returns:
             List[PowerBIDashboard]
@@ -239,9 +230,7 @@ class PowerBiApiClient:
 
         return None
 
-    def fetch_all_org_tiles(
-        self, group_id: str, dashboard_id: str
-    ) -> Optional[List[Tile]]:
+    def fetch_all_org_tiles(self, group_id: str, dashboard_id: str) -> Optional[List[Tile]]:
         """Method to fetch all powerbi dashboard tiles
         Returns:
             List[Tile]
@@ -251,9 +240,7 @@ class PowerBiApiClient:
                 f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/dashboards/{dashboard_id}/tiles)"  # pylint: disable=protected-access
                 " to get dashboard tiles"
             )
-            response_data = self.client.get(
-                f"/myorg/groups/{group_id}/dashboards/{dashboard_id}/tiles"
-            )
+            response_data = self.client.get(f"/myorg/groups/{group_id}/dashboards/{dashboard_id}/tiles")
             response = TilesResponse(**response_data)
             return response.value
         except Exception as exc:  # pylint: disable=broad-except
@@ -262,9 +249,7 @@ class PowerBiApiClient:
 
         return None
 
-    def fetch_dataset_tables(
-        self, group_id: str, dataset_id: str
-    ) -> Optional[List[PowerBiTable]]:
+    def fetch_dataset_tables(self, group_id: str, dataset_id: str) -> Optional[List[PowerBiTable]]:
         """Method to fetch dataset tables
         Returns:
             List[PowerBiTable]
@@ -274,9 +259,7 @@ class PowerBiApiClient:
                 f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/datasets/{dataset_id}/tables)"  # pylint: disable=protected-access
                 " to get dataset tables"
             )
-            response_data = self.client.get(
-                f"/myorg/groups/{group_id}/datasets/{dataset_id}/tables"
-            )
+            response_data = self.client.get(f"/myorg/groups/{group_id}/datasets/{dataset_id}/tables")
             if response_data:
                 response = TablesResponse(**response_data)
                 return response.value
@@ -290,9 +273,7 @@ class PowerBiApiClient:
         # get report pages for report url formation
         try:
             # https://api.powerbi.com/v1.0/myorg/groups/4e57dcbb-***/reports/a2902011-***/pages
-            response_data = self.client.get(
-                f"/myorg/groups/{group_id}/reports/{report_id}/pages"
-            )
+            response_data = self.client.get(f"/myorg/groups/{group_id}/reports/{report_id}/pages")
             if response_data:
                 response = ReportPagesAPIResponse(**response_data)
                 return response.value
@@ -301,9 +282,7 @@ class PowerBiApiClient:
             logger.warning(f"Error fetching report pages: {exc}")
         return []
 
-    def fetch_report_datasources(
-        self, group_id: str, report_id: str
-    ) -> Optional[List[Datasource]]:
+    def fetch_report_datasources(self, group_id: str, report_id: str) -> Optional[List[Datasource]]:
         """Fetch datasources for a report in a group
         API: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-datasources-in-group
         """
@@ -312,9 +291,7 @@ class PowerBiApiClient:
                 f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/reports/{report_id}/datasources)"  # pylint: disable=protected-access
                 " to get report datasources"
             )
-            response_data = self.client.get(
-                f"/myorg/groups/{group_id}/reports/{report_id}/datasources"
-            )
+            response_data = self.client.get(f"/myorg/groups/{group_id}/reports/{report_id}/datasources")
             if response_data:
                 response = DatasourcesResponse(**response_data)
                 return response.value
@@ -359,9 +336,7 @@ class PowerBiApiClient:
                 literal = regex
             return f"contains(name, '{literal}')"
         except Exception as exc:
-            logger.warning(
-                f"Error converting regex '{regex}' to OData condition: {exc}"
-            )
+            logger.warning(f"Error converting regex '{regex}' to OData condition: {exc}")
             return ""
 
     def create_filter_query(self, filter_pattern) -> Optional[str]:
@@ -369,7 +344,6 @@ class PowerBiApiClient:
         Create a complete filter query for workspaces from filter_pattern
         """
         try:
-
             validate_regex(filter_pattern.includes)
             validate_regex(filter_pattern.excludes)
             project_to_include = filter_pattern.includes
@@ -405,9 +379,7 @@ class PowerBiApiClient:
             return None
 
     # pylint: disable=too-many-branches,too-many-statements
-    def fetch_all_workspaces(
-        self, filter_pattern: Optional[FilterPattern] = None
-    ) -> Optional[List[Group]]:
+    def fetch_all_workspaces(self, filter_pattern: Optional[FilterPattern] = None) -> Optional[List[Group]]:
         """Method to fetch all powerbi workspace details
         Returns:
             Group
@@ -437,10 +409,7 @@ class PowerBiApiClient:
             ):
                 logger.warning("Error fetching workspaces between results: (0, 1)")
                 if response and response.get(API_RESPONSE_MESSAGE_KEY):
-                    logger.warning(
-                        "Error message from API response: "
-                        f"{str(response.get(API_RESPONSE_MESSAGE_KEY))}"
-                    )
+                    logger.warning(f"Error message from API response: {str(response.get(API_RESPONSE_MESSAGE_KEY))}")
                 failed_indexes.append(params_data)
                 count = 0
             else:
@@ -477,13 +446,10 @@ class PowerBiApiClient:
                     or API_RESPONSE_MESSAGE_KEY in response
                     or len(response) != len(GroupsResponse.__annotations__)
                 ):
-                    logger.warning(
-                        f"Error fetching workspaces between results: {str(index_range)}"
-                    )
+                    logger.warning(f"Error fetching workspaces between results: {str(index_range)}")
                     if response and response.get(API_RESPONSE_MESSAGE_KEY):
                         logger.warning(
-                            "Error message from API response: "
-                            f"{str(response.get(API_RESPONSE_MESSAGE_KEY))}"
+                            f"Error message from API response: {str(response.get(API_RESPONSE_MESSAGE_KEY))}"
                         )
                     failed_indexes.append(params_data)
                     continue
@@ -494,9 +460,7 @@ class PowerBiApiClient:
                     logger.warning(f"Error processing GetGroups response: {exc}")
 
             if failed_indexes:
-                logger.info(
-                    "Retrying one more time on failed indexes to get workspaces"
-                )
+                logger.info("Retrying one more time on failed indexes to get workspaces")
                 for params_data in failed_indexes:
                     index_range = (
                         int(params_data.get("$skip")),
@@ -513,13 +477,11 @@ class PowerBiApiClient:
                         or len(response) != len(GroupsResponse.__annotations__)
                     ):
                         logger.warning(
-                            f"Workspaces between results {str(index_range)} "
-                            "could not be fetched on multiple attempts"
+                            f"Workspaces between results {str(index_range)} could not be fetched on multiple attempts"
                         )
                         if response and response.get(API_RESPONSE_MESSAGE_KEY):
                             logger.warning(
-                                "Error message from API response: "
-                                f"{str(response.get(API_RESPONSE_MESSAGE_KEY))}"
+                                f"Error message from API response: {str(response.get(API_RESPONSE_MESSAGE_KEY))}"
                             )
                         continue
                     try:
@@ -533,9 +495,7 @@ class PowerBiApiClient:
             logger.warning(f"Error fetching workspaces: {exc}")
         return None
 
-    def initiate_workspace_scan(
-        self, workspace_ids: List[str]
-    ) -> Optional[WorkSpaceScanResponse]:
+    def initiate_workspace_scan(self, workspace_ids: List[str]) -> Optional[WorkSpaceScanResponse]:
         """Method to initiate workspace scan
         Args:
             workspace_ids:
@@ -561,9 +521,7 @@ class PowerBiApiClient:
 
         return None
 
-    def fetch_workspace_scan_status(
-        self, scan_id: str
-    ) -> Optional[WorkSpaceScanResponse]:
+    def fetch_workspace_scan_status(self, scan_id: str) -> Optional[WorkSpaceScanResponse]:
         """Get Workspace scan status by id method
         Args:
             scan_id:
@@ -575,9 +533,7 @@ class PowerBiApiClient:
                 f"Calling the API({str(self.client._base_url)}/myorg/admin/workspaces/scanStatus/{scan_id})"  # pylint: disable=protected-access
                 " to get workspace scan status"
             )
-            response_data = self.client.get(
-                f"/myorg/admin/workspaces/scanStatus/{scan_id}"
-            )
+            response_data = self.client.get(f"/myorg/admin/workspaces/scanStatus/{scan_id}")
             return WorkSpaceScanResponse(**response_data)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -597,9 +553,7 @@ class PowerBiApiClient:
                 f"Calling the API({str(self.client._base_url)}/myorg/admin/workspaces/scanResult/{scan_id})"  # pylint: disable=protected-access
                 " to get workspace scan result"
             )
-            response_data = self.client.get(
-                f"/myorg/admin/workspaces/scanResult/{scan_id}"
-            )
+            response_data = self.client.get(f"/myorg/admin/workspaces/scanResult/{scan_id}")
             return Workspaces(**response_data)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -634,9 +588,7 @@ class PowerBiApiClient:
 
         return False
 
-    def fetch_dataflow_export(
-        self, dataflow_id: str
-    ) -> Optional[DataflowExportResponse]:
+    def fetch_dataflow_export(self, dataflow_id: str) -> Optional[DataflowExportResponse]:
         """Method to export dataflow definition using admin API
         API: https://api.powerbi.com/v1.0/myorg/admin/dataflows/{dataflowId}/export
         API doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
@@ -650,9 +602,7 @@ class PowerBiApiClient:
                 f"Calling the API({str(self.client._base_url)}/myorg/admin/dataflows/{dataflow_id}/export)"  # pylint: disable=protected-access
                 " to export dataflow definition"
             )
-            response_data = self.client.get(
-                f"/myorg/admin/dataflows/{dataflow_id}/export"
-            )
+            response_data = self.client.get(f"/myorg/admin/dataflows/{dataflow_id}/export")
             if response_data:
                 return DataflowExportResponse(**response_data)
         except Exception as exc:  # pylint: disable=broad-except

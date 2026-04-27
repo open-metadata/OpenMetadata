@@ -60,18 +60,14 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
 
         try:
             column: Union[SQALikeColumn, Column] = self.get_column()
-            count_in_set = self._run_results(
-                Metrics.countInSet, column, values=test_params[self.ALLOWED_VALUES]
-            )
+            count_in_set = self._run_results(Metrics.countInSet, column, values=test_params[self.ALLOWED_VALUES])
 
             metric_values = {
                 Metrics.countInSet.name: count_in_set,
             }
 
             if test_params[self.MATCH_ENUM]:
-                row_count = self._run_results(
-                    Metrics.rowCount, column, values=test_params[self.ALLOWED_VALUES]
-                )
+                row_count = self._run_results(Metrics.rowCount, column, values=test_params[self.ALLOWED_VALUES])
                 metric_values[Metrics.rowCount.name] = row_count
 
         except (ValueError, RuntimeError) as exc:
@@ -86,9 +82,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             )
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(
-            metric_values, test_params=test_params
-        )
+        result_message = self._format_result_message(metric_values, test_params=test_params)
         test_result_values = self._get_test_result_values(metric_values)
 
         if self.test_case.computePassedFailedRowCount:
@@ -116,9 +110,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             self.ALLOWED_VALUES,
             literal_eval,
         )
-        match_enum = utils.get_bool_test_case_param(
-            self.test_case.parameterValues, self.MATCH_ENUM
-        )
+        match_enum = utils.get_bool_test_case_param(self.test_case.parameterValues, self.MATCH_ENUM)
 
         return {
             self.ALLOWED_VALUES: allowed_values,
@@ -143,9 +135,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
 
         return metrics
 
-    def _evaluate_test_condition(
-        self, metric_values: dict, test_params: Optional[dict] = None
-    ) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:
         """Evaluate the in-set test condition
 
         For in-set test, behavior depends on match_enum flag:
@@ -166,9 +156,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
                 - total_rows: int - total row count for reporting
         """
         if test_params is None:
-            raise ValueError(
-                "test_params is required for columnValuesToBeInSet._evaluate_test_condition"
-            )
+            raise ValueError("test_params is required for columnValuesToBeInSet._evaluate_test_condition")
         count_in_set = metric_values[Metrics.countInSet.name]
         match_enum = test_params[self.MATCH_ENUM]
 
@@ -292,9 +280,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         raise NotImplementedError
 
     @abstractmethod
-    def _run_results(
-        self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs
-    ):
+    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):
         raise NotImplementedError
 
     @abstractmethod

@@ -22,7 +22,7 @@ from itertools import chain
 from typing import (
     Any,
     Dict,
-    Generator,
+    Generator,  # noqa: F811
     Generic,
     Iterable,
     List,
@@ -176,9 +176,7 @@ class CaseInsensitiveEnvSettingsSource(EnvSettingsSource):
 
                 field_annotation = self._unwrap_annotation(field_info.annotation)
                 if hasattr(field_annotation, "model_fields"):
-                    normalized_rest = self._normalize_env_key_recursive(
-                        remaining_key, field_annotation.model_fields
-                    )
+                    normalized_rest = self._normalize_env_key_recursive(remaining_key, field_annotation.model_fields)
                     return f"{field_name}{self.env_nested_delimiter}{normalized_rest}"
                 else:
                     return f"{field_name}{self.env_nested_delimiter}{remaining_key}"
@@ -203,11 +201,7 @@ class CaseInsensitiveEnvSettingsSource(EnvSettingsSource):
         """Recursively merge two dictionaries."""
         result = dict1.copy()
         for key, value in dict2.items():
-            if (
-                key in result
-                and isinstance(result[key], dict)
-                and isinstance(value, dict)
-            ):
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 result[key] = self._merge_dicts(result[key], value)
             else:
                 result[key] = value
@@ -227,9 +221,7 @@ class CaseInsensitiveEnvSettingsSource(EnvSettingsSource):
 
                 field_annotation = self._unwrap_annotation(field.annotation)
                 if hasattr(field_annotation, "model_fields"):
-                    normalized_suffix = self._normalize_env_key_recursive(
-                        suffix, field_annotation.model_fields
-                    )
+                    normalized_suffix = self._normalize_env_key_recursive(suffix, field_annotation.model_fields)
                     nested_dict = self._build_nested_dict(normalized_suffix, env_val)
                     result = self._merge_dicts(result, nested_dict)
                 else:
@@ -241,9 +233,7 @@ class CaseInsensitiveEnvSettingsSource(EnvSettingsSource):
 class OpenMetadataSettings(BaseSettings):
     """OpenMetadataConnection settings wrapper"""
 
-    model_config = SettingsConfigDict(
-        env_prefix="OPENMETADATA__", env_nested_delimiter="__"
-    )
+    model_config = SettingsConfigDict(env_prefix="OPENMETADATA__", env_nested_delimiter="__")
 
     connection: OpenMetadataConnection
 
@@ -359,10 +349,7 @@ class OpenMetadata(
         Log user name from JWT token.
         """
         # Log user name from JWT token if authProvider is openmetadata
-        if (
-            self.config.authProvider
-            and self.config.authProvider.value == "openmetadata"
-        ):
+        if self.config.authProvider and self.config.authProvider.value == "openmetadata":
             try:
                 # Get the JWT token from the auth provider
                 jwt_token, _ = self._auth_provider.get_access_token()
@@ -391,9 +378,7 @@ class OpenMetadata(
 
         route = ROUTES.get(entity.__name__)
         if route is None:
-            raise MissingEntityTypeException(
-                f"Missing {entity} type when generating suffixes"
-            )
+            raise MissingEntityTypeException(f"Missing {entity} type when generating suffixes")
 
         return route
 
@@ -420,14 +405,10 @@ class OpenMetadata(
         """
         file_name = f"create{entity.__name__}"
 
-        class_path = ".".join(
-            [self.class_root, self.api_path, self.get_module_path(entity), file_name]
-        )
+        class_path = ".".join([self.class_root, self.api_path, self.get_module_path(entity), file_name])
 
         class_name = f"Create{entity.__name__}Request"
-        create_class = getattr(
-            __import__(class_path, globals(), locals(), [class_name]), class_name
-        )
+        create_class = getattr(__import__(class_path, globals(), locals(), [class_name]), class_name)
         return create_class
 
     @staticmethod
@@ -481,8 +462,7 @@ class OpenMetadata(
                     self.class_root,
                     (
                         self.entity_path
-                        if not file_name.startswith("test")
-                        and not file_name.startswith("eventSubscription")
+                        if not file_name.startswith("test") and not file_name.startswith("eventSubscription")
                         else None
                     ),
                     self.get_module_path(create),
@@ -490,9 +470,7 @@ class OpenMetadata(
                 ],
             )
         )
-        entity_class = getattr(
-            __import__(class_path, globals(), locals(), [class_name]), class_name
-        )
+        entity_class = getattr(__import__(class_path, globals(), locals(), [class_name]), class_name)
         return entity_class
 
     def _create(self, data: C, method: str) -> T:
@@ -506,9 +484,7 @@ class OpenMetadata(
         if is_create:
             entity_class = self.get_entity_from_create(entity)
         else:
-            raise InvalidEntityException(
-                f"PUT operations need a CreateEntity, not {entity}"
-            )
+            raise InvalidEntityException(f"PUT operations need a CreateEntity, not {entity}")
 
         fn = getattr(self.client, method)
         resp = fn(
@@ -599,9 +575,7 @@ class OpenMetadata(
         fields_str = "?fields=" + ",".join(fields) if fields else ""
         include = f"&include={include}" if include else ""
         try:
-            resp = self.client.get(
-                f"{self.get_suffix(entity)}/{path}{fields_str}{include}"
-            )
+            resp = self.client.get(f"{self.get_suffix(entity)}/{path}{fields_str}{include}")
             if not resp:
                 raise EmptyPayloadException(
                     f"Got an empty response when trying to GET from {self.get_suffix(entity)}/{path}{fields_str}"
@@ -624,9 +598,7 @@ class OpenMetadata(
             )
             raise err
 
-    def get_entity_reference(
-        self, entity: Type[T], fqn: str
-    ) -> Optional[EntityReference]:
+    def get_entity_reference(self, entity: Type[T], fqn: str) -> Optional[EntityReference]:
         """
         Helper method to obtain an EntityReference from
         a FQN and the Entity class.
@@ -682,12 +654,8 @@ class OpenMetadata(
                 try:
                     entities.append(entity(**elmt))
                 except Exception as exc:
-                    logger.error(
-                        f"Error creating entity [{entity.__name__}]. Failed with exception {exc}"
-                    )
-                    logger.debug(
-                        f"Can't create [{entity.__name__}] from [{elmt}]. Skipping."
-                    )
+                    logger.error(f"Error creating entity [{entity.__name__}]. Failed with exception {exc}")
+                    logger.debug(f"Can't create [{entity.__name__}] from [{elmt}]. Skipping.")
                     continue
         else:
             entities = [entity(**elmt) for elmt in resp["data"]]
@@ -741,9 +709,7 @@ class OpenMetadata(
             yield from entity_list.entities
             after = entity_list.after
 
-    def list_versions(
-        self, entity_id: Union[str, basic.Uuid], entity: Type[T]
-    ) -> EntityVersionHistory:
+    def list_versions(self, entity_id: Union[str, basic.Uuid], entity: Type[T]) -> EntityVersionHistory:
         """
         Version history of an entity
         """
@@ -767,9 +733,7 @@ class OpenMetadata(
 
         return [entity(**p) for p in resp["data"]]
 
-    def stream(
-        self, method: str, path: str, data: None | dict[str, Any] = None
-    ) -> Generator[Any, Any, None]:
+    def stream(self, method: str, path: str, data: None | dict[str, Any] = None) -> Generator[Any, Any, None]:
         """
         Stream an SSE response
         """
@@ -838,9 +802,7 @@ class OpenMetadata(
         resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
         logger.debug("published compute percentile %s", resp)
 
-    def _group_entities_by_type(
-        self, entities: List[Type[T]]
-    ) -> Dict[Type[T], List[Type[T]]]:
+    def _group_entities_by_type(self, entities: List[Type[T]]) -> Dict[Type[T], List[Type[T]]]:
         """Group entities by type so we can process them in the correct order when
         creating the entities from bulk API.
 
@@ -869,17 +831,13 @@ class OpenMetadata(
         sorted_grouped = OrderedDict(
             sorted(
                 grouped.items(),
-                key=lambda item: get_entity_hierarchy_depth(
-                    self.get_entity_from_create(item[0])
-                ),
+                key=lambda item: get_entity_hierarchy_depth(self.get_entity_from_create(item[0])),
             )
         )
 
         return sorted_grouped
 
-    def _execute_bulk_operation(
-        self, entities: List[Type[T]], use_async: bool = False
-    ) -> BulkOperationResult:
+    def _execute_bulk_operation(self, entities: List[Type[T]], use_async: bool = False) -> BulkOperationResult:
         """Execute a bulk operation for a list of entities.
 
         Args:
@@ -890,10 +848,7 @@ class OpenMetadata(
             BulkOperationResult: Result containing success/failure details
         """
         type_ = type(entities[0])
-        data: list[str] = [
-            entity.model_dump(mode="json", exclude_unset=True, exclude_none=True)
-            for entity in entities
-        ]
+        data: list[str] = [entity.model_dump(mode="json", exclude_unset=True, exclude_none=True) for entity in entities]
         url = f"{self.get_suffix(type_)}/bulk"
         url += f"?async={str(use_async).lower()}"
         try:
@@ -915,9 +870,7 @@ class OpenMetadata(
             )
         return BulkOperationResult(**resp)
 
-    def bulk_create_or_update(
-        self, entities: List[Type[T]], use_async: bool = False
-    ) -> BulkOperationResult:
+    def bulk_create_or_update(self, entities: List[Type[T]], use_async: bool = False) -> BulkOperationResult:
         """Bulk create or update (PUT) multiple entities in a single API call.
 
         Args:
@@ -941,9 +894,7 @@ class OpenMetadata(
             grouped = self._group_entities_by_type(entities)
             for _, entities in grouped.items():
                 try:
-                    bulk_ops_results.append(
-                        self._execute_bulk_operation(entities, use_async)
-                    )
+                    bulk_ops_results.append(self._execute_bulk_operation(entities, use_async))
                 except Exception as exc:
                     logger.debug("Failed to execute bulk operation: %s", exc)
                     logger.debug(traceback.format_exc())
@@ -953,24 +904,16 @@ class OpenMetadata(
         failed_rows = sum(result.numberOfRowsFailed.root for result in bulk_ops_results)
         return BulkOperationResult(
             status=basic.Status.success if not failed_rows else basic.Status.failure,
-            numberOfRowsProcessed=sum(
-                result.numberOfRowsProcessed.root for result in bulk_ops_results
-            ),
-            numberOfRowsFailed=sum(
-                result.numberOfRowsFailed.root for result in bulk_ops_results
-            ),
+            numberOfRowsProcessed=sum(result.numberOfRowsProcessed.root for result in bulk_ops_results),
+            numberOfRowsFailed=sum(result.numberOfRowsFailed.root for result in bulk_ops_results),
             successRequest=list(
                 chain.from_iterable(
-                    result.successRequest
-                    for result in bulk_ops_results
-                    if result.successRequest is not None
+                    result.successRequest for result in bulk_ops_results if result.successRequest is not None
                 )
             ),
             failedRequest=list(
                 chain.from_iterable(
-                    result.failedRequest
-                    for result in bulk_ops_results
-                    if result.failedRequest is not None
+                    result.failedRequest for result in bulk_ops_results if result.failedRequest is not None
                 )
             ),
         )

@@ -13,6 +13,7 @@ Mixin class containing Container specific methods
 
 To be used by OpenMetadata class
 """
+
 import base64
 import traceback
 from typing import Optional
@@ -58,18 +59,13 @@ class OMetaContainerMixin:
         for row in sample_data.rows:
             self._process_sample_data_row(row)
 
-    def _serialize_sample_data(
-        self, sample_data: TableData, container_fqn: str
-    ) -> Optional[str]:
+    def _serialize_sample_data(self, sample_data: TableData, container_fqn: str) -> Optional[str]:
         """Serialize sample data to JSON, returning None on error"""
         try:
             return sample_data.model_dump_json()
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error serializing sample data for {container_fqn}"
-                " please check if the data is valid"
-            )
+            logger.warning(f"Error serializing sample data for {container_fqn} please check if the data is valid")
             return None
 
     def _parse_response(self, resp: dict, container_fqn: str) -> Optional[TableData]:
@@ -81,9 +77,7 @@ class OMetaContainerMixin:
             logger.warning(f"Cannot parse response from {container_fqn} due to {err}")
             return None
 
-    def ingest_container_sample_data(
-        self, container: Container, sample_data: TableData
-    ) -> Optional[TableData]:
+    def ingest_container_sample_data(self, container: Container, sample_data: TableData) -> Optional[TableData]:
         """
         PUT sample data for a container
 
@@ -93,9 +87,7 @@ class OMetaContainerMixin:
         try:
             self._process_sample_data_rows(sample_data)
 
-            data = self._serialize_sample_data(
-                sample_data, container.fullyQualifiedName.root
-            )
+            data = self._serialize_sample_data(sample_data, container.fullyQualifiedName.root)
             if data is None:
                 return None
 
@@ -110,9 +102,7 @@ class OMetaContainerMixin:
             return None
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to PUT sample data for {container.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Error trying to PUT sample data for {container.fullyQualifiedName.root}: {exc}")
             return None
 
     def get_container_sample_data(self, container: Container) -> Optional[Container]:
@@ -128,9 +118,7 @@ class OMetaContainerMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to GET sample data for {container.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Error trying to GET sample data for {container.fullyQualifiedName.root}: {exc}")
 
         if resp:
             try:

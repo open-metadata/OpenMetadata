@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Optional, Union
@@ -64,9 +65,7 @@ class KafkaClient:
         self.consumer_client = consumer_client
 
 
-def get_connection(
-    connection: Union[KafkaConnection, RedpandaConnection]
-) -> KafkaClient:
+def get_connection(connection: Union[KafkaConnection, RedpandaConnection]) -> KafkaClient:
     """
     Create connection
     """
@@ -77,22 +76,15 @@ def get_connection(
         if connection.saslUsername:
             consumer_config["sasl.username"] = connection.saslUsername
         if connection.saslPassword:
-            consumer_config[
-                "sasl.password"
-            ] = connection.saslPassword.get_secret_value()
+            consumer_config["sasl.password"] = connection.saslPassword.get_secret_value()
         if connection.saslMechanism:
             consumer_config["sasl.mechanism"] = connection.saslMechanism.value
 
-        if (
-            connection.consumerConfig.get("security.protocol") is None
-            and connection.securityProtocol
-        ):
+        if connection.consumerConfig.get("security.protocol") is None and connection.securityProtocol:
             consumer_config["security.protocol"] = connection.securityProtocol.value
 
     if connection.basicAuthUserInfo:
-        schema_registry_config[
-            "basic.auth.user.info"
-        ] = connection.basicAuthUserInfo.get_secret_value()
+        schema_registry_config["basic.auth.user.info"] = connection.basicAuthUserInfo.get_secret_value()
 
     admin_client_config = consumer_config
     admin_client_config["bootstrap.servers"] = connection.bootstrapServers
@@ -112,9 +104,7 @@ def get_connection(
             consumer_config["auto.offset.reset"] = "largest"
         consumer_config["enable.auto.commit"] = False
 
-        avro_deserializer = AvroDeserializer(
-            schema_registry_client=schema_registry_client
-        )
+        avro_deserializer = AvroDeserializer(schema_registry_client=schema_registry_client)
         consumer_config["value.deserializer"] = avro_deserializer
 
         consumer_client = DeserializingConsumer(consumer_config)

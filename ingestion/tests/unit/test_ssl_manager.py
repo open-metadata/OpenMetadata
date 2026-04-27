@@ -61,9 +61,7 @@ class SSLManagerTest(TestCase):
 
 
 class KafkaSourceSSLTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection")
     @patch("metadata.ingestion.source.messaging.kafka.metadata.SSLManager")
     def test_init(self, mock_ssl_manager, test_connection):
         test_connection.return_value = True
@@ -126,27 +124,19 @@ class KafkaSourceSSLTest(TestCase):
             "sslCertificateData",
         )
         self.assertIsNotNone(
-            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get(
-                "ssl.ca.location"
-            ),
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get("ssl.ca.location"),
         )
         self.assertIsNotNone(
-            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get(
-                "ssl.key.location"
-            ),
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get("ssl.key.location"),
         )
         self.assertIsNotNone(
-            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get(
-                "ssl.certificate.location"
-            ),
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get("ssl.certificate.location"),
         )
 
 
 class CassandraSourceSSLTest(TestCase):
     @patch("metadata.utils.ssl_manager.SSLManager.setup_ssl")
-    @patch(
-        "metadata.ingestion.source.database.cassandra.metadata.CassandraSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.cassandra.metadata.CassandraSource.test_connection")
     @patch("metadata.ingestion.source.database.cassandra.connection.get_connection")
     def test_init(self, get_connection, test_connection, setup_ssl):
         get_connection.return_value = True
@@ -376,18 +366,12 @@ class MssqlSSLManagerTest(TestCase):
             trustServerCertificate=False,
         )
 
-        ssl_manager = SSLManager(
-            ca=SecretStr("CA cert"), cert=SecretStr("Cert"), key=SecretStr("Key")
-        )
+        ssl_manager = SSLManager(ca=SecretStr("CA cert"), cert=SecretStr("Cert"), key=SecretStr("Key"))
         updated_connection = ssl_manager.setup_ssl(connection)
 
         self.assertIsNotNone(updated_connection.connectionArguments)
-        self.assertEqual(
-            updated_connection.connectionArguments.root.get("Encrypt"), "yes"
-        )
-        self.assertIsNone(
-            updated_connection.connectionArguments.root.get("TrustServerCertificate")
-        )
+        self.assertEqual(updated_connection.connectionArguments.root.get("Encrypt"), "yes")
+        self.assertIsNone(updated_connection.connectionArguments.root.get("TrustServerCertificate"))
 
         ssl_manager.cleanup_temp_files()
 
@@ -408,15 +392,11 @@ class MssqlSSLManagerTest(TestCase):
             trustServerCertificate=True,
         )
 
-        ssl_manager = SSLManager(
-            ca=SecretStr("CA cert"), cert=SecretStr("Cert"), key=SecretStr("Key")
-        )
+        ssl_manager = SSLManager(ca=SecretStr("CA cert"), cert=SecretStr("Cert"), key=SecretStr("Key"))
         updated_connection = ssl_manager.setup_ssl(connection)
 
         self.assertIsNotNone(updated_connection.connectionArguments)
-        self.assertEqual(
-            updated_connection.connectionArguments.root.get("Encrypt"), "yes"
-        )
+        self.assertEqual(updated_connection.connectionArguments.root.get("Encrypt"), "yes")
         self.assertEqual(
             updated_connection.connectionArguments.root.get("TrustServerCertificate"),
             "yes",
@@ -494,9 +474,7 @@ class MssqlSSLManagerTest(TestCase):
             scheme=MssqlScheme.mssql_pymssql,
         )
 
-        ssl_manager = SSLManager(
-            ca=SecretStr("CA cert"), cert=SecretStr("Cert"), key=SecretStr("Key")
-        )
+        ssl_manager = SSLManager(ca=SecretStr("CA cert"), cert=SecretStr("Cert"), key=SecretStr("Key"))
         updated_connection = ssl_manager.setup_ssl(connection)
 
         self.assertDictEqual(updated_connection.connectionArguments.root, {})
@@ -641,18 +619,10 @@ class Db2SSLManagerTest(TestCase):
         updated_connection = ssl_manager.setup_ssl(connection)
 
         self.assertIsNotNone(updated_connection.connectionOptions)
-        self.assertEqual(
-            updated_connection.connectionOptions.root.get("SECURITY"), "SSL"
-        )
-        self.assertIsNotNone(
-            updated_connection.connectionOptions.root.get("SSLServerCertificate")
-        )
-        self.assertIsNone(
-            updated_connection.connectionOptions.root.get("SSLClientKeystoredb")
-        )
-        self.assertIsNone(
-            updated_connection.connectionOptions.root.get("SSLClientKeystash")
-        )
+        self.assertEqual(updated_connection.connectionOptions.root.get("SECURITY"), "SSL")
+        self.assertIsNotNone(updated_connection.connectionOptions.root.get("SSLServerCertificate"))
+        self.assertIsNone(updated_connection.connectionOptions.root.get("SSLClientKeystoredb"))
+        self.assertIsNone(updated_connection.connectionOptions.root.get("SSLClientKeystash"))
 
         ssl_manager.cleanup_temp_files()
 
@@ -671,24 +641,14 @@ class Db2SSLManagerTest(TestCase):
             sslMode=SslMode.require,
         )
 
-        ssl_manager = SSLManager(
-            ca=SecretStr("CA cert"), cert=SecretStr("Client cert"), key=SecretStr("Key")
-        )
+        ssl_manager = SSLManager(ca=SecretStr("CA cert"), cert=SecretStr("Client cert"), key=SecretStr("Key"))
         updated_connection = ssl_manager.setup_ssl(connection)
 
         self.assertIsNotNone(updated_connection.connectionOptions)
-        self.assertEqual(
-            updated_connection.connectionOptions.root.get("SECURITY"), "SSL"
-        )
-        self.assertIsNotNone(
-            updated_connection.connectionOptions.root.get("SSLServerCertificate")
-        )
-        self.assertIsNotNone(
-            updated_connection.connectionOptions.root.get("SSLClientKeystoredb")
-        )
-        self.assertIsNotNone(
-            updated_connection.connectionOptions.root.get("SSLClientKeystash")
-        )
+        self.assertEqual(updated_connection.connectionOptions.root.get("SECURITY"), "SSL")
+        self.assertIsNotNone(updated_connection.connectionOptions.root.get("SSLServerCertificate"))
+        self.assertIsNotNone(updated_connection.connectionOptions.root.get("SSLClientKeystoredb"))
+        self.assertIsNotNone(updated_connection.connectionOptions.root.get("SSLClientKeystash"))
 
         ssl_manager.cleanup_temp_files()
 
@@ -712,9 +672,7 @@ class Db2SSLManagerTest(TestCase):
 
         self.assertIsNotNone(updated_connection.connectionOptions)
         self.assertIsNone(updated_connection.connectionOptions.root.get("SECURITY"))
-        self.assertIsNone(
-            updated_connection.connectionOptions.root.get("SSLServerCertificate")
-        )
+        self.assertIsNone(updated_connection.connectionOptions.root.get("SSLServerCertificate"))
 
         ssl_manager.cleanup_temp_files()
 
@@ -740,12 +698,8 @@ class Db2SSLManagerTest(TestCase):
 
         updated_connection = ssl_manager.setup_ssl(connection)
 
-        self.assertEqual(
-            updated_connection.connectionOptions.root.get("SECURITY"), "SSL"
-        )
-        self.assertIsNotNone(
-            updated_connection.connectionOptions.root.get("SSLServerCertificate")
-        )
+        self.assertEqual(updated_connection.connectionOptions.root.get("SECURITY"), "SSL")
+        self.assertIsNotNone(updated_connection.connectionOptions.root.get("SSLServerCertificate"))
 
         ssl_manager.cleanup_temp_files()
 

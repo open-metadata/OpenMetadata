@@ -97,8 +97,7 @@ class MemoryMonitor:
 
             context_str = f"[{self.context}] " if self.context else ""
             logger.debug(
-                f"{context_str}Memory monitor stopped for {self.function_name}(). "
-                f"Peak function memory: {peak_mb:.2f}MB"
+                f"{context_str}Memory monitor stopped for {self.function_name}(). Peak function memory: {peak_mb:.2f}MB"
             )
 
     def start(self):
@@ -169,8 +168,7 @@ def memory_limit(
 
                 if verbose:
                     logger.debug(
-                        f"{context_str}Started memory monitoring for {fn.__name__}() "
-                        f"(limit: {max_memory_mb}MB)"
+                        f"{context_str}Started memory monitoring for {fn.__name__}() (limit: {max_memory_mb}MB)"
                     )
 
                 result = fn(*args, **kwargs)

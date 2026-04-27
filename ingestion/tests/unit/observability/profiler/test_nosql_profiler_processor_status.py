@@ -75,17 +75,13 @@ class TestNoSQLProfilerProcessorStatus(TestCase):
             table=self.table_entity,
         )
 
-        self.nosql_profiler_interface._get_metric_fn = {
-            MetricTypes.Table.value: Mock(return_value={"rowCount": 10})
-        }
+        self.nosql_profiler_interface._get_metric_fn = {MetricTypes.Table.value: Mock(return_value={"rowCount": 10})}
 
         mock_client = Mock()
         self.nosql_profiler_interface.compute_metrics(mock_client, mock_metric)
 
         self.assertEqual(len(self.nosql_profiler_interface.status.records), 1)
-        self.assertEqual(
-            self.nosql_profiler_interface.status.records[0], "test_collection__Table"
-        )
+        self.assertEqual(self.nosql_profiler_interface.status.records[0], "test_collection__Table")
 
     def test_column_metric_success_reports_status_with_column_name(self):
         """Verify successful column metric execution reports status with column name."""
@@ -97,9 +93,7 @@ class TestNoSQLProfilerProcessorStatus(TestCase):
             table=self.table_entity,
         )
 
-        self.nosql_profiler_interface._get_metric_fn = {
-            MetricTypes.Static.value: Mock(return_value={"nullCount": 0})
-        }
+        self.nosql_profiler_interface._get_metric_fn = {MetricTypes.Static.value: Mock(return_value={"nullCount": 0})}
 
         mock_client = Mock()
         self.nosql_profiler_interface.compute_metrics(mock_client, mock_metric)
@@ -145,15 +139,9 @@ class TestNoSQLProfilerProcessorStatus(TestCase):
         self.nosql_profiler_interface.compute_metrics(mock_client, static_metric_name)
 
         self.assertEqual(len(self.nosql_profiler_interface.status.records), 3)
-        self.assertIn(
-            "test_collection__Table", self.nosql_profiler_interface.status.records
-        )
-        self.assertIn(
-            "test_collection.id__Static", self.nosql_profiler_interface.status.records
-        )
-        self.assertIn(
-            "test_collection.name__Static", self.nosql_profiler_interface.status.records
-        )
+        self.assertIn("test_collection__Table", self.nosql_profiler_interface.status.records)
+        self.assertIn("test_collection.id__Static", self.nosql_profiler_interface.status.records)
+        self.assertIn("test_collection.name__Static", self.nosql_profiler_interface.status.records)
 
     def test_metric_failure_reports_failure_status(self):
         """Verify failed metric execution reports a failure status."""
@@ -219,9 +207,7 @@ class TestNoSQLProfilerProcessorStatus(TestCase):
                 return {"nullCount": 0}
             raise Exception("Simulated failure")
 
-        self.nosql_profiler_interface._get_metric_fn = {
-            MetricTypes.Static.value: mock_static_metrics
-        }
+        self.nosql_profiler_interface._get_metric_fn = {MetricTypes.Static.value: mock_static_metrics}
 
         mock_client = Mock()
         self.nosql_profiler_interface.compute_metrics(mock_client, success_metric)

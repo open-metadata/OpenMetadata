@@ -11,6 +11,7 @@
 """
 Generic source to build database connectors.
 """
+
 from abc import ABC, abstractmethod
 from typing import List, Optional, Set, Tuple
 
@@ -58,9 +59,7 @@ class SqlAlchemySource(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_table_description(
-        schema_name: str, table_name: str, inspector: Inspector
-    ) -> str:
+    def get_table_description(schema_name: str, table_name: str, inspector: Inspector) -> str:
         """
         Method returns the table level comment
         """
@@ -88,9 +87,7 @@ class SqlAlchemySource(ABC):
         """
 
     @abstractmethod
-    def fetch_table_tags(
-        self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> None:
+    def fetch_table_tags(self, table_name: str, schema_name: str, inspector: Inspector) -> None:
         """
         Method to fetch tags associated with table
         """

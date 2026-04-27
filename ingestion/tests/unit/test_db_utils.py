@@ -12,6 +12,7 @@
 """
 Unit tests for db_utils module
 """
+
 import uuid
 from copy import deepcopy
 from unittest import TestCase
@@ -69,9 +70,7 @@ class TestDbUtils(TestCase):
         self.table_entity = Table(
             id=Uuid(root=uuid.uuid4()),
             name=EntityName(root="test_view"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="test_service.test_db.test_schema.test_view"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="test_service.test_db.test_schema.test_view"),
             serviceType=DatabaseServiceType.Postgres,
             columns=[],  # Add required columns field
         )
@@ -83,9 +82,7 @@ class TestDbUtils(TestCase):
         self.source_table_entity = Table(
             id=Uuid(root=uuid.uuid4()),
             name=EntityName(root="source_table"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="test_service.test_db.test_schema.source_table"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="test_service.test_db.test_schema.source_table"),
             serviceType=DatabaseServiceType.Postgres,
             columns=[],
         )
@@ -120,9 +117,7 @@ class TestDbUtils(TestCase):
 
     @patch("metadata.utils.db_utils.ConnectionTypeDialectMapper")
     @patch("metadata.utils.db_utils.fqn")
-    def test_get_view_lineage_success_with_lineage_parser(
-        self, mock_fqn, mock_dialect_mapper
-    ):
+    def test_get_view_lineage_success_with_lineage_parser(self, mock_fqn, mock_dialect_mapper):
         """Test successful view lineage generation when lineage parser has source and target tables"""
         # Setup mocks
         mock_fqn.build.return_value = "test_service.test_db.test_schema.test_view"
@@ -179,9 +174,7 @@ class TestDbUtils(TestCase):
                 lineage_request.edge.fromEntity.id.root,
                 self.source_table_entity.id.root,
             )
-            self.assertEqual(
-                lineage_request.edge.toEntity.id.root, self.table_entity.id.root
-            )
+            self.assertEqual(lineage_request.edge.toEntity.id.root, self.table_entity.id.root)
 
         # Verify mocks were called correctly
         mock_fqn.build.assert_called_once()
@@ -189,9 +182,7 @@ class TestDbUtils(TestCase):
 
     @patch("metadata.utils.db_utils.ConnectionTypeDialectMapper")
     @patch("metadata.utils.db_utils.fqn")
-    def test_get_view_lineage_success_with_fallback(
-        self, mock_fqn, mock_dialect_mapper
-    ):
+    def test_get_view_lineage_success_with_fallback(self, mock_fqn, mock_dialect_mapper):
         """Test successful view lineage generation when lineage parser has source and target tables"""
         # Setup mocks
         mock_fqn.build.return_value = "test_service.test_db.test_schema.test_view"
@@ -249,9 +240,7 @@ class TestDbUtils(TestCase):
                 lineage_request.edge.fromEntity.id.root,
                 self.source_table_entity.id.root,
             )
-            self.assertEqual(
-                lineage_request.edge.toEntity.id.root, self.table_entity.id.root
-            )
+            self.assertEqual(lineage_request.edge.toEntity.id.root, self.table_entity.id.root)
 
         # Verify mocks were called correctly
         mock_fqn.build.assert_called_once()
@@ -295,9 +284,7 @@ class TestDbUtils(TestCase):
             )
         )
 
-        mock_get_lineage_via_table_entity.return_value = [
-            Either(right=valid_lineage_request)
-        ]
+        mock_get_lineage_via_table_entity.return_value = [Either(right=valid_lineage_request)]
 
         # Execute function
         result = list(
@@ -325,9 +312,7 @@ class TestDbUtils(TestCase):
 
     @patch("metadata.utils.db_utils.ConnectionTypeDialectMapper")
     @patch("metadata.utils.db_utils.fqn")
-    def test_get_view_lineage_postgres_schema_fallback(
-        self, mock_fqn, mock_dialect_mapper
-    ):
+    def test_get_view_lineage_postgres_schema_fallback(self, mock_fqn, mock_dialect_mapper):
         """Test that Postgres views use public schema fallback"""
         # Setup mocks
         mock_fqn.build.return_value = "test_service.test_db.test_schema.test_view"
@@ -386,9 +371,7 @@ class TestDbUtils(TestCase):
                 lineage_request.edge.fromEntity.id.root,
                 self.source_table_entity.id.root,
             )
-            self.assertEqual(
-                lineage_request.edge.toEntity.id.root, self.table_entity.id.root
-            )
+            self.assertEqual(lineage_request.edge.toEntity.id.root, self.table_entity.id.root)
 
     @patch("metadata.utils.db_utils.fqn")
     def test_get_view_lineage_no_view_definition(self, mock_fqn):

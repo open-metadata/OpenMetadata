@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Policy test
 """
+
 import uuid
 from copy import deepcopy
 from typing import List
@@ -161,9 +162,7 @@ def role_entity(role_policy_1):
         id=Uuid(uuid.uuid4()),
         name=EntityName(ROLE_NAME),
         fullyQualifiedName=FullyQualifiedEntityName(ROLE_NAME),
-        policies=EntityReferenceList(
-            root=[EntityReference(id=role_policy_1.id, type="policy")]
-        ),
+        policies=EntityReferenceList(root=[EntityReference(id=role_policy_1.id, type="policy")]),
     )
 
 
@@ -237,18 +236,14 @@ class TestOMetaRolePolicyAPI:
         """We can fetch a Policy by name and get it back as Entity"""
         metadata.create_or_update(data=create_policy)
 
-        res = metadata.get_by_name(
-            entity=Policy, fqn=model_str(policy_entity.fullyQualifiedName)
-        )
+        res = metadata.get_by_name(entity=Policy, fqn=model_str(policy_entity.fullyQualifiedName))
         assert res.name == policy_entity.name
 
     def test_policy_get_id(self, metadata, create_policy, policy_entity):
         """We can fetch a Policy by ID and get it back as Entity"""
         metadata.create_or_update(data=create_policy)
 
-        res_name = metadata.get_by_name(
-            entity=Policy, fqn=model_str(policy_entity.fullyQualifiedName)
-        )
+        res_name = metadata.get_by_name(entity=Policy, fqn=model_str(policy_entity.fullyQualifiedName))
         res = metadata.get_by_id(entity=Policy, entity_id=model_str(res_name.id))
 
         assert res_name.id == res.id
@@ -279,9 +274,7 @@ class TestOMetaRolePolicyAPI:
         """We can delete a Policy by ID"""
         metadata.create_or_update(data=create_policy)
 
-        res_name = metadata.get_by_name(
-            entity=Policy, fqn=model_str(policy_entity.fullyQualifiedName)
-        )
+        res_name = metadata.get_by_name(entity=Policy, fqn=model_str(policy_entity.fullyQualifiedName))
         res_id = metadata.get_by_id(entity=Policy, entity_id=res_name.id)
 
         _safe_delete(
@@ -294,11 +287,7 @@ class TestOMetaRolePolicyAPI:
 
         res = metadata.list_entities(entity=Policy)
         assert not next(
-            iter(
-                ent
-                for ent in res.entities
-                if ent.fullyQualifiedName == policy_entity.fullyQualifiedName
-            ),
+            iter(ent for ent in res.entities if ent.fullyQualifiedName == policy_entity.fullyQualifiedName),
             None,
         )
 
@@ -306,25 +295,17 @@ class TestOMetaRolePolicyAPI:
         """test list policy entity versions"""
         metadata.create_or_update(data=create_policy)
 
-        res_name = metadata.get_by_name(
-            entity=Policy, fqn=model_str(policy_entity.fullyQualifiedName)
-        )
+        res_name = metadata.get_by_name(entity=Policy, fqn=model_str(policy_entity.fullyQualifiedName))
 
-        res = metadata.get_list_entity_versions(
-            entity=Policy, entity_id=model_str(res_name.id)
-        )
+        res = metadata.get_list_entity_versions(entity=Policy, entity_id=model_str(res_name.id))
         assert res
 
     def test_policy_get_entity_version(self, metadata, create_policy, policy_entity):
         """test get policy entity version"""
         metadata.create_or_update(data=create_policy)
 
-        res_name = metadata.get_by_name(
-            entity=Policy, fqn=model_str(policy_entity.fullyQualifiedName)
-        )
-        res = metadata.get_entity_version(
-            entity=Policy, entity_id=model_str(res_name.id), version=0.1
-        )
+        res_name = metadata.get_by_name(entity=Policy, fqn=model_str(policy_entity.fullyQualifiedName))
+        res = metadata.get_entity_version(entity=Policy, entity_id=model_str(res_name.id), version=0.1)
 
         assert res.version.root == 0.1
         assert res.id == res_name.id
@@ -332,9 +313,7 @@ class TestOMetaRolePolicyAPI:
     def test_policy_get_entity_ref(self, metadata, create_policy):
         """test get EntityReference"""
         res = metadata.create_or_update(data=create_policy)
-        entity_ref = metadata.get_entity_reference(
-            entity=Policy, fqn=res.fullyQualifiedName
-        )
+        entity_ref = metadata.get_entity_reference(entity=Policy, fqn=res.fullyQualifiedName)
 
         assert res.id == entity_ref.id
 
@@ -346,9 +325,7 @@ class TestOMetaRolePolicyAPI:
             dest_policy.rules.root = list()
         dest_policy.rules.root.append(RULE_3)
 
-        res: Policy = metadata.patch(
-            entity=Policy, source=policy, destination=dest_policy
-        )
+        res: Policy = metadata.patch(entity=Policy, source=policy, destination=dest_policy)
         assert res is not None
         assert len(res.rules.root) == 3
         assert res.rules.root[2].name == RULE_3.name
@@ -362,9 +339,7 @@ class TestOMetaRolePolicyAPI:
         dest_policy = deepcopy(res)
         dest_policy.rules.root.append(RULE_3)
 
-        res: Policy = metadata.patch(
-            entity=Policy, source=policy, destination=dest_policy
-        )
+        res: Policy = metadata.patch(entity=Policy, source=policy, destination=dest_policy)
         dest_policy = deepcopy(res)
         dest_policy.rules.root.remove(RULE_2)
         res: Policy = metadata.patch(entity=Policy, source=res, destination=dest_policy)
@@ -431,9 +406,7 @@ class TestOMetaRolePolicyAPI:
 
         res = metadata.list_entities(entity=Role)
 
-        data = next(
-            iter(ent for ent in res.entities if ent.name == role_entity.name), None
-        )
+        data = next(iter(ent for ent in res.entities if ent.name == role_entity.name), None)
         assert data
 
     def test_role_list_all(self, metadata, create_role):
@@ -463,11 +436,7 @@ class TestOMetaRolePolicyAPI:
 
         res = metadata.list_entities(entity=Role)
         assert not next(
-            iter(
-                ent
-                for ent in res.entities
-                if ent.fullyQualifiedName == role_entity.fullyQualifiedName
-            ),
+            iter(ent for ent in res.entities if ent.fullyQualifiedName == role_entity.fullyQualifiedName),
             None,
         )
 
@@ -477,9 +446,7 @@ class TestOMetaRolePolicyAPI:
 
         res_name = metadata.get_by_name(entity=Role, fqn=role_entity.fullyQualifiedName)
 
-        res = metadata.get_list_entity_versions(
-            entity=Role, entity_id=model_str(res_name.id)
-        )
+        res = metadata.get_list_entity_versions(entity=Role, entity_id=model_str(res_name.id))
         assert res
 
     def test_role_get_entity_version(self, metadata, create_role, role_entity):
@@ -487,9 +454,7 @@ class TestOMetaRolePolicyAPI:
         metadata.create_or_update(data=create_role)
 
         res_name = metadata.get_by_name(entity=Role, fqn=role_entity.fullyQualifiedName)
-        res = metadata.get_entity_version(
-            entity=Role, entity_id=res_name.id.root, version=0.1
-        )
+        res = metadata.get_entity_version(entity=Role, entity_id=res_name.id.root, version=0.1)
 
         assert res.version.root == 0.1
         assert res.id == res_name.id
@@ -497,9 +462,7 @@ class TestOMetaRolePolicyAPI:
     def test_role_get_entity_ref(self, metadata, create_role):
         """test get EntityReference"""
         res = metadata.create_or_update(data=create_role)
-        entity_ref = metadata.get_entity_reference(
-            entity=Role, fqn=res.fullyQualifiedName
-        )
+        entity_ref = metadata.get_entity_reference(entity=Role, fqn=res.fullyQualifiedName)
 
         assert res.id == entity_ref.id
 
@@ -576,9 +539,7 @@ class TestOMetaRolePolicyAPI:
                 recursive=True,
             )
 
-    def test_role_patch_policies(
-        self, metadata, create_role, role_policy_1, role_policy_2
-    ):
+    def test_role_patch_policies(self, metadata, create_role, role_policy_1, role_policy_2):
         """test PATCHing the policies of a role"""
         role: Role = metadata.create_or_update(data=create_role)
 

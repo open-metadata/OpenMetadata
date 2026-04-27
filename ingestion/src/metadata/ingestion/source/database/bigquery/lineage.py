@@ -11,6 +11,7 @@
 """
 Handle big query lineage extraction
 """
+
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_STORED_PROCEDURE_QUERIES,
     BIGQUERY_STATEMENT,
@@ -25,9 +26,7 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
 from metadata.utils.helpers import get_start_and_end
 
 
-class BigqueryLineageSource(
-    BigqueryQueryParserSource, StoredProcedureLineageMixin, LineageSource
-):
+class BigqueryLineageSource(BigqueryQueryParserSource, StoredProcedureLineageMixin, LineageSource):
     """
     Implements the necessary methods to extract
     Database lineage from Bigquery Source

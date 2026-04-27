@@ -53,11 +53,7 @@ def _is_azure_devops_host(hostname: str) -> bool:
 def _clone_repo(
     repo_name: str,
     path: str,
-    credential: Optional[
-        Union[
-            NoGitCredentials, GitHubCredentials, BitBucketCredentials, GitlabCredentials
-        ]
-    ],
+    credential: Optional[Union[NoGitCredentials, GitHubCredentials, BitBucketCredentials, GitlabCredentials]],
     overwrite: Optional[bool] = False,
 ):
     """Clone a repo to local `path`"""

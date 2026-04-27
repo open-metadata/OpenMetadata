@@ -11,6 +11,7 @@
 """
 Tests for StatusWarningHandler and its integration with Step.
 """
+
 import logging
 from unittest import TestCase
 
@@ -84,9 +85,7 @@ class TestStatusWarningHandler(TestCase):
     def test_multiple_warnings_all_counted(self):
         modules = ["sql_column_handler", "postgres_metadata", "common_db_source"]
         for module in modules:
-            self.handler.emit(
-                _make_record(module, logging.WARNING, f"warning from {module}")
-            )
+            self.handler.emit(_make_record(module, logging.WARNING, f"warning from {module}"))
 
         assert len(self.status.warnings) == 3
 
@@ -105,9 +104,7 @@ class TestStepHandlerAttachment(TestCase):
     def test_warning_inside_run_scope_populates_status(self):
         self.step._activate_handler()
         try:
-            ingestion_logger().warning(
-                "Unexpected exception processing column [bad_col]: Invalid name"
-            )
+            ingestion_logger().warning("Unexpected exception processing column [bad_col]: Invalid name")
         finally:
             self.step._deactivate_handler()
 
@@ -123,11 +120,7 @@ class TestStepHandlerAttachment(TestCase):
     def test_status_failed_does_not_increment_warning_count(self):
         self.step._activate_handler()
         try:
-            self.step.status.failed(
-                StackTraceError(
-                    name="some_entity", error="something went wrong", stackTrace="tb"
-                )
-            )
+            self.step.status.failed(StackTraceError(name="some_entity", error="something went wrong", stackTrace="tb"))
         finally:
             self.step._deactivate_handler()
 

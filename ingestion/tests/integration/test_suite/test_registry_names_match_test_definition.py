@@ -13,7 +13,6 @@
 Validate the names in the registry match the ones of the test definition
 """
 
-
 import pkgutil
 from unittest import TestCase
 
@@ -55,9 +54,7 @@ class TestRegistryNamesMatchTestDefinition(TestCase):
     """Test the names in the registry match that of the ones in the Test Definition"""
 
     metadata = OpenMetadata(
-        OpenMetadataConnection.model_validate(
-            test_suite_config["workflowConfig"]["openMetadataServerConfig"]
-        )
+        OpenMetadataConnection.model_validate(test_suite_config["workflowConfig"]["openMetadataServerConfig"])
     )
 
     def test_sqa_tests_match(self):
@@ -65,14 +62,10 @@ class TestRegistryNamesMatchTestDefinition(TestCase):
 
         test_definition_names = {
             entity.name.root
-            for entity in self.metadata.list_all_entities(
-                entity=TestDefinition, params={"limit": "100"}
-            )
+            for entity in self.metadata.list_all_entities(entity=TestDefinition, params={"limit": "100"})
         }
 
-        column_tests = [
-            name for _, name, _ in pkgutil.iter_modules(sqa_column.__path__)
-        ]
+        column_tests = [name for _, name, _ in pkgutil.iter_modules(sqa_column.__path__)]
         table_tests = [name for _, name, _ in pkgutil.iter_modules(sqa_table.__path__)]
 
         rule_library_modules = set(RULE_LIBRARY_VALIDATOR_MODULE_MAP.values())
@@ -85,17 +78,11 @@ class TestRegistryNamesMatchTestDefinition(TestCase):
 
         test_definition_names = {
             entity.name.root
-            for entity in self.metadata.list_all_entities(
-                entity=TestDefinition, params={"limit": "100"}
-            )
+            for entity in self.metadata.list_all_entities(entity=TestDefinition, params={"limit": "100"})
         }
 
-        column_tests = [
-            name for _, name, _ in pkgutil.iter_modules(pandas_column.__path__)
-        ]
-        table_tests = [
-            name for _, name, _ in pkgutil.iter_modules(pandas_table.__path__)
-        ]
+        column_tests = [name for _, name, _ in pkgutil.iter_modules(pandas_column.__path__)]
+        table_tests = [name for _, name, _ in pkgutil.iter_modules(pandas_table.__path__)]
 
         rule_library_modules = set(RULE_LIBRARY_VALIDATOR_MODULE_MAP.values())
         registry_test_name = set(column_tests + table_tests) - rule_library_modules

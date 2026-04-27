@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """BurstIQ-specific profiler interface overrides."""
+
 import traceback as _tb
 from typing import Callable, List, Optional
 
@@ -93,19 +94,13 @@ class BurstIQProfilerInterface(PandasProfilerInterface):
         - Timezone-aware datetimes: columns stored as datetime64[ns, UTC] raise TypeError
           when cast to timezone-naive. We skip datetime columns entirely.
         """
-        numeric_cols = {
-            col.name.root
-            for col in self.table.columns
-            if col.dataType in _NUMERIC_TYPES
-        }
+        numeric_cols = {col.name.root for col in self.table.columns if col.dataType in _NUMERIC_TYPES}
         data_formats = GenericDataFrameColumnParser._data_formats
         other_cast_map = {}
         for col in self.table.columns:
             if col.dataType in _NUMERIC_TYPES or col.dataType in _DATETIME_TYPES:
                 continue
-            coltype = next(
-                (k for k, v in data_formats.items() if col.dataType == v), None
-            )
+            coltype = next((k for k, v in data_formats.items() if col.dataType == v), None)
             if coltype and col.dataType not in {DataType.JSON, DataType.ARRAY}:
                 other_cast_map[col.name.root] = coltype
 
@@ -117,18 +112,12 @@ class BurstIQProfilerInterface(PandasProfilerInterface):
                         if col_name in df.columns:
                             df[col_name] = _pd.to_numeric(df[col_name], errors="coerce")
                     if other_cast_map:
-                        filtered = {
-                            c: other_cast_map[c]
-                            for c in df.keys()
-                            if c in other_cast_map
-                        }
+                        filtered = {c: other_cast_map[c] for c in df.keys() if c in other_cast_map}
                         if filtered:
                             try:
                                 df = df.astype(filtered)
                             except (TypeError, ValueError) as err:
-                                logger.warning(
-                                    f"NaN/NoneType found in the Dataframe: {err}"
-                                )
+                                logger.warning(f"NaN/NoneType found in the Dataframe: {err}")
                 except Exception as err:  # pylint: disable=broad-except
                     logger.warning(f"Error casting BurstIQ dataframe columns: {err}")
                     logger.debug(_tb.format_exc())

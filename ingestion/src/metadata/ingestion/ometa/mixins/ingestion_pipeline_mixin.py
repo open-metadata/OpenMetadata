@@ -37,9 +37,7 @@ class OMetaIngestionPipelineMixin:
 
     client: REST
 
-    def create_or_update_pipeline_status(
-        self, ingestion_pipeline_fqn: str, pipeline_status: PipelineStatus
-    ) -> None:
+    def create_or_update_pipeline_status(self, ingestion_pipeline_fqn: str, pipeline_status: PipelineStatus) -> None:
         """
         PUT create or update pipeline status
 
@@ -50,14 +48,10 @@ class OMetaIngestionPipelineMixin:
             f"{self.get_suffix(IngestionPipeline)}/{quote(ingestion_pipeline_fqn)}/pipelineStatus",
             data=pipeline_status.model_dump_json(),
         )
-        logger.debug(
-            f"Created Pipeline Status for pipeline {ingestion_pipeline_fqn}: {pipeline_status}"
-        )
+        logger.debug(f"Created Pipeline Status for pipeline {ingestion_pipeline_fqn}: {pipeline_status}")
         return resp
 
-    def get_pipeline_status(
-        self, ingestion_pipeline_fqn: str, pipeline_status_run_id: str
-    ) -> Optional[PipelineStatus]:
+    def get_pipeline_status(self, ingestion_pipeline_fqn: str, pipeline_status_run_id: str) -> Optional[PipelineStatus]:
         """
         GET pipeline status
 
@@ -78,9 +72,7 @@ class OMetaIngestionPipelineMixin:
         Args:
             ingestion_pipeline_id (str): ingestion pipeline uuid
         """
-        resp = self.client.post(
-            f"{self.get_suffix(IngestionPipeline)}/trigger/{ingestion_pipeline_id}"
-        )
+        resp = self.client.post(f"{self.get_suffix(IngestionPipeline)}/trigger/{ingestion_pipeline_id}")
 
         return parse_ingestion_pipeline_config_gracefully(resp)
 
@@ -106,9 +98,7 @@ class OMetaIngestionPipelineMixin:
         )
 
         if resp:
-            return [
-                PipelineStatus.model_validate(status) for status in resp.get("data")
-            ]
+            return [PipelineStatus.model_validate(status) for status in resp.get("data")]
         return None
 
     def get_ingestion_pipeline_by_name(
@@ -134,9 +124,7 @@ class OMetaIngestionPipelineMixin:
 
         return None
 
-    def extract_pipeline_id_from_fqn(
-        self, ingestion_pipeline_fqn: str
-    ) -> Optional[str]:
+    def extract_pipeline_id_from_fqn(self, ingestion_pipeline_fqn: str) -> Optional[str]:
         """
         Extract pipeline ID from FQN by fetching the pipeline entity
 
@@ -147,15 +135,9 @@ class OMetaIngestionPipelineMixin:
             Optional[str]: Pipeline ID if found, None otherwise
         """
         try:
-            pipeline = self.get_by_name(
-                entity=IngestionPipeline, fqn=ingestion_pipeline_fqn
-            )
+            pipeline = self.get_by_name(entity=IngestionPipeline, fqn=ingestion_pipeline_fqn)
             if pipeline and hasattr(pipeline, "id"):
-                return str(
-                    pipeline.id.root if hasattr(pipeline.id, "root") else pipeline.id
-                )
+                return str(pipeline.id.root if hasattr(pipeline.id, "root") else pipeline.id)
         except Exception as e:
-            logger.error(
-                f"Failed to extract pipeline ID from FQN {ingestion_pipeline_fqn}: {e}"
-            )
+            logger.error(f"Failed to extract pipeline ID from FQN {ingestion_pipeline_fqn}: {e}")
         return None

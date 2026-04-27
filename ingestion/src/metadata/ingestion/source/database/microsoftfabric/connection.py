@@ -11,6 +11,7 @@
 """
 Microsoft Fabric Database Connection Handler
 """
+
 from typing import Optional
 
 from sqlalchemy.engine import URL, Engine
@@ -40,39 +41,27 @@ def get_connection_url(connection: MicrosoftFabricConnection) -> str:
     Fabric uses Service Principal authentication via ODBC connection string.
     """
     # Remove port from hostPort if present (Fabric doesn't use explicit port in connection string)
-    server = (
-        connection.hostPort.split(":")[0]
-        if ":" in connection.hostPort
-        else connection.hostPort
-    )
+    server = connection.hostPort.split(":")[0] if ":" in connection.hostPort else connection.hostPort
 
     # Build ODBC connection string for Service Principal authentication
     # Note: Driver needs curly braces for ODBC
     driver = connection.driver if connection.driver else "ODBC Driver 18 for SQL Server"
-    connection_string = f"Driver={{{driver}}};" f"Server={server};"
+    connection_string = f"Driver={{{driver}}};Server={server};"
 
     # Add database if specified
     if connection.database:
         connection_string += f"Database={connection.database};"
 
     # Service Principal authentication
-    connection_string += (
-        f"Uid={connection.clientId};"
-        f"Pwd={connection.clientSecret.get_secret_value()};"
-    )
+    connection_string += f"Uid={connection.clientId};Pwd={connection.clientSecret.get_secret_value()};"
 
     # Fabric requires encryption and Active Directory Service Principal auth
     connection_string += (
-        "Encrypt=yes;"
-        "TrustServerCertificate=no;"
-        "Connection Timeout=30;"
-        "Authentication=ActiveDirectoryServicePrincipal;"
+        "Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;Authentication=ActiveDirectoryServicePrincipal;"
     )
 
     # Build SQLAlchemy URL with ODBC connection string
-    connection_url = URL.create(
-        "mssql+pyodbc", query={"odbc_connect": connection_string}
-    )
+    connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     return connection_url
 
 

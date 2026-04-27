@@ -29,9 +29,7 @@ class LookMlField(BaseModel):
 
 
 class LookMlDerivedTableField(BaseModel):
-    sql: Optional[str] = Field(
-        None, description="Declares the SQL query for a derived table."
-    )
+    sql: Optional[str] = Field(None, description="Declares the SQL query for a derived table.")
     sql_create: Optional[str] = Field(
         None,
         description="Defines a SQL CREATE statement",
@@ -41,17 +39,11 @@ class LookMlDerivedTableField(BaseModel):
 class LookMlView(BaseModel):
     name: ViewName = Field(..., description="View name")
     description: Optional[str] = Field(None, description="View description")
-    sql_table_name: Optional[str] = Field(
-        None, description="To track lineage with the source"
-    )
+    sql_table_name: Optional[str] = Field(None, description="To track lineage with the source")
     measures: List[LookMlField] = Field([], description="Measures to ingest as cols")
-    dimensions: List[LookMlField] = Field(
-        [], description="Dimensions to ingest as cols"
-    )
+    dimensions: List[LookMlField] = Field([], description="Dimensions to ingest as cols")
     source_file: Optional[Includes] = Field(None, description="lkml file path")
-    derived_table: Optional[LookMlDerivedTableField] = Field(
-        None, description="To track lineage with the source"
-    )
+    derived_table: Optional[LookMlDerivedTableField] = Field(None, description="To track lineage with the source")
     tags: Optional[List[str]] = Field(None, description="Tags for the view")
     extends__all: Optional[List[List[str]]] = Field(
         None, alias="extends__all", description="List of views this view extends"
@@ -76,6 +68,4 @@ class LookMLRepo(BaseModel):
 class LookMLManifest(BaseModel):
     project_name: str = Field(None, description="LookML project name")
     remote_dependency: dict = Field(None, description="Remote dependency information")
-    constants: Optional[List[Dict[str, str]]] = Field(
-        None, description="LookML constants defined in the manifest"
-    )
+    constants: Optional[List[Dict[str, str]]] = Field(None, description="LookML constants defined in the manifest")
