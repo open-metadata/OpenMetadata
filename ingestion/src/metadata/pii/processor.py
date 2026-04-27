@@ -56,6 +56,11 @@ from metadata.pii.base_processor import AutoClassificationProcessor
 from metadata.pii.constants import PII
 from metadata.utils import fqn
 from metadata.utils.logger import profiler_logger
+from metadata.pii.india_patterns import (
+    is_india_pii_column,
+    validate_aadhaar,
+    validate_pan,
+)
 
 logger = profiler_logger()
 
@@ -103,6 +108,27 @@ class PIIProcessor(AutoClassificationProcessor):
         for tag in column.tags or []:
             if PII in tag.tagFQN.root:
                 return []
+
+        # Check India PII patterns
+        india_pii = is_india_pii_column(column.name.root)
+        # India PII validation - check majority of samples like existing classifier
+        sample_values = [str(v) for v in sample_data if v] if sample_data else []
+
+        if india_pii == "Aadhaar" and sample_values:
+            valid_count = sum(1 for v in sample_values if validate_aadhaar(v))
+            if valid_count > len(sample_values) * 0.5:
+                return [self.build_tag_label(PIISensitivityTag.SENSITIVE, "India Aadhaar detected")]
+
+        if india_pii == "PAN" and sample_values:
+            valid_count = sum(1 for v in sample_values if validate_pan(v))
+            if valid_count > len(sample_values) * 0.5:
+                return [self.build_tag_label(PIISensitivityTag.SENSITIVE, "India PAN detected")]
+
+        if india_pii == "UPI" and sample_values:
+            # UPI validation is simpler - check for @ symbol in majority
+            valid_count = sum(1 for v in sample_values if "@" in v and len(v) > 5)
+            if valid_count > len(sample_values) * 0.5:
+                return [self.build_tag_label(PIISensitivityTag.SENSITIVE, "India UPI detected")]
 
         # Build classifier with the results capturing patcher
         result_capturer = ResultCapturingPatcher()
