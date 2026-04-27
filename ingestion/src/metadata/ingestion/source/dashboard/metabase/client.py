@@ -127,7 +127,7 @@ class MetabaseClient:
                     dashboards.extend(dashboard_list.data)
             except Exception:
                 logger.debug(traceback.format_exc())
-                logger.warning("Failed to fetch the dashboard list")
+                logger.error("Failed to fetch the dashboard list")
         return dashboards
 
     def get_dashboards_list_test_conn(self, collections: List[MetabaseCollection]) -> List[MetabaseDashboard]:
@@ -162,7 +162,7 @@ class MetabaseClient:
                 return collection_list.collections
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the collections list")
+            logger.error("Failed to fetch the collections list")
         return []
 
     def get_charts_dict(self) -> Dict:
@@ -176,7 +176,7 @@ class MetabaseClient:
             return charts_dict
         except Exception as e:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the cards : {e}")
+            logger.error(f"Failed to fetch the cards : {e}")
         return {}
 
     def _create_default_dashboard_details(self, orphan_charts_id: List) -> MetabaseDashboardDetails:
@@ -233,7 +233,7 @@ class MetabaseClient:
                 return self._process_dashboard_response(resp_dashboard, charts_dict, dashboard_id)
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the dashboard with id: {dashboard_id}")
+            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")
         return None
 
     def get_database(self, database_id: str) -> Optional[MetabaseDatabase]:
@@ -248,7 +248,7 @@ class MetabaseClient:
                 return MetabaseDatabase(**resp_database)
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the database with id: {database_id}")
+            logger.error(f"Failed to fetch the database with id: {database_id}")
         return None
 
     def get_table(self, table_id: str) -> Optional[MetabaseTable]:
@@ -263,7 +263,7 @@ class MetabaseClient:
                 return MetabaseTable(**resp_table)
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the table with id: {table_id}")
+            logger.error(f"Failed to fetch the table with id: {table_id}")
         return None
 
     def get_user_details(self, user_id: str) -> Optional[MetabaseUser]:
@@ -278,5 +278,5 @@ class MetabaseClient:
                 return MetabaseUser(**resp_table)
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the user with id: {user_id}")
+            logger.error(f"Failed to fetch the user with id: {user_id}")
         return None
