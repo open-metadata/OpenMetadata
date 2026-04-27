@@ -579,7 +579,7 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
  * @return {{ nodes: Node[]; edges: Edge[], nodeIds: string[], edgeIds: string[] }} -
  * An object containing the downstream nodes and edges.
  */
-export const getEntityChildrenAndLabel = (node: LineageNodeType) => {
+export function getEntityChildrenAndLabel(node: LineageNodeType) {
   if (!node) {
     return {
       children: [],
@@ -653,7 +653,7 @@ export const getEntityChildrenAndLabel = (node: LineageNodeType) => {
     childrenHeading: label,
     childrenCount,
   };
-};
+}
 
 // Nodes Icons
 export const getEntityNodeIcon = (label: string) => {
@@ -1192,11 +1192,11 @@ export const createNewEdge = (edge: Edge) => {
   return selectedEdge;
 };
 
-export const getUpstreamDownstreamNodesEdges = (
+export function getUpstreamDownstreamNodesEdges(
   edges: EdgeDetails[],
   nodes: EntityReference[],
   currentNode: string
-) => {
+) {
   const downstreamEdges: EdgeDetails[] = [];
   const upstreamEdges: EdgeDetails[] = [];
   const downstreamNodes: EntityReference[] = [];
@@ -1249,7 +1249,7 @@ export const getUpstreamDownstreamNodesEdges = (
   findUpstream(activeNode);
 
   return { downstreamEdges, upstreamEdges, downstreamNodes, upstreamNodes };
-};
+}
 
 export const getExportEntity = (entity: LineageSourceType) => {
   const {
