@@ -122,6 +122,56 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @GET
+  @Path("/search")
+  @Valid
+  @Operation(
+      operationId = "searchRoles",
+      summary = "Search roles",
+      description =
+          "Search roles by name or display name. "
+              + "Use `q` parameter to provide the search query.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of matching roles",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = RoleList.class)))
+      })
+  public ResultList<Role> search(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Search query for role names or display names") @QueryParam("q")
+          String query,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Limit the number of roles returned. (1 to 1000, default = 10)")
+          @DefaultValue("10")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(value = 1000, message = "must be less than or equal to 1000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @QueryParam("offset")
+          int offsetParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    ListFilter filter = new ListFilter(include);
+    return searchInternal(
+        uriInfo, securityContext, fieldsParam, filter, query, limitParam, offsetParam);
+  }
+
+  @GET
   @Valid
   @Operation(
       operationId = "listRoles",
@@ -207,8 +257,24 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+          UUID id,
+      @Parameter(description = "Limit the number of versions returned")
+          @QueryParam("limit")
+          @DefaultValue("0")
+          @Min(0)
+          @Max(1000)
+          int limit,
+      @Parameter(description = "Offset of the versions to return")
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset,
+      @Parameter(
+              description =
+                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
+          @QueryParam("fieldChanged")
+          String fieldChanged) {
+    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
   }
 
   @GET

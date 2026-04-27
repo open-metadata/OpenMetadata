@@ -15,6 +15,11 @@
  */
 export interface AIPlatformConfiguration {
     /**
+     * Context Memory tuning for the T0 user-preference block assembled by Collate and shipped
+     * to the AI Platform.
+     */
+    contextMemory?: ContextMemoryConfiguration;
+    /**
      * Indicates whether the AI Platform is enabled
      */
     enabled?: boolean;
@@ -45,6 +50,25 @@ export interface AIPlatformConfiguration {
 }
 
 /**
+ * Context Memory tuning for the T0 user-preference block assembled by Collate and shipped
+ * to the AI Platform.
+ *
+ * Tuning for the Context Memory T0 (user preferences) block shipped to the AI Platform via
+ * the gRPC user_memory_context field.
+ */
+export interface ContextMemoryConfiguration {
+    /**
+     * Maximum number of T0 user-preference memories to include regardless of token budget.
+     */
+    maxItems?: number;
+    /**
+     * Maximum number of tokens worth of T0 user-preference memories to include. Memories are
+     * ranked by freshness + usage and filled in order until the budget or item cap is reached.
+     */
+    tokenBudget?: number;
+}
+
+/**
  * gRPC configuration for the AI Platform server
  */
 export interface GrpcConfiguration {
@@ -64,5 +88,13 @@ export interface GrpcConfiguration {
      * Host for the gRPC server
      */
     port: number;
+    /**
+     * Deadline (minutes) Collate enforces on an AI Platform streaming response. Carried on the
+     * gRPC call, so the AI Platform reads it from context and wraps up gracefully. The chat
+     * lock sweeper uses streamDeadlineMinutes + 2 as its default stale-lock ceiling (override
+     * via COLLATE_CHAT_LOCK_MAX_DURATION_MINUTES). Capped at 60 minutes; for longer tasks
+     * prefer async job + polling over a single long-lived stream.
+     */
+    streamDeadlineMinutes?: number;
     [property: string]: any;
 }

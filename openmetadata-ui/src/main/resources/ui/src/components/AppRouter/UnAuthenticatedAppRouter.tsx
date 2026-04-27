@@ -10,18 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { LoginCallback } from '@okta/okta-react';
+
 import { lazy, useMemo } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { ROUTES } from '../../constants/constants';
+import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
 import { AuthProvider } from '../../generated/configuration/authenticationConfiguration';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
-import PageNotFound from '../../pages/PageNotFound/PageNotFound';
-import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
-import Auth0Callback from '../Auth/AppCallbacks/Auth0Callback/Auth0Callback';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const SigninPage = withSuspenseFallback(
@@ -38,6 +35,26 @@ const ResetPassword = withSuspenseFallback(
 
 const BasicSignupPage = withSuspenseFallback(
   lazy(() => import('../../pages/SignUp/BasicSignup.component'))
+);
+
+const PageNotFound = withSuspenseFallback(
+  lazy(() => import('../../pages/PageNotFound/PageNotFound'))
+);
+
+const AccountActivationConfirmation = withSuspenseFallback(
+  lazy(
+    () => import('../../pages/SignUp/account-activation-confirmation.component')
+  )
+);
+
+const Auth0Callback = withSuspenseFallback(
+  lazy(() => import('../Auth/AppCallbacks/Auth0Callback/Auth0Callback'))
+);
+
+const LoginCallback = withSuspenseFallback(
+  lazy(() =>
+    import('@okta/okta-react').then((m) => ({ default: m.LoginCallback }))
+  )
 );
 
 export const UnAuthenticatedAppRouter = () => {
@@ -69,31 +86,43 @@ export const UnAuthenticatedAppRouter = () => {
   }, [authConfig?.provider]);
 
   if (applicationRoutesClass.isProtectedRoute(location.pathname)) {
-    return <Navigate replace to={ROUTES.SIGNIN} />;
+    return <Navigate replace to={APP_ROUTER_ROUTES.SIGNIN} />;
   }
 
   return (
     <Routes>
-      <Route element={<SigninPage />} path={ROUTES.SIGNIN} />
+      <Route element={<SigninPage />} path={APP_ROUTER_ROUTES.SIGNIN} />
       {CallbackComponent && (
-        <Route element={<CallbackComponent />} path={ROUTES.CALLBACK} />
+        <Route
+          element={<CallbackComponent />}
+          path={APP_ROUTER_ROUTES.CALLBACK}
+        />
       )}
       {!isSigningUp && (
         <Route
-          element={<Navigate replace to={ROUTES.SIGNIN} />}
-          path={ROUTES.HOME}
+          element={<Navigate replace to={APP_ROUTER_ROUTES.SIGNIN} />}
+          path={APP_ROUTER_ROUTES.HOME}
         />
       )}
       {/* keep this route before any conditional JSX.Element rendering */}
-      <Route element={<PageNotFound />} path={ROUTES.NOT_FOUND} />
+      <Route element={<PageNotFound />} path={APP_ROUTER_ROUTES.NOT_FOUND} />
       {isBasicAuthProvider && (
         <>
-          <Route element={<BasicSignupPage />} path={ROUTES.REGISTER} />
-          <Route element={<ForgotPassword />} path={ROUTES.FORGOT_PASSWORD} />
-          <Route element={<ResetPassword />} path={ROUTES.RESET_PASSWORD} />
+          <Route
+            element={<BasicSignupPage />}
+            path={APP_ROUTER_ROUTES.REGISTER}
+          />
+          <Route
+            element={<ForgotPassword />}
+            path={APP_ROUTER_ROUTES.FORGOT_PASSWORD}
+          />
+          <Route
+            element={<ResetPassword />}
+            path={APP_ROUTER_ROUTES.RESET_PASSWORD}
+          />
           <Route
             element={<AccountActivationConfirmation />}
-            path={ROUTES.ACCOUNT_ACTIVATION}
+            path={APP_ROUTER_ROUTES.ACCOUNT_ACTIVATION}
           />
         </>
       )}

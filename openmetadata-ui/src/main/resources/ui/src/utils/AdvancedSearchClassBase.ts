@@ -56,6 +56,8 @@ import { t } from './i18next/LocalUtil';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchUtils';
 
+type OMField = Field & { __omPropertyType: CustomPropertySummary['type'] };
+
 class AdvancedSearchClassBase {
   baseConfig = AntdConfig;
   configTypes: BasicConfig['types'] = {
@@ -1249,6 +1251,27 @@ class AdvancedSearchClassBase {
   public getCustomPropertiesSubFields(
     field: CustomPropertySummary,
     searchOutputType: SearchOutputType = SearchOutputType.ElasticSearch
+  ):
+    | { subfieldsKey: string; dataObject: OMField }
+    | Array<{ subfieldsKey: string; dataObject: OMField }> {
+    const result = this.buildCustomPropertiesSubFields(field, searchOutputType);
+    const attachType = (entry: {
+      subfieldsKey: string;
+      dataObject: Field;
+    }): { subfieldsKey: string; dataObject: OMField } => ({
+      subfieldsKey: entry.subfieldsKey,
+      dataObject: {
+        ...entry.dataObject,
+        __omPropertyType: field.type,
+      },
+    });
+
+    return Array.isArray(result) ? result.map(attachType) : attachType(result);
+  }
+
+  private buildCustomPropertiesSubFields(
+    field: CustomPropertySummary,
+    searchOutputType: SearchOutputType
   ):
     | { subfieldsKey: string; dataObject: Field }
     | Array<{ subfieldsKey: string; dataObject: Field }> {

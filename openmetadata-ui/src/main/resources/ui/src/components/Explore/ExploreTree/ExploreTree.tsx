@@ -27,7 +27,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getCountBadge, Transi18next } from '../../../utils/CommonUtils';
+import { getCountBadge } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getPluralizeEntityName } from '../../../utils/EntityUtils';
 import {
@@ -38,6 +38,7 @@ import {
   updateTreeData,
   updateTreeDataWithCounts,
 } from '../../../utils/ExploreUtils';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';

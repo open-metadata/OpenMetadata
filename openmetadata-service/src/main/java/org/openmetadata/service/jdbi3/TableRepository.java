@@ -81,7 +81,6 @@ import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
@@ -96,8 +95,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.PipelineObservability;
+import org.openmetadata.schema.type.ProfileSampleConfig;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.SuggestionType;
+import org.openmetadata.schema.type.StaticSamplingConfig;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableData;
@@ -114,7 +114,6 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.EntitySpecViolationException;
-import org.openmetadata.sdk.exception.SuggestionException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -161,6 +160,7 @@ public class TableRepository extends EntityRepository<Table> {
   private static final String DEFAULT_SCHEMA_FIELDS = "database,service,serviceType";
 
   public static final String COLUMN_FIELD = "columns";
+  public static final String TABLE_CONSTRAINTS_FIELD = "tableConstraints";
   public static final String CUSTOM_METRICS = "customMetrics";
   private static final String RETENTION_PERIOD_FIELD = "retentionPeriod";
   private static final Set<String> CHANGE_SUMMARY_FIELDS =
@@ -307,7 +307,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void clearFields(Table table, Fields fields) {
     table.setTableConstraints(
-        fields.contains("tableConstraints") ? table.getTableConstraints() : null);
+        fields.contains(TABLE_CONSTRAINTS_FIELD) ? table.getTableConstraints() : null);
     table.setUsageSummary(fields.contains("usageSummary") ? table.getUsageSummary() : null);
     table.setJoins(fields.contains("joins") ? table.getJoins() : null);
     table.setSchemaDefinition(
@@ -954,11 +954,20 @@ public class TableRepository extends EntityRepository<Table> {
           validateColumn(table, columnProfilerConfig.getColumnName());
         }
       }
-      if (tableProfilerConfig.getProfileSampleType() != null
-          && tableProfilerConfig.getProfileSample() != null) {
-        EntityUtil.validateProfileSample(
-            tableProfilerConfig.getProfileSampleType().toString(),
-            tableProfilerConfig.getProfileSample());
+      ProfileSampleConfig profileSampleConfig = tableProfilerConfig.getProfileSampleConfig();
+      if (!nullOrEmpty(profileSampleConfig) && !nullOrEmpty(profileSampleConfig.getConfig())) {
+        ProfileSampleConfig.SampleConfigType sampleConfigType =
+            profileSampleConfig.getSampleConfigType();
+        if (!nullOrEmpty(sampleConfigType)
+            && sampleConfigType.equals(ProfileSampleConfig.SampleConfigType.STATIC)) {
+          StaticSamplingConfig staticConfig =
+              JsonUtils.convertValue(profileSampleConfig.getConfig(), StaticSamplingConfig.class);
+          if (staticConfig.getProfileSampleType() != null
+              && staticConfig.getProfileSample() != null) {
+            EntityUtil.validateProfileSample(
+                staticConfig.getProfileSampleType().toString(), staticConfig.getProfileSample());
+          }
+        }
       }
     }
 
@@ -1379,7 +1388,7 @@ public class TableRepository extends EntityRepository<Table> {
         get(
             null,
             tableId,
-            getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD)),
+            getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD, TABLE_CONSTRAINTS_FIELD)),
             NON_DELETED,
             false);
 
@@ -1434,6 +1443,10 @@ public class TableRepository extends EntityRepository<Table> {
     }
     applyColumnTags(table.getColumns());
     dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
+    // addDataModel bypasses the EntityRepository.update() path, so invalidateCachesAfterStore
+    // never runs. Drop every cached variant manually so the next GET rebuilds with the freshly
+    // merged tags/dataModel instead of stale pre-merge JSON.
+    invalidateCacheForEntity(entityType, table.getId(), table.getFullyQualifiedName());
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNERS), FIELD_OWNERS));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
@@ -1766,49 +1779,6 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
     return super.getTaskWorkflow(threadContext);
-  }
-
-  @Override
-  public String getSuggestionFields(Suggestion suggestion) {
-    return suggestion.getType() == SuggestionType.SuggestTagLabel ? "columns,tags" : "";
-  }
-
-  @Override
-  public Table applySuggestion(EntityInterface entity, String columnFQN, Suggestion suggestion) {
-    Table table = (Table) entity;
-    for (Column col : table.getColumns()) {
-      findAndApplySuggestionToColumn(col, columnFQN, suggestion);
-    }
-    return table;
-  }
-
-  private void findAndApplySuggestionToColumn(
-      Column column, String columnFQN, Suggestion suggestion) {
-    if (column.getFullyQualifiedName().equals(columnFQN)) {
-      applySuggestionToColumn(column, suggestion);
-      return;
-    }
-
-    // If the column FQN is a prefix of the target columnFQN, search recursively in children
-    if (column.getChildren() != null
-        && !column.getChildren().isEmpty()
-        && columnFQN.startsWith(column.getFullyQualifiedName() + ".")) {
-      for (Column child : column.getChildren()) {
-        findAndApplySuggestionToColumn(child, columnFQN, suggestion);
-      }
-    }
-  }
-
-  public void applySuggestionToColumn(Column column, Suggestion suggestion) {
-    if (suggestion.getType().equals(SuggestionType.SuggestTagLabel)) {
-      List<TagLabel> tags = new ArrayList<>(column.getTags());
-      tags.addAll(suggestion.getTagLabels());
-      column.setTags(tags);
-    } else if (suggestion.getType().equals(SuggestionType.SuggestDescription)) {
-      column.setDescription(suggestion.getDescription());
-    } else {
-      throw new SuggestionException("Invalid suggestion Type");
-    }
   }
 
   @Override
@@ -2308,7 +2278,8 @@ public class TableRepository extends EntityRepository<Table> {
           "dataModel",
           () -> recordChange("dataModel", origTable.getDataModel(), updatedTable.getDataModel()));
       compareAndUpdate(
-          "tableConstraints", () -> updateTableConstraints(origTable, updatedTable, operation));
+          TABLE_CONSTRAINTS_FIELD,
+          () -> updateTableConstraints(origTable, updatedTable, operation));
       compareAndUpdate(
           "sourceUrl",
           () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
@@ -2417,7 +2388,7 @@ public class TableRepository extends EntityRepository<Table> {
       List<TableConstraint> added = new ArrayList<>();
       List<TableConstraint> deleted = new ArrayList<>();
       recordListChange(
-          "tableConstraints",
+          TABLE_CONSTRAINTS_FIELD,
           origConstraints,
           updatedConstraints,
           added,
