@@ -57,9 +57,7 @@ class NonParametricSkew(ComposedMetric):
 
         if res_mean is not None and res_stddev is not None and res_median is not None:
             try:
-                return (float(res_mean) - float(res_median)) / float(
-                    res_stddev
-                )  # convert from decimal
+                return (float(res_mean) - float(res_median)) / float(res_stddev)  # convert from decimal
             except ZeroDivisionError:
                 return None
         return None

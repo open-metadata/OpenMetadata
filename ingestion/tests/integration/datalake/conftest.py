@@ -173,11 +173,7 @@ def setup_s3(minio_container) -> None:
     current_dir = os.path.dirname(__file__)
     resources_dir = os.path.join(current_dir, "resources")
 
-    resources_paths = [
-        os.path.join(path, filename)
-        for path, _, files in os.walk(resources_dir)
-        for filename in files
-    ]
+    resources_paths = [os.path.join(path, filename) for path, _, files in os.walk(resources_dir) for filename in files]
     for path in resources_paths:
         key = os.path.relpath(path, resources_dir)
         client.fput_object(BUCKET_NAME, key, path)
@@ -211,9 +207,7 @@ def run_ingestion(metadata, ingestion_config, datalake_service_name):
     yield
     db_service = metadata.get_by_name(entity=DatabaseService, fqn=datalake_service_name)
     if db_service:
-        metadata.delete(
-            DatabaseService, db_service.id, recursive=True, hard_delete=True
-        )
+        metadata.delete(DatabaseService, db_service.id, recursive=True, hard_delete=True)
 
 
 @pytest.fixture(scope="class")
@@ -221,9 +215,9 @@ def run_test_suite_workflow(run_ingestion, ingestion_config, ingestion_fqn):
     workflow_config = deepcopy(DATA_QUALITY_CONFIG)
     service_name = ingestion_config["source"]["serviceName"]
     workflow_config["source"]["serviceName"] = service_name
-    workflow_config["source"]["sourceConfig"]["config"][
-        "entityFullyQualifiedName"
-    ] = f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
+    workflow_config["source"]["sourceConfig"]["config"]["entityFullyQualifiedName"] = (
+        f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
+    )
     workflow_config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
         {
             "serviceName": service_name,
@@ -238,9 +232,7 @@ def run_test_suite_workflow(run_ingestion, ingestion_config, ingestion_fqn):
 
 
 @pytest.fixture(scope="class")
-def run_sampled_test_suite_workflow(
-    metadata, run_ingestion, ingestion_config, ingestion_fqn
-):
+def run_sampled_test_suite_workflow(metadata, run_ingestion, ingestion_config, ingestion_fqn):
     service_name = ingestion_config["source"]["serviceName"]
     table_fqn = f'{service_name}.default.my-bucket."users/users.csv"'
     metadata.create_or_update_table_profiler_config(
@@ -253,9 +245,9 @@ def run_sampled_test_suite_workflow(
     )
     workflow_config = deepcopy(DATA_QUALITY_CONFIG)
     workflow_config["source"]["serviceName"] = service_name
-    workflow_config["source"]["sourceConfig"]["config"][
-        "entityFullyQualifiedName"
-    ] = f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
+    workflow_config["source"]["sourceConfig"]["config"]["entityFullyQualifiedName"] = (
+        f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
+    )
     workflow_config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
         {
             "serviceName": service_name,
@@ -277,9 +269,7 @@ def run_sampled_test_suite_workflow(
 
 
 @pytest.fixture(scope="class")
-def run_partitioned_test_suite_workflow(
-    metadata, run_ingestion, ingestion_config, ingestion_fqn
-):
+def run_partitioned_test_suite_workflow(metadata, run_ingestion, ingestion_config, ingestion_fqn):
     service_name = ingestion_config["source"]["serviceName"]
     table_fqn = f'{service_name}.default.my-bucket."users/users.csv"'
     metadata.create_or_update_table_profiler_config(
@@ -295,9 +285,9 @@ def run_partitioned_test_suite_workflow(
     )
     workflow_config = deepcopy(DATA_QUALITY_CONFIG)
     workflow_config["source"]["serviceName"] = service_name
-    workflow_config["source"]["sourceConfig"]["config"][
-        "entityFullyQualifiedName"
-    ] = f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
+    workflow_config["source"]["sourceConfig"]["config"]["entityFullyQualifiedName"] = (
+        f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
+    )
     workflow_config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
         {
             "serviceName": service_name,
@@ -354,8 +344,6 @@ def run_profiler(run_ingestion, run_workflow, profiler_workflow_config):
 
 
 @pytest.fixture()
-def run_auto_classification(
-    run_ingestion, run_workflow, auto_classification_workflow_config
-):
+def run_auto_classification(run_ingestion, run_workflow, auto_classification_workflow_config):
     """Test profiler ingestion"""
     run_workflow(AutoClassificationWorkflow, auto_classification_workflow_config)

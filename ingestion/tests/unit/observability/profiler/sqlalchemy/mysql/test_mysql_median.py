@@ -45,9 +45,7 @@ class TestMySQLMedianSQL:
         """Create a MySQL engine for compilation testing"""
         # Using mysql+pymysql://localhost/test dialect for compilation
         # We don't need actual connection, just the dialect for SQL compilation
-        engine = create_engine(
-            "mysql+pymysql://", strategy="mock", executor=lambda *a, **kw: None
-        )
+        engine = create_engine("mysql+pymysql://", strategy="mock", executor=lambda *a, **kw: None)
         return engine
 
     def test_median_with_reserved_word_table_name(self, mysql_engine):
@@ -60,15 +58,12 @@ class TestMySQLMedianSQL:
         median_expr = MedianFn(col, table_name, percentile)
 
         # Compile with MySQL dialect
-        compiled = median_expr.compile(
-            dialect=mysql_engine.dialect, compile_kwargs={"literal_binds": True}
-        )
+        compiled = median_expr.compile(dialect=mysql_engine.dialect, compile_kwargs={"literal_binds": True})
         sql_string = str(compiled)
 
         # Verify table name is escaped with backticks
         assert "`Signal`" in sql_string, (
-            f"Table name 'Signal' should be escaped with backticks.\n"
-            f"Generated SQL: {sql_string}"
+            f"Table name 'Signal' should be escaped with backticks.\nGenerated SQL: {sql_string}"
         )
 
         # Verify that the unquoted "Signal" doesn't appear as a table reference
@@ -78,10 +73,7 @@ class TestMySQLMedianSQL:
             # Check FROM clauses - they should have backticks
             if "FROM" in line and "Signal" in line and "Signal" not in "`Signal`":
                 # This would be the problematic case: FROM Signal without backticks
-                assert "`Signal`" in line, (
-                    f"FROM clause should have backticks around table name.\n"
-                    f"Line: {line}"
-                )
+                assert "`Signal`" in line, f"FROM clause should have backticks around table name.\nLine: {line}"
 
     def test_first_quartile_with_reserved_word_table_name(self, mysql_engine):
         """Test that first quartile (Q1) works with reserved word table names"""
@@ -90,14 +82,10 @@ class TestMySQLMedianSQL:
         percentile = 0.25
 
         median_expr = MedianFn(col, table_name, percentile)
-        compiled = median_expr.compile(
-            dialect=mysql_engine.dialect, compile_kwargs={"literal_binds": True}
-        )
+        compiled = median_expr.compile(dialect=mysql_engine.dialect, compile_kwargs={"literal_binds": True})
         sql_string = str(compiled)
 
-        assert "`Signal`" in sql_string, (
-            f"Q1 (0.25): Table name should be escaped.\n" f"Generated SQL: {sql_string}"
-        )
+        assert "`Signal`" in sql_string, f"Q1 (0.25): Table name should be escaped.\nGenerated SQL: {sql_string}"
 
     def test_third_quartile_with_reserved_word_table_name(self, mysql_engine):
         """Test that third quartile (Q3) works with reserved word table names"""
@@ -106,14 +94,10 @@ class TestMySQLMedianSQL:
         percentile = 0.75
 
         median_expr = MedianFn(col, table_name, percentile)
-        compiled = median_expr.compile(
-            dialect=mysql_engine.dialect, compile_kwargs={"literal_binds": True}
-        )
+        compiled = median_expr.compile(dialect=mysql_engine.dialect, compile_kwargs={"literal_binds": True})
         sql_string = str(compiled)
 
-        assert "`Signal`" in sql_string, (
-            f"Q3 (0.75): Table name should be escaped.\n" f"Generated SQL: {sql_string}"
-        )
+        assert "`Signal`" in sql_string, f"Q3 (0.75): Table name should be escaped.\nGenerated SQL: {sql_string}"
 
     def test_median_with_multiple_reserved_words(self, mysql_engine):
         """Test with various MySQL reserved words as table names"""
@@ -123,15 +107,12 @@ class TestMySQLMedianSQL:
         for table_name in reserved_words:
             col = Signal.customer_id
             median_expr = MedianFn(col, table_name, percentile)
-            compiled = median_expr.compile(
-                dialect=mysql_engine.dialect, compile_kwargs={"literal_binds": True}
-            )
+            compiled = median_expr.compile(dialect=mysql_engine.dialect, compile_kwargs={"literal_binds": True})
             sql_string = str(compiled)
 
             expected_escaped = f"`{table_name}`"
             assert expected_escaped in sql_string, (
-                f"Reserved word '{table_name}' should be escaped with backticks.\n"
-                f"Generated SQL: {sql_string}"
+                f"Reserved word '{table_name}' should be escaped with backticks.\nGenerated SQL: {sql_string}"
             )
 
     def test_column_name_properly_quoted(self, mysql_engine):
@@ -141,16 +122,13 @@ class TestMySQLMedianSQL:
         percentile = 0.5
 
         median_expr = MedianFn(col, table_name, percentile)
-        compiled = median_expr.compile(
-            dialect=mysql_engine.dialect, compile_kwargs={"literal_binds": True}
-        )
+        compiled = median_expr.compile(dialect=mysql_engine.dialect, compile_kwargs={"literal_binds": True})
         sql_string = str(compiled)
 
         # Column name should be quoted (either backticks or other depending on compiler)
         # It should be present in the SQL
         assert "customer_id" in sql_string or "`customer_id`" in sql_string, (
-            f"Column name should be present in generated SQL.\n"
-            f"Generated SQL: {sql_string}"
+            f"Column name should be present in generated SQL.\nGenerated SQL: {sql_string}"
         )
 
     def test_no_cross_join_syntax_error(self, mysql_engine):
@@ -160,9 +138,7 @@ class TestMySQLMedianSQL:
         percentile = 0.5
 
         median_expr = MedianFn(col, table_name, percentile)
-        compiled = median_expr.compile(
-            dialect=mysql_engine.dialect, compile_kwargs={"literal_binds": True}
-        )
+        compiled = median_expr.compile(dialect=mysql_engine.dialect, compile_kwargs={"literal_binds": True})
         sql_string = str(compiled)
 
         # The old problematic pattern was:
@@ -176,6 +152,5 @@ class TestMySQLMedianSQL:
         if "FROM" in sql_string and "," in sql_string:
             # Look for the pattern "FROM `table`," which is correct
             assert "FROM `Signal`" in sql_string or "FROM\n" in sql_string, (
-                f"If using comma-join, table must be escaped.\n"
-                f"Generated SQL: {sql_string}"
+                f"If using comma-join, table must be escaped.\nGenerated SQL: {sql_string}"
             )

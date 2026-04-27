@@ -12,6 +12,7 @@
 """
 Read files as string from S3
 """
+
 import traceback
 from typing import Dict, List
 
@@ -50,9 +51,7 @@ class ADLSReader(Reader):
     def __init__(self, client):
         self.client = client
 
-    def read(
-        self, path: str, *, bucket_name: str = None, verbose: bool = True, **__
-    ) -> bytes:
+    def read(self, path: str, *, bucket_name: str = None, verbose: bool = True, **__) -> bytes:
         try:
             container_client = self.client.get_container_client(bucket_name)
             return container_client.get_blob_client(path).download_blob().readall()
@@ -81,9 +80,7 @@ class ADLSReader(Reader):
         try:
             container_client = self.client.get_container_client(bucket_name)
             with open(local_file_path, "wb") as download_file:
-                download_file.write(
-                    container_client.get_blob_client(path).download_blob().readall()
-                )
+                download_file.write(container_client.get_blob_client(path).download_blob().readall())
         except Exception as err:
             if verbose:
                 logger.debug(traceback.format_exc())

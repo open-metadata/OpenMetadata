@@ -11,6 +11,7 @@
 """
 GCS sampler implementation
 """
+
 import secrets
 from typing import Optional, Tuple
 
@@ -100,9 +101,7 @@ class GCSSampler(StorageSampler):
 
         prefix = self.entity.prefix
         if not prefix:
-            logger.warning(
-                f"Container {self.entity.fullyQualifiedName.root} has no prefix"
-            )
+            logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no prefix")
             return None
 
         prefix_without_leading_slash = prefix.lstrip("/")
@@ -112,9 +111,7 @@ class GCSSampler(StorageSampler):
 
         try:
             gcs_client = self._gcs_client or self.client.clients[project_id]
-            response = gcs_client.list_blobs(
-                bucket_name, prefix=prefix_without_leading_slash, max_results=1000
-            )
+            response = gcs_client.list_blobs(bucket_name, prefix=prefix_without_leading_slash, max_results=1000)
 
             candidate_keys = self._filter_candidate_blobs(response, file_format.value)
 

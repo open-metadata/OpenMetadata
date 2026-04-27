@@ -11,6 +11,7 @@
 """
 Table related pydantic definitions
 """
+
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -41,6 +42,4 @@ class ColumnDescription(BaseModel):
     """Column FQN and description information"""
 
     column_fqn: str
-    description: Optional[basic.Markdown] = Field(
-        None, description="Description of a column."
-    )
+    description: Optional[basic.Markdown] = Field(None, description="Description of a column.")

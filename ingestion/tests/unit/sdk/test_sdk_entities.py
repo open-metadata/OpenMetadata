@@ -1,6 +1,7 @@
 """
 Unit tests for SDK entity operations
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -89,9 +90,7 @@ class TestSDKEntities(unittest.TestCase):
         result = om.Tables.retrieve_by_name("service.database.schema.test_table")
 
         # Assert
-        self.assertEqual(
-            result.fullyQualifiedName, "service.database.schema.test_table"
-        )
+        self.assertEqual(result.fullyQualifiedName, "service.database.schema.test_table")
         self.mock_ometa.get_by_name.assert_called_once()
 
     def test_table_delete(self):

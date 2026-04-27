@@ -22,9 +22,7 @@ def config_logging():
 def postgres_container(tmp_path_factory):
     """Start a PostgreSQL container with the dvdrental database."""
     data_dir = tmp_path_factory.mktemp("data")
-    dvd_rental_zip = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), "data", "dvdrental.zip"
-    )
+    dvd_rental_zip = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "dvdrental.zip")
     zipfile.ZipFile(dvd_rental_zip, "r").extractall(str(data_dir))
     container = PostgresContainer("postgres:15", dbname="dvdrental")
     container._command = [
@@ -38,22 +36,16 @@ def postgres_container(tmp_path_factory):
         "track_commit_timestamp=on",
     ]
 
-    with (
-        try_bind(container, 5432, 5432) if not os.getenv("CI") else container
-    ) as container:
+    with try_bind(container, 5432, 5432) if not os.getenv("CI") else container as container:
         docker_container = container.get_wrapped_container()
         copy_dir_to_container(str(data_dir), docker_container, "/data")
         for query in (
             "CREATE USER postgres SUPERUSER;",
             "CREATE EXTENSION pg_stat_statements;",
         ):
-            res = docker_container.exec_run(
-                ["psql", "-U", container.username, "-d", container.dbname, "-c", query]
-            )
+            res = docker_container.exec_run(["psql", "-U", container.username, "-d", container.dbname, "-c", query])
             if res[0] != 0:
-                raise CalledProcessError(
-                    returncode=res[0], cmd=res, output=res[1].decode("utf-8")
-                )
+                raise CalledProcessError(returncode=res[0], cmd=res, output=res[1].decode("utf-8"))
         res = docker_container.exec_run(
             [
                 "pg_restore",
@@ -65,15 +57,9 @@ def postgres_container(tmp_path_factory):
             ]
         )
         if res[0] != 0:
-            raise CalledProcessError(
-                returncode=res[0], cmd=res, output=res[1].decode("utf-8")
-            )
+            raise CalledProcessError(returncode=res[0], cmd=res, output=res[1].decode("utf-8"))
         engine = create_engine(container.get_connection_url())
         with engine.connect() as conn:
-            conn.execute(
-                text(
-                    "ALTER TABLE customer ADD COLUMN json_field JSONB DEFAULT '{}'::JSONB;"
-                )
-            )
+            conn.execute(text("ALTER TABLE customer ADD COLUMN json_field JSONB DEFAULT '{}'::JSONB;"))
             conn.commit()
         yield container

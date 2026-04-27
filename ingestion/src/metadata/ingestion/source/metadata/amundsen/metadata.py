@@ -123,22 +123,16 @@ class AmundsenSource(Source):
         self.service_connection = self.config.serviceConnection.root.config
         self.client = get_connection(self.service_connection)
         self.connection_obj = self.client
-        self.database_service_map = {
-            service.value.lower(): service.value for service in DatabaseServiceType
-        }
+        self.database_service_map = {service.value.lower(): service.value for service in DatabaseServiceType}
         self.test_connection()
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AmundsenConnection = config.serviceConnection.root.config
         if not isinstance(connection, AmundsenConnection):
-            raise InvalidSourceException(
-                f"Expected AmundsenConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected AmundsenConnection, but got {connection}")
         return cls(config, metadata)
 
     def prepare(self):
@@ -210,16 +204,12 @@ class AmundsenSource(Source):
                     )
                     table = service_url.database
                     table_fqn = f"{service}.{database_schema}.{table}"
-                    table_entity: Table = self.metadata.get_by_name(
-                        entity=Table, fqn=table_fqn
-                    )
+                    table_entity: Table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
                     table = CreateTableRequest(
                         name=table_entity.name,
                         tableType=table_entity.tableType,
                         description=table_entity.description,
-                        databaseSchema=FullyQualifiedEntityName(
-                            table_entity.databaseSchema.fullyQualifiedName
-                        ),
+                        databaseSchema=FullyQualifiedEntityName(table_entity.databaseSchema.fullyQualifiedName),
                         tags=table_entity.tags,
                         columns=table_entity.columns,
                         owners=EntityReferenceList(root=[user_entity_ref]),
@@ -246,11 +236,7 @@ class AmundsenSource(Source):
                 table_name = "default"
 
             database_request = CreateDatabaseRequest(
-                name=(
-                    table_name
-                    if hasattr(service_entity.connection.config, "supportsDatabase")
-                    else "default"
-                ),
+                name=(table_name if hasattr(service_entity.connection.config, "supportsDatabase") else "default"),
                 service=service_entity.fullyQualifiedName,
             )
             yield Either(right=database_request)
@@ -261,9 +247,7 @@ class AmundsenSource(Source):
                 database_name=table_name,
             )
 
-            self.database_object = self.metadata.get_by_name(
-                entity=Database, fqn=database_fqn
-            )
+            self.database_object = self.metadata.get_by_name(entity=Database, fqn=database_fqn)
         except Exception as err:
             yield Either(
                 left=StackTraceError(
@@ -288,9 +272,7 @@ class AmundsenSource(Source):
                 schema_name=database_schema_request.name.root,
             )
 
-            self.database_schema_object = self.metadata.get_by_name(
-                entity=DatabaseSchema, fqn=database_schema_fqn
-            )
+            self.database_schema_object = self.metadata.get_by_name(entity=DatabaseSchema, fqn=database_schema_fqn)
         except Exception as err:
             yield Either(
                 left=StackTraceError(
@@ -370,24 +352,16 @@ class AmundsenSource(Source):
                 )
             )
 
-    def create_dashboard_service(
-        self, dashboard: dict
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def create_dashboard_service(self, dashboard: dict) -> Iterable[Either[CreateDashboardRequest]]:
         service_name = dashboard["cluster"]
         SUPERSET_DEFAULT_CONFIG["serviceName"] = service_name
         config = WorkflowSource.model_validate(SUPERSET_DEFAULT_CONFIG)
-        create_service_entity = self.metadata.get_create_service_from_source(
-            entity=DashboardService, config=config
-        )
+        create_service_entity = self.metadata.get_create_service_from_source(entity=DashboardService, config=config)
         yield Either(right=create_service_entity)
         logger.info(f"Created Dashboard Service {service_name}")
-        self.dashboard_service = self.metadata.get_by_name(
-            entity=DashboardService, fqn=service_name
-        )
+        self.dashboard_service = self.metadata.get_by_name(entity=DashboardService, fqn=service_name)
 
-    def create_dashboard_entity(
-        self, dashboard
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def create_dashboard_entity(self, dashboard) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to process dashboard and return CreateDashboardRequest
         """
@@ -447,12 +421,12 @@ class AmundsenSource(Source):
             CreateDatabaseServiceRequest(
                 name=service_name,
                 displayName=service_name,
-                connection=SERVICE_TYPE_MAPPER.get(
-                    service_name, SERVICE_TYPE_MAPPER["mysql"]["connection"]
-                )["connection"],
-                serviceType=SERVICE_TYPE_MAPPER.get(
-                    service_name, SERVICE_TYPE_MAPPER["mysql"]["service_name"]
-                )["service_name"],
+                connection=SERVICE_TYPE_MAPPER.get(service_name, SERVICE_TYPE_MAPPER["mysql"]["connection"])[
+                    "connection"
+                ],
+                serviceType=SERVICE_TYPE_MAPPER.get(service_name, SERVICE_TYPE_MAPPER["mysql"]["service_name"])[
+                    "service_name"
+                ],
             ),
         )
 
@@ -462,6 +436,4 @@ class AmundsenSource(Source):
         return None
 
     def test_connection(self) -> None:
-        test_connection_common(
-            self.metadata, self.connection_obj, self.service_connection
-        )
+        test_connection_common(self.metadata, self.connection_obj, self.service_connection)

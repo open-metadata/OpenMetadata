@@ -11,6 +11,7 @@
 """
 Handle big query usage extraction
 """
+
 from abc import ABC
 from copy import deepcopy
 from datetime import datetime
@@ -45,15 +46,11 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
         self.database = self.project_id
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: BigQueryConnection = config.serviceConnection.root.config
         if not isinstance(connection, BigQueryConnection):
-            raise InvalidSourceException(
-                f"Expected BigQueryConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected BigQueryConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
@@ -75,25 +72,17 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
         return project_id
 
     def get_engine(self):
-        if isinstance(
-            self.service_connection.credentials.gcpConfig, GcpCredentialsValues
-        ) and isinstance(
+        if isinstance(self.service_connection.credentials.gcpConfig, GcpCredentialsValues) and isinstance(
             self.service_connection.credentials.gcpConfig.projectId, MultipleProjectId
         ):
-            project_ids = deepcopy(
-                self.service_connection.credentials.gcpConfig.projectId
-            )
+            project_ids = deepcopy(self.service_connection.credentials.gcpConfig.projectId)
             for project_id in project_ids.root:
-                inspector_details = get_inspector_details(
-                    project_id, self.service_connection
-                )
+                inspector_details = get_inspector_details(project_id, self.service_connection)
                 yield inspector_details.engine
         else:
             yield self.engine
 
-    def check_life_cycle_query(
-        self, query_type: Optional[str], query_text: Optional[str]
-    ) -> bool:
+    def check_life_cycle_query(self, query_type: Optional[str], query_text: Optional[str]) -> bool:
         """
         returns true if query is to be used for life cycle processing.
 

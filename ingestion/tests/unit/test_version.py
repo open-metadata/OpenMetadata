@@ -11,6 +11,7 @@
 """
 Validate Server Mixin version methods
 """
+
 from metadata.__version__ import (
     get_client_version_from_string,
     get_server_version_from_string,

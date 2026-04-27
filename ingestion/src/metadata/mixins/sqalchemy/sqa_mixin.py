@@ -14,7 +14,6 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-
 from typing import List, Optional
 
 from sqlalchemy import Column, MetaData, inspect, text
@@ -77,11 +76,7 @@ class SQAInterfaceMixin(Root):
             and hasattr(self.service_connection_config, "queryTag")
             and self.service_connection_config.queryTag
         ):
-            session.execute(
-                SNOWFLAKE_SESSION_TAG_QUERY.format(
-                    query_tag=self.service_connection_config.queryTag
-                )
-            )
+            session.execute(SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=self.service_connection_config.queryTag))
 
     def set_catalog(self, session) -> None:
         """Set the catalog or database for the session.
@@ -98,9 +93,7 @@ class SQAInterfaceMixin(Root):
                 {"catalog": self.service_connection_config.catalog},
             ).first()
 
-        if isinstance(
-            self.service_connection_config, (MysqlConnection, MariaDBConnection)
-        ):
+        if isinstance(self.service_connection_config, (MysqlConnection, MariaDBConnection)):
             session.execute(
                 text(f"USE {self.table_entity.databaseSchema.name}"),
             )

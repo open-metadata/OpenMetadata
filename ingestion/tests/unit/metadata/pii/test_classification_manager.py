@@ -11,6 +11,7 @@
 """
 Unit tests for ClassificationRunManager.
 """
+
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -58,9 +59,7 @@ class TestClassificationRunManager:
         assert "Disabled" not in classification_names
 
         # Verify configs are populated correctly
-        pii_config = next(
-            c.autoClassificationConfig for c in enabled if c.name.root == "PII"
-        )
+        pii_config = next(c.autoClassificationConfig for c in enabled if c.name.root == "PII")
         assert pii_config.minimumConfidence == 0.7
         assert pii_config.conflictResolution == ConflictResolution.highest_confidence
         assert pii_config.enabled is True
@@ -84,9 +83,7 @@ class TestClassificationRunManager:
         assert len(enabled) == 1
         assert enabled[0].name.root == "PII"
 
-    def test_get_enabled_classifications_caching(
-        self, metadata, pii_classification: Classification
-    ):
+    def test_get_enabled_classifications_caching(self, metadata, pii_classification: Classification):
         """Test that classifications are cached."""
         metadata.list_all_entities.return_value = [pii_classification]
 
@@ -149,9 +146,7 @@ class TestClassificationRunManager:
         metadata.list_all_entities.side_effect = list_entities_side_effect
 
         manager = ClassificationManager(metadata)
-        tags = manager.get_enabled_tags(
-            classifications=[pii_classification, general_classification]
-        )
+        tags = manager.get_enabled_tags(classifications=[pii_classification, general_classification])
 
         # Should return tags from both classifications
         assert len(tags) == 2
@@ -159,9 +154,7 @@ class TestClassificationRunManager:
         assert "PII.Email" in tag_fqns
         assert "General.CreditCard" in tag_fqns
 
-    def test_get_enabled_tags_caching(
-        self, metadata, pii_classification: Classification, email_tag_pii: Tag
-    ):
+    def test_get_enabled_tags_caching(self, metadata, pii_classification: Classification, email_tag_pii: Tag):
         """Test that tags are cached."""
         metadata.list_all_entities.return_value = [email_tag_pii]
 
@@ -176,9 +169,7 @@ class TestClassificationRunManager:
         assert metadata.list_all_entities.call_count == 1
         assert tags1 == tags2
 
-    def test_clear_cache(
-        self, metadata, pii_classification: Classification, email_tag_pii: Tag
-    ):
+    def test_clear_cache(self, metadata, pii_classification: Classification, email_tag_pii: Tag):
         """Test clearing the cache."""
         metadata.list_all_entities.return_value = [pii_classification]
 
@@ -205,9 +196,7 @@ class TestClassificationRunManager:
         # Should return empty list on error
         assert enabled == []
 
-    def test_get_enabled_tags_api_error(
-        self, metadata, pii_classification: Classification
-    ):
+    def test_get_enabled_tags_api_error(self, metadata, pii_classification: Classification):
         """Test handling of API errors when fetching tags."""
         metadata.list_all_entities.side_effect = Exception("API Error")
 

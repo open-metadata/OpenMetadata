@@ -99,9 +99,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
             row_count, failed_rows = None, None
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(
-            metric_values, test_params=test_params
-        )
+        result_message = self._format_result_message(metric_values, test_params=test_params)
         test_result_values = self._get_test_result_values(metric_values)
 
         return self.get_test_case_result_object(
@@ -152,9 +150,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
         """Get Metrics needed to compute"""
         return {Metrics.min.name: Metrics.min, Metrics.max.name: Metrics.max}
 
-    def _evaluate_test_condition(
-        self, metric_values: dict, test_params: dict
-    ) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: dict) -> TestEvaluation:
         """Evaluate the values-to-be-between test condition
 
         For this test, the condition passes if both min and max values are within bounds.
@@ -182,11 +178,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
         matched = min_value >= min_bound and max_value <= max_bound
         total_rows = metric_values.get(DIMENSION_TOTAL_COUNT_KEY)
         failed_rows = metric_values.get(DIMENSION_FAILED_COUNT_KEY)
-        passed_rows = (
-            total_rows - failed_rows
-            if (total_rows is not None and failed_rows is not None)
-            else None
-        )
+        passed_rows = total_rows - failed_rows if (total_rows is not None and failed_rows is not None) else None
 
         return {
             "matched": matched,
@@ -212,9 +204,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
             str: Formatted result message
         """
         if test_params is None:
-            raise ValueError(
-                "test_params is required for columnValuesToBeBetween._format_result_message"
-            )
+            raise ValueError("test_params is required for columnValuesToBeBetween._format_result_message")
 
         min_value = metric_values[Metrics.min.name]
         max_value = metric_values[Metrics.max.name]
@@ -285,9 +275,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
         raise NotImplementedError
 
     @abstractmethod
-    def compute_row_count(
-        self, column: Union[SQALikeColumn, Column], min_bound, max_bound
-    ):
+    def compute_row_count(self, column: Union[SQALikeColumn, Column], min_bound, max_bound):
         """Compute row count for the given column
 
         Args:

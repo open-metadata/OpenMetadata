@@ -11,6 +11,7 @@
 """
 PowerBI Models
 """
+
 from datetime import datetime
 from typing import List, Optional, Union
 
@@ -338,9 +339,7 @@ class ConnectionFile(BaseModel):
     PowerBi Connection File Model
     """
 
-    RemoteArtifacts: Annotated[
-        Optional[List[RemoteArtifacts]], Field(None, description="Remote Artifacts")
-    ]
+    RemoteArtifacts: Annotated[Optional[List[RemoteArtifacts]], Field(None, description="Remote Artifacts")]
 
 
 class DataModelSchema(BaseModel):

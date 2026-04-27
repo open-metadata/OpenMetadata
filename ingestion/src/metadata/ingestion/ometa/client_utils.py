@@ -11,6 +11,7 @@
 """
 OMeta client create helpers
 """
+
 import traceback
 from typing import List
 
@@ -58,9 +59,7 @@ def get_chart_entities_from_id(
     for chart_id in chart_ids:
         chart: Chart = metadata.get_by_name(
             entity=Chart,
-            fqn=fqn.build(
-                metadata, Chart, chart_name=str(chart_id), service_name=service_name
-            ),
+            fqn=fqn.build(metadata, Chart, chart_name=str(chart_id), service_name=service_name),
         )
         if chart:
             entities.append(chart.fullyQualifiedName)

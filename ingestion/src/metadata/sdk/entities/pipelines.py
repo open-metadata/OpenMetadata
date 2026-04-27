@@ -1,6 +1,7 @@
 """
 Pipelines entity SDK with fluent API
 """
+
 from typing import Any, List, Optional, Type, cast
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -24,9 +25,7 @@ class Pipelines(BaseEntity[Pipeline, CreatePipelineRequest]):
         return cls._coerce_entity(result)
 
     @classmethod
-    def add_bulk_pipeline_status(
-        cls, fqn: str, statuses: List[PipelineStatus]
-    ) -> Pipeline:
+    def add_bulk_pipeline_status(cls, fqn: str, statuses: List[PipelineStatus]) -> Pipeline:
         """Add multiple pipeline execution statuses in a single bulk request."""
         client = cls._get_client()
         result = cast(Any, client).add_bulk_pipeline_status(fqn=fqn, statuses=statuses)
@@ -42,6 +41,4 @@ class Pipelines(BaseEntity[Pipeline, CreatePipelineRequest]):
     ) -> List[PipelineStatus]:
         """List pipeline execution statuses within a time range."""
         client = cls._get_client()
-        return cast(Any, client).list_pipeline_statuses(
-            fqn=fqn, start_ts=start_ts, end_ts=end_ts, limit=limit
-        )
+        return cast(Any, client).list_pipeline_statuses(fqn=fqn, start_ts=start_ts, end_ts=end_ts, limit=limit)

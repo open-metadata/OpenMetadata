@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API App test
 """
+
 from metadata.generated.schema.entity.applications.app import App
 
 

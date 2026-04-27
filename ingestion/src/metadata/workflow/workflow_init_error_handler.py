@@ -12,6 +12,7 @@
 """
 Module handles the init error messages from different workflows
 """
+
 import logging
 import traceback
 from pathlib import Path
@@ -68,17 +69,11 @@ class WorkflowInitErrorHandler:
             exc,
             (ParsingConfigurationError, ConfigurationError, InvalidWorkflowException),
         ):
-            WorkflowInitErrorHandler._print_error_msg(
-                f"Error loading {pipeline_type.name} configuration: {exc}"
-            )
-            WorkflowInitErrorHandler._print_file_example(
-                source_type_name, pipeline_type
-            )
+            WorkflowInitErrorHandler._print_error_msg(f"Error loading {pipeline_type.name} configuration: {exc}")
+            WorkflowInitErrorHandler._print_file_example(source_type_name, pipeline_type)
         else:
             utils_logger().debug(traceback.format_exc())
-            WorkflowInitErrorHandler._print_error_msg(
-                f"\nError initializing {pipeline_type.name}: {exc}"
-            )
+            WorkflowInitErrorHandler._print_error_msg(f"\nError initializing {pipeline_type.name}: {exc}")
 
         WorkflowInitErrorHandler._print_more_info(pipeline_type)
 
@@ -87,27 +82,19 @@ class WorkflowInitErrorHandler:
         """Returns the Source Type Name based on the Configuration passed."""
         source_type_name = None
 
-        if (
-            config
-            and config.get("source", None) is not None
-            and config["source"].get("type", None) is not None
-        ):
+        if config and config.get("source", None) is not None and config["source"].get("type", None) is not None:
             source_type_name = config["source"].get("type")
             source_type_name = source_type_name.replace("-", "-")
 
         return source_type_name
 
     @staticmethod
-    def _print_file_example(
-        source_type_name: Optional[str], pipeline_type: PipelineType
-    ):
+    def _print_file_example(source_type_name: Optional[str], pipeline_type: PipelineType):
         """
         Print an example file for a given configuration
         """
         if source_type_name is not None:
-            example_file = WorkflowInitErrorHandler._calculate_example_file(
-                source_type_name, pipeline_type
-            )
+            example_file = WorkflowInitErrorHandler._calculate_example_file(source_type_name, pipeline_type)
             example_path = EXAMPLES_WORKFLOW_PATH / f"{example_file}.yaml"
             if not example_path.exists():
                 example_file = DEFAULT_EXAMPLE_FILE[pipeline_type]
@@ -121,9 +108,7 @@ class WorkflowInitErrorHandler:
             log_ansi_encoded_string(message="------------")
 
     @staticmethod
-    def _calculate_example_file(
-        source_type_name: str, pipeline_type: PipelineType
-    ) -> str:
+    def _calculate_example_file(source_type_name: str, pipeline_type: PipelineType) -> str:
         """
         Calculates the ingestion type depending on the source type name and workflow_type
         """
@@ -152,15 +137,11 @@ class WorkflowInitErrorHandler:
         """
         Print message with error style
         """
-        log_ansi_encoded_string(
-            color=ANSI.BRIGHT_RED, bold=False, message=f"{msg}", level=logging.ERROR
-        )
+        log_ansi_encoded_string(color=ANSI.BRIGHT_RED, bold=False, message=f"{msg}", level=logging.ERROR)
 
     @staticmethod
     def _print_debug_msg(msg: str) -> None:
         """
         Print message with error style
         """
-        log_ansi_encoded_string(
-            color=ANSI.YELLOW, bold=False, message=f"{msg}", level=logging.DEBUG
-        )
+        log_ansi_encoded_string(color=ANSI.YELLOW, bold=False, message=f"{msg}", level=logging.DEBUG)

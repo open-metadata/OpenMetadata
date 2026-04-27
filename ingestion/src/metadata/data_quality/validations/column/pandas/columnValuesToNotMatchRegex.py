@@ -55,9 +55,7 @@ class ColumnValuesToNotMatchRegexValidator(
 ):
     """Validator for column values to not match regex test case"""
 
-    def _run_results(
-        self, metric: Metrics, column: SQALikeColumn, **kwargs
-    ) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: SQALikeColumn, **kwargs) -> Optional[int]:
         """compute result of the test case
 
         Args:
@@ -98,14 +96,12 @@ class ColumnValuesToNotMatchRegexValidator(
         dimension_results = []
 
         try:
-            forbidden_regex = test_params[
-                BaseColumnValuesToNotMatchRegexValidator.FORBIDDEN_REGEX
-            ]
+            forbidden_regex = test_params[BaseColumnValuesToNotMatchRegexValidator.FORBIDDEN_REGEX]
 
             dfs = self.runner
-            not_regex_count_impl = add_props(expression=forbidden_regex)(
-                Metrics.notRegexCount.value
-            )(column).get_pandas_computation()
+            not_regex_count_impl = add_props(expression=forbidden_regex)(Metrics.notRegexCount.value)(
+                column
+            ).get_pandas_computation()
             row_count_impl = Metrics.rowCount().get_pandas_computation()
 
             dimension_aggregates = defaultdict(
@@ -122,29 +118,21 @@ class ColumnValuesToNotMatchRegexValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    dimension_aggregates[dimension_value][
-                        Metrics.notRegexCount.name
-                    ] = not_regex_count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][
-                            Metrics.notRegexCount.name
-                        ],
-                        group_df,
+                    dimension_aggregates[dimension_value][Metrics.notRegexCount.name] = (
+                        not_regex_count_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][Metrics.notRegexCount.name],
+                            group_df,
+                        )
                     )
-                    dimension_aggregates[dimension_value][
-                        Metrics.rowCount.name
-                    ] = row_count_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.rowCount.name] = row_count_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.rowCount.name],
                         group_df,
                     )
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                not_regex_count = not_regex_count_impl.aggregate_accumulator(
-                    agg[Metrics.notRegexCount.name]
-                )
-                row_count = row_count_impl.aggregate_accumulator(
-                    agg[Metrics.rowCount.name]
-                )
+                not_regex_count = not_regex_count_impl.aggregate_accumulator(agg[Metrics.notRegexCount.name])
+                row_count = row_count_impl.aggregate_accumulator(agg[Metrics.rowCount.name])
 
                 results_data.append(
                     {
