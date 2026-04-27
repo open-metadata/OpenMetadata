@@ -280,40 +280,16 @@ exclude = [
   "src/metadata/__version__.py",
 ]
 
-# TODO: Remove the ignored paths little by little.
-ignore = [
-  "src/_openmetadata_testutils/*",
-  "src/airflow_provider_openmetadata/*",
-  "src/metadata/antlr/*",
-  "src/metadata/automations/*",
-  "src/metadata/cli/*",
-  "src/metadata/clients/*",
-  "src/metadata/config/*",
-  "src/metadata/data_insight/*",
-  "src/metadata/data_quality/*",
-  "src/metadata/examples/*",
-  "src/metadata/great_expectations/*",
-  "src/metadata/ingestion/*",
-  "src/metadata/mixins/*",
-  "src/metadata/parsers/*",
-  "src/metadata/pii/scanners/*",
-  "src/metadata/pii/*processor.py",
-  "src/metadata/profiler/*",
-  "src/metadata/sampler/*",
-  "src/metadata/readers/*",
-  "src/metadata/timer/*",
-  "src/metadata/utils/*",
-  "src/metadata/workflow/base.py",
-  "src/metadata/workflow/application.py",
-  "src/metadata/workflow/data_insight.py",
-  "src/metadata/workflow/data_quality.py",
-  "src/metadata/workflow/ingestion.py",
-  "src/metadata/workflow/metadata.py",
-  "src/metadata/workflow/profiler.py",
-  "src/metadata/workflow/usage.py",
-  "src/metadata/workflow/classification.py",
-  "src/metadata/workflow/workflow_status_mixin.py",
-]
+# Pin the analysis target to the lowest supported Python version so
+# basedpyright catches forward-incompatible code (e.g. tomllib usage,
+# PEP 695 generics) at type-check time. Runtime support across 3.10/3.11/
+# 3.12 is verified separately by the unit-test matrix in py-tests.yml.
+# Keep this in sync with `requires-python` above.
+pythonVersion = "3.10"
+
+# Existing violations are grandfathered via .basedpyright/baseline.json
+# (regenerate with `basedpyright -p ingestion/pyproject.toml --writebaseline`
+# from the ingestion/ directory). New violations in any file fail CI.
 
 reportDeprecated = false
 reportMissingTypeStubs = false
@@ -321,3 +297,8 @@ reportAny = false
 reportExplicitAny = false
 # @override was only added in python 3.12: https://docs.python.org/3/library/typing.html#typing.override
 reportImplicitOverride = false
+# Cross-platform stub drift (macOS arm64 vs Linux x86_64) means a `# pyright: ignore`
+# that is necessary on one platform may look unused on the other. Disable the
+# unused-ignore warning so contributors can land platform-specific residuals
+# without a back-and-forth flap between local and CI.
+reportUnnecessaryTypeIgnoreComment = false
