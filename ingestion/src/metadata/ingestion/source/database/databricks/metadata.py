@@ -288,9 +288,11 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     """
 
     rows = _get_column_rows(self, connection, table_name, schema, kw.get("db_name"))
-    nested_descriptions_by_column = _fetch_nested_descriptions_via_describe_json(
-        connection, kw.get("db_name"), schema, table_name
-    )
+    # Lazily populated on the first complex column we encounter — most tables
+    # are primitives-only and shouldn't pay the AS JSON round-trip.
+    nested_descriptions_by_column: Optional[
+        Dict[str, Dict[Tuple[str, ...], str]]
+    ] = None
     result = []
     for col_name, col_type, _comment in rows:
         # DESCRIBE TABLE EXTENDED emits real columns first, then '#'-prefixed
@@ -345,6 +347,12 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     }
                     col_info["system_data_type"] = sub_rows["data_type"]
                     col_info["is_complex"] = True
+                    if nested_descriptions_by_column is None:
+                        nested_descriptions_by_column = (
+                            _fetch_nested_descriptions_via_describe_json(
+                                connection, kw.get("db_name"), schema, table_name
+                            )
+                        )
                     nested_descriptions = nested_descriptions_by_column.get(col_name)
                     if nested_descriptions:
                         col_info["nested_descriptions"] = nested_descriptions

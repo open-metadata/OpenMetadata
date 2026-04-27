@@ -21,7 +21,7 @@ runtimes the JSON query errors and the connector silently degrades to
 top-level-only descriptions — covered by the malformed/missing payload cases.
 """
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.type.basic import Markdown
@@ -29,6 +29,7 @@ from metadata.ingestion.source.database.databricks.metadata import (
     _apply_nested_descriptions,
     _build_column_descriptions_map,
     _fetch_nested_descriptions_via_describe_json,
+    get_columns,
 )
 
 # Mirrors the shape of `DESCRIBE TABLE EXTENDED ... AS JSON` output for the
@@ -323,3 +324,82 @@ class TestApplyNestedDescriptions:
         col = Column(name="x", dataType="STRING")
         _apply_nested_descriptions(col, {("a",): "desc"}, ())
         assert col.description is None
+
+
+@patch(
+    "metadata.ingestion.source.database.databricks.metadata"
+    "._fetch_nested_descriptions_via_describe_json"
+)
+@patch("metadata.ingestion.source.database.databricks.metadata._get_column_rows")
+class TestDescribeJsonLazyFetch:
+    """The ``DESCRIBE TABLE EXTENDED ... AS JSON`` round-trip is fired only
+    when a complex column is encountered, and at most once per table. This
+    avoids doubling the DESCRIBE traffic on catalogs of mostly primitive-
+    typed tables — see review feedback on PR #27766."""
+
+    def _run(self, mock_connection):
+        return get_columns(
+            MagicMock(),  # self (dialect)
+            mock_connection,
+            "tbl",
+            "schema",
+            db_name="db",
+        )
+
+    def test_skipped_when_table_has_no_complex_columns(
+        self, mock_rows, mock_fetch_json
+    ):
+        """Primitive-only table → AS JSON query never runs."""
+        mock_rows.return_value = [
+            ("id", "bigint", None),
+            ("name", "string", None),
+            ("created_at", "timestamp", None),
+        ]
+        connection = MagicMock()
+
+        self._run(connection)
+
+        mock_fetch_json.assert_not_called()
+
+    def _connection_with_describe_rows(self):
+        """Mock a connection whose per-column ``DESCRIBE TABLE`` returns a
+        valid ``data_type`` row so the lazy fetch is reached."""
+        connection = MagicMock()
+        connection.execute.return_value.fetchall.return_value = [
+            ("col_name", "irrelevant"),
+            ("data_type", "struct<a:int>"),
+            ("comment", ""),
+        ]
+        return connection
+
+    def test_called_once_for_table_with_one_complex_column(
+        self, mock_rows, mock_fetch_json
+    ):
+        mock_rows.return_value = [
+            ("id", "bigint", None),
+            ("info", "struct<a:int>", None),
+            ("name", "string", None),
+        ]
+        mock_fetch_json.return_value = {}
+        connection = self._connection_with_describe_rows()
+
+        self._run(connection)
+
+        mock_fetch_json.assert_called_once_with(connection, "db", "schema", "tbl")
+
+    def test_called_once_for_table_with_multiple_complex_columns(
+        self, mock_rows, mock_fetch_json
+    ):
+        """Cached after first complex column — second/third columns reuse
+        the result instead of triggering another round-trip."""
+        mock_rows.return_value = [
+            ("personal_info", "struct<a:int>", None),
+            ("address", "struct<b:int>", None),
+            ("preferences", "array<string>", None),
+        ]
+        mock_fetch_json.return_value = {}
+        connection = self._connection_with_describe_rows()
+
+        self._run(connection)
+
+        assert mock_fetch_json.call_count == 1
