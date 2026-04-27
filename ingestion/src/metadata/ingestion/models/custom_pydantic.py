@@ -19,6 +19,7 @@ be self-sufficient with only pydantic at import time.
 import json
 import logging
 from typing import Any, Callable, Dict, Literal, Optional, Union
+from urllib.parse import urlparse
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import WrapSerializer, model_validator
@@ -35,6 +36,101 @@ SECRET = "secret:"
 JSON_ENCODERS = "json_encoders"
 
 
+def strip_hostport_scheme(raw: str) -> str:
+    """
+    Strip an accidental URL scheme from a hostPort string.
+
+    Self-contained helper that depends only on the standard library so it
+    can be imported from ``builders.py`` and ``db_utils.py`` without circular
+    imports.
+
+    Raises ValueError if the value cannot be resolved to a valid
+    ``hostname[:port]`` string — e.g. when the port is non-numeric or when
+    the hostname is empty after stripping the scheme.  This applies to both
+    standard URLs handled by ``urlparse`` and to JDBC-style URLs handled by
+    the fallback branch (e.g. ``jdbc:postgresql://host:abc/db``).
+    """
+    value = raw.strip()
+    if "://" not in value:
+        return value
+
+    parsed = urlparse(value)
+    hostname = parsed.hostname or ""
+
+    # Build a sanitised label for log/error messages that identifies the
+    # problematic input without leaking credentials or a full path.
+    if parsed.scheme and hostname:
+        safe_label = f"{parsed.scheme}://{hostname}"
+    else:
+        # urlparse couldn't extract a hostname (e.g. jdbc:postgresql://…).
+        # Construct the label from the raw tail so messages remain actionable.
+        tail_for_label = value.rsplit("://", 1)[-1].split("/", 1)[0]
+        if "@" in tail_for_label:
+            tail_for_label = tail_for_label.rsplit("@", 1)[-1]
+        safe_label = tail_for_label or value
+
+    logger.warning(
+        "The hostPort '%s' contains a URL scheme. Expected format is "
+        "'hostname[:port]' (e.g. 'localhost:3306'). Stripping the scheme prefix.",
+        safe_label,
+    )
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise ValueError(
+            f"Invalid hostPort '{safe_label}'. Expected format is "
+            "'hostname[:port]' (e.g. 'localhost:3306')."
+        ) from exc
+
+    if not hostname:
+        # urlparse couldn't extract a hostname (e.g. 'jdbc:postgresql://host:5432/db').
+        # Fall back to stripping the scheme and any trailing path/query/fragment/userinfo.
+        tail = value.rsplit("://", 1)[-1]
+        for sep in ("/", "?", "#"):
+            tail = tail.split(sep, 1)[0]
+        if "@" in tail:
+            tail = tail.rsplit("@", 1)[-1]
+
+        if not tail:
+            raise ValueError(
+                f"Invalid hostPort '{safe_label}'. Expected format is "
+                "'hostname[:port]' (e.g. 'localhost:3306')."
+            )
+
+        # Validate the port in the fallback path so the same ValueError
+        # contract holds for JDBC-style URLs and other malformed inputs.
+        fallback_parsed = urlparse(f"//{tail}")
+        try:
+            fallback_hostname = fallback_parsed.hostname or ""
+            _ = fallback_parsed.port  # raises ValueError for non-numeric ports
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid hostPort '{safe_label}'. Expected format is "
+                "'hostname[:port]' (e.g. 'localhost:3306')."
+            ) from exc
+        if not fallback_hostname:
+            raise ValueError(
+                f"Invalid hostPort '{safe_label}'. Expected format is "
+                "'hostname[:port]' (e.g. 'localhost:3306')."
+            )
+        return tail
+
+    host = f"[{hostname}]" if ":" in hostname else hostname
+    return f"{host}:{port}" if port is not None else host
+
+
+# Backwards-compatible private alias retained for any internal callers that
+# pinned to the original underscored symbol while the helper was private.
+_strip_hostport_scheme = strip_hostport_scheme
+
+# Module sub-path that identifies database-connector classes.
+# Only *Connection classes whose module contains this sub-path have a plain
+# ``hostname[:port]`` hostPort — all other connection categories
+# (dashboard, pipeline, search, metadata, …) legitimately store a full URL
+# in hostPort and must NOT have their scheme stripped.
+_DATABASE_CONNECTION_MODULE_MARKER = ".services.connections.database."
+
+
 class BaseModel(PydanticBaseModel):
     """
     Base model for OpenMetadata generated models.
@@ -46,14 +142,36 @@ class BaseModel(PydanticBaseModel):
         This function is used to parse the FilterPattern fields for the Connection classes.
         This is needed because dict is defined in the JSON schema for the FilterPattern field,
         but a FilterPattern object is required in the generated code.
+
+        Additionally, for Connection classes that store a plain ``hostname[:port]``
+        in ``hostPort``, any accidental URL scheme prefix (e.g. ``http://``) is
+        stripped here so that all downstream connector code — including connectors
+        that call ``connection.hostPort.split(":")`` directly — receives a clean value.
         """
         # pylint: disable=import-outside-toplevel
+        if not self.__class__.__name__.endswith("Connection"):
+            # Only process Connection classes
+            return
+        if not hasattr(self, "__pydantic_fields__"):
+            return
+
+        # Strip accidental URL schemes from hostPort at model construction time,
+        # but ONLY for database-connector classes whose hostPort is a plain
+        # ``hostname[:port]``.  Dashboard, pipeline, search, and other connector
+        # categories legitimately use a full URL in hostPort (e.g.
+        # ``http://grafana:3000``), so we restrict stripping to classes whose
+        # module path contains the database-connection marker.
+        # The isinstance(str) guard prevents an AttributeError when hostPort is
+        # optional and left unset (None).
+        host_port = getattr(self, "hostPort", None)
+        if (
+            isinstance(host_port, str)
+            and "://" in host_port
+            and _DATABASE_CONNECTION_MODULE_MARKER in (self.__class__.__module__ or "")
+        ):
+            self.hostPort = strip_hostport_scheme(host_port)
+
         try:
-            if not self.__class__.__name__.endswith("Connection"):
-                # Only parse FilterPattern for Connection classes
-                return
-            if not hasattr(self, "__pydantic_fields__"):
-                return
             for field in self.__pydantic_fields__:
                 if field.endswith("FilterPattern"):
                     from metadata.generated.schema.type.filterPattern import (

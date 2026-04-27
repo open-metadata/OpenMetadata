@@ -33,6 +33,7 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_by_query,
     get_lineage_via_table_entity,
 )
+from metadata.ingestion.models.custom_pydantic import strip_hostport_scheme
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
@@ -44,12 +45,32 @@ logger = utils_logger()
 PUBLIC_SCHEMA = "public"
 
 
+def clean_host_port(host_port: str) -> str:
+    """
+    Strip URL scheme prefixes from a hostPort string.
+
+    Users sometimes enter a full URL (e.g. 'http://localhost:3306')
+    instead of just 'localhost:3306'. This strips the scheme to avoid
+    ValueError when parsing host and port.
+
+    Delegates to the stdlib-only helper colocated with ``BaseModel`` so the
+    behaviour stays in lockstep with Pydantic's ``model_post_init`` hook.
+    """
+    value = host_port.strip()
+    if "://" not in value:
+        return value.rstrip("/")
+    return strip_hostport_scheme(value)
+
+
 def get_host_from_host_port(uri: str) -> str:
     """
     if uri is like "localhost:9000"
     then return the host "localhost"
     """
-    return uri.split(":")[0]
+    cleaned = clean_host_port(uri)
+    if cleaned.startswith("["):
+        return cleaned.split("]")[0] + "]"
+    return cleaned.split(":")[0]
 
 
 #  pylint: disable=too-many-locals

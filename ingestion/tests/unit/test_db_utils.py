@@ -37,7 +37,11 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.ingestion.source.models import TableView
-from metadata.utils.db_utils import get_host_from_host_port, get_view_lineage
+from metadata.utils.db_utils import (
+    clean_host_port,
+    get_host_from_host_port,
+    get_view_lineage,
+)
 
 
 # Mock LineageTable class to simulate collate_sqllineage.core.models.Table
@@ -114,6 +118,94 @@ class TestDbUtils(TestCase):
         # Test with host only (no port)
         self.assertEqual(get_host_from_host_port("localhost"), "localhost")
         self.assertEqual(get_host_from_host_port("example.com"), "example.com")
+
+        # Test with URL scheme prefixes
+        self.assertEqual(get_host_from_host_port("http://localhost:3306"), "localhost")
+        self.assertEqual(
+            get_host_from_host_port("https://example.com:5432"), "example.com"
+        )
+        self.assertEqual(get_host_from_host_port("http://localhost"), "localhost")
+
+        # Test with IPv6 addresses
+        self.assertEqual(get_host_from_host_port("http://[::1]:3306"), "[::1]")
+        self.assertEqual(get_host_from_host_port("[::1]:3306"), "[::1]")
+
+    def test_clean_host_port(self):
+        """Test clean_host_port strips URL scheme prefixes"""
+        # Already-clean values pass through unchanged
+        self.assertEqual(clean_host_port("localhost:3306"), "localhost:3306")
+        self.assertEqual(clean_host_port("127.0.0.1:5432"), "127.0.0.1:5432")
+        self.assertEqual(clean_host_port("example.com"), "example.com")
+
+        # HTTP prefix is stripped
+        self.assertEqual(clean_host_port("http://localhost:3306"), "localhost:3306")
+        self.assertEqual(clean_host_port("http://example.com:8080"), "example.com:8080")
+
+        # HTTPS prefix is stripped
+        self.assertEqual(clean_host_port("https://localhost:5432"), "localhost:5432")
+        self.assertEqual(
+            clean_host_port("https://mydb.example.com:3306"), "mydb.example.com:3306"
+        )
+
+        # Trailing slash is stripped
+        self.assertEqual(clean_host_port("http://localhost:3306/"), "localhost:3306")
+
+        # Host only with scheme
+        self.assertEqual(clean_host_port("http://localhost"), "localhost")
+        self.assertEqual(clean_host_port("https://example.com"), "example.com")
+
+        # URL with path is handled — path/query/fragment are discarded
+        self.assertEqual(clean_host_port("http://localhost:3306/db"), "localhost:3306")
+        self.assertEqual(
+            clean_host_port("https://example.com:5432/mydb?ssl=true"),
+            "example.com:5432",
+        )
+
+        # Whitespace is stripped
+        self.assertEqual(clean_host_port("  localhost:3306  "), "localhost:3306")
+        self.assertEqual(clean_host_port("  http://localhost:3306  "), "localhost:3306")
+
+        # JDBC-style URLs fall back to raw extraction
+        self.assertEqual(clean_host_port("jdbc:postgresql://host:5432"), "host:5432")
+        self.assertEqual(clean_host_port("jdbc:postgresql://host:5432/db"), "host:5432")
+        self.assertEqual(
+            clean_host_port("jdbc:postgresql://host:5432?ssl=true"), "host:5432"
+        )
+        self.assertEqual(
+            clean_host_port("jdbc:postgresql://host:5432/db?ssl=true#ref"),
+            "host:5432",
+        )
+
+        # IPv6 addresses — brackets are preserved
+        self.assertEqual(clean_host_port("http://[::1]:3306"), "[::1]:3306")
+        self.assertEqual(clean_host_port("https://[::1]:5432"), "[::1]:5432")
+        self.assertEqual(clean_host_port("http://[::1]"), "[::1]")
+        self.assertEqual(
+            clean_host_port("http://[2001:db8::1]:3306"), "[2001:db8::1]:3306"
+        )
+
+        # Plain IPv6 without scheme passes through unchanged
+        self.assertEqual(clean_host_port("[::1]:3306"), "[::1]:3306")
+
+        # JDBC with userinfo — credentials are stripped
+        self.assertEqual(
+            clean_host_port("jdbc:postgresql://user:pass@host:5432/db"),
+            "host:5432",
+        )
+
+        # Invalid port raises ValueError
+        with self.assertRaises(ValueError):
+            clean_host_port("http://localhost:abc")
+
+        # Empty host after scheme strip raises ValueError
+        with self.assertRaises(ValueError):
+            clean_host_port("http://")
+
+        # Non-numeric port in JDBC-style fallback also raises ValueError
+        with self.assertRaises(ValueError):
+            clean_host_port("jdbc:postgresql://host:abc/db")
+        with self.assertRaises(ValueError):
+            clean_host_port("jdbc:postgresql://[::1]:abc")
 
     @patch("metadata.utils.db_utils.ConnectionTypeDialectMapper")
     @patch("metadata.utils.db_utils.fqn")

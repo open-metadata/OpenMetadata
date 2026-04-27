@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.services.connections.database.common.iamAu
 from metadata.ingestion.connections.headers import inject_query_header_by_conn
 from metadata.ingestion.connections.query_logger import attach_query_tracker
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
+from metadata.ingestion.models.custom_pydantic import strip_hostport_scheme
 from metadata.utils.constants import BUILDER_PASSWORD_ATTR
 from metadata.utils.logger import cli_logger
 
@@ -185,7 +186,7 @@ def get_connection_url_common(connection) -> str:
         url = _add_password(url, connection)
         url += "@"
 
-    url += connection.hostPort
+    url += strip_hostport_scheme(connection.hostPort)
     if hasattr(connection, "database"):
         url += f"/{connection.database}" if connection.database else ""
 

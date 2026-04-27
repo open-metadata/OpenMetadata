@@ -97,6 +97,34 @@ class TestGetConnectionURL(unittest.TestCase):
                 "mysql+pymysql://openmetadata_user:mocked_token@localhost:3306/openmetadata_db",
             )
 
+    def test_get_connection_url_mysql_with_url_scheme(self):
+        """hostPort with http:// prefix should be cleaned automatically"""
+        connection = MysqlConnectionConfig(
+            username="openmetadata_user",
+            authType=BasicAuth(password="openmetadata_password"),
+            hostPort="http://localhost:3306",
+            databaseSchema="openmetadata_db",
+        )
+        engine_connection = MySQLConnection(connection).client
+        self.assertEqual(
+            engine_connection.url.render_as_string(hide_password=False),
+            "mysql+pymysql://openmetadata_user:openmetadata_password@localhost:3306/openmetadata_db",
+        )
+
+    def test_get_connection_url_postgres_with_url_scheme(self):
+        """hostPort with https:// prefix should be cleaned automatically"""
+        connection = PostgresConnectionConfig(
+            username="openmetadata_user",
+            authType=BasicAuth(password="openmetadata_password"),
+            hostPort="https://localhost:5432",
+            database="openmetadata_db",
+        )
+        engine_connection = PostgresConnection(connection).client
+        self.assertEqual(
+            engine_connection.url.render_as_string(hide_password=False),
+            "postgresql+psycopg2://openmetadata_user:openmetadata_password@localhost:5432/openmetadata_db",
+        )
+
     def test_get_connection_url_postgres(self):
         connection = PostgresConnectionConfig(
             username="openmetadata_user",
