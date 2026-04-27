@@ -22,6 +22,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -75,7 +76,6 @@ import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
-import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.nlq.NLQService;
