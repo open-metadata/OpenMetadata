@@ -47,10 +47,7 @@ def test_resolve_snoflake_fqn(schema_name, existing_tables):
                 return "db", "test_schema", "test_table"
             if "db.PUBLIC.test_table" in existing_tables:
                 return "db", PUBLIC_SCHEMA, "test_table"
-        if (
-            schema_name in [None, PUBLIC_SCHEMA]
-            and "db.PUBLIC.test_table" in existing_tables
-        ):
+        if schema_name in [None, PUBLIC_SCHEMA] and "db.PUBLIC.test_table" in existing_tables:
             return "db", PUBLIC_SCHEMA, "test_table"
         return RuntimeError
 
@@ -116,18 +113,14 @@ def test_get_identifiers(
     if isinstance(resolved_schema, RuntimeError):
         resolver.resolve_implicit_fqn = MagicMock(side_effect=resolved_schema)
     else:
-        resolver.resolve_implicit_fqn = MagicMock(
-            return_value=(context_database, resolved_schema, identifier)
-        )
+        resolver.resolve_implicit_fqn = MagicMock(return_value=(context_database, resolved_schema, identifier))
 
     expected_value = expected_result()
     if isinstance(expected_value, RuntimeError):
-        with pytest.raises(type(expected_value), match=str(expected_value)) as e:
+        with pytest.raises(type(expected_value), match=str(expected_value)) as e:  # noqa: F841
             resolver.resolve_snowflake_fqn(context_database, context_schema, identifier)
     else:
-        assert expected_value == resolver.resolve_snowflake_fqn(
-            context_database, context_schema, identifier
-        )
+        assert expected_value == resolver.resolve_snowflake_fqn(context_database, context_schema, identifier)
 
 
 class TestSnowflakeSystemMetricsComputerDynamicTable:
@@ -226,9 +219,7 @@ class TestSnowflakeSystemMetricsComputerDynamicTable:
             ),
         ]
 
-        with patch.object(
-            computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries
-        ):
+        with patch.object(computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries):
             result = computer.get_inserts()
 
         assert len(result) == 2
@@ -260,9 +251,7 @@ class TestSnowflakeSystemMetricsComputerDynamicTable:
             ),
         ]
 
-        with patch.object(
-            computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries
-        ):
+        with patch.object(computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries):
             result = computer.get_updates()
 
         assert len(result) == 1
@@ -293,9 +282,7 @@ class TestSnowflakeSystemMetricsComputerDynamicTable:
             ),
         ]
 
-        with patch.object(
-            computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries
-        ):
+        with patch.object(computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries):
             result = computer.get_deletes()
 
         assert len(result) == 1
@@ -326,9 +313,7 @@ class TestSnowflakeSystemMetricsComputerDynamicTable:
             ),
         ]
 
-        with patch.object(
-            computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries
-        ):
+        with patch.object(computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries):
             inserts = computer.get_inserts()
             updates = computer.get_updates()
             deletes = computer.get_deletes()
@@ -368,9 +353,7 @@ class TestSnowflakeSystemMetricsComputerDynamicTable:
             ),
         ]
 
-        with patch.object(
-            computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries
-        ):
+        with patch.object(computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries):
             inserts = computer.get_inserts()
 
         assert len(inserts) == 1
@@ -439,9 +422,7 @@ def test_it_turns_sql_alchemy_response_to_snowflake_query_log_entries() -> None:
     session.execute.return_value = result
 
     # Mock connection
-    snowflake_connection = SnowflakeConnection.model_construct(
-        accountUsageSchema="SNOWFLAKE.ACCOUNT_USAGE"
-    )
+    snowflake_connection = SnowflakeConnection.model_construct(accountUsageSchema="SNOWFLAKE.ACCOUNT_USAGE")
 
     queries = SnowflakeQueryLogEntry.get_for_table(
         session=session,

@@ -11,6 +11,7 @@
 """
 Base class for ingesting api services
 """
+
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, Set
 
@@ -63,9 +64,7 @@ class ApiServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -80,9 +79,7 @@ class ApiServiceTopology(ServiceTopology):
         children=["api_collection"],
         post_process=["mark_api_collections_as_deleted"],
     )
-    api_collection: Annotated[
-        TopologyNode, Field(description="API Collection Processing Node")
-    ] = TopologyNode(
+    api_collection: Annotated[TopologyNode, Field(description="API Collection Processing Node")] = TopologyNode(
         producer="get_api_collections",
         stages=[
             NodeStage(
@@ -112,7 +109,7 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: ApiServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: ApiConnection.model_fields["config"].annotation
+    service_connection: ApiConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = ApiServiceTopology()
     context = TopologyContextManager(topology)
@@ -145,11 +142,7 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
         yield self.config
 
     def yield_create_request_api_service(self, config: WorkflowSource):
-        yield Either(
-            right=self.metadata.get_create_service_from_source(
-                entity=ApiService, config=config
-            )
-        )
+        yield Either(right=self.metadata.get_create_service_from_source(entity=ApiService, config=config))
 
     @abstractmethod
     def get_api_collections(self, *args, **kwargs) -> Iterable[Any]:
@@ -159,24 +152,18 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def yield_api_collection(
-        self, *args, **kwargs
-    ) -> Iterable[Either[CreateAPICollectionRequest]]:
+    def yield_api_collection(self, *args, **kwargs) -> Iterable[Either[CreateAPICollectionRequest]]:
         """Method to return api collection Entities"""
 
     @abstractmethod
-    def yield_api_endpoint(
-        self, *args, **kwargs
-    ) -> Iterable[Either[CreateAPIEndpointRequest]]:
+    def yield_api_endpoint(self, *args, **kwargs) -> Iterable[Either[CreateAPIEndpointRequest]]:
         """Method to return api endpoint Entities"""
 
     def close(self):
         """By default, nothing to close"""
 
     def test_connection(self) -> None:
-        test_connection_common(
-            self.metadata, self.connection_obj, self.service_connection
-        )
+        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def mark_api_collections_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the api collection as deleted"""

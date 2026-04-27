@@ -11,6 +11,7 @@
 """
 REST Auth & Client for Apache Superset
 """
+
 import json
 import traceback
 
@@ -123,9 +124,7 @@ class SupersetAPIClient:
             logger.warning("Failed to fetch the dashboard count")
         return 0
 
-    def fetch_dashboards(
-        self, current_page: int, page_size: int
-    ) -> SupersetDashboardCount:
+    def fetch_dashboards(self, current_page: int, page_size: int) -> SupersetDashboardCount:
         """
         Fetch dashboards
 
@@ -138,9 +137,7 @@ class SupersetAPIClient:
         """
 
         try:
-            dashboard_response = self.client.get(
-                f"/dashboard/?q=(page:{current_page},page_size:{page_size})"
-            )
+            dashboard_response = self.client.get(f"/dashboard/?q=(page:{current_page},page_size:{page_size})")
             if dashboard_response:
                 dashboard_list = SupersetDashboardCount(**dashboard_response)
                 return dashboard_list
@@ -204,9 +201,7 @@ class SupersetAPIClient:
         """
 
         try:
-            chart_response = self.client.get(
-                f"/chart/?q=(page:{current_page},page_size:{page_size})"
-            )
+            chart_response = self.client.get(f"/chart/?q=(page:{current_page},page_size:{page_size})")
             if chart_response:
                 chart_list = SupersetChart(**chart_response)
                 return chart_list

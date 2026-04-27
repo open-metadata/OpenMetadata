@@ -55,7 +55,9 @@ class BaseTableColumnNameToExistValidator(BaseTestValidator):
             )
 
         name_to_exist = self.get_test_case_param_value(
-            self.test_case.parameterValues, "columnName", str  # type: ignore
+            self.test_case.parameterValues,
+            "columnName",
+            str,  # type: ignore
         )
 
         status = self.get_test_case_status(name_to_exist in names)

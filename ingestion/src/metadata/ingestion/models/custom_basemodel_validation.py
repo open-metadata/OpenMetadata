@@ -43,9 +43,7 @@ def is_service_level_create_model(model_name: str) -> bool:
     # Extract the middle part (service name) - must not be empty
     # "CreateServiceRequest" -> middle = "" (invalid)
     # "CreateDatabaseServiceRequest" -> middle = "Database" (valid)
-    middle = model_name[
-        6:-14
-    ]  # Remove "Create" (6 chars) and "ServiceRequest" (14 chars)
+    middle = model_name[6:-14]  # Remove "Create" (6 chars) and "ServiceRequest" (14 chars)
     return len(middle) > 0
 
 
@@ -174,9 +172,7 @@ def transform_all_names(obj, transformer):
         if table_constraints is not None:
             for constraint in table_constraints:
                 if hasattr(constraint, "columns"):
-                    constraint.columns = [
-                        transformer(col) for col in constraint.columns
-                    ]
+                    constraint.columns = [transformer(col) for col in constraint.columns]
 
     if transformer == replace_separators and type(name) == str:
         obj.name = transformer(name)
@@ -185,17 +181,13 @@ def transform_all_names(obj, transformer):
 def transform_entity_names(entity: Any, model: Optional[Any]) -> Any:
     """Transform entity names"""
     model_name = model.__name__
-    if not entity or (
-        model_name.startswith("Create") and is_service_level_create_model(model_name)
-    ):
+    if not entity or (model_name.startswith("Create") and is_service_level_create_model(model_name)):
         return entity
 
     # Root attribute handling
     if hasattr(entity, "root") and entity.root is not None:
         entity.root = (
-            replace_separators(entity.root)
-            if model_name.startswith("Create")
-            else revert_separators(entity.root)
+            replace_separators(entity.root) if model_name.startswith("Create") else revert_separators(entity.root)
         )
         return entity
 
@@ -203,9 +195,7 @@ def transform_entity_names(entity: Any, model: Optional[Any]) -> Any:
     transformer = get_transformer(model)
     if not transformer:
         # Fallback to original logic for backward compatibility
-        transformer = (
-            replace_separators if model_name.startswith("Create") else revert_separators
-        )
+        transformer = replace_separators if model_name.startswith("Create") else revert_separators
 
     transform_all_names(entity, transformer)
     return entity

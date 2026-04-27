@@ -146,9 +146,7 @@ def get_start_and_end(duration: int = 0) -> Tuple[datetime, datetime]:
     """
 
     today = datetime.now(timezone.utc).replace(tzinfo=None)
-    start = (today + timedelta(0 - duration)).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+    start = (today + timedelta(0 - duration)).replace(hour=0, minute=0, second=0, microsecond=0)
     # Add one day to make sure we are handling today's queries
     end = (today + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     return start, end
@@ -177,11 +175,7 @@ def get_formatted_entity_name(name: str) -> Optional[str]:
     Method to get formatted entity name
     """
 
-    return (
-        name.replace("[", "").replace("]", "").replace("<default>.", "")
-        if name
-        else None
-    )
+    return name.replace("[", "").replace("]", "").replace("<default>.", "") if name else None
 
 
 def replace_special_with(raw: str, replacement: str) -> str:
@@ -217,9 +211,7 @@ def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:
     return next((elem for elem in container if elem == element), None)
 
 
-def find_column_in_table(
-    column_name: str, table: Table, case_sensitive: bool = True
-) -> Optional[Column]:
+def find_column_in_table(column_name: str, table: Table, case_sensitive: bool = True) -> Optional[Column]:
     """
     If the column exists in the table, return it
     """
@@ -229,9 +221,7 @@ def find_column_in_table(
             return first == second
         return first.lower() == second.lower()
 
-    return next(
-        (col for col in table.columns if equals(col.name.root, column_name)), None
-    )
+    return next((col for col in table.columns if equals(col.name.root, column_name)), None)
 
 
 def find_suggestion(
@@ -243,18 +233,12 @@ def find_suggestion(
     one suggestion in the list that matches the criteria
     """
     return next(
-        (
-            sugg
-            for sugg in suggestions
-            if sugg.root.type == suggestion_type and sugg.root.entityLink == entity_link
-        ),
+        (sugg for sugg in suggestions if sugg.root.type == suggestion_type and sugg.root.entityLink == entity_link),
         None,
     )
 
 
-def find_column_in_table_with_index(
-    column_name: str, table: Table
-) -> Optional[Tuple[int, Column]]:
+def find_column_in_table_with_index(column_name: str, table: Table) -> Optional[Tuple[int, Column]]:
     """Return a column and its index in a Table Entity
 
     Args:
@@ -284,9 +268,7 @@ def list_to_dict(original: Optional[List[str]], sep: str = "=") -> Dict[str, str
     if not original:
         return {}
 
-    split_original = [
-        (elem.split(sep)[0], elem.split(sep)[1]) for elem in original if sep in elem
-    ]
+    split_original = [(elem.split(sep)[0], elem.split(sep)[1]) for elem in original if sep in elem]
     return dict(split_original)
 
 
@@ -367,7 +349,7 @@ def format_large_string_numbers(number: Union[float, int]) -> str:
     constant_k = 1000.0
     magnitude = int(floor(log(abs(number), constant_k)))
     if magnitude >= len(units):
-        return f"{int(number / constant_k**magnitude)}e{magnitude*3}"
+        return f"{int(number / constant_k**magnitude)}e{magnitude * 3}"
     return f"{number / constant_k**magnitude:.3f}{units[magnitude]}"
 
 
@@ -471,32 +453,22 @@ def is_safe_sql_query(sql_query: str) -> bool:
     parsed_queries: Tuple[Statement] = sqlparse.parse(sql_query)
     # We split the tokens by "(" to capture cases like "INSERT(...)", "UPDATE(...), etc."
     for parsed_query in parsed_queries:
-        if any(
-            token.normalized.upper().split("(")[0] in forbiden_token
-            for token in parsed_query.tokens
-        ):
+        if any(token.normalized.upper().split("(")[0] in forbiden_token for token in parsed_query.tokens):
             return False
     return True
 
 
-def get_database_name_for_lineage(
-    db_service_entity: DatabaseService, default_db_name: Optional[str]
-) -> Optional[str]:
+def get_database_name_for_lineage(db_service_entity: DatabaseService, default_db_name: Optional[str]) -> Optional[str]:
     # If the database service supports multiple db or
     # database service connection details are not available
     # then pick the database name available from api response
-    if db_service_entity.connection is None or hasattr(
-        db_service_entity.connection.config, "supportsDatabase"
-    ):
+    if db_service_entity.connection is None or hasattr(db_service_entity.connection.config, "supportsDatabase"):
         return default_db_name
 
     # otherwise if it is an single db source then use "databaseName"
     # and if databaseName field is not available or is empty then use
     # "default" as database name
-    return (
-        db_service_entity.connection.config.__dict__.get("databaseName")
-        or DEFAULT_DATABASE
-    )
+    return db_service_entity.connection.config.__dict__.get("databaseName") or DEFAULT_DATABASE
 
 
 def delete_dir_content(directory: str) -> None:
@@ -537,20 +509,13 @@ def retry_with_docker_host(config: Optional[WorkflowSource] = None):
                     else:
                         raise error
 
-                host_port_str = str(
-                    getattr(config.serviceConnection.root.config, "hostPort", None)
-                    or ""
-                )
+                host_port_str = str(getattr(config.serviceConnection.root.config, "hostPort", None) or "")
                 if "localhost" not in host_port_str:
                     raise error
 
                 host_port_type = type(config.serviceConnection.root.config.hostPort)
-                docker_host_port_str = host_port_str.replace(
-                    "localhost", "host.docker.internal"
-                )
-                config.serviceConnection.root.config.hostPort = host_port_type(
-                    docker_host_port_str
-                )
+                docker_host_port_str = host_port_str.replace("localhost", "host.docker.internal")
+                config.serviceConnection.root.config.hostPort = host_port_type(docker_host_port_str)
                 func(*args, **kwargs)
 
         return wrapper
@@ -593,14 +558,8 @@ def evaluate_threshold(threshold: int, operator: str, result: int) -> bool:
         return False
 
     # Fallback:
-    logger.error(
-        f"Invalid threshold: {threshold}, "
-        "Allowed format: <, >, <=, >=, ==, !=. Example: >5"
-    )
-    raise ValueError(
-        f"Invalid threshold: {threshold}, "
-        "Allowed format: <, >, <=, >=, ==, !=. Example: >5"
-    )
+    logger.error(f"Invalid threshold: {threshold}, Allowed format: <, >, <=, >=, ==, !=. Example: >5")
+    raise ValueError(f"Invalid threshold: {threshold}, Allowed format: <, >, <=, >=, ==, !=. Example: >5")
 
 
 def pprint_format_object(data: Any) -> str:

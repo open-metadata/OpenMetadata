@@ -12,6 +12,7 @@
 """
 OpenMetadata API test suite mixin test
 """
+
 from datetime import datetime, timezone
 
 import pytest
@@ -62,9 +63,7 @@ from .conftest import _safe_delete
 def ts_service(metadata):
     """Module-scoped database service for test suite tests."""
     service_name = generate_name()
-    service = metadata.create_or_update(
-        data=get_create_service(entity=DatabaseService, name=service_name)
-    )
+    service = metadata.create_or_update(data=get_create_service(entity=DatabaseService, name=service_name))
     yield service
 
     _safe_delete(
@@ -79,9 +78,7 @@ def ts_service(metadata):
 @pytest.fixture(scope="module")
 def ts_database(metadata, ts_service):
     """Module-scoped database for test suite tests."""
-    db = metadata.create_or_update(
-        data=get_create_entity(entity=Database, reference=ts_service.fullyQualifiedName)
-    )
+    db = metadata.create_or_update(data=get_create_entity(entity=Database, reference=ts_service.fullyQualifiedName))
     return db
 
 
@@ -89,9 +86,7 @@ def ts_database(metadata, ts_service):
 def ts_schema(metadata, ts_database):
     """Module-scoped schema for test suite tests."""
     schema = metadata.create_or_update(
-        data=get_create_entity(
-            entity=DatabaseSchema, reference=ts_database.fullyQualifiedName
-        )
+        data=get_create_entity(entity=DatabaseSchema, reference=ts_database.fullyQualifiedName)
     )
     return schema
 
@@ -99,9 +94,7 @@ def ts_schema(metadata, ts_database):
 @pytest.fixture(scope="module")
 def ts_table(metadata, ts_schema):
     """Module-scoped table for test suite tests."""
-    table = metadata.create_or_update(
-        data=get_create_entity(entity=Table, reference=ts_schema.fullyQualifiedName)
-    )
+    table = metadata.create_or_update(data=get_create_entity(entity=Table, reference=ts_schema.fullyQualifiedName))
     return table
 
 
@@ -112,9 +105,7 @@ def test_suite_definition(metadata):
     test_definition = metadata.create_or_update(
         CreateTestDefinitionRequest(
             name=TestCaseEntityName(name.root),
-            description=Markdown(
-                root="this is a test definition for integration tests"
-            ),
+            description=Markdown(root="this is a test definition for integration tests"),
             entityType=EntityType.TABLE,
             testPlatforms=[TestPlatform.GreatExpectations],
             parameterDefinition=[TestCaseParameterDefinition(name="foo")],
@@ -182,9 +173,7 @@ def test_case_entity(metadata, ts_table, test_suite_entity, test_suite_definitio
 
 
 @pytest.fixture(scope="module")
-def test_case_special_chars(
-    metadata, ts_table, test_suite_entity, test_suite_definition
-):
+def test_case_special_chars(metadata, ts_table, test_suite_entity, test_suite_definition):
     """Module-scoped test case with special characters for test suite tests."""
     table_fqn = ts_table.fullyQualifiedName.root
     test_case = metadata.create_or_update(
@@ -245,9 +234,7 @@ class TestOMetaTestSuiteAPI:
         """test we get a create the test case object if it does not exists"""
         table_fqn = ts_table.fullyQualifiedName.root
         test_case_fqn = f"{table_fqn}.aNonExistingTestCase"
-        test_case = metadata.get_by_name(
-            entity=OMetaTestCase, fqn=test_case_fqn, fields=["*"]
-        )
+        test_case = metadata.get_by_name(entity=OMetaTestCase, fqn=test_case_fqn, fields=["*"])
 
         assert test_case is None
 
@@ -255,9 +242,7 @@ class TestOMetaTestSuiteAPI:
             test_case_fqn,
             test_definition_fqn="columnValuesToMatchRegex",
             entity_link=f"<#E::table::{table_fqn}::columns::id>",
-            test_case_parameter_values=[
-                TestCaseParameterValue(name="regex", value=".*")
-            ],
+            test_case_parameter_values=[TestCaseParameterValue(name="regex", value=".*")],
         )
         assert test_case.name.root == "aNonExistingTestCase"
         assert isinstance(test_case, OMetaTestCase)
@@ -274,9 +259,7 @@ class TestOMetaTestSuiteAPI:
 
         assert res
 
-    def test_get_test_case_results_with_special_characters(
-        self, metadata, test_case_special_chars, ts_table
-    ):
+    def test_get_test_case_results_with_special_characters(self, metadata, test_case_special_chars, ts_table):
         """test get test case results with special characters in FQN (: / &)"""
         table_fqn = ts_table.fullyQualifiedName.root
         res = metadata.get_test_case_results(
@@ -285,9 +268,7 @@ class TestOMetaTestSuiteAPI:
             get_end_of_day_timestamp_mill(),
         )
 
-        assert (
-            res is not None
-        ), "Should fetch results for test case with special characters"
+        assert res is not None, "Should fetch results for test case with special characters"
         assert len(res) > 0, "Should have at least one result"
         assert res[0].result == "Test Case with special chars Success"
         assert res[0].testCaseStatus == TestCaseStatus.Success

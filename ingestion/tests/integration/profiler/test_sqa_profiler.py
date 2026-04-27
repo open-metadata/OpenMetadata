@@ -76,9 +76,7 @@ class TestSQAProfiler(TestCase):
         cls.container_builder.stop_all_containers()
         db_entities = []
         for container in cls.container_builder.containers:
-            db_entities.append(
-                cls.metadata.get_by_name(DatabaseService, type(container).__name__)
-            )
+            db_entities.append(cls.metadata.get_by_name(DatabaseService, type(container).__name__))
         for db_entity in db_entities:
             cls.metadata.delete(DatabaseService, db_entity.id, True, True)
         cls._clean_up_settings()
@@ -111,20 +109,14 @@ class TestSQAProfiler(TestCase):
                 profiler_workflow.raise_from_status()
                 profiler_workflow.stop()
             except Exception as e:
-                self.fail(
-                    f"Profiler workflow failed for {type(container).__name__} with error {e}"
-                )
+                self.fail(f"Profiler workflow failed for {type(container).__name__} with error {e}")
 
         tables: List[Table] = []
         for container in self.container_builder.containers:
             service_name = type(container).__name__
             cfg = json.loads(container.get_config())
             db_name = cfg.get("database") or cfg.get("databaseSchema", "default")
-            tables.extend(
-                self.metadata.list_all_entities(
-                    Table, params={"database": f"{service_name}.{db_name}"}
-                )
-            )
+            tables.extend(self.metadata.list_all_entities(Table, params={"database": f"{service_name}.{db_name}"}))
         for table in tables:
             if table.name.root != "users":
                 continue
@@ -144,9 +136,7 @@ class TestSQAProfiler(TestCase):
                     disabled=False,
                     metrics=[MetricType.valuesCount, MetricType.distinctCount],
                 ),
-                MetricConfigurationDefinition(
-                    dataType=DataType.VARCHAR, disabled=True, metrics=None
-                ),
+                MetricConfigurationDefinition(dataType=DataType.VARCHAR, disabled=True, metrics=None),
             ]
         )
 
@@ -182,11 +172,7 @@ class TestSQAProfiler(TestCase):
             sn = type(container).__name__
             cfg = json.loads(container.get_config())
             db_name = cfg.get("database") or cfg.get("databaseSchema", "default")
-            tables.extend(
-                self.metadata.list_all_entities(
-                    Table, params={"database": f"{sn}.{db_name}"}
-                )
-            )
+            tables.extend(self.metadata.list_all_entities(Table, params={"database": f"{sn}.{db_name}"}))
         for table in tables:
             if table.name.root != "users":
                 continue

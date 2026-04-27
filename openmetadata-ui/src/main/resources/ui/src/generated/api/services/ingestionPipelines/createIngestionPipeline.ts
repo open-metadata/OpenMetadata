@@ -254,6 +254,8 @@ export interface SourceConfig {
  *
  * StorageService Metadata Pipeline Configuration.
  *
+ * StorageService AutoClassification Pipeline Configuration.
+ *
  * DriveService Metadata Pipeline Configuration.
  *
  * SearchService Metadata Pipeline Configuration.
@@ -422,6 +424,9 @@ export interface Pipeline {
      * Regex will be applied on fully qualified name (e.g
      * service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)
      *
+     * Regex will be applied on fully qualified name (e.g service_name.container_name) instead
+     * of raw name (e.g. container_name)
+     *
      * Regex will be applied on fully qualified name (e.g service_name.directory_name.file_name)
      * instead of raw name (e.g. file_name)
      */
@@ -563,6 +568,9 @@ export interface Pipeline {
     /**
      * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
      * pattern.
+     *
+     * Regex to only compute metrics for containers that matches the given tag, tiers, glossary
+     * pattern.
      */
     classificationFilterPattern?: FilterPattern;
     /**
@@ -625,6 +633,9 @@ export interface Pipeline {
     /**
      * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
      * each table.
+     *
+     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
+     * each structured container.
      */
     storeSampleData?: boolean;
     /**
@@ -684,6 +695,10 @@ export interface Pipeline {
      * matches.
      */
     storageMetadataConfigSource?: StorageMetadataConfigurationSource;
+    /**
+     * Regex to only fetch buckets (top-level containers) that match the pattern.
+     */
+    bucketFilterPattern?: FilterPattern;
     /**
      * Regex to only include/exclude directories that matches the pattern.
      */
@@ -922,6 +937,11 @@ export interface Pipeline {
  * Regex to only fetch MlModels with names matching the pattern.
  *
  * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch buckets (top-level containers) that match the pattern.
+ *
+ * Regex to only compute metrics for containers that matches the given tag, tiers, glossary
+ * pattern.
  *
  * Regex to only include/exclude directories that matches the pattern.
  *
@@ -3057,6 +3077,8 @@ export interface ServiceConnection {
  *
  * Salesforce Connection Config
  *
+ * SAP SuccessFactors Connection Config
+ *
  * SingleStore Database Connection Config
  *
  * Snowflake Connection Config
@@ -3341,6 +3363,8 @@ export interface ConfigObject {
      *
      * client_id for Sigma.
      *
+     * OAuth2 Client ID. Required when authType is OAuth2Credentials.
+     *
      * Azure Application (client) ID for service principal authentication.
      *
      * Azure Application (client) ID for Service Principal authentication.
@@ -3572,6 +3596,8 @@ export interface ConfigObject {
      *
      * Password to connect to Salesforce.
      *
+     * Password for BasicAuth authentication. Required when authType is BasicAuth.
+     *
      * Password to connect to SingleStore.
      *
      * Password to connect to Snowflake.
@@ -3670,6 +3696,11 @@ export interface ConfigObject {
      *
      * Username to connect to Salesforce. This user should have privileges to read all the
      * metadata in Salesforce.
+     *
+     * SAP SuccessFactors user login name. For BasicAuth: used as the credential username. For
+     * OAuth2Credentials: used as the SAML NameID — the user on whose behalf the token is
+     * requested. The user must exist in the SF system and be permitted to use the OAuth2
+     * application.
      *
      * Username to connect to SingleStore. This user should have privileges to read all the
      * metadata in MySQL.
@@ -3810,6 +3841,8 @@ export interface ConfigObject {
      *
      * ThoughtSpot API version to use
      *
+     * SAP SuccessFactors OData API version.
+     *
      * OpenMetadata server API version to use.
      *
      * Airbyte API version.
@@ -3826,6 +3859,8 @@ export interface ConfigObject {
      * Choose Auth Config Type.
      *
      * Choose Auth Configuration Type.
+     *
+     * Choose how to authenticate with SAP SuccessFactors OData API.
      *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
@@ -4404,6 +4439,26 @@ export interface ConfigObject {
      */
     sobjectNames?: string[];
     /**
+     * SAP SuccessFactors OData API base URL. For example: https://api4.successfactors.com
+     */
+    baseUrl?: string;
+    /**
+     * SAP SuccessFactors Company ID (tenant identifier). Required for all API calls.
+     */
+    companyId?: string;
+    /**
+     * PEM-encoded RSA private key used to sign SAML assertions for OAuth2 SAML Bearer flow.
+     * Required when authType is OAuth2Credentials.
+     *
+     * Connection to Snowflake instance via Private Key
+     */
+    privateKey?: string;
+    /**
+     * OAuth2 Token endpoint URL. Required when authType is OAuth2Credentials. For example:
+     * https://api4.successfactors.com/oauth/token
+     */
+    tokenUrl?: string;
+    /**
      * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
      * account is xyz1234.us-east-1.gcp
      *
@@ -4439,10 +4494,6 @@ export interface ConfigObject {
      * TRANSIENT tables.
      */
     includeTransientTables?: boolean;
-    /**
-     * Connection to Snowflake instance via Private Key
-     */
-    privateKey?: string;
     /**
      * Session query tag used to monitor usage on snowflake. To use a query tag snowflake user
      * should have enough privileges to alter the session.
@@ -5667,10 +5718,16 @@ export enum CloudRegion {
 }
 
 /**
+ * Choose how to authenticate with SAP SuccessFactors OData API.
+ *
+ * Authentication type to connect to SAP SuccessFactors.
+ *
  * Database Authentication types not requiring config.
  */
 export enum NoConfigAuthenticationTypes {
+    BasicAuth = "BasicAuth",
     OAuth2 = "OAuth2",
+    OAuth2Credentials = "OAuth2Credentials",
 }
 
 /**
@@ -7038,6 +7095,7 @@ export interface S3Connection {
      */
     containerFilterPattern?:     FilterPattern;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Service Type
      */
@@ -7572,6 +7630,7 @@ export enum PurpleType {
     SapERP = "SapErp",
     SapHana = "SapHana",
     SapS4Hana = "SapS4Hana",
+    SapSuccessFactors = "SapSuccessFactors",
     ServiceNow = "ServiceNow",
     SharePoint = "SharePoint",
     Sigma = "Sigma",
@@ -7662,6 +7721,8 @@ export interface StorageMetadataBucketDetails {
  * MlModel Source Config Metadata Pipeline type
  *
  * Object Store Source Config Metadata Pipeline type
+ *
+ * Storage Service Auto Classification Pipeline type
  *
  * Drive Source Config Metadata Pipeline type
  *

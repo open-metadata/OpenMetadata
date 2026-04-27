@@ -11,6 +11,7 @@
 """
 Base class for ingesting drive services
 """
+
 import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
@@ -76,9 +77,7 @@ class DriveServiceTopology(ServiceTopology):
     - Multiple drive service types: Google Drive, SharePoint, OneDrive, etc.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -98,9 +97,7 @@ class DriveServiceTopology(ServiceTopology):
         ],
     )
 
-    directory: Annotated[
-        TopologyNode, Field(description="Directory Node")
-    ] = TopologyNode(
+    directory: Annotated[TopologyNode, Field(description="Directory Node")] = TopologyNode(
         producer="get_directory_names",
         stages=[
             NodeStage(
@@ -129,9 +126,7 @@ class DriveServiceTopology(ServiceTopology):
         children=[],
     )
 
-    spreadsheet: Annotated[
-        TopologyNode, Field(description="Spreadsheet Node")
-    ] = TopologyNode(
+    spreadsheet: Annotated[TopologyNode, Field(description="Spreadsheet Node")] = TopologyNode(
         producer="get_spreadsheet",
         stages=[
             NodeStage(
@@ -162,9 +157,7 @@ class DriveServiceTopology(ServiceTopology):
     )
 
 
-class DriveServiceSource(
-    TopologyRunnerMixin, Source, ABC
-):  # pylint: disable=too-many-public-methods
+class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=too-many-public-methods
     """
     Base class for Drive Services.
     It implements the topology and context for drive-based systems like:
@@ -184,7 +177,7 @@ class DriveServiceSource(
     worksheet_source_state: Set = set()
 
     # Big union of types we want to fetch dynamically
-    service_connection: DriveConnection.model_fields["config"].annotation
+    service_connection: DriveConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = DriveServiceTopology()
     context = TopologyContextManager(topology)
@@ -199,14 +192,8 @@ class DriveServiceSource(
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
 
-    def yield_create_request_drive_service(
-        self, config: WorkflowSource
-    ) -> Iterable[Either[CreateDriveServiceRequest]]:
-        yield Either(
-            right=self.metadata.get_create_service_from_source(
-                entity=DriveService, config=config
-            )
-        )
+    def yield_create_request_drive_service(self, config: WorkflowSource) -> Iterable[Either[CreateDriveServiceRequest]]:
+        yield Either(right=self.metadata.get_create_service_from_source(entity=DriveService, config=config))
 
     # Abstract methods for drive-specific implementations
 
@@ -225,9 +212,7 @@ class DriveServiceSource(
         """
 
     @abstractmethod
-    def yield_directory(
-        self, directory_name: str
-    ) -> Iterable[Either[CreateDirectoryRequest]]:
+    def yield_directory(self, directory_name: str) -> Iterable[Either[CreateDirectoryRequest]]:
         """
         From topology.
         Prepare a directory request and pass it to the sink.
@@ -243,18 +228,14 @@ class DriveServiceSource(
         """
 
     @abstractmethod
-    def yield_spreadsheet(
-        self, spreadsheet_name: str
-    ) -> Iterable[Either[CreateSpreadsheetRequest]]:
+    def yield_spreadsheet(self, spreadsheet_name: str) -> Iterable[Either[CreateSpreadsheetRequest]]:
         """
         From topology.
         Prepare a spreadsheet request and pass it to the sink.
         """
 
     @abstractmethod
-    def yield_worksheet(
-        self, worksheet_name: str
-    ) -> Iterable[Either[CreateWorksheetRequest]]:
+    def yield_worksheet(self, worksheet_name: str) -> Iterable[Either[CreateWorksheetRequest]]:
         """
         From topology.
         Prepare a worksheet request and pass it to the sink.
@@ -263,36 +244,28 @@ class DriveServiceSource(
 
     # Tag handling methods
 
-    def yield_directory_tag_details(
-        self, directory_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_directory_tag_details(self, directory_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each directory
         """
         if self.source_config.includeTags:
             yield from self.yield_directory_tags(directory_name) or []
 
-    def yield_file_tag_details(
-        self, file_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_file_tag_details(self, file_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each file
         """
         if self.source_config.includeTags:
             yield from self.yield_file_tags(file_name) or []
 
-    def yield_spreadsheet_tag_details(
-        self, spreadsheet_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_spreadsheet_tag_details(self, spreadsheet_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each spreadsheet
         """
         if self.source_config.includeTags:
             yield from self.yield_spreadsheet_tags(spreadsheet_name) or []
 
-    def yield_worksheet_tag_details(
-        self, worksheet_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_worksheet_tag_details(self, worksheet_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each worksheet
         """
@@ -340,30 +313,22 @@ class DriveServiceSource(
 
     # Optional tag methods - can be overridden by specific implementations
 
-    def yield_directory_tags(
-        self, directory_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_directory_tags(self, directory_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each directory
         """
 
-    def yield_file_tags(
-        self, file_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_file_tags(self, file_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each file
         """
 
-    def yield_spreadsheet_tags(
-        self, spreadsheet_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_spreadsheet_tags(self, spreadsheet_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each spreadsheet
         """
 
-    def yield_worksheet_tags(
-        self, worksheet_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_worksheet_tags(self, worksheet_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each worksheet
         """
@@ -416,9 +381,7 @@ class DriveServiceSource(
         )
         return self.get_tag_by_fqn(entity_fqn=file_fqn)
 
-    def get_spreadsheet_tag_labels(
-        self, spreadsheet_name: str
-    ) -> Optional[List[TagLabel]]:
+    def get_spreadsheet_tag_labels(self, spreadsheet_name: str) -> Optional[List[TagLabel]]:
         """
         Method to get spreadsheet tags
         This will only get executed if the tags context
@@ -450,9 +413,7 @@ class DriveServiceSource(
     # Record registration methods for tracking processed entities
 
     @calculate_execution_time()
-    def register_record_directory(
-        self, directory_request: CreateDirectoryRequest
-    ) -> None:
+    def register_record_directory(self, directory_request: CreateDirectoryRequest) -> None:
         """
         Mark the directory record as scanned and update the directory_source_state
         """
@@ -479,9 +440,7 @@ class DriveServiceSource(
         self.file_source_state.add(file_fqn)
 
     @calculate_execution_time()
-    def register_record_spreadsheet(
-        self, spreadsheet_request: CreateSpreadsheetRequest
-    ) -> None:
+    def register_record_spreadsheet(self, spreadsheet_request: CreateSpreadsheetRequest) -> None:
         """
         Mark the spreadsheet record as scanned and update the spreadsheet_source_state
         """
@@ -494,9 +453,7 @@ class DriveServiceSource(
         self.spreadsheet_source_state.add(spreadsheet_fqn)
 
     @calculate_execution_time()
-    def register_record_worksheet(
-        self, worksheet_request: CreateWorksheetRequest
-    ) -> None:
+    def register_record_worksheet(self, worksheet_request: CreateWorksheetRequest) -> None:
         """
         Mark the worksheet record as scanned and update the worksheet_source_state
         """
@@ -511,15 +468,11 @@ class DriveServiceSource(
 
     # Filtering methods
 
-    def _get_filtered_directory_names(
-        self, return_fqn: bool = False, add_to_status: bool = True
-    ) -> Iterable[str]:
+    def _get_filtered_directory_names(self, return_fqn: bool = False, add_to_status: bool = True) -> Iterable[str]:
         """
         Get filtered directory names based on the directory filter pattern
         """
-        directory_names_iterable = getattr(
-            self, "get_directory_names_raw", self.get_directory_names
-        )()
+        directory_names_iterable = getattr(self, "get_directory_names_raw", self.get_directory_names)()
         for directory_name in directory_names_iterable:
             directory_fqn = fqn.build(
                 self.metadata,
@@ -529,9 +482,7 @@ class DriveServiceSource(
             )
             if filter_by_directory(
                 self.source_config.directoryFilterPattern,
-                directory_fqn
-                if self.source_config.useFqnForFiltering
-                else directory_name,
+                directory_fqn if self.source_config.useFqnForFiltering else directory_name,
             ):
                 if add_to_status:
                     self.status.filter(directory_fqn, "Directory Filtered Out")
@@ -578,9 +529,7 @@ class DriveServiceSource(
         Mark files as deleted if they are no longer present in the source
         """
         if self.source_config.markDeletedFiles:
-            logger.info(
-                f"Mark Deleted Files set to True. Processing service [{self.context.get().drive_service}]"
-            )
+            logger.info(f"Mark Deleted Files set to True. Processing service [{self.context.get().drive_service}]")
 
             # Get directory context if available
             params = {"service": self.context.get().drive_service}
@@ -616,9 +565,7 @@ class DriveServiceSource(
         Mark worksheets as deleted if they are no longer present in the source
         """
         if not self.context.get().__dict__.get("spreadsheet"):
-            logger.debug(
-                "No Spreadsheet found in the context. We cannot run the worksheet deletion."
-            )
+            logger.debug("No Spreadsheet found in the context. We cannot run the worksheet deletion.")
             return
 
         if self.source_config.markDeletedWorksheets:
@@ -643,6 +590,4 @@ class DriveServiceSource(
             )
 
     def test_connection(self) -> None:
-        test_connection_common(
-            self.metadata, self.connection_obj, self.service_connection
-        )
+        test_connection_common(self.metadata, self.connection_obj, self.service_connection)

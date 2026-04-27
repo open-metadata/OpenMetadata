@@ -75,10 +75,7 @@ class ColumnValuesToBeUniqueValidator(
         """
         count = Metrics.valuesCount.value(column).fn()
         grouped_cte = (
-            select(count.label(column.name))
-            .select_from(self.runner.dataset)
-            .group_by(column)
-            .cte("grouped_cte")
+            select(count.label(column.name)).select_from(self.runner.dataset).group_by(column).cte("grouped_cte")
         )
         unique_count = Metrics.uniqueCount.value(column).query(
             sample=self.runner.dataset,
@@ -154,14 +151,11 @@ class ColumnValuesToBeUniqueValidator(
             if hasattr(self.runner.dataset, "__table__"):
                 table = self.runner.dataset.__table__
             else:
-
                 table = self.runner.dataset
 
             dialect = self.runner._session.get_bind().dialect.name
 
-            normalized_dimension = self._get_normalized_dimension_expression(
-                dimension_col
-            )
+            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
             # Build dialect-specific value_counts CTE for dimensional unique count
             value_counts_cte, unique_count_expr = _unique_count_dimensional_cte(
@@ -172,10 +166,7 @@ class ColumnValuesToBeUniqueValidator(
                 DIMENSION_TOTAL_COUNT_KEY: func.sum(value_counts_cte.c.row_count),
                 Metrics.valuesCount.name: func.sum(value_counts_cte.c.occurrence_count),
                 Metrics.uniqueCount.name: unique_count_expr,
-                DIMENSION_FAILED_COUNT_KEY: func.sum(
-                    value_counts_cte.c.occurrence_count
-                )
-                - unique_count_expr,
+                DIMENSION_FAILED_COUNT_KEY: func.sum(value_counts_cte.c.occurrence_count) - unique_count_expr,
             }
 
             result_rows = self._run_dimensional_validation_query(
@@ -187,9 +178,7 @@ class ColumnValuesToBeUniqueValidator(
                 top_n=top_n,
             )
 
-            return self._process_dimension_rows(
-                result_rows, dimension_col.name, metrics_to_compute, test_params
-            )
+            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")
@@ -202,9 +191,7 @@ class ColumnValuesToBeUniqueValidator(
             return (
                 select(
                     value_counts_cte.c.col_value,
-                    func.sum(value_counts_cte.c.occurrence_count).label(
-                        "occurrence_count"
-                    ),
+                    func.sum(value_counts_cte.c.occurrence_count).label("occurrence_count"),
                     func.sum(value_counts_cte.c.row_count).label("row_count"),
                 )
                 .select_from(value_counts_cte)
@@ -216,15 +203,12 @@ class ColumnValuesToBeUniqueValidator(
 
     def _get_others_metric_expressions_builder(self):
         def build_others_metric_expressions(others_source):
-            unique_count_expr = func.sum(
-                case((others_source.c.occurrence_count == 1, 1), else_=0)
-            )
+            unique_count_expr = func.sum(case((others_source.c.occurrence_count == 1, 1), else_=0))
             return {
                 DIMENSION_TOTAL_COUNT_KEY: func.sum(others_source.c.row_count),
                 Metrics.valuesCount.name: func.sum(others_source.c.occurrence_count),
                 Metrics.uniqueCount.name: unique_count_expr,
-                DIMENSION_FAILED_COUNT_KEY: func.sum(others_source.c.occurrence_count)
-                - unique_count_expr,
+                DIMENSION_FAILED_COUNT_KEY: func.sum(others_source.c.occurrence_count) - unique_count_expr,
             }
 
         return build_others_metric_expressions

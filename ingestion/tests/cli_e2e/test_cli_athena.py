@@ -12,6 +12,7 @@
 """
 Test Athena connector with CLI
 """
+
 from pathlib import Path
 from typing import List
 
@@ -32,16 +33,10 @@ class AthenaCliTest(CliCommonDB.TestSuite):
     @classmethod
     def setUpClass(cls) -> None:
         connector = cls.get_connector_name()
-        workflow: MetadataWorkflow = cls.get_workflow(
-            test_type=cls.get_test_type(), connector=connector
-        )
+        workflow: MetadataWorkflow = cls.get_workflow(test_type=cls.get_test_type(), connector=connector)
         cls.openmetadata = workflow.source.metadata
-        cls.config_file_path = str(
-            Path(PATH_TO_RESOURCES + f"/database/{connector}/{connector}.yaml")
-        )
-        cls.test_file_path = str(
-            Path(PATH_TO_RESOURCES + f"/database/{connector}/test.yaml")
-        )
+        cls.config_file_path = str(Path(PATH_TO_RESOURCES + f"/database/{connector}/{connector}.yaml"))
+        cls.test_file_path = str(Path(PATH_TO_RESOURCES + f"/database/{connector}/test.yaml"))
 
     def create_table_and_view(self):
         pass
@@ -140,9 +135,7 @@ class AthenaCliTest(CliCommonDB.TestSuite):
     def test_lineage(self) -> None:
         pytest.skip("Lineage not configured. Skipping Test")
 
-    def assert_for_vanilla_ingestion(
-        self, source_status: Status, sink_status: Status
-    ) -> None:
+    def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
         self.assertEqual(len(source_status.failures), 0)
         self.assertEqual(len(source_status.warnings), 0)
         self.assertGreaterEqual(len(source_status.filtered), 6)

@@ -11,6 +11,7 @@
 """
 Entrypoint to run an automation workflow
 """
+
 import logging
 import os
 
@@ -57,9 +58,7 @@ def main():
 
     config = os.getenv("config")
     if not config:
-        raise RuntimeError(
-            "Missing environment variable `config` with the Automations Workflow dict."
-        )
+        raise RuntimeError("Missing environment variable `config` with the Automations Workflow dict.")
 
     # Default test connection to INFO logs
     set_loggers_level(logging.INFO)

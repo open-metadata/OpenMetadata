@@ -163,17 +163,13 @@ class WorkflowConfigBuilder:
         Returns:
             Complete OpenMetadataWorkflowConfig ready for execution
         """
-        assert (
-            self.table is not None
-        ), "Table entity not provided. Call `WorkflowConfigBuilder.add_table()` first.`"
-        assert (
-            self.service_connection is not None
-        ), "DatabaseConnection entity not provided. Call `WorkflowConfigBuilder.add_table()` first.`"
+        assert self.table is not None, "Table entity not provided. Call `WorkflowConfigBuilder.add_table()` first.`"
+        assert self.service_connection is not None, (
+            "DatabaseConnection entity not provided. Call `WorkflowConfigBuilder.add_table()` first.`"
+        )
 
         test_suite_pipeline = TestSuitePipeline(
-            entityFullyQualifiedName=FullyQualifiedEntityName(
-                root=self.table.fullyQualifiedName.root
-            ),
+            entityFullyQualifiedName=FullyQualifiedEntityName(root=self.table.fullyQualifiedName.root),
             type=TestSuiteConfigType.TestSuite,
             serviceConnections=None,
             profileSample=None,
@@ -224,18 +220,14 @@ class WorkflowConfigBuilder:
         return config
 
     @staticmethod
-    def _convert_ometa_exception(
-        entity: Type[T], identifier: str | Uuid, e: Exception
-    ) -> Exception:
+    def _convert_ometa_exception(entity: Type[T], identifier: str | Uuid, e: Exception) -> Exception:
         """Handle OpenMetadata exceptions."""
         if not isinstance(e, APIError):
             return e
 
         status_code = cast(int, e.status_code)
         if status_code == 404:
-            return ValueError(
-                f"{entity.__name__} '{identifier}' not found in OpenMetadata."
-            )
+            return ValueError(f"{entity.__name__} '{identifier}' not found in OpenMetadata.")
 
         if status_code in (401, 403):
             return ValueError(
@@ -245,9 +237,7 @@ class WorkflowConfigBuilder:
 
         return e
 
-    def _safe_get_by_name(
-        self, entity_type: Type[T], fqn: str, fields: Optional[List[str]] = None
-    ) -> T:
+    def _safe_get_by_name(self, entity_type: Type[T], fqn: str, fields: Optional[List[str]] = None) -> T:
         """Safely fetch entity by name with exception handling.
 
         Args:

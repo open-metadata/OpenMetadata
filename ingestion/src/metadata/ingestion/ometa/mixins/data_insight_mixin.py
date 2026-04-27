@@ -45,9 +45,7 @@ class DataInsightMixin:
             record (ReportData): report data
         """
 
-        resp = self.client.post(
-            "/analytics/dataInsights/data", record.model_dump_json()
-        )
+        resp = self.client.post("/analytics/dataInsights/data", record.model_dump_json())
 
         return resp
 
@@ -69,9 +67,7 @@ class DataInsightMixin:
     ) -> List[WebAnalyticEventData]:
         """Get web analytic event"""
 
-        resp = self.client.put(
-            "/analytics/web/events/collect", event_data.model_dump_json()
-        )
+        resp = self.client.put("/analytics/web/events/collect", event_data.model_dump_json())
 
         return resp
 
@@ -168,9 +164,7 @@ class DataInsightMixin:
 
         return [WebAnalyticEventData(**data) for data in resp["data"]]
 
-    def delete_web_analytic_event_before_ts_exclusive(
-        self, event_type: WebAnalyticEventType, tmsp: int
-    ):
+    def delete_web_analytic_event_before_ts_exclusive(self, event_type: WebAnalyticEventType, tmsp: int):
         """Deletes web analytics events before a timestamp
 
         Args:
@@ -180,18 +174,14 @@ class DataInsightMixin:
         event_type_value = event_type.value
         self.client.delete(f"/analytics/web/events/{event_type_value}/{tmsp}/collect")
 
-    def delete_report_data_at_date(
-        self, report_data_type: ReportDataType, date: str
-    ) -> None:
+    def delete_report_data_at_date(self, report_data_type: ReportDataType, date: str) -> None:
         """Delete report data at a specific date for a specific report data type
 
         Args:
             report_data_type (ReportDataType): report date type to delete
             date (str): date for which to delete the report data
         """
-        self.client.delete(
-            f"/analytics/dataInsights/data/{report_data_type.value}/{date}"
-        )
+        self.client.delete(f"/analytics/dataInsights/data/{report_data_type.value}/{date}")
 
     def delete_report_data(self, report_data_type: ReportDataType) -> None:
         """Delete report data for a specific report data type

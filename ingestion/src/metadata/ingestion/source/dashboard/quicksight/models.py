@@ -68,9 +68,7 @@ class DataSourceModel(BaseModel):
     Type: str
     DataSourceId: str
     DataSourceParameters: Optional[dict] = None
-    data_source_resp: Optional[
-        Union[DataSourceRespS3, DataSourceRespQuery, DataSourceResp]
-    ] = None
+    data_source_resp: Optional[Union[DataSourceRespS3, DataSourceRespQuery, DataSourceResp]] = None
 
 
 class DescribeDataSourceResponse(BaseModel):

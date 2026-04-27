@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API EventSubscription test
 """
+
 from copy import deepcopy
 from unittest.mock import patch
 
@@ -99,9 +100,7 @@ def subscription_user(metadata):
 @pytest.fixture(scope="module")
 def subscription_owners(subscription_user):
     """Owner reference list for subscription tests."""
-    return EntityReferenceList(
-        root=[EntityReference(id=subscription_user.id, type="user")]
-    )
+    return EntityReferenceList(root=[EntityReference(id=subscription_user.id, type="user")])
 
 
 @pytest.fixture
@@ -176,20 +175,16 @@ class TestOMetaSubscriptionAPI:
         """
         created = create_subscription(subscription_request)
 
-        res = metadata.get_by_name(
-            entity=EventSubscription, fqn=subscription_request.name.root
-        )
+        res = metadata.get_by_name(entity=EventSubscription, fqn=subscription_request.name.root)
         assert res.name == created.name
 
     def test_get_id(self, metadata, subscription_request, create_subscription):
         """
         We can fetch an EventSubscription by ID and get it back as Entity
         """
-        created = create_subscription(subscription_request)
+        created = create_subscription(subscription_request)  # noqa: F841
 
-        res_name = metadata.get_by_name(
-            entity=EventSubscription, fqn=subscription_request.name.root
-        )
+        res_name = metadata.get_by_name(entity=EventSubscription, fqn=subscription_request.name.root)
         res = metadata.get_by_id(entity=EventSubscription, entity_id=res_name.id)
         assert res_name.id == res.id
 
@@ -207,9 +202,7 @@ class TestOMetaSubscriptionAPI:
         )
         assert data
 
-    def test_list_all_and_paginate(
-        self, metadata, subscription_request, create_subscription
-    ):
+    def test_list_all_and_paginate(self, metadata, subscription_request, create_subscription):
         """
         Validate generator utility to fetch all event subscriptions
         """
@@ -224,13 +217,9 @@ class TestOMetaSubscriptionAPI:
 
         entity_list = metadata.list_entities(entity=EventSubscription, limit=2)
         assert len(entity_list.entities) == 2
-        after_entity_list = metadata.list_entities(
-            entity=EventSubscription, limit=2, after=entity_list.after
-        )
+        after_entity_list = metadata.list_entities(entity=EventSubscription, limit=2, after=entity_list.after)
         assert len(after_entity_list.entities) == 2
-        before_entity_list = metadata.list_entities(
-            entity=EventSubscription, limit=2, before=after_entity_list.before
-        )
+        before_entity_list = metadata.list_entities(entity=EventSubscription, limit=2, before=after_entity_list.before)
         assert before_entity_list.entities == entity_list.entities
 
     def test_delete(self, metadata, subscription_request):
@@ -239,20 +228,14 @@ class TestOMetaSubscriptionAPI:
         """
         subscription = metadata.create_or_update(data=subscription_request)
 
-        res_name = metadata.get_by_name(
-            entity=EventSubscription, fqn=subscription.fullyQualifiedName
-        )
+        res_name = metadata.get_by_name(entity=EventSubscription, fqn=subscription.fullyQualifiedName)
         res_id = metadata.get_by_id(entity=EventSubscription, entity_id=res_name.id)
 
         metadata.delete(entity=EventSubscription, entity_id=str(res_id.id.root))
 
         res = metadata.list_entities(entity=EventSubscription)
         assert not next(
-            iter(
-                ent
-                for ent in res.entities
-                if ent.fullyQualifiedName == subscription.fullyQualifiedName
-            ),
+            iter(ent for ent in res.entities if ent.fullyQualifiedName == subscription.fullyQualifiedName),
             None,
         )
 
@@ -288,14 +271,10 @@ class TestOMetaSubscriptionAPI:
         """
         subscription = create_subscription(subscription_request)
 
-        res = metadata.get_list_entity_versions(
-            entity=EventSubscription, entity_id=subscription.id.root
-        )
+        res = metadata.get_list_entity_versions(entity=EventSubscription, entity_id=subscription.id.root)
         assert res
 
-    def test_get_entity_version(
-        self, metadata, subscription_request, create_subscription
-    ):
+    def test_get_entity_version(self, metadata, subscription_request, create_subscription):
         """
         test get event subscription entity version
         """
@@ -315,9 +294,7 @@ class TestOMetaSubscriptionAPI:
         test get EventSubscription EntityReference
         """
         subscription = create_subscription(subscription_request)
-        entity_ref = metadata.get_entity_reference(
-            entity=EventSubscription, fqn=subscription.fullyQualifiedName
-        )
+        entity_ref = metadata.get_entity_reference(entity=EventSubscription, fqn=subscription.fullyQualifiedName)
 
         assert subscription.id == entity_ref.id
 
@@ -371,13 +348,9 @@ class TestOMetaSubscriptionAPI:
                 )
             ],
         )
-        new_subscription: EventSubscription = metadata.create_or_update(
-            data=create_request
-        )
+        new_subscription: EventSubscription = metadata.create_or_update(data=create_request)
 
-        res: EventSubscription = metadata.get_by_name(
-            entity=EventSubscription, fqn=new_subscription.fullyQualifiedName
-        )
+        res: EventSubscription = metadata.get_by_name(entity=EventSubscription, fqn=new_subscription.fullyQualifiedName)
 
         assert res.name == name
 
@@ -408,9 +381,7 @@ class TestOMetaSubscriptionAPI:
                     Destination(
                         category=SubscriptionCategory.External,
                         type=SubscriptionType.Webhook,
-                        config={
-                            "endpoint": f"https://example.com/{alert_type.value.lower()}-webhook"
-                        },
+                        config={"endpoint": f"https://example.com/{alert_type.value.lower()}-webhook"},
                     )
                 ],
             )

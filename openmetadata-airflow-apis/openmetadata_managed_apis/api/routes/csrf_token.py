@@ -11,6 +11,7 @@
 """
 CSRF Token endpoint to provide token for POST/PUT/DELETE requests
 """
+
 from typing import Callable
 
 from flask import Blueprint, session
@@ -35,9 +36,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
     )
 
     @blueprint.route("/csrf-token", methods=["GET"])
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
     def get_csrf_token():
         """
         Get CSRF token for subsequent POST/PUT/DELETE requests.

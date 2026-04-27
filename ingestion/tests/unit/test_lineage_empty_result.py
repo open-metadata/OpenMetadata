@@ -11,6 +11,7 @@
 """
 Test that lineage processing handles empty result sets correctly
 """
+
 import unittest
 
 from sqlalchemy import create_engine, text

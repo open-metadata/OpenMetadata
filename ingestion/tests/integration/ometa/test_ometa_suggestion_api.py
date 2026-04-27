@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API task-based suggestion test.
 """
+
 import json
 import time
 
@@ -99,9 +100,7 @@ def suggestion_service(metadata):
 def suggestion_database(metadata, suggestion_service):
     """Module-scoped database for suggestion tests."""
     database_name = generate_name()
-    create_database = get_create_entity(
-        entity=Database, name=database_name, reference=suggestion_service.name.root
-    )
+    create_database = get_create_entity(entity=Database, name=database_name, reference=suggestion_service.name.root)
     database = metadata.create_or_update(create_database)
 
     yield database
@@ -147,9 +146,7 @@ def suggestion_table(metadata, suggestion_schema):
     _safe_delete(metadata, entity=Table, entity_id=table.id, hard_delete=True)
 
 
-def _create_description_suggestion_task(
-    metadata: OpenMetadata, table: Table, description: str
-) -> Task:
+def _create_description_suggestion_task(metadata: OpenMetadata, table: Table, description: str) -> Task:
     return metadata.create_task(
         CreateTaskRequest(
             name=generate_name(),
@@ -168,9 +165,7 @@ def _create_description_suggestion_task(
     )
 
 
-def _create_tag_suggestion_task(
-    metadata: OpenMetadata, table: Table, labels: list[TagLabel]
-) -> Task:
+def _create_tag_suggestion_task(metadata: OpenMetadata, table: Table, labels: list[TagLabel]) -> Task:
     return metadata.create_task(
         CreateTaskRequest(
             name=generate_name(),
@@ -183,10 +178,7 @@ def _create_tag_suggestion_task(
                 "suggestionType": "Tag",
                 "fieldPath": "tags",
                 "suggestedValue": json.dumps(
-                    [
-                        label.model_dump(mode="json", by_alias=True, exclude_none=True)
-                        for label in labels
-                    ]
+                    [label.model_dump(mode="json", by_alias=True, exclude_none=True) for label in labels]
                 ),
                 "source": "User",
             },
@@ -210,22 +202,14 @@ def _await_task_ready(metadata: OpenMetadata, task_id: str, timeout: int = 15) -
             nullable=False,
         )
         last_task = task
-        if (
-            task.workflowDefinitionId
-            and task.workflowStageId
-            and task.availableTransitions
-        ):
+        if task.workflowDefinitionId and task.workflowStageId and task.availableTransitions:
             return task
         time.sleep(0.25)
 
-    raise AssertionError(
-        f"Task {task_id} did not become ready for workflow resolution: {last_task}"
-    )
+    raise AssertionError(f"Task {task_id} did not become ready for workflow resolution: {last_task}")
 
 
-def _await_task_deleted(
-    metadata: OpenMetadata, task_id: str, timeout: int = 60
-) -> None:
+def _await_task_deleted(metadata: OpenMetadata, task_id: str, timeout: int = 60) -> None:
     deadline = time.time() + timeout
     while time.time() < deadline:
         if metadata.get_task(task_id) is None:
@@ -234,9 +218,7 @@ def _await_task_deleted(
     raise AssertionError(f"Task {task_id} was not deleted within {timeout}s")
 
 
-def _await_no_tasks_for_creator(
-    metadata: OpenMetadata, creator_id: str, table_fqn: str, timeout: int = 60
-) -> None:
+def _await_no_tasks_for_creator(metadata: OpenMetadata, creator_id: str, table_fqn: str, timeout: int = 60) -> None:
     deadline = time.time() + timeout
     while time.time() < deadline:
         tasks = metadata.list_tasks(
@@ -249,9 +231,7 @@ def _await_no_tasks_for_creator(
         if not tasks.entities:
             return
         time.sleep(0.25)
-    raise AssertionError(
-        f"Suggestion tasks created by {creator_id} for {table_fqn} were not cleaned up in time"
-    )
+    raise AssertionError(f"Suggestion tasks created by {creator_id} for {table_fqn} were not cleaned up in time")
 
 
 class TestOMetaTaskSuggestionAPI:
@@ -262,29 +242,21 @@ class TestOMetaTaskSuggestionAPI:
     - metadata: OpenMetadata client (session scope)
     """
 
-    def test_delete_user_cleans_up_open_suggestion_tasks(
-        self, metadata, suggestion_table
-    ):
+    def test_delete_user_cleans_up_open_suggestion_tasks(self, metadata, suggestion_table):
         """Deleted creators should not leave orphaned suggestion tasks behind."""
         user, bot = _create_bot(metadata)
-        bot_metadata = int_admin_ometa(
-            jwt=user.authenticationMechanism.config.JWTToken.get_secret_value()
-        )
+        bot_metadata = int_admin_ometa(jwt=user.authenticationMechanism.config.JWTToken.get_secret_value())
 
         metadata.patch_description(
             entity=Table,
-            source=metadata.get_by_name(
-                entity=Table, fqn=suggestion_table.fullyQualifiedName.root
-            ),
+            source=metadata.get_by_name(entity=Table, fqn=suggestion_table.fullyQualifiedName.root),
             description="I come from a patch",
         )
 
-        patched_table = metadata.get_by_name(
-            entity=Table, fqn=suggestion_table.fullyQualifiedName.root
+        patched_table = metadata.get_by_name(entity=Table, fqn=suggestion_table.fullyQualifiedName.root)
+        assert patched_table.description.root == "I come from a patch", (
+            f"Patch failed: description is {patched_table.description.root}"
         )
-        assert (
-            patched_table.description.root == "I come from a patch"
-        ), f"Patch failed: description is {patched_table.description.root}"
 
         task = _create_description_suggestion_task(
             bot_metadata,
@@ -303,29 +275,21 @@ class TestOMetaTaskSuggestionAPI:
             hard_delete=True,
         )
 
-        _await_no_tasks_for_creator(
-            metadata, str(user.id.root), suggestion_table.fullyQualifiedName.root
-        )
+        _await_no_tasks_for_creator(metadata, str(user.id.root), suggestion_table.fullyQualifiedName.root)
         _await_task_deleted(metadata, str(task.id.root))
 
-        updated_table: Table = metadata.get_by_name(
-            entity=Table, fqn=suggestion_table.fullyQualifiedName.root
-        )
+        updated_table: Table = metadata.get_by_name(entity=Table, fqn=suggestion_table.fullyQualifiedName.root)
         assert updated_table.description.root == "I come from a patch"
 
     def test_accept_reject_suggestion(self, metadata, suggestion_table):
         """We can reject or apply suggestion tasks through the task API."""
         metadata.patch_description(
             entity=Table,
-            source=metadata.get_by_name(
-                entity=Table, fqn=suggestion_table.fullyQualifiedName.root
-            ),
+            source=metadata.get_by_name(entity=Table, fqn=suggestion_table.fullyQualifiedName.root),
             description="I come from a patch",
         )
 
-        rejected_task = _create_description_suggestion_task(
-            metadata, suggestion_table, "i won't be accepted"
-        )
+        rejected_task = _create_description_suggestion_task(metadata, suggestion_table, "i won't be accepted")
         _await_task_ready(metadata, str(rejected_task.id.root))
         metadata.resolve_task(
             rejected_task.id.root,
@@ -334,34 +298,22 @@ class TestOMetaTaskSuggestionAPI:
                 comment="Reject suggestion",
             ),
         )
-        updated_table: Table = metadata.get_by_name(
-            entity=Table, fqn=suggestion_table.fullyQualifiedName.root
-        )
+        updated_table: Table = metadata.get_by_name(entity=Table, fqn=suggestion_table.fullyQualifiedName.root)
         assert updated_table.description.root == "I come from a patch"
 
-        accepted_task = _create_description_suggestion_task(
-            metadata, suggestion_table, "something new"
-        )
+        accepted_task = _create_description_suggestion_task(metadata, suggestion_table, "something new")
         _await_task_ready(metadata, str(accepted_task.id.root))
         metadata.apply_suggestion(accepted_task.id.root)
-        updated_table: Table = metadata.get_by_name(
-            entity=Table, fqn=suggestion_table.fullyQualifiedName.root
-        )
+        updated_table: Table = metadata.get_by_name(entity=Table, fqn=suggestion_table.fullyQualifiedName.root)
         assert updated_table.description.root == "something new"
 
-    def test_deleted_user_suggestion_task_cannot_be_resolved_after_cleanup(
-        self, metadata, suggestion_table
-    ):
+    def test_deleted_user_suggestion_task_cannot_be_resolved_after_cleanup(self, metadata, suggestion_table):
         """Deleting a creator should remove their suggestion task before resolution."""
 
         user, bot = _create_bot(metadata)
-        bot_metadata = int_admin_ometa(
-            jwt=user.authenticationMechanism.config.JWTToken.get_secret_value()
-        )
+        bot_metadata = int_admin_ometa(jwt=user.authenticationMechanism.config.JWTToken.get_secret_value())
 
-        task = _create_description_suggestion_task(
-            bot_metadata, suggestion_table, "something new"
-        )
+        task = _create_description_suggestion_task(bot_metadata, suggestion_table, "something new")
         assert task.id is not None
 
         _safe_delete(
@@ -372,9 +324,7 @@ class TestOMetaTaskSuggestionAPI:
             hard_delete=True,
         )
 
-        _await_no_tasks_for_creator(
-            metadata, str(user.id.root), suggestion_table.fullyQualifiedName.root
-        )
+        _await_no_tasks_for_creator(metadata, str(user.id.root), suggestion_table.fullyQualifiedName.root)
         _await_task_deleted(metadata, str(task.id.root))
 
         with pytest.raises(APIError):
@@ -382,9 +332,7 @@ class TestOMetaTaskSuggestionAPI:
 
     def test_create_description_suggestion(self, metadata, suggestion_table):
         """We can create a description suggestion task."""
-        task = _create_description_suggestion_task(
-            metadata, suggestion_table, "something"
-        )
+        task = _create_description_suggestion_task(metadata, suggestion_table, "something")
         assert task.type == TaskEntityType.Suggestion
         assert task.status == TaskEntityStatus.Open
         assert task.payload["suggestedValue"] == "something"
@@ -407,9 +355,7 @@ class TestOMetaTaskSuggestionAPI:
     def test_list(self, metadata, suggestion_schema):
         """List task suggestions filtering by creator and about entity."""
 
-        admin_user: User = metadata.get_by_name(
-            entity=User, fqn="admin", nullable=False
-        )
+        admin_user: User = metadata.get_by_name(entity=User, fqn="admin", nullable=False)
 
         create_table = get_create_entity(
             entity=Table,
@@ -418,9 +364,7 @@ class TestOMetaTaskSuggestionAPI:
         table: Table = metadata.create_or_update(create_table)
 
         try:
-            created_task = _create_description_suggestion_task(
-                metadata, table, "something"
-            )
+            created_task = _create_description_suggestion_task(metadata, table, "something")
             tasks = metadata.list_tasks(
                 type_=TaskEntityType.Suggestion,
                 about_entity=table.fullyQualifiedName.root,
@@ -451,9 +395,7 @@ class TestOMetaTaskSuggestionAPI:
             assert updated.payload["suggestedValue"] == "new"
 
             metadata.apply_suggestion(task.id.root)
-            refreshed_table = metadata.get_by_name(
-                entity=Table, fqn=table.fullyQualifiedName.root
-            )
+            refreshed_table = metadata.get_by_name(entity=Table, fqn=table.fullyQualifiedName.root)
             assert refreshed_table.description.root == "new"
         finally:
             _safe_delete(metadata, entity=Table, entity_id=table.id, hard_delete=True)
