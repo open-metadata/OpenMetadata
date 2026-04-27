@@ -149,6 +149,8 @@ const TermsRow: React.FC<TermsRowProps> = ({
         ];
         setSelectedTerms(updated);
         onTermsChange(rowId, toTermItems(updated));
+        setSearchQuery('');
+        setSearchedTerms([]);
       }
     },
     [
@@ -200,7 +202,12 @@ const TermsRow: React.FC<TermsRowProps> = ({
           onItemInserted={handleItemInserted}
           onSearchChange={handleSearchChange}>
           {(item) => (
-            <Autocomplete.Item id={item.id} key={item.id} label={item.label} />
+            <Autocomplete.Item
+              id={item.id}
+              isDisabled={item.id === NO_RESULTS_KEY}
+              key={item.id}
+              label={item.label}
+            />
           )}
         </Autocomplete>
       </div>
