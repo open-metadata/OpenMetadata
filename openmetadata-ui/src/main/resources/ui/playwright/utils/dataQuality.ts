@@ -271,7 +271,9 @@ export const selectTestCasesByCheckbox = async (
   page: Page,
   count: number = 1
 ) => {
-  const rows = page.locator('tr[data-row-key]');
+  const rows = page.locator(
+    '[data-testid="test-case-table"] tbody tr[data-key]'
+  );
   await expect(rows.first()).toBeVisible();
 
   for (let i = 0; i < count; i++) {
@@ -372,7 +374,7 @@ export const verifyBundleSuitePageLoaded = async (
         await listTestCasesResponse;
 
         const rows = await page
-          .locator('[data-testid="test-case-table"] tbody tr[data-row-key]')
+          .locator('[data-testid="test-case-table"] tbody tr[data-key]')
           .count();
 
         return rows;
