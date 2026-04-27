@@ -38,6 +38,7 @@ import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 class MigrationUtilTest {
@@ -50,7 +51,7 @@ class MigrationUtilTest {
 
   @Test
   void migrateThreadTasksToTaskEntitySkipsWhenThreadTableIsMissing() {
-    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).one())
+    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
         .thenThrow(new RuntimeException("missing table"));
 
     assertDoesNotThrow(() -> MigrationUtil.migrateThreadTasksToTaskEntity(handle, MYSQL));
@@ -60,7 +61,7 @@ class MigrationUtilTest {
 
   @Test
   void migrateThreadTasksToTaskEntitySkipsWhenThreadTableIsMissingPostgres() {
-    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).one())
+    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
         .thenThrow(new RuntimeException("missing table"));
 
     assertDoesNotThrow(() -> MigrationUtil.migrateThreadTasksToTaskEntity(handle, POSTGRES));
@@ -90,7 +91,7 @@ class MigrationUtilTest {
 
   @Test
   void migrateLegacyActivityThreadsToActivityStreamSkipsWhenThreadTableIsMissing() {
-    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).one())
+    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
         .thenThrow(new RuntimeException("missing table"));
 
     assertDoesNotThrow(
@@ -101,7 +102,7 @@ class MigrationUtilTest {
 
   @Test
   void migrateLegacyActivityThreadsToActivityStreamSkipsWhenThreadTableIsMissingPostgres() {
-    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).one())
+    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
         .thenThrow(new RuntimeException("missing table"));
 
     assertDoesNotThrow(
@@ -111,33 +112,29 @@ class MigrationUtilTest {
   }
 
   @Test
-  void migrateThreadTasksUsesJsonbCastForPostgres() {
-    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).one())
-        .thenReturn(1);
-    when(handle
-            .createQuery(
-                "SELECT json FROM thread_entity WHERE type = 'Task' ORDER BY createdAt ASC")
-            .mapToMap()
-            .list())
-        .thenReturn(java.util.List.of());
+  void insertTaskUsesJsonbCastForPostgres() throws Exception {
+    invokePrivateStatic(
+        "insertTask",
+        new Class[] {Handle.class, String.class, String.class, String.class, ConnectionType.class},
+        handle,
+        "test-id",
+        "{}",
+        "test-hash",
+        POSTGRES);
 
-    assertDoesNotThrow(() -> MigrationUtil.migrateThreadTasksToTaskEntity(handle, POSTGRES));
-
-    verify(handle, never()).createUpdate(contains(":json,"));
+    verify(handle).createUpdate(contains("::jsonb"));
   }
 
   @Test
-  void migrateThreadTasksDoesNotUseJsonbCastForMysql() {
-    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).one())
-        .thenReturn(1);
-    when(handle
-            .createQuery(
-                "SELECT json FROM thread_entity WHERE type = 'Task' ORDER BY createdAt ASC")
-            .mapToMap()
-            .list())
-        .thenReturn(java.util.List.of());
-
-    assertDoesNotThrow(() -> MigrationUtil.migrateThreadTasksToTaskEntity(handle, MYSQL));
+  void insertTaskDoesNotUseJsonbCastForMysql() throws Exception {
+    invokePrivateStatic(
+        "insertTask",
+        new Class[] {Handle.class, String.class, String.class, String.class, ConnectionType.class},
+        handle,
+        "test-id",
+        "{}",
+        "test-hash",
+        MYSQL);
 
     verify(handle, never()).createUpdate(contains("::jsonb"));
   }

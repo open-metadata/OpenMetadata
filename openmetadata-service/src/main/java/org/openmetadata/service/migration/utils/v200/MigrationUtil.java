@@ -916,7 +916,7 @@ public class MigrationUtil {
       handle
           .createQuery(String.format("SELECT 1 FROM %s LIMIT 1", tableName))
           .mapTo(Integer.class)
-          .one();
+          .findFirst();
       return true;
     } catch (Exception e) {
       return false;
