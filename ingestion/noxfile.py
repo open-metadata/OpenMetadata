@@ -124,7 +124,22 @@ def unit_plugins(session, plugin):
 )
 def static_checks(session):
     install(session, ".[dev]")
-    session.run("basedpyright", "-p", "pyproject.toml")
+    # `--baselinemode=discard` fails the run on any *new* error not in the
+    # baseline (early-return path in basedpyright's BaselineHandler.write)
+    # while tolerating baseline entries that don't fire on the current
+    # platform (e.g. macOS arm64 vs Linux x86_64 stub drift). Critically, it
+    # does not write the baseline file, unlike `auto`. The default in CI
+    # would be `lock`, which exits 3 on any down-shift in error count and
+    # therefore can't accommodate platform drift between developer machines
+    # and the GitHub Actions runner.
+    session.run(
+        "basedpyright",
+        "-p",
+        "pyproject.toml",
+        "--baselinefile",
+        ".basedpyright/baseline.json",
+        "--baselinemode=discard",
+    )
 
 
 # ---------------------------------------------------------------------------
