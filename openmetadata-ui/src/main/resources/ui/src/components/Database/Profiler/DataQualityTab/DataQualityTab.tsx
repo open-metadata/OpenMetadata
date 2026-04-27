@@ -568,32 +568,41 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           <DateTimeDisplay timestamp={record.testCaseResult?.timestamp} />
         </Table.Cell>
         <Table.Cell className="tw:max-w-50 tw:overflow-hidden">
-          <Link
-            className="break-word"
-            data-testid={record.name}
-            state={{ breadcrumbData }}
-            to={{
-              pathname: getTestCaseDetailPagePath(
-                record.fullyQualifiedName ?? ''
-              ),
-            }}>
-            {getEntityName(record)}
-          </Link>
+          <div
+            role="presentation"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}>
+            <Link
+              className="break-word"
+              data-testid={record.name}
+              state={{ breadcrumbData }}
+              to={{
+                pathname: getTestCaseDetailPagePath(
+                  record.fullyQualifiedName ?? ''
+                ),
+              }}>
+              {getEntityName(record)}
+            </Link>
+          </div>
         </Table.Cell>
         {showTableColumn && (
           <Table.Cell className="tw:max-w-50 tw:overflow-hidden">
-            <Link
-              className="break-word"
-              data-testid="table-link"
-              to={getEntityDetailsPath(
-                EntityType.TABLE,
-                tableFqn,
-                EntityTabs.PROFILER,
-                ProfilerTabPath.DATA_QUALITY
-              )}
-              onClick={(e) => e.stopPropagation()}>
-              {tableFqn}
-            </Link>
+            <div
+              role="presentation"
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}>
+              <Link
+                className="break-word"
+                data-testid="table-link"
+                to={getEntityDetailsPath(
+                  EntityType.TABLE,
+                  tableFqn,
+                  EntityTabs.PROFILER,
+                  ProfilerTabPath.DATA_QUALITY
+                )}>
+                {tableFqn}
+              </Link>
+            </div>
           </Table.Cell>
         )}
         <Table.Cell className="tw:max-w-20 tw:overflow-hidden">
