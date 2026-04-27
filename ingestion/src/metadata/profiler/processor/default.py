@@ -12,6 +12,7 @@
 """
 Default simple profiler to use
 """
+
 from typing import List, Optional, Type
 
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig

@@ -11,6 +11,7 @@
 """
 MariaDB source module
 """
+
 import traceback
 from typing import Iterable, Optional
 
@@ -66,27 +67,19 @@ class MariadbSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: MariaDBConnection = config.serviceConnection.root.config
         if not isinstance(connection, MariaDBConnection):
-            raise InvalidSourceException(
-                f"Expected MariaDBConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected MariaDBConnection, but got {connection}")
         return cls(config, metadata)
 
-    def _get_stored_procedures_internal(
-        self, query: str
-    ) -> Iterable[MariaDBStoredProcedure]:
+    def _get_stored_procedures_internal(self, query: str) -> Iterable[MariaDBStoredProcedure]:
         with self.engine.connect() as conn:
             results = conn.execute(text(query)).all()
         for row in results:
             try:
-                stored_procedure = MariaDBStoredProcedure.model_validate(
-                    dict(row._mapping)
-                )
+                stored_procedure = MariaDBStoredProcedure.model_validate(dict(row._mapping))
                 if self.is_stored_procedure_filtered(stored_procedure.name):
                     continue
                 yield stored_procedure
@@ -109,18 +102,12 @@ class MariadbSource(CommonDbSourceService):
                     query.format(schema_name=self.context.get().database_schema)
                 )
 
-    def yield_stored_procedure(
-        self, stored_procedure
-    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+    def yield_stored_procedure(self, stored_procedure) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Prepare the stored procedure payload"""
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),
-                description=(
-                    Markdown(stored_procedure.description)
-                    if stored_procedure.description
-                    else None
-                ),
+                description=(Markdown(stored_procedure.description) if stored_procedure.description else None),
                 storedProcedureCode=StoredProcedureCode(
                     language=stored_procedure.language, code=stored_procedure.definition
                 ),

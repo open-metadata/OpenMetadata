@@ -12,6 +12,7 @@
 """
 Secrets manager factory module
 """
+
 from typing import Optional
 
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
@@ -75,10 +76,7 @@ class SecretsManagerFactory(metaclass=Singleton):
         :param secrets_manager_loader: how to retrieve the secrets manager keys from the environment
         :return: a secrets manager
         """
-        if (
-            secrets_manager_provider is None
-            or secrets_manager_provider == SecretsManagerProvider.db
-        ):
+        if secrets_manager_provider is None or secrets_manager_provider == SecretsManagerProvider.db:
             return DBSecretsManager()
         if secrets_manager_provider in (
             SecretsManagerProvider.aws,

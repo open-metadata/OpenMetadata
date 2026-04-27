@@ -11,6 +11,7 @@
 """
 REST Auth & Client for Mode
 """
+
 import traceback
 from base64 import b64encode
 from typing import Optional
@@ -69,9 +70,7 @@ class ModeApiClient:
         )
         self.client = TrackedREST(client_config, source_name="mode")
 
-    def fetch_all_reports(
-        self, workspace_name: str, filter: Optional[str] = "all"
-    ) -> Optional[list]:
+    def fetch_all_reports(self, workspace_name: str, filter: Optional[str] = "all") -> Optional[list]:
         """Method to fetch all reports for Mode
         Args:
             workspace_name:
@@ -80,16 +79,12 @@ class ModeApiClient:
             dict
         """
         if filter not in ["custom", "all"]:
-            logger.warning(
-                "Invalid value for filter. Should be one of ['custom', 'all']"
-            )
+            logger.warning("Invalid value for filter. Should be one of ['custom', 'all']")
             return
 
         all_reports = []
         filter_param = f"?filter={filter}"
-        response_collections = self.client.get(
-            f"/{workspace_name}/{COLLECTIONS}{filter_param}"
-        )
+        response_collections = self.client.get(f"/{workspace_name}/{COLLECTIONS}{filter_param}")
         collections = response_collections[EMBEDDED]["spaces"]
         for collection in collections:
             response_reports = self.get_all_reports_for_collection(
@@ -101,9 +96,7 @@ class ModeApiClient:
                 all_reports.extend(reports)
         return all_reports
 
-    def get_all_reports_for_collection(
-        self, workspace_name: str, collection_token: str
-    ) -> Optional[dict]:
+    def get_all_reports_for_collection(self, workspace_name: str, collection_token: str) -> Optional[dict]:
         """Method to fetch all reports for a collection
         Args:
             workspace_name:
@@ -112,9 +105,7 @@ class ModeApiClient:
             dict
         """
         try:
-            response = self.client.get(
-                f"/{workspace_name}/{COLLECTIONS}/{collection_token}/{REPORTS}"
-            )
+            response = self.client.get(f"/{workspace_name}/{COLLECTIONS}/{collection_token}/{REPORTS}")
             return response
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -131,9 +122,7 @@ class ModeApiClient:
             dict
         """
         try:
-            response = self.client.get(
-                f"/{workspace_name}/{REPORTS}/{report_token}/{QUERIES}"
-            )
+            response = self.client.get(f"/{workspace_name}/{REPORTS}/{report_token}/{QUERIES}")
             return response
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -141,9 +130,7 @@ class ModeApiClient:
 
         return None
 
-    def get_all_charts(
-        self, workspace_name: str, report_token: str, query_token: str
-    ) -> Optional[dict]:
+    def get_all_charts(self, workspace_name: str, report_token: str, query_token: str) -> Optional[dict]:
         """Method to fetch all charts
         Args:
             workspace_name:
@@ -153,9 +140,7 @@ class ModeApiClient:
             dict
         """
         try:
-            response = self.client.get(
-                f"/{workspace_name}/{REPORTS}/{report_token}/{QUERIES}/{query_token}/{CHARTS}"
-            )
+            response = self.client.get(f"/{workspace_name}/{REPORTS}/{report_token}/{QUERIES}/{query_token}/{CHARTS}")
             return response
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())

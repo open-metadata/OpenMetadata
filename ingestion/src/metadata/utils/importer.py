@@ -11,6 +11,7 @@
 """
 Helpers to import python classes and modules dynamically
 """
+
 import importlib
 import sys
 import traceback
@@ -117,9 +118,7 @@ def get_class_name_root(type_: str) -> str:
     from a source type, e.g., mysql or clickhouse-lineage
     -> ClickhouseLineage
     """
-    return "".join([i.title() for i in type_.split(TYPE_SEPARATOR)]).replace(
-        CLASS_SEPARATOR, ""
-    )
+    return "".join([i.title() for i in type_.split(TYPE_SEPARATOR)]).replace(CLASS_SEPARATOR, "")
 
 
 def import_from_module(key: str, log_traceback: bool = True) -> Type[Any]:
@@ -137,9 +136,7 @@ def import_from_module(key: str, log_traceback: bool = True) -> Type[Any]:
         raise DynamicImportException(module=module_name, key=obj_name, cause=err)
 
 
-def import_processor_class(
-    processor_type: str, from_: str = "ingestion"
-) -> Type[Processor]:
+def import_processor_class(processor_type: str, from_: str = "ingestion") -> Type[Processor]:
     return import_from_module(
         "metadata.{}.processor.{}.{}Processor".format(  # pylint: disable=consider-using-f-string
             from_,
@@ -169,9 +166,7 @@ def import_sink_class(sink_type: str, from_: str = "ingestion") -> Type[Sink]:
     )
 
 
-def import_bulk_sink_type(
-    bulk_sink_type: str, from_: str = "ingestion"
-) -> Type[BulkSink]:
+def import_bulk_sink_type(bulk_sink_type: str, from_: str = "ingestion") -> Type[BulkSink]:
     return import_from_module(
         "metadata.{}.bulksink.{}.{}BulkSink".format(  # pylint: disable=consider-using-f-string
             from_,
@@ -204,15 +199,11 @@ def import_connection_fn(connection: BaseModel, function_name: str) -> Callable:
     Import get_connection and test_connection from sources
     """
     if not isinstance(connection, BaseModel):
-        raise ValueError(
-            "The connection is not a pydantic object. Is it really a connection class?"
-        )
+        raise ValueError("The connection is not a pydantic object. Is it really a connection class?")
 
     connection_type: Optional[Enum] = getattr(connection, "type")
     if not connection_type:
-        raise ValueError(
-            f"Cannot get `type` property from connection {connection}. Check the JSON Schema."
-        )
+        raise ValueError(f"Cannot get `type` property from connection {connection}. Check the JSON Schema.")
 
     service_type: ServiceType = get_service_type_from_source_type(connection_type.value)
 
@@ -223,9 +214,7 @@ def import_connection_fn(connection: BaseModel, function_name: str) -> Callable:
         python_class_parts = connection.sourcePythonClass.rsplit(".", 1)
         python_module_path = ".".join(python_class_parts[:-1])
 
-        _connection_fn = import_from_module(
-            "{}.{}".format(python_module_path, function_name)
-        )
+        _connection_fn = import_from_module("{}.{}".format(python_module_path, function_name))
     else:
         _connection_fn = import_from_module(
             "metadata.ingestion.source.{}.{}.connection.{}".format(
@@ -261,9 +250,7 @@ def import_test_case_class(
     Returns:
         Type[BaseTestValidator]: test validator class
     """
-    module_name = RULE_LIBRARY_VALIDATOR_MODULE_MAP.get(
-        validator_class, test_definition
-    )
+    module_name = RULE_LIBRARY_VALIDATOR_MODULE_MAP.get(validator_class, test_definition)
     return import_from_module(
         "metadata.data_quality.validations.{}.{}.{}.{}".format(  # pylint: disable=consider-using-f-string
             test_type.lower(),

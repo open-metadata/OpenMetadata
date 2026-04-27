@@ -81,9 +81,7 @@ class McpConnectionManager:
         """Discover servers from configuration files"""
         config_paths = self.connection.configFilePaths or []
         if not config_paths:
-            logger.warning(
-                "No config file paths specified for ConfigFile discovery method"
-            )
+            logger.warning("No config file paths specified for ConfigFile discovery method")
             return []
 
         return discover_servers_from_config_files(config_paths)
@@ -96,20 +94,12 @@ class McpConnectionManager:
         for server_config in direct_servers:
             server_info = McpServerInfo(
                 name=server_config.name,
-                transport=(
-                    server_config.transport.value
-                    if server_config.transport
-                    else "Stdio"
-                ),
+                transport=(server_config.transport.value if server_config.transport else "Stdio"),
                 command=server_config.command,
                 args=server_config.args or [],
                 env=server_config.env or {},
                 url=server_config.url,
-                api_key=(
-                    server_config.apiKey.get_secret_value()
-                    if server_config.apiKey
-                    else None
-                ),
+                api_key=(server_config.apiKey.get_secret_value() if server_config.apiKey else None),
             )
             servers.append(server_info)
 
@@ -146,9 +136,7 @@ class McpConnectionManager:
             logger.warning(f"Failed to connect to MCP server '{server.name}': {e}")
             return False
         except Exception as e:
-            logger.warning(
-                f"Unexpected error connecting to MCP server '{server.name}': {e}"
-            )
+            logger.warning(f"Unexpected error connecting to MCP server '{server.name}': {e}")
             return False
         finally:
             if client:
@@ -193,9 +181,7 @@ def _test_connect_to_servers(manager: McpConnectionManager) -> None:
         logger.warning(f"Could not connect to MCP server '{server.name}'")
 
     if not connected:
-        raise SourceConnectionException(
-            "Could not connect to any discovered MCP servers"
-        )
+        raise SourceConnectionException("Could not connect to any discovered MCP servers")
 
 
 def test_connection(

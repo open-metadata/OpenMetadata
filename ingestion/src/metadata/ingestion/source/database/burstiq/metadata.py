@@ -11,6 +11,7 @@
 """
 BurstIQ LifeGraph source module for OpenMetadata
 """
+
 import traceback
 from typing import Any, Iterable, List, Optional, Tuple
 
@@ -77,12 +78,8 @@ class Burstiqsource(DatabaseServiceSource):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.source_config: DatabaseServiceMetadataPipeline = (
-            self.config.sourceConfig.config
-        )
-        self.service_connection: BurstIQConnection = (
-            self.config.serviceConnection.root.config
-        )
+        self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
+        self.service_connection: BurstIQConnection = self.config.serviceConnection.root.config
         self.client: Optional[BurstIQClient] = None
         self._current_dictionary: Optional[BurstIQDictionary] = None
 
@@ -100,9 +97,7 @@ class Burstiqsource(DatabaseServiceSource):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: BurstIQConnection = config.serviceConnection.root.config
         if not isinstance(connection, BurstIQConnection):
-            raise InvalidSourceException(
-                f"Expected BurstIQConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected BurstIQConnection, but got {connection}")
         return cls(config, metadata)
 
     def _get_client(self) -> BurstIQClient:
@@ -121,16 +116,11 @@ class Burstiqsource(DatabaseServiceSource):
         Returns:
             BurstIQDictionary if cached and matches, None otherwise
         """
-        if (
-            self._current_dictionary
-            and self._current_dictionary.table_name == table_name
-        ):
+        if self._current_dictionary and self._current_dictionary.table_name == table_name:
             return self._current_dictionary
 
         # If not cached or doesn't match, fetch from API
-        logger.warning(
-            f"Dictionary for table '{table_name}' not in cache, fetching from API..."
-        )
+        logger.warning(f"Dictionary for table '{table_name}' not in cache, fetching from API...")
         client = self._get_client()
         return client.get_dictionary_by_name(table_name)
 
@@ -151,9 +141,7 @@ class Burstiqsource(DatabaseServiceSource):
         """
         yield "default"
 
-    def yield_database(
-        self, database_name: str
-    ) -> Iterable[Either[CreateDatabaseRequest]]:
+    def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink.
@@ -169,9 +157,7 @@ class Burstiqsource(DatabaseServiceSource):
         yield Either(right=database_request)
         self.register_record_database_request(database_request=database_request)
 
-    def yield_database_schema(
-        self, schema_name: str
-    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
+    def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
         Prepare a database schema request and pass it to the sink
@@ -228,11 +214,7 @@ class Burstiqsource(DatabaseServiceSource):
                     # Apply table filter pattern
                     if filter_by_table(
                         self.source_config.tableFilterPattern,
-                        (
-                            table_fqn
-                            if self.source_config.useFqnForFiltering
-                            else table_name
-                        ),
+                        (table_fqn if self.source_config.useFqnForFiltering else table_name),
                     ):
                         self.status.filter(
                             table_fqn,
@@ -249,24 +231,16 @@ class Burstiqsource(DatabaseServiceSource):
 
         except ConnectionError as err:
             # Connection errors are critical - fail fast and stop the workflow
-            logger.error(
-                f"Failed to connect to BurstIQ for schema {schema_name}: {err}"
-            )
+            logger.error(f"Failed to connect to BurstIQ for schema {schema_name}: {err}")
             logger.debug(traceback.format_exc())
-            raise InvalidSourceException(
-                f"Cannot connect to BurstIQ API: {err}"
-            ) from err
+            raise InvalidSourceException(f"Cannot connect to BurstIQ API: {err}") from err
         except Exception as err:
             # Other errors - log and re-raise to fail the workflow
-            logger.error(
-                f"Fetching dictionaries from BurstIQ failed for schema {schema_name}: {err}"
-            )
+            logger.error(f"Fetching dictionaries from BurstIQ failed for schema {schema_name}: {err}")
             logger.debug(traceback.format_exc())
             raise
 
-    def _process_attribute_to_column(
-        self, attribute, table_name: str
-    ) -> Optional[Column]:
+    def _process_attribute_to_column(self, attribute, table_name: str) -> Optional[Column]:
         """
         Process a single BurstIQ attribute and convert it to an OpenMetadata Column
 
@@ -279,9 +253,7 @@ class Burstiqsource(DatabaseServiceSource):
         """
         try:
             # Map BurstIQ data types to OpenMetadata data types
-            datatype_str, array_element_type = self._map_burstiq_datatype(
-                attribute.datatype
-            )
+            datatype_str, array_element_type = self._map_burstiq_datatype(attribute.datatype)
 
             # Build column properties dictionary
             column_props = {
@@ -310,9 +282,7 @@ class Burstiqsource(DatabaseServiceSource):
             if attribute.nodeAttributes and len(attribute.nodeAttributes) > 0:
                 children = []
                 for nested_attr in attribute.nodeAttributes:
-                    child_column = self._process_attribute_to_column(
-                        nested_attr, table_name
-                    )
+                    child_column = self._process_attribute_to_column(nested_attr, table_name)
                     if child_column:
                         children.append(child_column)
                 if children:
@@ -322,15 +292,11 @@ class Burstiqsource(DatabaseServiceSource):
             return Column(**column_props)
 
         except Exception as exc:
-            logger.warning(
-                f"Error processing column {attribute.name} for table {table_name}: {exc}"
-            )
+            logger.warning(f"Error processing column {attribute.name} for table {table_name}: {exc}")
             logger.debug(traceback.format_exc())
             return None
 
-    def get_columns(
-        self, table_name: str, dictionary: BurstIQDictionary
-    ) -> Iterable[Column]:
+    def get_columns(self, table_name: str, dictionary: BurstIQDictionary) -> Iterable[Column]:
         """
         Process BurstIQ dictionary attributes and convert them to OpenMetadata columns
 
@@ -390,9 +356,7 @@ class Burstiqsource(DatabaseServiceSource):
         # Regular types - no array element type
         return (type_mapping.get(burstiq_type, "VARCHAR"), None)
 
-    def get_table_constraints(
-        self, dictionary: BurstIQDictionary
-    ) -> Optional[List[TableConstraint]]:
+    def get_table_constraints(self, dictionary: BurstIQDictionary) -> Optional[List[TableConstraint]]:
         """
         Get all table constraints (primary key, unique, and foreign key) from BurstIQ dictionary
 
@@ -450,9 +414,7 @@ class Burstiqsource(DatabaseServiceSource):
 
         return table_constraints if table_constraints else None
 
-    def yield_table(
-        self, table_name_and_type: Tuple[str, TableType]
-    ) -> Iterable[Either[CreateTableRequest]]:
+    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -484,9 +446,7 @@ class Burstiqsource(DatabaseServiceSource):
             table_constraints = self.get_table_constraints(dictionary)
 
             # Get description from dictionary
-            description = (
-                Markdown(dictionary.description) if dictionary.description else None
-            )
+            description = Markdown(dictionary.description) if dictionary.description else None
 
             # Create table request
             table_request = CreateTableRequest(
@@ -518,11 +478,7 @@ class Burstiqsource(DatabaseServiceSource):
             )
             logger.error(error)
             logger.debug(traceback.format_exc())
-            yield Either(
-                left=StackTraceError(
-                    name=table_name, error=error, stackTrace=traceback.format_exc()
-                )
-            )
+            yield Either(left=StackTraceError(name=table_name, error=error, stackTrace=traceback.format_exc()))
 
     def get_stored_procedures(self) -> Iterable[Any]:
         """
@@ -530,17 +486,13 @@ class Burstiqsource(DatabaseServiceSource):
         """
         return []
 
-    def yield_stored_procedure(
-        self, stored_procedure: Any
-    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+    def yield_stored_procedure(self, stored_procedure: Any) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """
         BurstIQ does not support stored procedures
         """
         return []
 
-    def yield_tag(
-        self, schema_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         BurstIQ does not support tags at this time
         """

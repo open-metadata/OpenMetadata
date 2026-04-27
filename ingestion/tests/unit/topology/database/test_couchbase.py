@@ -170,17 +170,11 @@ MOCK_TABLE_NAMES = [
 
 
 def custom_column_compare(self, other):
-    return (
-        self.name == other.name
-        and self.description == other.description
-        and self.children == other.children
-    )
+    return self.name == other.name and self.description == other.description and self.children == other.children
 
 
 class CouchbaseUnitTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.database.couchbase.metadata.CouchbaseSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.couchbase.metadata.CouchbaseSource.test_connection")
     @patch("metadata.ingestion.source.database.couchbase.connection.get_connection")
     def __init__(self, methodName, get_connection, test_connection) -> None:
         super().__init__(methodName)
@@ -192,13 +186,9 @@ class CouchbaseUnitTest(TestCase):
             mock_couch_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.couch_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.couch_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.couch_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.couch_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.couch_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_database_names(self):
         assert EXPECTED_DATABASE_NAMES == list(self.couch_source.get_database_names())
@@ -209,9 +199,7 @@ class CouchbaseUnitTest(TestCase):
             "get_schema_name_list",
             return_value=MOCK_DATABASE_SCHEMA_NAMES,
         ):
-            assert EXPECTED_DATABASE_SCHEMA_NAMES == list(
-                self.couch_source.get_database_schema_names()
-            )
+            assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.couch_source.get_database_schema_names())
 
     def test_table_names(self):
         with patch.object(
@@ -219,16 +207,11 @@ class CouchbaseUnitTest(TestCase):
             "query_table_names_and_types",
             return_value=MOCK_TABLE_NAMES,
         ):
-            assert EXPECTED_TABLE_NAMES == list(
-                self.couch_source.get_tables_name_and_type()
-            )
+            assert EXPECTED_TABLE_NAMES == list(self.couch_source.get_tables_name_and_type())
 
     def test_yield_tables(self):
         Column.__eq__ = custom_column_compare
-        with patch.object(
-            CouchbaseSource, "get_table_columns_dict", return_value=MOCK_JSON_TABLE_DATA
-        ):
+        with patch.object(CouchbaseSource, "get_table_columns_dict", return_value=MOCK_JSON_TABLE_DATA):
             assert MOCK_CREATE_TABLE == [
-                either.right
-                for either in self.couch_source.yield_table(EXPECTED_TABLE_NAMES[0])
+                either.right for either in self.couch_source.yield_table(EXPECTED_TABLE_NAMES[0])
             ]

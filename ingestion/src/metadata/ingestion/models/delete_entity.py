@@ -11,6 +11,7 @@
 """
 Pydantic definition for deleting entites
 """
+
 from typing import Optional
 
 from pydantic import BaseModel

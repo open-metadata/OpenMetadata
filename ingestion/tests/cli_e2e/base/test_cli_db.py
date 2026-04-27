@@ -12,6 +12,7 @@
 """
 Test database connectors with CLI
 """
+
 from abc import abstractmethod
 from datetime import datetime
 from typing import List, Optional, Tuple
@@ -68,9 +69,7 @@ class CliDBBase(TestCase):
             self.create_table_and_view()
             self.build_config_file()
             self.run_command()
-            self.build_config_file(
-                E2EType.PROFILER, {"includes": self.get_includes_schemas()}
-            )
+            self.build_config_file(E2EType.PROFILER, {"includes": self.get_includes_schemas()})
             result = self.run_command("profile")
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_for_table_with_profiler(source_status, sink_status)
@@ -90,9 +89,7 @@ class CliDBBase(TestCase):
             self.create_table_and_view()
             self.build_config_file()
             self.run_command()
-            self.build_config_file(
-                E2EType.AUTO_CLASSIFICATION, {"includes": self.get_includes_schemas()}
-            )
+            self.build_config_file(E2EType.AUTO_CLASSIFICATION, {"includes": self.get_includes_schemas()})
             result = self.run_command("classify")
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_auto_classification_sample_data(source_status, sink_status)
@@ -111,9 +108,7 @@ class CliDBBase(TestCase):
             result = self.run_command()
 
             sink_status, source_status = self.retrieve_statuses(result)
-            self.assert_for_delete_table_is_marked_as_deleted(
-                source_status, sink_status
-            )
+            self.assert_for_delete_table_is_marked_as_deleted(source_status, sink_status)
 
         @pytest.mark.order(5)
         def test_schema_filter_includes(self) -> None:
@@ -156,9 +151,7 @@ class CliDBBase(TestCase):
                 1. build config file for ingest with filters
                 2. run ingest `self.run_command()` defaults to `ingestion`
             """
-            self.build_config_file(
-                E2EType.INGEST_DB_FILTER_TABLE, {"includes": self.get_includes_tables()}
-            )
+            self.build_config_file(E2EType.INGEST_DB_FILTER_TABLE, {"includes": self.get_includes_tables()})
             result = self.run_command()
 
             sink_status, source_status = self.retrieve_statuses(result)
@@ -172,9 +165,7 @@ class CliDBBase(TestCase):
                 1. build config file for ingest with filters
                 2. run ingest `self.run_command()` defaults to `ingestion`
             """
-            self.build_config_file(
-                E2EType.INGEST_DB_FILTER_TABLE, {"excludes": self.get_includes_tables()}
-            )
+            self.build_config_file(E2EType.INGEST_DB_FILTER_TABLE, {"excludes": self.get_includes_tables()})
             result = self.run_command()
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_tables_excludes(source_status, sink_status)
@@ -286,17 +277,13 @@ class CliDBBase(TestCase):
             self.build_config_file()
             self.run_command()
             self.add_table_profile_config()
-            table: Table = self.openmetadata.get_by_name(
-                Table, self.get_data_quality_table(), nullable=False
-            )
+            table: Table = self.openmetadata.get_by_name(Table, self.get_data_quality_table(), nullable=False)
             test_case_definitions = self.get_test_case_definitions()
             self.build_config_file(
                 E2EType.DATA_QUALITY,
                 {
                     "entity_fqn": table.fullyQualifiedName.root,
-                    "test_case_definitions": TypeAdapter(
-                        List[TestCaseDefinition]
-                    ).dump_python(test_case_definitions),
+                    "test_case_definitions": TypeAdapter(List[TestCaseDefinition]).dump_python(test_case_definitions),
                 },
             )
             result = self.run_command("test")
@@ -316,16 +303,12 @@ class CliDBBase(TestCase):
                 try:
                     for test_case, expected in zip(test_case_entities, expected):
                         assert_equal_pydantic_objects(
-                            expected.model_copy(
-                                update={"timestamp": test_case.testCaseResult.timestamp}
-                            ),
+                            expected.model_copy(update={"timestamp": test_case.testCaseResult.timestamp}),
                             test_case.testCaseResult,
                         )
                 finally:
                     for tc in test_case_entities:
-                        self.openmetadata.delete(
-                            OMTestCase, tc.id, recursive=True, hard_delete=True
-                        )
+                        self.openmetadata.delete(OMTestCase, tc.id, recursive=True, hard_delete=True)
             except AssertionError:
                 print(result)
                 raise
@@ -334,9 +317,7 @@ class CliDBBase(TestCase):
             return self.openmetadata.get_by_name(entity=Table, fqn=table_name_fqn)
 
         def retrieve_sample_data(self, table_name_fqn: str) -> Table:
-            table: Table = self.openmetadata.get_by_name(
-                entity=Table, fqn=table_name_fqn
-            )
+            table: Table = self.openmetadata.get_by_name(entity=Table, fqn=table_name_fqn)
             return self.openmetadata.get_sample_data(table=table)
 
         def retrieve_profile(self, table_fqn: str) -> Table:
@@ -345,9 +326,7 @@ class CliDBBase(TestCase):
             return table
 
         def retrieve_lineage(self, entity_fqn: str) -> dict:
-            return self.openmetadata.client.get(
-                f"/lineage/table/name/{entity_fqn}?upstreamDepth=3&downstreamDepth=3"
-            )
+            return self.openmetadata.client.get(f"/lineage/table/name/{entity_fqn}?upstreamDepth=3&downstreamDepth=3")
 
         @staticmethod
         @abstractmethod
@@ -363,63 +342,43 @@ class CliDBBase(TestCase):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_for_vanilla_ingestion(
-            self, source_status: Status, sink_status: Status
-        ) -> None:
+        def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_for_test_lineage(
-            self, source_status: Status, sink_status: Status
-        ) -> None:
+        def assert_for_test_lineage(self, source_status: Status, sink_status: Status) -> None:
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_for_table_with_profiler(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_for_table_with_profiler(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_auto_classification_sample_data(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_auto_classification_sample_data(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_for_table_with_profiler_time_partition(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_for_table_with_profiler_time_partition(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_for_delete_table_is_marked_as_deleted(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_for_delete_table_is_marked_as_deleted(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_filtered_schemas_includes(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_filtered_schemas_includes(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_filtered_schemas_excludes(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_filtered_schemas_excludes(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_filtered_tables_includes(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_filtered_tables_includes(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_filtered_tables_excludes(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_filtered_tables_excludes(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod

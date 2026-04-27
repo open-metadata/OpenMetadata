@@ -13,6 +13,7 @@
 Models to map profiler definitions
 JSON workflows to the profiler
 """
+
 from typing import List, Optional, Type
 
 from pydantic import BaseModel, BeforeValidator
@@ -37,9 +38,7 @@ def valid_metric(value: str, metrics: Inject[Type[MetricRegistry]] = None):
             "MetricRegistry dependency not found. Please ensure the MetricRegistry is properly registered."
         )
     if not metrics.get(value):
-        raise ValueError(
-            f"Metric name {value} is not a proper metric name from the Registry"
-        )
+        raise ValueError(f"Metric name {value} is not a proper metric name from the Registry")
 
     return value
 
@@ -54,7 +53,5 @@ class ProfilerDef(BaseModel):
     """
 
     name: str  # Profiler name
-    timeout_seconds: Optional[
-        int
-    ] = None  # Stop running a query after X seconds and continue
+    timeout_seconds: Optional[int] = None  # Stop running a query after X seconds and continue
     metrics: Optional[List[ValidMetric]] = None

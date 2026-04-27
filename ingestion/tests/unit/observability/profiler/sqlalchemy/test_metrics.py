@@ -12,6 +12,7 @@
 """
 Test Metrics behavior
 """
+
 import datetime
 import math
 import os
@@ -64,9 +65,7 @@ class MetricsTest(TestCase):
 
     worker_id = os.environ.get("PYTEST_XDIST_WORKER", "master")
     worker_suffix = f"_{worker_id}" if worker_id != "master" else ""
-    db_path = os.path.join(
-        os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}{worker_suffix}.db"
-    )
+    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}{worker_suffix}.db")
     sqlite_conn = SQLiteConnection(
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
@@ -198,13 +197,9 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
-        assert res.get(User.dob.name).get(Metrics.min.name) == datetime.datetime(
-            1982, 2, 2
-        )
+        assert res.get(User.dob.name).get(Metrics.min.name) == datetime.datetime(1982, 2, 2)
         assert res.get(User.tob.name).get(Metrics.min.name) == datetime.time(9, 3, 25)
-        assert res.get(User.doe.name).get(Metrics.min.name) == datetime.date(
-            2009, 11, 11
-        )
+        assert res.get(User.doe.name).get(Metrics.min.name) == datetime.date(2009, 11, 11)
 
     def test_latest_time(self):
         """
@@ -216,13 +211,9 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
-        assert res.get(User.dob.name).get(Metrics.max.name) == datetime.datetime(
-            1992, 5, 17
-        )
+        assert res.get(User.dob.name).get(Metrics.max.name) == datetime.datetime(1992, 5, 17)
         assert res.get(User.tob.name).get(Metrics.max.name) == datetime.time(11, 2, 32)
-        assert res.get(User.doe.name).get(Metrics.max.name) == datetime.date(
-            2020, 1, 12
-        )
+        assert res.get(User.doe.name).get(Metrics.max.name) == datetime.date(2020, 1, 12)
 
     def test_null_count(self):
         """
@@ -254,10 +245,7 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
-        assert (
-            str(round(res.get(User.nickname.name).get(Metrics.nullProportion.name), 2))
-            == "0.67"
-        )
+        assert str(round(res.get(User.nickname.name).get(Metrics.nullProportion.name), 2)) == "0.67"
 
     def test_non_numeric(self):
         """
@@ -270,9 +258,7 @@ class MetricsTest(TestCase):
             float_col = Column(Float())  # date of employment
 
         NonNumericNumbers.__table__.create(bind=self.engine)
-        with patch.object(
-            SQASampler, "build_table_orm", return_value=NonNumericNumbers
-        ):
+        with patch.object(SQASampler, "build_table_orm", return_value=NonNumericNumbers):
             sampler = SQASampler(
                 service_connection_config=self.sqlite_conn,
                 ometa_client=None,
@@ -311,15 +297,11 @@ class MetricsTest(TestCase):
         )
         res = profiler.compute_metrics()._column_results
 
-        assert (
-            res.get(NonNumericNumbers.float_col.name).get(Metrics.nullCount.name) == 2
-        )
+        assert res.get(NonNumericNumbers.float_col.name).get(Metrics.nullCount.name) == 2
         assert (
             str(
                 round(
-                    res.get(NonNumericNumbers.float_col.name).get(
-                        Metrics.nullProportion.name
-                    ),
+                    res.get(NonNumericNumbers.float_col.name).get(Metrics.nullProportion.name),
                     2,
                 )
             )
@@ -545,9 +527,7 @@ class MetricsTest(TestCase):
 
         # email column has all unique values: ["john1@example.com", "jane@example.com", "john2@example.com"]
         # Count: 3, DistinctCount: 3
-        email_cardinality = res.get(User.email.name)[
-            Metrics.cardinalityDistribution.name
-        ]
+        email_cardinality = res.get(User.email.name)[Metrics.cardinalityDistribution.name]
 
         # Should return the allValuesUnique flag
         assert email_cardinality is not None
@@ -584,6 +564,7 @@ class MetricsTest(TestCase):
         """
         Check cardinality distribution with empty table
         """
+
         # Create a new table with no data
         class EmptyUser(Base):
             __tablename__ = "empty_users"
@@ -624,9 +605,7 @@ class MetricsTest(TestCase):
         )
 
         # Should return None for empty table
-        name_cardinality = res.get(EmptyUser.name.name)[
-            Metrics.cardinalityDistribution.name
-        ]
+        name_cardinality = res.get(EmptyUser.name.name)[Metrics.cardinalityDistribution.name]
         assert name_cardinality is None
 
     def test_like_count(self):
@@ -894,10 +873,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert (
-            str(round(res.get(User.name.name)[Metrics.uniqueProportion.name], 2))
-            == "0.33"
-        )
+        assert str(round(res.get(User.name.name)[Metrics.uniqueProportion.name], 2)) == "0.33"
 
     def test_distinct_count(self):
         """
@@ -933,10 +909,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert (
-            str(round(res.get(User.name.name)[Metrics.distinctProportion.name], 2))
-            == "0.67"
-        )
+        assert str(round(res.get(User.name.name)[Metrics.distinctProportion.name], 2)) == "0.67"
 
     def test_count_in_set(self):
         """

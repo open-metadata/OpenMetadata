@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """MinIO and S3 container classification test fixtures"""
+
 import csv
 import io
 import json
@@ -76,9 +77,7 @@ def mock_cloudwatch():
     def get_client_override(self, service_name):
         if service_name == "cloudwatch":
             mock_cw = MagicMock()
-            mock_cw.get_metric_data.return_value = {
-                "MetricDataResults": [{"StatusCode": "Complete", "Values": [0]}]
-            }
+            mock_cw.get_metric_data.return_value = {"MetricDataResults": [{"StatusCode": "Complete", "Values": [0]}]}
             mock_cw.list_metrics.return_value = {"Metrics": []}
             return mock_cw
         return original_get_client(self, service_name)
@@ -239,9 +238,7 @@ def pii_employees_parquet():
 
 
 @pytest.fixture(scope="module")
-def upload_test_data(
-    minio, bucket_name, pii_customers_csv, non_pii_orders_csv, pii_employees_parquet
-):
+def upload_test_data(minio, bucket_name, pii_customers_csv, non_pii_orders_csv, pii_employees_parquet):
     """Upload test data files to MinIO"""
     _, minio_client = minio
 
@@ -337,9 +334,7 @@ def storage_service_config(minio, service_name, bucket_name):
 
 
 @pytest.fixture(scope="module")
-def ingest_storage_metadata(
-    metadata, storage_service_config, upload_test_data, run_workflow
-):
+def ingest_storage_metadata(metadata, storage_service_config, upload_test_data, run_workflow):
     """Ingest storage service metadata"""
     workflow = run_workflow(MetadataWorkflow, storage_service_config)
     yield workflow
@@ -372,9 +367,7 @@ def run_workflow():
 def bot_metadata(metadata) -> OpenMetadata:
     """Get the bot ometa for auto-classification"""
     automator_bot = metadata.get_by_name(entity=User, fqn="ingestion-bot")
-    automator_bot_auth = metadata.get_by_id(
-        entity=AuthenticationMechanism, entity_id=automator_bot.id
-    )
+    automator_bot_auth = metadata.get_by_id(entity=AuthenticationMechanism, entity_id=automator_bot.id)
     return int_admin_ometa(jwt=automator_bot_auth.config.JWTToken.get_secret_value())
 
 
@@ -493,9 +486,7 @@ def non_sensitive_pii_tag(
 
 
 @pytest.fixture(scope="module")
-def autoclassification_config(
-    storage_service_config, bot_workflow_config, bucket_name, service_name, minio
-):
+def autoclassification_config(storage_service_config, bot_workflow_config, bucket_name, service_name, minio):
     minio_container, _ = minio
     return {
         "source": {

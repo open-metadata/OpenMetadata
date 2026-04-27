@@ -12,6 +12,7 @@
 """
 Common Class For Profiler Converter.
 """
+
 from typing import Dict, Set
 
 import sqlalchemy
@@ -76,9 +77,7 @@ class CommonMapTypes:
         """returns an ORM type"""
 
         if col.arrayDataType:
-            return self._TYPE_MAP.get(col.dataType)(
-                item_type=self._TYPE_MAP.get(col.arrayDataType)
-            )
+            return self._TYPE_MAP.get(col.dataType)(item_type=self._TYPE_MAP.get(col.arrayDataType))
         return self.return_custom_type(col, table_service_type)
 
     def return_custom_type(self, col: Column, _):

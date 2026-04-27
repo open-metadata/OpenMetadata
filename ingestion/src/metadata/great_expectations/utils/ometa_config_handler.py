@@ -46,9 +46,7 @@ def create_jinja_environment(template_path: str) -> Environment:
         template_path: path to the folder holding the template
     """
 
-    environment = Environment(
-        loader=FileSystemLoader(template_path), autoescape=select_autoescape()
-    )
+    environment = Environment(loader=FileSystemLoader(template_path), autoescape=select_autoescape())
     environment.globals["env"] = env
 
     return environment
@@ -65,9 +63,7 @@ def render_template(environment: Environment, template_file: str = "config.yml")
     """
     file_type = os.path.splitext(template_file)
     if file_type[1] not in {".yaml", ".yml"}:
-        raise TypeError(
-            f"Unsupported file type: {file_type}. Type should be `.yaml` or `.yml`"
-        )
+        raise TypeError(f"Unsupported file type: {file_type}. Type should be `.yaml` or `.yml`")
 
     try:
         tmplt = environment.get_template(template_file)
@@ -79,9 +75,7 @@ def render_template(environment: Environment, template_file: str = "config.yml")
             tmplt = environment.get_template("config.yaml")
             return tmplt.render()
         except TemplateNotFound as exc:
-            raise TemplateNotFound(
-                f"Config file at {environment.loader.searchpath} not found"
-            ) from exc
+            raise TemplateNotFound(f"Config file at {environment.loader.searchpath} not found") from exc
 
 
 def create_ometa_connection_obj(config: str) -> OpenMetadataConnection:

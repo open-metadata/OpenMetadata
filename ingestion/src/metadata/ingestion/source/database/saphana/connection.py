@@ -11,6 +11,7 @@
 """
 Source connection handler
 """
+
 from functools import partial
 from typing import Callable, Dict, Optional
 from urllib.parse import quote_plus
@@ -71,9 +72,7 @@ def get_database_connection_url(connection: SapHanaConnection) -> str:
     if options:
         if hasattr(conn, "database") and not conn.database:
             url += "/"
-        params = "&".join(
-            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
-        )
+        params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
         url = f"{url}?{params}"
     return url
 
@@ -111,9 +110,7 @@ def get_connection(connection: SapHanaConnection) -> Engine:
     raise ValueError("Unrecognized SAP Hana connection type!")
 
 
-def _build_test_fn_dict(
-    engine: Engine, service_connection: SapHanaConnection
-) -> Dict[str, Callable]:
+def _build_test_fn_dict(engine: Engine, service_connection: SapHanaConnection) -> Dict[str, Callable]:
     """
     Build the test connection steps dict
     """

@@ -49,9 +49,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     @blueprint.route("/deploy", methods=["POST"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_CREATE, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_CREATE, permissions.RESOURCE_DAG)])
     def deploy_dag() -> Response:
         """
         Custom Function for the deploy_dag API
@@ -68,9 +66,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
                     error="Did not receive any JSON request to deploy",
                 )
 
-            ingestion_pipeline = parse_ingestion_pipeline_config_gracefully(
-                json_request
-            )
+            ingestion_pipeline = parse_ingestion_pipeline_config_gracefully(json_request)
 
             deployer = DagDeployer(ingestion_pipeline)
             response = deployer.deploy()

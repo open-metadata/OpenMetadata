@@ -11,7 +11,8 @@
 """
 Factory for creating Presidio recognizers from OpenMetadata recognizer configurations.
 """
-import re
+
+import re  # noqa: I001
 from typing import Any, Callable, Dict, List, Optional, cast
 
 from presidio_analyzer import EntityRecognizer
@@ -42,9 +43,7 @@ class PresidioRecognizerFactory:
     """Factory for creating Presidio recognizers from OpenMetadata configurations."""
 
     @staticmethod
-    def create_recognizer(
-        recognizer_config: Recognizer, tag_fqn: str = "Unknown"
-    ) -> Optional[EntityRecognizer]:
+    def create_recognizer(recognizer_config: Recognizer, tag_fqn: str = "Unknown") -> Optional[EntityRecognizer]:
         """
         Create a Presidio recognizer from an OpenMetadata recognizer configuration.
 
@@ -61,27 +60,15 @@ class PresidioRecognizerFactory:
         config = recognizer_config.recognizerConfig.root
 
         if isinstance(config, PatternRecognizer):
-            recognizer = PresidioRecognizerFactory._create_pattern_recognizer(
-                config, recognizer_config, tag_fqn
-            )
+            recognizer = PresidioRecognizerFactory._create_pattern_recognizer(config, recognizer_config, tag_fqn)
         elif isinstance(config, ExactTermsRecognizer):
-            recognizer = PresidioRecognizerFactory._create_exact_terms_recognizer(
-                config, recognizer_config, tag_fqn
-            )
+            recognizer = PresidioRecognizerFactory._create_exact_terms_recognizer(config, recognizer_config, tag_fqn)
         elif isinstance(config, ContextRecognizer):
-            recognizer = PresidioRecognizerFactory._create_context_recognizer(
-                config, recognizer_config, tag_fqn
-            )
+            recognizer = PresidioRecognizerFactory._create_context_recognizer(config, recognizer_config, tag_fqn)
         elif isinstance(config, CustomRecognizer):
-            recognizer = PresidioRecognizerFactory._create_custom_recognizer(
-                config, recognizer_config
-            )
-        elif isinstance(
-            config, PredefinedRecognizer
-        ):  # pyright: ignore[reportUnnecessaryIsInstance]
-            recognizer = PresidioRecognizerFactory._create_predefined_recognizer(
-                config, recognizer_config
-            )
+            recognizer = PresidioRecognizerFactory._create_custom_recognizer(config, recognizer_config)
+        elif isinstance(config, PredefinedRecognizer):  # pyright: ignore[reportUnnecessaryIsInstance]
+            recognizer = PresidioRecognizerFactory._create_predefined_recognizer(config, recognizer_config)
         else:
             logger.warning(f"Unknown recognizer type for {recognizer_config.name}")
             return None
@@ -136,9 +123,7 @@ class PresidioRecognizerFactory:
             name=recognizer_config.name.root,
             supported_language=config.supportedLanguage.value,
             context=config.context or [],
-            global_regex_flags=PresidioRecognizerFactory._get_regex_flags(
-                config.regexFlags
-            ),
+            global_regex_flags=PresidioRecognizerFactory._get_regex_flags(config.regexFlags),
         )
 
     @staticmethod
@@ -163,9 +148,7 @@ class PresidioRecognizerFactory:
             patterns=patterns,
             name=recognizer_config.name.root,
             supported_language=config.supportedLanguage.value,
-            global_regex_flags=PresidioRecognizerFactory._get_regex_flags(
-                config.regexFlags
-            ),
+            global_regex_flags=PresidioRecognizerFactory._get_regex_flags(config.regexFlags),
         )
 
     @staticmethod
@@ -181,9 +164,7 @@ class PresidioRecognizerFactory:
                 PresidioPattern(
                     name=f"context_{context_word}",
                     regex=pattern,
-                    score=(config.minScore + config.maxScore) / 2
-                    if config.minScore and config.maxScore
-                    else 0.6,
+                    score=(config.minScore + config.maxScore) / 2 if config.minScore and config.maxScore else 0.6,
                 )
             )
 
@@ -262,14 +243,10 @@ class PresidioRecognizerFactory:
             return recognizers
 
         for recognizer_config in tag.recognizers:
-            recognizer = PresidioRecognizerFactory.create_recognizer(
-                recognizer_config, tag_fqn
-            )
+            recognizer = PresidioRecognizerFactory.create_recognizer(recognizer_config, tag_fqn)
             if recognizer:
                 recognizers.append(recognizer)
-                logger.info(
-                    f"Created recognizer {recognizer_config.name} for tag {tag.name}"
-                )
+                logger.info(f"Created recognizer {recognizer_config.name} for tag {tag.name}")
 
         return recognizers
 
@@ -298,18 +275,14 @@ class RecognizerRegistry:
             logger.warning("Tag has no fullyQualifiedName, skipping tag registration")
             return
 
-        self.recognizers[
-            tag_fqn
-        ] = PresidioRecognizerFactory.create_recognizers_for_tag(tag)
+        self.recognizers[tag_fqn] = PresidioRecognizerFactory.create_recognizers_for_tag(tag)
         self.tag_priority[tag_fqn] = tag.autoClassificationPriority or 50
 
         # Calculate minimum confidence from all recognizers
         min_confidence = 1.0
         for recognizer_config in tag.recognizers or []:
             if recognizer_config.confidenceThreshold:
-                min_confidence = min(
-                    min_confidence, recognizer_config.confidenceThreshold
-                )
+                min_confidence = min(min_confidence, recognizer_config.confidenceThreshold)
         self.tag_confidence_threshold[tag_fqn] = min_confidence
 
     def get_recognizers_for_tag(self, tag_fqn: str) -> List[EntityRecognizer]:

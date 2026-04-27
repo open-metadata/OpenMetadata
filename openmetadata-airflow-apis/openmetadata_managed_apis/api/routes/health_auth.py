@@ -49,9 +49,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     @blueprint.route("/health-auth", methods=["GET"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_CREATE, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_CREATE, permissions.RESOURCE_DAG)])
     def health_auth():
         """
         /auth-health endpoint to check Airflow REST status without auth

@@ -11,6 +11,7 @@
 """
 Snowflake models
 """
+
 import urllib
 from datetime import datetime
 from typing import List, Optional
@@ -51,9 +52,7 @@ class SnowflakeStoredProcedure(BaseModel):
     owner: Optional[str] = Field(None, alias="OWNER")
     language: str = Field(..., alias="LANGUAGE")
     definition: Optional[str] = Field(None, alias="DEFINITION")
-    signature: Optional[str] = Field(
-        None, alias="SIGNATURE", description="Used to build the source URL"
-    )
+    signature: Optional[str] = Field(None, alias="SIGNATURE", description="Used to build the source URL")
     comment: Optional[str] = Field(None, alias="COMMENT")
     procedure_type: Optional[str] = Field(None, alias="PROCEDURE_TYPE")
 
@@ -141,9 +140,7 @@ class SnowflakeQueryLogEntry(BaseModel):
     rows_deleted: Optional[int] = None
 
     @staticmethod
-    def get_for_table(
-        session: Session, tablename: str, service_connection_config: SnowflakeConnection
-    ):
+    def get_for_table(session: Session, tablename: str, service_connection_config: SnowflakeConnection):
         rows = session.execute(
             text(
                 SNOWFLAKE_QUERY_LOG_QUERY.format(
@@ -181,9 +178,7 @@ class SnowflakeDynamicTableRefreshEntry(BaseModel):
     rows_deleted: Optional[int] = None
 
     @staticmethod
-    def get_for_table(
-        session: Session, tablename: str, service_connection_config: SnowflakeConnection
-    ):
+    def get_for_table(session: Session, tablename: str, service_connection_config: SnowflakeConnection):
         rows = session.execute(
             text(
                 SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY.format(

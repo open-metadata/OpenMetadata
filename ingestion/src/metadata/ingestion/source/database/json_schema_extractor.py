@@ -11,6 +11,7 @@
 """
 Utility module to extract JSON schema from sampled JSON data.
 """
+
 import json
 import traceback
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -96,9 +97,7 @@ def _parse_json_values(json_values: List[Any]) -> List[Dict]:
         try:
             if isinstance(value, str):
                 if len(value) > MAX_JSON_VALUE_SIZE:
-                    logger.debug(
-                        f"Skipping JSON value exceeding size limit: {len(value)} bytes"
-                    )
+                    logger.debug(f"Skipping JSON value exceeding size limit: {len(value)} bytes")
                     continue
                 parsed_value = json.loads(value)
             elif isinstance(value, dict):
@@ -209,9 +208,7 @@ def _build_json_schema(structure: Union[Dict, Any]) -> Dict:
         return {"type": json_type}
 
 
-def _build_column_children(
-    structure: Dict, parent_name: Optional[str] = None
-) -> Optional[List[Column]]:
+def _build_column_children(structure: Dict, parent_name: Optional[str] = None) -> Optional[List[Column]]:
     """
     Build Column children from the merged JSON structure.
     This creates a hierarchical representation suitable for the UI.
@@ -254,9 +251,7 @@ def _create_child_column(key: str, value: Any) -> Optional[Column]:
             if value:
                 first_item = value[0]
                 item_type_name = type(first_item).__name__
-                array_data_type = _PYTHON_TYPE_TO_DATA_TYPE.get(
-                    item_type_name, DataType.STRING
-                )
+                array_data_type = _PYTHON_TYPE_TO_DATA_TYPE.get(item_type_name, DataType.STRING)
                 column_dict["arrayDataType"] = array_data_type
 
                 if isinstance(first_item, dict):

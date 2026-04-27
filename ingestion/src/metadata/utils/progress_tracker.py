@@ -30,12 +30,8 @@ class EntityProgress(BaseModel):
 
     total: int = Field(default=0, description="Total entities to process")
     processed: int = Field(default=0, description="Entities processed so far")
-    start_time: Optional[float] = Field(
-        default=None, description="When processing started"
-    )
-    processing_times: list = Field(
-        default_factory=list, description="Rolling window of processing times"
-    )
+    start_time: Optional[float] = Field(default=None, description="When processing started")
+    processing_times: list = Field(default_factory=list, description="Rolling window of processing times")
 
     class Config:
         arbitrary_types_allowed = True
@@ -115,9 +111,7 @@ class ProgressTrackerState(metaclass=Singleton):
                 self._progress[entity_type].start_time = time()
             self._progress[entity_type].total += count
 
-    def increment_processed(
-        self, entity_type: str, processing_time: Optional[float] = None
-    ) -> None:
+    def increment_processed(self, entity_type: str, processing_time: Optional[float] = None) -> None:
         """
         Increment processed count and optionally record processing time.
 
@@ -135,18 +129,12 @@ class ProgressTrackerState(metaclass=Singleton):
                 times = self._progress[entity_type].processing_times
                 times.append(processing_time)
                 if len(times) > self._rolling_window_size:
-                    self._progress[entity_type].processing_times = times[
-                        -self._rolling_window_size :
-                    ]
+                    self._progress[entity_type].processing_times = times[-self._rolling_window_size :]
 
     def get_progress(self, entity_type: str) -> Optional[EntityProgress]:
         """Get progress for a specific entity type"""
         with self._lock:
-            return (
-                self._progress[entity_type].model_copy()
-                if entity_type in self._progress
-                else None
-            )
+            return self._progress[entity_type].model_copy() if entity_type in self._progress else None
 
     def get_all_progress(self) -> Dict[str, EntityProgress]:
         """Get progress snapshot for all entity types"""

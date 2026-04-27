@@ -11,6 +11,7 @@
 """
 Python API REST wrapper and helpers
 """
+
 import time
 import traceback
 from datetime import datetime, timezone
@@ -178,9 +179,7 @@ class REST:
                 if isinstance(expiry, datetime):
                     self.config.expires_in = expiry.timestamp() - 120
                 else:
-                    self.config.expires_in = (
-                        datetime.now(timezone.utc).timestamp() + expiry - 120
-                    )
+                    self.config.expires_in = datetime.now(timezone.utc).timestamp() + expiry - 120
 
         if self.config.auth_header:
             headers[self.config.auth_header] = (
@@ -272,9 +271,7 @@ class REST:
                     return resp
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Unexpected error while returning response {resp} in json format - {exc}"
-                    )
+                    logger.warning(f"Unexpected error while returning response {resp} in json format - {exc}")
 
         except HTTPError as http_error:
             # retry if we hit Rate Limit
@@ -294,15 +291,11 @@ class REST:
                 return self._session.request(method, url, **opts).json()
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unexpected error while retrying after a connection error - {exc}"
-                )
+                logger.warning(f"Unexpected error while retrying after a connection error - {exc}")
                 raise conn
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unexpected error calling [{url}] with method [{method}]: {exc}"
-            )
+            logger.warning(f"Unexpected error calling [{url}] with method [{method}]: {exc}")
 
         return None
 

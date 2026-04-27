@@ -219,11 +219,5 @@ def test_no_sample_data_when_global_config_disabled(
     table = metadata.get_by_name(entity=Table, fqn=table_fqn)
     result = metadata.get_sample_data(table)
 
-    has_sample_data = (
-        result is not None
-        and result.sampleData is not None
-        and len(result.sampleData.rows) > 0
-    )
-    assert (
-        not has_sample_data
-    ), "Expected no sample data when global storeSampleData is disabled"
+    has_sample_data = result is not None and result.sampleData is not None and len(result.sampleData.rows) > 0
+    assert not has_sample_data, "Expected no sample data when global storeSampleData is disabled"

@@ -11,6 +11,7 @@
 """
 Base sampler for storage services (S3, GCS, etc.)
 """
+
 from abc import abstractmethod
 from typing import Any, List, Optional
 
@@ -160,23 +161,16 @@ class StorageSampler(SamplerInterface):
             return self._columns
 
         if not self.entity.dataModel or not self.entity.dataModel.columns:
-            logger.warning(
-                f"Container {self.entity.fullyQualifiedName.root} has no data model columns"
-            )
+            logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no data model columns")
             return []
 
-        self._columns = [
-            SQALikeColumn(col.name.root, col.dataType)
-            for col in self.entity.dataModel.columns
-        ]
+        self._columns = [SQALikeColumn(col.name.root, col.dataType) for col in self.entity.dataModel.columns]
         return self._columns
 
     def _get_file_format(self) -> Optional[SupportedTypes]:
         """Extract file format from container"""
         if not self.entity.fileFormats or len(self.entity.fileFormats) == 0:
-            logger.warning(
-                f"Container {self.entity.fullyQualifiedName.root} has no file formats"
-            )
+            logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no file formats")
             return None
 
         file_format = self.entity.fileFormats[0].value
@@ -190,9 +184,7 @@ class StorageSampler(SamplerInterface):
         """Fetch sample data from storage container"""
         sample_file_path = self._get_sample_file_path()
         if not sample_file_path:
-            logger.warning(
-                f"No sample file found for container {self.entity.fullyQualifiedName.root}"
-            )
+            logger.warning(f"No sample file found for container {self.entity.fullyQualifiedName.root}")
             return TableData(columns=[], rows=[])
 
         bucket_name = self._get_bucket_name()
@@ -214,9 +206,7 @@ class StorageSampler(SamplerInterface):
 
             if df_iterator:
                 df = next(df_iterator)
-                col_names = (
-                    [col.name for col in columns] if columns else df.columns.tolist()
-                )
+                col_names = [col.name for col in columns] if columns else df.columns.tolist()
                 rows = [
                     [self._truncate_cell(cell) for cell in row]
                     for row in df[col_names].values.tolist()[: self.sample_limit]
@@ -224,9 +214,7 @@ class StorageSampler(SamplerInterface):
                 return TableData(columns=col_names, rows=rows)
 
         except Exception as exc:
-            logger.warning(
-                f"Failed to fetch sample data for {self.entity.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Failed to fetch sample data for {self.entity.fullyQualifiedName.root}: {exc}")
 
         return TableData(columns=[], rows=[])
 

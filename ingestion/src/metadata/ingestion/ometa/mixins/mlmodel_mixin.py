@@ -13,6 +13,7 @@ Mixin class containing Lineage specific methods
 
 To be used by OpenMetadata class
 """
+
 import traceback
 from typing import Any, Dict, Optional
 
@@ -55,9 +56,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
 
     client: REST
 
-    def add_mlmodel_lineage(
-        self, model: MlModel, description: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def add_mlmodel_lineage(self, model: MlModel, description: Optional[str] = None) -> Dict[str, Any]:
         """
         Iterates over MlModel's Feature Sources and
         add the lineage information.
@@ -83,9 +82,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
                     edge=EntitiesEdge(
                         description=description,
                         fromEntity=entity_ref,
-                        toEntity=self.get_entity_reference(
-                            entity=MlModel, fqn=model.fullyQualifiedName
-                        ),
+                        toEntity=self.get_entity_reference(entity=MlModel, fqn=model.fullyQualifiedName),
                     ),
                 )
             )
@@ -136,18 +133,13 @@ class OMetaMlModelMixin(OMetaLineageMixin):
             sourceConfig=SourceConfig(config=MlModelServiceMetadataPipeline()),
         )
 
-        service = self.get_service_or_create(
-            entity=MlModelService, config=source_config
-        )
+        service = self.get_service_or_create(entity=MlModelService, config=source_config)
 
         return CreateMlModelRequest(
             name=name,
             description=description,
             algorithm=model.__class__.__name__,
-            mlFeatures=[
-                MlFeature(name=format_name(feature))
-                for feature in model.feature_names_in_
-            ],
+            mlFeatures=[MlFeature(name=format_name(feature)) for feature in model.feature_names_in_],
             mlHyperParameters=[
                 MlHyperParameter(
                     name=key,
