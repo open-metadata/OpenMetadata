@@ -20,7 +20,6 @@ import { get, isEmpty, isUndefined } from 'lodash';
 import { LONG_DESCRIPTION_END_TEXT } from '../constant/domain';
 import { SidebarItem } from '../constant/sidebar';
 import { PolicyClass } from '../support/access-control/PoliciesClass';
-import { TagClass } from '../support/tag/TagClass';
 import { RolesClass } from '../support/access-control/RolesClass';
 import { DataProduct } from '../support/domain/DataProduct';
 import { Domain } from '../support/domain/Domain';
@@ -30,6 +29,7 @@ import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
+import { TagClass } from '../support/tag/TagClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
@@ -106,10 +106,7 @@ export const assignCertificationForWidget = async (
   );
 };
 
-export const removeTierFromWidget = async (
-  page: Page,
-  endpoint: string
-) => {
+export const removeTierFromWidget = async (page: Page, endpoint: string) => {
   await page.getByTestId('edit-tier').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -894,41 +891,35 @@ export const verifyDataProductAssetsAfterDelete = async (
     );
   });
 
-  await test.step(
-    'Remove Data Product Sales and Create the same again',
-    async () => {
-      // Remove sales data product
-      await dataProduct1.delete(apiContext);
+  await test.step('Remove Data Product Sales and Create the same again', async () => {
+    // Remove sales data product
+    await dataProduct1.delete(apiContext);
 
-      // Create sales data product again
-      await redirectToHomePage(page);
+    // Create sales data product again
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    if (subDomain) {
+      await selectSubDomain(page, domain.data, subDomain.data);
+    } else {
+      await selectDomain(page, domain.data);
+    }
+
+    await createDataProduct(page, newDataProduct1.data);
+  });
+
+  await test.step('Verify assets are not present in the newly created data product', async () => {
+    await redirectToHomePage(page);
+
+    if (subDomain) {
       await sidebarClick(page, SidebarItem.DOMAIN);
-      if (subDomain) {
-        await selectSubDomain(page, domain.data, subDomain.data);
-      } else {
-        await selectDomain(page, domain.data);
-      }
-
-      await createDataProduct(page, newDataProduct1.data);
+      await selectSubDomain(page, domain.data, subDomain.data);
+      await selectDataProductFromTab(page, newDataProduct1.data);
+    } else {
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, newDataProduct1.data);
     }
-  );
-
-  await test.step(
-    'Verify assets are not present in the newly created data product',
-    async () => {
-      await redirectToHomePage(page);
-
-      if (subDomain) {
-        await sidebarClick(page, SidebarItem.DOMAIN);
-        await selectSubDomain(page, domain.data, subDomain.data);
-        await selectDataProductFromTab(page, newDataProduct1.data);
-      } else {
-        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-        await selectDataProduct(page, newDataProduct1.data);
-      }
-      await checkAssetsCount(page, 0);
-    }
-  );
+    await checkAssetsCount(page, 0);
+  });
 };
 
 export const addTagsAndGlossaryToDomain = async (
@@ -1378,7 +1369,9 @@ export const verifyDataProductsCount = async (
         },
       },
     });
-    const searchUrl = `/api/v1/search/query?q=&index=data_product_search_index&from=0&size=0&deleted=false&query_filter=${encodeURIComponent(queryFilter)}`;
+    const searchUrl = `/api/v1/search/query?q=&index=data_product_search_index&from=0&size=0&deleted=false&query_filter=${encodeURIComponent(
+      queryFilter
+    )}`;
 
     await expect
       .poll(
@@ -1439,8 +1432,8 @@ export const navigateToSubDomain = async (
 export const navigateToPortsTab = async (page: Page) => {
   await page.waitForTimeout(2000);
 
-  const portsViewResponse = page.waitForResponse(
-    (response) => response.url().includes('/portsView')
+  const portsViewResponse = page.waitForResponse((response) =>
+    response.url().includes('/portsView')
   );
   await page.getByTestId('input_output_ports').click();
   await portsViewResponse;
@@ -1503,7 +1496,7 @@ export const addInputPortToDataProduct = async (
   const displayName = get(asset, 'entityResponseData.displayName') ?? name;
 
   await expect(page.getByTestId('add-input-port-button')).toBeEnabled({
-    timeout: 10000
+    timeout: 10000,
   });
 
   await page.getByTestId('add-input-port-button').click();
@@ -1546,7 +1539,7 @@ export const addOutputPortToDataProduct = async (
   const displayName = get(asset, 'entityResponseData.displayName') ?? name;
 
   await expect(page.getByTestId('add-output-port-button')).toBeEnabled({
-    timeout: 10000
+    timeout: 10000,
   });
 
   await page.getByTestId('add-output-port-button').click();
@@ -1635,25 +1628,22 @@ export const selectDomainFromNavbar = async (
   page: Page,
   domain: Domain['responseData']
 ) => {
-  await page.getByTestId('domain-dropdown').click();
-  await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
-    state: 'visible',
-  });
+  const domainDropdown = page.getByTestId('domain-dropdown');
+  const domainTree = page.getByTestId('domain-selectable-tree');
+  const searchTerm = domain.displayName ?? domain.name;
 
-  const searchDomainRes = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes('domain_search_index')
-  );
+  await domainDropdown.click();
   await page
     .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.displayName);
-  await searchDomainRes;
+    .waitFor({ state: 'visible' });
 
-  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
-  await tagSelector.waitFor({ state: 'visible' });
-  await tagSelector.click();
+  await domainTree.getByTestId('searchbar').waitFor({ state: 'visible' });
+
+  await domainTree.getByTestId('searchbar').click();
+  await page.keyboard.press('Control+a');
+  await domainTree.getByTestId('searchbar').pressSequentially(searchTerm);
+
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
   await waitForAllLoadersToDisappear(page);
   await page.waitForLoadState('networkidle');
 };
