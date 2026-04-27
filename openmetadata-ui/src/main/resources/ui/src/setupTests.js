@@ -402,6 +402,36 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Table: ({ children }) => children,
     Modal: ({ children }) => children,
     Dialog: ({ children }) => children,
+    Alert: ({ title, children, className, ...rest }) =>
+      React.createElement('div', { ...rest, className, role: 'alert' }, [
+        title ? React.createElement('strong', { key: 'title' }, title) : null,
+        children,
+      ]),
+    Skeleton: ({ className, style, 'data-testid': testId }) =>
+      React.createElement('div', {
+        className,
+        'data-testid': testId,
+        style,
+      }),
+    Checkbox: ({
+      label,
+      isSelected,
+      onChange,
+      isDisabled,
+      className,
+      'data-testid': testId,
+    }) =>
+      React.createElement(
+        'label',
+        { className, 'data-testid': testId },
+        React.createElement('input', {
+          checked: !!isSelected,
+          disabled: isDisabled,
+          onChange: (e) => onChange?.(e.target.checked),
+          type: 'checkbox',
+        }),
+        label
+      ),
   };
 });
 

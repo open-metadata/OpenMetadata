@@ -12,19 +12,14 @@
  */
 import {
   Alert,
+  Box,
   Button,
+  ButtonUtility,
   Checkbox,
-  Col,
   Dropdown,
-  MenuProps,
-  notification,
-  Row,
   Skeleton,
-  Space,
-  Tooltip,
   Typography,
-} from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isObject } from 'lodash';
@@ -44,10 +39,9 @@ import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.s
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
-import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
@@ -112,6 +106,12 @@ import {
 import './assets-tabs.less';
 import { AssetsOfEntity, AssetsTabsProps } from './AssetsTabs.interface';
 
+interface AssetMenuItem {
+  key: string;
+  label: ReactNode;
+  onClick?: () => void;
+}
+
 export interface AssetsTabRef {
   refreshAssets: () => void;
   closeSummaryPanel: () => void;
@@ -169,8 +169,6 @@ const AssetsTabs = forwardRef(
     );
 
     const [selectedCard, setSelectedCard] = useState<SourceType>();
-    const [visible, setVisible] = useState<boolean>(false);
-    const [openKeys, setOpenKeys] = useState<EntityType[]>([]);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [assetToDelete, setAssetToDelete] = useState<SourceType>();
     const [activeEntity, setActiveEntity] = useState<
@@ -200,15 +198,15 @@ const AssetsTabs = forwardRef(
 
     const entityTypeString = getEntityTypeString(type);
 
-    const handleMenuClick = ({ key }: { key: string }) => {
+    const handleMenuClick = (key: string) => {
       setSelectedFilter((prevSelected) => [...prevSelected, key]);
     };
 
-    const filterMenu: ItemType[] = useMemo(() => {
+    const filterMenu: AssetMenuItem[] = useMemo(() => {
       return filters.map((filter) => ({
         key: filter.key,
         label: translateWithNestedKeys(filter.label, filter.labelKeyOptions),
-        onClick: handleMenuClick,
+        onClick: () => handleMenuClick(filter.key),
       }));
     }, [filters]);
 
@@ -330,24 +328,6 @@ const AssetsTabs = forwardRef(
       ]
     );
 
-    const hideNotification = () => {
-      notification.close('asset-tab-notification-key');
-    };
-
-    const onOpenChange: MenuProps['onOpenChange'] = (keys) => {
-      const latestOpenKey = keys.find(
-        (key) => !openKeys.includes(key as EntityType)
-      );
-      if (ASSET_MENU_KEYS.includes(latestOpenKey as EntityType)) {
-        setOpenKeys(latestOpenKey ? [latestOpenKey as EntityType] : []);
-      } else {
-        setOpenKeys(keys as EntityType[]);
-      }
-    };
-
-    const handleAssetButtonVisibleChange = (newVisible: boolean) =>
-      setVisible(newVisible);
-
     const fetchCurrentEntity = useCallback(async () => {
       let data;
       const fqn = entityFqn ?? '';
@@ -442,28 +422,25 @@ const AssetsTabs = forwardRef(
           return baseMessage;
         }
 
+        const alertTitle =
+          assetsInOutputPorts.length === 1 && assetsToRemove.length === 1
+            ? t('message.remove-asset-will-also-remove-from-output-ports')
+            : t('message.remove-asset-output-port-warning');
+        const showAssetList =
+          assetsInOutputPorts.length > 1 || assetsToRemove.length > 1;
+
         return (
           <>
-            <Typography.Text>{baseMessage}</Typography.Text>
-            <Alert
-              showIcon
-              className="m-t-sm"
-              description={
-                assetsInOutputPorts.length > 1 || assetsToRemove.length > 1 ? (
-                  <ul className="m-b-0 p-l-md">
-                    {assetsInOutputPorts.map((asset) => (
-                      <li key={asset.id}>{getEntityName(asset)}</li>
-                    ))}
-                  </ul>
-                ) : undefined
-              }
-              message={
-                assetsInOutputPorts.length === 1 && assetsToRemove.length === 1
-                  ? t('message.remove-asset-will-also-remove-from-output-ports')
-                  : t('message.remove-asset-output-port-warning')
-              }
-              type="warning"
-            />
+            <Typography>{baseMessage}</Typography>
+            <Alert className="m-t-sm" title={alertTitle} variant="warning">
+              {showAssetList && (
+                <ul className="m-b-0 p-l-md">
+                  {assetsInOutputPorts.map((asset) => (
+                    <li key={asset.id}>{getEntityName(asset)}</li>
+                  ))}
+                </ul>
+              )}
+            </Alert>
           </>
         );
       },
@@ -479,7 +456,7 @@ const AssetsTabs = forwardRef(
       [getRemovalWarningContent]
     );
 
-    const items: ItemType[] = [
+    const items: AssetMenuItem[] = [
       {
         label: (
           <ManageButtonItemLabel
@@ -605,7 +582,6 @@ const AssetsTabs = forwardRef(
           setAssetRemoving(false);
           if (!dryRunImpactDetected) {
             onRemoveAsset?.();
-            hideNotification();
             setSelectedItems(new Map()); // Reset selected items
             if (type === AssetsOfEntity.DATA_PRODUCT) {
               fetchOutputPorts();
@@ -634,7 +610,6 @@ const AssetsTabs = forwardRef(
           }, ES_UPDATE_DELAY);
         });
         onRemoveAsset?.();
-        hideNotification();
         setSelectedItems(new Map());
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -681,7 +656,6 @@ const AssetsTabs = forwardRef(
     useEffect(() => {
       return () => {
         onAssetClick?.(undefined);
-        hideNotification();
       };
     }, []);
 
@@ -709,16 +683,14 @@ const AssetsTabs = forwardRef(
             }>
             {searchValue && type !== AssetsOfEntity.MY_DATA && (
               <div className="gap-4">
-                <Typography.Paragraph>
+                <Typography as="p">
                   {t('label.no-matching-data-asset')}
-                </Typography.Paragraph>
+                </Typography>
               </div>
             )}
             {isObject(noDataPlaceholder) && (
               <div className="gap-4">
-                <Typography.Paragraph>
-                  {noDataPlaceholder.message}
-                </Typography.Paragraph>
+                <Typography as="p">{noDataPlaceholder.message}</Typography>
               </div>
             )}
           </ErrorPlaceHolderNew>
@@ -746,10 +718,6 @@ const AssetsTabs = forwardRef(
       onAddAsset,
       isEntityDeleted,
     ]);
-
-    const renderDropdownContainer = useCallback((menus: ReactNode) => {
-      return <div data-testid="manage-dropdown-list-container">{menus}</div>;
-    }, []);
 
     const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
       const quickFilterQuery = getQuickFilterQuery(data);
@@ -784,27 +752,31 @@ const AssetsTabs = forwardRef(
                 showEntityIcon
                 actionPopoverContent={
                   isRemovable && permissions.EditAll ? (
-                    <Dropdown
-                      align={{ targetOffset: [-12, 0] }}
-                      dropdownRender={renderDropdownContainer}
-                      menu={{ items }}
-                      overlayClassName="manage-dropdown-list-container"
-                      overlayStyle={{ width: '350px' }}
-                      placement="bottomRight"
-                      trigger={['click']}>
-                      <Tooltip
-                        placement="topRight"
-                        title={t('label.manage-entity', {
+                    <Dropdown.Root>
+                      <ButtonUtility
+                        className="flex-center px-1.5 manage-dropdown-icon-button"
+                        data-testid={`manage-button-${_source.fullyQualifiedName}`}
+                        icon={IconDropdown}
+                        tooltip={t('label.manage-entity', {
                           entity: t('label.asset'),
-                        })}>
-                        <Button
-                          className={classNames('flex-center px-1.5')}
-                          data-testid={`manage-button-${_source.fullyQualifiedName}`}
-                          type="text">
-                          <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                        </Button>
-                      </Tooltip>
-                    </Dropdown>
+                        })}
+                      />
+                      <Dropdown.Popover
+                        className="manage-dropdown-list-container"
+                        placement="bottom right">
+                        <Dropdown.Menu>
+                          {items.map((item) => (
+                            <Dropdown.Item
+                              unstyled
+                              id={item.key}
+                              key={item.key}
+                              onAction={item.onClick}>
+                              {item.label}
+                            </Dropdown.Item>
+                          ))}
+                        </Dropdown.Menu>
+                      </Dropdown.Popover>
+                    </Dropdown.Root>
                   ) : null
                 }
                 checked={selectedItems?.has(_source.id ?? '')}
@@ -884,32 +856,22 @@ const AssetsTabs = forwardRef(
           <div className="w-full d-flex justify-between items-center m-b-sm">
             <Checkbox
               className="assets-checkbox p-x-sm"
-              onChange={(e) => onSelectAll(e.target.checked)}>
-              {t('label.select-field', {
+              label={t('label.select-field', {
                 field: t('label.all'),
               })}
-            </Checkbox>
+              onChange={onSelectAll}
+            />
           </div>
         )
       );
-    }, [
-      activeEntity,
-      isLoading,
-      data,
-      openKeys,
-      visible,
-      currentPage,
-      onOpenChange,
-      handleAssetButtonVisibleChange,
-      onSelectAll,
-    ]);
+    }, [activeEntity, isLoading, data, currentPage, onSelectAll]);
 
     const layout = useMemo(() => {
       return (
-        <Col span={24}>
+        <div>
           {assetsHeader}
           {assetListing}
-        </Col>
+        </div>
       );
     }, [assetsHeader, assetListing, selectedCard]);
 
@@ -1020,26 +982,35 @@ const AssetsTabs = forwardRef(
           )}
           data-testid="table-container"
           id="asset-tab">
-          <Row
-            className={classNames('filters-row gap-2 p-md', {
+          <Box
+            className={classNames('filters-row p-md', {
               'h-full': totalAssetCount === 0,
             })}
-            gutter={[0, 20]}>
+            direction="col"
+            gap={5}>
             {(type === AssetsOfEntity.MY_DATA || totalAssetCount > 0) && (
               <>
-                <Col className="d-flex gap-3" span={24}>
-                  <Dropdown
-                    menu={{
-                      items: filterMenu,
-                      selectedKeys: selectedFilter,
-                    }}
-                    trigger={['click']}>
-                    <Button
-                      className={classNames('feed-filter-icon')}
+                <Box className="d-flex gap-3" direction="row">
+                  <Dropdown.Root>
+                    <ButtonUtility
+                      className="feed-filter-icon"
                       data-testid="asset-filter-button"
-                      icon={<FilterIcon height={16} />}
+                      icon={FilterIcon}
+                      tooltip={t('label.filter-plural')}
                     />
-                  </Dropdown>
+                    <Dropdown.Popover>
+                      <Dropdown.Menu selectedKeys={selectedFilter}>
+                        {filterMenu.map((item) => (
+                          <Dropdown.Item
+                            id={item.key}
+                            key={item.key}
+                            onAction={item.onClick}>
+                            {item.label}
+                          </Dropdown.Item>
+                        ))}
+                      </Dropdown.Menu>
+                    </Dropdown.Popover>
+                  </Dropdown.Root>
                   <div className="flex-1">
                     <Searchbar
                       removeMargin
@@ -1051,9 +1022,9 @@ const AssetsTabs = forwardRef(
                       onSearch={setSearchValue}
                     />
                   </div>
-                </Col>
+                </Box>
                 {selectedFilter.length > 0 && (
-                  <Col className="searched-data-container" span={24}>
+                  <div className="searched-data-container">
                     <div className="d-flex justify-between">
                       <ExploreQuickFilters
                         aggregations={aggregations}
@@ -1063,35 +1034,35 @@ const AssetsTabs = forwardRef(
                         onFieldValueSelect={handleQuickFiltersValueSelect}
                       />
                       {quickFilterQuery && (
-                        <Typography.Text
+                        <Typography
                           className="text-primary self-center cursor-pointer"
                           onClick={clearFilters}>
                           {t('label.clear-entity', {
                             entity: '',
                           })}
-                        </Typography.Text>
+                        </Typography>
                       )}
                     </div>
-                  </Col>
+                  </div>
                 )}
               </>
             )}
             {isLoading ? (
-              <Col className="border-default border-radius-sm p-lg" span={24}>
-                <Space
+              <div className="border-default border-radius-sm p-lg">
+                <Box
                   className="w-full"
                   data-testid="loader"
-                  direction="vertical"
-                  size={16}>
+                  direction="col"
+                  gap={4}>
                   <Skeleton />
                   <Skeleton />
                   <Skeleton />
-                </Space>
-              </Col>
+                </Box>
+              </div>
             ) : (
               layout
             )}
-          </Row>
+          </Box>
 
           <ConfirmationModal
             bodyText={confirmationBodyText}
@@ -1140,15 +1111,14 @@ const AssetsTabs = forwardRef(
               visible: selectedItems.size > 0,
             })}>
             <div className="d-flex items-center justify-between">
-              <Typography.Text className="text-white">
+              <Typography className="text-white">
                 {selectedItems.size} {t('label.items-selected-lowercase')}
-              </Typography.Text>
+              </Typography>
               <Button
-                danger
+                color="primary-destructive"
                 data-testid="delete-all-button"
-                loading={assetRemoving}
-                type="primary"
-                onClick={handleBulkDeleteClick}>
+                isLoading={assetRemoving}
+                onPress={handleBulkDeleteClick}>
                 {t('label.delete')}
               </Button>
             </div>
