@@ -106,6 +106,10 @@ export function getNodeHeight(
   isColumnLineage: boolean,
   columnCount?: number
 ) {
+  if (node.height) {
+    return node.height;
+  }
+
   const isRootNode = node.data?.isRootNode ?? false;
 
   const visibleColumnCount = isColumnLineage
@@ -253,10 +257,8 @@ function getEntityLineageCoordinates(
   targetNode: Node,
   isColumnLineage: boolean
 ): EdgeCoordinates {
-  const sourceHeight =
-    sourceNode.height ?? getNodeHeight(sourceNode, isColumnLineage, 0);
-  const targetHeight =
-    targetNode.height ?? getNodeHeight(targetNode, isColumnLineage, 0);
+  const sourceHeight = getNodeHeight(sourceNode, isColumnLineage, 0);
+  const targetHeight = getNodeHeight(targetNode, isColumnLineage, 0);
 
   return {
     sourceX: sourceNode.position.x + (sourceNode.width ?? 0),

@@ -206,6 +206,91 @@ export const getLayoutedElements = (
   return { node: uNode, edge: edgesRequired };
 };
 
+/**
+ * This function returns all the columns as children as well flattened children for subfield columns.
+ * It also returns the label for the children and the total height of the children.
+ *
+ * @param {Node} selectedNode - The node for which to retrieve the downstream nodes and edges.
+ * @param {string[]} columnsHavingLineage - All nodes in the lineage.
+ * @return {{ nodes: Node[]; edges: Edge[], nodeIds: string[], edgeIds: string[] }} -
+ * An object containing the downstream nodes and edges.
+ */
+export function getEntityChildrenAndLabel(node: LineageNodeType) {
+  if (!node) {
+    return {
+      children: [],
+      childrenHeading: '',
+      childrenCount: 0,
+    };
+  }
+  const entityMappings: Record<
+    string,
+    { data: EntityChildren; label: string; childrenCount: number }
+  > = {
+    [EntityType.TABLE]: {
+      data: node.flattenChildren ?? node.columns ?? [],
+      label: t('label.column-plural'),
+      childrenCount: node.columns?.length ?? 0,
+    },
+    [EntityType.DASHBOARD]: {
+      data: node.charts ?? [],
+      label: t('label.chart-plural'),
+      childrenCount: node.charts?.length ?? 0,
+    },
+    [EntityType.MLMODEL]: {
+      data: node.mlFeatures ?? [],
+      label: t('label.feature-plural'),
+      childrenCount: node.mlFeatures?.length ?? 0,
+    },
+    [EntityType.DASHBOARD_DATA_MODEL]: {
+      data: node.flattenChildren ?? node.columns ?? [],
+      label: t('label.column-plural'),
+      childrenCount: node.columns?.length ?? 0,
+    },
+    [EntityType.CONTAINER]: {
+      data: node.flattenChildren ?? node.dataModel?.columns ?? [],
+      label: t('label.column-plural'),
+      childrenCount: node.dataModel?.columns?.length ?? 0,
+    },
+    [EntityType.TOPIC]: {
+      data: node.flattenChildren ?? node.messageSchema?.schemaFields ?? [],
+      label: t('label.field-plural'),
+      childrenCount: node.messageSchema?.schemaFields?.length ?? 0,
+    },
+    [EntityType.API_ENDPOINT]: {
+      data:
+        node.flattenChildren ??
+        node?.responseSchema?.schemaFields ??
+        node?.requestSchema?.schemaFields ??
+        [],
+      label: t('label.field-plural'),
+      childrenCount:
+        node?.responseSchema?.schemaFields?.length ??
+        node?.requestSchema?.schemaFields?.length ??
+        0,
+    },
+    [EntityType.SEARCH_INDEX]: {
+      data: node.flattenChildren ?? node.fields ?? [],
+      label: t('label.field-plural'),
+      childrenCount: node.fields?.length ?? 0,
+    },
+  };
+
+  const { data, label, childrenCount } = entityMappings[
+    node.entityType as EntityType
+  ] || {
+    data: [],
+    label: '',
+    childrenCount: 0,
+  };
+
+  return {
+    children: data,
+    childrenHeading: label,
+    childrenCount,
+  };
+}
+
 export const getELKLayoutedElements = async (
   nodes: Node[],
   edges: Edge[],
@@ -570,91 +655,6 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
   }
 };
 
-/**
- * This function returns all the columns as children as well flattened children for subfield columns.
- * It also returns the label for the children and the total height of the children.
- *
- * @param {Node} selectedNode - The node for which to retrieve the downstream nodes and edges.
- * @param {string[]} columnsHavingLineage - All nodes in the lineage.
- * @return {{ nodes: Node[]; edges: Edge[], nodeIds: string[], edgeIds: string[] }} -
- * An object containing the downstream nodes and edges.
- */
-export function getEntityChildrenAndLabel(node: LineageNodeType) {
-  if (!node) {
-    return {
-      children: [],
-      childrenHeading: '',
-      childrenCount: 0,
-    };
-  }
-  const entityMappings: Record<
-    string,
-    { data: EntityChildren; label: string; childrenCount: number }
-  > = {
-    [EntityType.TABLE]: {
-      data: node.flattenChildren ?? node.columns ?? [],
-      label: t('label.column-plural'),
-      childrenCount: node.columns?.length ?? 0,
-    },
-    [EntityType.DASHBOARD]: {
-      data: node.charts ?? [],
-      label: t('label.chart-plural'),
-      childrenCount: node.charts?.length ?? 0,
-    },
-    [EntityType.MLMODEL]: {
-      data: node.mlFeatures ?? [],
-      label: t('label.feature-plural'),
-      childrenCount: node.mlFeatures?.length ?? 0,
-    },
-    [EntityType.DASHBOARD_DATA_MODEL]: {
-      data: node.flattenChildren ?? node.columns ?? [],
-      label: t('label.column-plural'),
-      childrenCount: node.columns?.length ?? 0,
-    },
-    [EntityType.CONTAINER]: {
-      data: node.flattenChildren ?? node.dataModel?.columns ?? [],
-      label: t('label.column-plural'),
-      childrenCount: node.dataModel?.columns?.length ?? 0,
-    },
-    [EntityType.TOPIC]: {
-      data: node.flattenChildren ?? node.messageSchema?.schemaFields ?? [],
-      label: t('label.field-plural'),
-      childrenCount: node.messageSchema?.schemaFields?.length ?? 0,
-    },
-    [EntityType.API_ENDPOINT]: {
-      data:
-        node.flattenChildren ??
-        node?.responseSchema?.schemaFields ??
-        node?.requestSchema?.schemaFields ??
-        [],
-      label: t('label.field-plural'),
-      childrenCount:
-        node?.responseSchema?.schemaFields?.length ??
-        node?.requestSchema?.schemaFields?.length ??
-        0,
-    },
-    [EntityType.SEARCH_INDEX]: {
-      data: node.flattenChildren ?? node.fields ?? [],
-      label: t('label.field-plural'),
-      childrenCount: node.fields?.length ?? 0,
-    },
-  };
-
-  const { data, label, childrenCount } = entityMappings[
-    node.entityType as EntityType
-  ] || {
-    data: [],
-    label: '',
-    childrenCount: 0,
-  };
-
-  return {
-    children: data,
-    childrenHeading: label,
-    childrenCount,
-  };
-}
-
 // Nodes Icons
 export const getEntityNodeIcon = (label: string) => {
   switch (label) {
@@ -694,6 +694,65 @@ export const positionNodesUsingElk = async (
 
   return obj;
 };
+
+export function getUpstreamDownstreamNodesEdges(
+  edges: EdgeDetails[],
+  nodes: EntityReference[],
+  currentNode: string
+) {
+  const downstreamEdges: EdgeDetails[] = [];
+  const upstreamEdges: EdgeDetails[] = [];
+  const downstreamNodes: EntityReference[] = [];
+  const upstreamNodes: EntityReference[] = [];
+  const activeNode = nodes.find(
+    (node) => node.fullyQualifiedName === currentNode
+  );
+
+  if (!activeNode) {
+    return { downstreamEdges, upstreamEdges, downstreamNodes, upstreamNodes };
+  }
+
+  function findDownstream(node: EntityReference) {
+    const directDownstream = edges.filter(
+      (edge) => edge.fromEntity.fullyQualifiedName === node.fullyQualifiedName
+    );
+    downstreamEdges.push(...directDownstream);
+    directDownstream.forEach((edge) => {
+      const toNode = nodes.find(
+        (item) => item.fullyQualifiedName === edge.toEntity.fullyQualifiedName
+      );
+      if (!isUndefined(toNode)) {
+        if (!downstreamNodes.includes(toNode)) {
+          downstreamNodes.push(toNode);
+          findDownstream(toNode);
+        }
+      }
+    });
+  }
+
+  function findUpstream(node: EntityReference) {
+    const directUpstream = edges.filter(
+      (edge) => edge.toEntity.fullyQualifiedName === node.fullyQualifiedName
+    );
+    upstreamEdges.push(...directUpstream);
+    directUpstream.forEach((edge) => {
+      const fromNode = nodes.find(
+        (item) => item.fullyQualifiedName === edge.fromEntity.fullyQualifiedName
+      );
+      if (!isUndefined(fromNode)) {
+        if (!upstreamNodes.includes(fromNode)) {
+          upstreamNodes.push(fromNode);
+          findUpstream(fromNode);
+        }
+      }
+    });
+  }
+
+  findDownstream(activeNode);
+  findUpstream(activeNode);
+
+  return { downstreamEdges, upstreamEdges, downstreamNodes, upstreamNodes };
+}
 
 export const createNodes = (
   nodesData: LineageNodeType[],
@@ -1192,65 +1251,6 @@ export const createNewEdge = (edge: Edge) => {
   return selectedEdge;
 };
 
-export function getUpstreamDownstreamNodesEdges(
-  edges: EdgeDetails[],
-  nodes: EntityReference[],
-  currentNode: string
-) {
-  const downstreamEdges: EdgeDetails[] = [];
-  const upstreamEdges: EdgeDetails[] = [];
-  const downstreamNodes: EntityReference[] = [];
-  const upstreamNodes: EntityReference[] = [];
-  const activeNode = nodes.find(
-    (node) => node.fullyQualifiedName === currentNode
-  );
-
-  if (!activeNode) {
-    return { downstreamEdges, upstreamEdges, downstreamNodes, upstreamNodes };
-  }
-
-  function findDownstream(node: EntityReference) {
-    const directDownstream = edges.filter(
-      (edge) => edge.fromEntity.fullyQualifiedName === node.fullyQualifiedName
-    );
-    downstreamEdges.push(...directDownstream);
-    directDownstream.forEach((edge) => {
-      const toNode = nodes.find(
-        (item) => item.fullyQualifiedName === edge.toEntity.fullyQualifiedName
-      );
-      if (!isUndefined(toNode)) {
-        if (!downstreamNodes.includes(toNode)) {
-          downstreamNodes.push(toNode);
-          findDownstream(toNode);
-        }
-      }
-    });
-  }
-
-  function findUpstream(node: EntityReference) {
-    const directUpstream = edges.filter(
-      (edge) => edge.toEntity.fullyQualifiedName === node.fullyQualifiedName
-    );
-    upstreamEdges.push(...directUpstream);
-    directUpstream.forEach((edge) => {
-      const fromNode = nodes.find(
-        (item) => item.fullyQualifiedName === edge.fromEntity.fullyQualifiedName
-      );
-      if (!isUndefined(fromNode)) {
-        if (!upstreamNodes.includes(fromNode)) {
-          upstreamNodes.push(fromNode);
-          findUpstream(fromNode);
-        }
-      }
-    });
-  }
-
-  findDownstream(activeNode);
-  findUpstream(activeNode);
-
-  return { downstreamEdges, upstreamEdges, downstreamNodes, upstreamNodes };
-}
-
 export const getExportEntity = (entity: LineageSourceType) => {
   const {
     name,
@@ -1604,6 +1604,33 @@ const processPagination = (
   return { newNodes, newEdges };
 };
 
+const getOrCreateTempNode = (
+  nameOrFqn: string,
+  existingByFqn: Map<string, LineageNodeType>,
+  newTempNodes: Map<string, LineageNodeType>
+): LineageNodeType => {
+  const existing = existingByFqn.get(nameOrFqn);
+  if (existing) {
+    return existing;
+  }
+  if (newTempNodes.has(nameOrFqn)) {
+    return newTempNodes.get(nameOrFqn) as LineageNodeType;
+  }
+  const tempNode: LineageNodeType = {
+    id: `temp_${nameOrFqn}`,
+    name: nameOrFqn,
+    displayName: nameOrFqn,
+    fullyQualifiedName: nameOrFqn,
+    type: EntityType.TABLE,
+    entityType: EntityType.TABLE,
+    isTempTable: true,
+    columns: [],
+  };
+  newTempNodes.set(nameOrFqn, tempNode);
+
+  return tempNode;
+};
+
 const extractTempLineageNodes = (
   edges: EdgeDetails[],
   existingNodes: LineageNodeType[]
@@ -1617,36 +1644,13 @@ const extractTempLineageNodes = (
       .map((n) => [n.fullyQualifiedName!, n])
   );
 
-  const getOrCreateNode = (nameOrFqn: string): LineageNodeType => {
-    const existing = existingByFqn.get(nameOrFqn);
-    if (existing) {
-      return existing;
-    }
-    if (newTempNodes.has(nameOrFqn)) {
-      return newTempNodes.get(nameOrFqn) as LineageNodeType;
-    }
-    const tempNode: LineageNodeType = {
-      id: `temp_${nameOrFqn}`,
-      name: nameOrFqn,
-      displayName: nameOrFqn,
-      fullyQualifiedName: nameOrFqn,
-      type: EntityType.TABLE,
-      entityType: EntityType.TABLE,
-      isTempTable: true,
-      columns: [],
-    };
-    newTempNodes.set(nameOrFqn, tempNode);
-
-    return tempNode;
-  };
-
   edges.forEach((edge) => {
     if (!edge.tempLineageTables?.length) {
       return;
     }
     edge.tempLineageTables.forEach((hop: TempLineageTable) => {
-      const fromNode = getOrCreateNode(hop.fromEntity);
-      const toNode = getOrCreateNode(hop.toEntity);
+      const fromNode = getOrCreateTempNode(hop.fromEntity, existingByFqn, newTempNodes);
+      const toNode = getOrCreateTempNode(hop.toEntity, existingByFqn, newTempNodes);
       newEdges.push({
         fromEntity: {
           id: fromNode.id,
