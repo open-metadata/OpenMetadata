@@ -17,6 +17,7 @@ import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtil
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import type { ApplicationConfigurationProps } from '../ApplicationConfiguration/ApplicationConfiguration';
 import { AppPlugin } from '../plugins/AppPlugin';
+import { McpApplicationPlugin } from '../../../McpChat/McpApplicationPlugin';
 
 const ApplicationConfiguration =
   withSuspenseFallback<ApplicationConfigurationProps>(
@@ -74,7 +75,9 @@ class ApplicationsClassBase {
   public appPluginRegistry: Record<
     string,
     new (name: string, isInstalled: boolean) => AppPlugin
-  > = {};
+  > = {
+    McpApplication: McpApplicationPlugin,
+  };
 
   public getScheduleOptionsForApp(
     app: string,

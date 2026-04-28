@@ -1,0 +1,203 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import '../../../styles/variables.less';
+
+.mcp-chat-page {
+  height: 100vh;
+  background: @background-color;
+}
+
+/* ---- Sidebar ---- */
+.mcp-chat-sidebar {
+  border-right: @global-border;
+  background: @grey-9 !important;
+  display: flex;
+  flex-direction: column;
+
+  .mcp-chat-sidebar-header {
+    padding: @padding-md;
+    border-bottom: @global-border;
+  }
+}
+
+.mcp-conversation-list {
+  overflow-y: auto;
+  flex: 1;
+
+  .ant-list-item {
+    padding: @padding-sm @padding-md;
+    cursor: pointer;
+    border-bottom: 1px solid @light-border-color;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background: @primary-25;
+    }
+  }
+}
+
+.mcp-conversation-item-active {
+  background: @primary-50 !important;
+  border-left: 3px solid @primary-color;
+}
+
+.mcp-delete-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  color: @grey-4;
+
+  &:hover {
+    color: @error-color;
+  }
+}
+
+.mcp-conversation-item:hover .mcp-delete-btn {
+  opacity: 1;
+}
+
+/* ---- Main content ---- */
+.mcp-chat-content {
+  display: flex;
+  flex-direction: column;
+  background: @background-color;
+  overflow: hidden;
+}
+
+.mcp-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: @padding-lg;
+  display: flex;
+  flex-direction: column;
+  gap: @size-sm;
+}
+
+/* ---- Empty state ---- */
+.mcp-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: @padding-lg;
+  color: @grey-4;
+}
+
+/* ---- Input area ---- */
+.mcp-chat-input-area {
+  display: flex;
+  gap: @size-xs;
+  padding: @padding-md @padding-lg;
+  border-top: @global-border;
+  background: @background-color;
+  align-items: flex-end;
+
+  textarea {
+    flex: 1;
+    resize: none;
+  }
+}
+
+/* ---- Message bubbles ---- */
+.mcp-message-bubble {
+  max-width: 75%;
+  padding: @padding-sm @padding-md;
+  border-radius: @border-rad-sm;
+  line-height: 1.5;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.mcp-message-bubble-user {
+  align-self: flex-end;
+  background: @primary-color;
+  color: @white;
+  border-bottom-right-radius: @size-xxs;
+}
+
+.mcp-message-bubble-assistant {
+  align-self: flex-start;
+  background: @grey-1;
+  color: @text-color;
+  border-bottom-left-radius: @size-xxs;
+}
+
+/* ---- Tool call block ---- */
+.mcp-tool-call-block {
+  margin-top: @margin-xs;
+
+  .ant-collapse {
+    border: 1px solid @border-color;
+    border-radius: @border-rad-xs;
+    background: @background-color;
+  }
+
+  .ant-collapse-header {
+    font-size: @font-size-sm;
+    font-weight: @font-medium;
+    color: @grey-4;
+  }
+
+  pre {
+    margin: 0;
+    padding: @padding-xs;
+    background: @grey-1;
+    border-radius: @border-rad-xs;
+    font-size: @font-size-sm;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+}
+
+/* ---- Typing indicator ---- */
+.mcp-typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: @size-xxs;
+  padding: @padding-sm @padding-md;
+  align-self: flex-start;
+
+  .mcp-typing-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: @grey-3;
+    animation: mcp-bounce 1.4s infinite ease-in-out both;
+
+    &:nth-child(1) {
+      animation-delay: -0.32s;
+    }
+    &:nth-child(2) {
+      animation-delay: -0.16s;
+    }
+    &:nth-child(3) {
+      animation-delay: 0s;
+    }
+  }
+}
+
+@keyframes mcp-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
