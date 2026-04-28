@@ -40,10 +40,6 @@ install_all:  ## Install the ingestion module with all dependencies
 install_apis:  ## Install the REST APIs module to the current environment
 	python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/ setuptools~=70.3.0
 
-.PHONY: lint
-lint:  ## Run pylint on the Python sources to analyze the codebase
-	PYTHONPATH="${PYTHONPATH}:$(INGESTION_DIR)/plugins" find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint --rcfile=$(INGESTION_DIR)/pyproject.toml
-
 .PHONY: static-checks
 static-checks:  ## Run basedpyright type checks (delegates to nox so local matches CI)
 	cd $(INGESTION_DIR) && nox --no-venv -s static-checks
@@ -63,7 +59,6 @@ py_format:  ## Run ruff to lint-fix and format the Python codebase
 py_format_check:  ## Check if Python sources are correctly formatted
 	ruff check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 	ruff format --check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
-	PYTHONPATH="${PYTHONPATH}:$(INGESTION_DIR)/plugins" pylint --rcfile=$(INGESTION_DIR)/pyproject.toml --fail-under=10 $(PY_SOURCE)/metadata || (echo "PyLint error code $$?"; exit 1)
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests

@@ -14,7 +14,7 @@ Microsoft Fabric Pipeline Client
 Wrapper around the shared FabricClient for pipeline-specific operations.
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from metadata.clients.microsoftfabric.fabric_client import FabricClient
 from metadata.clients.microsoftfabric.models import (
@@ -41,7 +41,7 @@ class MicrosoftFabricPipelineClient:
     def __init__(self, connection: MicrosoftFabricPipelineConnection):
         self.connection = connection
         self.workspace_id = connection.workspaceId
-        self._fabric_client: Optional[FabricClient] = None
+        self._fabric_client: Optional[FabricClient] = None  # noqa: UP045
 
     @property
     def fabric_client(self) -> FabricClient:
@@ -55,19 +55,19 @@ class MicrosoftFabricPipelineClient:
             )
         return self._fabric_client
 
-    def get_pipelines(self) -> List[FabricPipeline]:
+    def get_pipelines(self) -> List[FabricPipeline]:  # noqa: UP006
         """Get all pipelines in the configured workspace"""
         return self.fabric_client.get_pipelines(self.workspace_id)
 
-    def get_pipeline(self, pipeline_id: str) -> Optional[FabricPipeline]:
+    def get_pipeline(self, pipeline_id: str) -> Optional[FabricPipeline]:  # noqa: UP045
         """Get a specific pipeline by ID"""
         return self.fabric_client.get_pipeline(self.workspace_id, pipeline_id)
 
-    def get_pipeline_runs(self, pipeline_id: str) -> List[FabricPipelineRun]:
+    def get_pipeline_runs(self, pipeline_id: str) -> List[FabricPipelineRun]:  # noqa: UP006
         """Get run history for a pipeline"""
         return self.fabric_client.get_pipeline_runs(self.workspace_id, pipeline_id)
 
-    def get_pipeline_activities(self, pipeline_id: str) -> List[FabricActivity]:
+    def get_pipeline_activities(self, pipeline_id: str) -> List[FabricActivity]:  # noqa: UP006
         """Get activities (tasks) for a pipeline from its definition"""
         return self.fabric_client.get_pipeline_activities(self.workspace_id, pipeline_id)
 
@@ -75,7 +75,7 @@ class MicrosoftFabricPipelineClient:
         """Generate URL to the pipeline in the Fabric UI"""
         return f"https://app.fabric.microsoft.com/groups/{self.workspace_id}/pipelines/{pipeline_id}"
 
-    def get_pipeline_activity_runs(self, pipeline_run_id: str, run: FabricPipelineRun) -> List[FabricActivityRun]:
+    def get_pipeline_activity_runs(self, pipeline_run_id: str, run: FabricPipelineRun) -> List[FabricActivityRun]:  # noqa: UP006
         """
         Get activity-level execution details for a pipeline run.
 

@@ -41,7 +41,7 @@ class Base(DeclarativeBase):
 
 class MockModel(Base):
     __tablename__ = "test_table"
-    __table_args__ = {"schema": "test_schema"}
+    __table_args__ = {"schema": "test_schema"}  # noqa: RUF012
     id = Column(Integer, primary_key=True)
     name = Column(String(256))
 

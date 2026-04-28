@@ -16,7 +16,7 @@ Validator for column value missing count to be equal test case
 import traceback
 from abc import abstractmethod
 from ast import literal_eval
-from typing import List, Optional, Union
+from typing import List, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -58,7 +58,7 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self.get_column()
+            column: Union[SQALikeColumn, Column] = self.get_column()  # noqa: UP007
             null_missing_count = self._run_results(
                 Metrics.nullMissingCount,
                 column,
@@ -144,7 +144,7 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
 
         return metrics
 
-    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:  # noqa: UP045
         """Evaluate the missing count test condition
 
         Test passes if total_missing_count == expected missing_count_value
@@ -179,8 +179,8 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
     def _format_result_message(
         self,
         metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,
-        test_params: Optional[dict] = None,
+        dimension_info: Optional[DimensionInfo] = None,  # noqa: UP045
+        test_params: Optional[dict] = None,  # noqa: UP045
     ) -> str:
         """Format the result message for missing count test
 
@@ -203,10 +203,10 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
                 f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
                 f"Found nullCount={total_missing_count} vs. the expected nullCount={expected_missing_count}."
             )
-        else:
+        else:  # noqa: RET505
             return f"Found nullCount={total_missing_count} vs. the expected nullCount={expected_missing_count}."
 
-    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:
+    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:  # noqa: UP006
         """Get test result values for missing count test
 
         Args:
@@ -223,5 +223,5 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
         ]
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):
+    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):  # noqa: UP007
         raise NotImplementedError
