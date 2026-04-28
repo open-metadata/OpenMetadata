@@ -142,7 +142,6 @@ def assert_service_matches(
 
     SUPERSET (default): extras in actual are tolerated (cloud drift, unrelated tables).
     STRICT: actual must equal expected exactly.
-    SUBSET: actual must be within expected (rare).
     """
     diffs: list[Diff] = []
     _diff_node(expected, parent_path="", om=om.raw, mode=mode, diffs=diffs)

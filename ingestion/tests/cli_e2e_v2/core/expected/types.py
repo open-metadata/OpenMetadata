@@ -38,13 +38,10 @@ class MatchMode(Enum):
     - SUPERSET (default): actual ⊇ expected. Extras are tolerated; only missing
       or mismatched entities flag. Right for cloud accounts where shared schemas
       may accumulate unrelated tables over time.
-    - SUBSET: actual ⊆ expected. Rare — for scenarios where we assert the pipeline
-      did NOT ingest anything unexpected into an empty namespace.
     """
 
     STRICT = "strict"
     SUPERSET = "superset"
-    SUBSET = "subset"
 
 
 @dataclass(frozen=True)
