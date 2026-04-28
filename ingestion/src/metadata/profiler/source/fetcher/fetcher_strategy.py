@@ -14,10 +14,11 @@ Entity Fetcher Strategy
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, Iterator, List, Optional, cast
+from typing import Dict, Iterable, Iterator, List, Optional, cast  # noqa: UP035
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -40,12 +41,15 @@ from metadata.profiler.source.model import ProfilerSourceAndEntity
 from metadata.utils.db_utils import Table
 from metadata.utils.filters import (
     filter_by_classification,
+    filter_by_container,
     filter_by_schema,
     filter_by_table,
     validate_regex,
 )
+from metadata.utils.fqn import split
 
 FIELDS = ["tableProfilerConfig", "columns", "customMetrics", "tags"]
+CONTAINER_FIELDS = ["dataModel", "tags"]
 
 
 class RegexFilter(BaseModel):
@@ -53,15 +57,15 @@ class RegexFilter(BaseModel):
     mode: str
 
 
-def _combine_patterns(patterns: List[str]) -> str:
+def _combine_patterns(patterns: List[str]) -> str:  # noqa: UP006
     if len(patterns) == 1:
         return patterns[0]
     return "|".join(f"({p})" for p in patterns)
 
 
 def _build_regex_from_filter(
-    filter_pattern: Optional[FilterPattern],
-) -> Optional[RegexFilter]:
+    filter_pattern: Optional[FilterPattern],  # noqa: UP045
+) -> Optional[RegexFilter]:  # noqa: UP045
     """Build a RegexFilter from a FilterPattern for server-side filtering.
 
     When both includes and excludes are set, includes take precedence.
@@ -72,13 +76,9 @@ def _build_regex_from_filter(
     validate_regex(filter_pattern.includes)
     validate_regex(filter_pattern.excludes)
     if filter_pattern.includes:
-        return RegexFilter(
-            regex=_combine_patterns(filter_pattern.includes), mode="include"
-        )
+        return RegexFilter(regex=_combine_patterns(filter_pattern.includes), mode="include")
     if filter_pattern.excludes:
-        return RegexFilter(
-            regex=_combine_patterns(filter_pattern.excludes), mode="exclude"
-        )
+        return RegexFilter(regex=_combine_patterns(filter_pattern.excludes), mode="exclude")
     return None
 
 
@@ -89,7 +89,7 @@ class FetcherStrategy(ABC):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],
+        global_profiler_config: Optional[Settings],  # noqa: UP045
         status: Status,
     ) -> None:
         self.config = config
@@ -107,9 +107,7 @@ class FetcherStrategy(ABC):
         Raises:
             NotImplementedError: Must be implemented by subclass
         """
-        classification_filter_pattern = getattr(
-            self.source_config, "classificationFilterPattern", None
-        )
+        classification_filter_pattern = getattr(self.source_config, "classificationFilterPattern", None)
         if not classification_filter_pattern:
             return False
 
@@ -117,7 +115,7 @@ class FetcherStrategy(ABC):
 
         if not entity.tags:
             # if we are not explicitly including entities with tags we'll add the ones without tags
-            if not classification_filter_pattern.includes:
+            if not classification_filter_pattern.includes:  # noqa: SIM103
                 return False
             return True
 
@@ -147,25 +145,17 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],
+        global_profiler_config: Optional[Settings],  # noqa: UP045
         status: Status,
     ) -> None:
         super().__init__(config, metadata, global_profiler_config, status)
-        self.database_filter_pattern = _build_regex_from_filter(
-            self.source_config.databaseFilterPattern
-        )
-        self.schema_filter_pattern = _build_regex_from_filter(
-            self.source_config.schemaFilterPattern
-        )
-        self.table_filter_pattern = _build_regex_from_filter(
-            self.source_config.tableFilterPattern
-        )
-        self.source_config = cast(
-            EntityFilterConfigInterface, self.source_config
-        )  # Satisfy typechecker
+        self.database_filter_pattern = _build_regex_from_filter(self.source_config.databaseFilterPattern)
+        self.schema_filter_pattern = _build_regex_from_filter(self.source_config.schemaFilterPattern)
+        self.table_filter_pattern = _build_regex_from_filter(self.source_config.tableFilterPattern)
+        self.source_config = cast(EntityFilterConfigInterface, self.source_config)  # Satisfy typechecker  # noqa: TC006
 
-    def _build_database_params(self) -> Dict[str, str]:
-        params: Dict[str, str] = {"service": self.config.source.serviceName}  # type: ignore
+    def _build_database_params(self) -> Dict[str, str]:  # noqa: UP006
+        params: Dict[str, str] = {"service": self.config.source.serviceName}  # type: ignore  # noqa: UP006
         db_filter = self.database_filter_pattern
         if db_filter:
             params["databaseRegex"] = db_filter.regex
@@ -182,9 +172,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
 
         # Otherwise, filter out views
         if table.tableType == TableType.View:
-            self.status.filter(
-                table.name.root, f"We are not including views {table.name.root}"
-            )
+            self.status.filter(table.name.root, f"We are not including views {table.name.root}")
             return True
 
         return False
@@ -212,8 +200,8 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 f"\n\t- excludes: {self.source_config.databaseFilterPattern.excludes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
             )
 
-    def _build_table_params(self, database: Database) -> Dict[str, str]:
-        params: Dict[str, str] = {
+    def _build_table_params(self, database: Database) -> Dict[str, str]:  # noqa: UP006
+        params: Dict[str, str] = {  # noqa: UP006
             "service": self.config.source.serviceName,  # type: ignore
             "database": database.fullyQualifiedName.root,  # type: ignore
         }
@@ -222,12 +210,10 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         table_filter = self.table_filter_pattern
 
         conflicting_modes = (
-            schema_filter is not None
-            and table_filter is not None
-            and schema_filter.mode != table_filter.mode
+            schema_filter is not None and table_filter is not None and schema_filter.mode != table_filter.mode
         )
 
-        regex_mode: Optional[str] = None
+        regex_mode: Optional[str] = None  # noqa: UP045
         if schema_filter and (not conflicting_modes or schema_filter.mode == "include"):
             params["databaseSchemaRegex"] = schema_filter.regex
             regex_mode = schema_filter.mode
@@ -246,11 +232,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
     def _has_conflicting_filter_modes(self) -> bool:
         schema_filter = self.schema_filter_pattern
         table_filter = self.table_filter_pattern
-        return (
-            schema_filter is not None
-            and table_filter is not None
-            and schema_filter.mode != table_filter.mode
-        )
+        return schema_filter is not None and table_filter is not None and schema_filter.mode != table_filter.mode
 
     def _filter_deferred_excludes(self, table: Table) -> bool:
         """Apply exclude filters that were deferred to client-side
@@ -259,9 +241,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         table_filter = self.table_filter_pattern
 
         if schema_filter and schema_filter.mode == "exclude" and table.databaseSchema:
-            exclude_only = FilterPattern(
-                excludes=self.source_config.schemaFilterPattern.excludes
-            )
+            exclude_only = FilterPattern(excludes=self.source_config.schemaFilterPattern.excludes)
             schema_name = (
                 table.databaseSchema.fullyQualifiedName
                 if self.source_config.useFqnForFiltering
@@ -275,9 +255,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 return True
 
         if table_filter and table_filter.mode == "exclude":
-            exclude_only = FilterPattern(
-                excludes=self.source_config.tableFilterPattern.excludes
-            )
+            exclude_only = FilterPattern(excludes=self.source_config.tableFilterPattern.excludes)
             table_name = table.name.root
             if table.fullyQualifiedName and self.source_config.useFqnForFiltering:
                 table_name = table.fullyQualifiedName.root
@@ -304,10 +282,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         for table in tables:
             if has_deferred and self._filter_deferred_excludes(table):
                 continue
-            if (
-                self.source_config.classificationFilterPattern
-                and self.filter_classifications(table)
-            ):
+            if self.source_config.classificationFilterPattern and self.filter_classifications(table):
                 continue
             if self._filter_views(table):
                 continue
@@ -342,3 +317,132 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                     ),
                     right=None,
                 )
+
+
+class StorageFetcherStrategy(FetcherStrategy):
+    """Storage fetcher strategy for Container entities"""
+
+    def __init__(
+        self,
+        config: OpenMetadataWorkflowConfig,
+        metadata: OpenMetadata,
+        global_profiler_config: Optional[Settings],  # noqa: UP045
+        status: Status,
+    ) -> None:
+        super().__init__(config, metadata, global_profiler_config, status)
+
+    def _filter_buckets(self, container: Container) -> bool:
+        """Filter buckets (top-level containers) based on the bucket filter pattern
+
+        Args:
+            container (Container): Container to filter
+
+        Returns:
+            bool: True if the container should be filtered out
+        """
+        bucket_filter_pattern = getattr(self.source_config, "bucketFilterPattern", None)
+
+        if not bucket_filter_pattern:
+            return False
+
+        fqn_parts = split(container.fullyQualifiedName.root)
+        if len(fqn_parts) >= 2:
+            bucket_name = fqn_parts[1]
+        else:
+            bucket_name = container.name.root
+
+        if filter_by_container(bucket_filter_pattern, bucket_name):
+            self.status.filter(bucket_name, "Bucket pattern not allowed")
+            return True
+
+        return False
+
+    def _filter_containers(self, container: Container) -> bool:
+        """Filter containers based on the filter pattern
+
+        Args:
+            container (Container): Container to filter
+
+        Returns:
+            bool: True if the container should be filtered out
+        """
+        container_filter_pattern = getattr(self.source_config, "containerFilterPattern", None)
+        use_fqn_for_filtering = getattr(self.source_config, "useFqnForFiltering", False)
+
+        if not container_filter_pattern:
+            return False
+
+        container_name = container.fullyQualifiedName.root if use_fqn_for_filtering else container.name.root
+
+        if filter_by_container(container_filter_pattern, container_name):
+            self.status.filter(container_name, "Container pattern not allowed")
+            return True
+
+        return False
+
+    def _filter_entities(self, containers: Iterable[Container]) -> Iterable[Container]:
+        """Filter container entities based on the filter pattern
+
+        Args:
+            containers (Iterable[Container]): Containers to filter
+
+        Returns:
+            Iterable[Container]: Filtered containers
+        """
+        containers = [
+            container
+            for container in containers
+            if (not self.source_config.bucketFilterPattern or not self._filter_buckets(container))
+            and (not self.source_config.containerFilterPattern or not self._filter_containers(container))
+            and (not self.source_config.classificationFilterPattern or not self.filter_classifications(container))
+            and container.dataModel is not None
+        ]
+
+        return containers  # noqa: RET504
+
+    def _get_container_entities(self) -> Iterable[Container]:
+        """Get all container entities from the storage service
+
+        Returns:
+            Iterable[Container]: Container entities
+        """
+        containers = self.metadata.list_all_entities(
+            entity=Container,
+            fields=CONTAINER_FIELDS,
+            params={
+                "service": self.config.source.serviceName,
+            },
+        )
+        containers = cast(Iterable[Container], containers)  # noqa: TC006
+        containers = self._filter_entities(containers)
+
+        return cast(Iterable[Container], containers)  # noqa: TC006
+
+    def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
+        """Fetch container entities from storage service"""
+        try:
+            profiler_source = profiler_source_factory.create(
+                self.config.source.type.lower(),
+                self.config,
+                None,
+                self.metadata,
+                self.global_profiler_config,
+            )
+
+            for container in self._get_container_entities():
+                yield Either(
+                    left=None,
+                    right=ProfilerSourceAndEntity(
+                        profiler_source=profiler_source,
+                        entity=container,
+                    ),
+                )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=self.config.source.serviceName,
+                    error=f"Error listing source and entities for storage service due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )

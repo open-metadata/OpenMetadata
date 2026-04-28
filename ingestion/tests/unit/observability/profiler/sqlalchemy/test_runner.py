@@ -12,6 +12,7 @@
 """
 Test Sample behavior
 """
+
 import sys
 import time
 from unittest import TestCase, mock
@@ -38,7 +39,7 @@ class Base(DeclarativeBase):
     pass
 
 
-if sys.version_info < (3, 9):
+if sys.version_info < (3, 9):  # noqa: UP036
     pytest.skip(
         "requires python 3.9+ due to incompatibility with object patch",
         allow_module_level=True,
@@ -106,13 +107,11 @@ class RunnerTest(TestCase):
             )
             cls.dataset = sampler.get_dataset()
 
-        cls.raw_runner = QueryRunner(
-            session=cls.session, dataset=cls.dataset, raw_dataset=sampler.raw_dataset
-        )
+        cls.raw_runner = QueryRunner(session=cls.session, dataset=cls.dataset, raw_dataset=sampler.raw_dataset)
         cls.timeout_runner: Timer = cls_timeout(1)(Timer())
 
         # Insert 30 rows
-        for i in range(10):
+        for i in range(10):  # noqa: B007
             data = [
                 User(
                     name="John",

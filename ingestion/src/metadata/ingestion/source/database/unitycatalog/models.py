@@ -13,75 +13,75 @@
 Databricks Source Model module
 """
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union  # noqa: UP035
 
 from pydantic import BaseModel
 
 
 class DatabricksTable(BaseModel):
-    name: Optional[str] = None
-    catalog_name: Optional[str] = None
-    schema_name: Optional[str] = None
-    table_type: Optional[str] = None
-    lineage_timestamp: Optional[str] = None
+    name: Optional[str] = None  # noqa: UP045
+    catalog_name: Optional[str] = None  # noqa: UP045
+    schema_name: Optional[str] = None  # noqa: UP045
+    table_type: Optional[str] = None  # noqa: UP045
+    lineage_timestamp: Optional[str] = None  # noqa: UP045
 
 
 class DatabricksColumn(BaseModel):
-    name: Optional[str] = None
-    catalog_name: Optional[str] = None
-    schema_name: Optional[str] = None
-    table_name: Optional[str] = None
+    name: Optional[str] = None  # noqa: UP045
+    catalog_name: Optional[str] = None  # noqa: UP045
+    schema_name: Optional[str] = None  # noqa: UP045
+    table_name: Optional[str] = None  # noqa: UP045
 
 
 class FileInfo(BaseModel):
-    path: Optional[str] = None
-    has_permission: Optional[bool] = None
-    securable_name: Optional[str] = None
-    storage_location: Optional[str] = None
-    securable_type: Optional[str] = None
-    lineage_timestamp: Optional[str] = None
+    path: Optional[str] = None  # noqa: UP045
+    has_permission: Optional[bool] = None  # noqa: UP045
+    securable_name: Optional[str] = None  # noqa: UP045
+    storage_location: Optional[str] = None  # noqa: UP045
+    securable_type: Optional[str] = None  # noqa: UP045
+    lineage_timestamp: Optional[str] = None  # noqa: UP045
 
 
 class LineageEntity(BaseModel):
-    tableInfo: Optional[DatabricksTable] = None
-    fileInfo: Optional[FileInfo] = None
+    tableInfo: Optional[DatabricksTable] = None  # noqa: N815, UP045
+    fileInfo: Optional[FileInfo] = None  # noqa: N815, UP045
 
 
 class LineageTableStreams(BaseModel):
-    upstreams: Optional[List[LineageEntity]] = []
-    downstreams: Optional[List[LineageEntity]] = []
+    upstreams: Optional[List[LineageEntity]] = []  # noqa: UP006, UP045
+    downstreams: Optional[List[LineageEntity]] = []  # noqa: UP006, UP045
 
 
 class LineageColumnStreams(BaseModel):
-    upstream_cols: Optional[List[DatabricksColumn]] = []
-    downstream_cols: Optional[List[DatabricksColumn]] = []
+    upstream_cols: Optional[List[DatabricksColumn]] = []  # noqa: UP006, UP045
+    downstream_cols: Optional[List[DatabricksColumn]] = []  # noqa: UP006, UP045
 
 
 class ForeignConstrains(BaseModel):
-    child_columns: Optional[List[str]] = []
-    parent_columns: Optional[List[str]] = []
+    child_columns: Optional[List[str]] = []  # noqa: UP006, UP045
+    parent_columns: Optional[List[str]] = []  # noqa: UP006, UP045
     parent_table: str
 
 
 class Metadata(BaseModel):
-    comment: Optional[str] = None
+    comment: Optional[str] = None  # noqa: UP045
 
 
 class ColumnJson(BaseModel):
-    name: Optional[str] = None
-    type: Optional[Union["Type", str]] = None
-    metadata: Optional[Metadata] = None
+    name: Optional[str] = None  # noqa: UP045
+    type: Optional[Union["Type", str]] = None  # noqa: UP045
+    metadata: Optional[Metadata] = None  # noqa: UP045
 
 
 class ElementType(BaseModel):
-    type: Optional[str] = None
-    fields: Optional[List[ColumnJson]] = None
+    type: Optional[str] = None  # noqa: UP045
+    fields: Optional[List[ColumnJson]] = None  # noqa: UP006, UP045
 
 
 class Type(BaseModel):
-    type: Optional[str] = None
-    elementType: Optional[Union[ElementType, str]] = None
-    fields: Optional[List[ColumnJson]] = None
+    type: Optional[str] = None  # noqa: UP045
+    elementType: Optional[Union[ElementType, str]] = None  # noqa: N815, UP007, UP045
+    fields: Optional[List[ColumnJson]] = None  # noqa: UP006, UP045
 
 
 ColumnJson.model_rebuild()

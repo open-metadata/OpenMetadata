@@ -11,12 +11,12 @@
 
 """Test definition wrappers for simplified DQ as Code API."""
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from typing_extensions import Self
 
 from metadata.data_quality.api.models import TestCaseDefinition
-from metadata.generated.schema.tests.testCase import TestCaseParameterValue
+from metadata.generated.schema.tests.testCase import TestCaseParameterValue  # noqa: TC001
 
 
 class BaseTest:
@@ -37,9 +37,9 @@ class BaseTest:
     def __init__(
         self,
         test_definition_name: str,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
         compute_passed_failed_row_count: bool = False,
     ):
         """Initialize a test definition.
@@ -51,10 +51,10 @@ class BaseTest:
             description: Description of what this test validates (auto-generated if not provided)
         """
         self.test_definition_name: str = test_definition_name
-        self.parameters: List[TestCaseParameterValue] = []
-        self.name: Optional[str] = name
-        self.display_name: Optional[str] = display_name
-        self.description: Optional[str] = description
+        self.parameters: List[TestCaseParameterValue] = []  # noqa: UP006
+        self.name: Optional[str] = name  # noqa: UP045
+        self.display_name: Optional[str] = display_name  # noqa: UP045
+        self.description: Optional[str] = description  # noqa: UP045
         self.compute_passed_failed_row_count: bool = compute_passed_failed_row_count
 
     def with_name(self, name: str) -> Self:
@@ -149,9 +149,9 @@ class ColumnTest(BaseTest):
         self,
         test_definition_name: str,
         column: str,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
         compute_passed_failed_row_count: bool = False,
     ):
         """Initialize a column test definition.

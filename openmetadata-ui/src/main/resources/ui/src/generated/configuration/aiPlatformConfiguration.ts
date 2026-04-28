@@ -88,5 +88,9 @@ export interface GrpcConfiguration {
      * Host for the gRPC server
      */
     port: number;
+    /**
+     * Deadline (minutes) enforced on a streaming response from the gRPC server.
+     */
+    streamDeadlineMinutes?: number;
     [property: string]: any;
 }

@@ -11,6 +11,7 @@
 """
 Build the elasticsearch sink
 """
+
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -35,9 +36,7 @@ def build_elasticsearch_sink(
     Python side.
     """
 
-    elasticsearch_service_config_dict = (
-        openmetadata_service_connection.elasticsSearch.config.dict()
-    )
+    elasticsearch_service_config_dict = openmetadata_service_connection.elasticsSearch.config.dict()
 
     elasticsearch_source_config_dict = {
         ES_SOURCE_TO_ES_OBJ_ARGS[key]: value
