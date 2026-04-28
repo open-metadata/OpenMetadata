@@ -12,7 +12,7 @@
 Unit tests for the QuestDB connector — no live cluster required.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
@@ -37,6 +37,7 @@ from metadata.ingestion.source.database.questdb.metadata import QuestDBSource
 from metadata.ingestion.source.database.questdb.models import QuestDBTableRow
 from metadata.ingestion.source.database.questdb.utils import (
     _get_columns,
+    _get_materialized_view_definition,
     _get_view_definition_from_views,
     _query_tables,
     patch_questdb_dialect,
@@ -599,21 +600,6 @@ MOCK_LINEAGE_WORKFLOW_CONFIG = {
 }
 
 
-def _make_lineage_source(database_name=None):
-    """Create a QuestDBLineageSource with __init__ bypassed."""
-    with patch(
-        "metadata.ingestion.source.database.questdb.lineage.QuestDBLineageSource.__init__",
-        return_value=None,
-    ):
-        source = QuestDBLineageSource.__new__(QuestDBLineageSource)
-    source.service_connection = MagicMock()
-    source.service_connection.databaseName = database_name
-    source.metadata = MagicMock()
-    source.config = MagicMock()
-    source.config.serviceName = "questdb_test"
-    return source
-
-
 def test_lineage_create_raises_for_wrong_connection_type():
     """QuestDBLineageSource.create must reject non-QuestDB connection configs."""
     mock_metadata = MagicMock()
@@ -626,145 +612,72 @@ def test_lineage_create_raises_for_wrong_connection_type():
         QuestDBLineageSource.create(bad_config["source"], mock_metadata)
 
 
-# ── lineage: _yield_materialized_view_lineage ─────────────────────────────────
+# ── utils: _get_materialized_view_definition ──────────────────────────────────
 
 
-def test_yield_materialized_view_lineage_yields_lineage():
-    """Must emit lineage for each materialized view row returned by the DB."""
-    source = _make_lineage_source()
-
-    mock_engine = MagicMock()
-    mock_conn = MagicMock()
-    mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
-    mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
-    source.get_engine = MagicMock(return_value=iter([mock_engine]))
-
-    mat_row = _row(
-        view_name="sensor_daily",
-        base_table_name="sensor_readings",
-        view_sql="SELECT ts FROM sensor_readings",
+def test_get_materialized_view_definition_returns_sql():
+    """Must return the view_sql string when the materialized view exists."""
+    connection = MagicMock()
+    connection.execute.return_value.fetchone.return_value = _row(
+        view_sql="SELECT ts FROM sensor_readings"
     )
-    mock_conn.execute.return_value = [mat_row]
 
-    mock_lineage = MagicMock()
+    result = _get_materialized_view_definition(connection, "sensor_daily")
+
+    assert result == "SELECT ts FROM sensor_readings"
+    query_text = str(connection.execute.call_args[0][0])
+    assert "materialized_views()" in query_text
+
+
+def test_get_materialized_view_definition_returns_none_when_not_found():
+    """Must return None when the materialized view name does not exist."""
+    connection = MagicMock()
+    connection.execute.return_value.fetchone.return_value = None
+
+    result = _get_materialized_view_definition(connection, "nonexistent")
+
+    assert result is None
+
+
+# ── metadata: get_schema_definition ──────────────────────────────────────────
+
+
+def test_get_schema_definition_returns_materialized_view_sql():
+    """Must return the stripped SQL definition for MaterializedView table type."""
     with patch(
-        "metadata.ingestion.source.database.questdb.lineage._create_lineage_by_table_name",
-        return_value=iter([mock_lineage]),
+        "metadata.ingestion.source.database.questdb.metadata.QuestDBSource.__init__",
+        return_value=None,
     ):
-        results = list(source._yield_materialized_view_lineage())
-
-    assert results == [mock_lineage]
-
-
-def test_yield_materialized_view_lineage_empty_result():
-    """No rows from materialized_views() → no lineage yielded."""
-    source = _make_lineage_source()
-    mock_engine = MagicMock()
-    mock_conn = MagicMock()
-    mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
-    mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
-    source.get_engine = MagicMock(return_value=iter([mock_engine]))
-    mock_conn.execute.return_value = []
-
-    results = list(source._yield_materialized_view_lineage())
-
-    assert results == []
-
-
-def test_yield_materialized_view_lineage_skips_row_on_lineage_error():
-    """A lineage creation failure on one row must be swallowed; subsequent
-    rows must still produce lineage."""
-    source = _make_lineage_source()
-    mock_engine = MagicMock()
-    mock_conn = MagicMock()
-    mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
-    mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
-    source.get_engine = MagicMock(return_value=iter([mock_engine]))
-
-    bad_row = _row(view_name="bad_mv", base_table_name="src", view_sql=None)
-    good_row = _row(view_name="good_mv", base_table_name="sensor_readings", view_sql=None)
-    mock_conn.execute.return_value = [bad_row, good_row]
-
-    good_lineage = MagicMock()
-    with patch(
-        "metadata.ingestion.source.database.questdb.lineage._create_lineage_by_table_name",
-        side_effect=[Exception("lineage error"), iter([good_lineage])],
-    ):
-        results = list(source._yield_materialized_view_lineage())
-
-    assert len(results) == 1
-    assert results[0] is good_lineage
-
-
-def test_yield_materialized_view_lineage_uses_config_database_name():
-    """When databaseName is set, it must be forwarded to _create_lineage_by_table_name."""
-    source = _make_lineage_source(database_name="prod-questdb")
-    mock_engine = MagicMock()
-    mock_conn = MagicMock()
-    mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
-    mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
-    source.get_engine = MagicMock(return_value=iter([mock_engine]))
-    mock_conn.execute.return_value = [_row(view_name="mv", base_table_name="t", view_sql="SELECT 1")]
-
-    with patch(
-        "metadata.ingestion.source.database.questdb.lineage._create_lineage_by_table_name",
-        return_value=iter([]),
-    ) as mock_create:
-        list(source._yield_materialized_view_lineage())
-
-    call_kwargs = mock_create.call_args[1]
-    assert call_kwargs["database_name"] == "prod-questdb"
-
-
-def test_yield_materialized_view_lineage_defaults_database_to_qdb():
-    """When databaseName is not configured, the call must use ``qdb``."""
-    source = _make_lineage_source(database_name=None)
-    mock_engine = MagicMock()
-    mock_conn = MagicMock()
-    mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
-    mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
-    source.get_engine = MagicMock(return_value=iter([mock_engine]))
-    mock_conn.execute.return_value = [_row(view_name="mv", base_table_name="t", view_sql=None)]
-
-    with patch(
-        "metadata.ingestion.source.database.questdb.lineage._create_lineage_by_table_name",
-        return_value=iter([]),
-    ) as mock_create:
-        list(source._yield_materialized_view_lineage())
-
-    call_kwargs = mock_create.call_args[1]
-    assert call_kwargs["database_name"] == QUESTDB_DEFAULT_DATABASE
-
-
-def test_yield_materialized_view_lineage_handles_engine_error():
-    """An exception from get_engine() must be caught and not propagate."""
-    source = _make_lineage_source()
-    source.get_engine = MagicMock(side_effect=Exception("engine failure"))
-
-    results = list(source._yield_materialized_view_lineage())
-
-    assert results == []
-
-
-# ── lineage: yield_view_lineage ───────────────────────────────────────────────
-
-
-def test_yield_view_lineage_chains_parent_and_materialized():
-    """yield_view_lineage must emit results from both the parent class
-    (regular views) and _yield_materialized_view_lineage."""
-    source = _make_lineage_source()
-    parent_item = MagicMock()
-    mat_item = MagicMock()
+        source = QuestDBSource.__new__(QuestDBSource)
 
     with (
-        patch.object(
-            QuestDBLineageSource.__bases__[0],
-            "yield_view_lineage",
-            return_value=iter([parent_item]),
-        ),
-        patch.object(source, "_yield_materialized_view_lineage", return_value=iter([mat_item])),
+        patch.object(type(source), "connection", new_callable=PropertyMock, return_value=MagicMock()),
+        patch(
+            "metadata.ingestion.source.database.questdb.metadata._get_materialized_view_definition",
+            return_value="SELECT ts FROM sensor_readings",
+        ) as mock_get,
     ):
-        results = list(source.yield_view_lineage())
+        result = source.get_schema_definition(TableType.MaterializedView, "sensor_daily", "public", MagicMock())
 
-    assert parent_item in results
-    assert mat_item in results
+    assert result == "SELECT ts FROM sensor_readings"
+    assert mock_get.call_args[0][1] == "sensor_daily"
+
+
+def test_get_schema_definition_returns_none_when_definition_missing():
+    """Must return None when the materialized view has no SQL definition."""
+    with patch(
+        "metadata.ingestion.source.database.questdb.metadata.QuestDBSource.__init__",
+        return_value=None,
+    ):
+        source = QuestDBSource.__new__(QuestDBSource)
+
+    with (
+        patch.object(type(source), "connection", new_callable=PropertyMock, return_value=MagicMock()),
+        patch(
+            "metadata.ingestion.source.database.questdb.metadata._get_materialized_view_definition",
+            return_value=None,
+        ),
+    ):
+        result = source.get_schema_definition(TableType.MaterializedView, "sensor_daily", "public", MagicMock())
+
+    assert result is None

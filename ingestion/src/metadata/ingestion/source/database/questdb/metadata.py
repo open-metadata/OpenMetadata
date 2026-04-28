@@ -99,7 +99,6 @@ class QuestDBSource(CommonDbSourceService):
     def get_schema_definition(self, table_type, table_name, schema_name, inspector):
         if table_type == TableType.MaterializedView:
             result = _get_materialized_view_definition(self.connection, table_name)
-            print(f"Materialized view definition {str(result).strip()}")
             return str(result).strip() if result else None
         return super().get_schema_definition(table_type, table_name, schema_name, inspector)
 
