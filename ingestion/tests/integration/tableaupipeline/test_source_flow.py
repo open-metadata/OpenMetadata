@@ -21,12 +21,11 @@ Using a fake TSC-backed client with realistic data shapes.
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from metadata.generated.schema.entity.data.pipeline import PipelineStatus
 from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 
-from ._fixtures import FLOW_MARKETING, FLOW_SALES
+from ._fixtures import FLOW_MARKETING, FLOW_SALES  # noqa: TID252
 
 
 def _set_metadata_entity(source, entity, reference=None):
@@ -96,7 +95,7 @@ class TestPipelineStatus:
         assert all(r.left is None for r in results)
         assert len(results) == 2
 
-        first: PipelineStatus = results[0].right.pipeline_status
+        first = results[0].right.pipeline_status
         task_names = [ts.name for ts in first.taskStatus]
         assert any(n.startswith("input_") for n in task_names)
         assert "flow-sales" in task_names
@@ -144,10 +143,7 @@ class TestLineage:
         results = list(source.yield_pipeline_lineage_details(FLOW_SALES))
         rights = [r.right for r in results if r.right is not None]
         flow_to_flow = [
-            r
-            for r in rights
-            if r.edge.fromEntity.type == "pipeline"
-            and r.edge.toEntity.type == "pipeline"
+            r for r in rights if r.edge.fromEntity.type == "pipeline" and r.edge.toEntity.type == "pipeline"
         ]
         assert len(flow_to_flow) == 1
         assert str(flow_to_flow[0].edge.toEntity.id.root) == str(downstream_uuid)
@@ -162,9 +158,7 @@ class TestLineage:
 
         results = list(source.yield_pipeline_lineage_details(FLOW_SALES))
         rights = [r.right for r in results if r.right is not None]
-        datamodel_edges = [
-            r for r in rights if r.edge.toEntity.type == "dashboardDataModel"
-        ]
+        datamodel_edges = [r for r in rights if r.edge.toEntity.type == "dashboardDataModel"]
         assert len(datamodel_edges) == 1
 
     def test_custom_sql_on_marketing_flow(self, tableau_source):

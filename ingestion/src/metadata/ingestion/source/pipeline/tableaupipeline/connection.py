@@ -14,7 +14,6 @@ Source connection handler for Tableau Pipeline
 """
 
 import traceback
-from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -59,8 +58,7 @@ def get_connection(connection: TableauPipelineConnection) -> TableauPipelineClie
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise SourceConnectionException(
-            f"Unknown error connecting to {connection.type.value} at "
-            f"{connection.hostPort}: {exc}."
+            f"Unknown error connecting to {connection.type.value} at {connection.hostPort}: {exc}."
         ) from exc
 
 
@@ -68,8 +66,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: TableauPipelineClient,
     service_connection: TableauPipelineConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: AutomationWorkflow | None = None,
+    timeout_seconds: int | None = THREE_MIN,
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part

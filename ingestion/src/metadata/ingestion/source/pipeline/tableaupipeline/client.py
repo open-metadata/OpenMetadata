@@ -13,7 +13,7 @@
 Tableau Pipeline Client - wraps tableauserverclient for pipeline operations
 """
 
-from typing import Dict, Iterable, Iterator, List, Optional, Union
+from collections.abc import Iterable, Iterator
 
 from tableauserverclient import (
     Pager,
@@ -50,10 +50,10 @@ class TableauPipelineClient:
 
     def __init__(
         self,
-        tableau_server_auth: Union[PersonalAccessTokenAuth, TableauAuth],
+        tableau_server_auth: PersonalAccessTokenAuth | TableauAuth,
         config: TableauPipelineConnection,
-        verify_ssl: Union[bool, str, None],
-        ssl_manager: Optional[SSLManager] = None,
+        verify_ssl: bool | str | None,
+        ssl_manager: SSLManager | None = None,
     ):
         self.tableau_server = Server(str(config.hostPort), use_server_version=True)
         if config.apiVersion:
@@ -62,14 +62,12 @@ class TableauPipelineClient:
         self.tableau_server.auth.sign_in(tableau_server_auth)
         self.config = config
         self.ssl_manager = ssl_manager
-        self.number_of_status = (
-            getattr(config, "numberOfStatus", None) or DEFAULT_NUMBER_OF_STATUS
-        )
-        self._runs_by_flow: Dict[str, List[TableauFlowRunItem]] = {}
-        self._runs_iter: Optional[Iterator] = None
+        self.number_of_status = getattr(config, "numberOfStatus", None) or DEFAULT_NUMBER_OF_STATUS
+        self._runs_by_flow: dict[str, list[TableauFlowRunItem]] = {}
+        self._runs_iter: Iterator | None = None
         self._runs_iter_exhausted: bool = False
         self._runs_scanned: int = 0
-        self._user_email_cache: Dict[str, Optional[str]] = {}
+        self._user_email_cache: dict[str, str | None] = {}
 
     def get_flows(self) -> Iterable[TableauFlowItem]:
         """Fetch all Tableau Prep flows"""
@@ -87,7 +85,7 @@ class TableauPipelineClient:
                 tags=sorted(flow.tags) if getattr(flow, "tags", None) else [],
             )
 
-    def get_user_email(self, user_id: str) -> Optional[str]:
+    def get_user_email(self, user_id: str) -> str | None:
         """Resolve a Tableau user id to an email address, or None on failure.
 
         Cached per client instance because a single flow owner typically
@@ -164,7 +162,7 @@ class TableauPipelineClient:
         cached = self._runs_by_flow.get(flow_id)
         return cached is not None and len(cached) >= self.number_of_status
 
-    def get_flow_runs(self, flow_id: str) -> List[TableauFlowRunItem]:
+    def get_flow_runs(self, flow_id: str) -> list[TableauFlowRunItem]:
         """Return the most recent runs for a flow. Streams lazily — reads
         just enough of the global flow-runs list to satisfy the request."""
         self._ensure_runs_for(flow_id)
@@ -207,7 +205,7 @@ class TableauPipelineClient:
         """
         self.tableau_server.metadata.query(query="{ serverInfo { serverName } }")
 
-    def get_flow_lineage(self, flow_luid: str) -> Optional[TableauFlowLineage]:
+    def get_flow_lineage(self, flow_luid: str) -> TableauFlowLineage | None:
         """Fetch upstream and output lineage for a flow via the Metadata API.
 
         Returns None when the Metadata API is unavailable or the flow has no
@@ -215,9 +213,7 @@ class TableauPipelineClient:
         minutes on Tableau Server).
         """
         try:
-            result = self.tableau_server.metadata.query(
-                query=TABLEAU_FLOW_LINEAGE_QUERY.format(flow_luid=flow_luid)
-            )
+            result = self.tableau_server.metadata.query(query=TABLEAU_FLOW_LINEAGE_QUERY.format(flow_luid=flow_luid))
         except Exception as exc:
             logger.debug(
                 "Failed to query Tableau Metadata API for flow lineage. "

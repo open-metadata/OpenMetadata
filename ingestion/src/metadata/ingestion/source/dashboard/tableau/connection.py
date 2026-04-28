@@ -14,7 +14,7 @@ Source connection handler
 """
 
 import traceback
-from typing import Any, Dict, Optional, Union  # noqa: UP035
+from typing import Any, Optional, Union
 
 import tableauserverclient as TSC  # noqa: N812
 
@@ -67,7 +67,7 @@ def get_connection(connection: TableauConnection) -> TableauClient:
 
 
 def set_verify_ssl(
-    connection: Union[TableauConnection, TableauPipelineConnection],
+    connection: TableauConnection | TableauPipelineConnection,
 ) -> tuple[Union[bool, str], Optional[SSLManager]]:  # noqa: UP007, UP045
     """
     Set verify ssl based on connection configuration
@@ -130,9 +130,9 @@ def test_connection(
     )
 
 
-def build_server_config(  # noqa: UP006
-    connection: Union[TableauConnection, TableauPipelineConnection],
-) -> Dict[str, Dict[str, Any]]:
+def build_server_config(
+    connection: TableauConnection | TableauPipelineConnection,
+) -> dict[str, dict[str, Any]]:
     """
     Build client configuration
     Args:

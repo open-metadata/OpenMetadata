@@ -22,7 +22,7 @@ it directly. pytest does not put `conftest.py` on the import path, so test files
 cannot import constants from conftest in CI even though it works locally.
 """
 
-from typing import Iterable, List, Optional
+from collections.abc import Iterable
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -39,7 +39,7 @@ from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     TableauPipelineDetails,
 )
 
-from ._fixtures import (
+from ._fixtures import (  # noqa: TID252
     FLOW_MARKETING,
     FLOW_RUNS_BY_FLOW,
     FLOW_SALES,
@@ -60,13 +60,13 @@ class FakeTableauPipelineClient:
         yield FLOW_SALES
         yield FLOW_MARKETING
 
-    def get_flow_runs(self, flow_id: str) -> List[TableauFlowRunItem]:
+    def get_flow_runs(self, flow_id: str) -> list[TableauFlowRunItem]:
         return FLOW_RUNS_BY_FLOW.get(flow_id, [])
 
-    def get_flow_lineage(self, flow_id: str) -> Optional[TableauFlowLineage]:
+    def get_flow_lineage(self, flow_id: str) -> TableauFlowLineage | None:
         return LINEAGE_BY_FLOW.get(flow_id)
 
-    def get_user_email(self, user_id: str) -> Optional[str]:
+    def get_user_email(self, user_id: str) -> str | None:
         return USER_EMAIL_BY_ID.get(user_id)
 
     def sign_out(self) -> None:
@@ -77,12 +77,15 @@ class FakeTableauPipelineClient:
 @pytest.fixture
 def tableau_source():
     fake_client = FakeTableauPipelineClient()
-    with patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection",
-        return_value=False,
-    ), patch(
-        "metadata.ingestion.source.pipeline.tableaupipeline.connection.get_connection",
-        return_value=fake_client,
+    with (
+        patch(
+            "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection",
+            return_value=False,
+        ),
+        patch(
+            "metadata.ingestion.source.pipeline.tableaupipeline.connection.get_connection",
+            return_value=fake_client,
+        ),
     ):
         workflow_cfg = OpenMetadataWorkflowConfig.model_validate(WORKFLOW_CONFIG)
         source = TableaupipelineSource.create(

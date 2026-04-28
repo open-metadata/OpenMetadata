@@ -33,17 +33,13 @@ def _fake_pager(runs):
 def _make_client(runs, number_of_status=3):
     from metadata.ingestion.source.pipeline.tableaupipeline import client as client_mod
 
-    with patch.object(client_mod, "Pager", side_effect=_fake_pager(runs)), patch.object(
-        client_mod, "Server"
-    ):
+    with patch.object(client_mod, "Pager", side_effect=_fake_pager(runs)), patch.object(client_mod, "Server"):
         cfg = SimpleNamespace(
             hostPort="https://tableau.example.com",
             apiVersion=None,
             numberOfStatus=number_of_status,
         )
-        instance = client_mod.TableauPipelineClient.__new__(
-            client_mod.TableauPipelineClient
-        )
+        instance = client_mod.TableauPipelineClient.__new__(client_mod.TableauPipelineClient)
         instance.tableau_server = MagicMock()
         instance.config = cfg
         instance.ssl_manager = None
@@ -121,8 +117,7 @@ class TestStreamingFlowRuns:
         )
 
         runs = [
-            _make_run(f"x-{i}", f"flow-{i % 100}", BASE_TIME)
-            for i in range(client_mod.MAX_FLOW_RUNS_HARD_LIMIT + 50)
+            _make_run(f"x-{i}", f"flow-{i % 100}", BASE_TIME) for i in range(client_mod.MAX_FLOW_RUNS_HARD_LIMIT + 50)
         ]
         instance, _ = _make_client(runs, number_of_status=5)
 
@@ -200,7 +195,7 @@ class TestStreamingFlowRuns:
 
 class TestGetPipelines:
     def test_get_pipelines_propagates_flow_fields(self):
-        instance, client_mod = _make_client([], number_of_status=10)
+        instance, _ = _make_client([], number_of_status=10)
         from metadata.ingestion.source.pipeline.tableaupipeline.models import (
             TableauFlowItem,
         )
@@ -277,9 +272,7 @@ class TestGetUserEmail:
     def test_resolves_and_caches(self):
         instance, _ = _make_client([], number_of_status=10)
         mock_users = MagicMock()
-        mock_users.get_by_id.return_value = SimpleNamespace(
-            email="alice@example.com", name="alice"
-        )
+        mock_users.get_by_id.return_value = SimpleNamespace(email="alice@example.com", name="alice")
         instance.tableau_server.users = mock_users
 
         first = instance.get_user_email("user-1")
@@ -315,7 +308,7 @@ class TestGetUserEmail:
 
 class TestConnectionTests:
     def test_test_get_flows_calls_api_with_pagesize_1(self):
-        instance, client_mod = _make_client([], number_of_status=10)
+        instance, _ = _make_client([], number_of_status=10)
         mock_flows = MagicMock()
         instance.tableau_server.flows = mock_flows
 
@@ -333,10 +326,7 @@ class TestConnectionTests:
         instance.test_metadata_api()
 
         mock_metadata.query.assert_called_once()
-        query = (
-            mock_metadata.query.call_args.kwargs.get("query")
-            or mock_metadata.query.call_args[0][0]
-        )
+        query = mock_metadata.query.call_args.kwargs.get("query") or mock_metadata.query.call_args[0][0]
         assert "serverInfo" in query
 
 
@@ -382,9 +372,7 @@ class TestGetFlowLineage:
 
     def test_query_exception_returns_none(self):
         instance, _ = _make_client([], number_of_status=10)
-        instance.tableau_server.metadata = self._mk_metadata(
-            raises=RuntimeError("API down")
-        )
+        instance.tableau_server.metadata = self._mk_metadata(raises=RuntimeError("API down"))
 
         assert instance.get_flow_lineage("flow-1") is None
 
@@ -396,9 +384,7 @@ class TestGetFlowLineage:
 
     def test_no_flows_in_response_returns_none(self):
         instance, _ = _make_client([], number_of_status=10)
-        instance.tableau_server.metadata = self._mk_metadata(
-            payload={"data": {"flows": []}}
-        )
+        instance.tableau_server.metadata = self._mk_metadata(payload={"data": {"flows": []}})
 
         assert instance.get_flow_lineage("flow-1") is None
 

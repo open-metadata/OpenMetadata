@@ -19,13 +19,11 @@ class TestGetConnection:
         fake_client = MagicMock()
         connection = MagicMock()
 
-        with patch.object(
-            conn_mod, "build_server_config", return_value=fake_auth
-        ) as mock_build, patch.object(
-            conn_mod, "set_verify_ssl", return_value=(fake_verify, fake_ssl)
-        ) as mock_ssl, patch.object(
-            conn_mod, "TableauPipelineClient", return_value=fake_client
-        ) as mock_client_ctor:
+        with (
+            patch.object(conn_mod, "build_server_config", return_value=fake_auth) as mock_build,
+            patch.object(conn_mod, "set_verify_ssl", return_value=(fake_verify, fake_ssl)) as mock_ssl,
+            patch.object(conn_mod, "TableauPipelineClient", return_value=fake_client) as mock_client_ctor,
+        ):
             result = conn_mod.get_connection(connection)
 
         assert result is fake_client
@@ -44,17 +42,17 @@ class TestGetConnection:
         connection.hostPort = "https://tab.example.com"
         original = RuntimeError("sign-in 401")
 
-        with patch.object(
-            conn_mod, "build_server_config", return_value=object()
-        ), patch.object(
-            conn_mod, "set_verify_ssl", return_value=(None, None)
-        ), patch.object(
-            conn_mod,
-            "TableauPipelineClient",
-            side_effect=original,
+        with (
+            patch.object(conn_mod, "build_server_config", return_value=object()),
+            patch.object(conn_mod, "set_verify_ssl", return_value=(None, None)),
+            patch.object(
+                conn_mod,
+                "TableauPipelineClient",
+                side_effect=original,
+            ),
+            pytest.raises(SourceConnectionException) as excinfo,
         ):
-            with pytest.raises(SourceConnectionException) as excinfo:
-                conn_mod.get_connection(connection)
+            conn_mod.get_connection(connection)
 
         # Message should carry service type + host, not the whole connection
         # object (which may include credentials in repr).

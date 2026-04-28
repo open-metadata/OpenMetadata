@@ -15,7 +15,7 @@ Tableau Pipeline Source Model module
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -26,15 +26,15 @@ class TableauFlowItem(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     id: str
-    name: Optional[str] = None
-    description: Optional[str] = None
-    project_id: Optional[str] = None
-    project_name: Optional[str] = None
-    owner_id: Optional[str] = None
-    webpage_url: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    tags: List[str] = Field(default_factory=list)
+    name: str | None = None
+    description: str | None = None
+    project_id: str | None = None
+    project_name: str | None = None
+    owner_id: str | None = None
+    webpage_url: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    tags: list[str] = Field(default_factory=list)
 
 
 class TableauFlowRunItem(BaseModel):
@@ -43,11 +43,11 @@ class TableauFlowRunItem(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     id: str
-    flow_id: Optional[str] = None
-    status: Optional[str] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    progress: Optional[str] = None
+    flow_id: str | None = None
+    status: str | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    progress: str | None = None
 
 
 class TableauTaskType(str, Enum):
@@ -62,13 +62,13 @@ class TableauPipelineDetails(BaseModel):
 
     id: str
     name: str
-    display_name: Optional[str] = None
-    description: Optional[str] = None
+    display_name: str | None = None
+    description: str | None = None
     pipeline_type: TableauTaskType
-    project_name: Optional[str] = None
-    webpage_url: Optional[str] = None
-    owner_id: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
+    project_name: str | None = None
+    webpage_url: str | None = None
+    owner_id: str | None = None
+    tags: list[str] = Field(default_factory=list)
 
 
 class TableauLineageColumn(BaseModel):
@@ -76,8 +76,8 @@ class TableauLineageColumn(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    id: Optional[str] = None
-    name: Optional[str] = None
+    id: str | None = None
+    name: str | None = None
 
 
 class TableauReferencedQuery(BaseModel):
@@ -85,9 +85,9 @@ class TableauReferencedQuery(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    id: Optional[str] = None
-    name: Optional[str] = None
-    query: Optional[str] = None
+    id: str | None = None
+    name: str | None = None
+    query: str | None = None
 
 
 class TableauLineageDatabase(BaseModel):
@@ -95,8 +95,8 @@ class TableauLineageDatabase(BaseModel):
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
-    name: Optional[str] = None
-    connection_type: Optional[str] = Field(default=None, alias="connectionType")
+    name: str | None = None
+    connection_type: str | None = Field(default=None, alias="connectionType")
 
 
 class TableauLineageTable(BaseModel):
@@ -104,22 +104,20 @@ class TableauLineageTable(BaseModel):
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
-    id: Optional[str] = None
-    luid: Optional[str] = None
-    name: Optional[str] = None
-    full_name: Optional[str] = Field(default=None, alias="fullName")
-    schema_: Optional[str] = Field(default=None, alias="schema")
-    columns: List[TableauLineageColumn] = Field(default_factory=list)
-    database: Optional[TableauLineageDatabase] = None
-    referenced_by_queries: List[TableauReferencedQuery] = Field(
-        default_factory=list, alias="referencedByQueries"
-    )
+    id: str | None = None
+    luid: str | None = None
+    name: str | None = None
+    full_name: str | None = Field(default=None, alias="fullName")
+    schema_: str | None = Field(default=None, alias="schema")
+    columns: list[TableauLineageColumn] = Field(default_factory=list)
+    database: TableauLineageDatabase | None = None
+    referenced_by_queries: list[TableauReferencedQuery] = Field(default_factory=list, alias="referencedByQueries")
 
 
 class TableauFlowUpstreamColumn(TableauLineageColumn):
     """Upstream column referencing its source table, used for column-level lineage."""
 
-    table: Optional[TableauLineageTable] = None
+    table: TableauLineageTable | None = None
 
 
 class TableauFlowOutputField(BaseModel):
@@ -127,11 +125,9 @@ class TableauFlowOutputField(BaseModel):
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
-    id: Optional[str] = None
-    name: Optional[str] = None
-    upstream_columns: List[TableauFlowUpstreamColumn] = Field(
-        default_factory=list, alias="upstreamColumns"
-    )
+    id: str | None = None
+    name: str | None = None
+    upstream_columns: list[TableauFlowUpstreamColumn] = Field(default_factory=list, alias="upstreamColumns")
 
 
 class TableauFlowOutputStep(BaseModel):
@@ -139,8 +135,8 @@ class TableauFlowOutputStep(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    id: Optional[str] = None
-    name: Optional[str] = None
+    id: str | None = None
+    name: str | None = None
 
 
 class TableauDownstreamFlow(BaseModel):
@@ -148,9 +144,9 @@ class TableauDownstreamFlow(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    id: Optional[str] = None
-    luid: Optional[str] = None
-    name: Optional[str] = None
+    id: str | None = None
+    luid: str | None = None
+    name: str | None = None
 
 
 class TableauDownstreamDatasource(BaseModel):
@@ -159,10 +155,10 @@ class TableauDownstreamDatasource(BaseModel):
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
-    id: Optional[str] = None
-    luid: Optional[str] = None
-    name: Optional[str] = None
-    project_name: Optional[str] = Field(default=None, alias="projectName")
+    id: str | None = None
+    luid: str | None = None
+    name: str | None = None
+    project_name: str | None = Field(default=None, alias="projectName")
 
 
 class TableauFlowLineage(BaseModel):
@@ -170,22 +166,14 @@ class TableauFlowLineage(BaseModel):
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
-    id: Optional[str] = None
-    luid: Optional[str] = None
-    name: Optional[str] = None
-    upstream_tables: List[TableauLineageTable] = Field(
-        default_factory=list, alias="upstreamTables"
-    )
-    output_steps: List[TableauFlowOutputStep] = Field(
-        default_factory=list, alias="outputSteps"
-    )
-    output_fields: List[TableauFlowOutputField] = Field(
-        default_factory=list, alias="outputFields"
-    )
-    downstream_flows: List[TableauDownstreamFlow] = Field(
-        default_factory=list, alias="downstreamFlows"
-    )
-    downstream_datasources: List[TableauDownstreamDatasource] = Field(
+    id: str | None = None
+    luid: str | None = None
+    name: str | None = None
+    upstream_tables: list[TableauLineageTable] = Field(default_factory=list, alias="upstreamTables")
+    output_steps: list[TableauFlowOutputStep] = Field(default_factory=list, alias="outputSteps")
+    output_fields: list[TableauFlowOutputField] = Field(default_factory=list, alias="outputFields")
+    downstream_flows: list[TableauDownstreamFlow] = Field(default_factory=list, alias="downstreamFlows")
+    downstream_datasources: list[TableauDownstreamDatasource] = Field(
         default_factory=list, alias="downstreamDatasources"
     )
 
@@ -195,4 +183,4 @@ class TableauFlowLineageResponse(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    data: Optional[Dict[str, Any]] = None
+    data: dict[str, Any] | None = None

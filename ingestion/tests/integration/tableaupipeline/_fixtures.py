@@ -17,7 +17,6 @@ files on the import path, so importing them as modules fails in CI.
 """
 
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
 
 from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     TableauDownstreamDatasource,
@@ -115,9 +114,7 @@ SALES_LINEAGE = TableauFlowLineage(
                 TableauLineageColumn(id="order_id", name="order_id"),
                 TableauLineageColumn(id="customer_id", name="customer_id"),
             ],
-            database=TableauLineageDatabase(
-                name="warehouse", connection_type="postgres"
-            ),
+            database=TableauLineageDatabase(name="warehouse", connection_type="postgres"),
         ),
         TableauLineageTable(
             id="Table-customers",
@@ -148,9 +145,7 @@ SALES_LINEAGE = TableauFlowLineage(
         TableauDownstreamFlow(luid="flow-marketing", name="Marketing Prep Flow"),
     ],
     downstream_datasources=[
-        TableauDownstreamDatasource(
-            luid="ds-sales-published", name="Published Sales Datasource"
-        ),
+        TableauDownstreamDatasource(luid="ds-sales-published", name="Published Sales Datasource"),
     ],
 )
 
@@ -165,17 +160,14 @@ MARKETING_LINEAGE = TableauFlowLineage(
             referenced_by_queries=[
                 TableauReferencedQuery(
                     id="q-1",
-                    query=(
-                        "SELECT id, revenue FROM warehouse.public.orders "
-                        "WHERE status = 'paid'"
-                    ),
+                    query=("SELECT id, revenue FROM warehouse.public.orders WHERE status = 'paid'"),
                 )
             ],
         )
     ],
 )
 
-FLOW_RUNS_BY_FLOW: Dict[str, List[TableauFlowRunItem]] = {
+FLOW_RUNS_BY_FLOW: dict[str, list[TableauFlowRunItem]] = {
     "flow-sales": [
         TableauFlowRunItem(
             id="run-s1",
@@ -195,11 +187,11 @@ FLOW_RUNS_BY_FLOW: Dict[str, List[TableauFlowRunItem]] = {
     "flow-marketing": [],
 }
 
-LINEAGE_BY_FLOW: Dict[str, Optional[TableauFlowLineage]] = {
+LINEAGE_BY_FLOW: dict[str, TableauFlowLineage | None] = {
     "flow-sales": SALES_LINEAGE,
     "flow-marketing": MARKETING_LINEAGE,
 }
 
-USER_EMAIL_BY_ID: Dict[str, Optional[str]] = {
+USER_EMAIL_BY_ID: dict[str, str | None] = {
     "user-alice": "alice@example.com",
 }
