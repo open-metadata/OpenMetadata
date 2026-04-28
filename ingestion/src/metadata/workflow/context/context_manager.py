@@ -55,9 +55,7 @@ class ContextManager:
         return cls._instance
 
     @classmethod
-    def set_context_attr(
-        cls, context_enum: ContextsEnum, field_enum: BaseContextFieldsEnum, value: Any
-    ):
+    def set_context_attr(cls, context_enum: ContextsEnum, field_enum: BaseContextFieldsEnum, value: Any):
         """
         Thread-safe method to set an attribute on a context.
 
@@ -72,9 +70,7 @@ class ContextManager:
             setattr(context, field_enum.value, value)
 
     @classmethod
-    def get_context_attr(
-        cls, context_enum: ContextsEnum, field_enum: BaseContextFieldsEnum
-    ) -> Any:
+    def get_context_attr(cls, context_enum: ContextsEnum, field_enum: BaseContextFieldsEnum) -> Any:
         """
         Thread-safe method to get an attribute from a context.
 
@@ -106,7 +102,7 @@ class ContextManager:
             return getattr(instance, context_enum.value)
 
     @classmethod
-    def dump_contexts(cls) -> Optional[dict[str, Any]]:
+    def dump_contexts(cls) -> Optional[dict[str, Any]]:  # noqa: UP045
         """
         Dump all available contexts as a dictionary: {contextName: content}
         Assumes each context is a Pydantic object.
