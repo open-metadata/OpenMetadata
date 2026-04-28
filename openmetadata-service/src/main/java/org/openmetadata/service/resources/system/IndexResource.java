@@ -15,6 +15,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.StringEscapeUtils;
+import org.openmetadata.schema.configuration.SentryConfiguration;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.version.VersionResource;
 import org.openmetadata.service.security.CspNonceHandler;
 
@@ -22,7 +24,7 @@ import org.openmetadata.service.security.CspNonceHandler;
 @Path("/")
 public class IndexResource {
   private static final String RAW_INDEX_HTML;
-  private static final String CONFIG_PROCESSED_HTML;
+  private static volatile String configProcessedHtml;
 
   static {
     try (InputStream inputStream = IndexResource.class.getResourceAsStream("/assets/index.html")) {
@@ -36,19 +38,20 @@ public class IndexResource {
     } catch (IOException e) {
       throw new IllegalStateException("Failed to load /assets/index.html", e);
     }
+  }
 
-    CONFIG_PROCESSED_HTML =
+  public static void initialize(OpenMetadataApplicationConfig catalogConfig) {
+    SentryConfiguration sentryConfig = catalogConfig.getSentryConfiguration();
+    String clusterName = catalogConfig.getClusterName();
+    configProcessedHtml =
         RAW_INDEX_HTML
-            .replace("${sentryDsn}", escapeJs(System.getenv().getOrDefault("SENTRY_UI_DSN", "")))
-            .replace(
-                "${sentryEnvironment}",
-                escapeJs(System.getenv().getOrDefault("SENTRY_ENVIRONMENT", "development")))
+            .replace("${sentryEnabled}", String.valueOf(sentryConfig.getEnabled()))
+            .replace("${sentryDsn}", escapeJs(sentryConfig.getUiDsn()))
+            .replace("${sentryEnvironment}", escapeJs(sentryConfig.getEnvironment()))
             .replace(
                 "${sentryTraceSampleRate}",
-                escapeJs(System.getenv().getOrDefault("SENTRY_TRACE_SAMPLE_RATE", "0.5")))
-            .replace(
-                "${clusterName}",
-                escapeJs(System.getenv().getOrDefault("OPENMETADATA_CLUSTER_NAME", "openmetadata")))
+                escapeJs(String.valueOf(sentryConfig.getTracesSampleRate())))
+            .replace("${clusterName}", escapeJs(clusterName != null ? clusterName : "openmetadata"))
             .replace(
                 "${appVersion}", escapeJs(new VersionResource().getCatalogVersion().getVersion()));
   }
@@ -63,7 +66,7 @@ public class IndexResource {
   public static String getIndexFile(String basePath) {
     LOG.debug("IndexResource.getIndexFile called with basePath: [{}]", basePath);
 
-    return CONFIG_PROCESSED_HTML.replace("${basePath}", basePath);
+    return configProcessedHtml.replace("${basePath}", basePath);
   }
 
   public static String getIndexFile(String basePath, String cspNonce) {

@@ -25,12 +25,24 @@ import jakarta.ws.rs.core.Response;
 import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.configuration.SentryConfiguration;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.CspNonceHandler;
 
 class IndexResourceTest {
   private IndexResource resource;
+
+  @BeforeAll
+  static void initIndex() {
+    OpenMetadataApplicationConfig config = mock(OpenMetadataApplicationConfig.class);
+    SentryConfiguration sentryConfig = new SentryConfiguration();
+    when(config.getSentryConfiguration()).thenReturn(sentryConfig);
+    when(config.getClusterName()).thenReturn("test-cluster");
+    IndexResource.initialize(config);
+  }
 
   @BeforeEach
   void setUp() {
