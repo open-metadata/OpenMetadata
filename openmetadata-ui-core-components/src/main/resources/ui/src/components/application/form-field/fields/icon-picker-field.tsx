@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import type {
-  FC,
-  KeyboardEvent as ReactKeyboardEvent,
-  ReactNode,
-} from 'react';
+import type { FC, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import {
   createElement,
   isValidElement,
@@ -64,10 +60,7 @@ const getDefaultIconPreview = (
   defaultIcon?: { component: FC }
 ): ReactNode => {
   if (defaultIcon && isReactComponent(defaultIcon.component)) {
-    return renderSelectItemIcon(
-      defaultIcon.component,
-      TRIGGER_ICON_CLASSNAME
-    );
+    return renderSelectItemIcon(defaultIcon.component, TRIGGER_ICON_CLASSNAME);
   }
 
   return renderSelectItemIcon(items[0]?.icon, TRIGGER_ICON_CLASSNAME);
