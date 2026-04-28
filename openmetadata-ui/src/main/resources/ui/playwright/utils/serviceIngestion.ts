@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIResponse, expect, Page } from '@playwright/test';
+import { APIRequestContext, APIResponse, expect, Page } from '@playwright/test';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../constant/delete';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
@@ -199,6 +199,33 @@ export const makeRetryRequest = async (data: RetryRequestData) => {
       }
       // eslint-disable-next-line playwright/no-wait-for-timeout -- exponential backoff for retry
       await page.waitForTimeout(1000 * (i + 1));
+    }
+  }
+};
+
+const REMOTE_RUNNER_NAME = 'RemoteRunner';
+
+export const setRemoteRunnerAsDefault = async (
+  apiContext: APIRequestContext
+): Promise<void> => {
+  const runnersRes = await apiContext.get('/api/v1/ingestionRunners?limit=100');
+  if (!runnersRes.ok()) {
+    return;
+  }
+
+  const runnersBody = await runnersRes.json();
+  const runners: { id: string; name: string; isDefault?: boolean }[] =
+    runnersBody.data ?? [];
+
+  const remoteRunner = runners.find((r) => r.name === REMOTE_RUNNER_NAME);
+  if (remoteRunner && !remoteRunner.isDefault) {
+    const putRes = await apiContext.put(
+      `/api/v1/ingestionRunners/setDefault/${remoteRunner.id}`
+    );
+    if (!putRes.ok()) {
+      throw new Error(
+        `Failed to set RemoteRunner as default: ${putRes.status()} ${putRes.statusText()}`
+      );
     }
   }
 };
