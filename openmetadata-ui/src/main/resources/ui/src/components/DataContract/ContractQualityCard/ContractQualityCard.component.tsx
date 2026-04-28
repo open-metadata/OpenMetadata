@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Col, Row, Space, Typography } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ES_MAX_PAGE_SIZE } from '../../../constants/constants';
@@ -22,7 +22,6 @@ import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { Include } from '../../../generated/type/include';
-import { useFqn } from '../../../hooks/useFqn';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
 import { getTestCaseDetailPagePath } from '../../../utils/RouterUtils';
@@ -38,16 +37,20 @@ const ContractQualityCard: React.FC<{
   latestContractResults?: DataContractResult;
 }> = ({ contract, contractStatus, latestContractResults }) => {
   const { t } = useTranslation();
-  const { fqn } = useFqn();
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [testCase, setTestCase] = useState<TestCase[]>([]);
 
-  const fetchTestCases = async () => {
+  const entityFqn = contract.entity?.fullyQualifiedName;
+
+  const fetchTestCases = useCallback(async () => {
+    if (!entityFqn) {
+      return;
+    }
     setIsTestCaseLoading(true);
     try {
       const { data } = await getListTestCaseBySearch({
         ...DEFAULT_SORT_ORDER,
-        entityLink: generateEntityLink(fqn ?? ''),
+        entityLink: generateEntityLink(entityFqn),
         includeAllTests: true,
         limit: ES_MAX_PAGE_SIZE,
         include: Include.NonDeleted,
@@ -63,7 +66,7 @@ const ContractQualityCard: React.FC<{
     } finally {
       setIsTestCaseLoading(false);
     }
-  };
+  }, [entityFqn]);
 
   const {
     showTestCaseSummaryChart,
@@ -94,12 +97,12 @@ const ContractQualityCard: React.FC<{
     const failed = qualityValidation?.failed ?? 0;
     const aborted = total - success - failed;
 
-    const successPercent = (success / total) * 100;
-    const failedPercent = (failed / total) * 100;
-    const abortedPercent = (aborted / total) * 100;
+    const successPercent = total ? (success / total) * 100 : 0;
+    const failedPercent = total ? (failed / total) * 100 : 0;
+    const abortedPercent = total ? (aborted / total) * 100 : 0;
 
     return {
-      showTestCaseSummaryChart: true,
+      showTestCaseSummaryChart: Boolean(total),
       segmentWidths: {
         successPercent,
         failedPercent,
@@ -117,21 +120,26 @@ const ContractQualityCard: React.FC<{
       testCase.map((result) => [result.id, result])
     );
 
-    const mergedData = contract.qualityExpectations?.map((item) => ({
-      id: item.id,
-      name: item.name,
-      fullyQualifiedName: `${fqn}.${item.name}`,
-      testCaseStatus:
-        testCaseResultsMap.get(item.id)?.testCaseStatus ??
-        TestCaseStatus.Queued,
-    }));
+    const mergedData = contract.qualityExpectations?.map((item) => {
+      const matchedTestCase = testCaseResultsMap.get(item.id);
+
+      return {
+        id: item.id,
+        name: item.name,
+        fullyQualifiedName: item.fullyQualifiedName ?? item.name,
+        testCaseStatus:
+          matchedTestCase?.testCaseStatus ??
+          matchedTestCase?.testCaseResult?.testCaseStatus ??
+          TestCaseStatus.Queued,
+      };
+    });
 
     return mergedData ?? [];
   }, [contract, testCase]);
 
   useEffect(() => {
     fetchTestCases();
-  }, []);
+  }, [fetchTestCases]);
 
   if (isTestCaseLoading) {
     return <Loader />;

@@ -21,11 +21,13 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -36,6 +38,7 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -4083,6 +4086,95 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
       return "\"" + value.replace("\"", "\"\"") + "\"";
     }
     return value;
+  }
+
+  // ===================================================================
+  // DATA CONTRACT REFERENCE TESTS
+  // ===================================================================
+
+  @Test
+  void test_createTestCase_withDataContractReference(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    // Create a data contract for the table
+    CreateDataContract dcRequest =
+        new CreateDataContract()
+            .withName(ns.prefix("tc_dc"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Contract for test case reference test");
+    DataContract contract = SdkClients.adminClient().dataContracts().create(dcRequest);
+
+    // Create a test case with dataContract FQN (the mapper resolves it to EntityReference)
+    CreateTestCase request =
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("tc_with_dc"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .build();
+    request.setDataContract(contract.getFullyQualifiedName());
+
+    TestCase testCase = createEntity(request);
+
+    assertNotNull(testCase.getDataContract(), "Test case should have dataContract reference");
+    assertEquals(contract.getId(), testCase.getDataContract().getId());
+    assertEquals("dataContract", testCase.getDataContract().getType());
+  }
+
+  @Test
+  void test_createTestCase_withInvalidDataContractReference(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    CreateTestCase request =
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("tc_bad_dc"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .build();
+    request.setDataContract("non.existent.data.contract");
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Should fail with nonexistent data contract FQN");
+  }
+
+  @Test
+  void test_testCase_dataContractLinkedViaContractCreate(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    // Create test case first without dataContract
+    TestCase testCase =
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("tc_linked"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Verify no dataContract initially
+    TestCase beforeContract = SdkClients.adminClient().testCases().get(testCase.getId().toString());
+    assertTrue(
+        beforeContract.getDataContract() == null,
+        "Test case should have no dataContract before contract creation");
+
+    // Now create a data contract that references this test case
+    CreateDataContract dcRequest =
+        new CreateDataContract()
+            .withName(ns.prefix("dc_link"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Contract linking to existing test case")
+            .withQualityExpectations(
+                List.of(new EntityReference().withId(testCase.getId()).withType("testCase")));
+    DataContract contract = SdkClients.adminClient().dataContracts().create(dcRequest);
+
+    // Verify test case now has dataContract reference (set by postCreate lifecycle hook)
+    TestCase afterContract = SdkClients.adminClient().testCases().get(testCase.getId().toString());
+    assertNotNull(
+        afterContract.getDataContract(),
+        "Test case should have dataContract after contract creation");
+    assertEquals(contract.getId(), afterContract.getDataContract().getId());
   }
 
   // ===================================================================

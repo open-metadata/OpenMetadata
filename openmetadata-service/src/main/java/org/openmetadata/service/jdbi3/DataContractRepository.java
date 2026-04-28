@@ -279,7 +279,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           TestSuiteRepository testSuiteRepository =
               (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
           testSuiteRepository.createOrUpdate(null, testSuite, ADMIN_USER_NAME);
-          if (!pipeline.getDeployed()) {
+          if (!pipeline.getDeployed() && pipelineServiceClient != null) {
             prepareAndDeployIngestionPipeline(pipeline, testSuite);
           }
         }
@@ -907,15 +907,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             : Collections.emptyList();
     List<UUID> testsToAdd = testsWithoutResults.stream().map(TestCase::getId).toList();
 
-    if (!nullOrEmpty(testsWithoutResults)) {
-      testCaseRepository.addTestCasesToLogicalTestSuite(testSuite, testsToAdd);
+    List<UUID> newTestCases =
+        testsToAdd.stream().filter(testId -> !currentTests.contains(testId)).toList();
+    if (!nullOrEmpty(newTestCases)) {
+      testCaseRepository.addTestCasesToLogicalTestSuite(testSuite, newTestCases);
     }
 
     // Remove tests that are no longer in the quality expectations or already have results
     List<UUID> testsToRemove =
-        currentTests.stream()
-            .filter(testId -> !testCaseRefs.contains(testId) || !testsToAdd.contains(testId))
-            .toList();
+        currentTests.stream().filter(testId -> !testsToAdd.contains(testId)).toList();
     if (!nullOrEmpty(testsToRemove)) {
       for (UUID test : testsToRemove) {
         testCaseRepository.deleteTestCaseFromLogicalTestSuite(testSuite.getId(), test);
@@ -1073,6 +1073,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             !nullOrEmpty(testsWithoutResults)
                 ? ContractExecutionStatus.Running
                 : ContractExecutionStatus.Success);
+      } else if (result.getContractExecutionStatus() != ContractExecutionStatus.Aborted) {
+        // DQ triggered but no results yet — still surface schema/semantics failures
+        compileResult(result, ContractExecutionStatus.Running);
       }
     } else {
       compileResult(result, ContractExecutionStatus.Success);
@@ -1182,6 +1185,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     IngestionPipeline pipeline =
         Entity.getEntity(testSuite.getPipelines().get(0), "*", Include.NON_DELETED);
 
+    if (pipelineServiceClient == null) {
+      throw DataContractValidationException.byMessage(
+          "Pipeline service client is not configured, cannot trigger DQ validation");
+    }
     // ensure pipeline is deployed before running
     // we deploy the pipeline during post create
     if (!pipeline.getDeployed()) {
@@ -1341,10 +1348,11 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   private QualityValidation validateDQ(TestSuite testSuite, QualityValidation existingValidation) {
     if (existingValidation == null) {
-      existingValidation = new QualityValidation();
+      existingValidation =
+          new QualityValidation().withTotal(0).withPassed(0).withFailed(0).withQualityScore(0.0);
     }
     if (nullOrEmpty(testSuite.getTestCaseResultSummary())) {
-      return existingValidation; // return the existing result without updates
+      return existingValidation;
     }
 
     List<String> currentTests =
@@ -1357,14 +1365,16 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     List<ResultSummary> failedTests =
         testSummary.stream().filter(test -> FAILED_DQ_STATUSES.contains(test.getStatus())).toList();
 
+    int priorFailed = existingValidation.getFailed() != null ? existingValidation.getFailed() : 0;
+    int priorPassed = existingValidation.getPassed() != null ? existingValidation.getPassed() : 0;
+    int total = existingValidation.getTotal() != null ? existingValidation.getTotal() : 0;
+
     existingValidation
-        .withFailed(existingValidation.getFailed() + failedTests.size())
-        .withPassed(existingValidation.getPassed() + (testSummary.size() - failedTests.size()));
+        .withFailed(priorFailed + failedTests.size())
+        .withPassed(priorPassed + (testSummary.size() - failedTests.size()));
 
     existingValidation.withQualityScore(
-        (((existingValidation.getPassed() - existingValidation.getFailed())
-                / (double) existingValidation.getTotal()))
-            * 100);
+        total > 0 ? (existingValidation.getPassed() / (double) total) * 100 : 0.0);
 
     return existingValidation;
   }
@@ -1854,28 +1864,20 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     for (EntityReference testCaseRef : dataContract.getQualityExpectations()) {
       try {
-        // Get the existing test case to check if it already has a dataContract
         TestCase existingTestCase = daoCollection.testCaseDAO().findEntityById(testCaseRef.getId());
-        if (existingTestCase == null) {
-          LOG.warn("Test case {} not found, skipping dataContract update", testCaseRef.getId());
-          continue;
-        }
 
-        // Only update if the test case doesn't have a dataContract or has a different dataContract
-        // ID
         boolean shouldUpdate =
             existingTestCase.getDataContract() == null
                 || !existingTestCase.getDataContract().getId().equals(dataContract.getId());
 
         if (shouldUpdate) {
-          // Create the dataContract EntityReference
           EntityReference dataContractRef =
               new EntityReference()
                   .withId(dataContract.getId())
                   .withType(Entity.DATA_CONTRACT)
+                  .withName(dataContract.getName())
                   .withFullyQualifiedName(dataContract.getFullyQualifiedName());
 
-          // Use testCase DAO to update the dataContract field directly
           daoCollection
               .testCaseDAO()
               .updateTestCaseDataContract(
@@ -1890,6 +1892,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
               "Test case {} already has the same dataContract reference, skipping update",
               testCaseRef.getId());
         }
+      } catch (EntityNotFoundException e) {
+        LOG.warn("Test case {} not found, skipping dataContract update", testCaseRef.getId());
       } catch (Exception e) {
         LOG.warn(
             "Failed to update test case {} with dataContract reference: {}",
@@ -1900,22 +1904,16 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   private void removeDataContractFromTestCases(DataContract dataContract) {
-    if (nullOrEmpty(dataContract.getQualityExpectations())) {
-      return;
-    }
-
-    for (EntityReference testCaseRef : dataContract.getQualityExpectations()) {
-      try {
-        // Use testCase DAO to remove the dataContract field
-        daoCollection.testCaseDAO().removeTestCaseDataContract(testCaseRef.getId().toString());
-
-        LOG.debug("Removed dataContract reference from test case {}", testCaseRef.getId());
-      } catch (Exception e) {
-        LOG.warn(
-            "Failed to remove dataContract reference from test case {}: {}",
-            testCaseRef.getId(),
-            e.getMessage());
-      }
+    try {
+      daoCollection
+          .testCaseDAO()
+          .removeAllTestCaseDataContractReferences(dataContract.getId().toString());
+      LOG.debug("Removed dataContract references for contract {}", dataContract.getId());
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to remove dataContract references for contract {}: {}",
+          dataContract.getId(),
+          e.getMessage());
     }
   }
 

@@ -330,7 +330,9 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           getDataQualityDimensionCondition(
               dataQualityDimension, "testDefinition.dataQualityDimension"));
     if (dataContractId != null)
-      conditions.add(String.format("{\"term\": {\"dataContract.id\": \"%s\"}}", dataContractId));
+      conditions.add(
+          String.format(
+              "{\"term\": {\"dataContract.id\": \"%s\"}}", escapeDoubleQuotes(dataContractId)));
     return addCondition(conditions);
   }
 

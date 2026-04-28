@@ -335,7 +335,11 @@ public class TestCaseResultResource
         .ifPresent(tsi -> searchListFilter.addQueryParam("testSuiteId", tsi));
     Optional.ofNullable(entityFQN).ifPresent(ef -> searchListFilter.addQueryParam("entityFQN", ef));
     Optional.ofNullable(dataContractId)
-        .ifPresent(dci -> searchListFilter.addQueryParam("dataContractId", dci));
+        .ifPresent(
+            dci -> {
+              UUID.fromString(dci);
+              searchListFilter.addQueryParam("dataContractId", dci);
+            });
     Optional.ofNullable(type).ifPresent(t -> searchListFilter.addQueryParam("testCaseType", t));
     Optional.ofNullable(dataQualityDimension)
         .ifPresent(dqd -> searchListFilter.addQueryParam("dataQualityDimension", dqd));
@@ -431,7 +435,11 @@ public class TestCaseResultResource
     Optional.ofNullable(testSuiteId)
         .ifPresent(tsi -> searchListFilter.addQueryParam("testSuiteId", tsi));
     Optional.ofNullable(dataContractId)
-        .ifPresent(dci -> searchListFilter.addQueryParam("dataContractId", dci));
+        .ifPresent(
+            dci -> {
+              UUID.fromString(dci);
+              searchListFilter.addQueryParam("dataContractId", dci);
+            });
 
     List<AuthRequest> authRequests =
         getAuthRequestsForListOps(testCaseFQN, testSuiteId, dataContractId);
