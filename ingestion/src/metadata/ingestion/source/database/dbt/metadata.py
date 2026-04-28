@@ -114,6 +114,30 @@ from metadata.utils.time_utils import datetime_to_timestamp
 logger = ingestion_logger()
 
 
+def _get_dbt_test_description(manifest_node) -> Optional[str]:  # noqa: UP045
+    """Get test description, falling back to config.meta.description.
+
+    dbt tests can carry descriptions in two places inside manifest.json:
+    1. ``node.description`` — set via the ``description:`` key in schema.yml
+    2. ``node.config.meta.description`` — set via ``config(meta={'description': ...})``
+       inside the test SQL file.
+
+    OpenMetadata historically only reads path (1).  This helper also checks
+    path (2) so that tests documented through the ``config()`` block are
+    picked up as well.
+    """
+    if manifest_node.description:
+        return manifest_node.description
+    if (
+        hasattr(manifest_node, "config")
+        and manifest_node.config
+        and hasattr(manifest_node.config, "meta")
+        and isinstance(manifest_node.config.meta, dict)
+    ):
+        return manifest_node.config.meta.get("description") or None
+    return None
+
+
 class InvalidServiceException(Exception):  # noqa: N818
     """
     The service passed in config is not found
@@ -1405,6 +1429,7 @@ class DbtSource(DbtServiceSource):
                     fqn=manifest_node.name,
                     entity=TestDefinition,
                 )
+                description = _get_dbt_test_description(manifest_node)
                 if not check_test_definition_exists:
                     entity_type = EntityType.TABLE
                     if get_manifest_column_name(manifest_node):
@@ -1412,13 +1437,20 @@ class DbtSource(DbtServiceSource):
                     yield Either(
                         right=CreateTestDefinitionRequest(
                             name=manifest_node.name,
-                            description=manifest_node.description,
+                            description=description,
                             entityType=entity_type,
                             testPlatforms=[TestPlatform.dbt],
                             parameterDefinition=create_test_case_parameter_definitions(manifest_node),
                             displayName=None,
                             owners=None,
                         )
+                    )
+                elif description and self.source_config.dbtUpdateDescriptions:
+                    self.metadata.patch_description(
+                        entity=TestDefinition,
+                        source=check_test_definition_exists,
+                        description=description,
+                        force=True,
                     )
         except Exception as err:  # pylint: disable=broad-except
             yield Either(
@@ -1454,18 +1486,26 @@ class DbtSource(DbtServiceSource):
                     )
 
                     test_case = self.metadata.get_by_name(TestCase, test_case_fqn, fields=["testDefinition,testSuite"])
+                    description = _get_dbt_test_description(manifest_node)
                     if test_case is None:
                         # Create the test case only if it does not exist
                         yield Either(
                             right=CreateTestCaseRequest(
                                 name=manifest_node.name,
-                                description=manifest_node.description,
+                                description=description,
                                 testDefinition=FullyQualifiedEntityName(manifest_node.name),
                                 entityLink=entity_link_str,
                                 parameterValues=create_test_case_parameter_values(dbt_test),
                                 displayName=None,
                                 owners=None,
                             )
+                        )
+                    elif description and self.source_config.dbtUpdateDescriptions:
+                        self.metadata.patch_description(
+                            entity=TestCase,
+                            source=test_case,
+                            description=description,
+                            force=True,
                         )
                     logger.debug(f"Test case Already Exists: {test_case_fqn}")
         except Exception as err:  # pylint: disable=broad-except

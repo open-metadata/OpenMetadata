@@ -3640,3 +3640,436 @@ class TestRemoveManifestNonRequiredKeys(TestCase):
         assert manifest_dict["parent_map"] == {}
         assert manifest_dict["child_map"] == {}
         assert manifest_dict["group_map"] == []
+
+
+class TestGetDbtTestDescription(TestCase):
+    """
+    Tests for the _get_dbt_test_description helper that resolves a test
+    description from either manifest_node.description (schema.yml) or the
+    fallback path manifest_node.config.meta["description"] (config() block).
+    """
+
+    def test_returns_node_description_when_present(self):
+        from metadata.ingestion.source.database.dbt.metadata import _get_dbt_test_description
+
+        node = MagicMock()
+        node.description = "from schema.yml"
+        assert _get_dbt_test_description(node) == "from schema.yml"
+
+    def test_falls_back_to_config_meta_description(self):
+        from metadata.ingestion.source.database.dbt.metadata import _get_dbt_test_description
+
+        node = MagicMock()
+        node.description = ""
+        node.config.meta = {"description": "from config block"}
+        assert _get_dbt_test_description(node) == "from config block"
+
+    def test_returns_none_when_both_empty(self):
+        from metadata.ingestion.source.database.dbt.metadata import _get_dbt_test_description
+
+        node = MagicMock()
+        node.description = ""
+        node.config.meta = {}
+        assert _get_dbt_test_description(node) is None
+
+    def test_returns_none_when_no_config(self):
+        from metadata.ingestion.source.database.dbt.metadata import _get_dbt_test_description
+
+        node = MagicMock(spec=[])  # no attributes at all
+        node.description = ""
+        assert _get_dbt_test_description(node) is None
+
+    def test_returns_none_when_config_meta_is_none(self):
+        from metadata.ingestion.source.database.dbt.metadata import _get_dbt_test_description
+
+        node = MagicMock()
+        node.description = ""
+        node.config.meta = None
+        assert _get_dbt_test_description(node) is None
+
+    def test_node_description_takes_priority_over_config_meta(self):
+        from metadata.ingestion.source.database.dbt.metadata import _get_dbt_test_description
+
+        node = MagicMock()
+        node.description = "primary"
+        node.config.meta = {"description": "fallback"}
+        assert _get_dbt_test_description(node) == "primary"
+
+    def test_config_meta_not_a_dict_returns_none(self):
+        from metadata.ingestion.source.database.dbt.metadata import _get_dbt_test_description
+
+        node = MagicMock()
+        node.description = ""
+        node.config.meta = "not a dict"
+        assert _get_dbt_test_description(node) is None
+
+
+class TestDbtDescriptionUpdateOnRerun(TestCase):
+    """
+    Tests that create_dbt_tests_definition() and create_dbt_test_case()
+    patch descriptions on existing entities when dbtUpdateDescriptions is
+    enabled and the manifest node carries a description — including the
+    config.meta.description fallback path.
+    """
+
+    @staticmethod
+    def _make_dbt_source(dbt_update_descriptions=True):
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        source = MagicMock(spec=DbtSource)
+        source.metadata = MagicMock()
+        source.source_config = MagicMock()
+        source.source_config.dbtUpdateDescriptions = dbt_update_descriptions
+        source.context = MagicMock()
+        return source
+
+    @staticmethod
+    def _make_manifest_node(name="test_not_null_orders_id", description="Check for nulls", config_meta_desc=None):
+        """Build a mock manifest node.
+
+        Args:
+            description: value for node.description (schema.yml path)
+            config_meta_desc: if set, populates node.config.meta["description"]
+                              (config() block path)
+        """
+        node = MagicMock()
+        node.name = name
+        node.description = description
+        if config_meta_desc is not None:
+            node.config.meta = {"description": config_meta_desc}
+        else:
+            # Default: config.meta is an empty dict (no fallback)
+            node.config.meta = {}
+        return node
+
+    # ── create_dbt_tests_definition ──────────────────────────────
+
+    def test_definition_description_patched_when_exists_and_update_enabled(self):
+        """
+        When a TestDefinition already exists, has a manifest description,
+        and dbtUpdateDescriptions is True, patch_description must be called.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        source = self._make_dbt_source(dbt_update_descriptions=True)
+        existing_definition = MagicMock()  # simulates existing entity
+        source.metadata.get_by_name.return_value = existing_definition
+        source.create_dbt_tests_definition = DbtSource.create_dbt_tests_definition.__get__(source, DbtSource)
+
+        dbt_test = {DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node()}
+
+        # Consume the generator
+        list(source.create_dbt_tests_definition(dbt_test))
+
+        source.metadata.patch_description.assert_called_once()
+        call_kwargs = source.metadata.patch_description.call_args
+        from metadata.generated.schema.tests.testDefinition import TestDefinition
+
+        assert call_kwargs.kwargs["entity"] is TestDefinition
+        assert call_kwargs.kwargs["source"] is existing_definition
+        assert call_kwargs.kwargs["description"] == "Check for nulls"
+        assert call_kwargs.kwargs["force"] is True
+
+    def test_definition_description_not_patched_when_update_disabled(self):
+        """
+        When dbtUpdateDescriptions is False, patch_description must NOT be
+        called even if the entity exists and has a description.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        source = self._make_dbt_source(dbt_update_descriptions=False)
+        source.metadata.get_by_name.return_value = MagicMock()  # exists
+        source.create_dbt_tests_definition = DbtSource.create_dbt_tests_definition.__get__(source, DbtSource)
+
+        dbt_test = {DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node()}
+        list(source.create_dbt_tests_definition(dbt_test))
+
+        source.metadata.patch_description.assert_not_called()
+
+    def test_definition_description_not_patched_when_no_description(self):
+        """
+        When the manifest node has no description, patch_description must NOT
+        be called even if dbtUpdateDescriptions is True.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        source = self._make_dbt_source(dbt_update_descriptions=True)
+        source.metadata.get_by_name.return_value = MagicMock()  # exists
+        source.create_dbt_tests_definition = DbtSource.create_dbt_tests_definition.__get__(source, DbtSource)
+
+        dbt_test = {DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(description="")}
+        list(source.create_dbt_tests_definition(dbt_test))
+
+        source.metadata.patch_description.assert_not_called()
+
+    def test_definition_created_when_not_exists(self):
+        """
+        When the TestDefinition does not exist yet, a CreateTestDefinitionRequest
+        must be yielded and patch_description must NOT be called.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        source = self._make_dbt_source(dbt_update_descriptions=True)
+        source.metadata.get_by_name.return_value = None  # does not exist
+        source.create_dbt_tests_definition = DbtSource.create_dbt_tests_definition.__get__(source, DbtSource)
+
+        dbt_test = {DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node()}
+
+        with (
+            patch("metadata.ingestion.source.database.dbt.metadata.get_manifest_column_name", return_value=None),
+            patch(
+                "metadata.ingestion.source.database.dbt.metadata.create_test_case_parameter_definitions",
+                return_value=[],
+            ),
+        ):
+            results = list(source.create_dbt_tests_definition(dbt_test))
+
+        assert len(results) == 1
+        assert results[0].right is not None
+        source.metadata.patch_description.assert_not_called()
+
+    # ── create_dbt_test_case ─────────────────────────────────────
+
+    def test_case_description_patched_when_exists_and_update_enabled(self):
+        """
+        When a TestCase already exists, has a manifest description,
+        and dbtUpdateDescriptions is True, patch_description must be called.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        source = self._make_dbt_source(dbt_update_descriptions=True)
+        existing_test_case = MagicMock()
+        source.metadata.get_by_name.return_value = existing_test_case
+        source.create_dbt_test_case = DbtSource.create_dbt_test_case.__get__(source, DbtSource)
+
+        dbt_test = {DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node()}
+
+        with (
+            patch("metadata.ingestion.source.database.dbt.metadata.generate_entity_link") as mock_gen,
+            patch("metadata.ingestion.source.database.dbt.metadata.get_table_fqn", return_value="svc.db.schema.orders"),
+            patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn,
+            patch("metadata.ingestion.source.database.dbt.metadata.get_manifest_column_name", return_value=None),
+        ):
+            mock_gen.return_value = ["<#E::table::svc.db.schema.orders>"]
+            mock_fqn.split.return_value = ["svc", "db", "schema", "orders"]
+            mock_fqn.build.return_value = "svc.db.schema.orders.test_not_null_orders_id"
+            list(source.create_dbt_test_case(dbt_test))
+
+        source.metadata.patch_description.assert_called_once()
+        call_kwargs = source.metadata.patch_description.call_args
+        from metadata.generated.schema.tests.testCase import TestCase as TestCaseEntity
+
+        assert call_kwargs.kwargs["entity"] is TestCaseEntity
+        assert call_kwargs.kwargs["source"] is existing_test_case
+        assert call_kwargs.kwargs["description"] == "Check for nulls"
+        assert call_kwargs.kwargs["force"] is True
+
+    def test_case_description_not_patched_when_update_disabled(self):
+        """
+        When dbtUpdateDescriptions is False, patch_description must NOT be
+        called for test case even if it exists with a description.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        source = self._make_dbt_source(dbt_update_descriptions=False)
+        source.metadata.get_by_name.return_value = MagicMock()
+        source.create_dbt_test_case = DbtSource.create_dbt_test_case.__get__(source, DbtSource)
+
+        dbt_test = {DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node()}
+
+        with (
+            patch("metadata.ingestion.source.database.dbt.metadata.generate_entity_link") as mock_gen,
+            patch("metadata.ingestion.source.database.dbt.metadata.get_table_fqn", return_value="svc.db.schema.orders"),
+            patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn,
+            patch("metadata.ingestion.source.database.dbt.metadata.get_manifest_column_name", return_value=None),
+        ):
+            mock_gen.return_value = ["<#E::table::svc.db.schema.orders>"]
+            mock_fqn.split.return_value = ["svc", "db", "schema", "orders"]
+            mock_fqn.build.return_value = "svc.db.schema.orders.test_not_null_orders_id"
+            list(source.create_dbt_test_case(dbt_test))
+
+        source.metadata.patch_description.assert_not_called()
+
+    def test_case_description_not_patched_when_no_description(self):
+        """
+        When the manifest node has no description, patch_description must NOT
+        be called for test case even if dbtUpdateDescriptions is True.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        source = self._make_dbt_source(dbt_update_descriptions=True)
+        source.metadata.get_by_name.return_value = MagicMock()
+        source.create_dbt_test_case = DbtSource.create_dbt_test_case.__get__(source, DbtSource)
+
+        dbt_test = {DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(description="")}
+
+        with (
+            patch("metadata.ingestion.source.database.dbt.metadata.generate_entity_link") as mock_gen,
+            patch("metadata.ingestion.source.database.dbt.metadata.get_table_fqn", return_value="svc.db.schema.orders"),
+            patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn,
+            patch("metadata.ingestion.source.database.dbt.metadata.get_manifest_column_name", return_value=None),
+        ):
+            mock_gen.return_value = ["<#E::table::svc.db.schema.orders>"]
+            mock_fqn.split.return_value = ["svc", "db", "schema", "orders"]
+            mock_fqn.build.return_value = "svc.db.schema.orders.test_not_null_orders_id"
+            list(source.create_dbt_test_case(dbt_test))
+
+        source.metadata.patch_description.assert_not_called()
+
+    def test_case_created_when_not_exists(self):
+        """
+        When the TestCase does not exist yet, a CreateTestCaseRequest must be
+        yielded and patch_description must NOT be called.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        source = self._make_dbt_source(dbt_update_descriptions=True)
+        source.metadata.get_by_name.return_value = None  # does not exist
+        source.create_dbt_test_case = DbtSource.create_dbt_test_case.__get__(source, DbtSource)
+
+        dbt_test = {DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node()}
+
+        with (
+            patch("metadata.ingestion.source.database.dbt.metadata.generate_entity_link") as mock_gen,
+            patch("metadata.ingestion.source.database.dbt.metadata.get_table_fqn", return_value="svc.db.schema.orders"),
+            patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn,
+            patch("metadata.ingestion.source.database.dbt.metadata.get_manifest_column_name", return_value=None),
+            patch("metadata.ingestion.source.database.dbt.metadata.create_test_case_parameter_values", return_value=[]),
+        ):
+            mock_gen.return_value = ["<#E::table::svc.db.schema.orders>"]
+            mock_fqn.split.return_value = ["svc", "db", "schema", "orders"]
+            mock_fqn.build.return_value = "svc.db.schema.orders.test_not_null_orders_id"
+            results = list(source.create_dbt_test_case(dbt_test))
+
+        assert len(results) == 1
+        assert results[0].right is not None
+        source.metadata.patch_description.assert_not_called()
+
+    # ── config.meta.description fallback ─────────────────────────
+
+    def test_definition_uses_config_meta_description_on_create(self):
+        """
+        When node.description is empty but config.meta has a description,
+        the fallback value is used for the CreateTestDefinitionRequest.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        source = self._make_dbt_source(dbt_update_descriptions=True)
+        source.metadata.get_by_name.return_value = None  # does not exist
+        source.create_dbt_tests_definition = DbtSource.create_dbt_tests_definition.__get__(source, DbtSource)
+
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(
+                description="", config_meta_desc="from config block"
+            )
+        }
+
+        with (
+            patch("metadata.ingestion.source.database.dbt.metadata.get_manifest_column_name", return_value=None),
+            patch(
+                "metadata.ingestion.source.database.dbt.metadata.create_test_case_parameter_definitions",
+                return_value=[],
+            ),
+        ):
+            results = list(source.create_dbt_tests_definition(dbt_test))
+
+        assert len(results) == 1
+        assert results[0].right.description == "from config block"
+
+    def test_definition_patches_config_meta_description_on_rerun(self):
+        """
+        When entity exists and node.description is empty but config.meta has
+        a description, patch_description is called with the fallback value.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        source = self._make_dbt_source(dbt_update_descriptions=True)
+        existing = MagicMock()
+        source.metadata.get_by_name.return_value = existing
+        source.create_dbt_tests_definition = DbtSource.create_dbt_tests_definition.__get__(source, DbtSource)
+
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(
+                description="", config_meta_desc="from config block"
+            )
+        }
+        list(source.create_dbt_tests_definition(dbt_test))
+
+        source.metadata.patch_description.assert_called_once()
+        assert source.metadata.patch_description.call_args.kwargs["description"] == "from config block"
+
+    def test_case_uses_config_meta_description_on_create(self):
+        """
+        When node.description is empty but config.meta has a description,
+        the fallback value is used for the CreateTestCaseRequest.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        source = self._make_dbt_source(dbt_update_descriptions=True)
+        source.metadata.get_by_name.return_value = None
+        source.create_dbt_test_case = DbtSource.create_dbt_test_case.__get__(source, DbtSource)
+
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(
+                description="", config_meta_desc="from config block"
+            )
+        }
+
+        with (
+            patch("metadata.ingestion.source.database.dbt.metadata.generate_entity_link") as mock_gen,
+            patch("metadata.ingestion.source.database.dbt.metadata.get_table_fqn", return_value="svc.db.schema.orders"),
+            patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn,
+            patch("metadata.ingestion.source.database.dbt.metadata.get_manifest_column_name", return_value=None),
+            patch("metadata.ingestion.source.database.dbt.metadata.create_test_case_parameter_values", return_value=[]),
+        ):
+            mock_gen.return_value = ["<#E::table::svc.db.schema.orders>"]
+            mock_fqn.split.return_value = ["svc", "db", "schema", "orders"]
+            mock_fqn.build.return_value = "svc.db.schema.orders.test_not_null_orders_id"
+            results = list(source.create_dbt_test_case(dbt_test))
+
+        assert len(results) == 1
+        assert results[0].right.description == "from config block"
+
+    def test_case_patches_config_meta_description_on_rerun(self):
+        """
+        When entity exists and node.description is empty but config.meta has
+        a description, patch_description is called with the fallback value.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        source = self._make_dbt_source(dbt_update_descriptions=True)
+        existing = MagicMock()
+        source.metadata.get_by_name.return_value = existing
+        source.create_dbt_test_case = DbtSource.create_dbt_test_case.__get__(source, DbtSource)
+
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(
+                description="", config_meta_desc="from config block"
+            )
+        }
+
+        with (
+            patch("metadata.ingestion.source.database.dbt.metadata.generate_entity_link") as mock_gen,
+            patch("metadata.ingestion.source.database.dbt.metadata.get_table_fqn", return_value="svc.db.schema.orders"),
+            patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn,
+            patch("metadata.ingestion.source.database.dbt.metadata.get_manifest_column_name", return_value=None),
+        ):
+            mock_gen.return_value = ["<#E::table::svc.db.schema.orders>"]
+            mock_fqn.split.return_value = ["svc", "db", "schema", "orders"]
+            mock_fqn.build.return_value = "svc.db.schema.orders.test_not_null_orders_id"
+            list(source.create_dbt_test_case(dbt_test))
+
+        source.metadata.patch_description.assert_called_once()
+        assert source.metadata.patch_description.call_args.kwargs["description"] == "from config block"
