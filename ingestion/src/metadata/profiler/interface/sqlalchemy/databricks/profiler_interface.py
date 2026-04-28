@@ -109,7 +109,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         are logged and swallowed so a packaging change cannot break profiler startup.
         """
         try:
-            from databricks.sqlalchemy import DatabricksDialect  # noqa: PLC0415
+            from databricks.sqlalchemy.base import DatabricksDialect  # noqa: PLC0415
 
             statement_compiler = getattr(DatabricksDialect, "statement_compiler", None)
             if statement_compiler is None:

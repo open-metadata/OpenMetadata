@@ -13,7 +13,7 @@
 import re
 import traceback
 from copy import deepcopy
-from typing import Iterable, Optional, Tuple, Union  # noqa: UP035
+from typing import Any, Iterable, List, Optional, Tuple, Union  # noqa: UP035
 
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
@@ -23,7 +23,7 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql.sqltypes import String
 
-from databricks.sqlalchemy import DatabricksDialect
+from databricks.sqlalchemy.base import DatabricksDialect
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
@@ -284,8 +284,13 @@ def get_view_names_reflection(self, schema=None, **kw):
 
 
 def get_view_names(  # pylint: disable=unused-argument
-    self, connection, schema=None, only_materialized=False, only_temp=False, **kw
-):
+    self: Any,
+    connection: Any,
+    schema: Optional[str] = None,
+    only_materialized: bool = False,  # noqa: ARG001
+    only_temp: bool = False,  # noqa: ARG001
+    **kw: Any,
+) -> List[str]:
     if kw.get("db_name"):
         connection.execute(text(f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"))
     query = "SHOW VIEWS"
