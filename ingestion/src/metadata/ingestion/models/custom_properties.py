@@ -11,6 +11,7 @@
 """
 Custom models for custom properties
 """
+
 from enum import Enum
 from typing import Optional, Type, TypeVar
 

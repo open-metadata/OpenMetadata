@@ -26,9 +26,7 @@ def table_fqn(db_service: DatabaseService) -> str:
 
 
 @pytest.fixture(scope="module")
-def column_unique_test(
-    table_fqn: str, metadata: OpenMetadata[TestCase, CreateTestCaseRequest]
-) -> TestCase:
+def column_unique_test(table_fqn: str, metadata: OpenMetadata[TestCase, CreateTestCaseRequest]) -> TestCase:
     request = CreateTestCaseRequest(
         name="column_not_null",
         testDefinition="columnValuesToBeUnique",
@@ -45,9 +43,7 @@ def column_unique_test(
 
 
 @pytest.fixture(scope="module")
-def table_row_count_test(
-    table_fqn: str, metadata: OpenMetadata[TestCase, CreateTestCaseRequest]
-) -> TestCase:
+def table_row_count_test(table_fqn: str, metadata: OpenMetadata[TestCase, CreateTestCaseRequest]) -> TestCase:
     request = CreateTestCaseRequest(
         name="table_row_count",
         testDefinition="tableRowCountToEqual",
@@ -162,9 +158,7 @@ class TestFullUseCase:
             test_cases_and_results=IsList(
                 IsTuple(
                     HasAttributes(
-                        fullyQualifiedName=HasAttributes(
-                            root=column_unique_test.fullyQualifiedName.root
-                        ),
+                        fullyQualifiedName=HasAttributes(root=column_unique_test.fullyQualifiedName.root),
                     ),
                     HasAttributes(
                         testCaseStatus=TestCaseStatus.Success,
@@ -172,9 +166,7 @@ class TestFullUseCase:
                 ),
                 IsTuple(
                     HasAttributes(
-                        fullyQualifiedName=HasAttributes(
-                            root=table_row_count_test.fullyQualifiedName.root
-                        ),
+                        fullyQualifiedName=HasAttributes(root=table_row_count_test.fullyQualifiedName.root),
                     ),
                     HasAttributes(
                         testCaseStatus=TestCaseStatus.Success,
@@ -182,9 +174,7 @@ class TestFullUseCase:
                 ),
                 IsTuple(
                     HasAttributes(
-                        fullyQualifiedName=HasAttributes(
-                            root="column_value_min_to_be_between_90_and_100"
-                        ),
+                        fullyQualifiedName=HasAttributes(root="column_value_min_to_be_between_90_and_100"),
                     ),
                     HasAttributes(
                         testCaseStatus=TestCaseStatus.Failed,
@@ -210,9 +200,7 @@ class TestFullUseCase:
 
         assert test_suite is not None
         assert len(test_suite.tests) == 3
-        assert original_test_names.issubset(
-            {t.fullyQualifiedName for t in test_suite.tests}
-        )
+        assert original_test_names.issubset({t.fullyQualifiedName for t in test_suite.tests})
 
         assert {t.fullyQualifiedName for t in test_suite.tests} == {
             column_unique_test.fullyQualifiedName.root,
@@ -225,27 +213,21 @@ class TestFullUseCase:
         column_unique_result = metadata.get_by_name(
             TestCase, column_unique_test.fullyQualifiedName.root, fields=required_fields
         ).testCaseResult
-        assert column_unique_result == HasAttributes(
-            testCaseStatus=TestCaseStatus.Success
-        )
+        assert column_unique_result == HasAttributes(testCaseStatus=TestCaseStatus.Success)
 
         table_row_count_result = metadata.get_by_name(
             TestCase,
             table_row_count_test.fullyQualifiedName.root,
             fields=required_fields,
         ).testCaseResult
-        assert table_row_count_result == HasAttributes(
-            testCaseStatus=TestCaseStatus.Success
-        )
+        assert table_row_count_result == HasAttributes(testCaseStatus=TestCaseStatus.Success)
 
         code_test_case_result = metadata.get_by_name(
             TestCase,
             f"{table_fqn}.score.column_value_min_to_be_between_90_and_100",
             fields=required_fields,
         ).testCaseResult
-        assert code_test_case_result == HasAttributes(
-            testCaseStatus=TestCaseStatus.Failed
-        )
+        assert code_test_case_result == HasAttributes(testCaseStatus=TestCaseStatus.Failed)
 
         # Clean up code test
         metadata.delete_test_case(

@@ -11,6 +11,7 @@
 """
 Test Spline using the topology
 """
+
 # pylint: disable=line-too-long
 import json
 from pathlib import Path
@@ -44,9 +45,7 @@ from metadata.ingestion.source.pipeline.spline.models import (
 from metadata.ingestion.source.pipeline.spline.utils import parse_jdbc_url
 from metadata.utils.constants import DEFAULT_DATABASE, UTF_8
 
-mock_file_path = (
-    Path(__file__).parent.parent.parent / "resources/datasets/spline_dataset.json"
-)
+mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/spline_dataset.json"
 with open(mock_file_path, encoding=UTF_8) as file:
     mock_data: dict = json.load(file)
 
@@ -114,9 +113,7 @@ MOCK_PIPELINE = Pipeline(
             sourceUrl=MOCK_PIPELINE_URL,
         )
     ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"),
 )
 
 EXPECTED_SPLINE_PIPELINES = ExecutionEvents(
@@ -142,16 +139,10 @@ EXPECTED_LINEAGE_DETAILS = ExecutionDetail(
         _id="3f784e72-5bf7-5704-8828-ae8464fe915b",
         name="jdbc postgres ssl app",
         inputs=[
-            Inputs(
-                source="jdbc:postgresql://localhost:5432/postgres?sslmode=disable:spline_demo.start"
-            ),
-            Inputs(
-                source="jdbc:postgresql://localhost:5432/postgres?sslmode=disable:spline_demo.destination"
-            ),
+            Inputs(source="jdbc:postgresql://localhost:5432/postgres?sslmode=disable:spline_demo.start"),
+            Inputs(source="jdbc:postgresql://localhost:5432/postgres?sslmode=disable:spline_demo.destination"),
         ],
-        output=Output(
-            source="jdbc:postgresql://localhost:5432/postgres?sslmode=disable:spline_test.filter"
-        ),
+        output=Output(source="jdbc:postgresql://localhost:5432/postgres?sslmode=disable:spline_test.filter"),
         extra=Extra(
             attributes=[
                 AttributesNames(id="3f784e72-5bf7-5704-8828-ae8464fe915b:attr-1"),
@@ -233,9 +224,7 @@ JDBC_PARSING_EXAMPLES = [
 
 
 class SplineUnitTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
@@ -245,15 +234,11 @@ class SplineUnitTest(TestCase):
             config.workflowConfig.openMetadataServerConfig,
         )
         self.spline.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        self.spline.context.get().__dict__[
-            "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.root
+        self.spline.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
 
     def test_client(self):
         with patch.object(REST, "get", return_value=mock_data.get("execution-events")):
-            self.assertEqual(
-                list(self.spline.client.get_pipelines()), [EXPECTED_SPLINE_PIPELINES]
-            )
+            self.assertEqual(list(self.spline.client.get_pipelines()), [EXPECTED_SPLINE_PIPELINES])
 
         with patch.object(REST, "get", return_value=mock_data.get("lineage-detailed")):
             self.assertEqual(
@@ -268,9 +253,7 @@ class SplineUnitTest(TestCase):
         )
 
     def test_pipelines(self):
-        pipline = list(self.spline.yield_pipeline(EXPECTED_SPLINE_PIPELINES.items[0]))[
-            0
-        ].right
+        pipline = list(self.spline.yield_pipeline(EXPECTED_SPLINE_PIPELINES.items[0]))[0].right
         assert pipline == EXPECTED_CREATED_PIPELINES
 
     def test_jdbc_parsing(self):

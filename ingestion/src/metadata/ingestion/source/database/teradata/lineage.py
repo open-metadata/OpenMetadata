@@ -11,6 +11,7 @@
 """
 Teradata lineage module
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.teradataConnection import (
@@ -33,14 +34,10 @@ class TeradataLineageSource(LineageSource):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: TeradataConnection = config.serviceConnection.root.config
         if not isinstance(connection, TeradataConnection):
-            raise InvalidSourceException(
-                f"Expected TeradataConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected TeradataConnection, but got {connection}")
         return cls(config, metadata)

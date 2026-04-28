@@ -33,30 +33,20 @@ class ConnectorType(str, Enum):
 
 class KafkaConnectTasks(BaseModel):
     id: int = Field(..., description="ID of the task")
-    state: Optional[str] = Field(
-        default="UNASSIGNED", description="State of the task (e.g., RUNNING, STOPPED)"
-    )
-    worker_id: Optional[str] = Field(
-        default=None, description="ID of the worker running the task"
-    )
+    state: Optional[str] = Field(default="UNASSIGNED", description="State of the task (e.g., RUNNING, STOPPED)")
+    worker_id: Optional[str] = Field(default=None, description="ID of the worker running the task")
 
 
 class KafkaConnectTopics(BaseModel):
     name: str = Field(..., description="Name of the topic (e.g., random-source-avro)")
-    fqn: Optional[str] = Field(
-        default=None, description="Fully qualified name of the topic in OpenMetadata"
-    )
+    fqn: Optional[str] = Field(default=None, description="Fully qualified name of the topic in OpenMetadata")
 
 
 class ServiceResolutionResult(BaseModel):
     """Result of service name resolution from connector config"""
 
-    database_service_name: Optional[str] = Field(
-        default=None, description="Resolved database service name"
-    )
-    messaging_service_name: Optional[str] = Field(
-        default=None, description="Resolved messaging service name"
-    )
+    database_service_name: Optional[str] = Field(default=None, description="Resolved database service name")
+    messaging_service_name: Optional[str] = Field(default=None, description="Resolved messaging service name")
 
 
 class TopicResolutionResult(BaseModel):
@@ -64,9 +54,7 @@ class TopicResolutionResult(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    topics: List[KafkaConnectTopics] = Field(
-        default_factory=list, description="List of discovered/parsed topics"
-    )
+    topics: List[KafkaConnectTopics] = Field(default_factory=list, description="List of discovered/parsed topics")
     topic_entity_map: dict[str, Optional[Topic]] = Field(
         default_factory=dict, description="Map of topic name to resolved Topic entity"
     )
@@ -106,9 +94,7 @@ class KafkaConnectPipelineDetails(BaseModel):
     """
     Details about a Kafka Connect pipeline/connector"""
 
-    name: str = Field(
-        ..., description="Name of the status source (e.g., random-source-json)"
-    )
+    name: str = Field(..., description="Name of the status source (e.g., random-source-json)")
     status: Optional[str] = Field(
         default="UNASSIGNED",
         description="State of the connector (e.g., RUNNING, STOPPED)",

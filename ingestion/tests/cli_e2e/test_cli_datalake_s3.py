@@ -12,6 +12,7 @@
 """
 Test Datalake connector with CLI
 """
+
 import urllib.parse
 from pathlib import Path
 from typing import List
@@ -32,16 +33,10 @@ class DatalakeCliTest(CliCommonDB.TestSuite):
     @classmethod
     def setUpClass(cls) -> None:
         connector = cls.get_connector_name()
-        workflow: MetadataWorkflow = cls.get_workflow(
-            test_type=cls.get_test_type(), connector=connector
-        )
+        workflow: MetadataWorkflow = cls.get_workflow(test_type=cls.get_test_type(), connector=connector)
         cls.openmetadata = workflow.source.metadata
-        cls.config_file_path = str(
-            Path(PATH_TO_RESOURCES + f"/database/{connector}/{connector}.yaml")
-        )
-        cls.test_file_path = str(
-            Path(PATH_TO_RESOURCES + f"/database/{connector}/test.yaml")
-        )
+        cls.config_file_path = str(Path(PATH_TO_RESOURCES + f"/database/{connector}/{connector}.yaml"))
+        cls.test_file_path = str(Path(PATH_TO_RESOURCES + f"/database/{connector}/test.yaml"))
 
     def tearDown(self) -> None:
         pass

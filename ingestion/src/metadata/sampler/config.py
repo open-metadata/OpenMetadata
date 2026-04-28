@@ -11,6 +11,7 @@
 """
 Sampler configuration helpers
 """
+
 from typing import Any, Dict, List, Optional, Union
 
 from metadata.generated.schema.entity.data.database import (
@@ -49,11 +50,7 @@ def get_sample_storage_config(
     ],
 ) -> Optional[Union[DataStorageConfig, Dict[str, Any]]]:
     """Get sample storage config"""
-    if (
-        config
-        and config.sampleDataStorageConfig
-        and config.sampleDataStorageConfig.config
-    ):
+    if config and config.sampleDataStorageConfig and config.sampleDataStorageConfig.config:
         return config.sampleDataStorageConfig.config
     return None
 
@@ -67,15 +64,12 @@ def get_storage_config_for_table(
 ) -> Optional[Union[DataStorageConfig, Dict[str, Any]]]:
     """Get storage config for a specific entity"""
     schema_profiler_config = get_schema_profiler_config(schema_entity=schema_entity)
-    database_profiler_config = get_database_profiler_config(
-        database_entity=database_entity
-    )
+    database_profiler_config = get_database_profiler_config(database_entity=database_entity)
 
     for schema_config in profiler_config.schemaConfig or []:
         if (
             entity.databaseSchema
-            and schema_config.fullyQualifiedName.root
-            == entity.databaseSchema.fullyQualifiedName
+            and schema_config.fullyQualifiedName.root == entity.databaseSchema.fullyQualifiedName
             and get_sample_storage_config(schema_config)
         ):
             return get_sample_storage_config(schema_config)
@@ -83,8 +77,7 @@ def get_storage_config_for_table(
     for database_config in profiler_config.databaseConfig or []:
         if (
             entity.database
-            and database_config.fullyQualifiedName.root
-            == entity.database.fullyQualifiedName
+            and database_config.fullyQualifiedName.root == entity.database.fullyQualifiedName
             and get_sample_storage_config(database_config)
         ):
             return get_sample_storage_config(database_config)
@@ -131,9 +124,7 @@ def _resolve_profile_sample_config(
                 if isinstance(unwrapped, ProfileSampleConfig):
                     return unwrapped
                 return ProfileSampleConfig.model_validate(
-                    unwrapped.model_dump()
-                    if hasattr(unwrapped, "model_dump")
-                    else unwrapped
+                    unwrapped.model_dump() if hasattr(unwrapped, "model_dump") else unwrapped
                 )
         except AttributeError:
             pass
@@ -161,9 +152,7 @@ def get_profile_sample_config(
 ) -> SampleConfig:
     """Get profile sample config for a specific entity"""
     schema_profiler_config = get_schema_profiler_config(schema_entity=schema_entity)
-    database_profiler_config = get_database_profiler_config(
-        database_entity=database_entity
-    )
+    database_profiler_config = get_database_profiler_config(database_entity=database_entity)
 
     profile_sample_config = _resolve_profile_sample_config(
         entity_config=entity_config,
@@ -176,9 +165,7 @@ def get_profile_sample_config(
     return SampleConfig(profileSampleConfig=profile_sample_config)
 
 
-def get_sample_query(
-    entity: Table, entity_config: Optional[TableConfig]
-) -> Optional[str]:
+def get_sample_query(entity: Table, entity_config: Optional[TableConfig]) -> Optional[str]:
     """get profile query for sampling
 
     Args:
@@ -212,9 +199,7 @@ def get_sample_data_count_config(
         Optional[int]: int
     """
     schema_profiler_config = get_schema_profiler_config(schema_entity=schema_entity)
-    database_profiler_config = get_database_profiler_config(
-        database_entity=database_entity
-    )
+    database_profiler_config = get_database_profiler_config(database_entity=database_entity)
 
     for config in (
         entity_config,
@@ -239,28 +224,16 @@ def get_config_for_table(entity: Table, profiler_config) -> Optional[TableConfig
             return table_config
 
     for schema_config in profiler_config.schemaConfig or []:
-        if (
-            schema_config.fullyQualifiedName.root
-            == entity.databaseSchema.fullyQualifiedName
-        ):
-            return TableConfig.from_database_and_schema_config(
-                schema_config, entity.fullyQualifiedName.root
-            )
+        if schema_config.fullyQualifiedName.root == entity.databaseSchema.fullyQualifiedName:
+            return TableConfig.from_database_and_schema_config(schema_config, entity.fullyQualifiedName.root)
     for database_config in profiler_config.databaseConfig or []:
-        if (
-            database_config.fullyQualifiedName.root
-            == entity.database.fullyQualifiedName
-        ):
-            return TableConfig.from_database_and_schema_config(
-                database_config, entity.fullyQualifiedName.root
-            )
+        if database_config.fullyQualifiedName.root == entity.database.fullyQualifiedName:
+            return TableConfig.from_database_and_schema_config(database_config, entity.fullyQualifiedName.root)
 
     return None
 
 
-def get_include_columns(
-    entity, entity_config: Optional[TableConfig]
-) -> Optional[List[ColumnProfilerConfig]]:
+def get_include_columns(entity, entity_config: Optional[TableConfig]) -> Optional[List[ColumnProfilerConfig]]:
     """get included columns"""
     if entity_config and entity_config.columnConfig:
         return entity_config.columnConfig.includeColumns
@@ -271,9 +244,7 @@ def get_include_columns(
     return None
 
 
-def get_exclude_columns(
-    entity, entity_config: Optional[TableConfig]
-) -> Optional[List[str]]:
+def get_exclude_columns(entity, entity_config: Optional[TableConfig]) -> Optional[List[str]]:
     """get included columns"""
     if entity_config and entity_config.columnConfig:
         return entity_config.columnConfig.excludeColumns

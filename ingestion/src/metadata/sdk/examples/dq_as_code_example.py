@@ -36,9 +36,7 @@ runner = TestRunner.for_table("MySQL.default.openmetadata_db.bot_entity")
 
 # Add multiple tests
 runner.add_test(
-    TableColumnCountToBeBetween(min_count=10).with_description(
-        "Ensure bot_entity table has at least 10 columns"
-    )
+    TableColumnCountToBeBetween(min_count=10).with_description("Ensure bot_entity table has at least 10 columns")
 )
 
 runner.add_test(
@@ -47,11 +45,7 @@ runner.add_test(
     )
 )
 
-runner.add_test(
-    ColumnValuesToBeUnique(column="id")
-    .with_name("bot_entity_id_unique")
-    .with_compute_row_count(True)
-)
+runner.add_test(ColumnValuesToBeUnique(column="id").with_name("bot_entity_id_unique").with_compute_row_count(True))
 
 runner.add_test(ColumnValuesToBeNotNull(column="name"))
 

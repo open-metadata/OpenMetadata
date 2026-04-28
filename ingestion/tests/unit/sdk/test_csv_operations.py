@@ -33,7 +33,7 @@ class TestCsvMixinOperations(unittest.TestCase):
         mock_client.get.return_value = mock_response
 
         # Create OpenMetadata instance with mock client
-        config = OpenMetadataConnection(
+        config = OpenMetadataConnection(  # noqa: F841
             hostPort="http://test", authProvider=AuthProvider.openmetadata
         )
         # Use mocked client directly
@@ -47,9 +47,7 @@ class TestCsvMixinOperations(unittest.TestCase):
 
         # Verify
         assert result == mock_response
-        self.mock_client.get.assert_called_once_with(
-            "/glossaries/name/test_glossary/export"
-        )
+        self.mock_client.get.assert_called_once_with("/glossaries/name/test_glossary/export")
 
     def test_csv_mixin_export_async(self):
         """Test async CSV export method."""
@@ -59,7 +57,7 @@ class TestCsvMixinOperations(unittest.TestCase):
         mock_client.get.return_value = mock_response
 
         # Create OpenMetadata instance with mock client
-        config = OpenMetadataConnection(
+        config = OpenMetadataConnection(  # noqa: F841
             hostPort="http://test", authProvider=AuthProvider.openmetadata
         )
         # Use mocked client directly
@@ -73,19 +71,17 @@ class TestCsvMixinOperations(unittest.TestCase):
 
         # Verify
         assert result == "export-job-123"
-        self.mock_client.get.assert_called_once_with(
-            "/glossaries/name/test_glossary/exportAsync"
-        )
+        self.mock_client.get.assert_called_once_with("/glossaries/name/test_glossary/exportAsync")
 
     def test_csv_mixin_import(self):
         """Test CSV import method."""
         # Create mock client
-        mock_client = Mock()
+        mock_client = Mock()  # noqa: F841
         mock_response = {"created": 5, "updated": 2}
         self.mock_client.put.return_value = mock_response
 
         # Create OpenMetadata instance with mock client
-        config = OpenMetadataConnection(
+        config = OpenMetadataConnection(  # noqa: F841
             hostPort="http://test", authProvider=AuthProvider.openmetadata
         )
         # Use mocked client directly
@@ -93,9 +89,7 @@ class TestCsvMixinOperations(unittest.TestCase):
 
         # Test import
         csv_data = "parent,name,description\n,term1,Test term"
-        result = self.csv_mixin.import_csv(
-            Glossary, "test_glossary", csv_data, dry_run=False
-        )
+        result = self.csv_mixin.import_csv(Glossary, "test_glossary", csv_data, dry_run=False)
 
         # Verify
         assert result == mock_response
@@ -108,12 +102,12 @@ class TestCsvMixinOperations(unittest.TestCase):
     def test_csv_mixin_import_dry_run(self):
         """Test CSV import with dry run."""
         # Create mock client
-        mock_client = Mock()
+        mock_client = Mock()  # noqa: F841
         mock_response = {"wouldCreate": 5, "wouldUpdate": 2}
         self.mock_client.put.return_value = mock_response
 
         # Create OpenMetadata instance with mock client
-        config = OpenMetadataConnection(
+        config = OpenMetadataConnection(  # noqa: F841
             hostPort="http://test", authProvider=AuthProvider.openmetadata
         )
         # Use mocked client directly
@@ -121,9 +115,7 @@ class TestCsvMixinOperations(unittest.TestCase):
 
         # Test import with dry run
         csv_data = "parent,name,description\n,term1,Test term"
-        result = self.csv_mixin.import_csv(
-            Glossary, "test_glossary", csv_data, dry_run=True
-        )
+        result = self.csv_mixin.import_csv(Glossary, "test_glossary", csv_data, dry_run=True)
 
         # Verify
         assert result == mock_response
@@ -136,12 +128,12 @@ class TestCsvMixinOperations(unittest.TestCase):
     def test_csv_mixin_import_async(self):
         """Test async CSV import."""
         # Create mock client
-        mock_client = Mock()
+        mock_client = Mock()  # noqa: F841
         mock_response = {"jobId": "import-job-456"}
         self.mock_client.put.return_value = mock_response
 
         # Create OpenMetadata instance with mock client
-        config = OpenMetadataConnection(
+        config = OpenMetadataConnection(  # noqa: F841
             hostPort="http://test", authProvider=AuthProvider.openmetadata
         )
         # Use mocked client directly
@@ -149,9 +141,7 @@ class TestCsvMixinOperations(unittest.TestCase):
 
         # Test async import
         csv_data = "parent,name,description\n,term1,Test term"
-        result = self.csv_mixin.import_csv_async(
-            Glossary, "test_glossary", csv_data, dry_run=False
-        )
+        result = self.csv_mixin.import_csv_async(Glossary, "test_glossary", csv_data, dry_run=False)
 
         # Verify
         assert result == "import-job-456"
@@ -182,9 +172,7 @@ class TestCsvMixinOperations(unittest.TestCase):
 
         # Verify
         assert csv_data == "csv,export,data"
-        mock_ometa.export_csv.assert_called_once_with(
-            entity=Glossary, name="test_glossary"
-        )
+        mock_ometa.export_csv.assert_called_once_with(entity=Glossary, name="test_glossary")
 
     def test_base_entity_csv_import_integration(self):
         """Test BaseEntity import_csv method integration."""

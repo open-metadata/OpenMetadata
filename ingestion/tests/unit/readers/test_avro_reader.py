@@ -12,6 +12,7 @@
 """
 Tests for AvroDataFrameReader
 """
+
 import io
 import unittest
 from unittest.mock import Mock, patch
@@ -88,9 +89,7 @@ class TestAvroReader(unittest.TestCase):
         ]
 
         config = S3Config(
-            securityConfig=AWSCredentials(
-                awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1"
-            )
+            securityConfig=AWSCredentials(awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1")
         )
         reader = AvroDataFrameReader(config, mock_client)
 
@@ -111,9 +110,7 @@ class TestAvroReader(unittest.TestCase):
         def create_fresh_file():
             return self._create_mock_avro_file()
 
-        mock_gcs.open.return_value.__enter__ = Mock(
-            side_effect=lambda: create_fresh_file()
-        )
+        mock_gcs.open.return_value.__enter__ = Mock(side_effect=lambda: create_fresh_file())
         mock_gcs.open.return_value.__exit__ = Mock(return_value=False)
 
         config = GCSConfig()
@@ -137,16 +134,10 @@ class TestAvroReader(unittest.TestCase):
         def create_fresh_file():
             return self._create_mock_avro_file()
 
-        mock_fs.open.return_value.__enter__ = Mock(
-            side_effect=lambda: create_fresh_file()
-        )
+        mock_fs.open.return_value.__enter__ = Mock(side_effect=lambda: create_fresh_file())
         mock_fs.open.return_value.__exit__ = Mock(return_value=False)
 
-        config = AzureConfig(
-            securityConfig=AzureCredentials(
-                accountName="test", clientId="test", tenantId="test"
-            )
-        )
+        config = AzureConfig(securityConfig=AzureCredentials(accountName="test", clientId="test", tenantId="test"))
         reader = AvroDataFrameReader(config, None)
 
         result = reader._read(key="test.avro", bucket_name="test-container")

@@ -81,9 +81,7 @@ class SigmaSource(DashboardServiceSource):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SigmaConnection = config.serviceConnection.root.config
         if not isinstance(connection, SigmaConnection):
-            raise InvalidSourceException(
-                f"Expected SigmaConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected SigmaConnection, but got {connection}")
         return cls(config, metadata)
 
     def __init__(
@@ -114,25 +112,19 @@ class SigmaSource(DashboardServiceSource):
         """
         return self.client.get_dashboard_detail(dashboard.workbookId)
 
-    def yield_dashboard(
-        self, dashboard_details: WorkbookDetails
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def yield_dashboard(self, dashboard_details: WorkbookDetails) -> Iterable[Either[CreateDashboardRequest]]:
         """
         yield Dashboard Entity
         """
         if not dashboard_details:
-            logger.warning(f"Skipping dashboard - details are None (API error)")
+            logger.warning(f"Skipping dashboard - details are None (API error)")  # noqa: F541
             return
 
         try:
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(str(dashboard_details.workbookId)),
                 displayName=dashboard_details.name,
-                description=(
-                    Markdown(dashboard_details.description)
-                    if dashboard_details.description
-                    else None
-                ),
+                description=(Markdown(dashboard_details.description) if dashboard_details.description else None),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -159,14 +151,12 @@ class SigmaSource(DashboardServiceSource):
                 )
             )
 
-    def yield_dashboard_chart(
-        self, dashboard_details: WorkbookDetails
-    ) -> Iterable[Either[CreateChartRequest]]:
+    def yield_dashboard_chart(self, dashboard_details: WorkbookDetails) -> Iterable[Either[CreateChartRequest]]:
         """
         yield dashboard charts
         """
         if not dashboard_details:
-            logger.warning(f"Skipping charts - dashboard details are None (API error)")
+            logger.warning(f"Skipping charts - dashboard details are None (API error)")  # noqa: F541
             return
 
         charts = self.client.get_chart_details(dashboard_details.workbookId)
@@ -179,15 +169,9 @@ class SigmaSource(DashboardServiceSource):
                     name=EntityName(str(chart.elementId)),
                     displayName=chart.name or f"Element {chart.elementId}",
                     chartType=get_standard_chart_type(chart.vizualizationType),
-                    service=FullyQualifiedEntityName(
-                        self.context.get().dashboard_service
-                    ),
+                    service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                     sourceUrl=SourceUrl(dashboard_details.url),
-                    description=(
-                        Markdown(dashboard_details.description)
-                        if dashboard_details.description
-                        else None
-                    ),
+                    description=(Markdown(dashboard_details.description) if dashboard_details.description else None),
                 )
                 yield Either(right=chart_request)
                 self.register_record_chart(chart_request=chart_request)
@@ -196,8 +180,7 @@ class SigmaSource(DashboardServiceSource):
                     left=StackTraceError(
                         name="Chart",
                         error=(
-                            "Error to yield dashboard chart for : "
-                            f"{chart.elementId} and {dashboard_details}: {exc}"
+                            f"Error to yield dashboard chart for : {chart.elementId} and {dashboard_details}: {exc}"
                         ),
                         stackTrace=traceback.format_exc(),
                     )
@@ -236,34 +219,16 @@ class SigmaSource(DashboardServiceSource):
             database_name = schema_parts[0] if len(schema_parts) > 1 else None
             table_name = node.name
 
-            if (
-                prefix_table_name
-                and table_name
-                and prefix_table_name.lower() != table_name.lower()
-            ):
-                logger.debug(
-                    f"Table {table_name} does not match prefix {prefix_table_name}"
-                )
+            if prefix_table_name and table_name and prefix_table_name.lower() != table_name.lower():
+                logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")
                 return None
 
-            if (
-                prefix_schema_name
-                and schema_name
-                and prefix_schema_name.lower() != schema_name.lower()
-            ):
-                logger.debug(
-                    f"Schema {schema_name} does not match prefix {prefix_schema_name}"
-                )
+            if prefix_schema_name and schema_name and prefix_schema_name.lower() != schema_name.lower():
+                logger.debug(f"Schema {schema_name} does not match prefix {prefix_schema_name}")
                 return None
 
-            if (
-                prefix_database_name
-                and database_name
-                and prefix_database_name.lower() != database_name.lower()
-            ):
-                logger.debug(
-                    f"Database {database_name} does not match prefix {prefix_database_name}"
-                )
+            if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
+                logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
                 return None
 
             try:
@@ -294,30 +259,22 @@ class SigmaSource(DashboardServiceSource):
         """
         for data_model in self.data_models or []:
             try:
-                data_model_entity = self._get_datamodel(
-                    datamodel_id=data_model.elementId
-                )
+                data_model_entity = self._get_datamodel(datamodel_id=data_model.elementId)
                 if not data_model_entity:
                     continue
 
-                nodes = self.client.get_lineage_details(
-                    dashboard_details.workbookId, data_model.elementId
-                )
+                nodes = self.client.get_lineage_details(dashboard_details.workbookId, data_model.elementId)
 
                 if not nodes:
                     continue
 
                 for node in nodes:
-                    table_entity = self._get_table_entity_from_node(
-                        node, db_service_prefix
-                    )
+                    table_entity = self._get_table_entity_from_node(node, db_service_prefix)
                     if table_entity:
                         column_lineage = None
                         if data_model.columns:
                             columns_list = data_model.columns
-                            column_lineage = self._get_column_lineage(
-                                table_entity, data_model_entity, columns_list
-                            )
+                            column_lineage = self._get_column_lineage(table_entity, data_model_entity, columns_list)
                         yield self._get_add_lineage_request(
                             to_entity=data_model_entity,
                             from_entity=table_entity,
@@ -346,9 +303,7 @@ class SigmaSource(DashboardServiceSource):
             if not data_model_entity:
                 return
 
-            nodes = self.client.get_lineage_details(
-                dashboard_details.workbookId, data_model.elementId
-            )
+            nodes = self.client.get_lineage_details(dashboard_details.workbookId, data_model.elementId)
 
             if not nodes:
                 return
@@ -359,9 +314,7 @@ class SigmaSource(DashboardServiceSource):
                     column_lineage = None
                     if data_model.columns:
                         columns_list = data_model.columns
-                        column_lineage = self._get_column_lineage(
-                            table_entity, data_model_entity, columns_list
-                        )
+                        column_lineage = self._get_column_lineage(table_entity, data_model_entity, columns_list)
                     yield self._get_add_lineage_request(
                         to_entity=data_model_entity,
                         from_entity=table_entity,
@@ -385,17 +338,13 @@ class SigmaSource(DashboardServiceSource):
         Yield dashboard lineage using SQL query parsing (primary) or file-based (fallback)
         """
         if not dashboard_details:
-            logger.warning(f"Skipping lineage - dashboard details are None (API error)")
+            logger.warning(f"Skipping lineage - dashboard details are None (API error)")  # noqa: F541
             return
 
-        queries_response = self.client.get_workbook_queries(
-            dashboard_details.workbookId
-        )
+        queries_response = self.client.get_workbook_queries(dashboard_details.workbookId)
 
         if not queries_response or not queries_response.entries:
-            yield from self._yield_lineage_from_files(
-                dashboard_details, db_service_prefix
-            )
+            yield from self._yield_lineage_from_files(dashboard_details, db_service_prefix)
             return
 
         db_service_name = None
@@ -403,17 +352,13 @@ class SigmaSource(DashboardServiceSource):
         if db_service_prefix:
             (db_service_name, _, _, _) = self.parse_db_service_prefix(db_service_prefix)
             if db_service_name:
-                db_service_entity = self.metadata.get_by_name(
-                    entity=DatabaseService, fqn=db_service_name
-                )
+                db_service_entity = self.metadata.get_by_name(entity=DatabaseService, fqn=db_service_name)
 
         queries_by_element = {q.elementId: q for q in queries_response.entries}
 
         for data_model in self.data_models or []:
             try:
-                data_model_entity = self._get_datamodel(
-                    datamodel_id=data_model.elementId
-                )
+                data_model_entity = self._get_datamodel(datamodel_id=data_model.elementId)
                 if not data_model_entity:
                     continue
 
@@ -427,9 +372,7 @@ class SigmaSource(DashboardServiceSource):
 
                 lineage_parser = LineageParser(
                     query_obj.sql,
-                    ConnectionTypeDialectMapper.dialect_of(
-                        db_service_entity.serviceType.value
-                    )
+                    ConnectionTypeDialectMapper.dialect_of(db_service_entity.serviceType.value)
                     if db_service_entity
                     else Dialect.ANSI,
                     parser_type=self.get_query_parser_type(),
@@ -442,9 +385,7 @@ class SigmaSource(DashboardServiceSource):
                     table_name = database_schema_table.get("table")
 
                     if db_service_entity and database_name:
-                        database_name = get_database_name_for_lineage(
-                            db_service_entity, database_name
-                        )
+                        database_name = get_database_name_for_lineage(db_service_entity, database_name)
 
                     fqn_search_string = build_es_fqn_search_string(
                         service_name=db_service_name or "*",
@@ -494,28 +435,21 @@ class SigmaSource(DashboardServiceSource):
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datamodel_columns
 
-    def yield_datamodel(
-        self, dashboard_details: WorkbookDetails
-    ) -> Iterable[Either[DashboardDataModel]]:
+    def yield_datamodel(self, dashboard_details: WorkbookDetails) -> Iterable[Either[DashboardDataModel]]:
         if not dashboard_details:
             logger.warning(
-                f"Skipping data models - dashboard details are None (API error)"
+                f"Skipping data models - dashboard details are None (API error)"  # noqa: F541
             )
             return
 
         if self.source_config.includeDataModels:
-            self.data_models = self.client.get_chart_details(
-                dashboard_details.workbookId
-            )
+            self.data_models = self.client.get_chart_details(dashboard_details.workbookId)
             for data_model in self.data_models or []:
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(data_model.elementId),
-                        displayName=data_model.name
-                        or f"Element {data_model.elementId}",
-                        service=FullyQualifiedEntityName(
-                            self.context.get().dashboard_service
-                        ),
+                        displayName=data_model.name or f"Element {data_model.elementId}",
+                        service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                         dataModelType=DataModelType.SigmaDataModel.value,
                         serviceType=self.service_connection.type.value,
                         columns=self.get_column_info(data_model),
@@ -531,9 +465,7 @@ class SigmaSource(DashboardServiceSource):
                         )
                     )
 
-    def get_owner_ref(
-        self, dashboard_details: WorkbookDetails
-    ) -> Optional[EntityReferenceList]:
+    def get_owner_ref(self, dashboard_details: WorkbookDetails) -> Optional[EntityReferenceList]:
         """
         Get owner from email
         """

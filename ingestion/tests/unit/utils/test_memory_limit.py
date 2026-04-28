@@ -80,9 +80,7 @@ class TestMemoryLimit(unittest.TestCase):
             # Should succeed - function only allocated 5MB despite process having 80MB
             self.assertEqual(result, 5)
         except MemoryLimitExceeded:
-            self.fail(
-                "Function should NOT have been killed - only allocated 5MB (under 30MB limit)"
-            )
+            self.fail("Function should NOT have been killed - only allocated 5MB (under 30MB limit)")
         finally:
             # Clean up preexisting data
             del preexisting_data
@@ -783,9 +781,7 @@ class TestMemoryLimit(unittest.TestCase):
         self.assertEqual(result_baseline, result_decorated)
 
         # Calculate overhead percentage
-        overhead_pct = (
-            (decorated_duration - baseline_duration) / baseline_duration
-        ) * 100
+        overhead_pct = ((decorated_duration - baseline_duration) / baseline_duration) * 100
 
         # Assert overhead is within acceptable limits
         self.assertLessEqual(

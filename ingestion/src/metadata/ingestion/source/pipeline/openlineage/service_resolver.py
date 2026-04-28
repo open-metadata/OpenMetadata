@@ -136,9 +136,7 @@ def get_or_create_pipeline_service(
             _cache[service_name] = service_name
         return service_name
 
-    logger.info(
-        f"Creating pipeline service '{service_name}' with type '{service_type.value}'"
-    )
+    logger.info(f"Creating pipeline service '{service_name}' with type '{service_type.value}'")
     request = CreatePipelineServiceRequest(
         name=EntityName(service_name),
         serviceType=service_type,

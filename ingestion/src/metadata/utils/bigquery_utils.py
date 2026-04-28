@@ -68,14 +68,10 @@ def get_bigquery_client(
         )
     from google.cloud import bigquery  # pylint: disable=import-outside-toplevel
 
-    return bigquery.Client(
-        credentials=credentials, project=project_id, location=location
-    )
+    return bigquery.Client(credentials=credentials, project=project_id, location=location)
 
 
-def copy_service_config(
-    config: OpenMetadataWorkflowConfig, database_name: str
-) -> BigQueryConnection:
+def copy_service_config(config: OpenMetadataWorkflowConfig, database_name: str) -> BigQueryConnection:
     """Handles multiple project id in the service config and replace it with the database name
 
     Args:

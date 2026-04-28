@@ -11,6 +11,7 @@
 """
 Test flink using the topology
 """
+
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -35,9 +36,7 @@ mock_flink_config = {
     "source": {
         "type": "flink",
         "serviceName": "flink_test",
-        "serviceConnection": {
-            "config": {"type": "Flink", "hostPort": "http://127.0.0.1:8081"}
-        },
+        "serviceConnection": {"config": {"type": "Flink", "hostPort": "http://127.0.0.1:8081"}},
         "sourceConfig": {"config": {"type": "PipelineMetadata"}},
     },
     "sink": {"type": "metadata-rest", "config": {}},
@@ -125,9 +124,7 @@ EXPECTED_PIPELINE = [
 
 
 class FlinkUnitTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("metadata.ingestion.source.pipeline.flink.connection.get_connection")
     def __init__(self, methodName, flink_client, test_connection) -> None:
 
@@ -139,9 +136,7 @@ class FlinkUnitTest(TestCase):
             config.workflowConfig.openMetadataServerConfig,
         )
         self.flink.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name
-        self.flink.context.get().__dict__[
-            "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.root
+        self.flink.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
         self.client = flink_client.return_value
 
     def test_pipeline_name(self):
@@ -153,31 +148,26 @@ class FlinkUnitTest(TestCase):
         for result in results:
             pipelines_list.append(result.right)
 
-        for _, (expected, original) in enumerate(
-            zip(EXPECTED_PIPELINE, pipelines_list)
-        ):
+        for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE, pipelines_list)):
             expected.sourceUrl = original.sourceUrl
             self.assertEqual(expected, original)
 
 
 class TestFlinkTaskNames:
     def setup_method(self):
-        with patch(
-            "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-        ), patch("metadata.ingestion.source.pipeline.flink.connection.get_connection"):
+        with (
+            patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"),
+            patch("metadata.ingestion.source.pipeline.flink.connection.get_connection"),
+        ):
             config = OpenMetadataWorkflowConfig.model_validate(mock_flink_config)
             self.flink = FlinkSource.create(
                 mock_flink_config["source"],
                 config.workflowConfig.openMetadataServerConfig,
             )
         self.flink.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name
-        self.flink.context.get().__dict__[
-            "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.root
+        self.flink.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
         self.flink.client = MagicMock()
-        self.flink.client.get_pipeline_info.return_value = (
-            MOCK_PIPELINE_WITH_SPECIAL_CHARS
-        )
+        self.flink.client.get_pipeline_info.return_value = MOCK_PIPELINE_WITH_SPECIAL_CHARS
 
     def test_get_connections_jobs_uses_task_id_as_name(self):
         tasks = self.flink.get_connections_jobs(MOCK_PIPELINE_WITH_SPECIAL_CHARS)
@@ -187,9 +177,7 @@ class TestFlinkTaskNames:
         assert tasks[0].displayName == EXPECTED_TASK_DISPLAY_NAME
 
     def test_yield_pipeline_status_uses_task_id_as_name(self):
-        results = list(
-            self.flink.yield_pipeline_status(MOCK_PIPELINE_WITH_SPECIAL_CHARS)
-        )
+        results = list(self.flink.yield_pipeline_status(MOCK_PIPELINE_WITH_SPECIAL_CHARS))
 
         assert len(results) == 1
         assert results[0].right is not None
@@ -198,15 +186,9 @@ class TestFlinkTaskNames:
         assert task_statuses[0].name == EXPECTED_TASK_ID
 
     def test_task_names_consistent_between_topology_and_status(self):
-        topology_tasks = self.flink.get_connections_jobs(
-            MOCK_PIPELINE_WITH_SPECIAL_CHARS
-        )
-        status_results = list(
-            self.flink.yield_pipeline_status(MOCK_PIPELINE_WITH_SPECIAL_CHARS)
-        )
+        topology_tasks = self.flink.get_connections_jobs(MOCK_PIPELINE_WITH_SPECIAL_CHARS)
+        status_results = list(self.flink.yield_pipeline_status(MOCK_PIPELINE_WITH_SPECIAL_CHARS))
 
         topology_names = {task.name for task in topology_tasks}
-        status_names = {
-            ts.name for ts in status_results[0].right.pipeline_status.taskStatus
-        }
+        status_names = {ts.name for ts in status_results[0].right.pipeline_status.taskStatus}
         assert topology_names == status_names

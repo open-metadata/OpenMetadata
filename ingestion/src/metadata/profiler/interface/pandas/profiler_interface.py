@@ -14,6 +14,7 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
+
 import traceback
 from collections import defaultdict
 from datetime import datetime
@@ -88,9 +89,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         self.client = self.sampler.client
         dataset = self.sampler.get_dataset()
         dataset = self._type_casted_dataset(dataset)
-        self.dataset = PandasRunner(
-            dataset=dataset, raw_dataset=self.sampler.raw_dataset
-        )
+        self.dataset = PandasRunner(dataset=dataset, raw_dataset=self.sampler.raw_dataset)
         self.status = ProfilerProcessorStatus()
         self.column_names_cache = {}
 
@@ -205,13 +204,9 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         try:
             for metric in metrics:
                 metric_resp = metric(column).df_fn(runner)
-                row_dict[metric.name()] = (
-                    None if pd.isnull(metric_resp) else metric_resp
-                )
+                row_dict[metric.name()] = None if pd.isnull(metric_resp) else metric_resp
         except Exception as exc:
-            logger.debug(
-                f"{traceback.format_exc()}\nError trying to compute profile for {exc}"
-            )
+            logger.debug(f"{traceback.format_exc()}\nError trying to compute profile for {exc}")
             raise RuntimeError(exc)
         return row_dict
 
@@ -274,9 +269,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         """
         return None  # to be implemented
 
-    def _compute_custom_metrics(
-        self, metrics: List[CustomMetric], runner: "PandasRunner", *args, **kwargs
-    ):
+    def _compute_custom_metrics(self, metrics: List[CustomMetric], runner: "PandasRunner", *args, **kwargs):
         """Compute custom metrics. For pandas source we expect expression
         to be a boolean value. We'll return the length of the dataframe
 
@@ -292,13 +285,9 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         for metric in metrics:
             try:
                 row = sum(
-                    len(df.query(metric.expression).index)
-                    for df in runner()
-                    if len(df.query(metric.expression).index)
+                    len(df.query(metric.expression).index) for df in runner() if len(df.query(metric.expression).index)
                 )
-                custom_metrics.append(
-                    CustomMetricProfile(name=metric.name.root, value=row)
-                )
+                custom_metrics.append(CustomMetricProfile(name=metric.name.root, value=row))
 
             except Exception as exc:
                 msg = f"Error trying to compute profile for custom metric: {exc}"
@@ -325,13 +314,9 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
             if metric_func.column is not None:
                 column = metric_func.column.name
-                self.status.scanned(
-                    f"{metric_func.table.name.root}.{column}__{metric_func.metric_type.value}"
-                )
+                self.status.scanned(f"{metric_func.table.name.root}.{column}__{metric_func.metric_type.value}")
             else:
-                self.status.scanned(
-                    f"{metric_func.table.name.root}__{metric_func.metric_type.value}"
-                )
+                self.status.scanned(f"{metric_func.table.name.root}__{metric_func.metric_type.value}")
                 column = None
 
             return row, column, metric_func.metric_type.value
@@ -343,9 +328,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             self.status.failed_profiler(error, traceback.format_exc())
             return None, None, None
 
-    def get_composed_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict
-    ):
+    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: Dict):
         """Given a list of metrics, compute the given results
         and returns the values
 
@@ -389,8 +372,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
         profile_results = {"table": {}, "columns": defaultdict(dict)}
         metric_list = [
-            self.compute_metrics(metric_func)
-            for metric_func in MetricFilter.filter_empty_metrics(metric_funcs)
+            self.compute_metrics(metric_func) for metric_func in MetricFilter.filter_empty_metrics(metric_funcs)
         ]
         for metric_result in metric_list:
             profile, column, metric_type = metric_result
@@ -429,9 +411,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                 sqalike_columns.append(
                     SQALikeColumn(
                         column_name,
-                        GenericDataFrameColumnParser.fetch_col_types(
-                            first_df, self._get_column_name(column_name)
-                        ),
+                        GenericDataFrameColumnParser.fetch_col_types(first_df, self._get_column_name(column_name)),
                     )
                 )
             return sqalike_columns

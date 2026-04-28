@@ -13,7 +13,7 @@ authors = [
 ]
 license = { file = "LICENSE" }
 description = "Ingestion Framework for OpenMetadata"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 [project.urls]
 Homepage = "https://open-metadata.org/"
@@ -68,19 +68,6 @@ output = "ci-coverage.xml"
 
 [tool.coverage.html]
 show_contexts = true
-
-[tool.mypy]
-mypy_path = "src"
-plugins = [
-    "pydantic.mypy"
-]
-ignore_missing_imports = true
-namespace_packages = true
-strict_optional = true
-check_untyped_defs = true
-# eventually we'd like to enable these
-disallow_untyped_defs = false
-disallow_incomplete_defs = false
 
 [tool.pytest.ini_options]
 markers = [
@@ -232,24 +219,58 @@ enable = "useless-suppression"
 # We all have big monitors now
 max-line-length = 120
 
-[tool.black]
-extend-exclude = "src/metadata/generated"
-
-[tool.pycln]
-all = true
-extend-exclude = "src/metadata/generated"
-
-[tool.isort]
-skip_glob = [
-    "src/metadata/generated/*",
-    "build/*",
-    "env/*",
-    "../openmetadata-airflow-apis/build/*"
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+# Each excluded path is listed twice: once relative to the pyproject root
+# (for invocations with cwd = ingestion/) and once with the `ingestion/` or
+# `openmetadata-airflow-apis/` prefix (for invocations from the repo root,
+# e.g. `make py_format_check`). Without the prefixed form, ruff's
+# multi-root crawler races on extend-exclude matching and intermittently
+# scans the generated/ tree.
+extend-exclude = [
+    "src/metadata/generated",
+    "ingestion/src/metadata/generated",
+    "build",
+    "ingestion/build",
+    "env",
+    "ingestion/env",
+    "../openmetadata-airflow-apis/build",
+    "openmetadata-airflow-apis/build",
 ]
-profile = "black"
-indent = "    "
-multi_line_output = 3
-known_first_party = "ingestion"
+
+[tool.ruff.format]
+# Black-compatible formatter; defaults match black output.
+
+[tool.ruff.lint]
+# I  — isort: import sorting (replaces [tool.isort])
+# F  — pyflakes: unused imports/vars, undefined names, redefinitions (replaces [tool.pycln])
+select = ["I", "F"]
+
+# Star-import rules are pervasive across connectors and require a separate
+# refactor to address; ignored globally for now.
+ignore = ["F403", "F405"]
+
+# TODO: Reduce the `# noqa: <code>` markers added during the ruff migration.
+# Existing violations were grandfathered via `ruff check --add-noqa` to keep
+# the migration PR a tooling-only swap. Tackle one rule at a time in follow-up
+# PRs by removing the noqa markers and fixing the underlying issues:
+#
+#   F541 — f-string-missing-placeholder    (trivial: drop the `f` prefix)
+#   F402 — import-shadowed-by-loop-var      (trivial: rename loop var)
+#   F401 — unused-import                    (verify no side effects, then drop)
+#   I001 — unsorted-imports                 (auto-fix via `ruff check --fix`)
+#   F811 — redefined-while-unused          (pick canonical definition)
+#   F841 — unused-variable                  (delete or `_ =`)
+#   F821 — undefined-name                   (likely real bugs — investigate each)
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "metadata",
+    "ingestion",
+    "_openmetadata_testutils",
+    "airflow_provider_openmetadata",
+]
 
 [tool.basedpyright]
 include = ["src"]
@@ -259,40 +280,16 @@ exclude = [
   "src/metadata/__version__.py",
 ]
 
-# TODO: Remove the ignored paths little by little.
-ignore = [
-  "src/_openmetadata_testutils/*",
-  "src/airflow_provider_openmetadata/*",
-  "src/metadata/antlr/*",
-  "src/metadata/automations/*",
-  "src/metadata/cli/*",
-  "src/metadata/clients/*",
-  "src/metadata/config/*",
-  "src/metadata/data_insight/*",
-  "src/metadata/data_quality/*",
-  "src/metadata/examples/*",
-  "src/metadata/great_expectations/*",
-  "src/metadata/ingestion/*",
-  "src/metadata/mixins/*",
-  "src/metadata/parsers/*",
-  "src/metadata/pii/scanners/*",
-  "src/metadata/pii/*processor.py",
-  "src/metadata/profiler/*",
-  "src/metadata/sampler/*",
-  "src/metadata/readers/*",
-  "src/metadata/timer/*",
-  "src/metadata/utils/*",
-  "src/metadata/workflow/base.py",
-  "src/metadata/workflow/application.py",
-  "src/metadata/workflow/data_insight.py",
-  "src/metadata/workflow/data_quality.py",
-  "src/metadata/workflow/ingestion.py",
-  "src/metadata/workflow/metadata.py",
-  "src/metadata/workflow/profiler.py",
-  "src/metadata/workflow/usage.py",
-  "src/metadata/workflow/classification.py",
-  "src/metadata/workflow/workflow_status_mixin.py",
-]
+# Pin the analysis target to the lowest supported Python version so
+# basedpyright catches forward-incompatible code (e.g. tomllib usage,
+# PEP 695 generics) at type-check time. Runtime support across 3.10/3.11/
+# 3.12 is verified separately by the unit-test matrix in py-tests.yml.
+# Keep this in sync with `requires-python` above.
+pythonVersion = "3.10"
+
+# Existing violations are grandfathered via .basedpyright/baseline.json
+# (regenerate with `basedpyright -p ingestion/pyproject.toml --writebaseline`
+# from the ingestion/ directory). New violations in any file fail CI.
 
 reportDeprecated = false
 reportMissingTypeStubs = false
@@ -300,3 +297,8 @@ reportAny = false
 reportExplicitAny = false
 # @override was only added in python 3.12: https://docs.python.org/3/library/typing.html#typing.override
 reportImplicitOverride = false
+# Cross-platform stub drift (macOS arm64 vs Linux x86_64) means a `# pyright: ignore`
+# that is necessary on one platform may look unused on the other. Disable the
+# unused-ignore warning so contributors can land platform-specific residuals
+# without a back-and-forth flap between local and CI.
+reportUnnecessaryTypeIgnoreComment = false

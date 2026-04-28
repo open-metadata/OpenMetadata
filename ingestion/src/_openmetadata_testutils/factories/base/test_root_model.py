@@ -29,9 +29,7 @@ class IntRootFactory(RootModelFactory):
         ({}, IsInstance(IntRoot) & HasAttributes(root=IsPositiveInt)),
     ),
 )
-def test_it_builds_the_expected_int_model(
-    creation_kwargs: Mapping[str, Any], expected: RootModel
-):
+def test_it_builds_the_expected_int_model(creation_kwargs: Mapping[str, Any], expected: RootModel):
     assert IntRootFactory.create(**creation_kwargs) == expected
 
 
@@ -78,45 +76,29 @@ class FooRootFactory(RootModelFactory):
         (
             {},
             IsInstance(FooRoot)
-            & HasAttributes(
-                root=IsInstance(FooModel) & HasAttributes(foo=IsPositiveInt, bar=IsStr)
-            ),
+            & HasAttributes(root=IsInstance(FooModel) & HasAttributes(foo=IsPositiveInt, bar=IsStr)),
         ),
         (
             {"foo": 1},
-            IsInstance(FooRoot)
-            & HasAttributes(
-                root=IsInstance(FooModel) & HasAttributes(foo=1, bar=IsStr)
-            ),
+            IsInstance(FooRoot) & HasAttributes(root=IsInstance(FooModel) & HasAttributes(foo=1, bar=IsStr)),
         ),
         (
             {"root__foo": 1},
-            IsInstance(FooRoot)
-            & HasAttributes(
-                root=IsInstance(FooModel) & HasAttributes(foo=1, bar=IsStr)
-            ),
+            IsInstance(FooRoot) & HasAttributes(root=IsInstance(FooModel) & HasAttributes(foo=1, bar=IsStr)),
         ),
         (
             {"bar": "foobar"},
             IsInstance(FooRoot)
-            & HasAttributes(
-                root=IsInstance(FooModel)
-                & HasAttributes(foo=IsPositiveInt, bar="foobar")
-            ),
+            & HasAttributes(root=IsInstance(FooModel) & HasAttributes(foo=IsPositiveInt, bar="foobar")),
         ),
         (
             {"root__bar": "foobar"},
             IsInstance(FooRoot)
-            & HasAttributes(
-                root=IsInstance(FooModel)
-                & HasAttributes(foo=IsPositiveInt, bar="foobar")
-            ),
+            & HasAttributes(root=IsInstance(FooModel) & HasAttributes(foo=IsPositiveInt, bar="foobar")),
         ),
     ),
 )
-def test_it_builds_the_expected_foo_root_model(
-    creation_kwargs: Mapping[str, Any], expected: RootModel
-):
+def test_it_builds_the_expected_foo_root_model(creation_kwargs: Mapping[str, Any], expected: RootModel):
     assert FooRootFactory.create(**creation_kwargs) == expected
 
 
@@ -170,9 +152,7 @@ class FoobarModelFactory(factory.Factory):
         ),
     ),
 )
-def test_it_builds_the_expected_foobar_model(
-    creation_kwargs: Mapping[str, Any], expected: RootModel
-):
+def test_it_builds_the_expected_foobar_model(creation_kwargs: Mapping[str, Any], expected: RootModel):
     assert FoobarModelFactory.create(**creation_kwargs) == expected
 
 
@@ -207,6 +187,4 @@ class EntityFactory(factory.Factory):
 
 
 def test_it_creates_objects_with_root_factory_when_root_factory_has_params():
-    assert EntityFactory.create(fqn__parent="Foo", fqn__name="Bar") == Entity(
-        fqn=FQN(root="Foo.Bar")
-    )
+    assert EntityFactory.create(fqn__parent="Foo", fqn__name="Bar") == Entity(fqn=FQN(root="Foo.Bar"))

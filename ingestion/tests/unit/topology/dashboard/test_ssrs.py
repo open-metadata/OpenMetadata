@@ -11,6 +11,7 @@
 """
 Unit tests for SSRS source
 """
+
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -159,18 +160,17 @@ EXPECTED_DASHBOARDS = [
 
 @pytest.fixture(scope="function")
 def ssrs_source():
-    with patch(
-        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
-    ), patch("metadata.ingestion.source.dashboard.ssrs.connection.get_connection"):
+    with (
+        patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"),
+        patch("metadata.ingestion.source.dashboard.ssrs.connection.get_connection"),
+    ):
         config = OpenMetadataWorkflowConfig.model_validate(mock_config)
         source = SsrsSource.create(
             mock_config["source"],
             OpenMetadata(config.workflowConfig.openMetadataServerConfig),
         )
         source.client = SimpleNamespace()
-        source.context.get().__dict__[
-            "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+        source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
         source.folder_path_map = {f.path: f.name for f in MOCK_FOLDERS}
         yield source
 
@@ -200,9 +200,7 @@ class TestSsrsSource:
         ssrs_source.client.get_reports = lambda: iter(MOCK_REPORTS_WITH_HIDDEN)
         ssrs_source.status = MagicMock()
         list(ssrs_source.get_dashboards_list())
-        ssrs_source.status.filter.assert_called_once_with(
-            "Hidden Report", "Hidden report"
-        )
+        ssrs_source.status.filter.assert_called_once_with("Hidden Report", "Hidden report")
 
     def test_project_name(self, ssrs_source):
         assert ssrs_source.get_project_name(MOCK_REPORTS[0]) == "Finance"
@@ -211,9 +209,7 @@ class TestSsrsSource:
 
     def test_yield_dashboard(self, ssrs_source):
         for report, expected in zip(MOCK_REPORTS[:2], EXPECTED_DASHBOARDS):
-            ssrs_source.context.get().__dict__[
-                "project_name"
-            ] = ssrs_source.get_project_name(report)
+            ssrs_source.context.get().__dict__["project_name"] = ssrs_source.get_project_name(report)
             results = list(ssrs_source.yield_dashboard(report))
             assert len(results) == 1
             assert isinstance(results[0], Either)
@@ -281,9 +277,7 @@ class TestSsrsOwnership:
         result = ssrs_source.get_owner_ref(report)
 
         assert result is sentinel
-        ssrs_source.metadata.get_reference_by_name.assert_called_once_with(
-            name="alice", is_owner=True
-        )
+        ssrs_source.metadata.get_reference_by_name.assert_called_once_with(name="alice", is_owner=True)
 
     def test_get_owner_ref_handles_plain_username(self, ssrs_source):
         report = SsrsReport(
@@ -297,9 +291,7 @@ class TestSsrsOwnership:
         ssrs_source.metadata.get_reference_by_name = MagicMock(return_value=None)
 
         ssrs_source.get_owner_ref(report)
-        ssrs_source.metadata.get_reference_by_name.assert_called_once_with(
-            name="bob", is_owner=True
-        )
+        ssrs_source.metadata.get_reference_by_name.assert_called_once_with(name="bob", is_owner=True)
 
     def test_get_owner_ref_skipped_when_include_owners_false(self, ssrs_source):
         report = SsrsReport(
@@ -335,9 +327,7 @@ class TestSsrsOwnership:
         )
         ssrs_source.source_config.includeOwners = True
         ssrs_source.metadata = MagicMock()
-        ssrs_source.metadata.get_reference_by_name = MagicMock(
-            side_effect=Exception("lookup failed")
-        )
+        ssrs_source.metadata.get_reference_by_name = MagicMock(side_effect=Exception("lookup failed"))
 
         assert ssrs_source.get_owner_ref(report) is None
 
@@ -385,9 +375,7 @@ class TestSsrsOwnership:
         )
         ssrs_source.source_config.includeOwners = True
         ssrs_source.metadata = MagicMock()
-        ssrs_source.metadata.get_reference_by_name = MagicMock(
-            side_effect=Exception("OM lookup failed")
-        )
+        ssrs_source.metadata.get_reference_by_name = MagicMock(side_effect=Exception("OM lookup failed"))
         ssrs_source.context.get().__dict__["project_name"] = "Finance"
 
         results = list(ssrs_source.yield_dashboard(report))
@@ -554,9 +542,7 @@ class TestSsrsClientRdl:
         )
         assert client.get_report_definition("missing") is None
 
-    def test_get_report_definition_rejects_by_content_length_before_reading(
-        self, monkeypatch
-    ):
+    def test_get_report_definition_rejects_by_content_length_before_reading(self, monkeypatch):
         from metadata.ingestion.source.dashboard.ssrs import client as client_module
 
         monkeypatch.setattr(client_module, "MAX_RDL_BYTES", 100)
@@ -660,18 +646,8 @@ class TestSsrsClientPagination:
     def test_get_folders_multi_page(self):
         client = _build_mock_client()
 
-        page1 = {
-            "value": [
-                {"Id": f"f-{i}", "Name": f"Folder {i}", "Path": f"/Folder {i}"}
-                for i in range(100)
-            ]
-        }
-        page2 = {
-            "value": [
-                {"Id": f"f-{i}", "Name": f"Folder {i}", "Path": f"/Folder {i}"}
-                for i in range(100, 120)
-            ]
-        }
+        page1 = {"value": [{"Id": f"f-{i}", "Name": f"Folder {i}", "Path": f"/Folder {i}"} for i in range(100)]}
+        page2 = {"value": [{"Id": f"f-{i}", "Name": f"Folder {i}", "Path": f"/Folder {i}"} for i in range(100, 120)]}
         client._get = MagicMock(side_effect=[page1, page2])
 
         folders = list(client.get_folders())
@@ -725,11 +701,7 @@ class TestSsrsClientPagination:
         yielding a partial set silently would cause mark_deleted to drop the
         rest of the catalog."""
         client = _build_mock_client()
-        page1 = {
-            "value": [
-                {"Id": f"r-{i}", "Name": f"R{i}", "Path": f"/R{i}"} for i in range(100)
-            ]
-        }
+        page1 = {"value": [{"Id": f"r-{i}", "Name": f"R{i}", "Path": f"/R{i}"} for i in range(100)]}
         client._get = MagicMock(side_effect=[page1, requests.ReadTimeout("mid-stream")])
 
         reports_iter = client.get_reports()
@@ -823,9 +795,7 @@ RDL_STORED_PROC = SsrsReportDefinition(
 )
 
 RDL_MDX = SsrsReportDefinition(
-    data_sources=[
-        SsrsDataSource(name="Cube", data_provider="OLEDB-MD", database="OLAP")
-    ],
+    data_sources=[SsrsDataSource(name="Cube", data_provider="OLEDB-MD", database="OLAP")],
     data_sets=[
         SsrsDataSet(
             name="MDXQuery",
@@ -892,15 +862,9 @@ class TestSsrsLineage:
     def _prepare(self, ssrs_source, rdl, *, include_data_models=True):
         ssrs_source._current_rdl = (MOCK_REPORTS[0].id, rdl)
         ssrs_source.source_config.includeDataModels = include_data_models
-        datamodel_entity = SimpleNamespace(
-            id=SimpleNamespace(root="dm-uuid"), fullyQualifiedName=None
-        )
-        dashboard_entity = SimpleNamespace(
-            id=SimpleNamespace(root="dash-uuid"), fullyQualifiedName=None
-        )
-        table_entity = SimpleNamespace(
-            id=SimpleNamespace(root="tbl-uuid"), fullyQualifiedName=None
-        )
+        datamodel_entity = SimpleNamespace(id=SimpleNamespace(root="dm-uuid"), fullyQualifiedName=None)
+        dashboard_entity = SimpleNamespace(id=SimpleNamespace(root="dash-uuid"), fullyQualifiedName=None)
+        table_entity = SimpleNamespace(id=SimpleNamespace(root="tbl-uuid"), fullyQualifiedName=None)
 
         def by_name(entity, fqn=None, **_):
             if entity is DashboardDataModel:
@@ -913,9 +877,7 @@ class TestSsrsLineage:
 
         ssrs_source.metadata = MagicMock()
         ssrs_source.metadata.get_by_name = MagicMock(side_effect=by_name)
-        ssrs_source.metadata.search_in_any_service = MagicMock(
-            return_value=table_entity
-        )
+        ssrs_source.metadata.search_in_any_service = MagicMock(return_value=table_entity)
         return datamodel_entity, dashboard_entity, table_entity
 
     def test_inline_datasource_yields_lineage(self, ssrs_source):
@@ -926,17 +888,12 @@ class TestSsrsLineage:
             lineage_calls.append({"to": to_entity, "from": from_entity, "sql": sql})
             return Either(right=SimpleNamespace(sql=sql))
 
-        with patch(
-            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
-        ) as mock_parser, patch.object(
-            SsrsSource, "_get_add_lineage_request", staticmethod(fake_lineage)
+        with (
+            patch("metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser") as mock_parser,
+            patch.object(SsrsSource, "_get_add_lineage_request", staticmethod(fake_lineage)),
         ):
             mock_parser.return_value.source_tables = ["dbo.Orders"]
-            results = list(
-                ssrs_source.yield_dashboard_lineage_details(
-                    MOCK_REPORTS[0], db_service_prefix="my_mssql"
-                )
-            )
+            results = list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0], db_service_prefix="my_mssql"))
         assert len(results) == 1
         assert lineage_calls[0]["sql"] == "SELECT OrderId, CustomerName FROM dbo.Orders"
         assert lineage_calls[0]["to"] is datamodel
@@ -958,20 +915,17 @@ class TestSsrsLineage:
             return SimpleNamespace(id=SimpleNamespace(root="t"))
 
         ssrs_source.metadata.search_in_any_service = MagicMock(side_effect=record)
-        with patch(
-            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
-        ) as mock_parser, patch.object(
-            SsrsSource,
-            "_get_add_lineage_request",
-            staticmethod(lambda **_: Either(right=SimpleNamespace())),
+        with (
+            patch("metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser") as mock_parser,
+            patch.object(
+                SsrsSource,
+                "_get_add_lineage_request",
+                staticmethod(lambda **_: Either(right=SimpleNamespace())),
+            ),
         ):
             mock_parser.return_value.source_tables = ["dbo.Orders"]
             for prefix in ("service_a", "service_b", "service_c"):
-                list(
-                    ssrs_source.yield_dashboard_lineage_details(
-                        MOCK_REPORTS[0], db_service_prefix=prefix
-                    )
-                )
+                list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0], db_service_prefix=prefix))
         assert captured_services == ["service_a", "service_b", "service_c"]
         assert ssrs_source._current_rdl[0] == MOCK_REPORTS[0].id
 
@@ -996,9 +950,7 @@ class TestSsrsLineage:
         entities during an outage."""
         ssrs_source._current_rdl = None
         ssrs_source.client = MagicMock()
-        ssrs_source.client.get_report_definition = MagicMock(
-            side_effect=SourceConnectionException("SSRS is down")
-        )
+        ssrs_source.client.get_report_definition = MagicMock(side_effect=SourceConnectionException("SSRS is down"))
         report = SsrsReport(
             Id="r-outage",
             Name="Outage",
@@ -1010,27 +962,21 @@ class TestSsrsLineage:
 
     def test_skips_expression_command(self, ssrs_source):
         self._prepare(ssrs_source, RDL_EXPRESSION)
-        with patch(
-            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
-        ) as mock_parser:
+        with patch("metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser") as mock_parser:
             results = list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
         assert results == []
         mock_parser.assert_not_called()
 
     def test_skips_stored_procedure(self, ssrs_source):
         self._prepare(ssrs_source, RDL_STORED_PROC)
-        with patch(
-            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
-        ) as mock_parser:
+        with patch("metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser") as mock_parser:
             results = list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
         assert results == []
         mock_parser.assert_not_called()
 
     def test_skips_shared_dataset_reference(self, ssrs_source):
         rdl = SsrsReportDefinition(
-            data_sources=[
-                SsrsDataSource(name="Shared", shared_reference="/Shared/Src")
-            ],
+            data_sources=[SsrsDataSource(name="Shared", shared_reference="/Shared/Src")],
             data_sets=[
                 SsrsDataSet(
                     name="SharedDS",
@@ -1042,18 +988,14 @@ class TestSsrsLineage:
             ],
         )
         self._prepare(ssrs_source, rdl)
-        with patch(
-            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
-        ) as mock_parser:
+        with patch("metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser") as mock_parser:
             results = list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
         assert results == []
         mock_parser.assert_not_called()
 
     def test_skips_mdx_datasource(self, ssrs_source):
         self._prepare(ssrs_source, RDL_MDX)
-        with patch(
-            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
-        ) as mock_parser:
+        with patch("metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser") as mock_parser:
             results = list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
         assert results == []
         mock_parser.assert_not_called()
@@ -1068,11 +1010,12 @@ class TestSsrsLineage:
             captured.append(sql)
             return Either(right=SimpleNamespace(sql=sql))
 
-        with patch(
-            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser",
-            side_effect=[Exception("parse error"), parser_expenses],
-        ), patch.object(
-            SsrsSource, "_get_add_lineage_request", staticmethod(fake_lineage)
+        with (
+            patch(
+                "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser",
+                side_effect=[Exception("parse error"), parser_expenses],
+            ),
+            patch.object(SsrsSource, "_get_add_lineage_request", staticmethod(fake_lineage)),
         ):
             results = list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
         assert len(results) == 1
@@ -1080,9 +1023,7 @@ class TestSsrsLineage:
 
     def test_dialect_defaults_to_tsql(self, ssrs_source):
         self._prepare(ssrs_source, RDL_SALES)
-        with patch(
-            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
-        ) as mock_parser:
+        with patch("metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser") as mock_parser:
             mock_parser.return_value.source_tables = []
             list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
         assert Dialect.TSQL in mock_parser.call_args.args
@@ -1102,13 +1043,16 @@ class TestSsrsLineage:
             return SimpleNamespace(id=SimpleNamespace(root="tbl"))
 
         ssrs_source.metadata.search_in_any_service = MagicMock(side_effect=record)
-        with patch(
-            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser",
-            side_effect=[parser_revenue, parser_expenses],
-        ), patch.object(
-            SsrsSource,
-            "_get_add_lineage_request",
-            staticmethod(lambda **_: Either(right=SimpleNamespace())),
+        with (
+            patch(
+                "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser",
+                side_effect=[parser_revenue, parser_expenses],
+            ),
+            patch.object(
+                SsrsSource,
+                "_get_add_lineage_request",
+                staticmethod(lambda **_: Either(right=SimpleNamespace())),
+            ),
         ):
             list(
                 ssrs_source.yield_dashboard_lineage_details(
@@ -1142,9 +1086,7 @@ class TestSsrsLineage:
             ],
         )
         self._prepare(ssrs_source, rdl)
-        with patch(
-            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
-        ) as mock_parser:
+        with patch("metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser") as mock_parser:
             mock_parser.return_value.source_tables = []
             list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
         assert Dialect.ORACLE in mock_parser.call_args.args
@@ -1157,27 +1099,21 @@ class TestSsrsLineage:
         assert list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0])) == []
 
     def test_falls_back_to_dashboard_target_when_datamodels_disabled(self, ssrs_source):
-        _, dashboard_entity, _ = self._prepare(
-            ssrs_source, RDL_SALES, include_data_models=False
-        )
+        _, dashboard_entity, _ = self._prepare(ssrs_source, RDL_SALES, include_data_models=False)
         captured = []
 
         def fake_lineage(to_entity=None, from_entity=None, sql=None, **_):
             captured.append(to_entity)
             return Either(right=SimpleNamespace())
 
-        with patch(
-            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
-        ) as mock_parser, patch.object(
-            SsrsSource, "_get_add_lineage_request", staticmethod(fake_lineage)
+        with (
+            patch("metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser") as mock_parser,
+            patch.object(SsrsSource, "_get_add_lineage_request", staticmethod(fake_lineage)),
         ):
             mock_parser.return_value.source_tables = ["dbo.Orders"]
             results = list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
         assert len(results) == 1
         assert captured == [dashboard_entity]
-        entity_classes = {
-            call.kwargs.get("entity")
-            for call in ssrs_source.metadata.get_by_name.call_args_list
-        }
+        entity_classes = {call.kwargs.get("entity") for call in ssrs_source.metadata.get_by_name.call_args_list}
         assert Dashboard in entity_classes
         assert DashboardDataModel not in entity_classes

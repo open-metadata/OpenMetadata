@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from dataclasses import dataclass
 from functools import singledispatch
 from typing import Optional
@@ -94,12 +95,8 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
     test_fn = {
-        "GetDatabases": connection.client.get_test_get_databases_fn(
-            service_connection.configSource
-        ),
-        "GetTables": connection.client.get_test_get_tables_fn(
-            service_connection.configSource
-        ),
+        "GetDatabases": connection.client.get_test_get_databases_fn(service_connection.configSource),
+        "GetTables": connection.client.get_test_get_tables_fn(service_connection.configSource),
     }
 
     return test_connection_steps(

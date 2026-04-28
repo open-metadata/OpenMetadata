@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Database Service tests
 """
+
 import pytest
 
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -126,9 +127,7 @@ class TestOMetaDatabaseServiceAPI:
         assert fetched is not None
         assert fetched.id == res.id
 
-    def test_update_database_service(
-        self, metadata, service_request, service_name, create_service
-    ):
+    def test_update_database_service(self, metadata, service_request, service_name, create_service):
         """
         Updating a DB Service entity changes its properties
         """
@@ -195,9 +194,7 @@ class TestOMetaDatabaseServiceAPI:
         created = create_service(service_request)
 
         # Delete
-        metadata.delete(
-            entity=DatabaseService, entity_id=str(created.id.root), recursive=True
-        )
+        metadata.delete(entity=DatabaseService, entity_id=str(created.id.root), recursive=True)
 
         # Verify deletion - get_by_name should return None
         deleted = metadata.get_by_name(entity=DatabaseService, fqn=expected_fqn)
@@ -209,8 +206,6 @@ class TestOMetaDatabaseServiceAPI:
         """
         created = create_service(service_request)
 
-        res = metadata.get_list_entity_versions(
-            entity=DatabaseService, entity_id=created.id.root
-        )
+        res = metadata.get_list_entity_versions(entity=DatabaseService, entity_id=created.id.root)
         assert res is not None
         assert len(res.versions) >= 1

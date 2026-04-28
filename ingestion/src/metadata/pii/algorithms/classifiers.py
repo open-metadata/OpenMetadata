@@ -11,6 +11,7 @@
 """
 Classifier for PII detection and sensitivity tagging.
 """
+
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import (
@@ -74,9 +75,7 @@ class ColumnClassifier(ABC, Generic[T]):
         """
 
     def classify(self, column: Column, sample_data: Sequence[Any]) -> Mapping[T, float]:
-        return self.predict_scores(
-            sample_data, column_name=column.name.root, column_data_type=column.dataType
-        )
+        return self.predict_scores(sample_data, column_name=column.name.root, column_data_type=column.dataType)
 
 
 @final
@@ -139,9 +138,7 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
         column_name_matches: Set[PIITag] = set()
 
         if column_name is not None:
-            column_name_matches = extract_pii_from_column_names(
-                column_name, patterns=self._column_name_patterns
-            )
+            column_name_matches = extract_pii_from_column_names(column_name, patterns=self._column_name_patterns)
 
         final_results: Dict[PIITag, float] = {}
 
@@ -164,9 +161,7 @@ class PIISensitiveClassifier(ColumnClassifier[PIISensitivityTag]):
     """
 
     def __init__(self, classifier: Optional[ColumnClassifier[PIITag]] = None):
-        self.classifier: ColumnClassifier[PIITag] = (
-            classifier or HeuristicPIIClassifier()
-        )
+        self.classifier: ColumnClassifier[PIITag] = classifier or HeuristicPIIClassifier()
 
     def predict_scores(
         self,
@@ -174,9 +169,7 @@ class PIISensitiveClassifier(ColumnClassifier[PIISensitivityTag]):
         column_name: Optional[str] = None,
         column_data_type: Optional[DataType] = None,
     ) -> Mapping[PIISensitivityTag, float]:
-        pii_tags = self.classifier.predict_scores(
-            sample_data, column_name, column_data_type
-        )
+        pii_tags = self.classifier.predict_scores(sample_data, column_name, column_data_type)
         results: DefaultDict[PIISensitivityTag, float] = defaultdict(float)
         counts: DefaultDict[PIISensitivityTag, int] = defaultdict(int)
 

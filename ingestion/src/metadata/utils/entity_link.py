@@ -13,6 +13,7 @@ Handle Entity Link building and splitting logic.
 Filter information has been taken from the
 ES indexes definitions
 """
+
 from typing import Any, List, Optional, TypeVar
 
 from antlr4.CommonTokenStream import CommonTokenStream
@@ -73,9 +74,7 @@ def get_decoded_column(entity_link: str) -> str:
         entity_link: entity link
     """
 
-    return CustomColumnName(
-        root=unquote_plus(entity_link.split("::")[-1].replace(">", ""))
-    ).root
+    return CustomColumnName(root=unquote_plus(entity_link.split("::")[-1].replace(">", ""))).root
 
 
 def get_table_fqn(entity_link: str) -> str:
@@ -100,10 +99,7 @@ def get_table_or_column_fqn(entity_link: str) -> str:
     if len(split_entity_link) == 4 and split_entity_link[2] == "columns":
         return f"{split_entity_link[1]}.{split_entity_link[3]}"
 
-    raise ValueError(
-        "Invalid entity link."
-        " {split_entity_link} does not look like a table or a column entity link"
-    )
+    raise ValueError("Invalid entity link. {split_entity_link} does not look like a table or a column entity link")
 
 
 def get_column_name_or_none(entity_link: str) -> Optional[str]:

@@ -56,9 +56,7 @@ class BaseTableRowInsertedCountToBeBetweenValidator(BaseTestValidator):
 
         try:
             if any(var is None for var in [column_name, range_type, range_interval]):
-                raise ValueError(
-                    "No value found for columnName, rangeType or rangeInterval"
-                )
+                raise ValueError("No value found for columnName, rangeType or rangeInterval")
 
             range_interval = cast(int, range_interval)
             column_name = cast(str, column_name)
@@ -69,7 +67,7 @@ class BaseTableRowInsertedCountToBeBetweenValidator(BaseTestValidator):
         except Exception as exc:
             msg = f"Error computing {self.test_case.name}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
-            logger.warning(msg)
+            logger.error(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,

@@ -10,7 +10,7 @@
 #  limitations under the License.
 """ml flow source module"""
 
-import ast
+import ast  # noqa: I001
 import json
 import traceback
 from typing import Iterable, List, Optional, Tuple, cast
@@ -61,15 +61,11 @@ class MlflowSource(MlModelServiceSource):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: MlflowConnection = config.serviceConnection.root.config
         if not isinstance(connection, MlflowConnection):
-            raise InvalidSourceException(
-                f"Expected MlFlowConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected MlFlowConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_mlmodels(  # pylint: disable=arguments-differ
@@ -79,9 +75,7 @@ class MlflowSource(MlModelServiceSource):
         List and filters models from the registry
         """
         for model in cast(RegisteredModel, self.client.search_registered_models()):
-            if filter_by_mlmodel(
-                self.source_config.mlModelFilterPattern, mlmodel_name=model.name
-            ):
+            if filter_by_mlmodel(self.source_config.mlModelFilterPattern, mlmodel_name=model.name):
                 self.status.filter(
                     model.name,
                     "MlModel name pattern not allowed",
@@ -90,11 +84,7 @@ class MlflowSource(MlModelServiceSource):
 
             # Get the latest version
             latest_version: Optional[ModelVersion] = next(
-                (
-                    ver
-                    for ver in model.latest_versions
-                    if ver.last_updated_timestamp == model.last_updated_timestamp
-                ),
+                (ver for ver in model.latest_versions if ver.last_updated_timestamp == model.last_updated_timestamp),
                 None,
             )
             if not latest_version:
@@ -120,19 +110,14 @@ class MlflowSource(MlModelServiceSource):
         model, latest_version = model_and_version
         run = self.client.get_run(latest_version.run_id)
 
-        source_url = (
-            f"{clean_uri(self.service_connection.trackingUri)}/"
-            f"#/models/{model.name}"
-        )
+        source_url = f"{clean_uri(self.service_connection.trackingUri)}/#/models/{model.name}"
 
         mlmodel_request = CreateMlModelRequest(
             name=EntityName(model.name),
             description=Markdown(model.description) if model.description else None,
             algorithm=self._get_algorithm(),  # Setting this to a constant
             mlHyperParameters=self._get_hyper_params(run.data),
-            mlFeatures=self._get_ml_features(
-                run.data, latest_version.run_id, model.name
-            ),
+            mlFeatures=self._get_ml_features(run.data, latest_version.run_id, model.name),
             mlStore=self._get_ml_store(latest_version, run),
             service=FullyQualifiedEntityName(self.context.get().mlmodel_service),
             sourceUrl=SourceUrl(source_url),
@@ -150,20 +135,13 @@ class MlflowSource(MlModelServiceSource):
         """
         try:
             if data.params:
-                return [
-                    MlHyperParameter(name=param[0], value=param[1])
-                    for param in data.params.items()
-                ]
+                return [MlHyperParameter(name=param[0], value=param[1]) for param in data.params.items()]
         except ValidationError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Validation error adding hyper parameters from RunData: {data} - {err}"
-            )
+            logger.warning(f"Validation error adding hyper parameters from RunData: {data} - {err}")
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Wild error adding hyper parameters from RunData: {data} - {err}"
-            )
+            logger.warning(f"Wild error adding hyper parameters from RunData: {data} - {err}")
 
         return None
 
@@ -182,14 +160,10 @@ class MlflowSource(MlModelServiceSource):
                 return MlStore(storage=storage)
         except ValidationError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Validation error adding the MlModel store from ModelVersion: {version} - {err}"
-            )
+            logger.warning(f"Validation error adding the MlModel store from ModelVersion: {version} - {err}")
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Wild error adding the MlModel store from ModelVersion: {version} - {err}"
-            )
+            logger.warning(f"Wild error adding the MlModel store from ModelVersion: {version} - {err}")
         return None
 
     def _get_ml_features(  # pylint: disable=arguments-differ
@@ -203,26 +177,20 @@ class MlflowSource(MlModelServiceSource):
         if data.tags:
             try:
                 props = json.loads(data.tags["mlflow.log-model.history"])
-                latest_props = next(
-                    (prop for prop in props if prop["run_id"] == run_id), None
-                )
+                latest_props = next((prop for prop in props if prop["run_id"] == run_id), None)
                 if not latest_props:
                     reason = f"Cannot find the run ID properties for {run_id}"
                     logger.warning(reason)
                     self.status.warning(model_name, reason)
                     return None
 
-                if latest_props.get("signature") and latest_props["signature"].get(
-                    "inputs"
-                ):
+                if latest_props.get("signature") and latest_props["signature"].get("inputs"):
                     features = ast.literal_eval(latest_props["signature"]["inputs"])
 
                     return [
                         MlFeature(
                             name=feature["name"],
-                            dataType=FeatureType.categorical
-                            if feature["type"] == "string"
-                            else FeatureType.numerical,
+                            dataType=FeatureType.categorical if feature["type"] == "string" else FeatureType.numerical,
                         )
                         for feature in features
                     ]

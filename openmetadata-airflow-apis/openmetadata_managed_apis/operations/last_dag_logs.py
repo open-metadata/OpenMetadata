@@ -11,6 +11,7 @@
 """
 Module containing the logic to retrieve all logs from the tasks of a last DAG run
 """
+
 import inspect
 import json
 import os
@@ -69,9 +70,7 @@ def format_json_log_line(line: str) -> str:
         return line if line.endswith("\n") else line + "\n"
 
 
-def read_log_chunk_from_file(
-    file_path: str, chunk_index: int, format_json: bool = True
-) -> Optional[str]:
+def read_log_chunk_from_file(file_path: str, chunk_index: int, format_json: bool = True) -> Optional[str]:
     """
     Read a specific chunk from a log file without loading entire file.
     Optionally formats JSON logs to readable text.
@@ -90,11 +89,7 @@ def read_log_chunk_from_file(
         # Format JSON logs if requested
         if format_json and chunk:
             lines = chunk.splitlines(keepends=True)
-            formatted_lines = [
-                format_json_log_line(line.rstrip("\n"))
-                for line in lines
-                if line.strip()
-            ]
+            formatted_lines = [format_json_log_line(line.rstrip("\n")) for line in lines if line.strip()]
             return "".join(formatted_lines)
 
         return chunk
@@ -133,9 +128,7 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
     task_instances: List[TaskInstance] = last_dag_run.get_task_instances()
 
     if not task_instances:
-        return ApiResponse.not_found(
-            f"Cannot find any task instance for the last DagRun of {dag_id}."
-        )
+        return ApiResponse.not_found(f"Cannot find any task instance for the last DagRun of {dag_id}.")
 
     target_task_instance = None
     for task_instance in task_instances:
@@ -147,9 +140,7 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
         return ApiResponse.bad_request(f"Task {task_id} not found in DAG {dag_id}.")
 
     # Airflow 3.x uses public try_number, Airflow 2.x uses private _try_number
-    try_number = getattr(target_task_instance, "try_number", None) or getattr(
-        target_task_instance, "_try_number", 1
-    )
+    try_number = getattr(target_task_instance, "try_number", None) or getattr(target_task_instance, "_try_number", 1)
 
     task_log_reader = TaskLogReader()
     if not task_log_reader.supports_read:
@@ -157,7 +148,6 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
 
     # Try to use file streaming for better performance
     try:
-
         from airflow.configuration import (  # pylint: disable=import-outside-toplevel
             conf,
         )
@@ -168,7 +158,9 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
         dag_id_safe = dag_id.replace(".", DOT_STR)
         task_id_safe = task_id.replace(".", DOT_STR)
 
-        log_relative_path = f"dag_id={dag_id_safe}/run_id={last_dag_run.run_id}/task_id={task_id_safe}/attempt={try_number}.log"
+        log_relative_path = (
+            f"dag_id={dag_id_safe}/run_id={last_dag_run.run_id}/task_id={task_id_safe}/attempt={try_number}.log"
+        )
         log_file_path = os.path.join(base_log_folder, log_relative_path)
 
         # Security: Validate the resolved path stays within base_log_folder
@@ -178,12 +170,8 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
         base_log_folder_real = os.path.realpath(base_log_folder)
 
         if not log_file_path_real.startswith(base_log_folder_real + os.sep):
-            logger.warning(
-                f"Path traversal attempt detected: {log_file_path} is outside {base_log_folder}"
-            )
-            return ApiResponse.bad_request(
-                f"Invalid log path for DAG {dag_id} and Task {task_id}."
-            )
+            logger.warning(f"Path traversal attempt detected: {log_file_path} is outside {base_log_folder}")
+            return ApiResponse.bad_request(f"Invalid log path for DAG {dag_id} and Task {task_id}.")
 
         if os.path.exists(log_file_path_real):
             stat_info = os.stat(log_file_path_real)
@@ -205,22 +193,14 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
                     {
                         task_id: chunk_content,
                         "total": total_chunks,
-                        **(
-                            {"after": after_idx + 1}
-                            if after_idx < total_chunks - 1
-                            else {}
-                        ),
+                        **({"after": after_idx + 1} if after_idx < total_chunks - 1 else {}),
                     }
                 )
     except Exception as exc:
-        logger.debug(
-            f"File streaming failed for DAG {dag_id}, falling back to TaskLogReader: {exc}"
-        )
+        logger.debug(f"File streaming failed for DAG {dag_id}, falling back to TaskLogReader: {exc}")
 
     # Fallback to TaskLogReader if streaming fails
-    return _last_dag_logs_fallback(
-        dag_id, task_id, after, target_task_instance, task_log_reader, try_number
-    )
+    return _last_dag_logs_fallback(dag_id, task_id, after, target_task_instance, task_log_reader, try_number)
 
 
 def _last_dag_logs_fallback(
@@ -254,23 +234,16 @@ def _last_dag_logs_fallback(
     )
 
     if not raw_logs_str:
-        return ApiResponse.bad_request(
-            f"Can't fetch logs for DAG {dag_id} and Task {task_id}."
-        )
+        return ApiResponse.bad_request(f"Can't fetch logs for DAG {dag_id} and Task {task_id}.")
 
     # Format JSON logs if present
     lines = raw_logs_str.splitlines(keepends=True)
-    formatted_lines = [
-        format_json_log_line(line.rstrip("\n")) for line in lines if line.strip()
-    ]
+    formatted_lines = [format_json_log_line(line.rstrip("\n")) for line in lines if line.strip()]
     formatted_logs_str = "".join(formatted_lines)
 
     # Split the string in chunks of size without
     # having to know the full length beforehand
-    log_chunks = [
-        chunk
-        for chunk in iter(partial(StringIO(formatted_logs_str).read, CHUNK_SIZE), "")
-    ]
+    log_chunks = [chunk for chunk in iter(partial(StringIO(formatted_logs_str).read, CHUNK_SIZE), "")]
 
     total = len(log_chunks)
     after_idx = int(after) if after is not None else 0

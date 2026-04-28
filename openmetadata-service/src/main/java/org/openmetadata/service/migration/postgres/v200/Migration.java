@@ -4,7 +4,6 @@ import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addTab
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.backfillAnnouncementRelationships;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateLegacyActivityThreadsToActivityStream;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateSuggestionsToTaskEntity;
-import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateThreadTasksToTaskEntity;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -21,7 +20,9 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     addTableColumnSearchSettings();
     migrateSuggestionsToTaskEntity(handle);
-    migrateThreadTasksToTaskEntity(handle);
+    // Causing issues with collate CI, needs to be fixed before enabling this migration
+    // @harshach
+    // migrateThreadTasksToTaskEntity(handle);
     migrateLegacyActivityThreadsToActivityStream(handle);
     backfillAnnouncementRelationships(handle);
   }

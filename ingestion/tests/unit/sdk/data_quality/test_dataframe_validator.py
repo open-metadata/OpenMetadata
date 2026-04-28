@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """Unit tests for DataFrame validator."""
+
 from typing import Generator, List, Tuple
 from unittest.mock import Mock
 
@@ -291,9 +292,7 @@ class TracksValidationCallbacks:
         self.calls.append((df, result))
 
 
-@pytest.mark.filterwarnings(
-    "error::metadata.sdk.data_quality.dataframes.custom_warnings.WholeTableTestsWarning"
-)
+@pytest.mark.filterwarnings("error::metadata.sdk.data_quality.dataframes.custom_warnings.WholeTableTestsWarning")
 class TestValidatorRun:
     @pytest.fixture
     def on_success_callback(self) -> TracksValidationCallbacks:
@@ -469,9 +468,7 @@ class TestValidatorRun:
         result = validator.run(iter(dfs), on_success_callback, on_failure_callback)
 
         assert result.execution_time_ms > 0
-        individual_times = [
-            call[1].execution_time_ms for call in on_success_callback.calls
-        ]
+        individual_times = [call[1].execution_time_ms for call in on_success_callback.calls]
         assert result.execution_time_ms == sum(individual_times)
 
     def test_merged_result_with_mixed_success_and_failure(
@@ -485,9 +482,7 @@ class TestValidatorRun:
             yield pd.DataFrame({"id": [4, 5, 6]})
             yield pd.DataFrame({"id": [None]})
 
-        result = validator.run(
-            generate_mixed_data(), on_success_callback, on_failure_callback
-        )
+        result = validator.run(generate_mixed_data(), on_success_callback, on_failure_callback)
 
         assert result.total_tests == 1
         assert result.passed_tests == 0
@@ -531,9 +526,7 @@ class TestValidatorRun:
             yield pd.DataFrame({"id": [1, 2, 3]})
             yield pd.DataFrame({"id": [4, 5, 6]})
 
-        result = validator.run(
-            generate_data(), on_success_callback, on_failure_callback
-        )
+        result = validator.run(generate_data(), on_success_callback, on_failure_callback)
 
         assert result.total_tests == 1
         assert result.passed_tests == 0
@@ -547,10 +540,7 @@ class TestValidatorRun:
         on_failure_callback: TracksValidationCallbacks,
     ) -> None:
         batch_count = 5
-        dfs = [
-            pd.DataFrame({"id": [i + 1, i + 2, i + 3]})
-            for i in range(0, batch_count * 3, 3)
-        ]
+        dfs = [pd.DataFrame({"id": [i + 1, i + 2, i + 3]}) for i in range(0, batch_count * 3, 3)]
 
         result = validator.run(iter(dfs), on_success_callback, on_failure_callback)
 

@@ -14,6 +14,7 @@ the buckets which require ingestion: s3:ListBucket, s3:GetObject and s3:GetBucke
 The cloudwatch client is used to fetch the total size in bytes for a bucket, and the total nr of files. This requires
 the cloudwatch:GetMetricData permissions
 """
+
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, Optional
@@ -48,11 +49,7 @@ def get_connection(connection: S3Connection) -> S3ObjectStoreClient:
     """
     aws_client = AWSClient(connection.awsConfig)
     session = aws_client.create_session()
-    endpoint_url = (
-        str(connection.awsConfig.endPointURL)
-        if connection.awsConfig.endPointURL
-        else None
-    )
+    endpoint_url = str(connection.awsConfig.endPointURL) if connection.awsConfig.endPointURL else None
     kwargs = {"endpoint_url": endpoint_url} if endpoint_url else {}
     return S3ObjectStoreClient(
         s3_client=session.client(service_name="s3", **kwargs),
@@ -81,12 +78,8 @@ def test_connection(
         client.s3_client.list_buckets()
 
     test_fn = {
-        "ListBuckets": partial(
-            test_buckets, client=client, connection=service_connection
-        ),
-        "GetMetrics": partial(
-            client.cloudwatch_client.list_metrics, Namespace="AWS/S3"
-        ),
+        "ListBuckets": partial(test_buckets, client=client, connection=service_connection),
+        "GetMetrics": partial(client.cloudwatch_client.list_metrics, Namespace="AWS/S3"),
     }
 
     return test_connection_steps(

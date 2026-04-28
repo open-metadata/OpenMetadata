@@ -15,6 +15,7 @@ and file-to-table grouping in object storage connectors.
 
 All functions are cloud-agnostic — they operate on path strings only.
 """
+
 import re
 from typing import Dict, List, Optional, Tuple
 
@@ -26,9 +27,7 @@ logger = ingestion_logger()
 HIVE_PARTITION_PATTERN = re.compile(r"^([a-zA-Z_][a-zA-Z0-9_]*)=(.+)$")
 # Non-Hive partition-like segments: pure digits (20230412), dates (2024-01-15),
 # timestamps (20240115T000000Z), or digit-only names that look like partition values
-NON_HIVE_PARTITION_PATTERN = re.compile(
-    r"^(\d{4}[-/]?\d{2}[-/]?\d{2}(T\d+Z?)?|\d{8,})$"
-)
+NON_HIVE_PARTITION_PATTERN = re.compile(r"^(\d{4}[-/]?\d{2}[-/]?\d{2}(T\d+Z?)?|\d{8,})$")
 
 # Map file extensions to structure formats (matching SupportedTypes enum values)
 EXTENSION_TO_FORMAT = {
@@ -158,10 +157,7 @@ def _is_partition_segment(segment: str) -> bool:
     - Date prefixes: 20230412, 2024-01-15
     - Timestamps: 20240115T000000Z
     """
-    return bool(
-        HIVE_PARTITION_PATTERN.match(segment)
-        or NON_HIVE_PARTITION_PATTERN.match(segment)
-    )
+    return bool(HIVE_PARTITION_PATTERN.match(segment) or NON_HIVE_PARTITION_PATTERN.match(segment))
 
 
 def extract_table_root(key: str) -> str:
@@ -217,9 +213,7 @@ def _extract_partition_segments(
     return current
 
 
-def _check_partition_consistency(
-    structures: List[List[str]], table_root: str
-) -> Optional[List[str]]:
+def _check_partition_consistency(structures: List[List[str]], table_root: str) -> Optional[List[str]]:
     """Return the shared partition structure if every entry matches;
     log and return None on mismatch."""
     reference = structures[0]
@@ -266,8 +260,7 @@ def detect_hive_partitions(keys: List[str], table_root: str) -> Optional[List[Co
         return None
     if has_flat_files:
         logger.warning(
-            f"Table root '{table_root}' has a mix of partitioned and "
-            f"flat files. Skipping partition detection."
+            f"Table root '{table_root}' has a mix of partitioned and flat files. Skipping partition detection."
         )
         return None
 

@@ -2714,7 +2714,9 @@ test.describe('Domains Rbac', () => {
 
     // Add domain role to the user
     await visitUserProfilePage(page, user1.responseData.name);
+    const initialRolesResponse = page.waitForResponse('/api/v1/roles/search?*');
     await page.getByTestId('edit-roles-button').click();
+    await initialRolesResponse;
 
     await page.locator('[data-testid="user-profile-edit-popover"]').isVisible();
     const rolesCombobox = page.locator('input[role="combobox"]').nth(1);

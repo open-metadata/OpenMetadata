@@ -11,6 +11,7 @@
 """
 Postgres Query parser module
 """
+
 import traceback
 from abc import ABC
 from typing import Iterable, Optional
@@ -54,15 +55,11 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         self.start, self.end = get_start_and_end(duration)
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: PostgresConnection = config.serviceConnection.root.config
         if not isinstance(connection, PostgresConnection):
-            raise InvalidSourceException(
-                f"Expected PostgresConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected PostgresConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_sql_statement(self, *_) -> str:
@@ -74,8 +71,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             result_limit=self.config.sourceConfig.config.resultLimit,
             filters=self.get_filters(),
             time_column_name=get_postgres_time_column_name(engine=self.engine),
-            query_statement_source=self.service_connection.queryStatementSource
-            or "pg_stat_statements",
+            query_statement_source=self.service_connection.queryStatementSource or "pg_stat_statements",
         )
 
     # pylint: disable=no-member

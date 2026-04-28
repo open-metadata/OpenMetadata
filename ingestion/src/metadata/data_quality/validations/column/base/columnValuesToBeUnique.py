@@ -58,9 +58,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
             Metrics.uniqueCount.name: Metrics.uniqueCount,
         }
 
-    def _evaluate_test_condition(
-        self, metric_values: dict, test_params: Optional[dict] = None
-    ) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:
         """Evaluate the uniqueness test condition and calculate derived values
 
         For uniqueness test: all values should be unique, meaning COUNT == UNIQUE_COUNT
@@ -127,12 +125,8 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
             List[TestResultValue]: Test result values for the test case
         """
         return [
-            TestResultValue(
-                name=VALUE_COUNT, value=str(metric_values[Metrics.valuesCount.name])
-            ),
-            TestResultValue(
-                name=UNIQUE_COUNT, value=str(metric_values[Metrics.uniqueCount.name])
-            ),
+            TestResultValue(name=VALUE_COUNT, value=str(metric_values[Metrics.valuesCount.name])),
+            TestResultValue(name=UNIQUE_COUNT, value=str(metric_values[Metrics.uniqueCount.name])),
         ]
 
     def _run_validation(self) -> TestCaseResult:
@@ -159,7 +153,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
-            logger.warning(msg)
+            logger.error(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,
@@ -171,9 +165,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
             )
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(
-            metric_values, test_params=test_params
-        )
+        result_message = self._format_result_message(metric_values, test_params=test_params)
         test_result_values = self._get_test_result_values(metric_values)
 
         return self.get_test_case_result_object(

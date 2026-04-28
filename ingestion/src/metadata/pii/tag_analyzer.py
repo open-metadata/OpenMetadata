@@ -76,10 +76,7 @@ class TagAnalyzer:
             FQN_SEPARATOR
         )
         return (
-            get_entity_link(
-                Table, FQN_SEPARATOR.join(table_fqn_parts), column_name=column_name
-            )
-            in blacklisted_entities
+            get_entity_link(Table, FQN_SEPARATOR.join(table_fqn_parts), column_name=column_name) in blacklisted_entities
         )
 
     def get_recognizers_by(self, target: recognizer.Target) -> list[EntityRecognizer]:
@@ -88,7 +85,7 @@ class TagAnalyzer:
 
         recognizers: list[EntityRecognizer] = []
 
-        for recognizer in self.tag.recognizers or []:
+        for recognizer in self.tag.recognizers or []:  # noqa: F402
             if (
                 recognizer.target is not target
                 or recognizer.enabled is False
@@ -125,9 +122,7 @@ class TagAnalyzer:
         nlp_engine: Optional[NlpEngine] = None,
     ) -> AnalyzerEngine:
         supported_languages = [rec.supported_language for rec in recognizers]
-        recognizer_registry = RecognizerRegistry(
-            recognizers=recognizers, supported_languages=supported_languages
-        )
+        recognizer_registry = RecognizerRegistry(recognizers=recognizers, supported_languages=supported_languages)
         effective_nlp = nlp_engine if nlp_engine is not None else self._nlp_engine
         return AnalyzerEngine(
             registry=recognizer_registry,
@@ -141,11 +136,7 @@ class TagAnalyzer:
         recognizers: list[EntityRecognizer],
         context: Optional[list[str]] = None,
     ) -> list[RecognizerResult]:
-        values = (
-            [text_or_values]
-            if isinstance(text_or_values, str)
-            else list(text_or_values)
-        )
+        values = [text_or_values] if isinstance(text_or_values, str) else list(text_or_values)
         results: list[RecognizerResult] = []
 
         if self._language is not ClassificationLanguage.any:
@@ -166,9 +157,7 @@ class TagAnalyzer:
             lang_recognizers = list(group)
             analyzer = self.build_analyzer_with(
                 lang_recognizers,
-                nlp_engine=load_nlp_engine(
-                    classification_language=ClassificationLanguage(lang)
-                ),
+                nlp_engine=load_nlp_engine(classification_language=ClassificationLanguage(lang)),
             )
             for value in values:
                 results.extend(

@@ -11,6 +11,7 @@
 """
 S3 sampler implementation
 """
+
 import secrets
 from typing import Optional
 
@@ -61,20 +62,14 @@ class S3Sampler(StorageSampler):
         """
         if not key:
             return False
-        return (
-            not key.endswith("/")
-            and "/_delta_log/" not in key
-            and not key.endswith("/_SUCCESS")
-        )
+        return not key.endswith("/") and "/_delta_log/" not in key and not key.endswith("/_SUCCESS")
 
     def _filter_candidate_keys(self, response: dict) -> list[str]:
         """Extract and filter candidate keys from S3 list_objects_v2 response"""
         return [
             entry["Key"]
             for entry in response.get(S3_CLIENT_ROOT_RESPONSE, [])
-            if entry
-            and entry.get("Key")
-            and self._is_valid_sample_file(entry.get("Key"))
+            if entry and entry.get("Key") and self._is_valid_sample_file(entry.get("Key"))
         ]
 
     def _get_sample_file_path(self) -> Optional[str]:
@@ -83,17 +78,13 @@ class S3Sampler(StorageSampler):
         prefix = self.entity.prefix
 
         if not prefix:
-            logger.warning(
-                f"Container {self.entity.fullyQualifiedName.root} has no prefix"
-            )
+            logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no prefix")
             return None
 
         prefix_without_leading_slash = prefix.lstrip("/")
 
         try:
-            response = self.client.list_objects_v2(
-                Bucket=bucket_name, Prefix=prefix_without_leading_slash
-            )
+            response = self.client.list_objects_v2(Bucket=bucket_name, Prefix=prefix_without_leading_slash)
 
             if S3_CLIENT_ROOT_RESPONSE not in response:
                 logger.warning(

@@ -137,17 +137,11 @@ MOCK_PIPELINE = Pipeline(
             sourceUrl=MOCK_PIPELINE_URL,
         )
     ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"),
 )
 
 VALID_EVENT = {
-    "run": {
-        "facets": {
-            "parent": {"job": {"name": "test-job", "namespace": "test-namespace"}}
-        }
-    },
+    "run": {"facets": {"parent": {"job": {"name": "test-job", "namespace": "test-namespace"}}}},
     "inputs": [],
     "outputs": [],
     "eventType": "START",
@@ -168,9 +162,7 @@ EVENT_WITHOUT_PARENT_FACET = {
     "job": {"name": "standalone-job", "namespace": "standalone-namespace"},
 }
 
-with open(
-    f"{Path(__file__).parent}/../../resources/datasets/openlineage_event.json"
-) as ol_file:
+with open(f"{Path(__file__).parent}/../../resources/datasets/openlineage_event.json") as ol_file:
     FULL_OL_KAFKA_EVENT = json.load(ol_file)
 
 EXPECTED_OL_EVENT = OpenLineageEvent(
@@ -183,9 +175,7 @@ EXPECTED_OL_EVENT = OpenLineageEvent(
 
 
 class OpenLineageUnitTest(unittest.TestCase):
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
@@ -197,34 +187,20 @@ class OpenLineageUnitTest(unittest.TestCase):
             config.workflowConfig.openMetadataServerConfig,
         )
         self.open_lineage_source.context.get().pipeline = MOCK_PIPELINE.name.root
-        self.open_lineage_source.context.get().pipeline_service = (
-            MOCK_PIPELINE_SERVICE.name.root
-        )
-        self.open_lineage_source.source_config.lineageInformation = LineageInformation(
-            dbServiceNames=["skun"]
-        )
+        self.open_lineage_source.context.get().pipeline_service = MOCK_PIPELINE_SERVICE.name.root
+        self.open_lineage_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["skun"])
 
         # Kinesis source
-        kinesis_config = OpenMetadataWorkflowConfig.model_validate(
-            MOCK_OL_KINESIS_CONFIG
-        )
+        kinesis_config = OpenMetadataWorkflowConfig.model_validate(MOCK_OL_KINESIS_CONFIG)
         self.open_lineage_kinesis_source = OpenlineageSource.create(
             MOCK_OL_KINESIS_CONFIG["source"],
             kinesis_config.workflowConfig.openMetadataServerConfig,
         )
-        self.open_lineage_kinesis_source.context.get().pipeline = (
-            MOCK_PIPELINE.name.root
-        )
-        self.open_lineage_kinesis_source.context.get().pipeline_service = (
-            MOCK_PIPELINE_SERVICE.name.root
-        )
-        self.open_lineage_kinesis_source.source_config.lineageInformation = (
-            LineageInformation(dbServiceNames=["skun"])
-        )
+        self.open_lineage_kinesis_source.context.get().pipeline = MOCK_PIPELINE.name.root
+        self.open_lineage_kinesis_source.context.get().pipeline_service = MOCK_PIPELINE_SERVICE.name.root
+        self.open_lineage_kinesis_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["skun"])
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("confluent_kafka.Consumer")
     def setUp(self, mock_consumer, mock_test_connection):
         mock_test_connection.return_value = False
@@ -315,18 +291,10 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_create_output_lineage_dict_single_lineage_entry(self):
         """Test with a single lineage entry."""
-        lineage_info = [
-            ("output_table", "input_table", "output_column", "input_column")
-        ]
+        lineage_info = [("output_table", "input_table", "output_column", "input_column")]
         result = self.open_lineage_source._create_output_lineage_dict(lineage_info)
         expected = {
-            "output_table": {
-                "input_table": [
-                    ColumnLineage(
-                        toColumn="output_column", fromColumns=["input_column"]
-                    )
-                ]
-            }
+            "output_table": {"input_table": [ColumnLineage(toColumn="output_column", fromColumns=["input_column"])]}
         }
         self.assertEqual(result, expected)
 
@@ -338,20 +306,8 @@ class OpenLineageUnitTest(unittest.TestCase):
         ]
         result = self.open_lineage_source._create_output_lineage_dict(lineage_info)
         expected = {
-            "output_table1": {
-                "input_table": [
-                    ColumnLineage(
-                        toColumn="output_column1", fromColumns=["input_column"]
-                    )
-                ]
-            },
-            "output_table2": {
-                "input_table": [
-                    ColumnLineage(
-                        toColumn="output_column2", fromColumns=["input_column"]
-                    )
-                ]
-            },
+            "output_table1": {"input_table": [ColumnLineage(toColumn="output_column1", fromColumns=["input_column"])]},
+            "output_table2": {"input_table": [ColumnLineage(toColumn="output_column2", fromColumns=["input_column"])]},
         }
         self.assertEqual(result, expected)
 
@@ -364,16 +320,8 @@ class OpenLineageUnitTest(unittest.TestCase):
         result = self.open_lineage_source._create_output_lineage_dict(lineage_info)
         expected = {
             "output_table": {
-                "input_table1": [
-                    ColumnLineage(
-                        toColumn="output_column", fromColumns=["input_column1"]
-                    )
-                ],
-                "input_table2": [
-                    ColumnLineage(
-                        toColumn="output_column", fromColumns=["input_column2"]
-                    )
-                ],
+                "input_table1": [ColumnLineage(toColumn="output_column", fromColumns=["input_column1"])],
+                "input_table2": [ColumnLineage(toColumn="output_column", fromColumns=["input_column2"])],
             }
         }
         self.assertEqual(result, expected)
@@ -385,14 +333,10 @@ class OpenLineageUnitTest(unittest.TestCase):
         result = self.open_lineage_source._get_column_lineage(inputs, outputs)
         self.assertEqual(result, {})
 
-    @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn"
-    )
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     def test_build_ol_name_to_fqn_map_with_valid_data(self, mock_get_table_fqn):
         # Mock _get_table_fqn to return a constructed FQN based on the provided table details
-        mock_get_table_fqn.side_effect = (
-            lambda table_details, namespace=None: f"database.schema.{table_details.name}"
-        )
+        mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
 
         tables = [
             {"name": "schema.table1", "facets": {}, "namespace": "ns://"},
@@ -409,9 +353,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(result, expected_map)
         self.assertEqual(mock_get_table_fqn.call_count, 2)
 
-    @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn"
-    )
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     def test_build_ol_name_to_fqn_map_with_missing_fqn(self, mock_get_table_fqn):
         # Mock _get_table_fqn to return None for missing FQN
         mock_get_table_fqn.return_value = None
@@ -424,9 +366,7 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         self.assertEqual(result, expected_map)
 
-    @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn"
-    )
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     def test_build_ol_name_to_fqn_map_with_empty_tables(self, mock_get_table_fqn):
         # No need to set up the mock specifically since it won't be called with empty input
 
@@ -439,20 +379,12 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(result, expected_map)
         mock_get_table_fqn.assert_not_called()
 
-    @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn"
-    )
-    @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map"
-    )
-    def test_get_column_lineage_valid_inputs_outputs(
-        self, mock_build_map, mock_get_table_fqn
-    ):
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
+    def test_get_column_lineage_valid_inputs_outputs(self, mock_build_map, mock_get_table_fqn):
         """Test with valid input and output lists."""
         # Setup
-        mock_get_table_fqn.side_effect = (
-            lambda table_details, namespace=None: f"database.schema.{table_details.name}"
-        )
+        mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
         mock_build_map.return_value = {
             "s3a:/project-db/src_test1": "database.schema.input_table_1",
             "s3a:/project-db/src_test2": "database.schema.input_table_2",
@@ -511,19 +443,11 @@ class OpenLineageUnitTest(unittest.TestCase):
         }
         self.assertEqual(result, expected)
 
-    @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn"
-    )
-    @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map"
-    )
-    def test_get_column_lineage_normalizes_caps_columns_to_lowercase(
-        self, mock_build_map, mock_get_table_fqn
-    ):
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
+    def test_get_column_lineage_normalizes_caps_columns_to_lowercase(self, mock_build_map, mock_get_table_fqn):
         """Test that CAPS column names from OL events are normalized to lowercase in column FQNs."""
-        mock_get_table_fqn.side_effect = (
-            lambda table_details, namespace=None: f"database.schema.{table_details.name}"
-        )
+        mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
         mock_build_map.return_value = {
             "sqlserver:/host:1433/hk_schema.CASE_TEST_SOURCE": "database.schema.case_test_source",
         }
@@ -591,9 +515,7 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_get_table_details_with_symlinks(self):
         """Test with valid data where symlinks are present."""
-        data = {
-            "facets": {"symlinks": {"identifiers": [{"name": "project.schema.table"}]}}
-        }
+        data = {"facets": {"symlinks": {"identifiers": [{"name": "project.schema.table"}]}}}
         result = self.open_lineage_source._get_table_details(data)
         self.assertEqual(result.name, "table")
         self.assertEqual(result.schema, "schema")
@@ -607,13 +529,7 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_get_table_details_normalizes_caps_symlinks_to_lowercase(self):
         """Test that CAPS table/schema names from symlinks are normalized to lowercase."""
-        data = {
-            "facets": {
-                "symlinks": {
-                    "identifiers": [{"name": "PROJECT.SCHEMA.CASE_TEST_SOURCE"}]
-                }
-            }
-        }
+        data = {"facets": {"symlinks": {"identifiers": [{"name": "PROJECT.SCHEMA.CASE_TEST_SOURCE"}]}}}
         result = self.open_lineage_source._get_table_details(data)
         self.assertEqual(result.name, "case_test_source")
         self.assertEqual(result.schema, "schema")
@@ -656,9 +572,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertIsInstance(ol_event, OpenLineageEvent)
         self.assertEqual(ol_event, EXPECTED_OL_EVENT)
 
-    @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
-    )
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
     def test_yield_pipeline_lineage_details(self, mock_get_table_from_om):
         def t_fqn_build_side_effect(
             table_details,
@@ -704,9 +618,7 @@ class OpenLineageUnitTest(unittest.TestCase):
             create=True,
             side_effect=mock_get_uuid_by_name,
         ):
-            pip_results = self.open_lineage_source.yield_pipeline_lineage_details(
-                ol_event
-            )
+            pip_results = self.open_lineage_source.yield_pipeline_lineage_details(ol_event)
             table_lineage, col_lineage = extract_lineage_details(pip_results)
 
         expected_table_lineage = [
@@ -733,12 +645,8 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(col_lineage, expected_col_lineage)
         self.assertEqual(table_lineage, expected_table_lineage)
 
-    @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
-    )
-    @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_schema_fqn_from_om"
-    )
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_schema_fqn_from_om")
     def test_get_create_table_request(self, mock_get_schema_fqn, mock_get_table_fqn):
         """Test successful table creation request with multiple columns when table doesn't exist"""
         # Setup: Table doesn't exist, schema exists
@@ -773,9 +681,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         create_request = result.right
         self.assertIsInstance(create_request, CreateTableRequest)
         self.assertEqual(create_request.name.root, "employees")
-        self.assertEqual(
-            create_request.databaseSchema.root, "testService.testDatabase.testSchema"
-        )
+        self.assertEqual(create_request.databaseSchema.root, "testService.testDatabase.testSchema")
         self.assertEqual(len(create_request.columns), 8)
 
         # Verify all columns are created with correct types
@@ -790,24 +696,14 @@ class OpenLineageUnitTest(unittest.TestCase):
             ("is_active", "BOOLEAN", "BOOLEAN"),
         ]
 
-        for i, (expected_name, expected_type, expected_type_display) in enumerate(
-            expected_columns
-        ):
+        for i, (expected_name, expected_type, expected_type_display) in enumerate(expected_columns):
             self.assertEqual(create_request.columns[i].name.root, expected_name)
             self.assertEqual(create_request.columns[i].dataType.value, expected_type)
-            self.assertEqual(
-                create_request.columns[i].dataTypeDisplay, expected_type_display
-            )
+            self.assertEqual(create_request.columns[i].dataTypeDisplay, expected_type_display)
 
-    @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
-    )
-    @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_schema_fqn_from_om"
-    )
-    def test_get_create_table_request_schema_not_found_returns_none(
-        self, mock_get_schema_fqn, mock_get_table_fqn
-    ):
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_schema_fqn_from_om")
+    def test_get_create_table_request_schema_not_found_returns_none(self, mock_get_schema_fqn, mock_get_table_fqn):
         """Schema not found in any configured service — returns None without raising."""
         mock_get_table_fqn.side_effect = FQNNotFoundException("Table not found")
         mock_get_schema_fqn.side_effect = FQNNotFoundException("Schema not found")
@@ -887,12 +783,8 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         self.assertEqual(len(results), 0)
 
-    @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
-    )
-    def test_lineage_merge_start_with_data_running_without(
-        self, mock_get_table_from_om
-    ):
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
+    def test_lineage_merge_start_with_data_running_without(self, mock_get_table_from_om):
         """
         Test that START event with lineage data followed by RUNNING event without
         lineage data does not overwrite existing lineage in the database.
@@ -943,9 +835,7 @@ class OpenLineageUnitTest(unittest.TestCase):
             create=True,
             side_effect=mock_get_uuid_by_name,
         ):
-            start_lineage_results = list(
-                self.open_lineage_source.yield_pipeline_lineage_details(start_ol_event)
-            )
+            start_lineage_results = list(self.open_lineage_source.yield_pipeline_lineage_details(start_ol_event))
 
         # Process RUNNING event without lineage
         running_ol_event = message_to_open_lineage_event(running_event)
@@ -955,31 +845,21 @@ class OpenLineageUnitTest(unittest.TestCase):
             create=True,
             side_effect=mock_get_uuid_by_name,
         ):
-            running_lineage_results = list(
-                self.open_lineage_source.yield_pipeline_lineage_details(
-                    running_ol_event
-                )
-            )
+            running_lineage_results = list(self.open_lineage_source.yield_pipeline_lineage_details(running_ol_event))
 
         # Extract lineage requests from START event
         start_lineage_requests = [
-            r.right
-            for r in start_lineage_results
-            if r.right and isinstance(r.right, AddLineageRequest)
+            r.right for r in start_lineage_results if r.right and isinstance(r.right, AddLineageRequest)
         ]
 
         # Extract lineage requests from RUNNING event
         running_lineage_requests = [
-            r.right
-            for r in running_lineage_results
-            if r.right and isinstance(r.right, AddLineageRequest)
+            r.right for r in running_lineage_results if r.right and isinstance(r.right, AddLineageRequest)
         ]
 
         # Verify START event produced lineage with column details
         start_requests_with_columns = [
-            req
-            for req in start_lineage_requests
-            if req.edge.lineageDetails and req.edge.lineageDetails.columnsLineage
+            req for req in start_lineage_requests if req.edge.lineageDetails and req.edge.lineageDetails.columnsLineage
         ]
         self.assertGreater(
             len(start_requests_with_columns),
@@ -988,13 +868,8 @@ class OpenLineageUnitTest(unittest.TestCase):
         )
 
         # Count column lineage entries from START
-        start_column_count = sum(
-            len(req.edge.lineageDetails.columnsLineage)
-            for req in start_requests_with_columns
-        )
-        self.assertGreater(
-            start_column_count, 0, "START event should have column lineage"
-        )
+        start_column_count = sum(len(req.edge.lineageDetails.columnsLineage) for req in start_requests_with_columns)
+        self.assertGreater(start_column_count, 0, "START event should have column lineage")
 
         # Key assertion: RUNNING event with empty inputs/outputs produces no lineage requests
         # This prevents empty data from being sent to the database
@@ -1010,9 +885,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         mock_paginator.paginate.return_value = [{"Shards": [{"ShardId": "shard-0001"}]}]
         mock_kinesis.get_paginator.return_value = mock_paginator
 
-        mock_kinesis.get_shard_iterator.return_value = {
-            "ShardIterator": "test-iterator"
-        }
+        mock_kinesis.get_shard_iterator.return_value = {"ShardIterator": "test-iterator"}
 
         records = [{"Data": json.dumps(event).encode()} for event in events]
         mock_kinesis.get_records.side_effect = [
@@ -1123,9 +996,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         mock_paginator = MagicMock()
         mock_paginator.paginate.return_value = [{"Shards": [{"ShardId": "shard-0001"}]}]
         mock_kinesis.get_paginator.return_value = mock_paginator
-        mock_kinesis.get_shard_iterator.return_value = {
-            "ShardIterator": "test-iterator"
-        }
+        mock_kinesis.get_shard_iterator.return_value = {"ShardIterator": "test-iterator"}
         mock_kinesis.get_records.side_effect = [
             {"Records": [], "NextShardIterator": "next-iter"},
             {"Records": [], "NextShardIterator": "next-iter"},
@@ -1139,9 +1010,7 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         self.assertEqual(len(results), 0)
 
-    @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
-    )
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
     def test_yield_pipeline_lineage_details_kinesis(self, mock_get_table_from_om):
         """Test lineage extraction from a Kinesis-sourced event."""
 
@@ -1168,17 +1037,9 @@ class OpenLineageUnitTest(unittest.TestCase):
             create=True,
             side_effect=mock_get_uuid_by_name,
         ):
-            pip_results = list(
-                self.open_lineage_kinesis_source.yield_pipeline_lineage_details(
-                    ol_event
-                )
-            )
+            pip_results = list(self.open_lineage_kinesis_source.yield_pipeline_lineage_details(ol_event))
 
-        lineage_requests = [
-            r.right
-            for r in pip_results
-            if r.right and isinstance(r.right, AddLineageRequest)
-        ]
+        lineage_requests = [r.right for r in pip_results if r.right and isinstance(r.right, AddLineageRequest)]
         self.assertGreater(len(lineage_requests), 0)
 
         for req in lineage_requests:
@@ -1220,34 +1081,24 @@ class OpenLineageUnitTest(unittest.TestCase):
         """Test _get_topic_details extracts broker hostname correctly from various
         kafka:// namespace formats (with port, without port, multi-segment hostname)."""
         # Standard broker:port format
-        result = OpenlineageSource._get_topic_details(
-            {"name": "topic1", "namespace": "kafka://my-broker:9092"}
-        )
+        result = OpenlineageSource._get_topic_details({"name": "topic1", "namespace": "kafka://my-broker:9092"})
         self.assertEqual(result.name, "topic1")
         self.assertEqual(result.broker_hostname, "my-broker:9092")
 
         # Broker without port
-        result = OpenlineageSource._get_topic_details(
-            {"name": "topic2", "namespace": "kafka://broker-only"}
-        )
+        result = OpenlineageSource._get_topic_details({"name": "topic2", "namespace": "kafka://broker-only"})
         self.assertEqual(result.name, "topic2")
         self.assertEqual(result.broker_hostname, "broker-only")
 
     def test_topic_details_missing_fields_raises_value_error(self):
         """Test that _get_topic_details raises ValueError when namespace or name is missing."""
         with self.assertRaises(ValueError):
-            OpenlineageSource._get_topic_details(
-                {"name": "topic1"}
-            )  # missing namespace
+            OpenlineageSource._get_topic_details({"name": "topic1"})  # missing namespace
 
         with self.assertRaises(ValueError):
-            OpenlineageSource._get_topic_details(
-                {"namespace": "kafka://broker:9092"}
-            )  # missing name
+            OpenlineageSource._get_topic_details({"namespace": "kafka://broker:9092"})  # missing name
 
-    def _run_lineage_with_kafka_broker(
-        self, ol_event, get_by_name_fn, extra_patches=None
-    ):
+    def _run_lineage_with_kafka_broker(self, ol_event, get_by_name_fn, extra_patches=None):
         """Run yield_pipeline_lineage_details with a kafka-broker:9092 messaging service
         mock and return the AddLineageRequest results."""
         mock_svc = Mock()
@@ -1259,22 +1110,14 @@ class OpenLineageUnitTest(unittest.TestCase):
             del self.open_lineage_source._broker_to_service
 
         with contextlib.ExitStack() as stack:
-            mock_metadata = stack.enter_context(
-                patch.object(self.open_lineage_source, "metadata")
-            )
+            mock_metadata = stack.enter_context(patch.object(self.open_lineage_source, "metadata"))
             for p in extra_patches or []:
                 stack.enter_context(p)
             mock_metadata.list_all_entities.return_value = iter([mock_svc])
             mock_metadata.get_by_name.side_effect = get_by_name_fn
-            results = list(
-                self.open_lineage_source.yield_pipeline_lineage_details(ol_event)
-            )
+            results = list(self.open_lineage_source.yield_pipeline_lineage_details(ol_event))
 
-        return [
-            r.right
-            for r in results
-            if r.right and isinstance(r.right, AddLineageRequest)
-        ]
+        return [r.right for r in results if r.right and isinstance(r.right, AddLineageRequest)]
 
     def test_yield_pipeline_lineage_with_kafka_topic_input_and_kafka_topic_output(self):
         """End-to-end test: Kafka topic input and Kafka topic output produces a
@@ -1407,14 +1250,10 @@ class OpenLineageUnitTest(unittest.TestCase):
                 "_get_table_fqn",
                 return_value="db-service.public.output_table",
             ),
-            patch.object(
-                self.open_lineage_source, "get_create_table_request", return_value=None
-            ),
+            patch.object(self.open_lineage_source, "get_create_table_request", return_value=None),
         ]
 
-        lineage_requests = self._run_lineage_with_kafka_broker(
-            ol_event, get_by_name, extra_patches
-        )
+        lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
 
         self.assertEqual(len(lineage_requests), 1)
         edge = lineage_requests[0].edge
@@ -1436,9 +1275,7 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         source._namespace_to_service_cache = {}
         # Only redshift_prod is configured — mysql_prod is NOT in dbServiceNames
-        source.source_config.lineageInformation = LineageInformation(
-            dbServiceNames=["redshift_prod"]
-        )
+        source.source_config.lineageInformation = LineageInformation(dbServiceNames=["redshift_prod"])
         # _build_db_service_type_map only includes configured services
         source._db_service_type_map = {"redshift_prod": DatabaseServiceType.Redshift}
 
@@ -1453,9 +1290,7 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         # fqn.build returns None for redshift_prod (table doesn't exist there)
         with patch("metadata.utils.fqn.build", return_value=None):
-            result = source._get_table_fqn(
-                table, namespace="mysql://mysql-host:3306/mydb"
-            )
+            result = source._get_table_fqn(table, namespace="mysql://mysql-host:3306/mydb")
 
         # mysql_prod is not in dbServiceNames so mapping is ignored.
         # Fallback scheme-based: redshift:// != mysql://, no match.
@@ -1473,9 +1308,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         source = self.open_lineage_source
 
         source._namespace_to_service_cache = {}
-        source.source_config.lineageInformation = LineageInformation(
-            dbServiceNames=["mysql_prod", "redshift_prod"]
-        )
+        source.source_config.lineageInformation = LineageInformation(dbServiceNames=["mysql_prod", "redshift_prod"])
         source._db_service_type_map = {
             "mysql_prod": DatabaseServiceType.Mysql,
             "redshift_prod": DatabaseServiceType.Redshift,
@@ -1500,18 +1333,14 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
             # MySQL namespace -> scheme resolves to mysql_prod only
-            mysql_result = source._get_table_fqn(
-                table, namespace="mysql://mysql-host:3306/db"
-            )
+            mysql_result = source._get_table_fqn(table, namespace="mysql://mysql-host:3306/db")
             assert mysql_result == "mysql_prod.db.analytics.user_stat"
 
             # Clear cache for next lookup
             source._namespace_to_service_cache = {}
 
             # Redshift namespace -> scheme resolves to redshift_prod only
-            redshift_result = source._get_table_fqn(
-                table, namespace="redshift://cluster:5439/warehouse"
-            )
+            redshift_result = source._get_table_fqn(table, namespace="redshift://cluster:5439/warehouse")
             assert redshift_result == "redshift_prod.warehouse.analytics.user_stat"
 
     def test_namespace_mapping_config_disambiguates_same_type_services(self):
@@ -1559,17 +1388,13 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
             # cluster-a namespace -> mapping resolves to mysql_cluster_a
-            result_a = source._get_table_fqn(
-                table, namespace="mysql://cluster-a:3306/db"
-            )
+            result_a = source._get_table_fqn(table, namespace="mysql://cluster-a:3306/db")
             assert result_a == "mysql_cluster_a.db.analytics.user_stat"
 
             source._namespace_to_service_cache = {}
 
             # cluster-b namespace -> mapping resolves to mysql_cluster_b
-            result_b = source._get_table_fqn(
-                table, namespace="mysql://cluster-b:3306/db"
-            )
+            result_b = source._get_table_fqn(table, namespace="mysql://cluster-b:3306/db")
             assert result_b == "mysql_cluster_b.db.analytics.user_stat"
 
     def test_namespace_scheme_resolves_known_vs_custom_db_type(self):
@@ -1583,9 +1408,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         source = self.open_lineage_source
 
         source._namespace_to_service_cache = {}
-        source.source_config.lineageInformation = LineageInformation(
-            dbServiceNames=["mysql_prod", "custom_lakehouse"]
-        )
+        source.source_config.lineageInformation = LineageInformation(dbServiceNames=["mysql_prod", "custom_lakehouse"])
         source._db_service_type_map = {
             "mysql_prod": DatabaseServiceType.Mysql,
             "custom_lakehouse": "CustomDatabase",
@@ -1610,18 +1433,14 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
             # mysql:// namespace -> scheme matches Mysql -> resolves to mysql_prod only
-            mysql_result = source._get_table_fqn(
-                table, namespace="mysql://mysql-host:3306/db"
-            )
+            mysql_result = source._get_table_fqn(table, namespace="mysql://mysql-host:3306/db")
             assert mysql_result == "mysql_prod.db.analytics.user_stat"
 
             source._namespace_to_service_cache = {}
 
             # custom:// namespace (unknown scheme) -> find_services_by_scheme returns
             # services whose type is NOT in the known scheme map, i.e. custom_lakehouse
-            custom_result = source._get_table_fqn(
-                table, namespace="custom://lakehouse-host:8080/lake"
-            )
+            custom_result = source._get_table_fqn(table, namespace="custom://lakehouse-host:8080/lake")
             assert custom_result == "custom_lakehouse.lake.analytics.user_stat"
 
     def test_table_found_in_multiple_services_raises_ambiguous(self):
@@ -1632,9 +1451,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         source = self.open_lineage_source
 
         source._namespace_to_service_cache = LRUCache(maxsize=10000)
-        source.source_config.lineageInformation = LineageInformation(
-            dbServiceNames=["mysql_a", "mysql_b"]
-        )
+        source.source_config.lineageInformation = LineageInformation(dbServiceNames=["mysql_a", "mysql_b"])
         source._db_service_type_map = {
             "mysql_a": DatabaseServiceType.Mysql,
             "mysql_b": DatabaseServiceType.Mysql,
@@ -1661,9 +1478,7 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
             with self.assertLogs("metadata.Ingestion", level=logging.WARNING) as cm:
-                result = source._get_table_fqn(
-                    table, namespace="mysql://some-host:3306/db"
-                )
+                result = source._get_table_fqn(table, namespace="mysql://some-host:3306/db")
 
         assert result is None
         assert any("Failed to get FQN for table" in msg for msg in cm.output)
@@ -1741,15 +1556,9 @@ class OpenLineageUnitTest(unittest.TestCase):
             if hasattr(self.open_lineage_source, "_broker_to_service"):
                 del self.open_lineage_source._broker_to_service
 
-            results = list(
-                self.open_lineage_source.yield_pipeline_lineage_details(ol_event)
-            )
+            results = list(self.open_lineage_source.yield_pipeline_lineage_details(ol_event))
 
-        lineage_requests = [
-            r.right
-            for r in results
-            if r.right and isinstance(r.right, AddLineageRequest)
-        ]
+        lineage_requests = [r.right for r in results if r.right and isinstance(r.right, AddLineageRequest)]
 
         # No lineage should be produced because the topic input couldn't be resolved
         # (no matching broker), so there are no input edges to pair with the table output
@@ -1926,9 +1735,7 @@ class OpenLineageUnitTest(unittest.TestCase):
             ),
         ]
 
-        lineage_requests = self._run_lineage_with_kafka_broker(
-            ol_event, get_by_name, extra_patches
-        )
+        lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
 
         self.assertEqual(len(lineage_requests), 1)
         edge = lineage_requests[0].edge
@@ -1995,9 +1802,7 @@ class OpenLineageUnitTest(unittest.TestCase):
             ),
         ]
 
-        lineage_requests = self._run_lineage_with_kafka_broker(
-            ol_event, get_by_name, extra_patches
-        )
+        lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
 
         self.assertEqual(len(lineage_requests), 1)
         edge = lineage_requests[0].edge
@@ -2121,9 +1926,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         """Trino backed by AWS Glue Data Catalog uses the public schema and underscore-separated table names.
         Verifies the parser handles the common Glue catalog table naming pattern correctly.
         """
-        result = OpenlineageSource._parse_glue_table_name(
-            "table/public/order_line_items"
-        )
+        result = OpenlineageSource._parse_glue_table_name("table/public/order_line_items")
         self.assertEqual(result.name, "order_line_items")
         self.assertEqual(result.schema, "public")
 
@@ -2174,27 +1977,17 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_parse_cosmos_table_name_normalizes_to_lowercase(self):
         """Cosmos database and collection names are normalized to lowercase for FQN matching."""
-        result = OpenlineageSource._parse_cosmos_table_name(
-            "azurecosmos://host/dbs/MyDB", "colls/MyCollection"
-        )
+        result = OpenlineageSource._parse_cosmos_table_name("azurecosmos://host/dbs/MyDB", "colls/MyCollection")
         self.assertEqual(result.name, "mycollection")
         self.assertEqual(result.schema, "mydb")
 
     def test_parse_cosmos_table_name_no_dbs_segment_returns_none(self):
         """A Cosmos namespace without /dbs/{db} cannot provide the database name and returns None."""
-        self.assertIsNone(
-            OpenlineageSource._parse_cosmos_table_name(
-                "azurecosmos://host", "colls/mycoll"
-            )
-        )
+        self.assertIsNone(OpenlineageSource._parse_cosmos_table_name("azurecosmos://host", "colls/mycoll"))
 
     def test_parse_cosmos_table_name_non_colls_name_returns_none(self):
         """A Cosmos name not matching colls/{collection} is non-conformant and returns None."""
-        self.assertIsNone(
-            OpenlineageSource._parse_cosmos_table_name(
-                "azurecosmos://host/dbs/mydb", "mycollection"
-            )
-        )
+        self.assertIsNone(OpenlineageSource._parse_cosmos_table_name("azurecosmos://host/dbs/mydb", "mycollection"))
 
     def test_get_table_details_glue_namespace_parses_slash_name(self):
         """AWS Glue EMR events use arn:aws:glue namespace + table/{db}/{table} name."""
