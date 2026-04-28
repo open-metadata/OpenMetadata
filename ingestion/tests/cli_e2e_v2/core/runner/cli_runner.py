@@ -24,17 +24,19 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT_SECONDS = 600
 
-# Cap how many step failures we surface inline in the exception message.
-# First N tends to be root cause; the rest are usually follow-on noise.
-# Full failures list is still in the status JSON for deep dives.
+# Cap inline step failures GLOBALLY across all steps. Failures cascade —
+# step 1's first failure is overwhelmingly the root cause, step 5's third
+# failure is downstream noise. The full list is in the status JSON for
+# deep dives.
 _INLINE_FAILURES_LIMIT = 3
 _INLINE_FAILURE_CHARS = 500
 
 
 def _summarize_step_failures(status_path: Path) -> str | None:
     """Best-effort: read the status JSON and pull out the first few step
-    failures as a short, scannable block. Returns None on any read / parse
-    failure — caller falls back to the raw stdout/stderr dump.
+    failures (across all steps, capped globally) as a short, scannable
+    block. Returns None on any read / parse failure — caller falls back
+    to the raw stdout/stderr dump.
 
     Output shape (one line per failure, truncated):
         [StepName::FailureName] first-line-of-error…
@@ -49,7 +51,9 @@ def _summarize_step_failures(status_path: Path) -> str | None:
     lines: list[str] = []
     for step in data.get("steps") or []:
         step_name = step.get("name", "?")
-        for failure in (step.get("failures") or [])[:_INLINE_FAILURES_LIMIT]:
+        for failure in step.get("failures") or []:
+            if len(lines) >= _INLINE_FAILURES_LIMIT:
+                return "\n".join(lines)
             name = failure.get("name", "?")
             err = (failure.get("error") or "").splitlines()[0][:_INLINE_FAILURE_CHARS]
             lines.append(f"    [{step_name}::{name}] {err}")
