@@ -205,24 +205,21 @@ export const CoverImageUploadField = ({
 
   const [previewSrc, setPreviewSrc] = useState('');
 
+  const file = hasFile(value) ? value.file : null;
+  const url = hasUrl(value) ? value.url : null;
+
   useEffect(() => {
-    if (hasFile(value)) {
-      const url = URL.createObjectURL(value.file);
-      setPreviewSrc(url);
+    if (file) {
+      const blobUrl = URL.createObjectURL(file);
+      setPreviewSrc(blobUrl);
 
-      return () => URL.revokeObjectURL(url);
+      return () => URL.revokeObjectURL(blobUrl);
     }
 
-    if (hasUrl(value)) {
-      setPreviewSrc(value.url);
-
-      return undefined;
-    }
-
-    setPreviewSrc('');
+    setPreviewSrc(url ?? '');
 
     return undefined;
-  }, [value]);
+  }, [file, url]);
 
   useEffect(() => {
     setImageError(false);
