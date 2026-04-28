@@ -20,7 +20,7 @@ import sys
 import traceback
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Type, Union  # noqa: UP035
 
 import grpc_tools.protoc
 from pydantic import BaseModel
@@ -83,7 +83,7 @@ class ProtobufParserConfig(BaseModel):
 
     schema_name: str
     schema_text: str
-    base_file_path: Optional[str] = "/tmp/protobuf_openmetadata"
+    base_file_path: Optional[str] = "/tmp/protobuf_openmetadata"  # noqa: UP045
 
 def _resolve_message_class(module, schema_name: str):
     """
@@ -205,10 +205,10 @@ class ProtobufParser:
 
             # Create a .proto file under the interfaces directory with schema text
             file_path = f"{self.proto_interface_dir}/{self.config.schema_name}.proto"
-            with open(file_path, "w", encoding="UTF-8") as file:
+            with open(file_path, "w", encoding="UTF-8") as file:  # noqa: PTH123
                 file.write(self.config.schema_text)
             proto_path = "generated=" + self.proto_interface_dir
-            return proto_path, file_path
+            return proto_path, file_path  # noqa: TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}")
@@ -235,18 +235,20 @@ class ProtobufParser:
             # import the python file
             sys.path.append(self.generated_src_dir)
             generated_src_dir_path = Path(self.generated_src_dir)
-            py_file = glob.glob(str(generated_src_dir_path.joinpath(f"{self.config.schema_name}_pb2.py")))[0]
+            py_file = glob.glob(str(generated_src_dir_path.joinpath(f"{self.config.schema_name}_pb2.py")))[0]  # noqa: PTH207
             module_name = Path(py_file).stem
             message = importlib.import_module(module_name)
 
-            instance = _resolve_message_class(message, self.config.schema_name)
-            return instance
+            # get the class and create a object instance
+            class_ = getattr(message, snake_to_camel(self.config.schema_name))
+            instance = class_()
+            return instance  # noqa: RET504, TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to create protobuf python module for {self.config.schema_name}: {exc}")
         return None
 
-    def parse_protobuf_schema(self, cls: Type[BaseModel] = FieldModel) -> Optional[List[Union[FieldModel, Column]]]:
+    def parse_protobuf_schema(self, cls: Type[BaseModel] = FieldModel) -> Optional[List[Union[FieldModel, Column]]]:  # noqa: UP006, UP007, UP045
         """
         Method to parse the protobuf schema
         """
@@ -267,13 +269,13 @@ class ProtobufParser:
             if Path(self.config.base_file_path).exists():
                 shutil.rmtree(self.config.base_file_path)
 
-            return field_models
+            return field_models  # noqa: TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}")
         return None
 
-    def _get_field_type(self, type_: int, cls: Type[BaseModel] = FieldModel) -> str:
+    def _get_field_type(self, type_: int, cls: Type[BaseModel] = FieldModel) -> str:  # noqa: UP006
         if type_ > 18:
             return DataType.UNKNOWN.value
         data_type = ProtobufDataTypes(type_).name
@@ -282,8 +284,10 @@ class ProtobufParser:
         return data_type
 
     def get_protobuf_fields(
-        self, fields, cls: Type[BaseModel] = FieldModel
-    ) -> Optional[List[Union[FieldModel, Column]]]:
+        self,
+        fields,
+        cls: Type[BaseModel] = FieldModel,  # noqa: UP006
+    ) -> Optional[List[Union[FieldModel, Column]]]:  # noqa: UP006, UP007, UP045
         """
         Recursively convert the parsed schema into required models
         """

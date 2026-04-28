@@ -17,7 +17,7 @@ All functions are cloud-agnostic — they operate on path strings only.
 """
 
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.utils.logger import ingestion_logger
@@ -43,7 +43,7 @@ EXTENSION_TO_FORMAT = {
 }
 
 
-def infer_structure_format(key: str) -> Optional[str]:
+def infer_structure_format(key: str) -> Optional[str]:  # noqa: UP045
     """Infer the structure format from a file's extension.
 
     Returns the format string (e.g., 'parquet', 'csv') or None if unknown.
@@ -195,12 +195,12 @@ def extract_table_root(key: str) -> str:
 
 def _extract_partition_segments(
     relative: str,
-    partition_values: Dict[str, List[str]],
-) -> List[str]:
+    partition_values: Dict[str, List[str]],  # noqa: UP006
+) -> List[str]:  # noqa: UP006
     """Walk the path segments (excluding the filename) and collect
     Hive-style ``key=value`` pairs. Updates ``partition_values`` in place
     so the caller can later infer types per column."""
-    current: List[str] = []
+    current: List[str] = []  # noqa: UP006
     for part in relative.split("/")[:-1]:
         match = HIVE_PARTITION_PATTERN.match(part)
         if match:
@@ -213,7 +213,7 @@ def _extract_partition_segments(
     return current
 
 
-def _check_partition_consistency(structures: List[List[str]], table_root: str) -> Optional[List[str]]:
+def _check_partition_consistency(structures: List[List[str]], table_root: str) -> Optional[List[str]]:  # noqa: UP006, UP045
     """Return the shared partition structure if every entry matches;
     log and return None on mismatch."""
     reference = structures[0]
@@ -227,7 +227,7 @@ def _check_partition_consistency(structures: List[List[str]], table_root: str) -
     return reference
 
 
-def detect_hive_partitions(keys: List[str], table_root: str) -> Optional[List[Column]]:
+def detect_hive_partitions(keys: List[str], table_root: str) -> Optional[List[Column]]:  # noqa: UP006, UP045
     """Detect Hive-style partition columns from file paths.
 
     Scans paths under ``table_root`` for consistent ``key=value``
@@ -243,8 +243,8 @@ def detect_hive_partitions(keys: List[str], table_root: str) -> Optional[List[Co
         return None
 
     root_prefix = table_root.rstrip("/") + "/" if table_root else ""
-    partition_structures: List[List[str]] = []
-    partition_values: Dict[str, List[str]] = {}
+    partition_structures: List[List[str]] = []  # noqa: UP006
+    partition_values: Dict[str, List[str]] = {}  # noqa: UP006
     has_flat_files = False
 
     for key in keys:
@@ -268,7 +268,7 @@ def detect_hive_partitions(keys: List[str], table_root: str) -> Optional[List[Co
     if reference is None:
         return None
 
-    columns: List[Column] = []
+    columns: List[Column] = []  # noqa: UP006
     for col_name in reference:
         col_type = _infer_partition_type(partition_values.get(col_name, []))
         columns.append(
@@ -281,7 +281,7 @@ def detect_hive_partitions(keys: List[str], table_root: str) -> Optional[List[Co
     return columns
 
 
-def _infer_partition_type(values: List[str]) -> DataType:
+def _infer_partition_type(values: List[str]) -> DataType:  # noqa: UP006
     """Infer the data type of a partition column from its observed values."""
     if not values:
         return DataType.VARCHAR
@@ -302,19 +302,19 @@ def _is_integer(value: str) -> bool:
     """Check if a string value represents an integer."""
     try:
         int(value)
-        return True
+        return True  # noqa: TRY300
     except ValueError:
         return False
 
 
 def group_files_by_table(
-    keys: List[Tuple[str, int]],
-) -> Dict[str, List[Tuple[str, int]]]:
+    keys: List[Tuple[str, int]],  # noqa: UP006
+) -> Dict[str, List[Tuple[str, int]]]:  # noqa: UP006
     """Group matched file keys by their logical table root.
 
     Returns a dict of {table_root: [(key, size), ...]}.
     """
-    groups: Dict[str, List[Tuple[str, int]]] = {}
+    groups: Dict[str, List[Tuple[str, int]]] = {}  # noqa: UP006
     for key, size in keys:
         root = extract_table_root(key)
         groups.setdefault(root, []).append((key, size))

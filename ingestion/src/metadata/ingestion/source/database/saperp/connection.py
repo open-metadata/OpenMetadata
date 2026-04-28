@@ -41,8 +41,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: SapErpClient,
     service_connection: SapErpConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     test_fn = {
         "GetTables": client.test_table_api,

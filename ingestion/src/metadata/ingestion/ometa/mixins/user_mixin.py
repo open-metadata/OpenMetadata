@@ -17,7 +17,7 @@ To be used by OpenMetadata class
 import json
 import traceback
 from functools import lru_cache
-from typing import Optional, Type
+from typing import Optional, Type  # noqa: UP035
 from urllib.parse import quote
 
 from metadata.generated.schema.entity.teams.team import Team, TeamType
@@ -43,11 +43,11 @@ class OMetaUserMixin:
     client: REST
 
     @staticmethod
-    def email_search_query_es(entity: Type[T]) -> str:
+    def email_search_query_es(entity: Type[T]) -> str:  # noqa: UP006
         return "/search/query?q=email.keyword:{email}&from={from_}&size={size}&index=" + ES_INDEX_MAP[entity.__name__]
 
     @staticmethod
-    def name_search_query_es(entity: Type[T], name: str, from_: int, size: int) -> str:
+    def name_search_query_es(entity: Type[T], name: str, from_: int, size: int) -> str:  # noqa: UP006
         """
         Allow for more flexible lookup following what the UI is doing when searching users.
 
@@ -74,12 +74,12 @@ class OMetaUserMixin:
 
     def _search_by_email(
         self,
-        entity: Type[T],
-        email: Optional[str],
+        entity: Type[T],  # noqa: UP006
+        email: Optional[str],  # noqa: UP045
         from_count: int = 0,
         size: int = 1,
-        fields: Optional[list] = None,
-    ) -> Optional[T]:
+        fields: Optional[list] = None,  # noqa: UP045
+    ) -> Optional[T]:  # noqa: UP045
         """
         GET user or team entity by mail
 
@@ -97,12 +97,12 @@ class OMetaUserMixin:
 
     def _search_by_name(
         self,
-        entity: Type[T],
-        name: Optional[str],
+        entity: Type[T],  # noqa: UP006
+        name: Optional[str],  # noqa: UP045
         from_count: int = 0,
         size: int = 1,
-        fields: Optional[list] = None,
-    ) -> Optional[T]:
+        fields: Optional[list] = None,  # noqa: UP045
+    ) -> Optional[T]:  # noqa: UP045
         """
         GET entity by name
 
@@ -118,14 +118,14 @@ class OMetaUserMixin:
 
         return None
 
-    @lru_cache(maxsize=None)
+    @lru_cache(maxsize=None)  # noqa: B019, UP033
     def get_reference_by_email(
         self,
-        email: Optional[str],
+        email: Optional[str],  # noqa: UP045
         from_count: int = 0,
         size: int = 1,
-        fields: Optional[list] = None,
-    ) -> Optional[EntityReferenceList]:
+        fields: Optional[list] = None,  # noqa: UP045
+    ) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Get a User or Team Entity Reference by searching by its mail
         """
@@ -157,15 +157,15 @@ class OMetaUserMixin:
 
         return None
 
-    @lru_cache(maxsize=None)
+    @lru_cache(maxsize=None)  # noqa: B019, UP033
     def get_reference_by_name(
         self,
-        name: Optional[str],
+        name: Optional[str],  # noqa: UP045
         from_count: int = 0,
         size: int = 1,
-        fields: Optional[list] = None,
+        fields: Optional[list] = None,  # noqa: UP045
         is_owner: bool = False,
-    ) -> Optional[EntityReferenceList]:
+    ) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Get a User or Team Entity Reference by searching by its name.
         """

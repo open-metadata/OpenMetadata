@@ -12,7 +12,7 @@
 Sampler configuration helpers
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union  # noqa: UP035
 
 from metadata.generated.schema.entity.data.database import (
     Database,
@@ -43,12 +43,12 @@ from metadata.sampler.models import (
 
 
 def get_sample_storage_config(
-    config: Union[
+    config: Union[  # noqa: UP007
         DatabaseSchemaProfilerConfig,
         DatabaseProfilerConfig,
         DatabaseAndSchemaConfig,
     ],
-) -> Optional[Union[DataStorageConfig, Dict[str, Any]]]:
+) -> Optional[Union[DataStorageConfig, Dict[str, Any]]]:  # noqa: UP006, UP007, UP045
     """Get sample storage config"""
     if config and config.sampleDataStorageConfig and config.sampleDataStorageConfig.config:
         return config.sampleDataStorageConfig.config
@@ -59,9 +59,9 @@ def get_storage_config_for_table(
     entity: Table,
     schema_entity: DatabaseSchema,
     database_entity: Database,
-    db_service: Optional[DatabaseService],
+    db_service: Optional[DatabaseService],  # noqa: UP045
     profiler_config: ProfilerProcessorConfig,
-) -> Optional[Union[DataStorageConfig, Dict[str, Any]]]:
+) -> Optional[Union[DataStorageConfig, Dict[str, Any]]]:  # noqa: UP006, UP007, UP045
     """Get storage config for a specific entity"""
     schema_profiler_config = get_schema_profiler_config(schema_entity=schema_entity)
     database_profiler_config = get_database_profiler_config(database_entity=database_entity)
@@ -97,12 +97,12 @@ def get_storage_config_for_table(
 
 
 def _resolve_profile_sample_config(
-    entity_config: Optional[Union[TableConfig, DatabaseAndSchemaConfig]],
+    entity_config: Optional[Union[TableConfig, DatabaseAndSchemaConfig]],  # noqa: UP007, UP045
     table_profiler_config,
     schema_profiler_config,
     database_profiler_config,
-    default_sample_config: Optional[SampleConfig],
-) -> Optional[ProfileSampleConfig]:
+    default_sample_config: Optional[SampleConfig],  # noqa: UP045
+) -> Optional[ProfileSampleConfig]:  # noqa: UP045
     """Resolve profileSampleConfig through the config hierarchy.
 
     Checks profileSampleConfig first, then falls back to flat profileSample
@@ -145,10 +145,10 @@ def _resolve_profile_sample_config(
 
 def get_profile_sample_config(
     entity: Table,
-    schema_entity: Optional[DatabaseSchema],
-    database_entity: Optional[Database],
-    entity_config: Optional[Union[TableConfig, DatabaseAndSchemaConfig]],
-    default_sample_config: Optional[SampleConfig],
+    schema_entity: Optional[DatabaseSchema],  # noqa: UP045
+    database_entity: Optional[Database],  # noqa: UP045
+    entity_config: Optional[Union[TableConfig, DatabaseAndSchemaConfig]],  # noqa: UP007, UP045
+    default_sample_config: Optional[SampleConfig],  # noqa: UP045
 ) -> SampleConfig:
     """Get profile sample config for a specific entity"""
     schema_profiler_config = get_schema_profiler_config(schema_entity=schema_entity)
@@ -165,7 +165,7 @@ def get_profile_sample_config(
     return SampleConfig(profileSampleConfig=profile_sample_config)
 
 
-def get_sample_query(entity: Table, entity_config: Optional[TableConfig]) -> Optional[str]:
+def get_sample_query(entity: Table, entity_config: Optional[TableConfig]) -> Optional[str]:  # noqa: UP045
     """get profile query for sampling
 
     Args:
@@ -186,11 +186,11 @@ def get_sample_query(entity: Table, entity_config: Optional[TableConfig]) -> Opt
 
 def get_sample_data_count_config(
     entity: Table,
-    schema_entity: Optional[DatabaseSchema],
-    database_entity: Optional[Database],
-    entity_config: Optional[TableConfig],
+    schema_entity: Optional[DatabaseSchema],  # noqa: UP045
+    database_entity: Optional[Database],  # noqa: UP045
+    entity_config: Optional[TableConfig],  # noqa: UP045
     default_sample_data_count: int,
-) -> Optional[int]:
+) -> Optional[int]:  # noqa: UP045
     """_summary_
     Args:
         entity_config (Optional[TableConfig]): table config object from yaml/json file
@@ -213,7 +213,7 @@ def get_sample_data_count_config(
     return default_sample_data_count
 
 
-def get_config_for_table(entity: Table, profiler_config) -> Optional[TableConfig]:
+def get_config_for_table(entity: Table, profiler_config) -> Optional[TableConfig]:  # noqa: UP045
     """Get config for a specific entity
 
     Args:
@@ -233,7 +233,7 @@ def get_config_for_table(entity: Table, profiler_config) -> Optional[TableConfig
     return None
 
 
-def get_include_columns(entity, entity_config: Optional[TableConfig]) -> Optional[List[ColumnProfilerConfig]]:
+def get_include_columns(entity, entity_config: Optional[TableConfig]) -> Optional[List[ColumnProfilerConfig]]:  # noqa: UP006, UP045
     """get included columns"""
     if entity_config and entity_config.columnConfig:
         return entity_config.columnConfig.includeColumns
@@ -244,7 +244,7 @@ def get_include_columns(entity, entity_config: Optional[TableConfig]) -> Optiona
     return None
 
 
-def get_exclude_columns(entity, entity_config: Optional[TableConfig]) -> Optional[List[str]]:
+def get_exclude_columns(entity, entity_config: Optional[TableConfig]) -> Optional[List[str]]:  # noqa: UP006, UP045
     """get included columns"""
     if entity_config and entity_config.columnConfig:
         return entity_config.columnConfig.excludeColumns

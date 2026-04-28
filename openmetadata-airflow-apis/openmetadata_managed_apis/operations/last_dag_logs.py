@@ -17,11 +17,12 @@ import json
 import os
 from functools import lru_cache, partial
 from io import StringIO
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple  # noqa: UP035
 
 from airflow.models import DagModel, TaskInstance
 from airflow.utils.log.log_reader import TaskLogReader
 from flask import Response
+
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.utils.logger import operations_logger
 
@@ -35,14 +36,14 @@ DOT_STR = "_DOT_"
 
 
 @lru_cache(maxsize=10)
-def get_log_file_info(log_file_path: str, mtime: int) -> Tuple[int, int]:
+def get_log_file_info(log_file_path: str, mtime: int) -> Tuple[int, int]:  # noqa: UP006
     """
     Get total size and number of chunks for a log file.
     :param log_file_path: Path to log file
     :param mtime: File modification time in seconds (used as cache key)
     :return: Tuple of (file_size_bytes, total_chunks)
     """
-    file_size = os.path.getsize(log_file_path)
+    file_size = os.path.getsize(log_file_path)  # noqa: PTH202
     total_chunks = (file_size + CHUNK_SIZE - 1) // CHUNK_SIZE
     return file_size, total_chunks
 
@@ -64,13 +65,13 @@ def format_json_log_line(line: str) -> str:
         line_no = log_entry.get("lineno", "")
 
         # Format similar to traditional logs: [timestamp] LEVEL - logger - message
-        return f"[{timestamp}] {level} - {logger_name}:{line_no} - {event}\n"
+        return f"[{timestamp}] {level} - {logger_name}:{line_no} - {event}\n"  # noqa: TRY300
     except (json.JSONDecodeError, KeyError, AttributeError):
         # Not JSON or malformed, return as-is
         return line if line.endswith("\n") else line + "\n"
 
 
-def read_log_chunk_from_file(file_path: str, chunk_index: int, format_json: bool = True) -> Optional[str]:
+def read_log_chunk_from_file(file_path: str, chunk_index: int, format_json: bool = True) -> Optional[str]:  # noqa: UP045
     """
     Read a specific chunk from a log file without loading entire file.
     Optionally formats JSON logs to readable text.
@@ -82,7 +83,7 @@ def read_log_chunk_from_file(file_path: str, chunk_index: int, format_json: bool
     """
     try:
         offset = chunk_index * CHUNK_SIZE
-        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:  # noqa: PTH123
             f.seek(offset)
             chunk = f.read(CHUNK_SIZE)
 
@@ -92,13 +93,13 @@ def read_log_chunk_from_file(file_path: str, chunk_index: int, format_json: bool
             formatted_lines = [format_json_log_line(line.rstrip("\n")) for line in lines if line.strip()]
             return "".join(formatted_lines)
 
-        return chunk
+        return chunk  # noqa: TRY300
     except Exception as exc:
         logger.warning(f"Failed to read log chunk from {file_path}: {exc}")
         return None
 
 
-def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Response:
+def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Response:  # noqa: UP045
     """
     Validate that the DAG is registered by Airflow and have at least one Run.
     If exists, returns all logs for each task instance of the last DAG run.
@@ -125,7 +126,7 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
     if not last_dag_run:
         return ApiResponse.not_found(f"No DAG run found for {dag_id}.")
 
-    task_instances: List[TaskInstance] = last_dag_run.get_task_instances()
+    task_instances: List[TaskInstance] = last_dag_run.get_task_instances()  # noqa: UP006
 
     if not task_instances:
         return ApiResponse.not_found(f"Cannot find any task instance for the last DagRun of {dag_id}.")
@@ -148,7 +149,7 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
 
     # Try to use file streaming for better performance
     try:
-        from airflow.configuration import (  # pylint: disable=import-outside-toplevel
+        from airflow.configuration import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
             conf,
         )
 
@@ -161,7 +162,7 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
         log_relative_path = (
             f"dag_id={dag_id_safe}/run_id={last_dag_run.run_id}/task_id={task_id_safe}/attempt={try_number}.log"
         )
-        log_file_path = os.path.join(base_log_folder, log_relative_path)
+        log_file_path = os.path.join(base_log_folder, log_relative_path)  # noqa: PTH118
 
         # Security: Validate the resolved path stays within base_log_folder
         # to prevent directory traversal attacks. This provides defense-in-depth
@@ -173,8 +174,8 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
             logger.warning(f"Path traversal attempt detected: {log_file_path} is outside {base_log_folder}")
             return ApiResponse.bad_request(f"Invalid log path for DAG {dag_id} and Task {task_id}.")
 
-        if os.path.exists(log_file_path_real):
-            stat_info = os.stat(log_file_path_real)
+        if os.path.exists(log_file_path_real):  # noqa: PTH110
+            stat_info = os.stat(log_file_path_real)  # noqa: PTH116
             file_mtime = int(stat_info.st_mtime)
 
             _, total_chunks = get_log_file_info(log_file_path_real, file_mtime)
@@ -206,7 +207,7 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
 def _last_dag_logs_fallback(
     dag_id: str,
     task_id: str,
-    after: Optional[int],
+    after: Optional[int],  # noqa: UP045
     task_instance: TaskInstance,
     task_log_reader: TaskLogReader,
     try_number: int,
@@ -243,7 +244,7 @@ def _last_dag_logs_fallback(
 
     # Split the string in chunks of size without
     # having to know the full length beforehand
-    log_chunks = [chunk for chunk in iter(partial(StringIO(formatted_logs_str).read, CHUNK_SIZE), "")]
+    log_chunks = [chunk for chunk in iter(partial(StringIO(formatted_logs_str).read, CHUNK_SIZE), "")]  # noqa: C416
 
     total = len(log_chunks)
     after_idx = int(after) if after is not None else 0

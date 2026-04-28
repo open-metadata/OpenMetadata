@@ -13,7 +13,7 @@
 import ast  # noqa: I001
 import json
 import traceback
-from typing import Iterable, List, Optional, Tuple, cast
+from typing import Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 from mlflow.entities import RunData
 from mlflow.entities.model_registry import ModelVersion, RegisteredModel
@@ -61,7 +61,7 @@ class MlflowSource(MlModelServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: MlflowConnection = config.serviceConnection.root.config
         if not isinstance(connection, MlflowConnection):
@@ -70,11 +70,11 @@ class MlflowSource(MlModelServiceSource):
 
     def get_mlmodels(  # pylint: disable=arguments-differ
         self,
-    ) -> Iterable[Tuple[RegisteredModel, ModelVersion]]:
+    ) -> Iterable[Tuple[RegisteredModel, ModelVersion]]:  # noqa: UP006
         """
         List and filters models from the registry
         """
-        for model in cast(RegisteredModel, self.client.search_registered_models()):
+        for model in cast(RegisteredModel, self.client.search_registered_models()):  # noqa: TC006
             if filter_by_mlmodel(self.source_config.mlModelFilterPattern, mlmodel_name=model.name):
                 self.status.filter(
                     model.name,
@@ -83,7 +83,7 @@ class MlflowSource(MlModelServiceSource):
                 continue
 
             # Get the latest version
-            latest_version: Optional[ModelVersion] = next(
+            latest_version: Optional[ModelVersion] = next(  # noqa: UP045
                 (ver for ver in model.latest_versions if ver.last_updated_timestamp == model.last_updated_timestamp),
                 None,
             )
@@ -104,7 +104,8 @@ class MlflowSource(MlModelServiceSource):
         return "mlmodel"
 
     def yield_mlmodel(  # pylint: disable=arguments-differ
-        self, model_and_version: Tuple[RegisteredModel, ModelVersion]
+        self,
+        model_and_version: Tuple[RegisteredModel, ModelVersion],  # noqa: UP006
     ) -> Iterable[Either[CreateMlModelRequest]]:
         """Prepare the Request model"""
         model, latest_version = model_and_version
@@ -128,7 +129,7 @@ class MlflowSource(MlModelServiceSource):
     def _get_hyper_params(  # pylint: disable=arguments-differ
         self,
         data: RunData,
-    ) -> Optional[List[MlHyperParameter]]:
+    ) -> Optional[List[MlHyperParameter]]:  # noqa: UP006, UP045
         """
         Get the hyper parameters from the parameters
         logged in the run data object.
@@ -149,7 +150,7 @@ class MlflowSource(MlModelServiceSource):
         self,
         version: ModelVersion,
         run,
-    ) -> Optional[MlStore]:
+    ) -> Optional[MlStore]:  # noqa: UP045
         """
         Get the Ml Store from the model version object.
         Uses the artifact URI from the run for actual storage location.
@@ -168,7 +169,7 @@ class MlflowSource(MlModelServiceSource):
 
     def _get_ml_features(  # pylint: disable=arguments-differ
         self, data: RunData, run_id: str, model_name: str
-    ) -> Optional[List[MlFeature]]:
+    ) -> Optional[List[MlFeature]]:  # noqa: UP006, UP045
         """
         The RunData object comes with stringified `tags`.
         Let's transform those and try to extract the `signature`

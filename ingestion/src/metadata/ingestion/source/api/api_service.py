@@ -13,10 +13,10 @@ Base class for ingesting api services
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, Set
+from typing import Any, Iterable, Set  # noqa: UP035
 
 from pydantic import Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createAPICollection import (
     CreateAPICollectionRequest,
@@ -113,8 +113,8 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = ApiServiceTopology()
     context = TopologyContextManager(topology)
-    api_collection_source_state: Set = set()
-    api_endpoint_source_state: Set = set()
+    api_collection_source_state: Set = set()  # noqa: RUF012, UP006
+    api_endpoint_source_state: Set = set()  # noqa: RUF012, UP006
 
     def __init__(
         self,

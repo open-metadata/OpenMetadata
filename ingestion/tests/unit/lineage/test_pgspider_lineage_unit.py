@@ -38,11 +38,11 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 mock_multi_tenant_file_path = Path(__file__).parent / "../resources/datasets/pgspider_multi_tenant_tables.json"
-with open(mock_multi_tenant_file_path, encoding="utf-8") as file:
+with open(mock_multi_tenant_file_path, encoding="utf-8") as file:  # noqa: PTH123
     mock_multi_tenant_data: dict = json.load(file)
 
 mock_child_file_path = Path(__file__).parent / "../resources/datasets/pgspider_child_tables.json"
-with open(mock_child_file_path, encoding="utf-8") as file:
+with open(mock_child_file_path, encoding="utf-8") as file:  # noqa: PTH123
     mock_child_data = json.load(file)
 
 EXPECTED_PGSPIDER_DETAILS_1 = [
@@ -520,7 +520,7 @@ class PGSpiderLineageUnitTests(TestCase):
     PGSpider lineage test
     """
 
-    def __init__(self, methodName) -> None:
+    def __init__(self, methodName) -> None:  # noqa: N803
         super().__init__(methodName)
         config = OpenMetadataWorkflowConfig.model_validate(mock_pgspider_config)
         with patch("metadata.ingestion.source.database.postgres.lineage.PostgresLineageSource.test_connection"):
@@ -528,7 +528,7 @@ class PGSpiderLineageUnitTests(TestCase):
                 mock_pgspider_config["source"],
                 config.workflowConfig.openMetadataServerConfig,
             )
-        print(type(self.postgres))
+        print(type(self.postgres))  # noqa: T201
 
     @patch("metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables")
     def test_next_record_1(self, multi_tenant_tables):
@@ -559,10 +559,10 @@ class PGSpiderLineageUnitTests(TestCase):
                 service_name=self.postgres.config.serviceName,
             ):
                 if isinstance(record, AddLineageRequest):
-                    requests.append(record)
+                    requests.append(record)  # noqa: PERF401
 
             """Validate each AddLineageRequest"""
-            for _, (expected, original) in enumerate(zip(EXPECTED_PGSPIDER_DETAILS_1, requests)):
+            for _, (expected, original) in enumerate(zip(EXPECTED_PGSPIDER_DETAILS_1, requests)):  # noqa: B905
                 self.assertEqual(expected, original)
 
     @patch("metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables")
@@ -594,10 +594,10 @@ class PGSpiderLineageUnitTests(TestCase):
                 service_name=self.postgres.config.serviceName,
             ):
                 if isinstance(record, AddLineageRequest):
-                    requests.append(record)
+                    requests.append(record)  # noqa: PERF401
 
             """Validate each AddLineageRequest"""
-            for _, (expected, original) in enumerate(zip(EXPECTED_PGSPIDER_DETAILS_2, requests)):
+            for _, (expected, original) in enumerate(zip(EXPECTED_PGSPIDER_DETAILS_2, requests)):  # noqa: B905
                 self.assertEqual(expected, original)
 
     @patch("metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables")
@@ -629,10 +629,10 @@ class PGSpiderLineageUnitTests(TestCase):
                 service_name=self.postgres.config.serviceName,
             ):
                 if isinstance(record, AddLineageRequest):
-                    requests.append(record)
+                    requests.append(record)  # noqa: PERF401
 
             """Validate each AddLineageRequest"""
-            for _, (expected, original) in enumerate(zip(EXPECTED_PGSPIDER_DETAILS_3, requests)):
+            for _, (expected, original) in enumerate(zip(EXPECTED_PGSPIDER_DETAILS_3, requests)):  # noqa: B905
                 self.assertEqual(expected, original)
 
     @patch("metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables")
@@ -663,7 +663,7 @@ class PGSpiderLineageUnitTests(TestCase):
                 service_name=self.postgres.config.serviceName,
             ):
                 if isinstance(record, AddLineageRequest):
-                    requests.append(record)
+                    requests.append(record)  # noqa: PERF401
 
             """Validate number of AddLineageRequest"""
             self.assertEqual(0, len(requests))
@@ -696,7 +696,7 @@ class PGSpiderLineageUnitTests(TestCase):
                 service_name=self.postgres.config.serviceName,
             ):
                 if isinstance(record, AddLineageRequest):
-                    requests.append(record)
+                    requests.append(record)  # noqa: PERF401
 
             """Validate number of AddLineageRequest"""
             self.assertEqual(0, len(requests))
@@ -730,7 +730,7 @@ class PGSpiderLineageUnitTests(TestCase):
                 service_name=self.postgres.config.serviceName,
             ):
                 if isinstance(record, AddLineageRequest):
-                    requests.append(record)
+                    requests.append(record)  # noqa: PERF401
 
             """Validate number of AddLineageRequest"""
             self.assertEqual(0, len(requests))

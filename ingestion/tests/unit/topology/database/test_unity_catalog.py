@@ -13,7 +13,7 @@
 Test unitycatalog using the topology
 """
 
-from typing import List
+from typing import List  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -93,7 +93,7 @@ mock_unitycatalog_config = {
 }
 
 
-MOCK_CATALOG_INFO: List[CatalogInfo] = [
+MOCK_CATALOG_INFO: List[CatalogInfo] = [  # noqa: UP006
     CatalogInfo(
         browse_only=False,
         catalog_type=CatalogType.MANAGED_CATALOG,
@@ -560,7 +560,7 @@ EXPTECTED_TABLE = [
 ]
 
 
-class unitycatalogUnitTest(TestCase):
+class unitycatalogUnitTest(TestCase):  # noqa: N801
     """
     unitycatalog unit tests
     """
@@ -569,7 +569,7 @@ class unitycatalogUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.unitycatalog.metadata.UnitycatalogSource.test_connection")
     def __init__(
         self,
-        methodName,
+        methodName,  # noqa: N803
         test_connection,
         mock_sqlalchemy_connection,
     ) -> None:
@@ -592,21 +592,21 @@ class unitycatalogUnitTest(TestCase):
     @patch("databricks.sdk.service.catalog.CatalogsAPI.list")
     def test_get_database_names_raw(self, mock_list):
         mock_list.return_value = MOCK_CATALOG_INFO
-        assert ["demo", "main", "postgres_catalog", "system"] == list(self.unitycatalog_source.get_database_names_raw())
+        assert ["demo", "main", "postgres_catalog", "system"] == list(self.unitycatalog_source.get_database_names_raw())  # noqa: SIM300
 
     @patch("databricks.sdk.service.catalog.SchemasAPI.list")
     def test_database_schema_names(self, mock_schema_list):
         mock_schema_list.return_value = MOCK_SCHEMA_INFO
-        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.unitycatalog_source.get_database_schema_names())
+        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.unitycatalog_source.get_database_schema_names())  # noqa: SIM300
 
     def test_yield_table(self):
         table_list = []
         self.unitycatalog_source.context.get().table_data = MOCK_TABLE_INFO
         for table in self.unitycatalog_source.yield_table(("complex_data", "Regular")):
             if isinstance(table, Either):
-                table_list.append(table)
+                table_list.append(table)  # noqa: PERF401
 
-        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):
+        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):  # noqa: B905
             self.assertEqual(expected, original)
 
     def test_get_schema_definition(self):

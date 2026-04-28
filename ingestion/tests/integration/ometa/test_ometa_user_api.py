@@ -26,7 +26,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 
-from .conftest import _safe_delete
+from .conftest import _safe_delete  # noqa: TID252
 
 
 def check_es_index(metadata) -> None:

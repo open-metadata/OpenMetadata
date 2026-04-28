@@ -87,7 +87,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -166,7 +166,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -271,7 +271,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -331,7 +331,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -404,7 +404,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -567,7 +567,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -622,7 +622,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -666,7 +666,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -691,7 +691,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -744,7 +744,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),

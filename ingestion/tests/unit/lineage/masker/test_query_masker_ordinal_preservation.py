@@ -41,14 +41,14 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         query_test_cases = [
             {
                 # Subquery in FROM with GROUP BY, outer query has ORDER BY
-                "query": "SELECT sub.a, sub.cnt FROM (SELECT a, COUNT(*) AS cnt FROM t WHERE x = 10 GROUP BY 1 HAVING COUNT(*) > 2 ORDER BY 1) sub ORDER BY 2 DESC LIMIT 5;",  # noqa: E501
-                "expected": "SELECT sub.a, sub.cnt FROM (SELECT a, COUNT(*) AS cnt FROM t WHERE x = ? GROUP BY 1 HAVING COUNT(*) > ? ORDER BY 1) sub ORDER BY 2 DESC LIMIT ?;",  # noqa: E501
+                "query": "SELECT sub.a, sub.cnt FROM (SELECT a, COUNT(*) AS cnt FROM t WHERE x = 10 GROUP BY 1 HAVING COUNT(*) > 2 ORDER BY 1) sub ORDER BY 2 DESC LIMIT 5;",  # noqa: E501, RUF100
+                "expected": "SELECT sub.a, sub.cnt FROM (SELECT a, COUNT(*) AS cnt FROM t WHERE x = ? GROUP BY 1 HAVING COUNT(*) > ? ORDER BY 1) sub ORDER BY 2 DESC LIMIT ?;",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
             {
                 # Subquery in FROM — no GROUP BY ordinals
-                "query": "SELECT * FROM (SELECT a, COUNT(*) FROM t WHERE x = 10 GROUP BY 1) sub WHERE sub.a > 5;",  # noqa: E501
-                "expected": "SELECT * FROM (SELECT a, COUNT(*) FROM t WHERE x = ? GROUP BY 1) sub WHERE sub.a > ?;",  # noqa: E501
+                "query": "SELECT * FROM (SELECT a, COUNT(*) FROM t WHERE x = 10 GROUP BY 1) sub WHERE sub.a > 5;",  # noqa: E501, RUF100
+                "expected": "SELECT * FROM (SELECT a, COUNT(*) FROM t WHERE x = ? GROUP BY 1) sub WHERE sub.a > ?;",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
         ]
@@ -80,8 +80,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         query_test_cases = [
             {
-                "query": "SELECT a FROM t1 WHERE x = 1 GROUP BY 1 UNION ALL SELECT b FROM t2 WHERE y = 2 GROUP BY 1;",  # noqa: E501
-                "expected": "SELECT a FROM t1 WHERE x = ? GROUP BY 1 UNION ALL SELECT b FROM t2 WHERE y = ? GROUP BY 1;",  # noqa: E501
+                "query": "SELECT a FROM t1 WHERE x = 1 GROUP BY 1 UNION ALL SELECT b FROM t2 WHERE y = 2 GROUP BY 1;",  # noqa: E501, RUF100
+                "expected": "SELECT a FROM t1 WHERE x = ? GROUP BY 1 UNION ALL SELECT b FROM t2 WHERE y = ? GROUP BY 1;",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
         ]
@@ -113,8 +113,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         query_test_cases = [
             {
-                "query": "WITH c1 AS (SELECT a FROM t1 WHERE x = 1 GROUP BY 1), c2 AS (SELECT b FROM t2 WHERE y = 2 GROUP BY 1 ORDER BY 1) SELECT * FROM c1 JOIN c2 ON c1.a = c2.b LIMIT 100;",  # noqa: E501
-                "expected": "WITH c1 AS (SELECT a FROM t1 WHERE x = ? GROUP BY 1), c2 AS (SELECT b FROM t2 WHERE y = ? GROUP BY 1 ORDER BY 1) SELECT * FROM c1 JOIN c2 ON c1.a = c2.b LIMIT ?;",  # noqa: E501
+                "query": "WITH c1 AS (SELECT a FROM t1 WHERE x = 1 GROUP BY 1), c2 AS (SELECT b FROM t2 WHERE y = 2 GROUP BY 1 ORDER BY 1) SELECT * FROM c1 JOIN c2 ON c1.a = c2.b LIMIT 100;",  # noqa: E501, RUF100
+                "expected": "WITH c1 AS (SELECT a FROM t1 WHERE x = ? GROUP BY 1), c2 AS (SELECT b FROM t2 WHERE y = ? GROUP BY 1 ORDER BY 1) SELECT * FROM c1 JOIN c2 ON c1.a = c2.b LIMIT ?;",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
         ]
@@ -152,8 +152,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
                 "dialect": Dialect.POSTGRES.value,
             },
             {
-                "query": "SELECT a, b FROM t ORDER BY 1 ASC NULLS FIRST, 2 DESC NULLS LAST;",  # noqa: E501
-                "expected": "SELECT a, b FROM t ORDER BY 1 ASC NULLS FIRST, 2 DESC NULLS LAST;",  # noqa: E501
+                "query": "SELECT a, b FROM t ORDER BY 1 ASC NULLS FIRST, 2 DESC NULLS LAST;",  # noqa: E501, RUF100
+                "expected": "SELECT a, b FROM t ORDER BY 1 ASC NULLS FIRST, 2 DESC NULLS LAST;",  # noqa: E501, RUF100
                 "dialect": Dialect.POSTGRES.value,
             },
         ]
@@ -186,14 +186,14 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         query_test_cases = [
             {
                 # HAVING with string comparison — string must be masked
-                "query": "SELECT dept, COUNT(*) FROM emp WHERE status = 'active' GROUP BY 1 HAVING dept <> 'HR' ORDER BY 1;",  # noqa: E501
-                "expected": "SELECT dept, COUNT(*) FROM emp WHERE status = ? GROUP BY 1 HAVING dept <> ? ORDER BY 1;",  # noqa: E501
+                "query": "SELECT dept, COUNT(*) FROM emp WHERE status = 'active' GROUP BY 1 HAVING dept <> 'HR' ORDER BY 1;",  # noqa: E501, RUF100
+                "expected": "SELECT dept, COUNT(*) FROM emp WHERE status = ? GROUP BY 1 HAVING dept <> ? ORDER BY 1;",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
             {
                 # HAVING with numeric comparison
-                "query": "SELECT dept, SUM(salary) FROM emp GROUP BY 1 HAVING SUM(salary) > 100000;",  # noqa: E501
-                "expected": "SELECT dept, SUM(salary) FROM emp GROUP BY 1 HAVING SUM(salary) > ?;",  # noqa: E501
+                "query": "SELECT dept, SUM(salary) FROM emp GROUP BY 1 HAVING SUM(salary) > 100000;",  # noqa: E501, RUF100
+                "expected": "SELECT dept, SUM(salary) FROM emp GROUP BY 1 HAVING SUM(salary) > ?;",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
         ]
@@ -225,14 +225,14 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         query_test_cases = [
             {
-                "query": "SELECT dept, COUNT(*) FROM emp WHERE status = 'active' GROUP BY dept ORDER BY dept DESC;",  # noqa: E501
-                "expected": "SELECT dept, COUNT(*) FROM emp WHERE status = ? GROUP BY dept ORDER BY dept DESC;",  # noqa: E501
+                "query": "SELECT dept, COUNT(*) FROM emp WHERE status = 'active' GROUP BY dept ORDER BY dept DESC;",  # noqa: E501, RUF100
+                "expected": "SELECT dept, COUNT(*) FROM emp WHERE status = ? GROUP BY dept ORDER BY dept DESC;",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
             {
                 # GROUP BY expression — expressions are not ordinals
-                "query": "SELECT EXTRACT(YEAR FROM dt) AS yr, COUNT(*) FROM t WHERE x > 5 GROUP BY EXTRACT(YEAR FROM dt) ORDER BY 1;",  # noqa: E501
-                "expected": "SELECT EXTRACT(YEAR FROM dt) AS yr, COUNT(*) FROM t WHERE x > ? GROUP BY EXTRACT(YEAR FROM dt) ORDER BY 1;",  # noqa: E501
+                "query": "SELECT EXTRACT(YEAR FROM dt) AS yr, COUNT(*) FROM t WHERE x > 5 GROUP BY EXTRACT(YEAR FROM dt) ORDER BY 1;",  # noqa: E501, RUF100
+                "expected": "SELECT EXTRACT(YEAR FROM dt) AS yr, COUNT(*) FROM t WHERE x > ? GROUP BY EXTRACT(YEAR FROM dt) ORDER BY 1;",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
         ]
@@ -265,7 +265,7 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         query_test_cases = [
             {
-                "query": "SELECT 'constant' AS label, COUNT(*) FROM t GROUP BY 'constant';",  # noqa: E501
+                "query": "SELECT 'constant' AS label, COUNT(*) FROM t GROUP BY 'constant';",  # noqa: E501, RUF100
                 "expected": "SELECT ? AS label, COUNT(*) FROM t GROUP BY ?;",
                 "dialect": Dialect.ANSI.value,
             },
@@ -332,8 +332,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         query_test_cases = [
             {
-                "query": "SELECT a, ROW_NUMBER() OVER (PARTITION BY dept ORDER BY 1) AS rn FROM t WHERE x = 5;",  # noqa: E501
-                "expected": "SELECT a, ROW_NUMBER() OVER (PARTITION BY dept ORDER BY 1) AS rn FROM t WHERE x = ?;",  # noqa: E501
+                "query": "SELECT a, ROW_NUMBER() OVER (PARTITION BY dept ORDER BY 1) AS rn FROM t WHERE x = 5;",  # noqa: E501, RUF100
+                "expected": "SELECT a, ROW_NUMBER() OVER (PARTITION BY dept ORDER BY 1) AS rn FROM t WHERE x = ?;",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
         ]
@@ -365,8 +365,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         query_test_cases = [
             {
-                "query": "INSERT INTO summary SELECT dept, COUNT(*) FROM emp WHERE status = 'active' GROUP BY 1;",  # noqa: E501
-                "expected": "INSERT INTO summary SELECT dept, COUNT(*) FROM emp WHERE status = ? GROUP BY 1;",  # noqa: E501
+                "query": "INSERT INTO summary SELECT dept, COUNT(*) FROM emp WHERE status = 'active' GROUP BY 1;",  # noqa: E501, RUF100
+                "expected": "INSERT INTO summary SELECT dept, COUNT(*) FROM emp WHERE status = ? GROUP BY 1;",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
         ]
@@ -398,8 +398,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         query_test_cases = [
             {
-                "query": "SELECT * FROM t WHERE dt >= DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 6 MONTH) GROUP BY 1, 2, 3 ORDER BY 1;",  # noqa: E501
-                "expected": "SELECT * FROM t WHERE dt >= DATETIME_SUB(CURRENT_DATETIME(), INTERVAL ? MONTH) GROUP BY 1, 2, 3 ORDER BY 1;",  # noqa: E501
+                "query": "SELECT * FROM t WHERE dt >= DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 6 MONTH) GROUP BY 1, 2, 3 ORDER BY 1;",  # noqa: E501, RUF100
+                "expected": "SELECT * FROM t WHERE dt >= DATETIME_SUB(CURRENT_DATETIME(), INTERVAL ? MONTH) GROUP BY 1, 2, 3 ORDER BY 1;",  # noqa: E501, RUF100
                 "dialect": Dialect.BIGQUERY.value,
             },
         ]
@@ -432,8 +432,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         query_test_cases = [
             {
-                "query": "SELECT a, b FROM t WHERE x > 5 GROUP BY GROUPING SETS((1), (2), (1, 2)) ORDER BY 1;",  # noqa: E501
-                "expected": "SELECT a, b FROM t WHERE x > ? GROUP BY GROUPING SETS((1), (2), (1, 2)) ORDER BY 1;",  # noqa: E501
+                "query": "SELECT a, b FROM t WHERE x > 5 GROUP BY GROUPING SETS((1), (2), (1, 2)) ORDER BY 1;",  # noqa: E501, RUF100
+                "expected": "SELECT a, b FROM t WHERE x > ? GROUP BY GROUPING SETS((1), (2), (1, 2)) ORDER BY 1;",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
         ]
@@ -537,8 +537,8 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
         """
         query_test_cases = [
             {
-                "query": "SELECT a, COUNT(*) FROM t WHERE id > 100 AND score < 50 GROUP BY 1 ORDER BY 1;",  # noqa: E501
-                "expected": "SELECT a, COUNT(*) FROM t WHERE id > ? AND score < ? GROUP BY 1 ORDER BY 1;",  # noqa: E501
+                "query": "SELECT a, COUNT(*) FROM t WHERE id > 100 AND score < 50 GROUP BY 1 ORDER BY 1;",  # noqa: E501, RUF100
+                "expected": "SELECT a, COUNT(*) FROM t WHERE id > ? AND score < ? GROUP BY 1 ORDER BY 1;",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
             {
