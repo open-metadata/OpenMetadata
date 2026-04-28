@@ -18,7 +18,7 @@ ensuring memory-efficient streaming and proper processing.
 import unittest
 import uuid
 from datetime import datetime
-from typing import Iterator
+from typing import Iterator  # noqa: UP035
 from unittest.mock import MagicMock, Mock, patch
 
 from metadata.generated.schema.entity.data.storedProcedure import (
@@ -311,7 +311,7 @@ class TestStoredProcedureProcessing(unittest.TestCase):
         ]
 
         for call_text, expected_name in test_cases:
-            with self.subTest(call=call_text):
+            with self.subTest(call=call_text):  # noqa: SIM117
                 # Note: This assumes get_procedure_name_from_call exists
                 # You may need to implement or mock this function
                 with patch(

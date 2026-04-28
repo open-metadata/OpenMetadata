@@ -65,7 +65,7 @@ logger = ingestion_logger()
 class SnowflakeEngineWrapper(BaseModel):
     service_connection: SnowflakeConnectionConfig
     engine: Any
-    database_name: Optional[str] = None
+    database_name: Optional[str] = None  # noqa: UP045
 
 
 def _init_database(engine_wrapper: SnowflakeEngineWrapper):
@@ -155,7 +155,7 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             url = f"{url}?{params}"
         return url
 
-    def _get_private_key(self, encoding: serialization.Encoding = serialization.Encoding.DER) -> Optional[bytes]:
+    def _get_private_key(self, encoding: serialization.Encoding = serialization.Encoding.DER) -> Optional[bytes]:  # noqa: UP045
         connection = self.service_connection
         if connection.privateKey:
             snowflake_private_key_passphrase = (
@@ -182,10 +182,10 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
                 format=serialization.PrivateFormat.PKCS8,
                 encryption_algorithm=serialization.NoEncryption(),
             )
-            return pkb
+            return pkb  # noqa: RET504
         return None
 
-    def _get_client_session_keep_alive(self) -> Optional[bool]:
+    def _get_client_session_keep_alive(self) -> Optional[bool]:  # noqa: UP045
         connection = self.service_connection
         if connection.clientSessionKeepAlive:
             return connection.clientSessionKeepAlive
@@ -217,8 +217,8 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

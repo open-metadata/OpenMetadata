@@ -54,7 +54,7 @@ def _(
     except Exception as error:
         host_port_str = str(getattr(request.connection.config, "hostPort", None) or "")
         if not host_port_str or "localhost" not in host_port_str:
-            raise error
+            raise error  # noqa: TRY201
 
         host_port_type = type(request.connection.config.hostPort)
         docker_host_port_str = host_port_str.replace("localhost", "host.docker.internal")
@@ -69,7 +69,7 @@ def _(
 def _test_connection(
     metadata: OpenMetadata,
     config,
-    automation_workflow: Optional[AutomationWorkflow] = None,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
 ):
     """
     Test the connection

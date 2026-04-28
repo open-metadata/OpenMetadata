@@ -13,7 +13,7 @@ Generic Workflow entrypoint to execute Applications
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -31,7 +31,7 @@ from metadata.workflow.base import BaseWorkflow
 logger = ingestion_logger()
 
 
-class InvalidAppConfiguration(Exception):
+class InvalidAppConfiguration(Exception):  # noqa: N818
     """
     To be raised if the config received by the App
     is not the one expected
@@ -65,7 +65,7 @@ class AppRunner(Step, ABC):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ) -> "Step":
         config = OpenMetadataApplicationConfig.model_validate(config_dict)
         return cls(config=config, metadata=metadata)
@@ -75,7 +75,7 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
     """Base Application Workflow implementation"""
 
     config: OpenMetadataApplicationConfig
-    runner: Optional[AppRunner]
+    runner: Optional[AppRunner]  # noqa: UP045
 
     def __init__(self, config: OpenMetadataApplicationConfig):
         self.runner = None  # Will be passed in post-init
@@ -103,7 +103,7 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
         """
         runner_class = import_from_module(self.config.sourcePythonClass)
         if not issubclass(runner_class, AppRunner):
-            raise ValueError("We need a valid AppRunner to initialize the ApplicationWorkflow!")
+            raise ValueError("We need a valid AppRunner to initialize the ApplicationWorkflow!")  # noqa: TRY004
 
         try:
             self.runner = runner_class(
@@ -112,14 +112,14 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
             )
         except Exception as exc:
             logger.error(f"Error trying to init the AppRunner [{self.config.sourcePythonClass}] due to [{exc}]")
-            raise exc
+            raise exc  # noqa: TRY201
 
     def execute_internal(self) -> None:
         """Workflow-specific logic to execute safely"""
         self.runner.run()
 
-    def get_failures(self) -> List[StackTraceError]:
+    def get_failures(self) -> List[StackTraceError]:  # noqa: UP006
         return self.workflow_steps()[0].get_status().failures
 
-    def workflow_steps(self) -> List[Step]:
+    def workflow_steps(self) -> List[Step]:  # noqa: UP006
         return [self.runner]

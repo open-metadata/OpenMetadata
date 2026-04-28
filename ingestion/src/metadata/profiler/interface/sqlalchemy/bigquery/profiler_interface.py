@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 
 from copy import deepcopy
-from typing import List, Type, cast
+from typing import List, Type, cast  # noqa: UP035
 
 from sqlalchemy import Column, inspect
 
@@ -48,13 +48,13 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
 
     def _compute_system_metrics(
         self,
-        metrics: Type[System],
+        metrics: Type[System],  # noqa: UP006
         runner: QueryRunner,
         *args,
         **kwargs,
-    ) -> List[SystemProfile]:
+    ) -> List[SystemProfile]:  # noqa: UP006
         logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
-        self.system_metrics_class = cast(Type[BigQuerySystemMetricsComputer], self.system_metrics_class)
+        self.system_metrics_class = cast(Type[BigQuerySystemMetricsComputer], self.system_metrics_class)  # noqa: TC006, UP006
         instance = self.system_metrics_class(
             session=self.session,
             runner=runner,
@@ -66,7 +66,7 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
     def _get_struct_columns(self, columns: dict, parent: str):
         """"""
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy_bigquery import STRUCT
+        from sqlalchemy_bigquery import STRUCT  # noqa: PLC0415
 
         columns_list = []
         for key, value in columns:
@@ -84,7 +84,7 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
     def get_columns(self) -> Column:
         """Get columns from table"""
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy_bigquery import STRUCT
+        from sqlalchemy_bigquery import STRUCT  # noqa: PLC0415
 
         columns = []
         for column in inspect(self.table).c:

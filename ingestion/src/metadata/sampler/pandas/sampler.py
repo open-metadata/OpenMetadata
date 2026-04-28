@@ -13,7 +13,7 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from typing import Callable, List, Optional, cast
+from typing import Callable, List, Optional, cast  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
@@ -38,7 +38,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
     def __init__(self, *args, **kwargs):
         """Init the pandas sampler"""
         super().__init__(*args, **kwargs)
-        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)
+        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)  # noqa: TC006
         self._table = None
         self.client = self.get_client()
 
@@ -72,8 +72,8 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
     def get_col_row(
         self,
         df_iterator: Callable,
-        columns: Optional[List[SQALikeColumn]] = None,
-        sample_query: str = None,
+        columns: Optional[List[SQALikeColumn]] = None,  # noqa: UP006, UP045
+        sample_query: str = None,  # noqa: RUF013
     ):
         """
         Fetches columns and rows from the data_frame
@@ -87,7 +87,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
             if cols is None:
                 cols = chunk.columns.tolist()
             if sample_query is not None:
-                chunk = chunk.query(sample_query)
+                chunk = chunk.query(sample_query)  # noqa: PLW2901
             rows.extend(self._fetch_rows(chunk[cols])[: self.sample_limit])
             if len(rows) >= (self.sample_limit or 100):
                 break
@@ -122,7 +122,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
     def _fetch_rows(self, data_frame):
         return [[self._truncate_cell(cell) for cell in row] for row in data_frame.dropna().values.tolist()]
 
-    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]] = None) -> TableData:
+    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]] = None) -> TableData:  # noqa: UP006, UP045
         """Fetch sample data from the table
 
         Returns:
@@ -134,13 +134,13 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         cols, rows = self.get_col_row(df_iterator=self.raw_dataset, columns=columns)
         return TableData(columns=cols, rows=rows)
 
-    def get_columns(self) -> List[Optional[SQALikeColumn]]:
+    def get_columns(self) -> List[Optional[SQALikeColumn]]:  # noqa: UP006, UP045
         """Get SQALikeColumns for datalake to be passed for metric computation"""
         sqalike_columns = []
         if self.raw_dataset:
             first_chunk = next(self.raw_dataset())
             for column_name in first_chunk.columns:
-                column_name = self._get_column_name(column_name)
+                column_name = self._get_column_name(column_name)  # noqa: PLW2901
                 sqalike_columns.append(
                     SQALikeColumn(
                         column_name,

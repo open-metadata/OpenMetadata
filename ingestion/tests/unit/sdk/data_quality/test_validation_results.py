@@ -26,7 +26,7 @@ from metadata.sdk.data_quality.dataframes.validation_results import ValidationRe
 def create_test_case(fqn: str, top_dimensions: int | None = None) -> TestCase:
     """Helper to create a test case with minimal required fields."""
     return TestCase(
-        name=fqn.split(".")[-1],
+        name=fqn.split(".")[-1],  # noqa: PLC0207
         fullyQualifiedName=FullyQualifiedEntityName(fqn),
         testDefinition=EntityReference(
             id=UUID("12345678-1234-1234-1234-123456789abc"),

@@ -18,7 +18,7 @@ import re
 import traceback
 from collections import defaultdict
 from functools import singledispatch
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 
 import requests
 
@@ -59,7 +59,7 @@ from metadata.utils.ssl_registry import get_verify_ssl_fn
 logger = ometa_logger()
 
 
-class DBTConfigException(Exception):
+class DBTConfigException(Exception):  # noqa: N818
     """
     Raise when encountering errors while extracting dbt files
     """
@@ -79,16 +79,16 @@ def get_dbt_details(config):
 def _(config: DbtLocalConfig):
     try:
         manifest_path = config.dbtManifestFilePath
-        if not os.path.exists(manifest_path):
-            raise DBTConfigException(
+        if not os.path.exists(manifest_path):  # noqa: PTH110
+            raise DBTConfigException(  # noqa: TRY301
                 f"Manifest file not found at '{manifest_path}'. Please verify the file path is correct."
             )
         if not os.access(manifest_path, os.R_OK):
-            raise DBTConfigException(f"Cannot read manifest file at '{manifest_path}'. Please check file permissions.")
+            raise DBTConfigException(f"Cannot read manifest file at '{manifest_path}'. Please check file permissions.")  # noqa: TRY301
 
         blob_grouped_by_directory = defaultdict(list)
 
-        subdirectory = os.path.dirname(manifest_path)
+        subdirectory = os.path.dirname(manifest_path)  # noqa: PTH120
         blob_grouped_by_directory[subdirectory] = [
             manifest_path,
             config.dbtCatalogFilePath,
@@ -113,11 +113,11 @@ def _(config: DbtLocalConfig):
         ) from exc
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise DBTConfigException(f"Error fetching dbt files from local: {exc}")
+        raise DBTConfigException(f"Error fetching dbt files from local: {exc}")  # noqa: B904
 
 
 @get_dbt_details.register
-def _(config: DbtHttpConfig):
+def _(config: DbtHttpConfig):  # noqa: C901
     try:
         verify_ssl_fn = get_verify_ssl_fn(config.dbtVerifySSL) if config.dbtVerifySSL else lambda _: None
         ssl_verify = verify_ssl_fn(config.dbtSSLConfig) if config.dbtVerifySSL else None
@@ -221,18 +221,18 @@ def _(config: DbtHttpConfig):
         raise
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise DBTConfigException(f"Error fetching dbt files from file server: {exc}")
+        raise DBTConfigException(f"Error fetching dbt files from file server: {exc}")  # noqa: B904
 
 
 @get_dbt_details.register
-def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
+def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals  # noqa: C901
     dbt_catalog = None
     dbt_manifest = None
     dbt_run_results = None
     try:
         # pylint: disable=import-outside-toplevel
-        from metadata.ingestion.connections.source_api_client import TrackedREST
-        from metadata.ingestion.ometa.client import ClientConfig
+        from metadata.ingestion.connections.source_api_client import TrackedREST  # noqa: PLC0415
+        from metadata.ingestion.ometa.client import ClientConfig  # noqa: PLC0415
 
         expiry = 0
         auth_token = config.dbtCloudAuthToken.get_secret_value(), expiry
@@ -287,11 +287,11 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
                 filter_info.append(f"job ID '{job_id}'")
 
             if filter_info:
-                raise DBTConfigException(
+                raise DBTConfigException(  # noqa: TRY301
                     f"No completed dbt runs found for {' and '.join(filter_info)}. "
                     "Please verify these IDs exist and have completed runs."
                 )
-            raise DBTConfigException(
+            raise DBTConfigException(  # noqa: TRY301
                 f"No completed dbt runs found for account '{account_id}'. "
                 "Please ensure at least one job has completed successfully."
             )
@@ -300,8 +300,8 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
             last_run = runs_data[0]
             run_id = last_run["id"]
             logger.info(
-                f"Retrieved last completed run [{str(run_id)}]: "
-                f"Finished {str(last_run['finished_at_humanized'])} (duration: {str(last_run['duration_humanized'])})"
+                f"Retrieved last completed run [{str(run_id)}]: "  # noqa: RUF010
+                f"Finished {str(last_run['finished_at_humanized'])} (duration: {str(last_run['duration_humanized'])})"  # noqa: RUF010
             )
             try:
                 logger.debug("Requesting [dbt_catalog]")
@@ -325,7 +325,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
                 logger.warning(f"dbt run_results file not found for run {run_id}, skipping dbt tests: {exc}")
                 logger.debug(traceback.format_exc())
         if not dbt_manifest:
-            raise DBTConfigException(
+            raise DBTConfigException(  # noqa: TRY301
                 "Manifest file not found in dbt Cloud. Please ensure your dbt job generates artifacts."
             )
 
@@ -335,13 +335,13 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
             dbt_run_results=[dbt_run_results] if dbt_run_results else None,
         )
     except DBTConfigException as exc:
-        raise exc
+        raise exc  # noqa: TRY201
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise DBTConfigException(f"Error fetching dbt files from dbt Cloud: {exc}")
+        raise DBTConfigException(f"Error fetching dbt files from dbt Cloud: {exc}")  # noqa: B904
 
 
-def get_blobs_grouped_by_dir(blobs: Iterable[str]) -> Dict[str, List[str]]:
+def get_blobs_grouped_by_dir(blobs: Iterable[str]) -> Dict[str, List[str]]:  # noqa: UP006
     """
     Method to group the objs by the dir
     """
@@ -350,15 +350,15 @@ def get_blobs_grouped_by_dir(blobs: Iterable[str]) -> Dict[str, List[str]]:
     total_matched = 0
     for blob in blobs:
         total_blobs_scanned += 1
-        subdirectory = os.path.dirname(blob)
-        blob_file_name = os.path.basename(blob)
+        subdirectory = os.path.dirname(blob)  # noqa: PTH120
+        blob_file_name = os.path.basename(blob)  # noqa: PTH119
         # We'll be processing multiple run_result files from a single dir
         # Grouping them together to process them in a single go
         if (
-            DBT_MANIFEST_FILE_NAME == blob_file_name.lower()
-            or DBT_CATALOG_FILE_NAME == blob_file_name.lower()
+            DBT_MANIFEST_FILE_NAME == blob_file_name.lower()  # noqa: SIM300
+            or DBT_CATALOG_FILE_NAME == blob_file_name.lower()  # noqa: SIM300
             or DBT_RUN_RESULTS_FILE_NAME in blob_file_name.lower()
-            or DBT_SOURCES_FILE_NAME == blob_file_name.lower()
+            or DBT_SOURCES_FILE_NAME == blob_file_name.lower()  # noqa: SIM300
         ):
             blob_grouped_by_directory[subdirectory].append(blob)
             total_matched += 1
@@ -374,13 +374,13 @@ _DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 def _has_date_pattern(directory: str) -> bool:
     """Check if the leaf directory name contains a date pattern (YYYY-MM-DD)."""
-    leaf = os.path.basename(directory)
+    leaf = os.path.basename(directory)  # noqa: PTH119
     return bool(_DATE_PATTERN.search(leaf))
 
 
 def _filter_latest_per_project(
-    blob_grouped_by_directory: Dict[str, List[str]],
-) -> Dict[str, List[str]]:
+    blob_grouped_by_directory: Dict[str, List[str]],  # noqa: UP006
+) -> Dict[str, List[str]]:  # noqa: UP006
     """
     When multiple timestamped run directories exist under the same project
     (e.g. project/target_2025-04-19/manifest.json, project/target_2025-04-20/manifest.json),
@@ -397,18 +397,18 @@ def _filter_latest_per_project(
         return blob_grouped_by_directory
 
     # Separate dated dirs (candidates for filtering) from non-dated dirs (always kept)
-    project_to_dated_dirs: Dict[str, List[str]] = defaultdict(list)
-    filtered: Dict[str, List[str]] = {}
+    project_to_dated_dirs: Dict[str, List[str]] = defaultdict(list)  # noqa: UP006
+    filtered: Dict[str, List[str]] = {}  # noqa: UP006
 
-    for directory in blob_grouped_by_directory:
+    for directory in blob_grouped_by_directory:  # noqa: PLC0206
         if _has_date_pattern(directory):
-            parent = os.path.dirname(directory)
+            parent = os.path.dirname(directory)  # noqa: PTH120
             project_to_dated_dirs[parent].append(directory)
         else:
             filtered[directory] = blob_grouped_by_directory[directory]
 
     total_skipped = 0
-    for project, dirs in project_to_dated_dirs.items():
+    for project, dirs in project_to_dated_dirs.items():  # noqa: B007, PERF102
         latest_dir = max(dirs)
         filtered[latest_dir] = blob_grouped_by_directory[latest_dir]
         total_skipped += len(dirs) - 1
@@ -424,7 +424,10 @@ def _filter_latest_per_project(
 
 # pylint: disable=too-many-locals, too-many-branches
 def download_dbt_files(
-    blob_grouped_by_directory: Dict, config, client, bucket_name: Optional[str]
+    blob_grouped_by_directory: dict,
+    config,
+    client,
+    bucket_name: Optional[str],  # noqa: UP045
 ) -> Iterable[DbtFiles]:
     """
     Method to download the files from sources
@@ -447,11 +450,11 @@ def download_dbt_files(
             for blob in blobs:
                 if blob:
                     reader = get_reader(config_source=config, client=client)
-                    blob_file_name = os.path.basename(blob)
-                    if DBT_MANIFEST_FILE_NAME == blob_file_name.lower():
+                    blob_file_name = os.path.basename(blob)  # noqa: PTH119
+                    if DBT_MANIFEST_FILE_NAME == blob_file_name.lower():  # noqa: SIM300
                         logger.debug(f"{DBT_MANIFEST_FILE_NAME} found in {key}")
                         dbt_manifest = reader.read(path=blob, **kwargs)
-                    if DBT_CATALOG_FILE_NAME == blob_file_name.lower():
+                    if DBT_CATALOG_FILE_NAME == blob_file_name.lower():  # noqa: SIM300
                         try:
                             logger.debug(f"{DBT_CATALOG_FILE_NAME} found in {key}")
                             dbt_catalog = reader.read(path=blob, **kwargs)
@@ -465,11 +468,11 @@ def download_dbt_files(
                                 dbt_run_results.append(json.loads(dbt_run_result))
                         except Exception as exc:
                             logger.warning(f"{DBT_RUN_RESULTS_FILE_NAME} not found in {key}: {exc}")
-                    if DBT_SOURCES_FILE_NAME == blob_file_name.lower():
+                    if DBT_SOURCES_FILE_NAME == blob_file_name.lower():  # noqa: SIM300
                         logger.debug(f"{DBT_SOURCES_FILE_NAME} found in {key}")
                         dbt_sources = reader.read(path=blob, **kwargs)
             if not dbt_manifest:
-                raise DBTConfigException(f"Manifest file not found at: {key}")
+                raise DBTConfigException(f"Manifest file not found at: {key}")  # noqa: TRY301
             found_manifest = True
             yield DbtFiles(
                 dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
@@ -554,7 +557,7 @@ def _(config: DbtS3Config):
         raise
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise DBTConfigException(f"Error fetching dbt files from S3: {exc}")
+        raise DBTConfigException(f"Error fetching dbt files from S3: {exc}")  # noqa: B904
 
 
 @get_dbt_details.register
@@ -562,14 +565,14 @@ def _(config: DbtGcsConfig):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
         # pylint: disable=import-outside-toplevel
-        from google.auth.exceptions import DefaultCredentialsError, GoogleAuthError
-        from google.cloud import storage
+        from google.auth.exceptions import DefaultCredentialsError, GoogleAuthError  # noqa: PLC0415
+        from google.cloud import storage  # noqa: PLC0415
 
         try:
             set_google_credentials(gcp_credentials=config.dbtSecurityConfig, single_project=True)
         except (ValueError, GoogleAuthError) as cred_exc:
             logger.error(
-                f"Failed to set Google Cloud credentials: {str(cred_exc)}. "
+                f"Failed to set Google Cloud credentials: {str(cred_exc)}. "  # noqa: RUF010
                 "Please ensure your credentials are properly formatted and valid."
             )
             raise DBTConfigException(
@@ -580,7 +583,7 @@ def _(config: DbtGcsConfig):
             client = storage.Client()
         except DefaultCredentialsError as client_exc:
             logger.error(
-                f"Failed to create Google Cloud Storage client: {str(client_exc)}. "
+                f"Failed to create Google Cloud Storage client: {str(client_exc)}. "  # noqa: RUF010
                 "Please ensure you have valid credentials configured."
             )
             raise DBTConfigException(
@@ -591,7 +594,7 @@ def _(config: DbtGcsConfig):
             try:
                 buckets = client.list_buckets()
             except Exception as bucket_exc:
-                logger.error(f"Failed to list GCS buckets: {str(bucket_exc)}")
+                logger.error(f"Failed to list GCS buckets: {str(bucket_exc)}")  # noqa: RUF010
                 raise DBTConfigException(
                     "Unable to list GCS buckets. Please check your permissions and credentials."
                 ) from bucket_exc
@@ -599,7 +602,7 @@ def _(config: DbtGcsConfig):
             try:
                 buckets = [client.get_bucket(bucket_name)]
             except Exception as bucket_exc:
-                logger.error(f"Failed to access GCS bucket {bucket_name}: {str(bucket_exc)}")
+                logger.error(f"Failed to access GCS bucket {bucket_name}: {str(bucket_exc)}")  # noqa: RUF010
                 raise DBTConfigException(
                     f"Unable to access GCS bucket {bucket_name}."
                     "Please verify the bucket exists and you have proper permissions."
@@ -629,14 +632,14 @@ def _(config: DbtGcsConfig):
             except DBTConfigException:
                 raise
             except Exception as blob_exc:
-                logger.error(f"Failed to process blobs in bucket {bucket.name}: {str(blob_exc)}")
+                logger.error(f"Failed to process blobs in bucket {bucket.name}: {str(blob_exc)}")  # noqa: RUF010
                 logger.debug(traceback.format_exc())
 
     except DBTConfigException:
         raise
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise DBTConfigException(f"Error fetching dbt files from GCS: {exc}")
+        raise DBTConfigException(f"Error fetching dbt files from GCS: {exc}")  # noqa: B904
 
 
 @get_dbt_details.register
@@ -644,20 +647,20 @@ def _(config: DbtAzureConfig):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
         # pylint: disable=import-outside-toplevel
-        from azure.core.exceptions import AzureError, ClientAuthenticationError
+        from azure.core.exceptions import AzureError, ClientAuthenticationError  # noqa: PLC0415
 
         try:
             client = AzureClient(config.dbtSecurityConfig).create_blob_client()
         except ClientAuthenticationError as auth_exc:
             logger.error(
-                f"Failed to authenticate with Azure: {str(auth_exc)}. "
+                f"Failed to authenticate with Azure: {str(auth_exc)}. "  # noqa: RUF010
                 "Please check your Azure credentials and permissions."
             )
             raise DBTConfigException(
                 "Azure authentication failed. Please verify your credentials and permissions."
             ) from auth_exc
         except AzureError as azure_exc:
-            logger.error(f"Failed to create Azure client: {str(azure_exc)}")
+            logger.error(f"Failed to create Azure client: {str(azure_exc)}")  # noqa: RUF010
             raise DBTConfigException(
                 "Failed to initialize Azure client. Please check your Azure configuration."
             ) from azure_exc
@@ -715,17 +718,17 @@ def _(config: DbtAzureConfig):
             except DBTConfigException:
                 raise
             except Exception as exc:
-                logger.error(f"Failed to process blobs in container {container_name}: {str(exc)}")
+                logger.error(f"Failed to process blobs in container {container_name}: {str(exc)}")  # noqa: RUF010
                 logger.debug(traceback.format_exc())
 
     except DBTConfigException:
         raise
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise DBTConfigException(f"Error fetching dbt files from Azure: {exc}")
+        raise DBTConfigException(f"Error fetching dbt files from Azure: {exc}")  # noqa: B904
 
 
-def get_dbt_prefix_config(config) -> Tuple[Optional[str], Optional[str]]:
+def get_dbt_prefix_config(config) -> Tuple[Optional[str], Optional[str]]:  # noqa: UP006, UP045
     """
     Return (bucket, prefix) tuple
     """

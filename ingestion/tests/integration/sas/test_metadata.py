@@ -88,10 +88,10 @@ mock_sas_config = {
 
 mock_search_path = Path(__file__).parent / "sas_dataset_search.json"
 mock_view_path = Path(__file__).parent / "sas_dataset_view.json"
-with open(mock_search_path, encoding="UTF-8") as search_file:
+with open(mock_search_path, encoding="UTF-8") as search_file:  # noqa: PTH123
     mock_search: dict = json.load(search_file)
 
-with open(mock_view_path, encoding="UTF-8") as view_file:
+with open(mock_view_path, encoding="UTF-8") as view_file:  # noqa: PTH123
     mock_view: dict = json.load(view_file)
 
 

@@ -1,7 +1,6 @@
 package org.openmetadata.service.search;
 
 import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_FAILED;
-import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_PENDING;
 import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_PENDING_RETRY_1;
 import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_PENDING_RETRY_2;
 import static org.openmetadata.service.search.SearchIndexRetryQueue.normalize;
@@ -25,7 +24,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -35,7 +33,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexRetryQueueDAO.SearchIndexRetryRecord;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -63,27 +60,18 @@ public class SearchIndexRetryWorker implements Managed {
   private static final int MAX_CASCADE_REINDEX = 5000;
   private static final int CASCADE_BATCH_SIZE = 200;
   private static final int MAX_BACKOFF_SECONDS = 60;
-  private static final int SUSPENSION_REFRESH_INTERVAL_MS = 5000;
   private static final int CANDIDATE_TYPES_REFRESH_INTERVAL_MS = 60000;
   private static final long STALE_RECOVERY_INTERVAL_MS = 60_000;
   private static final long STALE_THRESHOLD_MS = 10 * 60 * 1000;
-
-  private static final List<String> ACTIVE_REINDEX_JOB_STATUSES =
-      List.of("RUNNING", "READY", "STOPPING");
-  private static final List<String> PURGEABLE_QUEUE_STATUSES =
-      List.of(STATUS_PENDING, STATUS_PENDING_RETRY_1, STATUS_PENDING_RETRY_2, STATUS_FAILED);
 
   private final CollectionDAO collectionDAO;
   private final SearchRepository searchRepository;
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final List<Thread> workerThreads = new ArrayList<>();
-  private final Object scopeRefreshLock = new Object();
   private final Object candidateTypesLock = new Object();
   private final Object staleRecoveryLock = new Object();
 
-  private volatile long lastScopeRefreshAt;
   private volatile long lastStaleRecoveryAt;
-  private volatile String activeScopeSignature = "";
   private volatile long candidateTypesLastRefreshAt;
   private volatile List<String> cachedCandidateEntityTypes = Collections.emptyList();
   private final AtomicInteger consecutiveUnavailableCount = new AtomicInteger();
@@ -137,7 +125,6 @@ public class SearchIndexRetryWorker implements Managed {
       }
     }
     workerThreads.clear();
-    SearchIndexRetryQueue.clearSuspension();
     LOG.info("Stopped search index retry worker");
   }
 
@@ -148,7 +135,6 @@ public class SearchIndexRetryWorker implements Managed {
   private void runLoop(int workerId) {
     while (running.get()) {
       try {
-        refreshReindexSuspensionScopeIfNeeded();
         recoverStaleInProgressIfNeeded();
 
         if (!waitForClientAvailability(workerId)) {
@@ -181,22 +167,8 @@ public class SearchIndexRetryWorker implements Managed {
 
   private void processRecord(SearchIndexRetryRecord record) {
     try {
-      if (SearchIndexRetryQueue.isSuspendAllStreaming()) {
-        collectionDAO
-            .searchIndexRetryQueueDAO()
-            .deleteByEntity(record.getEntityId(), record.getEntityFqn());
-        return;
-      }
-
       EntityReference root = resolveEntityReference(record);
       if (root != null) {
-        if (SearchIndexRetryQueue.isEntityTypeSuspended(root.getType())) {
-          collectionDAO
-              .searchIndexRetryQueueDAO()
-              .deleteByEntity(record.getEntityId(), record.getEntityFqn());
-          return;
-        }
-
         reindexEntityCascade(root);
         collectionDAO
             .searchIndexRetryQueueDAO()
@@ -642,81 +614,8 @@ public class SearchIndexRetryWorker implements Managed {
   }
 
   // ---------------------------------------------------------------------------
-  // Suspension and scheduling
+  // Scheduling
   // ---------------------------------------------------------------------------
-
-  private void refreshReindexSuspensionScopeIfNeeded() {
-    long now = System.currentTimeMillis();
-    if (now - lastScopeRefreshAt < SUSPENSION_REFRESH_INTERVAL_MS) {
-      return;
-    }
-
-    synchronized (scopeRefreshLock) {
-      long currentTime = System.currentTimeMillis();
-      if (currentTime - lastScopeRefreshAt < SUSPENSION_REFRESH_INTERVAL_MS) {
-        return;
-      }
-      lastScopeRefreshAt = currentTime;
-
-      List<SearchIndexJobRecord> activeJobs =
-          collectionDAO.searchIndexJobDAO().findByStatusesWithLimit(ACTIVE_REINDEX_JOB_STATUSES, 1);
-
-      if (activeJobs.isEmpty()) {
-        if (!activeScopeSignature.isEmpty() || SearchIndexRetryQueue.isStreamingSuspended()) {
-          SearchIndexRetryQueue.clearSuspension();
-          activeScopeSignature = "";
-          LOG.info("Cleared live search indexing suspension - no active reindex jobs");
-        }
-        return;
-      }
-
-      SearchIndexJobRecord activeJob = activeJobs.getFirst();
-      EventPublisherJob jobConfiguration = null;
-      try {
-        if (activeJob.jobConfiguration() != null) {
-          jobConfiguration =
-              JsonUtils.readValue(activeJob.jobConfiguration(), EventPublisherJob.class);
-        }
-      } catch (Exception e) {
-        LOG.warn("Failed to parse job configuration for active reindex job {}", activeJob.id(), e);
-      }
-
-      Set<String> requestedEntities =
-          normalizeReindexEntities(
-              jobConfiguration != null ? jobConfiguration.getEntities() : null);
-      Set<String> searchableEntities = searchRepository.getSearchEntities();
-
-      boolean containsAllToken = requestedEntities.stream().anyMatch("all"::equalsIgnoreCase);
-      Set<String> suspendedTypes =
-          containsAllToken ? new HashSet<>(searchableEntities) : new HashSet<>(requestedEntities);
-      suspendedTypes.retainAll(searchableEntities);
-
-      boolean suspendAll =
-          !searchableEntities.isEmpty() && suspendedTypes.containsAll(searchableEntities);
-      String newSignature = buildScopeSignature(activeJob.id(), suspendedTypes, suspendAll);
-
-      if (newSignature.equals(activeScopeSignature)) {
-        return;
-      }
-
-      activeScopeSignature = newSignature;
-      SearchIndexRetryQueue.updateSuspension(suspendedTypes, suspendAll);
-
-      if (suspendAll) {
-        int purged =
-            collectionDAO.searchIndexRetryQueueDAO().deleteByStatuses(PURGEABLE_QUEUE_STATUSES);
-        LOG.info(
-            "Activated live search indexing suspension for all entity types using reindex job {} and purged {} retry queue rows",
-            activeJob.id(),
-            purged);
-      } else {
-        LOG.info(
-            "Activated live search indexing suspension for {} entity types using reindex job {}",
-            suspendedTypes.size(),
-            activeJob.id());
-      }
-    }
-  }
 
   private void recoverStaleInProgressIfNeeded() {
     long now = System.currentTimeMillis();
@@ -742,26 +641,6 @@ public class SearchIndexRetryWorker implements Managed {
         LOG.warn("Failed to recover stale IN_PROGRESS records: {}", e.getMessage());
       }
     }
-  }
-
-  private Set<String> normalizeReindexEntities(Set<String> rawEntities) {
-    Set<String> normalized = new HashSet<>();
-    if (rawEntities == null) {
-      return normalized;
-    }
-    for (String entityType : rawEntities) {
-      String value = SearchIndexRetryQueue.normalize(entityType);
-      if (!value.isEmpty()) {
-        normalized.add(value);
-      }
-    }
-    return normalized;
-  }
-
-  private String buildScopeSignature(String jobId, Set<String> suspendedTypes, boolean suspendAll) {
-    List<String> sorted = new ArrayList<>(suspendedTypes);
-    Collections.sort(sorted);
-    return jobId + "|" + suspendAll + "|" + String.join(",", sorted);
   }
 
   // ---------------------------------------------------------------------------

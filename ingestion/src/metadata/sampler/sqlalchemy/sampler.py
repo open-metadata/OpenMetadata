@@ -14,7 +14,7 @@ for the profiler
 """
 
 import hashlib
-from typing import List, Optional, Union, cast
+from typing import List, Optional, Union, cast  # noqa: UP035
 
 from sqlalchemy import Column, inspect, select, text
 from sqlalchemy.orm import Query
@@ -107,7 +107,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def _process_array_value(self, value):
         """Process array values to convert numpy arrays to Python lists"""
-        import numpy as np  # pylint: disable=import-outside-toplevel
+        import numpy as np  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         if isinstance(value, np.ndarray):
             return value.tolist()
@@ -120,7 +120,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         """
         return column
 
-    def _base_sample_query(self, column: Optional[Column], label=None):
+    def _base_sample_query(self, column: Optional[Column], label=None):  # noqa: UP045
         """Base query for sampling
 
         Args:
@@ -183,7 +183,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             )
             return query.limit(static.profileSample if static else None).cte(f"{self.get_sampler_table_name()}_rnd")
 
-    def get_dataset(self, column=None, **__) -> Union[type, AliasedClass]:
+    def get_dataset(self, column=None, **__) -> Union[type, AliasedClass]:  # noqa: UP007
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
@@ -208,7 +208,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         return self.get_sample_query(column=column)
 
-    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:
+    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:  # noqa: UP006, UP045
         """
         Use the sampler to retrieve sample data rows as per limit given by user
 
@@ -295,7 +295,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         Build the CTE using Core select() so it does not require an active Session.
         """
-        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)
+        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)  # noqa: TC006
         partition_filter = build_partition_predicate(
             self.partition_details,
             self.raw_dataset.__table__.c,
@@ -305,7 +305,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def get_partitioned_query(self, query=None) -> Query:
         """Return the partitioned query"""
-        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)  # satisfying type checker
+        self.partition_details = cast("PartitionProfilerConfig", self.partition_details)  # satisfying type checker
         partition_filter = build_partition_predicate(
             self.partition_details,
             self.raw_dataset.__table__.c,
@@ -329,7 +329,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def __del__(self):
         """Destructor to ensure cleanup when object is garbage collected"""
-        try:
+        try:  # noqa: SIM105
             self.close()
         except Exception:
             # Ignore errors during cleanup in destructor

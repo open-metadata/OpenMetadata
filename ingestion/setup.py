@@ -13,7 +13,7 @@
 Python Dependencies
 """
 
-from typing import Dict, List, Set
+from typing import Dict, List, Set  # noqa: UP035
 
 from setuptools import setup
 
@@ -177,7 +177,7 @@ base_requirements = {
     "httpx~=0.28.0",
 }
 
-plugins: Dict[str, Set[str]] = {
+plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "airflow": {
         "opentelemetry-exporter-otlp==1.37.0",
         "attrs",
@@ -399,9 +399,9 @@ dev = {
     "datamodel-code-generator==0.25.6",
     "boto3-stubs",
     "mypy-boto3-glue",
+    "nox",
     "pre-commit",
-    "pylint~=3.2.0",  # 3.3.0+ breaks our current linting
-    "basedpyright~=1.14",
+    "basedpyright~=1.39.0",
     # For publishing
     "twine",
     "build",
@@ -519,7 +519,7 @@ playwright_dependencies = {
 }
 
 
-def filter_requirements(filtered: Set[str]) -> List[str]:
+def filter_requirements(filtered: Set[str]) -> List[str]:  # noqa: UP006
     """Filter out requirements from base_requirements"""
     return list(
         base_requirements.union(*[requirements for plugin, requirements in plugins.items() if plugin not in filtered])

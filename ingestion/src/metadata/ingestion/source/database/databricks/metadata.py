@@ -13,7 +13,7 @@
 import re
 import traceback
 from copy import deepcopy
-from typing import Iterable, Optional, Tuple, Union
+from typing import Iterable, Optional, Tuple, Union  # noqa: UP035
 
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
@@ -144,8 +144,8 @@ def _get_table_columns(self, connection, table_name, schema, db_name):
         regex_fmt = r"TExecuteStatementResp.*SemanticException.*Table not found {}"
         regex = regex_fmt.format(re.escape(full_table))
         if re.search(regex, e.args[0]):
-            raise exc.NoSuchTableError(full_table)
-        else:
+            raise exc.NoSuchTableError(full_table)  # noqa: B904
+        else:  # noqa: RET506
             raise
     else:
         # Hive is stupid: this is what I get from DESCRIBE some_schema.does_not_exist
@@ -200,7 +200,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     f"Skipping column '{col_name}' in {schema}.{table_name}: unparseable col_type '{col_type}'"
                 )
                 continue
-            col_type = type_match.group(0)
+            col_type = type_match.group(0)  # noqa: PLW2901
 
             try:
                 coltype = _type_map[col_type]
@@ -452,7 +452,7 @@ def get_table_type(self, connection, database, schema, table):
                 return row_dict.get("data_type")
     except DatabaseError as err:
         logger.error(f"Failed to fetch table type for table {table} due to: {err}")
-    return
+    return  # noqa: RET502
 
 
 DatabricksDialect.get_table_comment = get_table_comment
@@ -498,7 +498,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             self.is_older_version = True
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DatabricksConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatabricksConnection):
@@ -520,7 +520,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         return self.service_connection.catalog
 
     def get_database_names_raw(self) -> Iterable[str]:
@@ -543,7 +543,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             TableType.View,
             TableType.MaterializedView,
         ):
-            view_type = table_type == TableType.View and "VIEW" or "MATERIALIZED VIEW"
+            view_type = table_type == TableType.View and "VIEW" or "MATERIALIZED VIEW"  # noqa: RUF021
 
             return f"CREATE {view_type} `{self.context.get().database}`.`{schema_name}`.`{table_name}` AS {schema_definition}"
 
@@ -590,7 +590,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self.schema_tags.clear()
         self.column_tags.clear()
 
-    def _add_to_tag_cache(self, tag_dict: dict, key: Union[str, Tuple], value: Tuple[str, str]):
+    def _add_to_tag_cache(self, tag_dict: dict, key: Union[str, Tuple], value: Tuple[str, str]):  # noqa: UP006, UP007
         if tag_dict.get(key):
             tag_dict.get(key).append(value)
         else:
@@ -695,7 +695,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         if self.service_connection.__dict__.get("databaseSchema"):
             yield self.service_connection.databaseSchema
         else:
-            for schema_name in self.inspector.get_schema_names(
+            for schema_name in self.inspector.get_schema_names(  # noqa: UP028
                 database=self.context.get().database,
                 is_old_version=self.is_older_version,
             ):
@@ -765,7 +765,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             )
 
     def yield_table_tags(
-        self, table_name_and_type: Tuple[str, TableType]
+        self,
+        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         table_name, _ = table_name_and_type
         try:
@@ -849,7 +850,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 data = result.values()
                 if data[0] and data[0].strip() == "Comment":
                     description = data[1] if data and data[1] else None
-                    return description
+                    return description  # noqa: RET504
 
         # Catch any exception without breaking the ingestion
         except Exception as exep:  # pylint: disable=broad-except
@@ -887,7 +888,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
         return description
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:
+    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the location path of the table
         """
@@ -897,9 +898,9 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         """remove unnecessary keyword from name"""
         pattern = r"\(Unknown\)"
         filtered_name = re.sub(pattern, "", owner_name).strip()
-        return filtered_name
+        return filtered_name  # noqa: RET504
 
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Method to process the table owners
         """
@@ -923,7 +924,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     owner = row_dict.get("data_type")
                     break
             if not owner:
-                return
+                return  # noqa: RET502
 
             owner = self._filter_owner_name(owner)
             owner_ref = None
@@ -932,8 +933,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 owner_ref = self.metadata.get_reference_by_email(email=owner_email)
             except PydanticCustomError:
                 owner_ref = self.metadata.get_reference_by_name(name=owner)
-            return owner_ref
+            return owner_ref  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner for table {table_name}: {exc}")
-        return
+        return  # noqa: RET502

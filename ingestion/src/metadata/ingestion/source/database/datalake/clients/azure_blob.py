@@ -14,7 +14,7 @@ Datalake Azure Blob Client
 """
 
 from functools import partial
-from typing import Callable, Iterable, Optional, Set, Tuple
+from typing import Callable, Iterable, Optional, Set, Tuple  # noqa: UP035
 
 from azure.storage.blob import BlobServiceClient
 
@@ -28,7 +28,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-AZURE_COLD_TIERS: Set[str] = {"Cool", "Cold", "Archive"}
+AZURE_COLD_TIERS: Set[str] = {"Cool", "Cold", "Archive"}  # noqa: UP006
 
 
 class DatalakeAzureBlobClient(DatalakeBaseClient):
@@ -36,12 +36,12 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
     def from_config(cls, config: AzureConfig) -> "DatalakeAzureBlobClient":
         try:
             if not config.securityConfig:
-                raise RuntimeError("AzureConfig securityConfig can't be None.")
+                raise RuntimeError("AzureConfig securityConfig can't be None.")  # noqa: TRY301
 
             client = AzureClient(config.securityConfig).create_blob_client()
             return cls(client=client)
         except Exception as exc:
-            raise RuntimeError(f"Unknown error connecting with {config.securityConfig}: {exc}.")
+            raise RuntimeError(f"Unknown error connecting with {config.securityConfig}: {exc}.")  # noqa: B904
 
     def update_client_database(self, config, database_name):
         # For the AzureBlob Client we don't need to do anything when changing the database
@@ -50,7 +50,7 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
     def get_database_names(self, service_connection) -> Iterable[str]:
         yield service_connection.databaseName or DEFAULT_DATABASE
 
-    def get_database_schema_names(self, bucket_name: Optional[str]) -> Iterable[str]:
+    def get_database_schema_names(self, bucket_name: Optional[str]) -> Iterable[str]:  # noqa: UP045
         prefix = bucket_name or ""
 
         for schema in self._client.list_containers(name_starts_with=prefix):
@@ -59,9 +59,9 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
     def get_table_names(
         self,
         bucket_name: str,
-        prefix: Optional[str],
+        prefix: Optional[str],  # noqa: UP045
         skip_cold_storage: bool = False,
-    ) -> Iterable[Tuple[str, Optional[int]]]:
+    ) -> Iterable[Tuple[str, Optional[int]]]:  # noqa: UP006, UP045
         container_client = self._client.get_container_client(bucket_name)
 
         for file in container_client.list_blobs(name_starts_with=prefix or None):
@@ -75,7 +75,7 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
     def close(self, service_connection):
         self._client.close()
 
-    def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:
+    def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:  # noqa: UP045
         if bucket_name:
             # If bucket_name is specified, only test access to that specific container
             # This avoids requiring list_containers permission at storage account level

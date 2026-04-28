@@ -68,7 +68,7 @@ class TestNPlusOneHeadRequests:
 
         reader = JSONDataFrameReader(_s3_config(), mock_client)
 
-        try:
+        try:  # noqa: SIM105
             reader._read(key="data/test.json", bucket_name="bucket")
         except Exception:
             pass
@@ -133,7 +133,7 @@ class TestFileSizePassthrough:
 
         reader = JSONDataFrameReader(_s3_config(), mock_client)
 
-        try:
+        try:  # noqa: SIM105
             reader._read(key="data/test.json", bucket_name="bucket", file_size=1024)
         except Exception:
             pass
