@@ -14,7 +14,7 @@ Data Sampler for the PII Workflow
 
 import traceback
 from copy import deepcopy
-from typing import Optional, Type, cast
+from typing import Optional, Type, cast  # noqa: UP035
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
@@ -41,14 +41,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.step import Step
+from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.profiler.source.metadata import ProfilerSourceAndEntity
 from metadata.sampler.config import get_config_for_table
 from metadata.sampler.models import SampleConfig, SampleData, SamplerResponse
-from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.sampler.sampler_interface import SamplerInterface  # noqa: TC001
 from metadata.utils.bigquery_utils import copy_service_config
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,
@@ -70,7 +70,7 @@ class SamplerProcessor(Processor):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None,
+        profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None,  # noqa: UP006
     ):
         if profiler_config_class is None:
             raise DependencyNotFoundError(
@@ -97,7 +97,7 @@ class SamplerProcessor(Processor):
             self.service_type = ServiceType.Database
         else:
             # This should never happen if config parsing worked correctly
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004
                 f"Could not determine service type from config. "
                 f"Config type: {type(self.source_config).__name__}, "
                 f"Interface type: {self._interface_type}. "
@@ -115,7 +115,7 @@ class SamplerProcessor(Processor):
         self._sample_data_config = None
         settings = self.metadata.get_profiler_config_settings()
         if settings:
-            profiler_cfg = cast(ProfilerConfiguration, settings.config_value)
+            profiler_cfg = cast(ProfilerConfiguration, settings.config_value)  # noqa: TC006
             self._sample_data_config = profiler_cfg.sampleDataConfig
 
     @property
@@ -252,7 +252,7 @@ class SamplerProcessor(Processor):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
@@ -282,9 +282,9 @@ class SamplerProcessor(Processor):
                 config_copy.catalog = database.name.root  # type: ignore
 
         # we know we'll only be working with DatabaseConnection, we cast the type to satisfy type checker
-        config_copy = cast(DatabaseConnection, config_copy)
+        config_copy = cast(DatabaseConnection, config_copy)  # noqa: TC006
 
-        return config_copy
+        return config_copy  # noqa: RET504
 
     def close(self) -> None:
         """Nothing to close"""

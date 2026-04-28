@@ -32,7 +32,7 @@ from metadata.utils.logger import profiler_logger
 logger = profiler_logger()
 
 
-class PathPatternException(Exception):
+class PathPatternException(Exception):  # noqa: N818
     """
     Exception class need to validate the file path pattern
     """
@@ -72,12 +72,12 @@ def _get_object_key(table: Table, prefix: str, overwrite_data: bool, file_path_f
 def upload_sample_data(
     data: TableData,
     entity: Table,
-    sample_storage_config: Optional[DataStorageConfig] = None,
+    sample_storage_config: Optional[DataStorageConfig] = None,  # noqa: UP045
 ) -> None:
     """
     Upload Sample data to storage config
     """
-    import pandas as pd  # pylint: disable=import-outside-toplevel
+    import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
     try:
         if not sample_storage_config:

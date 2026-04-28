@@ -245,7 +245,7 @@
     "license-check-and-add": "^4.0.5",
     "organize-imports-cli": "^0.10.0",
     "pinst": "^3.0.0",
-    "postcss": "8.4.31",
+    "postcss": "8.5.10",
     "prettier": "2.8.8",
     "react-test-renderer": "^18.2.0",
     "sync-i18n": "^0.0.20",
