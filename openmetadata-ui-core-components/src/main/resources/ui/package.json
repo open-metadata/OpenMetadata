@@ -139,7 +139,6 @@
     "tailwindcss-animate": "^1.0.7",
     "tailwindcss-react-aria-components": "^2.0.1",
     "terser": "^5.0.0",
-    "postcss": "8.5.10",
     "typescript": "^5.0.0",
     "vite": "^7.3.2",
     "vite-plugin-dts": "^4.5.4",
