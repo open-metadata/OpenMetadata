@@ -50,7 +50,6 @@ const tag = new TagClass({ classification: classification.data.name });
 test.describe('Data Product Rename + Field Update Consolidation', () => {
   test.beforeAll('Setup domain and admin user', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-    await EntityDataClass.preRequisitesForTests(apiContext);
     await domain.create(apiContext);
     await classification.create(apiContext);
     await tag.create(apiContext);
