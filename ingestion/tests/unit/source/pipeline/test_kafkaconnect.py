@@ -30,7 +30,7 @@ def mock_source(mock_metadata):
     }
 
     source = KafkaconnectSourceTests.create(config, mock_metadata)
-    return source
+    return source  # noqa: RET504
 
 
 @pytest.fixture

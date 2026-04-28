@@ -110,7 +110,7 @@ class TestStepHandlerAttachment(TestCase):
 
         assert len(self.step.status.warnings) == 1
         warning = self.step.status.warnings[0]
-        assert "Unexpected exception processing column" in list(warning.values())[0]
+        assert "Unexpected exception processing column" in list(warning.values())[0]  # noqa: RUF015
 
     def test_warning_outside_run_scope_does_not_populate_status(self):
         ingestion_logger().warning("warning emitted before run() starts")

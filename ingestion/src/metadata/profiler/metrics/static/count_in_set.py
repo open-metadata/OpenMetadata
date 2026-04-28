@@ -15,7 +15,7 @@ CountInSet Metric definition
 
 # pylint: disable=duplicate-code
 import traceback
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional  # noqa: UP035
 
 from sqlalchemy import case, column
 
@@ -46,7 +46,7 @@ class CountInSet(StaticMetric):
 
     schema_metric_type = MetricType.countInSet
 
-    values: List[str]
+    values: List[str]  # noqa: UP006
 
     @classmethod
     def name(cls):
@@ -102,7 +102,7 @@ class CountInSet(StaticMetric):
         )
 
     @staticmethod
-    def update_accumulator(running_count: int, df: "pd.DataFrame", column, values: List[str]) -> int:
+    def update_accumulator(running_count: int, df: "pd.DataFrame", column, values: List[str]) -> int:  # noqa: UP006
         """Computes one DataFrame chunk and updates the running count
 
         Maintains a single running total (not a list). Adds chunk's count

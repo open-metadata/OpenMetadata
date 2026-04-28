@@ -71,7 +71,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         self.session = create_and_bind_session(get_ssl_connection(self.service_connection_config))
 
     @property
-    def dataset(self) -> Union[type, AliasedClass]:
+    def dataset(self) -> Union[type, AliasedClass]:  # noqa: UP007
         """_summary_
 
         Returns:

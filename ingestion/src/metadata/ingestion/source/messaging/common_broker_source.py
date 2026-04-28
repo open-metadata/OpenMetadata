@@ -17,7 +17,7 @@ import concurrent.futures
 import time
 import traceback
 from abc import ABC
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 import confluent_kafka
 from confluent_kafka import KafkaError, KafkaException
@@ -121,7 +121,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 schema_type = topic_schema.schema_type.lower()
                 load_parser_fn = schema_parser_config_registry.registry.get(schema_type)
                 if not load_parser_fn:
-                    raise InvalidSchemaTypeException(f"Cannot find {schema_type} in parser providers registry.")
+                    raise InvalidSchemaTypeException(f"Cannot find {schema_type} in parser providers registry.")  # noqa: TRY301
                 schema_text = topic_schema.schema_str
 
                 # In protobuf schema, we need to merge all the schema text with references
@@ -183,7 +183,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.debug(traceback.format_exc())
             logger.warning(f"Exception adding properties to topic [{topic.name}]: {exc}")
 
-    def _get_schema_text_with_references(self, schema) -> Optional[str]:
+    def _get_schema_text_with_references(self, schema) -> Optional[str]:  # noqa: UP045
         """
         Returns the schema text with references resolved using recursive calls
         """
@@ -201,10 +201,10 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 return schema_text
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get schema with references: {exc}")
+            logger.error(f"Failed to get schema with references: {exc}")
         return None
 
-    def _parse_topic_metadata(self, topic_name: str) -> Optional[Schema]:
+    def _parse_topic_metadata(self, topic_name: str) -> Optional[Schema]:  # noqa: UP045
 
         # To find topic in artifact registry, dafault is "<topic_name>-value"
         # But suffix can be overridden using schemaRegistryTopicSuffixName
@@ -217,7 +217,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                (
+                (  # noqa: UP034
                     f"Failed to get schema for topic [{topic_name}] "
                     f"(looking for {topic_schema_registry_name}) in registry: {exc}"
                 )

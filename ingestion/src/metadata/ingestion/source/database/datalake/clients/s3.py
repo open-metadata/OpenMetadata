@@ -14,7 +14,7 @@ Datalake S3 Client
 """
 
 from functools import partial
-from typing import Callable, Iterable, Optional, Set, Tuple
+from typing import Callable, Iterable, Optional, Set, Tuple  # noqa: UP035
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
@@ -27,7 +27,7 @@ from metadata.utils.s3_utils import list_s3_objects
 
 logger = ingestion_logger()
 
-S3_COLD_STORAGE_CLASSES: Set[str] = {"GLACIER", "DEEP_ARCHIVE", "GLACIER_IR"}
+S3_COLD_STORAGE_CLASSES: Set[str] = {"GLACIER", "DEEP_ARCHIVE", "GLACIER_IR"}  # noqa: UP006
 
 
 class DatalakeS3Client(DatalakeBaseClient):
@@ -54,7 +54,7 @@ class DatalakeS3Client(DatalakeBaseClient):
     def get_database_names(self, service_connection) -> Iterable[str]:
         yield service_connection.databaseName or DEFAULT_DATABASE
 
-    def get_database_schema_names(self, bucket_name: Optional[str]) -> Iterable[str]:
+    def get_database_schema_names(self, bucket_name: Optional[str]) -> Iterable[str]:  # noqa: UP045
         if bucket_name:
             yield bucket_name
         else:
@@ -64,9 +64,9 @@ class DatalakeS3Client(DatalakeBaseClient):
     def get_table_names(
         self,
         bucket_name: str,
-        prefix: Optional[str],
+        prefix: Optional[str],  # noqa: UP045
         skip_cold_storage: bool = False,
-    ) -> Iterable[Tuple[str, Optional[int]]]:
+    ) -> Iterable[Tuple[str, Optional[int]]]:  # noqa: UP006, UP045
         kwargs = {"Bucket": bucket_name}
 
         if prefix:
@@ -87,7 +87,7 @@ class DatalakeS3Client(DatalakeBaseClient):
                     continue
             yield key["Key"], key.get("Size")
 
-    def get_folders_prefix(self, bucket_name: str, prefix: Optional[str]) -> Iterable[str]:
+    def get_folders_prefix(self, bucket_name: str, prefix: Optional[str]) -> Iterable[str]:  # noqa: UP045
         for page in self._client.get_paginator("list_objects_v2").paginate(
             Bucket=bucket_name, Prefix=prefix or "", Delimiter="/"
         ):
@@ -98,7 +98,7 @@ class DatalakeS3Client(DatalakeBaseClient):
         # For the S3 Client we don't need to do anything when closing the connection
         pass
 
-    def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:
+    def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:  # noqa: UP045
 
         if bucket_name:
             return partial(self._client.list_objects, Bucket=bucket_name)

@@ -182,7 +182,7 @@ class TableauUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.tableau.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:
+    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         get_connection.return_value = False
         test_connection.return_value = False
@@ -205,9 +205,9 @@ class TableauUnitTest(TestCase):
         results = self.tableau.yield_dashboard_chart(MOCK_DASHBOARD)
         for result in results:
             if isinstance(result, CreateChartRequest):
-                chart_list.append(result)
+                chart_list.append(result)  # noqa: PERF401
 
-        for _, (exptected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):
+        for _, (exptected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):  # noqa: B905
             self.assertEqual(exptected, original)
 
     def test_yield_dashboard_usage(self):
@@ -357,7 +357,7 @@ class TableauUnitTest(TestCase):
 
         self.tableau.source_config.projectFilterPattern = FilterPattern(includes=["^FilteredProject.OtherProject$"])
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.tableau,
             "get_dashboards_list",
             return_value=mock_dashboard_details_list,
@@ -391,7 +391,7 @@ class TableauUnitTest(TestCase):
             ]
         )
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.tableau,
             "get_dashboards_list",
             return_value=mock_dashboard_details_list,
@@ -426,7 +426,7 @@ class TableauUnitTest(TestCase):
             excludes=[".*ExcludedProject2.*"],
         )
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.tableau,
             "get_dashboards_list",
             return_value=mock_dashboard_details_list,
@@ -620,7 +620,7 @@ class TableauUnitTest(TestCase):
         self.tableau.client.get_custom_sql_table_queries = MagicMock(return_value=["SELECT * FROM test_table"])
 
         # Mock the _get_datamodel method
-        with patch.object(self.tableau, "_get_datamodel", return_value=mock_upstream_data_model_entity):
+        with patch.object(self.tableau, "_get_datamodel", return_value=mock_upstream_data_model_entity):  # noqa: SIM117
             # Mock the metadata search to return empty results (simulating no table entities found)
             with patch.object(self.tableau.metadata, "search_in_any_service", return_value=[]):
                 # Mock the _get_add_lineage_request method to avoid actual lineage creation
@@ -695,7 +695,7 @@ class TableauUnitTest(TestCase):
         self.tableau.client.get_custom_sql_table_queries = MagicMock(return_value=["SELECT * FROM test_table_2"])
 
         # Mock the _get_datamodel method
-        with patch.object(self.tableau, "_get_datamodel", return_value=mock_upstream_data_model_entity):
+        with patch.object(self.tableau, "_get_datamodel", return_value=mock_upstream_data_model_entity):  # noqa: SIM117
             # Mock the metadata search to return None (simulating search failure)
             with patch.object(self.tableau.metadata, "search_in_any_service", return_value=None):
                 # Mock the _get_add_lineage_request method to avoid actual lineage creation
@@ -785,7 +785,7 @@ class TableauUnitTest(TestCase):
             database={"id": "db1", "name": "test_database"},
         )
 
-        with patch.object(self.tableau.metadata, "get_by_name", return_value=None) as mock_get_by_name:
+        with patch.object(self.tableau.metadata, "get_by_name", return_value=None) as mock_get_by_name:  # noqa: SIM117
             with patch.object(self.tableau.metadata, "search_in_any_service", return_value=None):
                 result = self.tableau._get_table_entities_from_api(
                     db_service_prefix="non_existent_service",
@@ -1028,7 +1028,7 @@ class TableauUnitTest(TestCase):
             dataModelType="TableauDataModel",
             columns=[],
         )
-        with patch.object(self.tableau, "_get_datamodel", return_value=mock_data_model_entity):
+        with patch.object(self.tableau, "_get_datamodel", return_value=mock_data_model_entity):  # noqa: SIM117
             with patch.object(
                 self.tableau, "_get_datamodel_table_lineage", return_value=iter([])
             ) as mock_datasource_lineage:

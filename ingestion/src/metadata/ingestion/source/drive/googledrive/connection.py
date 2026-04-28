@@ -76,7 +76,7 @@ def get_connection(connection: GoogleDriveConnection) -> GoogleDriveClient:
         connection.credentials.gcpImpersonateServiceAccount
         and connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
     ):
-        from google.auth import (  # pylint: disable=import-outside-toplevel
+        from google.auth import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
             impersonated_credentials,
         )
 
@@ -98,8 +98,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: GoogleDriveClient,
     service_connection: GoogleDriveConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection to Google Drive
@@ -117,7 +117,7 @@ def test_connection(
             logger.info(f"Successfully authenticated as: {user_email}")
         except Exception as exc:
             logger.debug(f"Access check error traceback: {traceback.format_exc()}")
-            raise SourceConnectionException(f"Failed to access Google Drive API: {exc}")
+            raise SourceConnectionException(f"Failed to access Google Drive API: {exc}")  # noqa: B904
 
     def get_drive_files():
         """
@@ -157,7 +157,7 @@ def test_connection(
 
         except Exception as exc:
             logger.debug(f"Drive files test error traceback: {traceback.format_exc()}")
-            raise SourceConnectionException(f"Failed to list drive files: {exc}")
+            raise SourceConnectionException(f"Failed to list drive files: {exc}")  # noqa: B904
 
     def get_spreadsheets(include_sheets: bool = False):
         """
@@ -179,7 +179,7 @@ def test_connection(
 
         except Exception as exc:
             logger.debug(f"Spreadsheet test error traceback: {traceback.format_exc()}")
-            raise SourceConnectionException(f"Failed to list spreadsheets: {exc}")
+            raise SourceConnectionException(f"Failed to list spreadsheets: {exc}")  # noqa: B904
 
     test_fn = {
         "CheckAccess": check_access,
