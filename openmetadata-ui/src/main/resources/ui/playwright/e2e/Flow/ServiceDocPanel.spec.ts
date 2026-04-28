@@ -155,9 +155,7 @@ test.describe('ServiceDocPanel', () => {
 
       // hostPort section should now be highlighted
       await expect(
-        docPanel.locator(
-          'section[data-id="hostPort"][data-highlighted="true"]'
-        )
+        docPanel.locator('section[data-id="hostPort"][data-highlighted="true"]')
       ).toBeVisible();
     });
 
