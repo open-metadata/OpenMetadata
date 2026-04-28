@@ -501,7 +501,11 @@ test.describe('User with different Roles', () => {
 
     await expect(adminPage.getByTestId('user-profile-roles')).toBeVisible();
 
+    const initialRolesResponse = adminPage.waitForResponse(
+      '/api/v1/roles/search?*'
+    );
     await adminPage.getByTestId('edit-roles-button').click();
+    await initialRolesResponse;
 
     await expect(
       adminPage.getByTestId('profile-edit-roles-select')
@@ -511,6 +515,15 @@ test.describe('User with different Roles', () => {
       state: 'visible',
     });
 
+    await adminPage
+      .getByTestId('profile-edit-roles-select')
+      .locator('input')
+      .fill('Application');
+    await adminPage.waitForResponse('/api/v1/roles/search?*');
+    await adminPage
+      .locator('.ant-select-item-option-content')
+      .getByText('Application bot role', { exact: true })
+      .waitFor({ state: 'visible' });
     await adminPage
       .locator('.ant-select-item-option-content')
       .getByText('Application bot role', { exact: true })

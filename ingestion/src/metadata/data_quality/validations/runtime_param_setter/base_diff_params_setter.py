@@ -1,6 +1,6 @@
 """Base class for param setter logic for table data diff"""
 
-from typing import List, Optional, Set, Type, Union
+from typing import List, Optional, Set, Type, Union  # noqa: UP035
 
 from sqlalchemy.engine import make_url
 
@@ -47,10 +47,10 @@ class ServiceSpecPatch:
             )
         )
 
-    def get_data_diff_class(self) -> Type["BaseTableParameter"]:
+    def get_data_diff_class(self) -> Type["BaseTableParameter"]:  # noqa: UP006
         return import_from_module(self.service_spec.data_diff)
 
-    def get_connection_class(self) -> Optional[Type[BaseConnection]]:
+    def get_connection_class(self) -> Optional[Type[BaseConnection]]:  # noqa: UP006, UP045
         if self.service_spec.connection_class:
             return import_from_module(self.service_spec.connection_class)
         return None
@@ -66,7 +66,7 @@ class BaseTableParameter:
         key_columns,
         extra_columns,
         case_sensitive_columns,
-        service_url: Optional[Union[str, dict]],
+        service_url: Optional[Union[str, dict]],  # noqa: UP007, UP045
     ) -> TableParameter:
         """Getter table parameter for the table diff test.
 
@@ -75,9 +75,7 @@ class BaseTableParameter:
         """
         return TableParameter(
             database_service_type=service.serviceType,
-            path=self.get_data_diff_table_path(
-                entity.fullyQualifiedName.root, service.serviceType
-            ),
+            path=self.get_data_diff_table_path(entity.fullyQualifiedName.root, service.serviceType),
             fullyQualifiedName=entity.fullyQualifiedName.root,
             serviceUrl=self.get_data_diff_url(
                 service,
@@ -97,9 +95,7 @@ class BaseTableParameter:
         )
 
     @staticmethod
-    def get_data_diff_table_path(
-        table_fqn: str, service_type: DatabaseServiceType
-    ) -> str:
+    def get_data_diff_table_path(table_fqn: str, service_type: DatabaseServiceType) -> str:
         """Get the data diff table path.
 
         Args:
@@ -117,9 +113,7 @@ class BaseTableParameter:
                 table = dialect_instance.denormalize_name(name=table)
                 schema = dialect_instance.denormalize_name(name=schema)
         except Exception as e:
-            logger.debug(
-                f"[Data Diff]: Error denormalizing table and schema names. Skipping denormalization\n{e}"
-            )
+            logger.debug(f"[Data Diff]: Error denormalizing table and schema names. Skipping denormalization\n{e}")
         return fqn._build(  # pylint: disable=protected-access
             "___SERVICE___", "__DATABASE__", schema, table
         ).replace("___SERVICE___.__DATABASE__.", "")
@@ -128,24 +122,20 @@ class BaseTableParameter:
     def _get_service_connection_config(
         cls,
         service_connection_config,
-    ) -> Optional[Union[str, dict]]:
+    ) -> Optional[Union[str, dict]]:  # noqa: UP007, UP045
         """
         Get the connection dictionary for the service.
         """
         if not service_connection_config:
             return None
 
-        service_spec_patch = ServiceSpecPatch(
-            ServiceType.Database, service_connection_config.type.value.lower()
-        )
+        service_spec_patch = ServiceSpecPatch(ServiceType.Database, service_connection_config.type.value.lower())
 
         try:
             connection_class = service_spec_patch.get_connection_class()
             if not connection_class:
                 return (
-                    get_connection(service_connection_config).url.render_as_string(
-                        hide_password=False
-                    )
+                    get_connection(service_connection_config).url.render_as_string(hide_password=False)
                     if service_connection_config
                     else None
                 )
@@ -153,9 +143,7 @@ class BaseTableParameter:
             return connection.get_connection_dict()
         except (ValueError, AttributeError, NotImplementedError):
             return (
-                get_connection(service_connection_config).url.render_as_string(
-                    hide_password=False
-                )
+                get_connection(service_connection_config).url.render_as_string(hide_password=False)
                 if service_connection_config
                 else None
             )
@@ -164,15 +152,15 @@ class BaseTableParameter:
     def get_service_connection_config(
         cls,
         service: DatabaseService,
-    ) -> Optional[Union[str, dict]]:
+    ) -> Optional[Union[str, dict]]:  # noqa: UP007, UP045
         return cls._get_service_connection_config(service.connection.config)
 
     def get_data_diff_url(
         self,
         db_service: DatabaseService,
         table_fqn,
-        override_url: Optional[Union[str, dict]] = None,
-    ) -> Union[str, dict]:
+        override_url: Optional[Union[str, dict]] = None,  # noqa: UP007, UP045
+    ) -> Union[str, dict]:  # noqa: UP007
         """Get the url for the data diff service.
 
         Args:
@@ -184,9 +172,7 @@ class BaseTableParameter:
             str: The url for the data diff service
         """
         source_url = (
-            self._get_service_connection_config(db_service.connection.config)
-            if not override_url
-            else override_url
+            self._get_service_connection_config(db_service.connection.config) if not override_url else override_url  # noqa: SIM212
         )
         if isinstance(source_url, dict):
             source_url["driver"] = source_url["driver"].split("+")[0]
@@ -211,11 +197,11 @@ class BaseTableParameter:
 
     @staticmethod
     def filter_relevant_columns(
-        columns: List[Column],
-        key_columns: Set[str],
-        extra_columns: Set[str],
+        columns: List[Column],  # noqa: UP006
+        key_columns: Set[str],  # noqa: UP006
+        extra_columns: Set[str],  # noqa: UP006
         case_sensitive: bool,
-    ) -> List[Column]:
+    ) -> List[Column]:  # noqa: UP006
         """Filter relevant columns.
 
         Args:
@@ -228,8 +214,6 @@ class BaseTableParameter:
             List[Column]
         """
         validated_columns = (
-            [*key_columns, *extra_columns]
-            if case_sensitive
-            else CaseInsensitiveList([*key_columns, *extra_columns])
+            [*key_columns, *extra_columns] if case_sensitive else CaseInsensitiveList([*key_columns, *extra_columns])
         )
         return [c for c in columns if c.name.root in validated_columns]

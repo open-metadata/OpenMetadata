@@ -12,8 +12,9 @@
 """
 Test DBT with CLI
 """
+
 from abc import abstractmethod
-from typing import List
+from typing import List  # noqa: UP035
 from unittest import TestCase
 
 import pytest
@@ -22,7 +23,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
 from metadata.ingestion.api.status import Status
 
-from .test_cli import CliBase
+from .test_cli import CliBase  # noqa: TID252
 
 
 class CliDBTBase(TestCase):
@@ -49,9 +50,7 @@ class CliDBTBase(TestCase):
         @pytest.mark.order(3)
         def test_entities(self) -> None:
             for table_fqn in self.fqn_dbt_tables():
-                table: Table = self.openmetadata.get_by_name(
-                    entity=Table, fqn=table_fqn, fields=["*"]
-                )
+                table: Table = self.openmetadata.get_by_name(entity=Table, fqn=table_fqn, fields=["*"])
                 data_model = table.dataModel
                 self.assertTrue(len(data_model.columns) > 0)
                 self.assertIsNotNone(data_model.rawSql)
@@ -101,17 +100,13 @@ class CliDBTBase(TestCase):
 
         @staticmethod
         @abstractmethod
-        def fqn_dbt_tables() -> List[str]:
+        def fqn_dbt_tables() -> List[str]:  # noqa: UP006
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_for_vanilla_ingestion(
-            self, source_status: Status, sink_status: Status
-        ) -> None:
+        def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_for_dbt_ingestion(
-            self, source_status: Status, sink_status: Status
-        ) -> None:
+        def assert_for_dbt_ingestion(self, source_status: Status, sink_status: Status) -> None:
             raise NotImplementedError()

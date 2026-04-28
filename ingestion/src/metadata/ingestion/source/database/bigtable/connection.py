@@ -9,7 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """BigTable connection"""
-from typing import List, Optional
+
+from typing import List, Optional  # noqa: UP035
 
 from google.cloud.bigtable import Client
 
@@ -52,11 +53,11 @@ def get_connection(connection: BigTableConnection):
     return MultiProjectClient(client_class=Client, project_ids=project_ids, admin=True)
 
 
-def get_nested_index(lst: list, index: List[int], default=None):
+def get_nested_index(lst: list, index: List[int], default=None):  # noqa: UP006
     try:
         for i in index:
             lst = lst[i]
-        return lst
+        return lst  # noqa: TRY300
     except IndexError:
         return default
 
@@ -74,15 +75,13 @@ class Tester:
         self.table = None
 
     def list_instances(self):
-        self.project_id = list(self.client.clients.keys())[0]
+        self.project_id = list(self.client.clients.keys())[0]  # noqa: RUF015
         instances = list(self.client.list_instances(project_id=self.project_id))
         self.instance = get_nested_index(instances, [0, 0])
 
     def list_tables(self):
         if not self.instance:
-            raise SourceConnectionException(
-                f"No instances found in project {self.project_id}"
-            )
+            raise SourceConnectionException(f"No instances found in project {self.project_id}")
         tables = list(self.instance.list_tables())
         self.table = tables[0]
 
@@ -98,8 +97,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: MultiProjectClient,
     service_connection: BigTableConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
