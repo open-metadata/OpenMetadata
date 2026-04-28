@@ -3,19 +3,19 @@ import unittest
 """
 Unit tests for plural SDK entity classes
 """
-from unittest.mock import MagicMock, patch
-from uuid import UUID
+from unittest.mock import MagicMock, patch  # noqa: E402
+from uuid import UUID  # noqa: E402
 
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
-from metadata.generated.schema.entity.data.chart import Chart
-from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.mlmodel import MlModel
-from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest  # noqa: E402
+from metadata.generated.schema.entity.data.chart import Chart  # noqa: E402
+from metadata.generated.schema.entity.data.dashboard import Dashboard  # noqa: E402
+from metadata.generated.schema.entity.data.database import Database  # noqa: E402
+from metadata.generated.schema.entity.data.mlmodel import MlModel  # noqa: E402
+from metadata.generated.schema.entity.data.pipeline import Pipeline  # noqa: E402
+from metadata.generated.schema.entity.data.table import Table  # noqa: E402
 
 # Import plural SDK classes
-from metadata.sdk import Charts, Dashboards, Databases, MLModels, Pipelines, Tables
+from metadata.sdk import Charts, Dashboards, Databases, MLModels, Pipelines, Tables  # noqa: E402
 
 
 class TestTablesSDK:

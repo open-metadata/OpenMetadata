@@ -14,7 +14,7 @@ from metadata.profiler.source.database.base.profiler_source import ProfilerSourc
 # pylint: disable=unused-argument
 def is_disconnect(self, e, connection, cursor):
     """is_disconnect method for the Databricks dialect"""
-    if "Invalid SessionHandle: SessionHandle" in str(e):
+    if "Invalid SessionHandle: SessionHandle" in str(e):  # noqa: SIM103
         return True
     return False
 
@@ -35,6 +35,6 @@ class DataBricksProfilerSource(ProfilerSource):
     def set_is_disconnect(self):
         """Set the is_disconnect method for the Databricks dialect"""
         # pylint: disable=import-outside-toplevel
-        from databricks.sqlalchemy import DatabricksDialect
+        from databricks.sqlalchemy import DatabricksDialect  # noqa: PLC0415
 
         DatabricksDialect.is_disconnect = is_disconnect

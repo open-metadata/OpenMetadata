@@ -82,8 +82,8 @@ def test_connection(
     metadata: OpenMetadata,
     engine: Engine,
     service_connection: PrestoConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -96,7 +96,7 @@ def test_connection(
         if schema_name:
             for schema in schema_name:
                 table_name = inspector.get_table_names(schema)
-                return table_name
+                return table_name  # noqa: RET504
         return None
 
     test_fn = {

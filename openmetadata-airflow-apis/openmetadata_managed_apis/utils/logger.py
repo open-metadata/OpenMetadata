@@ -60,7 +60,7 @@ def utils_logger():
     return build_logger(Loggers.UTILS.value)
 
 
-def set_operator_logger(workflow_config: Union[OpenMetadataWorkflowConfig, OpenMetadataApplicationConfig]) -> None:
+def set_operator_logger(workflow_config: Union[OpenMetadataWorkflowConfig, OpenMetadataApplicationConfig]) -> None:  # noqa: UP007
     """
     Handle logging for the Python Operator that
     will execute the ingestion

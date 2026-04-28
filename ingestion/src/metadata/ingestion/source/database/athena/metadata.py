@@ -13,7 +13,7 @@
 
 import threading
 import traceback
-from typing import Dict, Iterable, Optional, Set, Tuple
+from typing import Dict, Iterable, Optional, Set, Tuple  # noqa: UP035
 
 from pyathena.sqlalchemy.base import AthenaDialect
 from sqlalchemy.engine.reflection import Inspector
@@ -101,7 +101,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AthenaConnection = config.serviceConnection.root.config
         if not isinstance(connection, AthenaConnection):
@@ -119,7 +119,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         self.schema_description_map = {}
         self._thread_local = threading.local()
         self.glue_client = None
-        self._processed_prop: Set[str] = set()
+        self._processed_prop: Set[str] = set()  # noqa: UP006
         self._processed_prop_lock = threading.Lock()
         self._string_property_type_ref = None
 
@@ -148,7 +148,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             logger.warning(f"Failed to fetch string property type ref: {exc}")
             logger.debug(traceback.format_exc())
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:
+    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
         return self.schema_description_map.get(schema_name)
 
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
@@ -162,7 +162,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
                         params = table.get("Parameters", {})
                         table_type = TableType.Iceberg if params.get("table_type") == "ICEBERG" else TableType.External
                         results.append(TableNameAndType(name=table["Name"], type_=table_type))
-                return results
+                return results  # noqa: TRY300
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Failed to fetch Glue table metadata for schema [{schema_name}]: {exc}")
@@ -173,7 +173,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, Optional[TablePartition]]:
+    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
         """Get Athena table partition detail
 
         Args:
@@ -209,7 +209,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             return True, partition_details
         return False, None
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:
+    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the location path of the table
         """
@@ -246,7 +246,8 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
                 )
 
     def yield_table_tags(
-        self, table_name_and_type: Tuple[str, TableType]
+        self,
+        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Method to yield table and column tags
@@ -351,7 +352,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             catalog_id=self.service_connection.catalogId,
         )
 
-    def get_table_extensions(self, table_name: str) -> Optional[Dict[str, str]]:
+    def get_table_extensions(self, table_name: str) -> Optional[Dict[str, str]]:  # noqa: UP006, UP045
         if not self._string_property_type_ref:
             return None
         tbl_properties = getattr(self._thread_local, ATHENA_TABLE_PROPS_CONTEXT_KEY, {})

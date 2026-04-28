@@ -433,7 +433,7 @@ class DbtUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_dbt_config)
@@ -950,7 +950,7 @@ class DbtUnitTest(TestCase):
 
     def get_dbt_object_files(self, mock_manifest):
         mock_file_path = Path(__file__).parent / mock_manifest
-        with open(mock_file_path) as file:
+        with open(mock_file_path) as file:  # noqa: PTH123
             mock_data: dict = json.load(file)
         self.dbt_source_obj.remove_manifest_non_required_keys(manifest_dict=mock_data)
         dbt_files = DbtFiles(dbt_manifest=mock_data)
@@ -981,7 +981,7 @@ class DbtUnitTest(TestCase):
                 self.check_process_dbt_owners(data_model_link.right)
                 data_model_list.append(data_model_link.right.datamodel)
 
-        for _, (expected, original) in enumerate(zip(expected_data_models, data_model_list)):
+        for _, (expected, original) in enumerate(zip(expected_data_models, data_model_list)):  # noqa: B905
             self.assertEqual(expected, original)
 
     def check_process_dbt_owners(self, data_model_link):
@@ -1791,7 +1791,7 @@ class DbtUnitTest(TestCase):
     def test_validate_enum_single_value_invalid(self):
         """Test invalid single enum value"""
         config = {"values": ["option1", "option2"], "multiSelect": False}
-        is_valid, error, value = validate_enum_value("invalid", config)
+        is_valid, error, value = validate_enum_value("invalid", config)  # noqa: RUF059
         self.assertFalse(is_valid)
         self.assertIsNotNone(error)
 
@@ -1814,7 +1814,7 @@ class DbtUnitTest(TestCase):
     def test_validate_enum_multi_select_all_invalid(self):
         """Test multi-select enum with all invalid values"""
         config = {"values": ["opt1", "opt2"], "multiSelect": True}
-        is_valid, error, value = validate_enum_value(["bad1", "bad2"], config)
+        is_valid, error, value = validate_enum_value(["bad1", "bad2"], config)  # noqa: RUF059
         self.assertFalse(is_valid)
         self.assertIsNotNone(error)
 
@@ -1859,14 +1859,14 @@ class DbtUnitTest(TestCase):
     def test_validate_time_interval_invalid_start_after_end(self):
         """Test time interval with start after end"""
         value = {"start": 2000000000, "end": 1000000000}
-        is_valid, error, result = validate_time_interval(value)
+        is_valid, error, result = validate_time_interval(value)  # noqa: RUF059
         self.assertFalse(is_valid)
         self.assertIn("Start time", error)
 
     def test_validate_time_interval_missing_fields(self):
         """Test time interval with missing fields"""
         value = {"start": 1000000000}
-        is_valid, error, result = validate_time_interval(value)
+        is_valid, error, result = validate_time_interval(value)  # noqa: RUF059
         self.assertFalse(is_valid)
         self.assertIn("Missing required", error)
 
@@ -1893,7 +1893,7 @@ class DbtUnitTest(TestCase):
         self.assertTrue(is_valid)
         self.assertEqual(value, 3.14)
 
-        is_valid, error, value = validate_custom_property_value("testProp", "number", None, 42)
+        is_valid, error, value = validate_custom_property_value("testProp", "number", None, 42)  # noqa: RUF059
         self.assertTrue(is_valid)
         self.assertEqual(value, 42.0)
 
@@ -1903,12 +1903,12 @@ class DbtUnitTest(TestCase):
         self.assertTrue(is_valid)
         self.assertEqual(value, "user@example.com")
 
-        is_valid, error, value = validate_custom_property_value("testProp", "email", None, "invalid-email")
+        is_valid, error, value = validate_custom_property_value("testProp", "email", None, "invalid-email")  # noqa: RUF059
         self.assertFalse(is_valid)
 
     def test_validate_custom_property_value_date_cp_type(self):
         """Test date-cp type validation"""
-        is_valid, error, value = validate_custom_property_value("testProp", "date-cp", "yyyy-MM-dd", "2024-01-15")
+        is_valid, error, value = validate_custom_property_value("testProp", "date-cp", "yyyy-MM-dd", "2024-01-15")  # noqa: RUF059
         self.assertTrue(is_valid)
         self.assertEqual(value, "2024-01-15")
 
@@ -1918,7 +1918,7 @@ class DbtUnitTest(TestCase):
         self.assertTrue(is_valid)
         self.assertEqual(value, 1640995200000)
 
-        is_valid, error, value = validate_custom_property_value("testProp", "timestamp", None, "not a timestamp")
+        is_valid, error, value = validate_custom_property_value("testProp", "timestamp", None, "not a timestamp")  # noqa: RUF059
         self.assertFalse(is_valid)
 
     def test_validate_custom_property_value_duration_type(self):
@@ -1927,19 +1927,19 @@ class DbtUnitTest(TestCase):
         self.assertTrue(is_valid)
         self.assertEqual(value, "P23DT23H")
 
-        is_valid, error, value = validate_custom_property_value("testProp", "duration", None, "23DT23H")
+        is_valid, error, value = validate_custom_property_value("testProp", "duration", None, "23DT23H")  # noqa: RUF059
         self.assertFalse(is_valid)
 
     def test_validate_custom_property_value_enum_type(self):
         """Test enum type validation with filtering"""
         config = {"values": ["opt1", "opt2", "opt3"], "multiSelect": True}
-        is_valid, error, value = validate_custom_property_value("testProp", "enum", config, ["opt1", "invalid", "opt2"])
+        is_valid, error, value = validate_custom_property_value("testProp", "enum", config, ["opt1", "invalid", "opt2"])  # noqa: RUF059
         self.assertTrue(is_valid)
         self.assertEqual(value, ["opt1", "opt2"])
 
     def test_validate_custom_property_value_none_value(self):
         """Test None value handling"""
-        is_valid, error, value = validate_custom_property_value("testProp", "string", None, None)
+        is_valid, error, value = validate_custom_property_value("testProp", "string", None, None)  # noqa: RUF059
         self.assertFalse(is_valid)
         self.assertIn("cannot be None", error)
 
@@ -2223,7 +2223,7 @@ class DbtUnitTest(TestCase):
 
         manifest_entities = {"source.test.test_source": mock_source_node}
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dbt_source_obj,
             "_get_table_entity",
             return_value=MOCK_TABLE_ENTITIES[0],
@@ -2269,7 +2269,7 @@ class DbtUnitTest(TestCase):
         mock_dbt_objects.dbt_sources = None
 
         # Verify that manifest_entities includes both sources and nodes
-        for data_model in self.dbt_source_obj.yield_data_models(mock_dbt_objects):
+        for data_model in self.dbt_source_obj.yield_data_models(mock_dbt_objects):  # noqa: B007
             pass
 
         # The method should process entities from sources, nodes, and exposures
@@ -2302,7 +2302,7 @@ class DbtUnitTest(TestCase):
         mock_dbt_objects.dbt_run_results = None
         mock_dbt_objects.dbt_sources = None
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dbt_source_obj,
             "is_filtered",
             return_value=MagicMock(is_filtered=False),
@@ -2544,7 +2544,7 @@ class DbtUnitTest(TestCase):
                 return MagicMock()
             return None
 
-        with patch.object(self.dbt_source_obj, "_get_table_entity", side_effect=fake_get_table_entity):
+        with patch.object(self.dbt_source_obj, "_get_table_entity", side_effect=fake_get_table_entity):  # noqa: SIM117
             with patch.object(
                 self.dbt_source_obj,
                 "is_filtered",
