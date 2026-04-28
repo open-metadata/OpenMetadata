@@ -14,11 +14,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.api.configuration.ClassicConfiguration;
@@ -162,6 +164,7 @@ public class MigrationWorkflow {
   private List<MigrationProcess> filterAndGetMigrationsToRun(
       List<MigrationFile> availableMigrations) {
     List<MigrationFile> applyMigrations = resolveApplyMigrations(availableMigrations);
+    List<MigrationProcessExtensionProvider> extensionProviders = loadExtensionProviders();
     List<MigrationProcess> processes = new ArrayList<>();
     try {
       for (MigrationFile file : applyMigrations) {
@@ -172,27 +175,35 @@ public class MigrationWorkflow {
               file.version);
           continue;
         }
-        String extClazzName = null;
-        if (file.version.contains("collate")) {
-          extClazzName = file.getMigrationProcessExtClassName();
-        }
-        if (extClazzName != null) {
-          MigrationProcess collateProcess =
-              (MigrationProcess)
-                  Class.forName(extClazzName).getConstructor(MigrationFile.class).newInstance(file);
-          processes.add(collateProcess);
-        } else {
-          String clazzName = file.getMigrationProcessClassName();
-          MigrationProcess openMetadataProcess =
-              (MigrationProcess)
-                  Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
-          processes.add(openMetadataProcess);
-        }
+        processes.add(resolveMigrationProcess(file, extensionProviders));
       }
     } catch (Exception e) {
       LOG.error("Failed to list and add migrations to run due to ", e);
     }
     return processes;
+  }
+
+  private MigrationProcess resolveMigrationProcess(
+      MigrationFile file, List<MigrationProcessExtensionProvider> extensionProviders)
+      throws ReflectiveOperationException {
+    if (file.isExtension) {
+      // No provider handled this extension version: run SQL only, skip Java data migration.
+      // Critical: do not fall through to OM's same-version native migration class.
+      return extensionProviders.stream()
+          .map(provider -> provider.provide(file))
+          .flatMap(Optional::stream)
+          .findFirst()
+          .orElseGet(() -> new MigrationProcessImpl(file));
+    }
+    String clazzName = file.getMigrationProcessClassName();
+    return (MigrationProcess)
+        Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
+  }
+
+  private List<MigrationProcessExtensionProvider> loadExtensionProviders() {
+    return StreamSupport.stream(
+            ServiceLoader.load(MigrationProcessExtensionProvider.class).spliterator(), false)
+        .toList();
   }
 
   private static int compareVersions(String version1, String version2) {

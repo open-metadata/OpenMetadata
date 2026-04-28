@@ -156,7 +156,7 @@ class QlikSenseClient:
             return dashboard_result.result.qDocList
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard list")
+            logger.error("Failed to fetch the dashboard list")
         return []
 
     def get_dashboard_charts(self, dashboard_id: str) -> List[QlikSheet]:
@@ -172,7 +172,7 @@ class QlikSenseClient:
             return data.result.qLayout.qAppObjectList.qItems
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard charts")
+            logger.error("Failed to fetch the dashboard charts")
         return []
 
     def _get_tables_via_get_tables_and_keys(self) -> Optional[List[QlikTable]]:
@@ -238,7 +238,7 @@ class QlikSenseClient:
             return self._get_tables_via_load_model()
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard datamodels")
+            logger.error("Failed to fetch the dashboard datamodels")
         return []
 
     def get_script(self) -> Optional[str]:
@@ -253,7 +253,7 @@ class QlikSenseClient:
                 return script_result.result.qScript
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the app load script")
+            logger.error("Failed to fetch the app load script")
         return None
 
     def get_script_tables(self) -> Dict[str, Set[str]]:
@@ -302,5 +302,5 @@ class QlikSenseClient:
             return QlikDashboardResult(**json.loads(resp))
         except ValidationError:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard datamodels")
+            logger.error("Failed to fetch the dashboard datamodels")
         return None
