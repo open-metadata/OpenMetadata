@@ -168,6 +168,4 @@ class SASClient:
         }
         url = base_url + endpoint
         response = requests.request("POST", url, headers=headers, data=payload, verify=False, timeout=10)
-        text_response = response.json()
-        logger.info(f"this is user: {user}, password: {password}, text: {text_response}")
         return response.json()["access_token"]
