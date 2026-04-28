@@ -676,11 +676,16 @@ public class SearchRepository {
     // future code path that hands an already-resolved canonical index name back into this method
     // (e.g. a helper layered on top of the new resolver). Empty tokens (from inputs like
     // "table," or "," with stray commas) are dropped instead of materializing as a bare prefix.
-    return Arrays.stream(name.split(","))
-        .map(String::trim)
-        .filter(index -> !index.isEmpty())
-        .map(index -> index.startsWith(prefix) ? index : prefix + index)
-        .collect(Collectors.joining(","));
+    String prefixed =
+        Arrays.stream(name.split(","))
+            .map(String::trim)
+            .filter(index -> !index.isEmpty())
+            .map(index -> index.startsWith(prefix) ? index : prefix + index)
+            .collect(Collectors.joining(","));
+    // If the input was nothing but commas/whitespace, return it unchanged rather than emitting
+    // an empty index list — mirrors prefixCommaList so degenerate inputs surface as the original
+    // ES error (unknown index "X") instead of a confusing empty-target error.
+    return prefixed.isEmpty() ? name : prefixed;
   }
 
   /**

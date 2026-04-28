@@ -185,6 +185,16 @@ class SearchRepositoryAliasResolutionTest {
     assertFalse(
         tokens.contains("tenant42_"),
         "Bare cluster prefix must not be emitted from empty tokens: " + embedded);
+
+    // All-empty input (only commas / whitespace) — return the original string unchanged rather
+    // than an empty index list. The downstream ES request will surface a normal "unknown index"
+    // error on the original token instead of a confusing empty-target error.
+    String allEmpty =
+        SearchRepository.resolveIndexes(
+            ", ,", false, false, entityIndexMap, aliasToChildEntityTypes, "tenant42");
+    assertEquals(", ,", allEmpty);
+    assertFalse(
+        allEmpty.isEmpty(), "All-empty input must not collapse to an empty string: " + allEmpty);
   }
 
   @Test
