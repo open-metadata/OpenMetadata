@@ -26,7 +26,7 @@ from .sql import (
     TableSeed,
     ViewDefinition,
 )
-from .types import BaselineSpec, Diff, DiffKind, SourceState
+from .types import BaselineSpec, Diff, DiffKind
 
 logger = logging.getLogger(__name__)
 
@@ -81,19 +81,7 @@ class SqlBaselineEnforcer:
         self._engine = engine
         self._baseline = baseline
 
-    # --- introspect -----------------------------------------------------
-
-    def introspect(self) -> SourceState:
-        if not self._baseline.schemas:
-            empty: _SqlSnapshot = {
-                "schemas": set(),
-                "tables": {},
-                "views": set(),
-                "stored_procedures": set(),
-            }
-            return SourceState(payload=empty)
-        with self._engine.connect() as conn:
-            return SourceState(payload=self._snapshot(conn))
+    # --- internal snapshot ----------------------------------------------
 
     def _snapshot(self, conn: Connection) -> _SqlSnapshot:
         inspector = inspect(conn)

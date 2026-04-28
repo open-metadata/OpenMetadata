@@ -3,10 +3,10 @@
 #  you may not use this file except in compliance with the License.
 """Protocol and base types for source baseline enforcement.
 
-Per Decision #18 of the v2 spec, baseline enforcement follows a three-phase
-lifecycle — introspect, compare, apply — that's uniform across source families
-(SQL, Dashboard, Pipeline). MVP ships only the SQL family; the Protocol is
-defined here so future families plug in without rework.
+Per Decision #18 of the v2 spec, baseline enforcement is a compare-then-apply
+lifecycle that's uniform across source families (SQL, Dashboard, Pipeline).
+MVP ships only the SQL family; the Protocol is defined here so future families
+plug in without rework.
 """
 
 from __future__ import annotations
@@ -69,29 +69,18 @@ class Diff:
         return f"  {self.path}:\n    expected: {self.expected!r}\n    actual:   {self.actual!r}"
 
 
-@dataclass(frozen=True)
-class SourceState:
-    """Opaque container for whatever `introspect()` found.
-
-    Shape is family-specific (a SQL enforcer may fill it with dicts of tables
-    keyed by (schema, name); a dashboard enforcer might fill it with API
-    response dicts). The orchestrator never unpacks `payload` — that's the
-    enforcer's private type.
-    """
-
-    payload: Any
-
-
 class SourceBaselineEnforcer(Protocol):
-    """Three-phase lifecycle implemented per connector family.
+    """Compare-then-apply lifecycle implemented per connector family.
 
     Enforcers are constructed by the per-connector baseline module (e.g.,
     `<connector>/baseline.py`) and handed to the orchestrator via an
-    EnforcementPolicy. The orchestrator calls these in order: introspect,
-    compare, and (in apply mode) apply.
-    """
+    EnforcementPolicy. The orchestrator calls `compare` first; if drifts
+    are returned and the policy mode is APPLY, it then calls `apply`.
 
-    def introspect(self) -> SourceState: ...
+    Implementations are free to do their own internal snapshotting — the
+    framework doesn't prescribe a separate "introspect" phase. Engine-
+    specific state caching belongs inside the enforcer.
+    """
 
     def compare(self, expected: BaselineSpec) -> list[Diff]: ...
 
