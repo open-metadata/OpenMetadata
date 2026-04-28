@@ -46,9 +46,10 @@ export interface QuestdbConnection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                     QuestDBScheme;
-    supportsDBTExtraction?:      boolean;
-    supportsMetadataExtraction?: boolean;
+    scheme?:                        QuestDBScheme;
+    supportsDBTExtraction?:         boolean;
+    supportsMetadataExtraction?:    boolean;
+    supportsViewLineageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */

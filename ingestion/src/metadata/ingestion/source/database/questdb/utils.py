@@ -11,20 +11,17 @@
 """
 QuestDB dialect helpers.
 
-QuestDB speaks the PostgreSQL wire protocol but only implements a minimal
-``pg_catalog`` — the standard PostgreSQL dialect queries fail because QuestDB
-cannot evaluate the casts and joins against ``pg_class``/``pg_attribute``.
+QuestDB speaks the PostgreSQL wire protocol with a minimal ``pg_catalog``.
+Column introspection queries ``information_schema.columns``.
+Table and view enumeration uses the QuestDB-native ``tables()`` table function,
+which exposes ``table_type``, ``partitionBy``, and ``designatedTimestamp``
+metadata absent from ``information_schema.tables``.
 
-``information_schema`` is fully supported, so we route the SQLAlchemy Inspector
-methods used by ``CommonDbSourceService`` there. Constraints and indexes always
-return empty results: QuestDB has no primary keys, foreign keys, unique
-constraints or secondary indexes (the designated timestamp is handled as
-table partitioning, not an index).
+Constraint and index introspection methods return empty collections, matching
+QuestDB's schema model.
 
 The dialect is patched on the per-engine ``Dialect`` instance returned by
-``sqlalchemy.create_engine``. Each ``create_engine`` call instantiates a fresh
-dialect object, so the patch is isolated to the QuestDB engine and never
-leaks to a concurrent real-PostgreSQL engine.
+``sqlalchemy.create_engine``, scoping the patch to that engine.
 """
 import types
 from typing import Any, Dict, List, Optional, Type
@@ -39,8 +36,6 @@ from sqlalchemy.types import (
     DOUBLE_PRECISION,
     FLOAT,
     INTEGER,
-    NUMERIC,
-    REAL,
     SMALLINT,
     TIMESTAMP,
     VARCHAR,
@@ -49,48 +44,46 @@ from sqlalchemy.types import (
     TypeEngine,
 )
 
+from metadata.ingestion.source.database.questdb.models import (
+    QuestDBColumnRow,
+    QuestDBTableRow,
+    QuestDBViewDefinitionRow,
+)
+from metadata.ingestion.source.database.questdb.queries import (
+    QUESTDB_GET_COLUMNS,
+    QUESTDB_GET_TABLES,
+    QUESTDB_GET_VIEW_DEFINITION,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 QUESTDB_DEFAULT_SCHEMA = "public"
 
-_INFORMATION_SCHEMA_TYPE_MAP: Dict[str, Type[TypeEngine]] = {
-    "bigint": BIGINT,
+_QUESTDB_NATIVE_TYPE_MAP: Dict[str, Type[TypeEngine]] = {
     "boolean": BOOLEAN,
-    "bytea": LargeBinary,
-    "character": CHAR,
-    "character varying": VARCHAR,
-    "date": DATE,
-    "double precision": DOUBLE_PRECISION,
+    "byte": SMALLINT,
+    "short": SMALLINT,
+    "int": INTEGER,
+    "long": BIGINT,
     "float": FLOAT,
-    "integer": INTEGER,
-    "numeric": NUMERIC,
-    "real": REAL,
-    "smallint": SMALLINT,
-    "timestamp without time zone": TIMESTAMP,
-    "timestamp with time zone": TIMESTAMP,
+    "double": DOUBLE_PRECISION,
+    "char": CHAR,
+    "symbol": VARCHAR,
+    "string": VARCHAR,
+    "varchar": VARCHAR,
+    "timestamp": TIMESTAMP,
+    "date": DATE,
+    "binary": LargeBinary,
+    "long256": NullType,
+    "uuid": VARCHAR,
+    "ipv4": VARCHAR,
+    "geohash": NullType,
 }
 
 
-def _information_schema_type(data_type: str) -> Type[TypeEngine]:
-    return _INFORMATION_SCHEMA_TYPE_MAP.get(data_type.lower(), NullType)
-
-
-def _get_table_names(
-    connection: Connection,
-    schema: Optional[str] = None,
-    table_type: str = "BASE TABLE",
-) -> List[str]:
-    result = connection.execute(
-        text(
-            "SELECT table_name FROM information_schema.tables "
-            "WHERE table_schema = :schema AND table_type = :table_type "
-            "ORDER BY table_name"
-        ),
-        {"schema": schema or QUESTDB_DEFAULT_SCHEMA, "table_type": table_type},
-    )
-    return [row[0] for row in result]
+def _questdb_native_type(data_type: str) -> Type[TypeEngine]:
+    return _QUESTDB_NATIVE_TYPE_MAP.get(data_type.lower(), NullType)
 
 
 def _get_columns(
@@ -98,25 +91,16 @@ def _get_columns(
     table_name: str,
     schema: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    result = connection.execute(
-        text(
-            "SELECT column_name, data_type, is_nullable, column_default "
-            "FROM information_schema.columns "
-            "WHERE table_schema = :schema AND table_name = :table_name "
-            "ORDER BY ordinal_position"
-        ),
-        {"schema": schema or QUESTDB_DEFAULT_SCHEMA, "table_name": table_name},
-    )
+    result = connection.execute(text(QUESTDB_GET_COLUMNS.format(table_name=table_name)))
     columns: List[Dict[str, Any]] = []
-    for column_name, data_type, is_nullable, column_default in result:
+    for raw in result:
+        row = QuestDBColumnRow.model_validate(dict(raw._mapping))
         columns.append(
             {
-                "name": column_name,
-                "type": _information_schema_type(data_type)(),
-                "nullable": (is_nullable or "YES").upper() == "YES",
-                "default": column_default,
-                "autoincrement": False,
-                "comment": None,
+                "name": row.column,
+                "type": _questdb_native_type(row.type)(),
+                "nullable": True,
+                "comment": "designated timestamp" if row.designated else None,
             }
         )
     return columns
@@ -134,40 +118,37 @@ def _empty_table_comment(*_args: Any, **_kwargs: Any) -> Dict[str, Any]:
     return {"text": None}
 
 
-def _none_view_definition(*_args: Any, **_kwargs: Any) -> Optional[str]:
-    return None
+def _query_tables(connection: Connection) -> List[QuestDBTableRow]:
+    """
+    Return all rows from QuestDB's ``tables()`` function as ``QuestDBTableRow`` instances.
+    """
+    result = connection.execute(text(QUESTDB_GET_TABLES))
+    return [QuestDBTableRow.model_validate(dict(row._mapping)) for row in result]
 
 
-def _none_table_owner(*_args: Any, **_kwargs: Any) -> Optional[str]:
-    return None
+def _get_view_definition_from_views(
+    connection: Connection,
+    view_name: str,
+    schema: Optional[str] = None,
+) -> Optional[str]:
+    result = connection.execute(
+        text(QUESTDB_GET_VIEW_DEFINITION),
+        {"name": view_name},
+    )
+    raw = result.fetchone()
+    if not raw:
+        return None
+    return QuestDBViewDefinitionRow.model_validate(dict(raw._mapping)).view_sql
 
 
 def patch_questdb_dialect(engine: Engine) -> Engine:
     """
     Replace the PostgreSQL dialect introspection methods on a given engine
     with QuestDB-safe equivalents backed by ``information_schema``.
-
-    The OpenMetadata Postgres source monkey-patches ``PGDialect.get_table_owner``
-    at class level (see ``postgres/metadata.py``) so it runs a
-    ``pg_catalog.pg_tables`` query — which QuestDB does not implement. We
-    shadow the method on the per-engine dialect instance to short-circuit the
-    query: QuestDB has no owner concept, so returning ``None`` is accurate.
     """
     dialect = engine.dialect
     logger.debug("Patching PostgreSQL dialect for QuestDB engine %s", engine.url)
 
-    dialect.get_table_names = types.MethodType(
-        lambda self, connection, schema=None, **_kw: _get_table_names(
-            connection, schema, table_type="BASE TABLE"
-        ),
-        dialect,
-    )
-    dialect.get_view_names = types.MethodType(
-        lambda self, connection, schema=None, **_kw: _get_table_names(
-            connection, schema, table_type="VIEW"
-        ),
-        dialect,
-    )
     dialect.get_columns = types.MethodType(
         lambda self, connection, table_name, schema=None, **_kw: _get_columns(
             connection, table_name, schema
@@ -193,9 +174,9 @@ def patch_questdb_dialect(engine: Engine) -> Engine:
         lambda self, *a, **kw: _empty_table_comment(), dialect
     )
     dialect.get_view_definition = types.MethodType(
-        lambda self, *a, **kw: _none_view_definition(), dialect
-    )
-    dialect.get_table_owner = types.MethodType(
-        lambda self, *a, **kw: _none_table_owner(), dialect
+        lambda self, connection, view_name, schema=None, **_kw: _get_view_definition_from_views(
+            connection, view_name, schema
+        ),
+        dialect,
     )
     return engine

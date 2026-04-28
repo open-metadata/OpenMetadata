@@ -1,4 +1,4 @@
-#  Copyright 2025 OpenMetadata
+#  Copyright 2025 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -32,10 +32,12 @@ from metadata.ingestion.connections.builders import (
     get_password_secret,
 )
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import (
-    test_connection_db_schema_sources,
-)
+from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.questdb.queries import (
+    QUESTDB_TEST_GET_TABLES,
+    QUESTDB_TEST_GET_VIEWS,
+)
 from metadata.ingestion.source.database.questdb.utils import patch_questdb_dialect
 from metadata.utils.constants import THREE_MIN
 
@@ -69,6 +71,9 @@ def get_connection_url(connection: QuestDBConnectionConfig) -> str:
 
 class QuestDBConnection(BaseConnection[QuestDBConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
+        """
+        Return the SQLAlchemy Engine for QuestDB.
+        """
         engine = create_generic_db_connection(
             connection=self.service_connection,
             get_connection_url_fn=get_connection_url,
@@ -77,6 +82,9 @@ class QuestDBConnection(BaseConnection[QuestDBConnectionConfig, Engine]):
         return patch_questdb_dialect(engine)
 
     def get_connection_dict(self) -> dict:
+        """
+        Return the connection dictionary for this service.
+        """
         raise NotImplementedError("get_connection_dict is not implemented for QuestDB")
 
     def test_connection(
@@ -85,10 +93,18 @@ class QuestDBConnection(BaseConnection[QuestDBConnectionConfig, Engine]):
         automation_workflow: Optional[AutomationWorkflow] = None,
         timeout_seconds: Optional[int] = THREE_MIN,
     ) -> TestConnectionResult:
-        return test_connection_db_schema_sources(
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        return test_connection_db_common(
             metadata=metadata,
             engine=self.client,
             service_connection=self.service_connection,
             automation_workflow=automation_workflow,
             timeout_seconds=timeout_seconds,
+            queries={
+                "GetTables": QUESTDB_TEST_GET_TABLES,
+                "GetViews": QUESTDB_TEST_GET_VIEWS,
+            },
         )

@@ -9,10 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 from metadata.ingestion.source.database.questdb.connection import QuestDBConnection
+from metadata.ingestion.source.database.questdb.lineage import QuestDBLineageSource
 from metadata.ingestion.source.database.questdb.metadata import QuestDBSource
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
     metadata_source_class=QuestDBSource,
+    lineage_source_class=QuestDBLineageSource,
     connection_class=QuestDBConnection,
 )
