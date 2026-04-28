@@ -119,6 +119,41 @@ class K8sPipelineClientConfigTest {
   }
 
   @Test
+  void testLocalhostSeccompRequiresProfilePath() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("seccompProfileType", "Localhost");
+
+    PipelineServiceClientException ex =
+        assertThrows(
+            PipelineServiceClientException.class, () -> new K8sPipelineClientConfig(params));
+    assertTrue(ex.getMessage().contains("seccompLocalhostProfile"));
+  }
+
+  @Test
+  void testLocalhostSeccompWithProfilePathIsAccepted() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("seccompProfileType", "Localhost");
+    params.put("seccompLocalhostProfile", "profiles/audit.json");
+
+    K8sPipelineClientConfig config = new K8sPipelineClientConfig(params);
+
+    assertEquals("Localhost", config.getSeccompProfileType());
+    assertEquals("profiles/audit.json", config.getSeccompLocalhostProfile());
+  }
+
+  @Test
+  void testSeccompLocalhostProfileWithoutLocalhostTypeIsRejected() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("seccompProfileType", "RuntimeDefault");
+    params.put("seccompLocalhostProfile", "profiles/audit.json");
+
+    PipelineServiceClientException ex =
+        assertThrows(
+            PipelineServiceClientException.class, () -> new K8sPipelineClientConfig(params));
+    assertTrue(ex.getMessage().contains("seccompLocalhostProfile"));
+  }
+
+  @Test
   void testResourceConfiguration() {
     Map<String, Object> params = new HashMap<>();
     Map<String, Map<String, String>> resources = new HashMap<>();

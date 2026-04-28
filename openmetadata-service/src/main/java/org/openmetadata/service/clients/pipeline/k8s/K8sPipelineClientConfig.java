@@ -53,6 +53,7 @@ public class K8sPipelineClientConfig {
   private static final String FS_GROUP_KEY = "fsGroup";
   private static final String RUN_AS_NON_ROOT_KEY = "runAsNonRoot";
   private static final String SECCOMP_PROFILE_TYPE_KEY = "seccompProfileType";
+  private static final String SECCOMP_LOCALHOST_PROFILE_KEY = "seccompLocalhostProfile";
   private static final String EXTRA_ENV_VARS_KEY = "extraEnvVars";
   private static final String POD_ANNOTATIONS_KEY = "podAnnotations";
   private static final String TOLERATIONS_KEY = "tolerations";
@@ -85,6 +86,7 @@ public class K8sPipelineClientConfig {
   private final Long fsGroup;
   private final boolean runAsNonRoot;
   private final String seccompProfileType;
+  private final String seccompLocalhostProfile;
 
   // Extra configuration
   private final Map<String, String> extraEnvVars;
@@ -127,6 +129,9 @@ public class K8sPipelineClientConfig {
     String rawSeccompProfileType = getStringParam(params, SECCOMP_PROFILE_TYPE_KEY, "");
     this.seccompProfileType =
         StringUtils.isBlank(rawSeccompProfileType) ? null : rawSeccompProfileType.trim();
+    String rawSeccompLocalhostProfile = getStringParam(params, SECCOMP_LOCALHOST_PROFILE_KEY, "");
+    this.seccompLocalhostProfile =
+        StringUtils.isBlank(rawSeccompLocalhostProfile) ? null : rawSeccompLocalhostProfile.trim();
 
     // Extra configuration - parse as list like Argo does
     List<String> rawExtraEnvs = parseListSafely(params.get(EXTRA_ENV_VARS_KEY));
@@ -200,6 +205,13 @@ public class K8sPipelineClientConfig {
           String.format(
               "seccompProfileType '%s' is invalid - must be one of RuntimeDefault, Localhost, Unconfined",
               seccompProfileType));
+    }
+    if ("Localhost".equals(seccompProfileType) && seccompLocalhostProfile == null) {
+      errors.add(
+          "seccompLocalhostProfile must be set when seccompProfileType is 'Localhost'");
+    } else if (!"Localhost".equals(seccompProfileType) && seccompLocalhostProfile != null) {
+      errors.add(
+          "seccompLocalhostProfile may only be set when seccompProfileType is 'Localhost'");
     }
 
     if (!errors.isEmpty()) {

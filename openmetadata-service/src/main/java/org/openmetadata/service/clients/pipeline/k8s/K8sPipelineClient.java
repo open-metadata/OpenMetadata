@@ -1629,7 +1629,11 @@ public class K8sPipelineClient extends PipelineServiceClient {
     if (StringUtils.isBlank(type)) {
       return null;
     }
-    return new V1SeccompProfile().type(type);
+    V1SeccompProfile profile = new V1SeccompProfile().type(type);
+    if ("Localhost".equals(type)) {
+      profile.localhostProfile(k8sConfig.getSeccompLocalhostProfile());
+    }
+    return profile;
   }
 
   @VisibleForTesting
