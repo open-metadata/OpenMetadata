@@ -12,7 +12,6 @@
  */
 
 import type {
-  CSSProperties,
   FC,
   KeyboardEvent as ReactKeyboardEvent,
   ReactNode,
@@ -26,6 +25,7 @@ import {
 } from 'react';
 import type { Key } from 'react-aria-components';
 import { normalizeHexColor } from '@/colors/colorValidation';
+import { ENTITY_PALETTE_HEX } from '@/colors/entityPalette';
 import { Tabs } from '@/components/application/tabs/tabs';
 import { Box } from '@/components/base/box/box';
 import { Button } from '@/components/base/buttons/button';
@@ -37,35 +37,26 @@ import type {
   FormSelectItem,
   IconPickerFieldLabels,
 } from '../form-field.types';
-import { DEFAULT_COLOR_OPTIONS } from './color-picker-field';
+
+const TRIGGER_ICON_CLASSNAME =
+  'tw:block tw:size-5 tw:text-white tw:[stroke-width:1.25]';
+const GRID_ICON_CLASSNAME =
+  'tw:block tw:size-5 tw:text-primary tw:[stroke-width:1.25]';
 
 const renderSelectItemIcon = (
   icon: FormSelectItem['icon'],
   className: string,
-  {
-    size = 20,
-    style,
-  }: {
-    size?: number;
-    style?: CSSProperties;
-  } = {}
+  { size = 20 }: { size?: number } = {}
 ) => {
   if (isReactComponent(icon)) {
     return createElement(icon, {
       'aria-hidden': true,
       className,
       size,
-      style,
     });
   }
 
   return isValidElement(icon) ? icon : null;
-};
-
-const ICON_STYLE: CSSProperties = {
-  color: 'white',
-  display: 'block',
-  strokeWidth: 1.25,
 };
 
 const getDefaultIconPreview = (
@@ -75,15 +66,11 @@ const getDefaultIconPreview = (
   if (defaultIcon && isReactComponent(defaultIcon.component)) {
     return renderSelectItemIcon(
       defaultIcon.component,
-      'tw:size-5 tw:text-white',
-      { size: 20, style: ICON_STYLE }
+      TRIGGER_ICON_CLASSNAME
     );
   }
 
-  return renderSelectItemIcon(items[0]?.icon, 'tw:size-5 tw:text-white', {
-    size: 20,
-    style: ICON_STYLE,
-  });
+  return renderSelectItemIcon(items[0]?.icon, TRIGGER_ICON_CLASSNAME);
 };
 
 export interface IconPickerFieldProps {
@@ -127,7 +114,7 @@ export const IconPickerField = ({
   const selectedItem = items.find((item) => item.id === value);
   const backgroundColor =
     (backgroundColorProp ? normalizeHexColor(backgroundColorProp) : null) ??
-    DEFAULT_COLOR_OPTIONS[6];
+    ENTITY_PALETTE_HEX[6];
   const hasCustomImage = allowUrl && value !== '' && !selectedItem;
   const onBlurRef = useRef(onBlur);
   onBlurRef.current = onBlur;
@@ -178,11 +165,7 @@ export const IconPickerField = ({
 
   const triggerPreview = (() => {
     if (selectedItem) {
-      return renderSelectItemIcon(
-        selectedItem.icon,
-        'tw:size-5 tw:text-white',
-        { size: 20, style: ICON_STYLE }
-      );
+      return renderSelectItemIcon(selectedItem.icon, TRIGGER_ICON_CLASSNAME);
     }
 
     if (hasCustomImage) {
@@ -221,15 +204,7 @@ export const IconPickerField = ({
             const isSelected = selectedItem?.id === item.id;
             const previewIcon = renderSelectItemIcon(
               item.icon,
-              'tw:size-5 tw:text-primary',
-              {
-                size: 20,
-                style: {
-                  color: 'currentColor',
-                  display: 'block',
-                  strokeWidth: 1.25,
-                },
-              }
+              GRID_ICON_CLASSNAME
             );
 
             const commonButtonProps = {

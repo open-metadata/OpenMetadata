@@ -19,8 +19,6 @@ import { Button } from '@/components/base/buttons/button';
 import { Typography } from '@/components/foundations/typography';
 import { cx } from '@/utils/cx';
 
-export const DEFAULT_COLOR_OPTIONS = ENTITY_PALETTE_HEX;
-
 export interface ColorPickerFieldProps {
   ariaLabel?: string;
   colors?: string[];
@@ -45,7 +43,7 @@ export const ColorPickerField = ({
   value,
 }: ColorPickerFieldProps) => {
   const normalizedValue = normalizeHexColor(value);
-  const colorOptions = (Array.isArray(colors) ? colors : DEFAULT_COLOR_OPTIONS)
+  const colorOptions = (Array.isArray(colors) ? colors : ENTITY_PALETTE_HEX)
     .map((color) => normalizeHexColor(color))
     .filter((color): color is string => Boolean(color));
   const palette = [...colorOptions];
