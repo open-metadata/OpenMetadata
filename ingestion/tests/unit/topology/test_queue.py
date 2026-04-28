@@ -12,6 +12,7 @@
 """
 Check queue operations
 """
+
 from unittest import TestCase
 
 from metadata.ingestion.models.topology import Queue
@@ -20,7 +21,7 @@ from metadata.ingestion.models.topology import Queue
 class QueueTest(TestCase):
     """Validate queue ops"""
 
-    def __init__(self, methodName) -> None:
+    def __init__(self, methodName) -> None:  # noqa: N803
         super().__init__(methodName)
         self.queue = Queue()
 

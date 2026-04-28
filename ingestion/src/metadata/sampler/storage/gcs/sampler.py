@@ -11,8 +11,9 @@
 """
 GCS sampler implementation
 """
+
 import secrets
-from typing import Optional, Tuple
+from typing import Optional, Tuple  # noqa: UP035
 
 from google.cloud.exceptions import NotFound
 
@@ -46,7 +47,7 @@ class GCSSampler(StorageSampler):
         gcs_clients = get_connection(self.service_connection_config)
         return gcs_clients.storage_client
 
-    def _get_bucket_and_project(self) -> Tuple[str, Optional[str]]:
+    def _get_bucket_and_project(self) -> Tuple[str, Optional[str]]:  # noqa: UP006, UP045
         """
         Extract bucket name from container FQN and find the project ID
         Returns: (bucket_name, project_id)
@@ -62,7 +63,7 @@ class GCSSampler(StorageSampler):
                 client.get_bucket(bucket_name)
                 self._project_id = project_id
                 self._gcs_client = client
-                return bucket_name, project_id
+                return bucket_name, project_id  # noqa: TRY300
             except NotFound:
                 continue
 
@@ -88,7 +89,7 @@ class GCSSampler(StorageSampler):
         """
         return [entry.name for entry in blobs if entry.name.endswith(file_format)]
 
-    def _get_sample_file_path(self) -> Optional[str]:
+    def _get_sample_file_path(self) -> Optional[str]:  # noqa: UP045
         """Get a sample file path from the container"""
         bucket_name, project_id = self._get_bucket_and_project()
 
@@ -100,9 +101,7 @@ class GCSSampler(StorageSampler):
 
         prefix = self.entity.prefix
         if not prefix:
-            logger.warning(
-                f"Container {self.entity.fullyQualifiedName.root} has no prefix"
-            )
+            logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no prefix")
             return None
 
         prefix_without_leading_slash = prefix.lstrip("/")
@@ -112,9 +111,7 @@ class GCSSampler(StorageSampler):
 
         try:
             gcs_client = self._gcs_client or self.client.clients[project_id]
-            response = gcs_client.list_blobs(
-                bucket_name, prefix=prefix_without_leading_slash, max_results=1000
-            )
+            response = gcs_client.list_blobs(bucket_name, prefix=prefix_without_leading_slash, max_results=1000)
 
             candidate_keys = self._filter_candidate_blobs(response, file_format.value)
 
@@ -128,7 +125,7 @@ class GCSSampler(StorageSampler):
             logger.warning(
                 f"No valid files found in GCS bucket {bucket_name} with prefix {prefix_without_leading_slash}"
             )
-            return None
+            return None  # noqa: TRY300
 
         except Exception as exc:
             logger.warning(

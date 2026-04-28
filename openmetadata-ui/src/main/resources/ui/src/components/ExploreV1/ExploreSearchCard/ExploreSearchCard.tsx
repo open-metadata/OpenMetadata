@@ -207,10 +207,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       return _otherDetails;
     }, [source]);
 
-    const serviceIcon = useMemo(() => {
-      return searchClassBase.getServiceIcon(source);
-    }, [source]);
-
     const breadcrumbs = useMemo(
       () =>
         searchClassBase.getEntityBreadcrumbs(
@@ -242,13 +238,20 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
         return (
           <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
-            {searchClassBase.getEntityIcon(source.entityType ?? '')}
+            {searchClassBase.getEntityIcon(
+              source.entityType ?? '',
+              'text-link-color'
+            )}
           </span>
         );
       }
 
       return null;
     }, [source, showEntityIcon]);
+
+    const serviceIcon = useMemo(() => {
+      return searchClassBase.getServiceIcon(source);
+    }, [source]);
 
     const entityLink = useMemo(
       () => searchClassBase.getEntityLink(source),

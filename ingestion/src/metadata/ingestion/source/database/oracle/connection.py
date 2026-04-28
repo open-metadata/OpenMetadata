@@ -15,6 +15,7 @@ Source connection handler
 import base64
 import binascii
 import io
+
 import os
 import shutil
 import sys
@@ -222,6 +223,13 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         Create connection
         """
         self._configure_autonomous_connection_arguments()
+        try:
+            if self.service_connection.instantClientDirectory:
+                logger.info(f"Initializing Oracle thick client at {self.service_connection.instantClientDirectory}")
+                os.environ[LD_LIB_ENV] = self.service_connection.instantClientDirectory
+                oracledb.init_oracle_client(lib_dir=self.service_connection.instantClientDirectory)
+        except DatabaseError as err:
+            logger.info(f"Could not initialize Oracle thick client: {err}")
 
         if not self._is_autonomous_connection():
             try:
@@ -252,8 +260,8 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
@@ -263,9 +271,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         self.client.dialect.table_prefix = table_prefix
         test_conn_queries = {
             "CheckAccess": CHECK_ACCESS_TO_ALL.format(prefix=table_prefix),
-            "PackageAccess": TEST_ORACLE_GET_STORED_PACKAGES.format(
-                prefix=table_prefix
-            ),
+            "PackageAccess": TEST_ORACLE_GET_STORED_PACKAGES.format(prefix=table_prefix),
             "GetMaterializedViews": TEST_MATERIALIZED_VIEWS.format(prefix=table_prefix),
             "GetQueryHistory": TEST_QUERY_HISTORY,
         }
@@ -298,13 +304,9 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
 
         # Add connection type specific information
         if isinstance(connection_copy.oracleConnectionType, OracleDatabaseSchema):
-            connection_dict[
-                "database"
-            ] = connection_copy.oracleConnectionType.databaseSchema
+            connection_dict["database"] = connection_copy.oracleConnectionType.databaseSchema
         elif isinstance(connection_copy.oracleConnectionType, OracleServiceName):
-            connection_dict[
-                "database"
-            ] = connection_copy.oracleConnectionType.oracleServiceName
+            connection_dict["database"] = connection_copy.oracleConnectionType.oracleServiceName
         elif isinstance(connection_copy.oracleConnectionType, OracleTNSConnection):
             connection_dict[
                 "host"
@@ -316,6 +318,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
                 connection_copy.oracleConnectionType
             )
             connection_dict["host"] = autonomous_connection.tnsAlias
+            connection_dict["host"] = connection_copy.oracleConnectionType.oracleTNSConnection
 
         # Add connection options if present
         if connection_copy.connectionOptions and connection_copy.connectionOptions.root:
@@ -323,10 +326,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
             connection_dict.update(connection_copy.connectionOptions.root)
 
         # Add connection arguments if present
-        if (
-            connection_copy.connectionArguments
-            and connection_copy.connectionArguments.root
-        ):
+        if connection_copy.connectionArguments and connection_copy.connectionArguments.root:
             connection_dict.update(get_connection_args_common(connection_copy))
 
         return connection_dict
@@ -352,11 +352,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
 
         options = get_connection_options_dict(connection)
         if options:
-            params = "&".join(
-                f"{key}={quote_plus(value)}"
-                for (key, value) in options.items()
-                if value
-            )
+            params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
             if isinstance(connection.oracleConnectionType, OracleServiceName):
                 url = f"{url}&{params}"
             else:
@@ -395,6 +391,6 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
 
         if isinstance(connection.oracleConnectionType, OracleServiceName):
             url = f"{url}/?service_name={connection.oracleConnectionType.oracleServiceName}"
-            return url
+            return url  # noqa: RET504
 
         raise ValueError(f"Unknown connection type {connection.oracleConnectionType}")

@@ -12,13 +12,18 @@ import json
 import pkgutil
 import traceback
 from pathlib import Path
-from typing import Dict
+from typing import Dict  # noqa: UP035
 
 import airflow
 from airflow import DAG, settings
 from airflow.models import DagModel
 from flask import escape
 from jinja2 import Template
+
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+)
+from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from openmetadata_managed_apis.api.config import (
     AIRFLOW_DAGS_FOLDER,
     DAG_GENERATED_CONFIGS,
@@ -33,15 +38,10 @@ from openmetadata_managed_apis.api.utils import (
 )
 from openmetadata_managed_apis.utils.logger import operations_logger
 
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    IngestionPipeline,
-)
-from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
-
 logger = operations_logger()
 
 
-class DeployDagException(Exception):
+class DeployDagException(Exception):  # noqa: N818
     """
     Error when deploying the DAG
     """
@@ -65,10 +65,10 @@ def dump_with_safe_jwt(ingestion_pipeline: IngestionPipeline) -> str:
     Then, the client will pick up the right secret when the workflow is triggered.
     """
     pipeline_json = ingestion_pipeline.model_dump(mode="json", exclude_defaults=False)
-    pipeline_json["openMetadataServerConnection"]["securityConfig"][
-        "jwtToken"
-    ] = ingestion_pipeline.openMetadataServerConnection.securityConfig.jwtToken.get_secret_value(
-        skip_secret_manager=True
+    pipeline_json["openMetadataServerConnection"]["securityConfig"]["jwtToken"] = (
+        ingestion_pipeline.openMetadataServerConnection.securityConfig.jwtToken.get_secret_value(
+            skip_secret_manager=True
+        )
     )
     return json.dumps(pipeline_json, ensure_ascii=True)
 
@@ -80,9 +80,7 @@ class DagDeployer:
     """
 
     def __init__(self, ingestion_pipeline: IngestionPipeline):
-        logger.info(
-            f"Received the following Airflow Configuration: {ingestion_pipeline.airflowConfig}"
-        )
+        logger.info(f"Received the following Airflow Configuration: {ingestion_pipeline.airflowConfig}")
         # we need to instantiate the secret manager in case secrets are passed
         SecretsManagerFactory(
             ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider,
@@ -91,9 +89,7 @@ class DagDeployer:
         self.ingestion_pipeline = ingestion_pipeline
         self.dag_id = clean_dag_id(self.ingestion_pipeline.name.root)
 
-    def store_airflow_pipeline_config(
-        self, dag_config_file_path: Path
-    ) -> Dict[str, str]:
+    def store_airflow_pipeline_config(self, dag_config_file_path: Path) -> Dict[str, str]:  # noqa: UP006
         """
         Store the airflow pipeline config in a JSON file and
         return the path for the Jinja rendering.
@@ -102,12 +98,12 @@ class DagDeployer:
         dag_config_file_path.parent.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Saving file to {dag_config_file_path}")
-        with open(dag_config_file_path, "w") as outfile:
+        with open(dag_config_file_path, "w") as outfile:  # noqa: PTH123
             outfile.write(dump_with_safe_jwt(self.ingestion_pipeline))
 
         return {"workflow_config_file": str(dag_config_file_path)}
 
-    def store_and_validate_dag_file(self, dag_runner_config: Dict[str, str]) -> str:
+    def store_and_validate_dag_file(self, dag_runner_config: Dict[str, str]) -> str:  # noqa: UP006
         """
         Stores the Python file generating the DAG and returns
         the rendered strings
@@ -125,7 +121,7 @@ class DagDeployer:
         if not dag_py_file.parent.is_dir():
             dag_py_file.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(dag_py_file, "w") as f:
+        with open(dag_py_file, "w") as f:  # noqa: PTH123
             f.write(rendered_dag)
 
         try:
@@ -133,7 +129,7 @@ class DagDeployer:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to import dag_file [{dag_py_file}]: {exc}")
-            raise exc
+            raise exc  # noqa: TRY201
 
         if dag_file is None:
             raise DeployDagException(f"Failed to import dag_file [{dag_py_file}]")
@@ -153,9 +149,9 @@ class DagDeployer:
         with settings.Session() as session:
             try:
                 dag_bag = get_dagbag()
-                logger.info("dagbag size {}".format(dag_bag.size()))
+                logger.info("dagbag size {}".format(dag_bag.size()))  # noqa: UP032
                 found_dags = dag_bag.process_file(dag_py_file)
-                logger.info("processed dags {}".format(found_dags))
+                logger.info("processed dags {}".format(found_dags))  # noqa: UP032
                 dag: DAG = dag_bag.get_dag(self.dag_id, session=session)
 
                 if hasattr(dag, "sync_to_db"):
@@ -165,23 +161,17 @@ class DagDeployer:
                         "Airflow version %s does not support dag.sync_to_db; relying on scheduler scan.",
                         airflow.__version__,
                     )
-                dag_model = (
-                    session.query(DagModel)
-                    .filter(DagModel.dag_id == self.dag_id)
-                    .first()
-                )
+                dag_model = session.query(DagModel).filter(DagModel.dag_id == self.dag_id).first()
                 logger.info("dag_model:" + str(dag_model))
             except Exception as exc:
                 msg = f"Workflow [{self.dag_id}] failed to refresh due to [{exc}]"
                 logger.debug(traceback.format_exc())
                 logger.error(msg)
-                return ApiResponse.server_error({f"message": msg})
+                return ApiResponse.server_error({f"message": msg})  # noqa: F541
 
         scan_dags_job_background()
 
-        return ApiResponse.success(
-            {"message": f"Workflow [{escape(self.dag_id)}] has been created"}
-        )
+        return ApiResponse.success({"message": f"Workflow [{escape(self.dag_id)}] has been created"})
 
     def deploy(self):
         """
@@ -194,4 +184,4 @@ class DagDeployer:
         dag_py_file = self.store_and_validate_dag_file(dag_runner_config)
         response = self.refresh_session_dag(dag_py_file)
 
-        return response
+        return response  # noqa: RET504
