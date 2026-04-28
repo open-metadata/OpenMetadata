@@ -48,24 +48,37 @@ class ReindexingUtilStaleRelationshipTest {
             new EntityError().withMessage(ENTITY_NOT_FOUND_MESSAGE)));
     assertTrue(
         ReindexingUtil.isEntityNotFoundError(
-            new EntityError().withMessage("Table 'foo' not found in database 'bar'")));
-    assertTrue(
-        ReindexingUtil.isEntityNotFoundError(
             new EntityError().withMessage("Instance for testCase with id ... ")));
     assertTrue(
         ReindexingUtil.isEntityNotFoundError(
             new EntityError().withMessage("Resource does not exist anymore")));
+    assertTrue(
+        ReindexingUtil.isEntityNotFoundError(
+            new EntityError().withMessage("Entity not found: testCase abc-123")));
   }
 
   @Test
-  void isEntityNotFoundError_doesNotMatchUnrelatedMessages() {
+  void isEntityNotFoundError_doesNotMatchBareNotFoundOrUnrelatedMessages() {
     assertFalse(
         ReindexingUtil.isEntityNotFoundError(new EntityError().withMessage(REAL_ERROR_MESSAGE)));
     assertFalse(
         ReindexingUtil.isEntityNotFoundError(
             new EntityError().withMessage("Database connection refused")));
+    assertFalse(
+        ReindexingUtil.isEntityNotFoundError(
+            new EntityError().withMessage("Column 'status' not found in result set")));
+    assertFalse(
+        ReindexingUtil.isEntityNotFoundError(
+            new EntityError().withMessage("SSL certificate not found")));
     assertFalse(ReindexingUtil.isEntityNotFoundError(null));
     assertFalse(ReindexingUtil.isEntityNotFoundError(new EntityError()));
+  }
+
+  @Test
+  void partitionErrors_throwsOnNullWarningsOut() {
+    org.junit.jupiter.api.Assertions.assertThrows(
+        NullPointerException.class,
+        () -> ReindexingUtil.partitionErrors(List.of(new EntityError().withMessage("x")), null));
   }
 
   @Test

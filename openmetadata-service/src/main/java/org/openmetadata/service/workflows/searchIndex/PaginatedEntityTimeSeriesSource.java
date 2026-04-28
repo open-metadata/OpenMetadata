@@ -126,6 +126,7 @@ public class PaginatedEntityTimeSeriesSource
           result.getData().size(),
           result.getErrors().size(),
           warningsCount);
+      updateStats(result.getData().size(), result.getErrors().size(), warningsCount);
     } catch (Exception e) {
       IndexingError indexingError =
           new IndexingError()
@@ -232,12 +233,14 @@ public class PaginatedEntityTimeSeriesSource
               true);
 
       int warningsCount = filterStaleRelationshipErrors(result);
+      int failedCount = result.getErrors() != null ? result.getErrors().size() : 0;
       LOG.debug(
           "[PaginatedEntityTimeSeriesSource] Keyset batch stats — Submitted: {} Success: {} Failed: {} Warnings: {}",
           batchSize,
           result.getData().size(),
-          result.getErrors() != null ? result.getErrors().size() : 0,
+          failedCount,
           warningsCount);
+      updateStats(result.getData().size(), failedCount, warningsCount);
       return result;
     } catch (Exception e) {
       LOG.error(

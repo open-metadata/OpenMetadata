@@ -143,6 +143,9 @@ class PaginatedEntityTimeSeriesSourceStaleRelationshipTest {
       assertEquals(1, result.getData().size());
       assertTrue(result.getErrors().isEmpty());
       assertEquals(1, result.getWarningsCount());
+      assertEquals(1, source.getStats().getSuccessRecords());
+      assertEquals(0, source.getStats().getFailedRecords());
+      assertEquals(1, source.getStats().getWarningRecords());
     }
   }
 
