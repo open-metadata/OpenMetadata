@@ -202,7 +202,7 @@ def test_get_columns_maps_native_questdb_types():
         _row(column="blob_data", type="binary", designated=False),
     ]
 
-    columns = _get_columns(connection, "sensor_readings", "public")
+    columns = _get_columns(connection, "sensor_readings")
 
     by_name = {c["name"]: c for c in columns}
     assert type(by_name["ts"]["type"]).__name__ == "TIMESTAMP"
@@ -225,7 +225,7 @@ def test_get_columns_marks_designated_timestamp_in_comment():
         _row(column="value", type="double", designated=False),
     ]
 
-    columns = _get_columns(connection, "trades", "public")
+    columns = _get_columns(connection, "trades")
     by_name = {c["name"]: c for c in columns}
 
     assert by_name["ts"]["comment"] == "designated timestamp"
@@ -238,7 +238,7 @@ def test_get_columns_falls_back_to_nulltype_for_unknown_type():
     connection = MagicMock()
     connection.execute.return_value = [_row(column="weird_col", type="magical_unknown_type", designated=False)]
 
-    columns = _get_columns(connection, "t", "public")
+    columns = _get_columns(connection, "t")
 
     assert type(columns[0]["type"]).__name__ == "NullType"
 
@@ -349,7 +349,7 @@ def test_get_view_definition_from_views_returns_sql():
         view_sql="SELECT ts, sensor_id FROM iot_alerts WHERE severity = 'critical'"
     )
 
-    definition = _get_view_definition_from_views(connection, "iot_critical_alerts", "public")
+    definition = _get_view_definition_from_views(connection, "iot_critical_alerts")
 
     assert definition == "SELECT ts, sensor_id FROM iot_alerts WHERE severity = 'critical'"
     query_text = str(connection.execute.call_args[0][0])

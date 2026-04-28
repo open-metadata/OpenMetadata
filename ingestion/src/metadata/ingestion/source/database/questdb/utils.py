@@ -90,7 +90,6 @@ def _questdb_native_type(data_type: str) -> type[TypeEngine]:
 def _get_columns(
     connection: Connection,
     table_name: str,
-    schema: str | None = None,
 ) -> list[dict[str, Any]]:
     result = connection.execute(text(QUESTDB_GET_COLUMNS.format(table_name=table_name)))
     columns: list[dict[str, Any]] = []
@@ -130,7 +129,6 @@ def _query_tables(connection: Connection) -> list[QuestDBTableRow]:
 def _get_view_definition_from_views(
     connection: Connection,
     view_name: str,
-    schema: str | None = None,
 ) -> str | None:
     result = connection.execute(
         text(QUESTDB_GET_VIEW_DEFINITION),
@@ -151,7 +149,7 @@ def patch_questdb_dialect(engine: Engine) -> Engine:
     logger.debug("Patching PostgreSQL dialect for QuestDB engine %s", engine.url)
 
     dialect.get_columns = types.MethodType(
-        lambda self, connection, table_name, schema=None, **_kw: _get_columns(connection, table_name, schema),
+        lambda self, connection, table_name, schema=None, **_kw: _get_columns(connection, table_name),
         dialect,
     )
     dialect.get_pk_constraint = types.MethodType(lambda self, *a, **kw: _empty_pk_constraint(), dialect)
@@ -161,9 +159,7 @@ def patch_questdb_dialect(engine: Engine) -> Engine:
     dialect.get_check_constraints = types.MethodType(lambda self, *a, **kw: _empty_list(), dialect)
     dialect.get_table_comment = types.MethodType(lambda self, *a, **kw: _empty_table_comment(), dialect)
     dialect.get_view_definition = types.MethodType(
-        lambda self, connection, view_name, schema=None, **_kw: _get_view_definition_from_views(
-            connection, view_name, schema
-        ),
+        lambda self, connection, view_name, schema=None, **_kw: _get_view_definition_from_views(connection, view_name),
         dialect,
     )
     return engine
