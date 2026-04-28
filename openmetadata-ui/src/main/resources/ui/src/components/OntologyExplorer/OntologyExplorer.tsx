@@ -271,40 +271,42 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               testId="ontology-graph-render-error"
             />
           }>
-        <OntologyGraph
-          edges={graphDataToShow.edges}
-          expandedTermIds={
-            explorationMode === 'data' ? expandedTermIds : undefined
-          }
-          explorationMode={isHierarchyView ? 'hierarchy' : explorationMode}
-          focusNodeId={
-            explorationMode === 'data' ? selectedNode?.id ?? entityId : entityId
-          }
-          glossaries={glossaries}
-          glossaryColorMap={glossaryColorMap}
-          hierarchyCombos={
-            isHierarchyView && hierarchyGraphData
-              ? hierarchyGraphData.combos.map((c) => ({
-                  glossaryId: c.glossaryId,
-                  id: c.id,
-                  label: c.label,
-                }))
-              : undefined
-          }
-          nodePositions={hierarchyBakedPositions}
-          nodes={graphDataToShow.nodes}
-          ref={graphRef}
-          selectedNodeId={
-            explorationMode === 'data' && expandedTermIds.size > 1
-              ? null
-              : selectedNode?.id
-          }
-          settings={settings}
-          onNodeClick={handleGraphNodeClick}
-          onNodeDoubleClick={handleGraphNodeDoubleClick}
-          onPaneClick={handleGraphPaneClick}
-          onScrollNearEdge={handleScrollNearEdge}
-        />
+          <OntologyGraph
+            edges={graphDataToShow.edges}
+            expandedTermIds={
+              explorationMode === 'data' ? expandedTermIds : undefined
+            }
+            explorationMode={isHierarchyView ? 'hierarchy' : explorationMode}
+            focusNodeId={
+              explorationMode === 'data'
+                ? selectedNode?.id ?? entityId
+                : entityId
+            }
+            glossaries={glossaries}
+            glossaryColorMap={glossaryColorMap}
+            hierarchyCombos={
+              isHierarchyView && hierarchyGraphData
+                ? hierarchyGraphData.combos.map((c) => ({
+                    glossaryId: c.glossaryId,
+                    id: c.id,
+                    label: c.label,
+                  }))
+                : undefined
+            }
+            nodePositions={hierarchyBakedPositions}
+            nodes={graphDataToShow.nodes}
+            ref={graphRef}
+            selectedNodeId={
+              explorationMode === 'data' && expandedTermIds.size > 1
+                ? null
+                : selectedNode?.id
+            }
+            settings={settings}
+            onNodeClick={handleGraphNodeClick}
+            onNodeDoubleClick={handleGraphNodeDoubleClick}
+            onPaneClick={handleGraphPaneClick}
+            onScrollNearEdge={handleScrollNearEdge}
+          />
         </ErrorBoundary>
         {isLoadingMore && (
           <>

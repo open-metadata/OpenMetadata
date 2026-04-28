@@ -1217,7 +1217,10 @@ export function useOntologyGraph({
       const W = c.offsetWidth;
       const H = c.offsetHeight;
       // Canvas Y that corresponds to the toolbar zone in viewport space.
-      const canvasAtToolbar = g.getCanvasByViewport([W / 2, H - TOOLBAR_AREA_PX]);
+      const canvasAtToolbar = g.getCanvasByViewport([
+        W / 2,
+        H - TOOLBAR_AREA_PX,
+      ]);
       const cvpAtToolbar = Array.isArray(canvasAtToolbar)
         ? canvasAtToolbar[1]
         : (canvasAtToolbar as unknown as ArrayLike<number>)[1];

@@ -249,19 +249,10 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
               as="span"
               className="tw:whitespace-nowrap tw:text-(--color-text-tertiary)"
               size="text-sm">
-              {loadedTermCount}/{totalTermCount} {t('label.term-plural-lowercase')}
+              {loadedTermCount}/{totalTermCount}{' '}
+              {t('label.term-plural-lowercase')}
             </Typography>
           )}
-        {onClearAll && hasActiveFilters && (
-          <Button
-            color="tertiary"
-            data-testid="ontology-clear-all-btn"
-            isDisabled={isLoading}
-            size="sm"
-            onClick={onClearAll}>
-            {t('label.clear-entity', { entity: t('label.all-lowercase') })}
-          </Button>
-        )}
         {onLoadMore !== undefined && (
           <Button
             color="tertiary"
@@ -270,6 +261,16 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
             size="sm"
             onClick={onLoadMore}>
             {t('label.load-more')}
+          </Button>
+        )}
+        {onClearAll && hasActiveFilters && (
+          <Button
+            color="tertiary"
+            data-testid="ontology-clear-all-btn"
+            isDisabled={isLoading}
+            size="sm"
+            onClick={onClearAll}>
+            {t('label.clear-entity', { entity: t('label.all-lowercase') })}
           </Button>
         )}
       </div>
