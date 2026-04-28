@@ -14,7 +14,7 @@ Validator for column value length to be between test case
 """
 
 import math
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -51,7 +51,7 @@ class ColumnValueLengthsToBeBetweenValidator(
 ):
     """Validator for column value length to be between test case"""
 
-    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -107,7 +107,7 @@ class ColumnValueLengthsToBeBetweenValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional validation for max with proper aggregation
 
         Uses the statistical aggregation helper to:

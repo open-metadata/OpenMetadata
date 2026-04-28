@@ -164,7 +164,7 @@ class TestDatalakeUtils(TestCase):
         ]
         actual = GenericDataFrameColumnParser.construct_json_column_children(STRUCTURE)
 
-        for el in zip(expected, actual):
+        for el in zip(expected, actual):  # noqa: B905
             self.assertDictEqual(el[0], el[1])
 
     def test_create_column_object(self):
@@ -186,8 +186,8 @@ class TestParquetDataFrameColumnParser(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        resources_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources")
-        cls.parquet_path = os.path.join(resources_path, "datalake", "example.parquet")
+        resources_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources")  # noqa: PTH118, PTH120
+        cls.parquet_path = os.path.join(resources_path, "datalake", "example.parquet")  # noqa: PTH118
 
         cls.df = pd.read_parquet(cls.parquet_path)
 
@@ -425,7 +425,7 @@ class TestParquetDataFrameColumnParser(TestCase):
             ),  # type: ignore
         ]
         actual = self.parquet_parser.get_columns()
-        for validation in zip(expected, actual):
+        for validation in zip(expected, actual):  # noqa: B905
             with self.subTest(validation=validation):
                 expected_col, actual_col = validation
                 self.assertEqual(expected_col.name, actual_col.name)
@@ -439,7 +439,7 @@ class TestParquetDataFrameColumnParser(TestCase):
         self.assertEqual(expected.displayName, actual.displayName)
         if expected.children:
             self.assertEqual(len(expected.children), len(actual.children))
-            for validation in zip(expected.children, actual.children):
+            for validation in zip(expected.children, actual.children):  # noqa: B905
                 with self.subTest(validation=validation):
                     expected_col, actual_col = validation
                     self._validate_parsed_column(expected_col, actual_col)

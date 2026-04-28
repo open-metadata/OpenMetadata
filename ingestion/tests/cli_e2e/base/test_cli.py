@@ -31,10 +31,10 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
 from metadata.workflow.metadata import MetadataWorkflow
 
-from .config_builders.builders import builder_factory
-from .e2e_types import E2EType
+from .config_builders.builders import builder_factory  # noqa: TID252
+from .e2e_types import E2EType  # noqa: TID252
 
-PATH_TO_RESOURCES = os.path.dirname(Path(os.path.realpath(__file__)).parent)
+PATH_TO_RESOURCES = os.path.dirname(Path(os.path.realpath(__file__)).parent)  # noqa: PTH120
 
 REGEX_AUX = {"log": r"\s+\[[^]]+]\s+[A-Z]+\s+[^}]+}\s+-\s+"}
 
@@ -47,7 +47,7 @@ class CliBase(ABC):
     openmetadata: OpenMetadata
     test_file_path: str
     config_file_path: str
-    ingestion_bot_jwt_token: Optional[str] = None
+    ingestion_bot_jwt_token: Optional[str] = None  # noqa: UP045
 
     def run_command(self, command: str = "ingest", test_file_path=None) -> str:
         file_path = test_file_path if test_file_path is not None else self.test_file_path
@@ -62,7 +62,7 @@ class CliBase(ABC):
         process_status = subprocess.Popen(args, stderr=subprocess.PIPE, env=env)
         _, stderr = process_status.communicate()
         if process_status.returncode != 0:
-            print(stderr.decode("utf-8"))
+            print(stderr.decode("utf-8"))  # noqa: T201
             raise subprocess.CalledProcessError(
                 returncode=process_status.returncode,
                 cmd=args,
@@ -91,11 +91,11 @@ class CliBase(ABC):
         }
         return server_config
 
-    def build_config_file(self, test_type: E2EType = E2EType.INGEST, extra_args: dict = None) -> None:
+    def build_config_file(self, test_type: E2EType = E2EType.INGEST, extra_args: dict = None) -> None:  # noqa: RUF013
         config_yaml = load_config_file(Path(self.config_file_path))
         config_yaml = self.build_yaml(config_yaml, test_type, extra_args)
         config_yaml = self.patch_server_security_config(config_yaml)
-        with open(self.test_file_path, "w", encoding=UTF_8) as test_file:
+        with open(self.test_file_path, "w", encoding=UTF_8) as test_file:  # noqa: PTH123
             yaml.dump(config_yaml, test_file)
 
     def retrieve_statuses(self, result):
@@ -115,12 +115,12 @@ class CliBase(ABC):
         output_clean = re.sub(" +", " ", output_clean)
         output_clean_ansi = re.compile(r"\x1b[^m]*m")
         output_clean = output_clean_ansi.sub(" ", output_clean)
-        regex = r"[\w] Status:%(log)s(.*?)%(log)s.* Status: .*" % REGEX_AUX
+        regex = r"[\w] Status:%(log)s(.*?)%(log)s.* Status: .*" % REGEX_AUX  # noqa: UP031
         output_clean_regex = re.findall(regex, output_clean.strip())
         try:
             return Status.model_validate(literal_eval(output_clean_regex[0].strip()))
         except Exception as exc:
-            raise RuntimeError(f"Error extracting source status: {exc}. Check the output {output}")
+            raise RuntimeError(f"Error extracting source status: {exc}. Check the output {output}")  # noqa: B904
 
     @staticmethod
     def extract_sink_status(output) -> Status:
@@ -128,12 +128,12 @@ class CliBase(ABC):
         output_clean = re.sub(" +", " ", output_clean)
         output_clean_ansi = re.compile(r"\x1b[^m]*m")
         output_clean = output_clean_ansi.sub("", output_clean)
-        regex = r".*OpenMetadata Status:%(log)s(.*?)%(log)sExecution.*Summary.*" % REGEX_AUX
+        regex = r".*OpenMetadata Status:%(log)s(.*?)%(log)sExecution.*Summary.*" % REGEX_AUX  # noqa: UP031
         output_clean_regex = re.findall(regex, output_clean.strip())[0].strip()
         try:
             return Status.model_validate(literal_eval(output_clean_regex))
         except Exception as exc:
-            raise RuntimeError(f"Error extracting sink status: {exc}. Check the output {output}")
+            raise RuntimeError(f"Error extracting sink status: {exc}. Check the output {output}")  # noqa: B904
 
     @staticmethod
     def build_yaml(config_yaml: dict, test_type: E2EType, extra_args: dict):

@@ -14,7 +14,7 @@ Greenplum source module
 
 import traceback
 from collections import namedtuple
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -97,7 +97,7 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
         cls,
         config_dict,
         metadata: OpenMetadataConnection,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GreenplumConnection = config.serviceConnection.root.config
@@ -119,7 +119,7 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
             TableNameAndType(name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)) for name, relkind in result
         ]
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -157,7 +157,7 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, Optional[TablePartition]]:
+    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
         with self.engine.connect() as conn:
             result = conn.execute(
                 text(GREENPLUM_PARTITION_DETAILS.format(table_name=table_name, schema_name=schema_name))

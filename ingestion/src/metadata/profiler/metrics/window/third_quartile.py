@@ -80,7 +80,7 @@ class ThirdQuartile(StaticMetric, PercentilMixin):
         if dfs is None:
             return None
         # pylint: disable=import-outside-toplevel
-        import pandas as pd
+        import pandas as pd  # noqa: PLC0415
 
         if is_quantifiable(self.col.type):
             # we can't compute the median unless we have

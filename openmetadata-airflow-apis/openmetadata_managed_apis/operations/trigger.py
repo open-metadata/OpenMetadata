@@ -22,6 +22,7 @@ except ImportError:
 
 from airflow.utils import timezone
 from flask import Response
+
 from openmetadata_managed_apis.api.response import ApiResponse
 
 try:
@@ -30,7 +31,7 @@ except ImportError:
     DagRunTriggeredByType = None  # type: ignore[misc,assignment]
 
 
-def trigger(dag_id: str, run_id: Optional[str], conf: Optional[dict] = None) -> Response:
+def trigger(dag_id: str, run_id: Optional[str], conf: Optional[dict] = None) -> Response:  # noqa: UP045
     trigger_params = {
         "dag_id": dag_id,
         "run_id": run_id,

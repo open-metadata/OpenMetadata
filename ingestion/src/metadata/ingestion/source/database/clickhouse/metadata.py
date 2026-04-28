@@ -10,7 +10,7 @@
 #  limitations under the License.
 """Clickhouse source module"""
 
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from clickhouse_sqlalchemy.drivers.base import ClickHouseDialect
 from clickhouse_sqlalchemy.drivers.http.transport import RequestsTransport, _get_type
@@ -74,7 +74,7 @@ def execute(self, query, params=None):
     yield types
 
     for line in lines:
-        yield [(conv(x) if conv else x) for x, conv in zip(parse_tsv(line, self.unicode_errors), convs)]
+        yield [(conv(x) if conv else x) for x, conv in zip(parse_tsv(line, self.unicode_errors), convs)]  # noqa: B905
 
 
 ClickHouseDialect.get_unique_constraints = get_unique_constraints
@@ -104,7 +104,7 @@ class ClickhouseSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: ClickhouseConnection = config.serviceConnection.root.config
         if not isinstance(connection, ClickhouseConnection):

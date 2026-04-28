@@ -30,4 +30,4 @@ from typing import Union
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Table
 
-ClassifiableEntityType = Union[Table, Container]
+ClassifiableEntityType = Union[Table, Container]  # noqa: UP007

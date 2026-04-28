@@ -16,7 +16,7 @@ import traceback
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Tuple
+from typing import Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -57,13 +57,13 @@ class WorkflowStatusMixin:
     """
 
     config: OpenMetadataWorkflowConfig
-    _run_id: Optional[str] = None
+    _run_id: Optional[str] = None  # noqa: UP045
     metadata: OpenMetadata
     _start_ts: int
-    ingestion_pipeline: Optional[IngestionPipeline]
+    ingestion_pipeline: Optional[IngestionPipeline]  # noqa: UP045
 
     # All workflows execute a series of steps, aside from the source
-    steps: Tuple[Step]
+    steps: Tuple[Step]  # noqa: UP006
 
     @property
     def run_id(self) -> str:
@@ -100,7 +100,9 @@ class WorkflowStatusMixin:
         return pipeline_status
 
     def set_ingestion_pipeline_status(
-        self, state: PipelineState, ingestion_status: Optional[IngestionStatus] = None
+        self,
+        state: PipelineState,
+        ingestion_status: Optional[IngestionStatus] = None,  # noqa: UP045
     ) -> None:
         """
         Method to set the pipeline status of current ingestion pipeline
@@ -157,7 +159,7 @@ class WorkflowStatusMixin:
             return WorkflowResultStatus.FAILURE
         return WorkflowResultStatus.SUCCESS
 
-    def build_ingestion_status(self) -> Optional[IngestionStatus]:
+    def build_ingestion_status(self) -> Optional[IngestionStatus]:  # noqa: UP045
         """
         Get the results from the steps and prep the payload
         we'll send to the API
@@ -176,7 +178,7 @@ class WorkflowStatusMixin:
         Called periodically during workflow execution.
         """
         try:
-            from metadata.utils.progress_tracker import ProgressTrackerState
+            from metadata.utils.progress_tracker import ProgressTrackerState  # noqa: PLC0415
 
             if (
                 self.config.ingestionPipelineFQN

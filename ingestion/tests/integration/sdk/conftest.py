@@ -80,7 +80,7 @@ def database(metadata, db_service):
             service=db_service.fullyQualifiedName,
         )
     )
-    return database_entity
+    return database_entity  # noqa: RET504
 
 
 @pytest.fixture(scope="module")
@@ -91,7 +91,7 @@ def schema(metadata, database):
             database=database.fullyQualifiedName,
         )
     )
-    return schema_entity
+    return schema_entity  # noqa: RET504
 
 
 @pytest.fixture(scope="module")
@@ -224,7 +224,7 @@ def patch_passwords(db_service, monkeymodule):
     def override_password(getter):
         def inner(*args, **kwargs):
             result = getter(*args, **kwargs)
-            if isinstance(result, DatabaseService):
+            if isinstance(result, DatabaseService):  # noqa: SIM102
                 if result.fullyQualifiedName.root == db_service.fullyQualifiedName.root:
                     result.connection.config.authType.password = db_service.connection.config.authType.password
             return result
