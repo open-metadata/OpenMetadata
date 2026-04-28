@@ -489,7 +489,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         by default there will be no location path
         """
 
-    def get_table_extensions(self, table_name: str, table_type: Optional[TableType] = None):
+    def get_table_extensions(self, table_name: str, table_type: TableType | None = None):
         """
         Method to fetch the extensions of the table
         """

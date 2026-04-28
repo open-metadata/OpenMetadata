@@ -679,8 +679,8 @@ class TestGetTableExtensionsDedup:
         def side_effect(_):
             if call_flag["first"]:
                 call_flag["first"] = False
-                raise Exception("boom")
-            return None
+                raise Exception("boom")  # noqa: TRY002
+            return
 
         with (
             patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),

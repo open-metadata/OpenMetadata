@@ -14,7 +14,7 @@
 import hashlib
 import re
 import traceback
-from typing import Dict, Iterable, Optional, Set, Tuple  # noqa: UP035
+from typing import Iterable, Optional, Tuple  # noqa: UP035
 
 from pyathena.sqlalchemy.base import AthenaDialect
 from sqlalchemy import text
@@ -123,7 +123,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         self.external_location_map = {}
         self.schema_description_map = {}
         self.glue_client = None
-        self._processed_prop: Set[str] = set()
+        self._processed_prop: set[str] = set()
         self._string_property_type_ref = None
 
     def prepare(self):
@@ -347,7 +347,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             catalog_id=self.service_connection.catalogId,
         )
 
-    def get_table_extensions(self, table_name: str, table_type: Optional[TableType] = None) -> Optional[Dict[str, str]]:
+    def get_table_extensions(self, table_name: str, table_type: TableType | None = None) -> dict[str, str] | None:
         if not getattr(self.source_config, "includeCustomProperties", False):
             return None
         if not self._string_property_type_ref:
@@ -388,7 +388,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             registered_properties[sanitized_name] = prop_value
         return registered_properties or None
 
-    def _fetch_iceberg_properties(self, schema_name: str, table_name: str) -> Dict[str, str]:
+    def _fetch_iceberg_properties(self, schema_name: str, table_name: str) -> dict[str, str]:
         """Read Iceberg native properties from Athena's `<table>$properties` metatable."""
         query = text(f'SELECT key, value FROM "{schema_name}"."{table_name}$properties"')
         try:
