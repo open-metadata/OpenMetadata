@@ -17,8 +17,8 @@ export interface PreviewSearchRequest {
     explain?: boolean;
     /**
      * If true, expand the requested index to also include the actual indexes of its child
-     * aliases declared in indexMapping.json. Defaults to false so previews mirror the same
-     * scoping the UI sees in /search/query.
+     * aliases declared in indexMapping.json. Defaults to true to preserve legacy ES
+     * alias-expansion behavior.
      */
     fetchChildAliases?: boolean;
     /**

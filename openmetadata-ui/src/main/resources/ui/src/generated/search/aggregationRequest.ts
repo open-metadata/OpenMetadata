@@ -20,8 +20,8 @@ export interface AggregationRequest {
     deleted?: boolean;
     /**
      * If true, expand the requested index to also include the actual indexes of its child
-     * aliases declared in indexMapping.json. Defaults to false so the aggregation buckets
-     * aren't polluted by child entity types.
+     * aliases declared in indexMapping.json. Defaults to true to preserve legacy ES
+     * alias-expansion behavior.
      */
     fetchChildAliases?: boolean;
     /**

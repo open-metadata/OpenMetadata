@@ -38,8 +38,8 @@ export interface SearchRequest {
     /**
      * If true, expand the requested index to also include the actual indexes of its child
      * aliases declared in indexMapping.json (entities that list this alias in their
-     * parentAliases). Defaults to false so a query for `table` returns only table documents and
-     * does not bleed in column documents from indexes that have `table` attached as an alias.
+     * parentAliases). Defaults to true to preserve legacy ES alias-expansion behavior; pass
+     * false to scope the response to the requested index only.
      */
     fetchChildAliases?: boolean;
     /**
