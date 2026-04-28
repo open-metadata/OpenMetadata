@@ -88,20 +88,25 @@ class DatalakeS3Client(DatalakeBaseClient):
             kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
 
         iceberg_tables: Dict[str, Tuple[int, str, int | None]] = {}  # noqa: UP006
+        cold_iceberg_dirs: Set[str] = set()  # noqa: UP006
 
         for key in list_s3_objects(self._client, **kwargs):
             key_name = key["Key"]
             size = key.get("Size")
-            if skip_cold_storage and self._should_skip_s3_cold_storage(key):
+            is_cold = skip_cold_storage and self._should_skip_s3_cold_storage(key)
+            if is_cold:
                 logger.debug(
                     f"Skipping cold storage object: {key_name} "
                     f"(StorageClass: {key.get('StorageClass', 'STANDARD')}, "
                     f"ArchiveStatus: {key.get('ArchiveStatus', '')})"
                 )
+                match = self._ICEBERG_METADATA_RE.match(key_name)
+                if match:
+                    cold_iceberg_dirs.add(match.group(1))
                 continue
             self._update_iceberg_entry(iceberg_tables, key_name, size)
 
-        iceberg_dirs = set(iceberg_tables.keys())
+        iceberg_dirs = set(iceberg_tables.keys()) | cold_iceberg_dirs
         for _, metadata_key, size in iceberg_tables.values():
             yield metadata_key, size
 

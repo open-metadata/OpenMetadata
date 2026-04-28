@@ -127,16 +127,21 @@ class DatalakeGcsClient(DatalakeBaseClient):
         """
         bucket = self._client.get_bucket(bucket_name)
         iceberg_tables: Dict[str, Tuple[int, str, int | None]] = {}  # noqa: UP006
+        cold_iceberg_dirs: Set[str] = set()  # noqa: UP006
 
         for blob in bucket.list_blobs(prefix=prefix):
-            if skip_cold_storage and self._should_skip_gcs_cold_storage(blob):
+            is_cold = skip_cold_storage and self._should_skip_gcs_cold_storage(blob)
+            if is_cold:
                 logger.debug(
                     f"Skipping cold storage object: {blob.name} (storage_class: {getattr(blob, 'storage_class', None)})"
                 )
+                match = self._ICEBERG_METADATA_RE.match(blob.name)
+                if match:
+                    cold_iceberg_dirs.add(match.group(1))
                 continue
             self._update_iceberg_entry(iceberg_tables, blob.name, blob.size)
 
-        iceberg_dirs = set(iceberg_tables.keys())
+        iceberg_dirs = set(iceberg_tables.keys()) | cold_iceberg_dirs
         for _, metadata_blob_path, size in iceberg_tables.values():
             yield metadata_blob_path, size
 
