@@ -56,7 +56,7 @@ def main():
     ```
     """
 
-    config = os.getenv("config")
+    config = os.getenv("config")  # noqa: SIM112
     if not config:
         raise RuntimeError("Missing environment variable `config` with the Automations Workflow dict.")
 

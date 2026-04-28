@@ -31,34 +31,35 @@ class TestDatabricksScheme:
         assert DatabricksScheme.databricks.value == "databricks"
 
 
+EXPECTED_TYPES = [
+    "boolean",
+    "tinyint",
+    "smallint",
+    "int",
+    "bigint",
+    "float",
+    "double",
+    "string",
+    "varchar",
+    "char",
+    "date",
+    "timestamp",
+    "decimal",
+    "binary",
+    "struct",
+    "array",
+    "map",
+    "void",
+    "interval",
+    "uniontype",
+]
+
+
 class TestTypeMap:
     """Verify _type_map is self-contained and covers all expected Databricks types"""
 
-    EXPECTED_TYPES = [
-        "boolean",
-        "tinyint",
-        "smallint",
-        "int",
-        "bigint",
-        "float",
-        "double",
-        "string",
-        "varchar",
-        "char",
-        "date",
-        "timestamp",
-        "decimal",
-        "binary",
-        "struct",
-        "array",
-        "map",
-        "void",
-        "interval",
-        "uniontype",
-    ]
-
     def test_all_expected_types_present(self):
-        for type_name in self.EXPECTED_TYPES:
+        for type_name in EXPECTED_TYPES:
             assert type_name in _type_map, f"Missing type '{type_name}' in _type_map"
 
     def test_complex_types_are_custom(self):
@@ -82,7 +83,7 @@ class TestDatabricksBaseDefaultScheme:
         )
 
         class FakeConfig:
-            hostPort = "host:443"
+            hostPort = "host:443"  # noqa: N815
             token = "secret"
 
         result = DatabricksBaseTableParameter._get_service_connection_config(FakeConfig())

@@ -301,7 +301,7 @@ class DatabricksUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     @patch("metadata.ingestion.source.database.databricks.metadata.DatabricksSource._init_version")
-    def __init__(self, methodName, test_connection, db_init_version) -> None:
+    def __init__(self, methodName, test_connection, db_init_version) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         db_init_version.return_value = None
@@ -317,10 +317,10 @@ class DatabricksUnitTest(TestCase):
         self.databricks_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_database_schema_names(self):
-        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.databricks_source.get_database_schema_names())
+        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.databricks_source.get_database_schema_names())  # noqa: SIM300
 
     def test_raw_database_schema_names(self):
-        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.databricks_source.get_raw_database_schema_names())
+        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.databricks_source.get_raw_database_schema_names())  # noqa: SIM300
 
     def test_yield_schema(self):
         schema_list = []
@@ -328,9 +328,9 @@ class DatabricksUnitTest(TestCase):
 
         for schema in yield_schemas:
             if isinstance(schema, CreateDatabaseSchemaRequest):
-                schema_list.append(schema)
+                schema_list.append(schema)  # noqa: PERF401
 
-        for _, (exptected, original) in enumerate(zip(EXPTECTED_DATABASE_SCHEMA, schema_list)):
+        for _, (exptected, original) in enumerate(zip(EXPTECTED_DATABASE_SCHEMA, schema_list)):  # noqa: B905
             self.assertEqual(exptected, original)
 
     def test_yield_table(self):
@@ -339,9 +339,9 @@ class DatabricksUnitTest(TestCase):
 
         for table in yield_tables:
             if isinstance(table, CreateTableRequest):
-                table_list.append(table)
+                table_list.append(table)  # noqa: PERF401
 
-        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):
+        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):  # noqa: B905
             self.assertEqual(expected, original)
 
     def test_yield_table_2(self):
@@ -350,9 +350,9 @@ class DatabricksUnitTest(TestCase):
 
         for table in yield_tables:
             if isinstance(table, CreateTableRequest):
-                table_list.append(table)
+                table_list.append(table)  # noqa: PERF401
 
-        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE_2, table_list)):
+        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE_2, table_list)):  # noqa: B905
             self.assertEqual(expected, original)
 
     def test_get_schema_definition(self):

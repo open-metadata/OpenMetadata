@@ -72,7 +72,7 @@ class S3Sampler(StorageSampler):
             if entry and entry.get("Key") and self._is_valid_sample_file(entry.get("Key"))
         ]
 
-    def _get_sample_file_path(self) -> Optional[str]:
+    def _get_sample_file_path(self) -> Optional[str]:  # noqa: UP045
         """Get a sample file path from the container"""
         bucket_name = self._get_bucket_name()
         prefix = self.entity.prefix
@@ -104,7 +104,7 @@ class S3Sampler(StorageSampler):
             logger.warning(
                 f"No valid files found in S3 bucket {bucket_name} with prefix {prefix_without_leading_slash}"
             )
-            return None
+            return None  # noqa: TRY300
 
         except Exception as exc:
             logger.warning(

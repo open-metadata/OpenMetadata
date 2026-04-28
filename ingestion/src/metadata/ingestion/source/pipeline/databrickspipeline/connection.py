@@ -42,7 +42,7 @@ suppress_user_agent_entry_deprecation_log()
 
 def get_connection_url(connection: DatabricksPipelineConnection) -> str:
     url = f"databricks://token:{connection.token.get_secret_value()}@{connection.hostPort}"
-    return url
+    return url  # noqa: RET504
 
 
 def get_connection(connection: DatabricksPipelineConnection) -> DatabricksClient:
@@ -68,8 +68,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: DatabricksClient,
     service_connection: DatabricksPipelineConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part

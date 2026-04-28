@@ -11,7 +11,7 @@
 """Mysql source module"""
 
 import traceback
-from typing import Iterable, Optional, cast
+from typing import Iterable, Optional, cast  # noqa: UP035
 
 from sqlalchemy import text
 from sqlalchemy.dialects.mysql.base import ischema_names
@@ -68,9 +68,9 @@ class MysqlSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection = cast(MysqlConnection, config.serviceConnection.root.config)
+        connection = cast(MysqlConnection, config.serviceConnection.root.config)  # noqa: TC006
         if not isinstance(connection, MysqlConnection):
             raise InvalidSourceException(f"Expected MysqlConnection, but got {connection}")
         return cls(config, metadata)

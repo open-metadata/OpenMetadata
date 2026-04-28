@@ -44,10 +44,10 @@ class TestCircuitBreaker(unittest.TestCase):
         """Test that circuit opens after reaching failure threshold"""
 
         def failing_func():
-            raise Exception("Test failure")
+            raise Exception("Test failure")  # noqa: TRY002
 
-        for i in range(3):
-            with self.assertRaises(Exception):
+        for i in range(3):  # noqa: B007
+            with self.assertRaises(Exception):  # noqa: B017
                 self.breaker.call(failing_func)
 
         self.assertEqual(self.breaker.state, CircuitState.OPEN)
@@ -98,9 +98,9 @@ class TestCircuitBreaker(unittest.TestCase):
         self.breaker.state = CircuitState.HALF_OPEN
 
         def failing_func():
-            raise Exception("Test failure")
+            raise Exception("Test failure")  # noqa: TRY002
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception):  # noqa: B017
             self.breaker.call(failing_func)
 
         self.assertEqual(self.breaker.state, CircuitState.OPEN)

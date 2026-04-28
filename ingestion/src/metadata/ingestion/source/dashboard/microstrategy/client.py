@@ -13,7 +13,7 @@ REST Auth & Client for MicroStrategy
 """
 
 import traceback
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 import requests
 
@@ -89,7 +89,7 @@ class MicroStrategyClient:
             )
         return AuthHeaderCookie(auth_header=response.headers, auth_cookies=response.cookies)
 
-    def _get_auth_header_and_cookies(self) -> Optional[AuthHeaderCookie]:
+    def _get_auth_header_and_cookies(self) -> Optional[AuthHeaderCookie]:  # noqa: UP045
         """
         Send a request to authenticate the user and get headers and
 
@@ -136,12 +136,12 @@ class MicroStrategyClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to close the api sesison due to [{exc}]")
+            logger.error(f"Failed to close the api sesison due to [{exc}]")
 
     def is_project_name(self) -> bool:
         return bool(self.config.projectName)
 
-    def get_projects_list(self) -> List[MstrProject]:
+    def get_projects_list(self) -> List[MstrProject]:  # noqa: UP006
         """
         Get List of all projects
         """
@@ -151,15 +151,15 @@ class MicroStrategyClient:
             )
 
             project_list = MstrProjectList(projects=resp_projects)
-            return project_list.projects
+            return project_list.projects  # noqa: TRY300
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the project list due to [{exc}]")
+            logger.error(f"Failed to fetch the project list due to [{exc}]")
 
         return []
 
-    def get_project_by_name(self) -> Optional[MstrProject]:
+    def get_project_by_name(self) -> Optional[MstrProject]:  # noqa: UP045
         """
         Get Project By Name
         """
@@ -169,15 +169,15 @@ class MicroStrategyClient:
             )
 
             project = MstrProject.model_validate(resp_projects)
-            return project
+            return project  # noqa: RET504, TRY300
 
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the project list")
+            logger.error("Failed to fetch the project list")
 
         return None
 
-    def get_search_results_list(self, project_id, object_type) -> List[MstrSearchResult]:
+    def get_search_results_list(self, project_id, object_type) -> List[MstrSearchResult]:  # noqa: UP006
         """
         Get Search Results
 
@@ -201,15 +201,15 @@ class MicroStrategyClient:
             )
 
             results_list = MstrSearchResultList.model_validate(resp_results).result
-            return results_list
+            return results_list  # noqa: RET504, TRY300
 
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the Search Result list")
+            logger.error("Failed to fetch the Search Result list")
 
         return []
 
-    def get_dashboards_list(self, project_id, project_name) -> List[MstrDashboard]:
+    def get_dashboards_list(self, project_id, project_name) -> List[MstrDashboard]:  # noqa: UP006
         """
         Get Dashboard
         """
@@ -218,18 +218,18 @@ class MicroStrategyClient:
 
             dashboards = []
             for result in results:
-                dashboards.append(MstrDashboard(projectName=project_name, **result.model_dump()))
+                dashboards.append(MstrDashboard(projectName=project_name, **result.model_dump()))  # noqa: PERF401
 
             dashboards_list = MstrDashboardList(dashboards=dashboards)
-            return dashboards_list.dashboards
+            return dashboards_list.dashboards  # noqa: TRY300
 
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard list")
+            logger.error("Failed to fetch the dashboard list")
 
         return []
 
-    def get_dashboard_details(self, project_id, project_name, dashboard_id) -> Optional[MstrDashboardDetails]:
+    def get_dashboard_details(self, project_id, project_name, dashboard_id) -> Optional[MstrDashboardDetails]:  # noqa: UP045
         """
         Get Dashboard Details
         """
@@ -241,11 +241,11 @@ class MicroStrategyClient:
 
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the dashboard with id: {dashboard_id}")
+            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")
 
         return None
 
-    def get_cube_sql_details(self, project_id: str, cube_id: str) -> Optional[str]:
+    def get_cube_sql_details(self, project_id: str, cube_id: str) -> Optional[str]:  # noqa: UP045
         """
         Get Cube SQL Details
         """
@@ -260,6 +260,6 @@ class MicroStrategyClient:
 
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the cube with id: {cube_id}")
+            logger.error(f"Failed to fetch the cube with id: {cube_id}")
 
         return None

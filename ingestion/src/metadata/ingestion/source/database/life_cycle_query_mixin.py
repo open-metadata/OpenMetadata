@@ -16,7 +16,7 @@ import traceback
 from collections import defaultdict
 from datetime import datetime
 from functools import lru_cache
-from typing import Dict, Iterable, List, Optional, Type
+from typing import Dict, Iterable, List, Optional, Type  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
@@ -51,7 +51,7 @@ class LifeCycleQueryByTable(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     table_name: str = Field(..., alias="TABLE_NAME")
-    created_at: Optional[datetime] = Field(None, alias="CREATED_AT")
+    created_at: Optional[datetime] = Field(None, alias="CREATED_AT")  # noqa: UP045
 
 
 class LifeCycleQueryMixin:
@@ -65,8 +65,10 @@ class LifeCycleQueryMixin:
     engine: Engine
     metadata: OpenMetadata
 
-    @lru_cache(maxsize=1)  # Limit the caching to 1 since we will maintain 1 dictionary for each db and schema
-    def life_cycle_query_dict(self, query: str) -> Dict[str, List[LifeCycleQueryByTable]]:
+    @lru_cache(  # noqa: B019
+        maxsize=1
+    )  # Limit the caching to 1 since we will maintain 1 dictionary for each db and schema
+    def life_cycle_query_dict(self, query: str) -> Dict[str, List[LifeCycleQueryByTable]]:  # noqa: UP006
         """
         Cache the queries ran for the life cycle.
         We will run this for each different schema and db name.
@@ -91,7 +93,7 @@ class LifeCycleQueryMixin:
 
         return queries_dict
 
-    def get_life_cycle_data(self, entity: Type[Entity], entity_name: str, entity_fqn: str, query: str):
+    def get_life_cycle_data(self, entity: Type[Entity], entity_name: str, entity_fqn: str, query: str):  # noqa: UP006
         """
         Get the life cycle data
         """

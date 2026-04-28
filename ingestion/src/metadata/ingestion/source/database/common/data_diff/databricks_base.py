@@ -14,7 +14,7 @@ class DatabricksBaseTableParameter(BaseTableParameter):
     def _get_service_connection_config(
         cls,
         service_connection_config,
-    ) -> Optional[Union[str, dict]]:
+    ) -> Optional[Union[str, dict]]:  # noqa: UP007, UP045
         """Build connection URL for Databricks-based connections"""
         if not service_connection_config:
             return None

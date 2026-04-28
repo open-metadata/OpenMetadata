@@ -124,8 +124,8 @@ def test_connection(
     metadata: OpenMetadata,
     connection: WorkspaceClient,
     service_connection: UnityCatalogConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -141,7 +141,7 @@ def test_connection(
         in the sql statement
         """
         try:
-            with engine.connect() as connection:
+            with engine.connect() as connection:  # noqa: PLR1704
                 connection.execute(text(statement)).fetchone()
         except DatabaseError as soe:
             logger.debug(f"Failed to fetch catalogs due to: {soe}")
@@ -166,7 +166,7 @@ def test_connection(
 
     def get_tags(service_connection: UnityCatalogConnection, table_obj: DatabricksTable):
         engine = get_sqlalchemy_connection(service_connection)
-        with engine.connect() as connection:
+        with engine.connect() as connection:  # noqa: PLR1704
             connection.execute(
                 text(UNITY_CATALOG_GET_CATALOGS_TAGS.format(database=table_obj.catalog_name).replace(";", " limit 1;"))
             )

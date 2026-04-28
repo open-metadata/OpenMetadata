@@ -75,7 +75,7 @@ class DatabricksEngineWrapper:
         self.first_schema = None
         self.first_catalog = None
 
-    def get_schemas(self, schema_name: Optional[str] = None):
+    def get_schemas(self, schema_name: Optional[str] = None):  # noqa: UP045
         """Get schemas and cache them"""
         if schema_name is not None:
             with self.engine.connect() as connection:
@@ -106,7 +106,7 @@ class DatabricksEngineWrapper:
         if self.first_schema:
             with self.engine.connect() as connection:
                 tables = connection.execute(text(f"SHOW TABLES IN `{self.first_catalog}`.`{self.first_schema}`"))
-            return tables
+            return tables  # noqa: RET504
         return []
 
     def get_views(self):
@@ -116,10 +116,10 @@ class DatabricksEngineWrapper:
         if self.first_schema:
             with self.engine.connect() as connection:
                 views = connection.execute(text(f"SHOW VIEWS IN `{self.first_catalog}`.`{self.first_schema}`"))
-            return views
+            return views  # noqa: RET504
         return []
 
-    def get_catalogs(self, catalog_name: Optional[str] = None):
+    def get_catalogs(self, catalog_name: Optional[str] = None):  # noqa: UP045
         """Get catalogs"""
         catalogs = []
         if catalog_name is not None:
@@ -172,8 +172,8 @@ def test_connection(
     metadata: OpenMetadata,
     connection: Engine,
     service_connection: DatabricksConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part

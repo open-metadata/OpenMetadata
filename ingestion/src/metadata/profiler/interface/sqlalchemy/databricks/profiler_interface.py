@@ -14,7 +14,7 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from typing import List, Type, cast
+from typing import List, Type, cast  # noqa: UP035
 
 from sqlalchemy import Column
 from sqlalchemy.sql.compiler import SQLCompiler
@@ -48,16 +48,16 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
 
     def _compute_system_metrics(
         self,
-        metrics: Type[System],
+        metrics: Type[System],  # noqa: UP006
         runner: QueryRunner,
         *args,
         **kwargs,
-    ) -> List[SystemProfile]:
+    ) -> List[SystemProfile]:  # noqa: UP006
         if self.table_entity.tableType in (TableType.View, TableType.MaterializedView):
             logger.debug(f"Skipping {metrics.name()} metric for view {runner.table_name}")
             return []
         logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
-        self.system_metrics_class = cast(Type[DatabricksSystemMetricsComputer], self.system_metrics_class)
+        self.system_metrics_class = cast(Type[DatabricksSystemMetricsComputer], self.system_metrics_class)  # noqa: TC006, UP006
         instance = self.system_metrics_class(
             session=self.session,
             runner=runner,
@@ -109,7 +109,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         are logged and swallowed so a packaging change cannot break profiler startup.
         """
         try:
-            from databricks.sqlalchemy import DatabricksDialect
+            from databricks.sqlalchemy import DatabricksDialect  # noqa: PLC0415
 
             statement_compiler = getattr(DatabricksDialect, "statement_compiler", None)
             if statement_compiler is None:
@@ -117,14 +117,14 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
                 return
             statement_compiler.visit_column = DatabricksProfilerInterface.visit_column
             statement_compiler.visit_table = DatabricksProfilerInterface.visit_table
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "Failed to patch Databricks statement compiler: %s. "
                 "Profiling will continue without struct/hyphen quoting overrides.",
                 exc,
             )
 
-    def _get_struct_columns(self, columns: List[OMColumn], parent: str):
+    def _get_struct_columns(self, columns: List[OMColumn], parent: str):  # noqa: UP006
         """Get struct columns"""
 
         columns_list = []

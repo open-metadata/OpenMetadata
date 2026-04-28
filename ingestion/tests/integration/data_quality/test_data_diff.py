@@ -41,7 +41,7 @@ class TestParameters(BaseModel):
         if args:
             # Map positional arguments to fields
             field_names = list(self.__annotations__.keys())
-            kwargs.update(dict(zip(field_names, args)))
+            kwargs.update(dict(zip(field_names, args)))  # noqa: B905
 
         super().__init__(**kwargs)
 

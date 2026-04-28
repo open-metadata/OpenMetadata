@@ -14,7 +14,7 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from sqlalchemy import Column, MetaData, inspect, text
 
@@ -58,7 +58,7 @@ class SQAInterfaceMixin(Root):
         """
         engine = get_connection(super().service_connection_config)
 
-        return engine
+        return engine  # noqa: RET504
 
     def get_columns(self) -> Column:
         """get columns from an orm object"""
@@ -102,7 +102,7 @@ class SQAInterfaceMixin(Root):
         """close session"""
         self.session.close()
 
-    def _get_sample_columns(self) -> List[str]:
+    def _get_sample_columns(self) -> List[str]:  # noqa: UP006
         """Get the list of columns to use for the sampler"""
         return [
             column.name
@@ -112,9 +112,9 @@ class SQAInterfaceMixin(Root):
 
     def build_table_orm(
         self, table: Table, service_conn_config: BaseModel, ometa_client: OpenMetadata
-    ) -> Optional[type]:
+    ) -> Optional[type]:  # noqa: UP045
         """Build the ORM table if needed for the sampler and profiler interfaces"""
         if service_conn_config.type.value not in NON_SQA_DATABASE_CONNECTIONS:
             orm_obj = ometa_to_sqa_orm(table, ometa_client, MetaData())
-            return orm_obj
+            return orm_obj  # noqa: RET504
         return None

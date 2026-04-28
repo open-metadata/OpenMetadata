@@ -35,7 +35,7 @@ def mocked_ometa_object():
             self._type = _type
 
     class ListEntities:
-        entities = [Entity("list_entities")]
+        entities = [Entity("list_entities")]  # noqa: RUF012
 
     class OmetaMock:
         def get_by_name(self, *args, **kwargs):
@@ -100,7 +100,7 @@ def mocked_ge_table_result():
 
 @fixture(scope="module")
 def fixture_jinja_environment():
-    return create_jinja_environment(os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources"))
+    return create_jinja_environment(os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources"))  # noqa: PTH100, PTH118, PTH120
 
 
 @fixture(scope="module")

@@ -65,7 +65,7 @@ class MetricsTest(TestCase):
 
     worker_id = os.environ.get("PYTEST_XDIST_WORKER", "master")
     worker_suffix = f"_{worker_id}" if worker_id != "master" else ""
-    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}{worker_suffix}.db")
+    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}{worker_suffix}.db")  # noqa: PTH118, PTH120, PTH122
     sqlite_conn = SQLiteConnection(
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
@@ -1133,7 +1133,7 @@ class MetricsTest(TestCase):
             profiler_interface=sqa_profiler_interface,
         )
         metrics = profiler.compute_metrics()
-        for k, v in metrics._table_results.items():
+        for k, v in metrics._table_results.items():  # noqa: B007, PERF102
             for metric in v:
                 if metric.name == "CustomerBornAfter1991":
                     assert metric.value == 2
@@ -1183,7 +1183,7 @@ class MetricsTest(TestCase):
             profiler_interface=sqa_profiler_interface,
         )
         metrics = profiler.compute_metrics()
-        for k, v in metrics._column_results.items():
+        for k, v in metrics._column_results.items():  # noqa: B007, PERF102
             for metric in v.get("customMetrics", []):
                 if metric.name == "CustomerBornAfter1991":
                     assert metric.value == 3.0
@@ -1193,5 +1193,5 @@ class MetricsTest(TestCase):
     @classmethod
     def tearDownClass(cls) -> None:
         cls.sqa_profiler_interface.close()
-        os.remove(cls.db_path)
+        os.remove(cls.db_path)  # noqa: PTH107
         return super().tearDownClass()

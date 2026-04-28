@@ -14,7 +14,7 @@ sqlalchemy utility functions
 """
 
 import traceback
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union  # noqa: UP035
 
 import sqlalchemy
 from sqlalchemy import Column, and_, func, or_
@@ -36,7 +36,7 @@ logger = query_runner_logger()
 
 
 # pylint: disable=cell-var-from-loop
-def build_query_filter(filters: List[Tuple[Column, str, Any]], or_filter: bool = False) -> Optional[BinaryExpression]:
+def build_query_filter(filters: List[Tuple[Column, str, Any]], or_filter: bool = False) -> Optional[BinaryExpression]:  # noqa: UP006, UP045
     """Dynamically build query filter
 
     Args:
@@ -74,7 +74,7 @@ def build_query_filter(filters: List[Tuple[Column, str, Any]], or_filter: bool =
     return and_(*list_of_filters)
 
 
-def get_integer_range_filter(partition_field, integer_range_start, integer_range_end) -> Optional[BinaryExpression]:
+def get_integer_range_filter(partition_field, integer_range_start, integer_range_end) -> Optional[BinaryExpression]:  # noqa: UP045
     """Get the query filter for integer range
 
     Args:
@@ -102,7 +102,7 @@ def get_integer_range_filter(partition_field, integer_range_start, integer_range
     )
 
 
-def get_value_filter(partition_field, values) -> Optional[BinaryExpression]:
+def get_value_filter(partition_field, values) -> Optional[BinaryExpression]:  # noqa: UP045
     """Get the query filter for values
 
     Args:
@@ -143,7 +143,7 @@ def dispatch_to_date_or_datetime(
     return TimestampAddFn(partition_interval, partition_interval_unit)
 
 
-def get_partition_col_type(partition_column_name: str, columns: List[Column]):
+def get_partition_col_type(partition_column_name: str, columns: List[Column]):  # noqa: UP006
     """From partition field, get the type
 
     Args:
@@ -165,7 +165,7 @@ def get_partition_col_type(partition_column_name: str, columns: List[Column]):
     return None
 
 
-def get_query_filter_for_runner(kwargs: Dict) -> Optional[BinaryExpression]:
+def get_query_filter_for_runner(kwargs: Dict) -> Optional[BinaryExpression]:  # noqa: UP006, UP045
     """Get query filters from kwargs. IMPORTANT, this will update the original dictionary
     passed in the function argument.
 
@@ -181,7 +181,7 @@ def get_query_filter_for_runner(kwargs: Dict) -> Optional[BinaryExpression]:
     return filter_
 
 
-def get_query_group_by_for_runner(kwargs: Dict) -> Optional[BinaryExpression]:
+def get_query_group_by_for_runner(kwargs: Dict) -> Optional[BinaryExpression]:  # noqa: UP006, UP045
     """Get query group by from kwargs. IMPORTANT, this will update the original dictionary
     passed in the function argument.
 
@@ -196,7 +196,7 @@ def get_query_group_by_for_runner(kwargs: Dict) -> Optional[BinaryExpression]:
     return group_by_
 
 
-def handle_array(query: Query, column: Column, table: Union[type, AliasedClass]) -> Query:
+def handle_array(query: Query, column: Column, table: Union[type, AliasedClass]) -> Query:  # noqa: UP007
     """Handle query for array. The curent implementation is
     specific to BigQuery. This should be refactored in the future
     to add a more generic support
@@ -222,7 +222,7 @@ def handle_array(query: Query, column: Column, table: Union[type, AliasedClass])
     return query.select_from(table)
 
 
-def is_array(kwargs: Dict) -> bool:
+def is_array(kwargs: Dict) -> bool:  # noqa: UP006
     """Check if the kwargs has array.
     If array True is returned, we'll pop the is_array kw
     and keep the array_col kw

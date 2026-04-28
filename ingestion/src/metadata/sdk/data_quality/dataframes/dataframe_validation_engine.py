@@ -14,7 +14,7 @@
 import logging
 import time
 from datetime import datetime
-from typing import List, Tuple, Type
+from typing import List, Tuple, Type  # noqa: UP035
 
 from pandas import DataFrame
 
@@ -35,8 +35,8 @@ logger = logging.getLogger(__name__)
 class DataFrameValidationEngine:
     """Orchestrates execution of multiple validators on a DataFrame."""
 
-    def __init__(self, test_cases: List[TestCase]):
-        self.test_cases: List[TestCase] = test_cases
+    def __init__(self, test_cases: List[TestCase]):  # noqa: UP006
+        self.test_cases: List[TestCase] = test_cases  # noqa: UP006
 
     def execute(
         self,
@@ -52,7 +52,7 @@ class DataFrameValidationEngine:
         Returns:
             ValidationResult with outcomes for all tests
         """
-        results: List[Tuple[TestCase, TestCaseResult]] = []
+        results: List[Tuple[TestCase, TestCaseResult]] = []  # noqa: UP006
         start_time = time.time()
 
         for test_case in self.test_cases:
@@ -84,7 +84,7 @@ class DataFrameValidationEngine:
 
         try:
             result = validator.run_validation()
-            return result
+            return result  # noqa: RET504, TRY300
         except Exception as err:
             message = f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
             logger.exception(message)
@@ -97,7 +97,8 @@ class DataFrameValidationEngine:
 
     @staticmethod
     def _build_validation_result(
-        test_results: List[Tuple[TestCase, TestCaseResult]], execution_time_ms: float
+        test_results: list[tuple[TestCase, TestCaseResult]],
+        execution_time_ms: float,
     ) -> ValidationResult:
         """Build aggregated validation result.
 
@@ -122,7 +123,7 @@ class DataFrameValidationEngine:
         )
 
     @staticmethod
-    def _get_validator_class(test_case: TestCase) -> Type[BaseTestValidator]:
+    def _get_validator_class(test_case: TestCase) -> Type[BaseTestValidator]:  # noqa: UP006
         """Resolve validator class from test definition name.
 
         Returns:
