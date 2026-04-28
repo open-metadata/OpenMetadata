@@ -57,17 +57,10 @@ def validate_athena_injected_partitioning(
     for column_partition in column_partitions:
         if column_partition.intervalType == PartitionIntervalTypes.INJECTED:
             if table_profiler_config is None or profiler_partitioning_config is None:
-                raise RuntimeError(
-                    error_msg.format(column_name=column_partition.columnName)
-                )
+                raise RuntimeError(error_msg.format(column_name=column_partition.columnName))
 
-            if (
-                profiler_partitioning_config.partitionColumnName
-                != column_partition.columnName
-            ):
-                raise RuntimeError(
-                    error_msg.format(column_name=column_partition.columnName)
-                )
+            if profiler_partitioning_config.partitionColumnName != column_partition.columnName:
+                raise RuntimeError(error_msg.format(column_name=column_partition.columnName))
 
 
 def get_partition_details(
@@ -91,17 +84,13 @@ def get_partition_details(
 
     # Profiler config
     profiler_partitioning_config: Optional[PartitionProfilerConfig] = None
-    profiler_config: Optional[TableProfilerConfig] = getattr(
-        entity, "tableProfilerConfig", None
-    )
+    profiler_config: Optional[TableProfilerConfig] = getattr(entity, "tableProfilerConfig", None)
     if profiler_config:
         profiler_partitioning_config = getattr(profiler_config, "partitioning", None)
 
     if table_partition and service_type == DatabaseServiceType.Athena:
         # if table is an Athena table and it has been partitioned we need to validate injected partitioning
-        validate_athena_injected_partitioning(
-            table_partition, profiler_config, profiler_partitioning_config
-        )
+        validate_athena_injected_partitioning(table_partition, profiler_config, profiler_partitioning_config)
         return profiler_partitioning_config
 
     if profiler_partitioning_config:
@@ -114,14 +103,10 @@ def get_partition_details(
     return None
 
 
-def _handle_bigquery_partition(
-    entity: Table, table_partition: TablePartition
-) -> Optional[PartitionProfilerConfig]:
+def _handle_bigquery_partition(entity: Table, table_partition: TablePartition) -> Optional[PartitionProfilerConfig]:
     """Bigquery specific logic for partitions"""
     if table_partition:
-        column_partitions: Optional[
-            List[PartitionColumnDetails]
-        ] = entity.tablePartition.columns
+        column_partitions: Optional[List[PartitionColumnDetails]] = entity.tablePartition.columns
         if not column_partitions:
             raise TypeError("table partition missing. Skipping table")
 
@@ -131,9 +116,7 @@ def _handle_bigquery_partition(
             return PartitionProfilerConfig(
                 enablePartitioning=True,
                 partitionColumnName=partition.columnName,
-                partitionIntervalUnit=PartitionIntervalUnit.DAY
-                if partition.interval != "HOUR"
-                else partition.interval,
+                partitionIntervalUnit=PartitionIntervalUnit.DAY if partition.interval != "HOUR" else partition.interval,
                 partitionInterval=1,
                 partitionIntervalType=partition.intervalType.value,
                 partitionValues=None,
@@ -143,12 +126,8 @@ def _handle_bigquery_partition(
         if partition.intervalType == PartitionIntervalTypes.INGESTION_TIME:
             return PartitionProfilerConfig(
                 enablePartitioning=True,
-                partitionColumnName="_PARTITIONDATE"
-                if partition.interval == "DAY"
-                else "_PARTITIONTIME",
-                partitionIntervalUnit=PartitionIntervalUnit.DAY
-                if partition.interval != "HOUR"
-                else partition.interval,
+                partitionColumnName="_PARTITIONDATE" if partition.interval == "DAY" else "_PARTITIONTIME",
+                partitionIntervalUnit=PartitionIntervalUnit.DAY if partition.interval != "HOUR" else partition.interval,
                 partitionInterval=1,
                 partitionIntervalType=partition.intervalType.value,
                 partitionValues=None,

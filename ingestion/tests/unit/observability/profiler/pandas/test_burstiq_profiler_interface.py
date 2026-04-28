@@ -12,6 +12,7 @@
 Tests for BurstIQProfilerInterface — covers get_columns, _type_casted_dataset,
 and the full get_all_metrics profiler flow.
 """
+
 import math
 from contextlib import contextmanager
 from unittest.mock import Mock, patch
@@ -120,12 +121,15 @@ def _make_interface(df_factory, table_entity=FULL_TABLE_ENTITY):
     sampler.get_dataset.return_value = df_factory
     sampler.raw_dataset = df_factory
 
-    with patch(
-        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
-        return_value=FakeConnection(),
-    ), patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
-        return_value=FakeConnection(),
+    with (
+        patch(
+            "metadata.profiler.interface.profiler_interface.get_ssl_connection",
+            return_value=FakeConnection(),
+        ),
+        patch(
+            "metadata.sampler.sampler_interface.get_ssl_connection",
+            return_value=FakeConnection(),
+        ),
     ):
         interface = BurstIQProfilerInterface(
             service_connection_config=BURSTIQ_CONNECTION,
@@ -162,17 +166,11 @@ def _build_all_threadpool_metrics(interface, table_entity):
     metrics = get_default_metrics(Metrics, table_entity)
 
     static_metrics = [m for m in metrics if issubclass(m, StaticMetric)]
-    window_metrics = [
-        m for m in metrics if issubclass(m, StaticMetric) and m.is_window_metric()
-    ]
-    query_metrics = [
-        m for m in metrics if issubclass(m, QueryMetric) and m.is_col_metric()
-    ]
+    window_metrics = [m for m in metrics if issubclass(m, StaticMetric) and m.is_window_metric()]
+    query_metrics = [m for m in metrics if issubclass(m, QueryMetric) and m.is_col_metric()]
 
     table_tpm = ThreadPoolMetrics(
-        metrics=[
-            m for m in metrics if not m.is_col_metric() and not m.is_system_metrics()
-        ],
+        metrics=[m for m in metrics if not m.is_col_metric() and not m.is_system_metrics()],
         metric_type=MetricTypes.Table,
         column=None,
         table=table_entity,
@@ -182,11 +180,7 @@ def _build_all_threadpool_metrics(interface, table_entity):
     for col in interface.get_columns():
         column_tpms.append(
             ThreadPoolMetrics(
-                metrics=[
-                    m
-                    for m in static_metrics
-                    if m.is_col_metric() and not m.is_window_metric()
-                ],
+                metrics=[m for m in static_metrics if m.is_col_metric() and not m.is_window_metric()],
                 metric_type=MetricTypes.Static,
                 column=col,
                 table=table_entity,
@@ -406,9 +400,7 @@ class TestTypeCastedDataset:
                 "metadata.profiler.interface.pandas.burstiq.profiler_interface._pd.to_numeric",
                 side_effect=RuntimeError("unexpected numeric error"),
             ):
-                cast_gen = interface._type_casted_dataset(
-                    lambda: iter([DF_NORMAL.copy()])
-                )
+                cast_gen = interface._type_casted_dataset(lambda: iter([DF_NORMAL.copy()]))
                 result_dfs = list(cast_gen())
 
         assert len(result_dfs) == 1
@@ -513,9 +505,7 @@ class TestBurstIQProfilerIntegration:
 
         # All four DataFrame columns must have a profile entry
         for col_name in ("score", "name", "created_at", "count"):
-            assert (
-                col_name in profile_results["columns"]
-            ), f"Missing column profile for '{col_name}'"
+            assert col_name in profile_results["columns"], f"Missing column profile for '{col_name}'"
             col_prof = profile_results["columns"][col_name]
             assert col_prof["name"] == col_name
             assert "timestamp" in col_prof

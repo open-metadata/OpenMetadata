@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Model test
 """
+
 import pytest
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -78,9 +79,7 @@ class TestOMetaMlModelAPI:
     - create_mlmodel: MlModel factory (function scope)
     """
 
-    def test_create(
-        self, metadata, mlmodel_service, mlmodel_request, expected_fqn, create_mlmodel
-    ):
+    def test_create(self, metadata, mlmodel_service, mlmodel_request, expected_fqn, create_mlmodel):
         """
         We can create a Model and we receive it back as Entity
         """
@@ -255,9 +254,7 @@ class TestOMetaMlModelAPI:
                                 entity=Table, fqn=table1_entity.fullyQualifiedName
                             ),
                         ),
-                        FeatureSource(
-                            name="city", dataType=FeatureSourceDataType.string
-                        ),
+                        FeatureSource(name="city", dataType=FeatureSourceDataType.string),
                     ],
                     featureAlgorithm="PCA",
                 ),
@@ -276,9 +273,7 @@ class TestOMetaMlModelAPI:
             assert res.mlFeatures is not None
             assert res.mlHyperParameters is not None
 
-            lineage = metadata.get_lineage_by_id(
-                entity=MlModel, entity_id=str(res.id.root)
-            )
+            lineage = metadata.get_lineage_by_id(entity=MlModel, entity_id=str(res.id.root))
 
             nodes = {node["id"] for node in lineage["nodes"]}
             assert nodes == {str(table1_entity.id.root), str(table2_entity.id.root)}
@@ -293,9 +288,7 @@ class TestOMetaMlModelAPI:
 
             metadata.add_mlmodel_lineage(model=res)
 
-            lineage = metadata.get_lineage_by_id(
-                entity=MlModel, entity_id=str(res.id.root)
-            )
+            lineage = metadata.get_lineage_by_id(entity=MlModel, entity_id=str(res.id.root))
 
             nodes = {node["id"] for node in lineage["nodes"]}
             assert nodes == {str(table1_entity.id.root), str(table2_entity.id.root)}
@@ -315,9 +308,7 @@ class TestOMetaMlModelAPI:
         """
         created = create_mlmodel(mlmodel_request)
 
-        res = metadata.get_list_entity_versions(
-            entity=MlModel, entity_id=created.id.root
-        )
+        res = metadata.get_list_entity_versions(entity=MlModel, entity_id=created.id.root)
         assert res is not None
         assert len(res.versions) >= 1
 
@@ -327,9 +318,7 @@ class TestOMetaMlModelAPI:
         """
         created = create_mlmodel(mlmodel_request)
 
-        res = metadata.get_entity_version(
-            entity=MlModel, entity_id=created.id.root, version=0.1
-        )
+        res = metadata.get_entity_version(entity=MlModel, entity_id=created.id.root, version=0.1)
 
         assert res.version.root == 0.1
         assert res.id == created.id
@@ -339,8 +328,6 @@ class TestOMetaMlModelAPI:
         Test retrieving EntityReference for an ML model
         """
         created = create_mlmodel(mlmodel_request)
-        entity_ref = metadata.get_entity_reference(
-            entity=MlModel, fqn=created.fullyQualifiedName
-        )
+        entity_ref = metadata.get_entity_reference(entity=MlModel, fqn=created.fullyQualifiedName)
 
         assert created.id == entity_ref.id

@@ -45,15 +45,8 @@ lint:  ## Run pylint on the Python sources to analyze the codebase
 	PYTHONPATH="${PYTHONPATH}:$(INGESTION_DIR)/plugins" find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint --rcfile=$(INGESTION_DIR)/pyproject.toml
 
 .PHONY: static-checks
-static-checks:
-	# For Python 3.9, optionally skip SDK type checks if OM_SKIP_SDK_PY39=1
-	PY_VER=$$(python -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")'); \
-    if [ "$$PY_VER" = "3.9" ] && [ "$$OM_SKIP_SDK_PY39" = "1" ]; then \
-        echo "[static-checks] Python $$PY_VER detected with OM_SKIP_SDK_PY39=1 — excluding sdk/ from type checks"; \
-        basedpyright $$(find $(INGESTION_DIR)/src/metadata -maxdepth 1 -mindepth 1 -type d \( -not -name sdk -a -not -name __pycache__ \) | tr '\n' ' ') $$(find $(INGESTION_DIR)/src/metadata -maxdepth 1 -type f -name '*.py' | tr '\n' ' '); \
-    else \
-        basedpyright -p $(INGESTION_DIR)/pyproject.toml; \
-    fi
+static-checks:  ## Run basedpyright type checks (delegates to nox so local matches CI)
+	cd $(INGESTION_DIR) && nox --no-venv -s static-checks
 
 .PHONY: precommit_install
 precommit_install:  ## Install the project's precommit hooks from .pre-commit-config.yaml
@@ -62,16 +55,14 @@ precommit_install:  ## Install the project's precommit hooks from .pre-commit-co
 	pre-commit install
 
 .PHONY: py_format
-py_format:  ## Run black and isort to format the Python codebase
-	pycln $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
-	isort $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --settings-file $(INGESTION_DIR)/pyproject.toml
-	black $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+py_format:  ## Run ruff to lint-fix and format the Python codebase
+	ruff check --fix $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+	ruff format $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 
 .PHONY: py_format_check
 py_format_check:  ## Check if Python sources are correctly formatted
-	pycln $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --diff --config $(INGESTION_DIR)/pyproject.toml
-	isort --check-only $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --settings-file $(INGESTION_DIR)/pyproject.toml
-	black --check --diff $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+	ruff check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+	ruff format --check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 	PYTHONPATH="${PYTHONPATH}:$(INGESTION_DIR)/plugins" pylint --rcfile=$(INGESTION_DIR)/pyproject.toml --fail-under=10 $(PY_SOURCE)/metadata || (echo "PyLint error code $$?"; exit 1)
 
 .PHONY: unit_ingestion

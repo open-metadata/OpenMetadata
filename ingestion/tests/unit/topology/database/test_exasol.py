@@ -12,6 +12,7 @@
 """
 Test Exasol using the topology
 """
+
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -54,9 +55,7 @@ mock_exasol_config = {
 
 
 class ExasolUnitTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
@@ -67,9 +66,7 @@ class ExasolUnitTest(TestCase):
         )
 
     @patch("sqlalchemy.engine.base.Engine")
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection")
     def test_close_connection(self, engine, connection):
         connection.return_value = True
         self.exasol_source.close()

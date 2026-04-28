@@ -48,24 +48,18 @@ def parse_os_index_mapping(mapping: dict) -> Optional[List[SearchIndexField]]:
         properties = mapping.get("properties", {})
         for key, value in properties.items():
             # Use the provided type if available, else default to OBJECT.
-            data_type = (
-                DataType(value.get("type").upper())
-                if value.get("type")
-                else DataType.OBJECT
-            )
+            data_type = DataType(value.get("type").upper()) if value.get("type") else DataType.OBJECT
             field_models.append(
                 SearchIndexField(
                     name=key,
                     dataType=data_type,
                     dataTypeDisplay=value.get("type"),
                     description=value.get("description"),
-                    children=parse_os_index_mapping(value)
-                    if value.get("properties")
-                    else None,
+                    children=parse_os_index_mapping(value) if value.get("properties") else None,
                 )
             )
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
-        logger.warning(f"Unable to parse the index properties: {exc}")
+        logger.error(f"Unable to parse the index properties: {exc}")
 
     return field_models

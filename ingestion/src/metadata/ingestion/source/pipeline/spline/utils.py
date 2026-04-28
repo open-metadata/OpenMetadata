@@ -11,6 +11,7 @@
 """
 Spline source processing utilities
 """
+
 import traceback
 from typing import Optional, Tuple
 
@@ -33,7 +34,7 @@ def parse_dbfs_path(path: str) -> Optional[str]:
     try:
         return path.split("/")[-1]
     except Exception as exc:
-        logger.warning(f"Failed to parse dbfs: {exc}")
+        logger.error(f"Failed to parse dbfs: {exc}")
         logger.error(traceback.format_exc())
     return None
 
@@ -60,27 +61,17 @@ def parse_jdbc_url(url: str) -> Tuple[Optional[str], Optional[str], Optional[str
         tree = parser.jdbcUrl()
         schema_table = tree.schemaTable()
         if schema_table:
-            table = (
-                clean_name(schema_table.tableName().getText())
-                if schema_table.tableName()
-                else None
-            )
-            schema = (
-                clean_name(schema_table.schemaName().getText())
-                if schema_table.schemaName()
-                else None
-            )
+            table = clean_name(schema_table.tableName().getText()) if schema_table.tableName() else None
+            schema = clean_name(schema_table.schemaName().getText()) if schema_table.schemaName() else None
         else:
             table, schema = None, None
-        database = (
-            clean_name(tree.databaseName().getText()) if tree.databaseName() else None
-        )
+        database = clean_name(tree.databaseName().getText()) if tree.databaseName() else None
         if tree.DATABASE_TYPE() and tree.DATABASE_TYPE().getText() in MULTI_DB_SOURCE:
             return database, schema, table
 
         return DEFAULT_DATABASE, database, table
     except Exception as exc:
-        logger.warning(f"Failed to parse jdbc url: {exc}")
+        logger.error(f"Failed to parse jdbc url: {exc}")
         logger.error(traceback.format_exc())
 
     return None, None, None

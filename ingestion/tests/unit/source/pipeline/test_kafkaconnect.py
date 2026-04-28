@@ -14,7 +14,6 @@ from metadata.ingestion.source.pipeline.kafkaconnect.models import (
 
 
 class KafkaconnectSourceTests(KafkaconnectSource):
-
     """Subclass that skips real connection testing for unit tests."""
 
     def test_connection(self) -> None:
@@ -26,9 +25,7 @@ def mock_source(mock_metadata):
     config = {
         "type": "KafkaConnect",
         "serviceName": "test-kc",
-        "serviceConnection": {
-            "config": {"type": "KafkaConnect", "hostPort": "http://localhost:8083"}
-        },
+        "serviceConnection": {"config": {"type": "KafkaConnect", "hostPort": "http://localhost:8083"}},
         "sourceConfig": {"config": {}},
     }
 
@@ -55,18 +52,12 @@ def mock_metadata():
         ([KafkaConnectTopics(name="list.topic")], None, 1, ["list.topic"]),
     ],
 )
-def test_topic_parsing_various_inputs(
-    mock_source, pipeline_topics, config_topics, expected_count, expected_names
-):
+def test_topic_parsing_various_inputs(mock_source, pipeline_topics, config_topics, expected_count, expected_names):
     mock_pipeline_details = MagicMock(spec=KafkaConnectPipelineDetails)
     mock_pipeline_details.topics = pipeline_topics
-    mock_pipeline_details.config = (
-        {"topics": config_topics} if config_topics is not None else {}
-    )
+    mock_pipeline_details.config = {"topics": config_topics} if config_topics is not None else {}
 
-    result = mock_source._parse_and_resolve_topics(
-        mock_pipeline_details, None, "test-kafka", False
-    )
+    result = mock_source._parse_and_resolve_topics(mock_pipeline_details, None, "test-kafka", False)
 
     assert len(result.topics) == expected_count
     if expected_count > 0:
@@ -104,9 +95,7 @@ def test_topic_parsing_various_inputs(
         ),
     ],
 )
-def test_parse_and_resolve_topics(
-    mock_source, config, topic_name, table_name, expected_match
-):
+def test_parse_and_resolve_topics(mock_source, config, topic_name, table_name, expected_match):
     """Verifies the new naming format priority and sanitization logic."""
 
     # 1. Setup
@@ -158,9 +147,7 @@ def test_sanitization_only_on_custom_pattern(mock_source):
 
     # Testing the logic relevant to your PR fix
     mock_pipeline.config = {"table.name.format": "prefix.${topic}"}
-    result_custom = mock_source._parse_and_resolve_topics(
-        mock_pipeline, None, "test-kafka", False
-    )
+    result_custom = mock_source._parse_and_resolve_topics(mock_pipeline, None, "test-kafka", False)
     # This should match the sanitization logic in your patched metadata.py
     assert result_custom.topics[0].name == "db.schema.table"
 
@@ -211,9 +198,7 @@ def test_topic_to_sink_table_mapping(mock_source):
         (ConnectorType.SINK, {}, "aw_sales", "aw.Sales", True),
     ],
 )
-def test_match_topic_to_dataset_sink(
-    mock_source, conn_type, config, dataset_table, topic_name, expected_match
-):
+def test_match_topic_to_dataset_sink(mock_source, conn_type, config, dataset_table, topic_name, expected_match):
     dataset_details = KafkaConnectDatasetDetails(table=dataset_table)
 
     if isinstance(conn_type, str):

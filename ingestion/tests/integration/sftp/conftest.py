@@ -11,6 +11,7 @@
 """
 SFTP integration test fixtures
 """
+
 import os
 import tempfile
 import uuid
@@ -45,9 +46,7 @@ class SftpContainer(DockerContainer):
         super().__init__(image="atmoz/sftp:latest")
         self.config = config
         self.with_exposed_ports(config.port)
-        self.with_command(
-            f"{config.username}:{config.password}:1001:1001:{config.upload_dir}"
-        )
+        self.with_command(f"{config.username}:{config.password}:1001:1001:{config.upload_dir}")
         if config.container_name:
             self.with_name(config.container_name)
 
@@ -71,9 +70,7 @@ def upload_test_data_to_sftp(container: SftpContainer, local_dir: str, remote_di
     port = int(container.get_exposed_port(container.config.port))
 
     transport = paramiko.Transport((host, port))
-    transport.connect(
-        username=container.config.username, password=container.config.password
-    )
+    transport.connect(username=container.config.username, password=container.config.password)
     sftp = paramiko.SFTPClient.from_transport(transport)
 
     try:
@@ -146,9 +143,7 @@ def create_test_data_directory() -> str:
         f.write("Deep nested file content.")
 
     # Files in deeply nested directories (level2, level3)
-    with open(
-        os.path.join(temp_dir, "data", "nested", "level2", "level2_file.txt"), "w"
-    ) as f:
+    with open(os.path.join(temp_dir, "data", "nested", "level2", "level2_file.txt"), "w") as f:
         f.write("Level 2 nested file content.")
 
     with open(
@@ -761,9 +756,7 @@ workflowConfig:
 
     service: DriveService = metadata.get_by_name(entity=DriveService, fqn=service_name)
     if service:
-        metadata.delete(
-            entity=DriveService, entity_id=service.id, hard_delete=True, recursive=True
-        )
+        metadata.delete(entity=DriveService, entity_id=service.id, hard_delete=True, recursive=True)
 
 
 @pytest.fixture(scope="module")
@@ -773,9 +766,7 @@ def service_name_structured():
 
 
 @pytest.fixture(scope="module")
-def ingest_sftp_structured_only(
-    sftp_container, metadata, service_name_structured, upload_test_data
-):
+def ingest_sftp_structured_only(sftp_container, metadata, service_name_structured, upload_test_data):
     """Run SFTP ingestion workflow with structuredDataFilesOnly enabled"""
     host = sftp_container.get_container_host_ip()
     port = sftp_container.get_exposed_port(sftp_container.config.port)
@@ -825,10 +816,6 @@ workflowConfig:
 
     yield workflow
 
-    service: DriveService = metadata.get_by_name(
-        entity=DriveService, fqn=service_name_structured
-    )
+    service: DriveService = metadata.get_by_name(entity=DriveService, fqn=service_name_structured)
     if service:
-        metadata.delete(
-            entity=DriveService, entity_id=service.id, hard_delete=True, recursive=True
-        )
+        metadata.delete(entity=DriveService, entity_id=service.id, hard_delete=True, recursive=True)

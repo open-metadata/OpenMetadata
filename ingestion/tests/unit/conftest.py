@@ -18,9 +18,7 @@ import metadata  # noqa: F401
 # Unit tests don't need either — they test transformation logic.
 # TODO: Once topology/workflow/profiler tests are migrated from TestCase to pytest,
 #       replace these with a session-scoped fixture.
-_mock_validate = patch(
-    "metadata.ingestion.ometa.ometa_api.OpenMetadata.validate_versions"
-)
+_mock_validate = patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.validate_versions")
 _mock_validate.start()
 
 _mock_health = patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.health_check")

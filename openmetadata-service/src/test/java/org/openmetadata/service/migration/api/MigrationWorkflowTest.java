@@ -219,6 +219,35 @@ class MigrationWorkflowTest {
   }
 
   @Test
+  void loadMigrationsFallsBackToNoOpWhenNoExtensionProviderHandlesVersion() throws Exception {
+    // Regression: a Collate version directory without a registered Java provider must resolve to
+    // MigrationProcessImpl (no-op data migration), NOT to OM's same-numeric-version migration
+    // class. Otherwise OM data migrations like migrateThreadTasksToTaskEntity would be re-run for
+    // every Collate version that shares its major.minor.patch.
+    Path nativeRoot = Files.createDirectories(tempDir.resolve("native"));
+    Path extensionRoot = Files.createDirectories(tempDir.resolve("extension"));
+    createMigrationDir(extensionRoot, "1.12.1-collate", "SELECT 22;");
+    when(migrationDAO.getMigrationVersions()).thenReturn(List.of());
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi,
+            nativeRoot.toString(),
+            ConnectionType.POSTGRES,
+            extensionRoot.toString(),
+            null,
+            config,
+            false);
+
+    workflow.loadMigrations();
+
+    List<MigrationProcess> resolved = getMigrations(workflow);
+    assertEquals(1, resolved.size());
+    assertEquals("1.12.1-collate", resolved.get(0).getVersion());
+    assertEquals(MigrationProcessImpl.class, resolved.get(0).getClass());
+  }
+
+  @Test
   void loadMigrationsFallsBackToRunningEverythingWhenMigrationLookupFails() throws Exception {
     Path nativeRoot = Files.createDirectories(tempDir.resolve("native"));
     createMigrationDir(nativeRoot, "1.0.0", "SELECT 1;");
@@ -724,10 +753,14 @@ class MigrationWorkflowTest {
 
   @SuppressWarnings("unchecked")
   private List<String> getMigrationVersions(MigrationWorkflow workflow) throws Exception {
+    return getMigrations(workflow).stream().map(MigrationProcess::getVersion).toList();
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<MigrationProcess> getMigrations(MigrationWorkflow workflow) throws Exception {
     Field field = MigrationWorkflow.class.getDeclaredField("migrations");
     field.setAccessible(true);
-    List<MigrationProcess> migrations = (List<MigrationProcess>) field.get(workflow);
-    return migrations.stream().map(MigrationProcess::getVersion).toList();
+    return (List<MigrationProcess>) field.get(workflow);
   }
 
   @SuppressWarnings("unchecked")

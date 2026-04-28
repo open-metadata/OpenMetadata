@@ -11,6 +11,7 @@
 """
 Unit tests for MetadataUsageBulkSink error handling
 """
+
 import json
 import os
 import tempfile
@@ -93,9 +94,7 @@ class TestMetadataUsageBulkSinkErrorHandling(TestCase):
         """Set up test fixtures"""
         self.mock_metadata = MagicMock()
         self.config = MetadataUsageSinkConfig(filename="/tmp/test_usage")
-        self.sink = MetadataUsageBulkSink(
-            config=self.config, metadata=self.mock_metadata
-        )
+        self.sink = MetadataUsageBulkSink(config=self.config, metadata=self.mock_metadata)
         self.sink.service_name = "test_service"
 
     def test_api_error_409_logs_warning_and_continues(self):
@@ -103,9 +102,7 @@ class TestMetadataUsageBulkSinkErrorHandling(TestCase):
         mock_table = create_mock_table()
         table_usage = create_table_usage_with_queries()
 
-        self.mock_metadata.ingest_entity_queries_data.side_effect = create_api_error(
-            409, "Entity already exists"
-        )
+        self.mock_metadata.ingest_entity_queries_data.side_effect = create_api_error(409, "Entity already exists")
 
         initial_failures = len(self.sink.status.failures)
         self.sink.get_table_usage_and_joins([mock_table], table_usage)
@@ -139,9 +136,7 @@ class TestMetadataUsageBulkSinkErrorHandling(TestCase):
         mock_table = create_mock_table()
         table_usage = create_table_usage_with_queries()
 
-        self.mock_metadata.ingest_entity_queries_data.side_effect = create_api_error(
-            500, "Internal server error"
-        )
+        self.mock_metadata.ingest_entity_queries_data.side_effect = create_api_error(500, "Internal server error")
 
         initial_failures = len(self.sink.status.failures)
         self.sink.get_table_usage_and_joins([mock_table], table_usage)
@@ -230,9 +225,7 @@ class TestPublishQueryCostNoneHandling(TestCase):
         mock_mask_query.assert_called_once_with(record.query, record.dialect)
 
     @patch("metadata.ingestion.ometa.mixins.query_mixin.mask_query")
-    def test_publish_query_cost_mask_query_returns_none_uses_original_query_hash(
-        self, mock_mask_query
-    ):
+    def test_publish_query_cost_mask_query_returns_none_uses_original_query_hash(self, mock_mask_query):
         """
         When mask_query returns None, the hash should be computed from the
         original query text, not from None.
@@ -286,9 +279,7 @@ class TestHandleQueryCostErrorHandling(TestCase):
     def setUp(self):
         self.mock_metadata = MagicMock()
         self.config = MetadataUsageSinkConfig(filename=tempfile.mkdtemp())
-        self.sink = MetadataUsageBulkSink(
-            config=self.config, metadata=self.mock_metadata
-        )
+        self.sink = MetadataUsageBulkSink(config=self.config, metadata=self.mock_metadata)
         self.sink.service_name = "test_service"
 
     def tearDown(self):
@@ -299,9 +290,7 @@ class TestHandleQueryCostErrorHandling(TestCase):
 
     def _write_cost_file(self, records):
         """Write query cost records to a staging file"""
-        filepath = os.path.join(
-            self.config.filename, "test_service_1702000000000_query"
-        )
+        filepath = os.path.join(self.config.filename, "test_service_1702000000000_query")
         with open(filepath, "w") as f:
             for record in records:
                 f.write(json.dumps(record) + "\n")

@@ -50,7 +50,7 @@ class Failure(BaseModel):
 
 @deprecated(message="Use 'workflow.print_status()' instead.", release="1.6")
 def print_status(
-    workflow: "BaseWorkflow",  # pyright: ignore[reportUndefinedVariable,reportUnknownParameterType]
+    workflow: "BaseWorkflow",  # pyright: ignore[reportUndefinedVariable,reportUnknownParameterType]  # noqa: F821
 ):
     workflow.print_status()  # pyright: ignore[reportUnknownMemberType]
 
@@ -95,8 +95,7 @@ class WorkflowOutputHandler:
             log_ansi_encoded_string(
                 color=ANSI.BRIGHT_CYAN,
                 bold=True,
-                message="Workflow finished in time: "
-                + f"{pretty_print_time_duration(time.time() - start_time)}",
+                message="Workflow finished in time: " + f"{pretty_print_time_duration(time.time() - start_time)}",
             )
 
         if result_status == WorkflowResultStatus.FAILURE:
@@ -132,26 +131,18 @@ class WorkflowOutputHandler:
         for step in steps:
             step_summary = Summary.from_step(step)
 
-            failures.append(
-                Failure(name=step.name, failures=step.get_status().failures)
-            )
+            failures.append(Failure(name=step.name, failures=step.get_status().failures))
 
             log_ansi_encoded_string(bold=True, message=f"Workflow {step.name} Summary:")
-            log_ansi_encoded_string(
-                message=f"Processed records: {step_summary.records}"
-            )
-            log_ansi_encoded_string(
-                message=f"Updated records: {step_summary.updated_records}"
-            )
+            log_ansi_encoded_string(message=f"Processed records: {step_summary.records}")
+            log_ansi_encoded_string(message=f"Updated records: {step_summary.updated_records}")
             log_ansi_encoded_string(message=f"Warnings: {step_summary.warnings}")
 
             if step_summary.filtered:
                 log_ansi_encoded_string(message=f"Filtered: {step_summary.filtered}")
 
             log_ansi_encoded_string(message=f"Errors: {step_summary.errors}")
-            log_ansi_encoded_string(
-                message=f"Success %: {step.get_status().calculate_success()}"
-            )
+            log_ansi_encoded_string(message=f"Success %: {step.get_status().calculate_success()}")
 
         self._print_failures_if_apply(failures)
 
@@ -186,22 +177,14 @@ class WorkflowOutputHandler:
         for key in sorted(tracker.state.state.keys()):
             metrics = tracker.state.state[key]
             summary_table["Context"].append(key)
-            summary_table["Total Time"].append(
-                pretty_print_time_duration(metrics.total_time)
-            )
+            summary_table["Total Time"].append(pretty_print_time_duration(metrics.total_time))
             summary_table["Call Count"].append(metrics.call_count)
-            summary_table["Avg Time"].append(
-                pretty_print_time_duration(metrics.average_time)
-            )
+            summary_table["Avg Time"].append(pretty_print_time_duration(metrics.average_time))
             summary_table["Min Time"].append(
-                pretty_print_time_duration(metrics.min_time)
-                if metrics.min_time is not None
-                else "N/A"
+                pretty_print_time_duration(metrics.min_time) if metrics.min_time is not None else "N/A"
             )
             summary_table["Max Time"].append(
-                pretty_print_time_duration(metrics.max_time)
-                if metrics.max_time is not None
-                else "N/A"
+                pretty_print_time_duration(metrics.max_time) if metrics.max_time is not None else "N/A"
             )
 
         if not summary_table["Context"]:
@@ -260,14 +243,10 @@ class WorkflowOutputHandler:
             # the number of failures logged to a smaller number like 10.
             # TODO: revisit this to see if we can increase this limit
             if len(list(error_table.items())[0][1]) > 10:
-                log_ansi_encoded_string(
-                    bold=True, message="Showing the first 10 failures:"
-                )
+                log_ansi_encoded_string(bold=True, message="Showing the first 10 failures:")
                 # truncate list if number of values are over 10
                 error_table = {k: v[:10] for k, v in error_table.items()}
             else:
                 log_ansi_encoded_string(bold=True, message="List of failures:")
 
-            log_ansi_encoded_string(
-                message=f"\n{tabulate(error_table, headers='keys', tablefmt='grid')}"
-            )
+            log_ansi_encoded_string(message=f"\n{tabulate(error_table, headers='keys', tablefmt='grid')}")

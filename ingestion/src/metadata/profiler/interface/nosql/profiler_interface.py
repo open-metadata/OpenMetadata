@@ -14,6 +14,7 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
+
 import traceback
 from collections import defaultdict
 from datetime import datetime
@@ -83,12 +84,9 @@ class NoSQLProfilerInterface(ProfilerInterface):
             return dict(row)
         except Exception as exc:
             logger.debug(
-                f"{traceback.format_exc()}\n"
-                f"Error trying to compute metrics for {self.table.fullyQualifiedName}: {exc}"
+                f"{traceback.format_exc()}\nError trying to compute metrics for {self.table.fullyQualifiedName}: {exc}"
             )
-            raise RuntimeError(
-                f"Error trying to compute metris for {self.table.fullyQualifiedName}: {exc}"
-            )
+            raise RuntimeError(f"Error trying to compute metris for {self.table.fullyQualifiedName}: {exc}")
 
     def _compute_query_metrics(
         self,
@@ -117,9 +115,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
     ):
         return None
 
-    def _compute_custom_metrics(
-        self, metrics: List[CustomMetric], runner, *args, **kwargs
-    ):
+    def _compute_custom_metrics(self, metrics: List[CustomMetric], runner, *args, **kwargs):
         return None
 
     def compute_metrics(
@@ -143,22 +139,16 @@ class NoSQLProfilerInterface(ProfilerInterface):
             row = None
         if metric_func.column is not None:
             column = metric_func.column.name
-            self.status.scanned(
-                f"{metric_func.table.name.root}.{column}__{metric_func.metric_type.value}"
-            )
+            self.status.scanned(f"{metric_func.table.name.root}.{column}__{metric_func.metric_type.value}")
         else:
-            self.status.scanned(
-                f"{metric_func.table.name.root}__{metric_func.metric_type.value}"
-            )
+            self.status.scanned(f"{metric_func.table.name.root}__{metric_func.metric_type.value}")
             column = None
         return row, column, metric_func.metric_type.value
 
     def fetch_sample_data(self, table, columns: List[SQALikeColumn]) -> TableData:
         return self.sampler.fetch_sample_data(columns)
 
-    def get_composed_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict
-    ):
+    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: Dict):
         return None
 
     def get_hybrid_metrics(self, column: Column, metric: Metrics, column_results: Dict):
@@ -175,8 +165,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
             client=self.connection,
         )
         metric_list = [
-            self.compute_metrics(runner, metric_func)
-            for metric_func in MetricFilter.filter_empty_metrics(metric_funcs)
+            self.compute_metrics(runner, metric_func) for metric_func in MetricFilter.filter_empty_metrics(metric_funcs)
         ]
         for metric_result in metric_list:
             profile, column, metric_type = metric_result
@@ -203,9 +192,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
         return self.table_entity
 
     def get_columns(self) -> List[Optional[SQALikeColumn]]:
-        return [
-            SQALikeColumn(name=c.name.root, type=c.dataType) for c in self.table.columns
-        ]
+        return [SQALikeColumn(name=c.name.root, type=c.dataType) for c in self.table.columns]
 
     def close(self):
         if getattr(self.connection, "close", None):

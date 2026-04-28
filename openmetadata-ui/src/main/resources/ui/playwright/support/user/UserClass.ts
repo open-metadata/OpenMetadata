@@ -22,7 +22,7 @@ import { RolesClass } from '../access-control/RolesClass';
 import { UserResponseDataType } from '../entity/Entity.interface';
 import { TeamClass } from '../team/TeamClass';
 
-type UserData = {
+export type UserData = {
   email: string;
   firstName: string;
   lastName: string;
@@ -38,9 +38,11 @@ export class UserClass {
 
   responseData: UserResponseDataType = {} as UserResponseDataType;
   isUserDataSteward = false;
+  isAdmin: boolean;
 
-  constructor(data?: UserData) {
-    this.data = data ? data : generateRandomUsername();
+  constructor(data?: UserData, isAdmin = false) {
+    this.data = data ?? generateRandomUsername();
+    this.isAdmin = isAdmin;
   }
 
   async create(apiContext: APIRequestContext, assignRole = true) {
@@ -62,22 +64,37 @@ export class UserClass {
 
     this.responseData = await response.json();
     if (assignRole) {
-      const { entity } = await this.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/roles/0',
-            value: {
-              id: dataConsumerRole.id,
-              type: 'role',
-              name: dataConsumerRole.name,
+      if (this.isAdmin) {
+        const { entity } = await this.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'replace',
+              path: '/isAdmin',
+              value: true,
             },
-          },
-        ],
-      });
+          ],
+        });
 
-      return entity;
+        return entity;
+      } else {
+        const { entity } = await this.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/roles/0',
+              value: {
+                id: dataConsumerRole.id,
+                type: 'role',
+                name: dataConsumerRole.name,
+              },
+            },
+          ],
+        });
+
+        return entity;
+      }
     }
 
     return this.responseData;

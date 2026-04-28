@@ -59,7 +59,10 @@ public class MainWorkflow {
     Map<String, NodeInterface> nodeInstanceMap = new HashMap<>();
     for (WorkflowNodeDefinitionInterface nodeDefinitionObj : workflowDefinition.getNodes()) {
       NodeInterface node =
-          NodeFactory.createNode(nodeDefinitionObj, workflowDefinition.getConfig());
+          NodeFactory.createNode(
+              nodeDefinitionObj,
+              workflowDefinition.getConfig(),
+              workflowDefinition.getFullyQualifiedName());
       nodeInstanceMap.put(nodeDefinitionObj.getName(), node);
       node.addToWorkflow(model, process);
 

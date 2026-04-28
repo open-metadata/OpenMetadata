@@ -57,9 +57,7 @@ _type_map.update(
 
 
 @reflection.cache
-def get_columns(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     """
     Handle columns for presto
     """
@@ -104,9 +102,7 @@ def get_columns(
 @reflection.cache
 # pylint: disable=unused-argument
 def get_table_comment(self, connection, table_name, schema=None, **kw):
-    fmt_query = PRESTO_SHOW_CREATE_TABLE.format(
-        schema_table_name=".".join(filter(None, [schema, table_name]))
-    )
+    fmt_query = PRESTO_SHOW_CREATE_TABLE.format(schema_table_name=".".join(filter(None, [schema, table_name])))
     results = connection.execute(text(fmt_query))
     for res in results:
         matches = re.findall(r"COMMENT '(.*)'", res[0])
@@ -125,15 +121,11 @@ class PrestoSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: PrestoConnection = config.serviceConnection.root.config
         if not isinstance(connection, PrestoConnection):
-            raise InvalidSourceException(
-                f"Expected PrestoConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected PrestoConnection, but got {connection}")
         return cls(config, metadata)
 
     def set_inspector(self, database_name: str) -> None:
@@ -150,9 +142,7 @@ class PrestoSource(CommonDbSourceService):
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         table_type = TableType.Regular
         try:
             catalog_name = self.context.get().database
@@ -167,8 +157,7 @@ class PrestoSource(CommonDbSourceService):
             logger.debug(traceback.format_exc())
 
         return [
-            TableNameAndType(name=name, type_=table_type)
-            for name in self.inspector.get_table_names(schema_name) or []
+            TableNameAndType(name=name, type_=table_type) for name in self.inspector.get_table_names(schema_name) or []
         ]
 
     def get_database_names(self) -> Iterable[str]:
@@ -189,9 +178,7 @@ class PrestoSource(CommonDbSourceService):
                     )
                     if filter_by_database(
                         self.source_config.databaseFilterPattern,
-                        database_fqn
-                        if self.source_config.useFqnForFiltering
-                        else new_catalog,
+                        database_fqn if self.source_config.useFqnForFiltering else new_catalog,
                     ):
                         self.status.filter(database_fqn, "Database Filtered Out")
                         continue
@@ -201,6 +188,4 @@ class PrestoSource(CommonDbSourceService):
                         yield new_catalog
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
-                        logger.warning(
-                            f"Error trying to connect to database {new_catalog}: {exc}"
-                        )
+                        logger.warning(f"Error trying to connect to database {new_catalog}: {exc}")

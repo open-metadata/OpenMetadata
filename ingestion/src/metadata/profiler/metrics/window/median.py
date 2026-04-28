@@ -93,9 +93,7 @@ class Median(StaticMetric, PercentilMixin):
                 dimension_col,
             )
 
-        logger.debug(
-            f"Don't know how to process type {self.col.type} when computing Median"
-        )
+        logger.debug(f"Don't know how to process type {self.col.type} when computing Median")
         return None
 
     def df_fn(self, dfs: Optional["PandasRunner"] = None):
@@ -114,34 +112,26 @@ class Median(StaticMetric, PercentilMixin):
                 )
                 return None
             except Exception as err:
-                logger.debug(
-                    f"Error while computing Median for column {self.col.name}: {err}"
-                )
+                logger.debug(f"Error while computing Median for column {self.col.name}: {err}")
                 return None
         median = computation.aggregate_accumulator(accumulator)
 
         if median is None:
-            logger.warning(
-                f"Don't know how to process type {self.col.type} when computing MEDIAN"
-            )
+            logger.warning(f"Don't know how to process type {self.col.type} when computing MEDIAN")
             return None
         return median
 
     def get_pandas_computation(self) -> PandasComputation:
         return PandasComputation[MedianAccumulator, Optional[float]](
             create_accumulator=lambda: MedianAccumulator([], 0),
-            update_accumulator=lambda acc, df: Median.update_accumulator(
-                acc, df, self.col
-            ),
+            update_accumulator=lambda acc, df: Median.update_accumulator(acc, df, self.col),
             aggregate_accumulator=Median.aggregate_accumulator,
         )
 
     @staticmethod
-    def update_accumulator(
-        acc: MedianAccumulator, df: "pd.DataFrame", column
-    ) -> MedianAccumulator:
-        import numpy as np  # pylint: disable=import-outside-toplevel
-        import pandas as pd  # pylint: disable=import-outside-toplevel
+    def update_accumulator(acc: MedianAccumulator, df: "pd.DataFrame", column) -> MedianAccumulator:
+        import numpy as np  # pylint: disable=import-outside-toplevel  # noqa: F401
+        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: F401
 
         series = df[column.name].dropna()
         if series.empty:
@@ -155,9 +145,7 @@ class Median(StaticMetric, PercentilMixin):
             except Exception:  # noqa: BLE001
                 arr = series.astype(float).to_numpy(copy=False)
         else:
-            logger.debug(
-                f"Don't know how to process type {column.type} when computing Median"
-            )
+            logger.debug(f"Don't know how to process type {column.type} when computing Median")
 
         if arr is None or arr.size == 0:
             return acc

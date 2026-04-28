@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.storages;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -39,6 +41,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContainerRepository;
@@ -47,6 +50,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Path("/v1/containers")
 @Tag(
@@ -62,7 +67,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   private final ContainerMapper mapper = new ContainerMapper();
   public static final String COLLECTION_PATH = "/v1/containers/";
   static final String FIELDS =
-      "parent,children,dataModel,owners,tags,followers,extension,domains,sourceHash";
+      "parent,children,dataModel,owners,tags,followers,extension,domains,sourceHash,sampleData";
 
   @Override
   public Container addHref(UriInfo uriInfo, Container container) {
@@ -79,7 +84,8 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("parent,children,dataModel", MetadataOperation.VIEW_BASIC);
-    return null;
+    addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
+    return listOf(MetadataOperation.VIEW_SAMPLE_DATA, MetadataOperation.EDIT_SAMPLE_DATA);
   }
 
   public static class ContainerList extends ResultList<Container> {
@@ -645,6 +651,94 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @PUT
+  @Path("/{id}/sampleData")
+  @Operation(
+      operationId = "addSampleData",
+      summary = "Add sample data",
+      description = "Add sample data to the container.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the Container",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Container.class)))
+      })
+  public Container addSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the container", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid TableData tableData) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Container container = repository.addSampleData(id, tableData);
+    return addHref(uriInfo, container);
+  }
+
+  @GET
+  @Path("/{id}/sampleData")
+  @Operation(
+      operationId = "getSampleData",
+      summary = "Get sample data",
+      description = "Get sample data from the container.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully retrieved the Container",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Container.class)))
+      })
+  public Container getSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the container", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+    ResourceContext<?> resourceContext = getResourceContextById(id);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
+
+    Container container = repository.getSampleData(id, authorizePII);
+    return addHref(uriInfo, container);
+  }
+
+  @DELETE
+  @Path("/{id}/sampleData")
+  @Operation(
+      operationId = "deleteSampleData",
+      summary = "Delete sample data",
+      description = "Delete sample data from the container.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the Container",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Container.class)))
+      })
+  public Container deleteSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the container", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Container container = repository.deleteSampleData(id);
+    return addHref(uriInfo, container);
   }
 
   @GET
