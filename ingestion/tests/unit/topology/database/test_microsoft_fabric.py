@@ -281,7 +281,7 @@ class MicrosoftFabricUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.microsoftfabric.connection.get_connection")
     def __init__(
         self,
-        methodName,
+        methodName,  # noqa: N803
         mock_get_connection,
         test_connection,
     ) -> None:

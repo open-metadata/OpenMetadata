@@ -128,7 +128,7 @@ def _wait_for_singlestore(host, port, timeout=180):
                 connect_timeout=5,
             )
             conn.close()
-            return
+            return  # noqa: TRY300
         except pymysql.err.OperationalError:
             time.sleep(2)
     raise TimeoutError(f"SingleStore not ready on {host}:{port} after {timeout}s")

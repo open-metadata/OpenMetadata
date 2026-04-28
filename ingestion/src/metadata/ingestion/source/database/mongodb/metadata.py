@@ -13,7 +13,7 @@ MongoDB source methods.
 """
 
 import traceback
-from typing import Dict, Iterable, List, Optional, Union
+from typing import Dict, Iterable, List, Optional, Union  # noqa: UP035
 
 from pymongo.errors import OperationFailure
 
@@ -46,14 +46,14 @@ class MongodbSource(CommonNoSQLSource):
         self.mongodb = self.connection_obj
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: MongoDBConnection = config.serviceConnection.root.config
         if not isinstance(connection, MongoDBConnection):
             raise InvalidSourceException(f"Expected MongoDBConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_schema_name_list(self) -> List[str]:
+    def get_schema_name_list(self) -> List[str]:  # noqa: UP006
         """
         Method to get list of schema names available within NoSQL db
         need to be overridden by sources
@@ -80,7 +80,7 @@ class MongodbSource(CommonNoSQLSource):
             logger.debug(traceback.format_exc())
         return []
 
-    def get_table_columns_dict(self, schema_name: str, table_name: str) -> Union[List[Dict], Dict]:
+    def get_table_columns_dict(self, schema_name: str, table_name: str) -> Union[List[Dict], Dict]:  # noqa: UP006, UP007
         """
         Method to get actual data available within table
         need to be overridden by sources

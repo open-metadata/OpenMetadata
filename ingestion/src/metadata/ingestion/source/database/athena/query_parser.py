@@ -56,7 +56,7 @@ class AthenaQueryParserSource(QueryParserSource, ABC):
         self.client = AWSClient(self.service_connection.awsConfig).get_athena_client()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AthenaConnection = config.serviceConnection.root.config
@@ -118,4 +118,4 @@ class AthenaQueryParserSource(QueryParserSource, ABC):
                     break
 
     def is_not_dbt_or_om_query(self, query_text: str) -> bool:
-        return not (query_text.startswith(QUERY_WITH_DBT) or query_text.startswith(QUERY_WITH_OM_VERSION))
+        return not (query_text.startswith(QUERY_WITH_DBT) or query_text.startswith(QUERY_WITH_OM_VERSION))  # noqa: PIE810

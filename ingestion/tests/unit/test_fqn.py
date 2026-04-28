@@ -106,7 +106,7 @@ class TestFqn(TestCase):
         self.assertEqual('Invalid name a"b', str(context.exception))
 
     def test_invalid(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception):  # noqa: B017
             fqn.split('a.."')
 
     def test_build_table(self):

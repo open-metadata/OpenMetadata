@@ -88,7 +88,7 @@ Now review the implementation quality.
 **Python:**
 - [ ] pytest style (plain `assert`, no `unittest.TestCase`)
 - [ ] Type hints on public functions
-- [ ] `make py_format && make lint` passes
+- [ ] `make py_format && make py_format_check` passes
 - [ ] Pydantic 2.x patterns (not v1 compatibility layer)
 
 **TypeScript/React:**

@@ -62,7 +62,7 @@ class TestMemoryLimit(unittest.TestCase):
         """
         # Pre-allocate 80MB BEFORE the decorated function
         preexisting_data = []
-        for i in range(80):
+        for i in range(80):  # noqa: B007
             chunk = [0] * (1024 * 128)  # ~1MB per chunk
             preexisting_data.append(chunk)
 
@@ -70,7 +70,7 @@ class TestMemoryLimit(unittest.TestCase):
         def allocate_only_5mb():
             """Function that allocates only ~5MB (well under limit)"""
             data = []
-            for i in range(5):
+            for i in range(5):  # noqa: B007
                 chunk = [0] * (1024 * 128)  # ~1MB per chunk
                 data.append(chunk)
             return len(data)
@@ -95,7 +95,7 @@ class TestMemoryLimit(unittest.TestCase):
         def small_allocation():
             """Function that allocates enough to trigger limit"""
             data = []
-            for i in range(20):
+            for i in range(20):  # noqa: B007
                 chunk = bytearray(1024 * 1024)  # 1MB each
                 data.append(chunk)
                 time.sleep(0.1)
@@ -117,7 +117,7 @@ class TestMemoryLimit(unittest.TestCase):
         def small_allocation():
             """Function that allocates small amount of memory"""
             data = []
-            for i in range(10):
+            for i in range(10):  # noqa: B007
                 chunk = bytearray(1024 * 1024)  # 1MB each = 10MB total
                 data.append(chunk)
             return len(data)
@@ -136,7 +136,7 @@ class TestMemoryLimit(unittest.TestCase):
         def small_allocation():
             """Function with verbose logging enabled"""
             data = []
-            for i in range(10):
+            for i in range(10):  # noqa: B007
                 chunk = bytearray(1024 * 1024)  # 1MB each
                 data.append(chunk)
                 time.sleep(0.1)  # Allow checkpoint logs to appear
@@ -155,7 +155,7 @@ class TestMemoryLimit(unittest.TestCase):
         def small_allocation():
             """Function without context"""
             data = []
-            for i in range(10):
+            for i in range(10):  # noqa: B007
                 chunk = bytearray(1024 * 1024)  # 1MB each
                 data.append(chunk)
             return len(data)
@@ -202,7 +202,7 @@ class TestMemoryLimit(unittest.TestCase):
             """Allocate memory, then release some"""
             # Allocate 60MB
             data = []
-            for i in range(60):
+            for i in range(60):  # noqa: B007
                 chunk = bytearray(1024 * 1024)
                 data.append(chunk)
 
@@ -210,7 +210,7 @@ class TestMemoryLimit(unittest.TestCase):
             data = data[:30]
 
             # Try to allocate more (should be fine since we released)
-            for i in range(10):
+            for i in range(10):  # noqa: B007
                 chunk = bytearray(1024 * 1024)
                 data.append(chunk)
                 time.sleep(0.1)
@@ -231,7 +231,7 @@ class TestMemoryLimit(unittest.TestCase):
         def gradual_leak():
             """Gradually allocate memory"""
             data = []
-            for i in range(100):
+            for i in range(100):  # noqa: B007
                 # Small allocations that add up
                 chunk = bytearray(512 * 1024)  # 0.5MB each
                 data.append(chunk)
@@ -298,7 +298,7 @@ class TestMemoryLimit(unittest.TestCase):
         def allocate_and_process():
             """Allocate memory while doing processing"""
             data = []
-            for i in range(30):
+            for i in range(30):  # noqa: B007
                 # Allocate memory
                 chunk = bytearray(1024 * 1024)  # 1MB
 
@@ -330,7 +330,7 @@ class TestMemoryLimit(unittest.TestCase):
 
             data = []
             # Call inner function multiple times
-            for i in range(10):
+            for i in range(10):  # noqa: B007
                 chunk = inner_allocate(5)  # 5MB each
                 data.append(chunk)
                 time.sleep(0.2)  # Give monitor time to detect
@@ -374,7 +374,7 @@ class TestMemoryLimit(unittest.TestCase):
             """Function with minimal memory usage"""
             # Just do some computation
             result = sum(range(1000000))
-            return result
+            return result  # noqa: RET504
 
         # Should complete successfully
         result = minimal_allocation()
@@ -420,7 +420,7 @@ class TestMemoryLimit(unittest.TestCase):
             return len(data)
 
         # Execute multiple times
-        for i in range(3):
+        for i in range(3):  # noqa: B007
             result = repeated_function()
             self.assertEqual(result, 30)
             time.sleep(0.5)  # Brief pause between executions
@@ -445,7 +445,7 @@ class TestMemoryLimit(unittest.TestCase):
             data = []
             # Allocate 500 chunks of 1MB each = 500MB total
             # This happens in milliseconds, much faster than 0.1s monitor interval
-            for i in range(500):
+            for i in range(500):  # noqa: B007
                 chunk = bytearray(1024 * 1024)  # 1MB
                 data.append(chunk)
 
@@ -674,7 +674,7 @@ class TestMemoryLimit(unittest.TestCase):
         def allocate_in_concurrent_thread(thread_id: int, mb_to_allocate: int):
             """Function that allocates specified MB in a thread"""
             data = []
-            for i in range(mb_to_allocate):
+            for i in range(mb_to_allocate):  # noqa: B007
                 chunk = bytearray(1024 * 1024)  # 1MB
                 data.append(chunk)
                 time.sleep(0.05)  # Small delay

@@ -63,7 +63,7 @@ class SampleTest(TestCase):
     Run checks on different metrics
     """
 
-    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")
+    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")  # noqa: PTH118, PTH120, PTH122
     sqlite_conn = SQLiteConnection(
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
@@ -150,7 +150,7 @@ class SampleTest(TestCase):
         User.__table__.create(bind=cls.engine)
 
         # Insert 30 rows
-        for i in range(10):
+        for i in range(10):  # noqa: B007
             data = [
                 User(
                     name="John",
@@ -310,7 +310,7 @@ class SampleTest(TestCase):
 
         UserBinary.__table__.create(bind=self.engine)
 
-        for i in range(10):
+        for i in range(10):  # noqa: B007
             data = [
                 UserBinary(
                     name="John",
@@ -348,7 +348,7 @@ class SampleTest(TestCase):
             "password_hash",
         ]
 
-        assert type(sample_data.rows[0][6]) == str
+        assert type(sample_data.rows[0][6]) == str  # noqa: E721
 
         UserBinary.__table__.drop(bind=self.engine)
 
@@ -505,5 +505,5 @@ class SampleTest(TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        os.remove(cls.db_path)
+        os.remove(cls.db_path)  # noqa: PTH107
         return super().tearDownClass()

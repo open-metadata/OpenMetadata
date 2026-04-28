@@ -143,7 +143,7 @@ class TestHelpers(TestCase):
              COMMIT TRAN M2;  
              UPDATE table3 ...;  
          COMMIT TRAN T1;  
-         """
+         """  # noqa: W291
 
         self.assertFalse(is_safe_sql_query(delete_query))
         self.assertFalse(is_safe_sql_query(drop_query))

@@ -31,7 +31,7 @@ class MySqlContainerConfigs:
     dbname: str = "db"
     port: int = 3306
     container_name: str = "test-db"
-    exposed_port: Optional[int] = None
+    exposed_port: Optional[int] = None  # noqa: UP045
 
     def with_exposed_port(self, container):
         self.exposed_port = container.get_exposed_port(self.port)
@@ -44,8 +44,8 @@ class MinioContainerConfigs:
     access_key: str = "minio"
     secret_key: str = "password"
     port: int = 9000
-    container_name: Optional[str] = None
-    exposed_port: Optional[int] = None
+    container_name: Optional[str] = None  # noqa: UP045
+    exposed_port: Optional[int] = None  # noqa: UP045
 
     def with_exposed_port(self, container):
         self.exposed_port = container.get_exposed_port(self.port)
