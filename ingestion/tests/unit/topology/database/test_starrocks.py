@@ -228,6 +228,7 @@ class TestGetTableComment(TestCase):
 
     def _make_connection(self, rows):
         connection = MagicMock()
+        connection.info = {}
         result = MagicMock()
         result.mappings.return_value = iter(rows)
         connection.execute.return_value = result
