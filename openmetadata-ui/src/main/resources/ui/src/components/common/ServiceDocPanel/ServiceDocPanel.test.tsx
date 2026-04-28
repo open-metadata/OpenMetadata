@@ -33,8 +33,7 @@ jest.mock('@tiptap/react', () => ({
   }: {
     children: React.ReactNode;
     [key: string]: unknown;
-  }) =>
-    React.createElement('pre', props, children),
+  }) => React.createElement('pre', props, children),
   NodeViewContent: ({ as: Tag = 'div' }: { as?: string }) =>
     React.createElement(Tag),
 }));
@@ -427,9 +426,10 @@ describe('CodeBlockComponent', () => {
   it('should set data-copied to false initially', () => {
     const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
 
-    expect(
-      container.querySelector('.code-copy-button')
-    ).toHaveAttribute('data-copied', 'false');
+    expect(container.querySelector('.code-copy-button')).toHaveAttribute(
+      'data-copied',
+      'false'
+    );
   });
 
   it('should copy node text content to clipboard on click', async () => {
@@ -448,9 +448,10 @@ describe('CodeBlockComponent', () => {
     fireEvent.click(screen.getByTestId('code-block-copy-icon'));
 
     await waitFor(() => {
-      expect(
-        container.querySelector('.code-copy-button')
-      ).toHaveAttribute('data-copied', 'true');
+      expect(container.querySelector('.code-copy-button')).toHaveAttribute(
+        'data-copied',
+        'true'
+      );
     });
   });
 
@@ -462,9 +463,10 @@ describe('CodeBlockComponent', () => {
     fireEvent.click(screen.getByTestId('code-block-copy-icon'));
 
     await waitFor(() => {
-      expect(
-        container.querySelector('.code-copy-button')
-      ).toHaveAttribute('data-copied', 'true');
+      expect(container.querySelector('.code-copy-button')).toHaveAttribute(
+        'data-copied',
+        'true'
+      );
     });
 
     expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
@@ -490,9 +492,10 @@ describe('CodeBlockComponent', () => {
 
     expect(clearTimeoutSpy).toHaveBeenCalled();
 
-    expect(
-      container.querySelector('.code-copy-button')
-    ).toHaveAttribute('data-copied', 'true');
+    expect(container.querySelector('.code-copy-button')).toHaveAttribute(
+      'data-copied',
+      'true'
+    );
 
     clearTimeoutSpy.mockRestore();
   });
