@@ -53,12 +53,12 @@ def get_credentials_from_url(original: ReadersCredentials, url: str) -> ReadersC
 
     # Azure DevOps URLs use the format: {org}/{project}/_git/{repo}
     if "/_git/" in url:
-        repo_name = url.split("/_git/")[-1].replace(".git", "")
+        repo_name = url.split("/_git/")[-1].replace(".git", "")  # noqa: PLC0207
         return update_repository_name(original=original, name=repo_name)
 
     # Your typical URL is git@bitbucket.org:owner/repo.git
     # or git@github.com:owner/repo.git
-    url_repository = url.split(original.repositoryOwner.root + "/")[-1]
+    url_repository = url.split(original.repositoryOwner.root + "/")[-1]  # noqa: PLC0207
     repo_name = url_repository.replace(".git", "")
 
     return update_repository_name(original=original, name=repo_name)

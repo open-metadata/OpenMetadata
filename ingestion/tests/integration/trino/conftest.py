@@ -1,4 +1,4 @@
-import os.path  # noqa: I001
+import os.path
 import random
 import uuid
 from pathlib import Path
@@ -29,7 +29,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 
-from ..conftest import ingestion_config as base_ingestion_config  # noqa: F401
+from ..conftest import ingestion_config as base_ingestion_config  # noqa: F401, TID252
 
 
 class TrinoContainer(DbContainer):
@@ -80,7 +80,7 @@ class TrinoContainer(DbContainer):
     def build(self):
         docker_client = docker.from_env()
         docker_client.images.build(
-            path=os.path.dirname(__file__) + "/trino",
+            path=os.path.dirname(__file__) + "/trino",  # noqa: PTH120
             tag=self._built_image,
             buildargs={"BASE_IMAGE": self.image},
             rm=True,
@@ -116,7 +116,7 @@ class HiveMetaStoreContainer(DockerContainer):
     def build(self):
         docker_client = docker.from_env()
         docker_client.images.build(
-            path=os.path.dirname(__file__) + "/hive",
+            path=os.path.dirname(__file__) + "/hive",  # noqa: PTH120
             tag=self._built_image,
             buildargs={
                 "BASE_IMAGE": self.image,
@@ -204,9 +204,9 @@ def create_test_data(trino_container):
     ).fetchall()
 
     _execute_with_connect("create schema minio.my_schema WITH (location = 's3a://hive-warehouse/')")
-    data_dir = os.path.dirname(__file__) + "/data"
-    for file in os.listdir(data_dir):
-        file_path = Path(os.path.join(data_dir, file))
+    data_dir = os.path.dirname(__file__) + "/data"  # noqa: PTH120
+    for file in os.listdir(data_dir):  # noqa: PTH208
+        file_path = Path(os.path.join(data_dir, file))  # noqa: PTH118
 
         if file_path.suffix == ".sql":
             create_test_data_from_sql(engine, file_path)
@@ -238,7 +238,7 @@ def create_test_data_from_parquet(engine: Engine, file_path: Path):
 
 
 def create_test_data_from_sql(engine: Engine, file_path: Path):
-    with open(file_path, "r") as f:
+    with open(file_path, "r") as f:  # noqa: PTH123
         sql = f.read()
 
     sql = sql.format(catalog="minio", schema="my_schema", table_name=file_path.stem)
@@ -258,7 +258,7 @@ def custom_insert(self, conn, keys: list[str], data_iter):
     rowcount = 0
     max_tries = 20
     try_num = 0
-    data = [dict(zip(keys, row)) for row in data_iter]
+    data = [dict(zip(keys, row)) for row in data_iter]  # noqa: B905
     while rowcount != len(data):
         if try_num >= max_tries:
             raise RuntimeError(f"Failed to insert data after {max_tries} tries")

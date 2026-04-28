@@ -13,7 +13,7 @@
 Validator for column values to not match regex test case
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from sqlalchemy import Column
 from sqlalchemy.exc import CompileError, SQLAlchemyError
@@ -51,7 +51,7 @@ class ColumnValuesToNotMatchRegexValidator(
 ):
     """Validator for column values to not match regex test case"""
 
-    def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -71,7 +71,7 @@ class ColumnValuesToNotMatchRegexValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional query with impact scoring and Others aggregation
 
         Calculates impact scores for all dimension values and aggregates

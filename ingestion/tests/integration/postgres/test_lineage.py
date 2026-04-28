@@ -31,7 +31,7 @@ def native_lineage_config(db_service, workflow_config, sink_config):
         ({"includeDDL": False}, 3),
         ({"includeDDL": True}, 3),
     ],
-    ids=lambda config: "".join([f"{k}={str(v)}" for k, v in config.items()]) if isinstance(config, dict) else "",
+    ids=lambda config: "".join([f"{k}={str(v)}" for k, v in config.items()]) if isinstance(config, dict) else "",  # noqa: RUF010
 )
 def test_native_lineage(
     patch_passwords_for_db_services,
@@ -62,7 +62,7 @@ def log_lineage_config(db_service, metadata, workflow_config, sink_config):
             "sourceConfig": {
                 "config": {
                     "type": "DatabaseLineage",
-                    "queryLogFilePath": path.dirname(__file__) + "/bad_query_log.csv",
+                    "queryLogFilePath": path.dirname(__file__) + "/bad_query_log.csv",  # noqa: PTH120
                 }
             },
         },
@@ -124,7 +124,7 @@ def reindex_search(metadata: OpenMetadata, entities=None, timeout=180):
             if current_status not in ("running", "active"):
                 break
             if time.time() - start_wait > wait_timeout:
-                raise TimeoutError(
+                raise TimeoutError(  # noqa: TRY301
                     f"Timed out waiting for previous reindexing to complete. Current status: {current_status}"
                 )
         except Exception as e:
@@ -139,7 +139,7 @@ def reindex_search(metadata: OpenMetadata, entities=None, timeout=180):
     try:
         metadata.client.post("/apps/trigger/SearchIndexingApplication", json={"entities": entities})
     except Exception as e:
-        raise RuntimeError(f"Failed to trigger reindexing: {e}")
+        raise RuntimeError(f"Failed to trigger reindexing: {e}")  # noqa: B904
 
     time.sleep(1)
 
@@ -149,15 +149,15 @@ def reindex_search(metadata: OpenMetadata, entities=None, timeout=180):
         try:
             response = metadata.client.get("/apps/name/SearchIndexingApplication/status?offset=0&limit=1")
             if len(response["data"]) == 0:
-                raise RuntimeError("No reindexing status found after triggering")
+                raise RuntimeError("No reindexing status found after triggering")  # noqa: TRY301
 
             status = response["data"][0]["status"]
 
             if status in ("failed", "error"):
-                raise RuntimeError(f"Reindexing failed with status: {status}")
+                raise RuntimeError(f"Reindexing failed with status: {status}")  # noqa: TRY301
 
             if time.time() - start_complete > complete_timeout:
-                raise TimeoutError(
+                raise TimeoutError(  # noqa: TRY301
                     f"Timed out waiting for reindexing to complete. "
                     f"Current status: {status}, elapsed: {int(time.time() - start_complete)}s"
                 )
@@ -172,7 +172,7 @@ def reindex_search(metadata: OpenMetadata, entities=None, timeout=180):
 @pytest.fixture()
 def long_cell_query_log(tmp_path_factory):
     log_file = tmp_path_factory.mktemp("data") / "large_query_log.csv"
-    with open(log_file, "w") as f:
+    with open(log_file, "w") as f:  # noqa: PTH123
         f.write("query_text,database_name,schema_name\n")
         f.write(
             "insert into dvdrental.public.rental select {} from dvdrental.public.payment\n".format(

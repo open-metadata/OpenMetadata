@@ -39,7 +39,7 @@ class OMetaSearchIndexMixin:
 
     def ingest_search_index_sample_data(
         self, search_index: SearchIndex, sample_data: SearchIndexSampleData
-    ) -> Optional[SearchIndexSampleData]:
+    ) -> Optional[SearchIndexSampleData]:  # noqa: UP045
         """
         PUT sample data for a search index
 
@@ -78,7 +78,7 @@ class OMetaSearchIndexMixin:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Error trying to reindex the search index: {exc}")
-            raise exc
+            raise exc  # noqa: TRY201
 
     def is_reindex_app_running(self) -> bool:
         resp = self.client.get(f"{self.get_suffix(App)}/name/SearchIndexingApplication/status?offset=0&limit=1")

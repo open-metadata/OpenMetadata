@@ -37,22 +37,22 @@ def get_connection(connection: CouchbaseConnection):
     Create connection
     """
     # pylint: disable=import-outside-toplevel
-    from couchbase.auth import PasswordAuthenticator
-    from couchbase.cluster import Cluster
-    from couchbase.options import ClusterOptions
+    from couchbase.auth import PasswordAuthenticator  # noqa: PLC0415
+    from couchbase.cluster import Cluster  # noqa: PLC0415
+    from couchbase.options import ClusterOptions  # noqa: PLC0415
 
     auth = PasswordAuthenticator(connection.username, connection.password.get_secret_value())
     url = f"{connection.scheme.value}://{connection.hostport}"
     couchbase_cluster = Cluster.connect(url, ClusterOptions(auth))
-    return couchbase_cluster
+    return couchbase_cluster  # noqa: RET504
 
 
 def test_connection(
     metadata: OpenMetadata,
     client: Any,
     service_connection: CouchbaseConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -60,10 +60,10 @@ def test_connection(
     """
 
     # pylint: disable=import-outside-toplevel
-    from couchbase.cluster import Cluster
+    from couchbase.cluster import Cluster  # noqa: PLC0415
 
     class SchemaHolder(BaseModel):
-        database: Optional[str] = None
+        database: Optional[str] = None  # noqa: UP045
 
     holder = SchemaHolder()
 
