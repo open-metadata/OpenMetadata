@@ -12,6 +12,7 @@
 """
 Google Drive connection and helpers
 """
+
 import traceback
 from functools import partial
 from typing import Optional
@@ -75,7 +76,7 @@ def get_connection(connection: GoogleDriveConnection) -> GoogleDriveClient:
         connection.credentials.gcpImpersonateServiceAccount
         and connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
     ):
-        from google.auth import (  # pylint: disable=import-outside-toplevel
+        from google.auth import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
             impersonated_credentials,
         )
 
@@ -97,8 +98,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: GoogleDriveClient,
     service_connection: GoogleDriveConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection to Google Drive
@@ -116,7 +117,7 @@ def test_connection(
             logger.info(f"Successfully authenticated as: {user_email}")
         except Exception as exc:
             logger.debug(f"Access check error traceback: {traceback.format_exc()}")
-            raise SourceConnectionException(f"Failed to access Google Drive API: {exc}")
+            raise SourceConnectionException(f"Failed to access Google Drive API: {exc}")  # noqa: B904
 
     def get_drive_files():
         """
@@ -146,23 +147,17 @@ def test_connection(
             # Also test for shared drives
             logger.info("Testing shared drive access")
             try:
-                shared_results = (
-                    client.drive_service.drives()
-                    .list(pageSize=5, fields="drives(id, name)")
-                    .execute()
-                )
+                shared_results = client.drive_service.drives().list(pageSize=5, fields="drives(id, name)").execute()
                 shared_drives = shared_results.get("drives", [])
                 logger.info(f"Found {len(shared_drives)} shared drives")
                 for drive in shared_drives:
-                    logger.info(
-                        f"Shared drive: {drive.get('name')} (ID: {drive.get('id')})"
-                    )
+                    logger.info(f"Shared drive: {drive.get('name')} (ID: {drive.get('id')})")
             except Exception as shared_exc:
                 logger.warning(f"Could not access shared drives: {shared_exc}")
 
         except Exception as exc:
             logger.debug(f"Drive files test error traceback: {traceback.format_exc()}")
-            raise SourceConnectionException(f"Failed to list drive files: {exc}")
+            raise SourceConnectionException(f"Failed to list drive files: {exc}")  # noqa: B904
 
     def get_spreadsheets(include_sheets: bool = False):
         """
@@ -175,29 +170,21 @@ def test_connection(
             logger.info("Testing Google Sheets spreadsheet listing")
 
             # Query for Google Sheets files
-            query = (
-                "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false"
-            )
+            query = "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false"
 
-            results = (
-                client.drive_service.files()
-                .list(q=query, pageSize=5, fields="files(id, name)")
-                .execute()
-            )
+            results = client.drive_service.files().list(q=query, pageSize=5, fields="files(id, name)").execute()
 
             files = results.get("files", [])
             logger.info(f"Found {len(files)} spreadsheets")
 
         except Exception as exc:
             logger.debug(f"Spreadsheet test error traceback: {traceback.format_exc()}")
-            raise SourceConnectionException(f"Failed to list spreadsheets: {exc}")
+            raise SourceConnectionException(f"Failed to list spreadsheets: {exc}")  # noqa: B904
 
     test_fn = {
         "CheckAccess": check_access,
         "GetDriveFiles": get_drive_files,
-        "GetSpreadsheets": partial(
-            get_spreadsheets, include_sheets=service_connection.includeGoogleSheets
-        ),
+        "GetSpreadsheets": partial(get_spreadsheets, include_sheets=service_connection.includeGoogleSheets),
     }
 
     return test_connection_steps(

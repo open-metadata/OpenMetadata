@@ -15,6 +15,7 @@ and Airflow 2.x/3.x databases.
 The Airflow SDK is always v3.x (which has DagRun.logical_date), but we may
 connect to Airflow 2.x databases (which have execution_date column).
 """
+
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import uuid4
@@ -193,9 +194,7 @@ class TestGetPipelineStatus:
         "metadata.ingestion.source.pipeline.airflow.metadata.AirflowSource.__init__",
         return_value=None,
     )
-    def test_returns_empty_list_for_no_results(
-        self, mock_init, mock_exec_col, mock_session
-    ):
+    def test_returns_empty_list_for_no_results(self, mock_init, mock_exec_col, mock_session):
         """When no dag runs found, should return empty list."""
         from metadata.ingestion.source.pipeline.airflow.metadata import AirflowSource
 
@@ -226,9 +225,7 @@ class TestDagRunLogicalDateUsage:
 
     def test_dagrun_has_logical_date_attribute(self):
         """Verify DagRun model has logical_date attribute (Airflow SDK 3.x)."""
-        assert hasattr(
-            DagRun, "logical_date"
-        ), "DagRun should have logical_date attribute in Airflow SDK 3.x"
+        assert hasattr(DagRun, "logical_date"), "DagRun should have logical_date attribute in Airflow SDK 3.x"
 
     def test_dagrun_does_not_have_execution_date_attribute(self):
         """Verify DagRun model does NOT have execution_date attribute (Airflow SDK 3.x).
@@ -416,9 +413,7 @@ class TestColumnFunctionUsage:
         """Verify column is imported from sqlalchemy in the metadata module."""
         from metadata.ingestion.source.pipeline.airflow import metadata
 
-        assert hasattr(
-            metadata, "column"
-        ), "The metadata module should import column from sqlalchemy"
+        assert hasattr(metadata, "column"), "The metadata module should import column from sqlalchemy"
 
     def test_get_pipeline_status_uses_column_function(self):
         """Verify get_pipeline_status method exists and can handle both column names."""
