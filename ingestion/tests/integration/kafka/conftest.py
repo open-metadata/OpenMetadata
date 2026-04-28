@@ -88,7 +88,7 @@ def schema_registry_container(docker_network, kafka_container):
         load_csv_data.main(
             kafka_broker=kafka_container.get_bootstrap_server(),
             schema_registry_url=container.get_connection_url(),
-            csv_directory=os.path.dirname(__file__) + "/data",
+            csv_directory=os.path.dirname(__file__) + "/data",  # noqa: PTH120
         )
         yield container
 

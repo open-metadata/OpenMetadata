@@ -483,7 +483,7 @@ class AlationSinkTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.metadata.alationsink.metadata.AlationsinkSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_alation_sink_config)
@@ -527,7 +527,7 @@ class AlationSinkTest(TestCase):
         )
         returned_tables = []
         for om_table in om_tables:
-            returned_tables.append(
+            returned_tables.append(  # noqa: PERF401
                 self.alation_sink_source.create_table_request(
                     alation_datasource_id=MOCK_ALATION_DATASOURCE_ID,
                     schema_name="shopify",
@@ -545,7 +545,7 @@ class AlationSinkTest(TestCase):
         om_table = self.metadata.get_by_name(entity=Table, fqn="sample_data.ecommerce_db.shopify.dim_address")
         returned_columns = []
         for om_column in om_table.columns:
-            returned_columns.append(
+            returned_columns.append(  # noqa: PERF401
                 self.alation_sink_source.create_column_request(
                     alation_datasource_id=MOCK_ALATION_DATASOURCE_ID,
                     schema_name="shopify",
@@ -554,5 +554,5 @@ class AlationSinkTest(TestCase):
                     table_constraints=om_table.tableConstraints,
                 )
             )
-        for _, (expected, original) in enumerate(zip(EXPECTED_COLUMNS, returned_columns)):
+        for _, (expected, original) in enumerate(zip(EXPECTED_COLUMNS, returned_columns)):  # noqa: B905
             self.assertEqual(expected, original)
