@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
+import { Button, Tooltip } from 'antd';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import CopyIcon from '../../../../assets/svg/icon-copy.svg';
+import { ReactComponent as CopyIcon } from '../../../../assets/svg/icon-copy.svg';
 
 const CodeBlockComponent: FC<NodeViewProps> = ({ node }) => {
   const { t } = useTranslation();
@@ -41,20 +42,18 @@ const CodeBlockComponent: FC<NodeViewProps> = ({ node }) => {
   return (
     <NodeViewWrapper as="pre" className="relative code-block">
       <NodeViewContent as="code" />
-      <span
-        className="code-copy-message"
-        data-copied={copied}
-        data-testid="copied-message">
-        {t('label.copied')}
+      <span className="code-copy-button" data-copied={copied}>
+        <Tooltip
+          open={copied || undefined}
+          title={copied ? t('label.copied') : t('label.copy')}>
+          <Button
+            data-testid="code-block-copy-icon"
+            icon={<CopyIcon height={24} width={24} />}
+            type="text"
+            onClick={handleCopy}
+          />
+        </Tooltip>
       </span>
-      <button
-        className="code-copy-button"
-        data-copied={copied}
-        data-testid="code-block-copy-icon"
-        type="button"
-        onClick={handleCopy}>
-        <img alt="copy" height={24} src={CopyIcon} width={24} />
-      </button>
     </NodeViewWrapper>
   );
 };
