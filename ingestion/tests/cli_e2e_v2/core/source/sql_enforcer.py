@@ -14,6 +14,7 @@ subclass responsibility (SQLAlchemy doesn't model SPs uniformly).
 from __future__ import annotations
 
 import logging
+from abc import ABC, abstractmethod
 from typing import Any, TypedDict
 
 from sqlalchemy import bindparam, inspect, text
@@ -59,13 +60,15 @@ _TYPE_ALIASES: dict[str, str] = {
 _INTEGER_TYPES: frozenset[str] = frozenset({"TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT"})
 
 
-class SqlBaselineEnforcer:
+class SqlBaselineEnforcer(ABC):
     """SQL-family SourceBaselineEnforcer via SQLAlchemy Inspector + Core.
 
     Subclasses customize only:
       - `_stored_procedure_query_sql`: raw SQL returning `(schema, name)`
         rows for procedures; binds a `:schemas` IN-list (expanding).
       - `_apply_stored_procedure(conn, sp)`: dialect-specific procedure DDL.
+        Required override (abstract) — subclasses without stored procedures
+        in their baseline can implement as a `pass` no-op.
       - `_apply_view` default runs `view.definition_sql` verbatim — override
         only if the dialect needs special plumbing.
 
@@ -73,6 +76,10 @@ class SqlBaselineEnforcer:
     SQLAlchemy `MetaData` — `metadata.create_all(conn)` emits the right
     DDL per dialect. Seed INSERTs are dialect-specific templates on each
     `TableSeed`, bound against the (portable) row data at apply time.
+
+    Marking `_apply_stored_procedure` abstract surfaces missing overrides at
+    enforcer instantiation (fixture setup) rather than at first SP-apply
+    inside a running test, where the failure context is harder to triage.
     """
 
     _stored_procedure_query_sql: str | None = None
@@ -267,8 +274,10 @@ class SqlBaselineEnforcer:
         """Default: run `view.definition_sql` verbatim."""
         conn.execute(text(view.definition_sql))
 
+    @abstractmethod
     def _apply_stored_procedure(self, conn: Connection, sp: StoredProcedureDefinition) -> None:
-        raise NotImplementedError("subclasses must provide dialect-specific procedure DDL")
+        """Dialect-specific procedure DDL. Implement as a `pass` no-op
+        if the connector's baseline declares no stored procedures."""
 
 
 def _normalize_type(t: str) -> str:
