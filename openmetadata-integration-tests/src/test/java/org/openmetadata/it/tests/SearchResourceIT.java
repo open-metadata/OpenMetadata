@@ -1948,33 +1948,60 @@ public class SearchResourceIT {
   }
 
   /**
-   * Bug regression: the UI now passes the alias {@code "table"} (instead of the legacy
-   * {@code table_search_index}). ES alias expansion bleeds {@code column_search_index} into the
-   * results because tableColumn declares {@code "table"} as a parent alias. Setting
-   * {@code fetchChildAliases=false} must restore "tables only".
+   * Wait until both the table doc and a child column doc carrying {@code unique} in their name
+   * are visible — uses {@code fetchChildAliases=true} so a single query confirms both indexes
+   * have caught up. Returns the parsed JSON of the satisfying response so callers can reuse it.
    */
-  @Test
-  void testFetchChildAliasesFalseExcludesColumns(TestNamespace ns) throws Exception {
-    String unique = "fetchchild_excl_" + ns.shortPrefix();
-    Column uniqueColumn =
-        new Column()
-            .withName(unique + "_col")
-            .withDataType(ColumnDataType.VARCHAR)
-            .withDataLength(64);
-    createTestTableWithColumns(ns, ns.prefix("fetchchild_excl_t"), List.of(uniqueColumn));
-
+  private void awaitTableAndColumnIndexed(String unique) {
     Awaitility.await()
-        .atMost(60, TimeUnit.SECONDS)
+        .atMost(90, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)
         .until(
             () -> {
               HttpResponse<String> r =
-                  httpGetJson("/v1/search/query?q=" + unique + "&index=tableColumn&size=20");
+                  httpGetJson(
+                      "/v1/search/query?q="
+                          + unique
+                          + "&index=table&fetchChildAliases=true&size=20");
               if (r.statusCode() != 200) {
                 return false;
               }
-              return OBJECT_MAPPER.readTree(r.body()).path("hits").path("hits").size() > 0;
+              JsonNode hits = OBJECT_MAPPER.readTree(r.body()).path("hits").path("hits");
+              boolean sawTable = false;
+              boolean sawColumn = false;
+              for (JsonNode hit : hits) {
+                String entityType = hit.path("_source").path("entityType").asText();
+                if ("table".equalsIgnoreCase(entityType)) {
+                  sawTable = true;
+                } else if ("column".equalsIgnoreCase(entityType)) {
+                  sawColumn = true;
+                }
+              }
+              return sawTable && sawColumn;
             });
+  }
+
+  /**
+   * Bug regression: the UI now passes the alias {@code "table"} (instead of the legacy
+   * {@code table_search_index}). ES alias expansion bleeds {@code column_search_index} into the
+   * results because tableColumn declares {@code "table"} as a parent alias. Setting
+   * {@code fetchChildAliases=false} must restore "tables only".
+   *
+   * <p>{@code unique} is part of the table name AND the column name so both docs match
+   * {@code q=unique}, regardless of how column-name fields are projected into the parent table
+   * doc.
+   */
+  @Test
+  void testFetchChildAliasesFalseExcludesColumns(TestNamespace ns) throws Exception {
+    String unique = "fetchchildexcl" + ns.shortPrefix();
+    Column uniqueColumn =
+        new Column()
+            .withName(unique + "col")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(64);
+    createTestTableWithColumns(ns, ns.prefix(unique), List.of(uniqueColumn));
+
+    awaitTableAndColumnIndexed(unique);
 
     HttpResponse<String> filtered =
         httpGetJson(
@@ -2004,16 +2031,31 @@ public class SearchResourceIT {
    */
   @Test
   void testFetchChildAliasesTrueIncludesColumns(TestNamespace ns) throws Exception {
-    String unique = "fetchchild_true_" + ns.shortPrefix();
+    String unique = "fetchchildtrue" + ns.shortPrefix();
     Column uniqueColumn =
         new Column()
-            .withName(unique + "_col")
+            .withName(unique + "col")
             .withDataType(ColumnDataType.VARCHAR)
             .withDataLength(64);
-    createTestTableWithColumns(ns, ns.prefix("fetchchild_true_t"), List.of(uniqueColumn));
+    createTestTableWithColumns(ns, ns.prefix(unique), List.of(uniqueColumn));
+
+    awaitTableAndColumnIndexed(unique);
+  }
+
+  @Test
+  void testFetchParentsAliasesTrueIncludesParents(TestNamespace ns) throws Exception {
+    String unique = "fetchparents" + ns.shortPrefix();
+    Column uniqueColumn =
+        new Column()
+            .withName(unique + "col")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(64);
+    createTestTableWithColumns(ns, ns.prefix(unique), List.of(uniqueColumn));
+
+    awaitTableAndColumnIndexed(unique);
 
     Awaitility.await()
-        .atMost(60, TimeUnit.SECONDS)
+        .atMost(90, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)
         .until(
             () -> {
@@ -2021,41 +2063,6 @@ public class SearchResourceIT {
                   httpGetJson(
                       "/v1/search/query?q="
                           + unique
-                          + "&index=table&fetchChildAliases=true&size=20");
-              if (r.statusCode() != 200) {
-                return false;
-              }
-              JsonNode hits = OBJECT_MAPPER.readTree(r.body()).path("hits").path("hits");
-              for (JsonNode hit : hits) {
-                if ("column".equalsIgnoreCase(hit.path("_source").path("entityType").asText())) {
-                  return true;
-                }
-              }
-              return false;
-            });
-  }
-
-  @Test
-  void testFetchParentsAliasesTrueIncludesParents(TestNamespace ns) throws Exception {
-    String unique = "fetchparents_" + ns.shortPrefix();
-    Column uniqueColumn =
-        new Column()
-            .withName(unique + "_col")
-            .withDataType(ColumnDataType.VARCHAR)
-            .withDataLength(64);
-    Table parentTable =
-        createTestTableWithColumns(ns, ns.prefix("fetchparents_" + unique), List.of(uniqueColumn));
-    String tableName = parentTable.getName();
-
-    Awaitility.await()
-        .atMost(60, TimeUnit.SECONDS)
-        .pollInterval(500, TimeUnit.MILLISECONDS)
-        .until(
-            () -> {
-              HttpResponse<String> r =
-                  httpGetJson(
-                      "/v1/search/query?q="
-                          + tableName
                           + "&index=tableColumn&fetchParentsAliases=true&fetchChildAliases=false&size=20");
               if (r.statusCode() != 200) {
                 return false;
@@ -2075,24 +2082,15 @@ public class SearchResourceIT {
    */
   @Test
   void testFetchChildAliasesFalseOnExportEndpoint(TestNamespace ns) throws Exception {
-    String unique = "fetchchild_exp_" + ns.shortPrefix();
+    String unique = "fetchchildexp" + ns.shortPrefix();
     Column uniqueColumn =
         new Column()
-            .withName(unique + "_col")
+            .withName(unique + "col")
             .withDataType(ColumnDataType.VARCHAR)
             .withDataLength(64);
-    createTestTableWithColumns(ns, ns.prefix("fetchchild_exp_t"), List.of(uniqueColumn));
+    createTestTableWithColumns(ns, ns.prefix(unique), List.of(uniqueColumn));
 
-    Awaitility.await()
-        .atMost(60, TimeUnit.SECONDS)
-        .pollInterval(500, TimeUnit.MILLISECONDS)
-        .until(
-            () -> {
-              HttpResponse<String> r =
-                  httpGetJson("/v1/search/query?q=" + unique + "&index=tableColumn&size=20");
-              return r.statusCode() == 200
-                  && OBJECT_MAPPER.readTree(r.body()).path("hits").path("hits").size() > 0;
-            });
+    awaitTableAndColumnIndexed(unique);
 
     HttpResponse<String> response =
         httpGetExport(
@@ -2119,24 +2117,15 @@ public class SearchResourceIT {
    */
   @Test
   void testFetchChildAliasesFalseOnAggregate(TestNamespace ns) throws Exception {
-    String unique = "fetchchild_agg_" + ns.shortPrefix();
+    String unique = "fetchchildagg" + ns.shortPrefix();
     Column uniqueColumn =
         new Column()
-            .withName(unique + "_col")
+            .withName(unique + "col")
             .withDataType(ColumnDataType.VARCHAR)
             .withDataLength(64);
-    createTestTableWithColumns(ns, ns.prefix("fetchchild_agg_t"), List.of(uniqueColumn));
+    createTestTableWithColumns(ns, ns.prefix(unique), List.of(uniqueColumn));
 
-    Awaitility.await()
-        .atMost(60, TimeUnit.SECONDS)
-        .pollInterval(500, TimeUnit.MILLISECONDS)
-        .until(
-            () -> {
-              HttpResponse<String> r =
-                  httpGetJson("/v1/search/query?q=" + unique + "&index=tableColumn&size=20");
-              return r.statusCode() == 200
-                  && OBJECT_MAPPER.readTree(r.body()).path("hits").path("hits").size() > 0;
-            });
+    awaitTableAndColumnIndexed(unique);
 
     HttpResponse<String> response =
         httpGetJson(
