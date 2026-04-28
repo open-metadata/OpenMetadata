@@ -669,14 +669,8 @@ public class SearchRepository {
     if (clusterAlias == null || clusterAlias.isEmpty()) {
       return name;
     }
-    String prefix = clusterAlias + INDEX_NAME_SEPARATOR;
-    // Idempotent: tokens that already carry the cluster prefix pass through unchanged. Search
-    // managers (Elastic/OpenSearch) call this method again on indexes that resource-layer code
-    // already resolved through getIndexOrAliasName(name, fetchParents, fetchChildren), so without
-    // this guard a non-empty clusterAlias would yield "tenant_tenant_table_search_index".
     return Arrays.stream(name.split(","))
-        .map(String::trim)
-        .map(index -> index.startsWith(prefix) ? index : prefix + index)
+        .map(index -> clusterAlias + INDEX_NAME_SEPARATOR + index.trim())
         .collect(Collectors.joining(","));
   }
 
@@ -810,21 +804,17 @@ public class SearchRepository {
   }
 
   private static String prefixWithClusterAlias(String token, String clusterAlias) {
-    if (clusterAlias == null || clusterAlias.isEmpty()) {
-      return token;
-    }
-    String prefix = clusterAlias + INDEX_NAME_SEPARATOR;
-    return token.startsWith(prefix) ? token : prefix + token;
+    return clusterAlias == null || clusterAlias.isEmpty()
+        ? token
+        : clusterAlias + INDEX_NAME_SEPARATOR + token;
   }
 
   private static String prefixCommaList(String name, String clusterAlias) {
     if (clusterAlias == null || clusterAlias.isEmpty()) {
       return name;
     }
-    String prefix = clusterAlias + INDEX_NAME_SEPARATOR;
     return Arrays.stream(name.split(","))
-        .map(String::trim)
-        .map(t -> t.startsWith(prefix) ? t : prefix + t)
+        .map(t -> clusterAlias + INDEX_NAME_SEPARATOR + t.trim())
         .collect(Collectors.joining(","));
   }
 
@@ -3110,11 +3100,40 @@ public class SearchRepository {
     return searchClient.searchByField(fieldName, fieldValue, index, deleted);
   }
 
+  /**
+   * Variant that honors the alias-expansion flags. Forwards them to the SearchClient so the
+   * manager can resolve the alias graph exactly once — no resource-side pre-resolution, so the
+   * cluster prefix isn't double-applied.
+   */
+  public Response searchByField(
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      boolean fetchParentsAliases,
+      boolean fetchChildAliases)
+      throws IOException {
+    return searchClient.searchByField(
+        fieldName, fieldValue, index, deleted, fetchParentsAliases, fetchChildAliases);
+  }
+
   public Response aggregate(AggregationRequest request) throws IOException {
     return searchClient.aggregate(request);
   }
 
   public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
+    return searchClient.getEntityTypeCounts(request, index);
+  }
+
+  /**
+   * Variant that honors the alias-expansion flags. Sets them on the request so the manager
+   * resolves the alias once with the same flag-aware logic used by /search/query.
+   */
+  public Response getEntityTypeCounts(
+      SearchRequest request, String index, boolean fetchParentsAliases, boolean fetchChildAliases)
+      throws IOException {
+    request.setFetchParentsAliases(fetchParentsAliases);
+    request.setFetchChildAliases(fetchChildAliases);
     return searchClient.getEntityTypeCounts(request, index);
   }
 

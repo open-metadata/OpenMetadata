@@ -87,7 +87,13 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
     try {
       SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder();
 
-      String indexName = Entity.getSearchRepository().getIndexOrAliasName(request.getIndex());
+      String indexName =
+          Entity.getSearchRepository()
+              .getIndexOrAliasName(
+                  request.getIndex(),
+                  Boolean.TRUE.equals(request.getFetchParentsAliases()),
+                  request.getFetchChildAliases() == null
+                      || Boolean.TRUE.equals(request.getFetchChildAliases()));
       searchRequestBuilder.index(indexName);
 
       Query query = null;
@@ -505,9 +511,15 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       requestBuilder.size(0);
       requestBuilder.trackTotalHits(true);
 
-      // Resolve the index alias properly
+      // Resolve the index alias properly — honor flags from the request when present so the
+      // resource layer doesn't need to pre-resolve (which would double-prefix the cluster alias).
       String resolvedIndex =
-          Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
+          Entity.getSearchRepository()
+              .getIndexOrAliasName(
+                  index != null ? index : "all",
+                  Boolean.TRUE.equals(request.getFetchParentsAliases()),
+                  request.getFetchChildAliases() == null
+                      || Boolean.TRUE.equals(request.getFetchChildAliases()));
 
       // Build and execute search
       SearchRequest searchRequest = requestBuilder.build(resolvedIndex);

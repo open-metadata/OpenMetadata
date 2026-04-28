@@ -74,6 +74,25 @@ public interface SearchManagementClient {
       throws IOException;
 
   /**
+   * Variant that honors {@code fetchParentsAliases} / {@code fetchChildAliases} when resolving
+   * the supplied {@code index} alias. Lets the alias-graph traversal happen exactly once, at
+   * the manager boundary, instead of the resource pre-resolving and the manager re-prefixing.
+   * Default implementation delegates to the legacy 4-arg signature so existing implementations
+   * pick up the conservative behavior (children expanded, parents not) until they implement the
+   * flag-aware path.
+   */
+  default Response searchByField(
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      boolean fetchParentsAliases,
+      boolean fetchChildAliases)
+      throws IOException {
+    return searchByField(fieldName, fieldValue, index, deleted);
+  }
+
+  /**
    * List entities with pagination support.
    *
    * @param filter JSON filter to apply to the search

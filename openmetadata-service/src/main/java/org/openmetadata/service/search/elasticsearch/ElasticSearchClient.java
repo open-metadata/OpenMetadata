@@ -467,6 +467,19 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public Response searchByField(
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      boolean fetchParentsAliases,
+      boolean fetchChildAliases)
+      throws IOException {
+    return searchManager.searchByField(
+        fieldName, fieldValue, index, deleted, fetchParentsAliases, fetchChildAliases);
+  }
+
+  @Override
   public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
     return aggregationManager.getEntityTypeCounts(request, index);
   }

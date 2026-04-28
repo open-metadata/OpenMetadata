@@ -228,8 +228,8 @@ public class SearchResource {
           boolean fetchParentsAliases,
       @Parameter(
               description =
-                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to false so a query for `table` does not bleed in column documents from indexes that have `table` attached as an alias.")
-          @DefaultValue("false")
+                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to true to preserve legacy ES alias-expansion behavior; pass false to scope the response to the requested index only.")
+          @DefaultValue("true")
           @QueryParam("fetchChildAliases")
           boolean fetchChildAliases)
       throws IOException {
@@ -333,8 +333,8 @@ public class SearchResource {
           boolean fetchParentsAliases,
       @Parameter(
               description =
-                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to false so the response is scoped to the requested index only.")
-          @DefaultValue("false")
+                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to true to preserve legacy ES alias-expansion behavior; pass false to scope the response to the requested index only.")
+          @DefaultValue("true")
           @QueryParam("fetchChildAliases")
           boolean fetchChildAliases)
       throws IOException {
@@ -446,7 +446,8 @@ public class SearchResource {
                     .getIndexOrAliasName(
                         previewRequest.getIndex(),
                         Boolean.TRUE.equals(previewRequest.getFetchParentsAliases()),
-                        Boolean.TRUE.equals(previewRequest.getFetchChildAliases())))
+                        previewRequest.getFetchChildAliases() == null
+                            || Boolean.TRUE.equals(previewRequest.getFetchChildAliases())))
             .withFrom(previewRequest.getFrom())
             .withQueryFilter(previewRequest.getQueryFilter())
             .withPostFilter(previewRequest.getPostFilter())
@@ -544,8 +545,8 @@ public class SearchResource {
           boolean fetchParentsAliases,
       @Parameter(
               description =
-                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to false so the response is scoped to the requested index only.")
-          @DefaultValue("false")
+                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to true to preserve legacy ES alias-expansion behavior; pass false to scope the response to the requested index only.")
+          @DefaultValue("true")
           @QueryParam("fetchChildAliases")
           boolean fetchChildAliases)
       throws IOException {
@@ -644,15 +645,14 @@ public class SearchResource {
           boolean fetchParentsAliases,
       @Parameter(
               description =
-                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to false so the response is scoped to the requested index only.")
-          @DefaultValue("false")
+                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to true to preserve legacy ES alias-expansion behavior; pass false to scope the response to the requested index only.")
+          @DefaultValue("true")
           @QueryParam("fetchChildAliases")
           boolean fetchChildAliases)
       throws IOException {
 
-    String resolvedIndex =
-        searchRepository.getIndexOrAliasName(index, fetchParentsAliases, fetchChildAliases);
-    return searchRepository.searchByField(fieldName, fieldValue, resolvedIndex, deleted);
+    return searchRepository.searchByField(
+        fieldName, fieldValue, index, deleted, fetchParentsAliases, fetchChildAliases);
   }
 
   @GET
@@ -738,8 +738,8 @@ public class SearchResource {
           boolean fetchParentsAliases,
       @Parameter(
               description =
-                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to false so the response is scoped to the requested index only.")
-          @DefaultValue("false")
+                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to true to preserve legacy ES alias-expansion behavior; pass false to scope the response to the requested index only.")
+          @DefaultValue("true")
           @QueryParam("fetchChildAliases")
           boolean fetchChildAliases)
       throws IOException {
@@ -748,8 +748,7 @@ public class SearchResource {
         new AggregationRequest()
             .withQuery(query)
             .withSize(size)
-            .withIndex(
-                searchRepository.getIndexOrAliasName(index, fetchParentsAliases, fetchChildAliases))
+            .withIndex(index)
             .withFieldName(fieldName)
             .withFieldValue(value)
             .withSourceFields(SearchUtils.sourceFields(sourceFieldsParam))
@@ -781,11 +780,6 @@ public class SearchResource {
       @Context SecurityContext securityContext,
       @Valid AggregationRequest aggregationRequest)
       throws IOException {
-    boolean fetchParents = Boolean.TRUE.equals(aggregationRequest.getFetchParentsAliases());
-    boolean fetchChildren = Boolean.TRUE.equals(aggregationRequest.getFetchChildAliases());
-    aggregationRequest.setIndex(
-        searchRepository.getIndexOrAliasName(
-            aggregationRequest.getIndex(), fetchParents, fetchChildren));
     return searchRepository.aggregate(aggregationRequest);
   }
 
@@ -832,8 +826,8 @@ public class SearchResource {
           boolean fetchParentsAliases,
       @Parameter(
               description =
-                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to false so the response is scoped to the requested index only.")
-          @DefaultValue("false")
+                  "If true, expand the requested index to include the actual indexes of its child aliases declared in indexMapping.json. Defaults to true to preserve legacy ES alias-expansion behavior; pass false to scope the response to the requested index only.")
+          @DefaultValue("true")
           @QueryParam("fetchChildAliases")
           boolean fetchChildAliases)
       throws IOException {
@@ -860,9 +854,8 @@ public class SearchResource {
             .withPostFilter(postFilter)
             .withDomains(domains);
 
-    String resolvedIndex =
-        searchRepository.getIndexOrAliasName(index, fetchParentsAliases, fetchChildAliases);
-    return searchRepository.getEntityTypeCounts(request, resolvedIndex);
+    return searchRepository.getEntityTypeCounts(
+        request, index, fetchParentsAliases, fetchChildAliases);
   }
 
   @POST
