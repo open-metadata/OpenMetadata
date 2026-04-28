@@ -1,0 +1,333 @@
+{
+  "examples": {
+    "drive_service_custom": {
+      "description": "CustomDrive Service for centralized IA documentation",
+      "example": {
+        "name": "IA-Documentation-Repository",
+        "serviceType": "CustomDrive",
+        "displayName": "IA Documentation Repository",
+        "description": "Central repository of documentation for IA/chatbot applications including website pages, PDFs, and SharePoint documents",
+        "owners": [
+          {
+            "id": "documentation-team-uuid",
+            "type": "user",
+            "displayName": "Documentation Team"
+          }
+        ],
+        "connection": {
+          "config": {
+            "type": "CustomDrive",
+            "connectionOptions": {
+              "__root__": {
+                "api_endpoint": "https://your-docs.example.com",
+                "doc_type": "centralized",
+                "authentication": "api_key"
+              }
+            },
+            "connectionArguments": {
+              "__root__": {
+                "timeout_seconds": "30",
+                "max_retries": "3"
+              }
+            }
+          }
+        }
+      }
+    },
+    "file_website_documentation": {
+      "description": "File entity for website-hosted documentation",
+      "example": {
+        "name": "homepage-faq-chatbot",
+        "displayName": "Homepage FAQ",
+        "fileType": "PDF",
+        "mimeType": "application/pdf",
+        "service": {
+          "id": "drive-service-uuid",
+          "type": "driveService",
+          "name": "IA-Documentation-Repository"
+        },
+        "sourceUrl": "https://www.mywebsite.com/doc/faq/homepage",
+        "downloadLink": "https://www.mywebsite.com/download/faq",
+        "webViewLink": "https://www.mywebsite.com/viewer/faq",
+        "path": "/docs/faq/homepage.pdf",
+        "description": "FAQ documentation for homepage. Updated quarterly with new questions and answers from customer support interactions.",
+        "owners": [
+          {
+            "id": "user-uuid",
+            "type": "user",
+            "displayName": "Sarah Johnson"
+          }
+        ],
+        "tags": [
+          {
+            "name": "chatbot",
+            "source": "User"
+          },
+          {
+            "name": "training-data",
+            "source": "User"
+          },
+          {
+            "name": "faq",
+            "source": "User"
+          }
+        ],
+        "extension": {
+          "documentation_source": "Website",
+          "department": "Customer Support",
+          "topic_area": "FAQ",
+          "last_reviewed": "2024-04-15",
+          "review_frequency": "quarterly",
+          "version": "2.1",
+          "confidentiality": "public",
+          "target_audience": ["chatbot", "support-team"]
+        }
+      }
+    },
+    "file_sharepoint_documentation": {
+      "description": "File entity for SharePoint-hosted documentation",
+      "example": {
+        "name": "product-guide-v2024",
+        "displayName": "Product Guide 2024",
+        "fileType": "Document",
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "service": {
+          "id": "drive-service-uuid",
+          "type": "driveService",
+          "name": "IA-Documentation-Repository"
+        },
+        "sourceUrl": "https://sharepoint.company.com/sites/documentation/product-guide",
+        "downloadLink": "https://sharepoint.company.com/sites/documentation/product-guide/download",
+        "webViewLink": "https://sharepoint.company.com/sites/documentation/product-guide",
+        "path": "/sharepoint/product-guide-2024.docx",
+        "description": "Comprehensive product guide covering all features, use cases, and best practices. Primary source for chatbot training on product capabilities.",
+        "owners": [
+          {
+            "id": "user-uuid",
+            "type": "user",
+            "displayName": "Product Documentation Team"
+          }
+        ],
+        "tags": [
+          {
+            "name": "chatbot",
+            "source": "User"
+          },
+          {
+            "name": "training-data",
+            "source": "User"
+          },
+          {
+            "name": "product-documentation",
+            "source": "User"
+          }
+        ],
+        "extension": {
+          "documentation_source": "SharePoint",
+          "department": "Product",
+          "topic_area": "Product Guide",
+          "last_reviewed": "2024-04-10",
+          "review_frequency": "bi-annual",
+          "version": "2024.1",
+          "confidentiality": "internal",
+          "sla_update_days": "180",
+          "pages": "45",
+          "word_count": "12500"
+        }
+      }
+    },
+    "file_pdf_documentation": {
+      "description": "File entity for PDF documentation (e.g., API reference)",
+      "example": {
+        "name": "api-reference-v3-chatbot",
+        "displayName": "REST API Reference v3",
+        "fileType": "PDF",
+        "mimeType": "application/pdf",
+        "service": {
+          "id": "drive-service-uuid",
+          "type": "driveService",
+          "name": "IA-Documentation-Repository"
+        },
+        "sourceUrl": "https://docs.api.company.com/reference/v3",
+        "downloadLink": "https://docs.api.company.com/downloads/api-reference-v3.pdf",
+        "webViewLink": "https://docs.api.company.com/viewer/api-reference-v3",
+        "path": "/documentation/api/reference-v3.pdf",
+        "description": "Complete REST API reference documentation including all endpoints, request/response examples, error codes, and authentication methods. Used for chatbot integration with backend services.",
+        "size": 2048576,
+        "mimeType": "application/pdf",
+        "fileExtension": "pdf",
+        "owners": [
+          {
+            "id": "user-uuid",
+            "type": "user",
+            "displayName": "API Engineering Team"
+          }
+        ],
+        "tags": [
+          {
+            "name": "chatbot",
+            "source": "User"
+          },
+          {
+            "name": "api-docs",
+            "source": "User"
+          },
+          {
+            "name": "technical-documentation",
+            "source": "User"
+          }
+        ],
+        "extension": {
+          "documentation_source": "Website",
+          "department": "Engineering",
+          "topic_area": "API Documentation",
+          "api_version": "3.0",
+          "last_reviewed": "2024-04-20",
+          "review_frequency": "monthly",
+          "version": "3.1.2",
+          "confidentiality": "internal",
+          "endpoints_count": "142",
+          "status": "stable"
+        }
+      }
+    },
+    "file_wiki_documentation": {
+      "description": "File entity for wiki/markdown documentation",
+      "example": {
+        "name": "troubleshooting-guide-wiki",
+        "displayName": "Troubleshooting Guide",
+        "fileType": "Text",
+        "mimeType": "text/markdown",
+        "service": {
+          "id": "drive-service-uuid",
+          "type": "driveService",
+          "name": "IA-Documentation-Repository"
+        },
+        "sourceUrl": "https://wiki.company.com/pages/troubleshooting-guide",
+        "downloadLink": "https://wiki.company.com/pages/troubleshooting-guide/download",
+        "webViewLink": "https://wiki.company.com/pages/troubleshooting-guide",
+        "path": "/wiki/troubleshooting/index.md",
+        "description": "Common troubleshooting scenarios and solutions. Regularly updated by support team based on customer issues. Primary resource for chatbot error handling and recommendations.",
+        "owners": [
+          {
+            "id": "user-uuid",
+            "type": "user",
+            "displayName": "Support Operations"
+          }
+        ],
+        "tags": [
+          {
+            "name": "chatbot",
+            "source": "User"
+          },
+          {
+            "name": "troubleshooting",
+            "source": "User"
+          },
+          {
+            "name": "support-docs",
+            "source": "User"
+          }
+        ],
+        "isShared": true,
+        "extension": {
+          "documentation_source": "Wiki",
+          "department": "Support",
+          "topic_area": "Troubleshooting",
+          "last_reviewed": "2024-04-22",
+          "review_frequency": "weekly",
+          "version": "1.8",
+          "confidentiality": "internal",
+          "issue_count": "87",
+          "solution_count": "142"
+        }
+      }
+    },
+    "batch_import_csv": {
+      "description": "CSV format for batch importing multiple file entities",
+      "example": [
+        {
+          "name": "homepage-faq",
+          "displayName": "Homepage FAQ",
+          "fileType": "PDF",
+          "mimeType": "application/pdf",
+          "sourceUrl": "https://www.mywebsite.com/doc/faq/homepage",
+          "downloadLink": "https://www.mywebsite.com/download/faq",
+          "path": "/docs/faq/homepage.pdf",
+          "description": "FAQ for homepage",
+          "owners": "support-team@company.com",
+          "tags": "chatbot,training-data,faq",
+          "service": "IA-Documentation-Repository",
+          "extension_topic_area": "FAQ",
+          "extension_confidentiality": "public"
+        },
+        {
+          "name": "api-reference",
+          "displayName": "REST API Reference",
+          "fileType": "PDF",
+          "mimeType": "application/pdf",
+          "sourceUrl": "https://docs.api.company.com/reference/v3",
+          "downloadLink": "https://docs.api.company.com/downloads/api-reference-v3.pdf",
+          "path": "/documentation/api/reference-v3.pdf",
+          "description": "Complete REST API reference documentation",
+          "owners": "engineering-team@company.com",
+          "tags": "chatbot,api-docs,technical-documentation",
+          "service": "IA-Documentation-Repository",
+          "extension_topic_area": "API Documentation",
+          "extension_confidentiality": "internal"
+        },
+        {
+          "name": "product-guide",
+          "displayName": "Product Guide 2024",
+          "fileType": "Document",
+          "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "sourceUrl": "https://sharepoint.company.com/sites/documentation/product-guide",
+          "downloadLink": "https://sharepoint.company.com/sites/documentation/product-guide/download",
+          "path": "/sharepoint/product-guide-2024.docx",
+          "description": "Comprehensive product guide covering all features",
+          "owners": "product-team@company.com",
+          "tags": "chatbot,training-data,product-documentation",
+          "service": "IA-Documentation-Repository",
+          "extension_topic_area": "Product Guide",
+          "extension_confidentiality": "internal"
+        }
+      ]
+    }
+  },
+  "api_examples": {
+    "create_drive_service": {
+      "method": "POST",
+      "endpoint": "/api/v1/services/driveServices",
+      "description": "Create a new Drive Service for IA documentation",
+      "curl_example": "curl -X POST \"https://your-om-instance/api/v1/services/driveServices\" \\\n  -H \"Authorization: Bearer <YOUR_TOKEN>\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{...service_json...}'"
+    },
+    "create_file_entity": {
+      "method": "POST",
+      "endpoint": "/api/v1/entities/files",
+      "description": "Create a new File entity under a Drive Service",
+      "curl_example": "curl -X POST \"https://your-om-instance/api/v1/entities/files\" \\\n  -H \"Authorization: Bearer <YOUR_TOKEN>\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{...file_json...}'"
+    },
+    "search_chatbot_files": {
+      "method": "GET",
+      "endpoint": "/api/v1/search/query?q=tag:chatbot",
+      "description": "Search for all files tagged with 'chatbot'",
+      "curl_example": "curl \"https://your-om-instance/api/v1/search/query?q=tag:chatbot&size=100\" \\\n  -H \"Authorization: Bearer <YOUR_TOKEN>\""
+    },
+    "list_files_by_service": {
+      "method": "GET",
+      "endpoint": "/api/v1/entities/files?service=IA-Documentation-Repository",
+      "description": "List all files from a specific Drive Service",
+      "curl_example": "curl \"https://your-om-instance/api/v1/entities/files?service=IA-Documentation-Repository\" \\\n  -H \"Authorization: Bearer <YOUR_TOKEN>\""
+    },
+    "update_file_entity": {
+      "method": "PUT",
+      "endpoint": "/api/v1/entities/files/{fileId}",
+      "description": "Update a File entity",
+      "curl_example": "curl -X PUT \"https://your-om-instance/api/v1/entities/files/{fileId}\" \\\n  -H \"Authorization: Bearer <YOUR_TOKEN>\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{...updated_file_json...}'"
+    }
+  },
+  "python_ingestion_example": {
+    "description": "Python script example for ingesting files via API",
+    "code": "#!/usr/bin/env python3\n\nimport requests\nimport json\nfrom typing import List, Dict\n\nclass IADocumentationIngester:\n    def __init__(self, om_url: str, token: str):\n        self.om_url = om_url\n        self.headers = {\n            'Authorization': f'Bearer {token}',\n            'Content-Type': 'application/json'\n        }\n    \n    def get_or_create_drive_service(self, service_config: Dict) -> str:\n        '''Create Drive Service if not exists, return service ID'''\n        endpoint = f'{self.om_url}/api/v1/services/driveServices'\n        \n        response = requests.post(\n            endpoint,\n            headers=self.headers,\n            json=service_config\n        )\n        \n        if response.status_code == 201:\n            return response.json()['id']\n        elif response.status_code == 409:\n            # Service exists, fetch it\n            list_endpoint = f'{self.om_url}/api/v1/services/driveServices?name={service_config[\"name\"]}'\n            list_response = requests.get(list_endpoint, headers=self.headers)\n            return list_response.json()['data'][0]['id']\n        else:\n            raise Exception(f'Failed to create service: {response.text}')\n    \n    def create_file_entity(self, file_config: Dict) -> str:\n        '''Create a File entity, return file ID'''\n        endpoint = f'{self.om_url}/api/v1/entities/files'\n        \n        response = requests.post(\n            endpoint,\n            headers=self.headers,\n            json=file_config\n        )\n        \n        if response.status_code == 201:\n            return response.json()['id']\n        else:\n            raise Exception(f'Failed to create file: {response.text}')\n    \n    def ingest_documentation(self, drive_service_config: Dict, files_list: List[Dict]):\n        '''Main ingestion method'''\n        # Create or get Drive Service\n        service_id = self.get_or_create_drive_service(drive_service_config)\n        print(f'Using Drive Service: {service_id}')\n        \n        # Create File entities\n        created_files = []\n        for file_config in files_list:\n            file_config['service'] = {\n                'id': service_id,\n                'type': 'driveService'\n            }\n            \n            try:\n                file_id = self.create_file_entity(file_config)\n                created_files.append(file_id)\n                print(f'✓ Created file: {file_config[\"displayName\"]}')\n            except Exception as e:\n                print(f'✗ Failed to create file {file_config[\"displayName\"]}: {e}')\n        \n        return created_files\n\n# Usage\nif __name__ == '__main__':\n    ingester = IADocumentationIngester(\n        om_url='https://your-om-instance',\n        token='YOUR_API_TOKEN'\n    )\n    \n    drive_service_config = {\n        'name': 'IA-Documentation-Repository',\n        'serviceType': 'CustomDrive',\n        'description': 'Central documentation repository for IA applications'\n    }\n    \n    files_to_ingest = [\n        # Add file configs here\n    ]\n    \n    created_files = ingester.ingest_documentation(\n        drive_service_config,\n        files_to_ingest\n    )\n    \n    print(f'\\nIngestion complete. Created {len(created_files)} files.')"
+  }
+}
