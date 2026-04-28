@@ -85,9 +85,9 @@ export interface CoverImageUploadFieldProps {
   'data-testid'?: string;
 }
 
-const DEFAULT_LABELS: Required<
-  Omit<CoverImageUploadLabels, 'formatHint'>
-> & { formatHint: NonNullable<CoverImageUploadLabels['formatHint']> } = {
+const DEFAULT_LABELS: Required<Omit<CoverImageUploadLabels, 'formatHint'>> & {
+  formatHint: NonNullable<CoverImageUploadLabels['formatHint']>;
+} = {
   clickToUpload: 'Click to upload',
   orDragAndDrop: 'or drag and drop',
   formatHint: (formats, maxSizeMB) =>
@@ -139,9 +139,7 @@ const formatAcceptedTypes = (types: string[] | undefined): string => {
     .join(', ');
 };
 
-const measureImage = (
-  file: File
-): Promise<{ width: number; height: number }> =>
+const measureImage = (file: File): Promise<{ width: number; height: number }> =>
   new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -493,11 +491,7 @@ export const CoverImageUploadField = ({
     : undefined;
 
   return (
-    <Box
-      data-testid={dataTestId}
-      direction="col"
-      gap={2}
-      onBlur={onBlur}>
+    <Box data-testid={dataTestId} direction="col" gap={2} onBlur={onBlur}>
       <input
         accept={acceptString}
         ref={replaceInputRef}
@@ -537,9 +531,7 @@ export const CoverImageUploadField = ({
             style={{
               minHeight: previewHeight,
               transform: imageTransform,
-              transition: isRepositionDragging
-                ? 'none'
-                : 'transform 0.2s ease',
+              transition: isRepositionDragging ? 'none' : 'transform 0.2s ease',
               cursor: isRepositioning ? 'ns-resize' : 'default',
               touchAction: isRepositioning ? 'none' : 'auto',
             }}
