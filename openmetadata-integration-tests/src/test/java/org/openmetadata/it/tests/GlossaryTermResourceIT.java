@@ -2242,7 +2242,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertEquals(4, page3.getPaging().getOffset());
 
     // Verify no duplicates across pages
-    List<UUID> allIds = new ArrayList<>();
+    List<UUID> allIds = new java.util.ArrayList<>();
     page1.getData().forEach(t -> allIds.add(t.getId()));
     page2.getData().forEach(t -> allIds.add(t.getId()));
     page3.getData().forEach(t -> allIds.add(t.getId()));
