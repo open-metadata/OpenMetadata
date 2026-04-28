@@ -13,7 +13,7 @@
 import re
 import traceback
 from copy import deepcopy
-from typing import Any, Iterable, List, Optional, Tuple, Union  # noqa: UP035
+from typing import Any, Iterable, Optional, Tuple, Union  # noqa: UP035
 
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
@@ -286,11 +286,11 @@ def get_view_names_reflection(self, schema=None, **kw):
 def get_view_names(  # pylint: disable=unused-argument
     self: Any,
     connection: Any,
-    schema: Optional[str] = None,
-    only_materialized: bool = False,  # noqa: ARG001
-    only_temp: bool = False,  # noqa: ARG001
+    schema: str | None = None,
+    only_materialized: bool = False,
+    only_temp: bool = False,
     **kw: Any,
-) -> List[str]:
+) -> list[str]:
     if kw.get("db_name"):
         connection.execute(text(f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"))
     query = "SHOW VIEWS"
