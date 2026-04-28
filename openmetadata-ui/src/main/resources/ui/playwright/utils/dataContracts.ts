@@ -76,10 +76,7 @@ export const validateDataContractInsideBundleTestSuites = async (
       response.status() === 200
   );
 
-  await page
-    .locator('.ant-radio-button-wrapper')
-    .filter({ hasText: 'Bundle Suites' })
-    .click();
+  await page.getByTestId('bundle-suite-radio-btn').click();
 
   await bundleSuitesResponse;
 
