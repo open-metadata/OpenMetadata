@@ -15,7 +15,7 @@ Cockroach source module
 import re
 import traceback
 from collections import namedtuple
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -95,7 +95,7 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
         cls,
         config_dict,
         metadata: OpenMetadataConnection,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: CockroachConnection = config.serviceConnection.root.config
@@ -110,7 +110,7 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
         for row in results:
             self.schema_desc_map[(row.database_name, row.schema_name)] = row.comment
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:
+    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the schema description
         """
@@ -132,7 +132,7 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
 
     def _get_columns_with_constraints(
         self, schema_name: str, table_name: str, inspector: Inspector
-    ) -> Tuple[List, List, List]:
+    ) -> Tuple[List, List, List]:  # noqa: UP006
         """
         Get columns with constraints, filtering out hidden shard columns
         from primary key constraints.
@@ -177,7 +177,7 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
             TableNameAndType(name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)) for name, relkind in result
         ]
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -215,7 +215,7 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
                     logger.debug(traceback.format_exc())
                     logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
-    def get_table_partition_details(self, table_name: str, schema_name: str, inspector) -> Tuple[bool, TablePartition]:
+    def get_table_partition_details(self, table_name: str, schema_name: str, inspector) -> Tuple[bool, TablePartition]:  # noqa: UP006
         with self.engine.connect() as conn:
             result = conn.execute(text(COCKROACH_GET_PARTITION_DETAILS), {"table_name": table_name}).all()
         if result:

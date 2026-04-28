@@ -121,18 +121,6 @@
     ]
   },
   {
-    "name" : "location",
-    "supportedFilters" : [
-      "filterByOwnerName",
-      "filterByFqn",
-      "filterByEventType",
-      "filterByUpdaterName",
-      "filterByDomain",
-      "filterByGeneralMetadataEvents",
-      "filterByUpdaterIsBot"
-    ]
-  },
-  {
     "name" : "messagingService",
     "supportedFilters" : [
       "filterByOwnerName",
@@ -300,6 +288,29 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name" : "domain",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name" : "dataProduct",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
       "filterByUpdaterIsBot"
     ]
   }

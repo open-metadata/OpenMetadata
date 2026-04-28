@@ -85,6 +85,13 @@ export * from './base/video-player/icons';
 export * from './base/video-player/play-button-icon';
 
 // Application components
+export * from './application/form-field/form-field.types';
+export * from './application/form-field/form-item-label';
+export {
+  Field,
+  FormFields,
+  getField,
+} from './application/form-field/form-field';
 export * from './application/accordion/accordion';
 export { MobileNavigationHeader } from './application/app-navigation/base-components/mobile-header';
 export {

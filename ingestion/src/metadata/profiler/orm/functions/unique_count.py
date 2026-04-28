@@ -14,7 +14,7 @@ Unique Count Metric functions
 """
 
 from collections import defaultdict
-from typing import Tuple
+from typing import Tuple  # noqa: UP035
 
 from sqlalchemy import NVARCHAR, TEXT, Column, case, func, literal_column, select
 from sqlalchemy.sql import ColumnElement
@@ -26,7 +26,7 @@ from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.orm.types.custom_image import CustomImage
 
 
-def _get_unique_count_expressions(col: Column, dialect: str) -> Tuple[ColumnElement, ColumnElement]:
+def _get_unique_count_expressions(col: Column, dialect: str) -> Tuple[ColumnElement, ColumnElement]:  # noqa: UP006
     """
     Get dialect-specific expressions for unique count computation.
 
@@ -55,7 +55,7 @@ def _get_unique_count_expressions(col: Column, dialect: str) -> Tuple[ColumnElem
             count_expr = CountFn(col)
             group_by_expr = func.convert(literal_column(cast_dict.get(type(col.type))), col)
             return group_by_expr, count_expr
-        else:
+        else:  # noqa: RET505
             return col, col
     elif dialect == Dialects.Oracle:
         count_fn = CountFn(col)
@@ -105,7 +105,7 @@ _unique_count_query_mapper[Dialects.Oracle] = _unique_count_query_oracle
 # ============================================================================
 
 
-def _unique_count_dimensional_cte(col: Column, table, dimension_col: Column, dialect: str) -> Tuple[CTE, ColumnElement]:
+def _unique_count_dimensional_cte(col: Column, table, dimension_col: Column, dialect: str) -> Tuple[CTE, ColumnElement]:  # noqa: UP006
     """
     Build CTE for dimensional unique count validation.
 

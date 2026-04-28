@@ -233,7 +233,7 @@ class QlikCloudUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.dashboard.qlikcloud.metadata.QlikcloudSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         with patch.object(QlikCloudClient, "get_dashboards_list", return_value=None):
             super().__init__(methodName)
             test_connection.return_value = False
@@ -272,7 +272,7 @@ class QlikCloudUnitTest(TestCase):
         dashboard_list = []
         results = self.qlikcloud.yield_dashboard(MOCK_DASHBOARD_DETAILS)
         for result in results:
-            print(self.qlikcloud.context.get().__dict__)
+            print(self.qlikcloud.context.get().__dict__)  # noqa: T201
             if isinstance(result, Either) and result.right:
                 dashboard_list.append(result.right)
 
@@ -290,8 +290,8 @@ class QlikCloudUnitTest(TestCase):
             chart_list = []
             for result in results:
                 if isinstance(result, Either) and result.right:
-                    chart_list.append(result.right)
-            for _, (expected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):
+                    chart_list.append(result.right)  # noqa: PERF401
+            for _, (expected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):  # noqa: B905
                 self.assertEqual(expected, original)
 
     @pytest.mark.order(4)

@@ -60,7 +60,7 @@ DATABRICKS_GET_SCHEMA_TAGS = textwrap.dedent(
     """
     SELECT 
         * 
-    FROM `{database_name}`.information_schema.schema_tags"""
+    FROM `{database_name}`.information_schema.schema_tags"""  # noqa: W291
 )
 
 DATABRICKS_GET_TABLE_TAGS = textwrap.dedent(
@@ -68,7 +68,7 @@ DATABRICKS_GET_TABLE_TAGS = textwrap.dedent(
     SELECT 
         * 
     FROM `{database_name}`.information_schema.table_tags 
-    """
+    """  # noqa: W291
 )
 
 DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent(
@@ -76,7 +76,7 @@ DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent(
     SELECT 
         * 
     FROM `{database_name}`.information_schema.column_tags 
-    """
+    """  # noqa: W291
 )
 
 DATABRICKS_DDL = "SHOW CREATE TABLE `{table_name}`"

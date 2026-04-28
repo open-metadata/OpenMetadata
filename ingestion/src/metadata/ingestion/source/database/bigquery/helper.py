@@ -16,7 +16,7 @@ Source connection helper
 import re
 import traceback
 from copy import deepcopy
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple  # noqa: UP035
 
 from pydantic import BaseModel
 from sqlalchemy import inspect, text
@@ -40,14 +40,14 @@ CONSTRAINT_CACHE = {}
 
 def clear_constraint_cache():
     """Clear the global constraint cache to free memory."""
-    global CONSTRAINT_CACHE
+    global CONSTRAINT_CACHE  # noqa: PLW0602
     CONSTRAINT_CACHE.clear()
     logger.debug("Cleared CONSTRAINT_CACHE")
 
 
 def clear_constraint_cache_for_schema(project: str, schema: str):
     """Clear cache entry for a specific schema to free memory incrementally."""
-    global CONSTRAINT_CACHE
+    global CONSTRAINT_CACHE  # noqa: PLW0602
     cache_key = f"{project}.{schema}"
     if cache_key in CONSTRAINT_CACHE:
         del CONSTRAINT_CACHE[cache_key]
@@ -129,7 +129,7 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):  # pylint
         fk_list = []
         for row in CONSTRAINT_CACHE[cache_key]:
             if row.table_name == table_name and row.constraint_type == "FOREIGN KEY":
-                fk_list.append(
+                fk_list.append(  # noqa: PERF401
                     {
                         "name": row.constraint_name,
                         "referred_schema": row.referenced_schema,
@@ -138,14 +138,14 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):  # pylint
                         "referred_columns": [row.referenced_column],
                     }
                 )
-        return fk_list
+        return fk_list  # noqa: TRY300
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(f"Error while fetching foreign key constraint error for table [{schema}.{table_name}]: {exc}")
         return []
 
 
-def parse_bigqeury_labels(labels: str) -> List[Tuple[str, str]]:
+def parse_bigqeury_labels(labels: str) -> List[Tuple[str, str]]:  # noqa: UP006
     """
     This function is used to parse BigQuery label string into a list of tuples.
     """
