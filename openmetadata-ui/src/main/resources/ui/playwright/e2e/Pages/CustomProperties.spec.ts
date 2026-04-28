@@ -335,7 +335,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
     BASIC_PROPERTIES.forEach((property) => {
       test(property, async ({ page }) => {
-        const propertyName = `cp${uuid()}${entity.name}`;
+        test.slow();
+        const propertyName = `cp-${uuid()}-${entity.name}`;
 
         await settingClick(
           page,
@@ -426,7 +427,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
     if (makeInstance !== null) {
       test(`Set & Update all CP types on ${entity.name}`, async ({ page }) => {
-        test.slow(true);
+        // 5 minutes timeout since the test handles set->update operation on all
+        // custom property types sequentially
+        test.setTimeout(300000);
         const properties = Object.values(CustomPropertyTypeByName);
 
         await test.step('Set all CP types', async () => {
@@ -607,6 +610,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       test('User visible in right panel when added as entityReferenceList custom property', async ({
         page,
       }) => {
+        test.slow();
         const { apiContext, afterAction } = await getApiContext(page);
         const propertyName =
           mainEntity.customPropertyValue[
@@ -931,6 +935,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       test('should show No Data placeholder when hyperlink has no value', async ({
         page,
       }) => {
+        test.slow();
         const propertyName =
           mainEntity.customPropertyValue[CustomPropertyTypeByName.HYPERLINK_CP]
             .property.name;
@@ -951,6 +956,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       test('should reject javascript: protocol URLs for XSS protection', async ({
         page,
       }) => {
+        test.slow();
         const propertyName =
           mainEntity.customPropertyValue[CustomPropertyTypeByName.HYPERLINK_CP]
             .property.name;
@@ -976,6 +982,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       });
 
       test('should accept valid http and https URLs', async ({ page }) => {
+        test.slow();
         const propertyName =
           mainEntity.customPropertyValue[CustomPropertyTypeByName.HYPERLINK_CP]
             .property.name;
@@ -1015,6 +1022,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       test('should display URL when no display text is provided', async ({
         page,
       }) => {
+        test.slow();
         const propertyName =
           mainEntity.customPropertyValue[CustomPropertyTypeByName.HYPERLINK_CP]
             .property.name;
@@ -2524,6 +2532,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('Table CP - Name column with all operators', async ({ page }) => {
+          test.slow();
           const value = CP_BASE_VALUES.tableCp.rows[0]['Name'];
           const partialValue = value.substring(1, 4);
           const basePropertyName = propertyNames['table-cp'];
@@ -2618,6 +2627,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('Table CP - Role column with all operators', async ({ page }) => {
+          test.slow();
           const value = CP_BASE_VALUES.tableCp.rows[0]['Role'];
           const partialValue = value.substring(1, 4);
           const basePropertyName = propertyNames['table-cp'];
@@ -2712,6 +2722,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('Table CP - Sr No column with all operators', async ({ page }) => {
+          test.slow();
           const value = CP_BASE_VALUES.tableCp.rows[1]['Sr No'];
           const basePropertyName = propertyNames['table-cp'];
           const columnPropertyName = `${basePropertyName} - Sr No`;
