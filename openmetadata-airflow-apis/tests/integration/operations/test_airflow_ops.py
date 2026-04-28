@@ -11,6 +11,7 @@
 """
 Test Airflow related operations
 """
+
 import datetime
 import os
 import shutil
@@ -53,22 +54,12 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 if "AIRFLOW_HOME" not in os.environ:
     os.environ["AIRFLOW_HOME"] = "/tmp/airflow"
 if "AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS" not in os.environ:
-    os.environ[
-        "AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS"
-    ] = "/tmp/airflow"
+    os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS"] = "/tmp/airflow"
 if "AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE" not in os.environ:
-    template_path = (
-        Path(__file__).parent.parent.parent.parent
-        / "openmetadata_managed_apis/resources/dag_runner.j2"
-    )
+    template_path = Path(__file__).parent.parent.parent.parent / "openmetadata_managed_apis/resources/dag_runner.j2"
     if not template_path.exists():
-        template_path = (
-            Path(__file__).parent.parent.parent.parent
-            / "src/plugins/dag_templates/dag_runner.j2"
-        )
-    os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE"] = str(
-        template_path.absolute()
-    )
+        template_path = Path(__file__).parent.parent.parent.parent / "src/plugins/dag_templates/dag_runner.j2"
+    os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE"] = str(template_path.absolute())
 
 from airflow import DAG
 from airflow.models import DagBag, DagModel
@@ -141,11 +132,7 @@ class TestAirflowOps(TestCase):
             with create_session() as session:
                 from airflow.models.dagbundle import DagBundleModel
 
-                bundle = (
-                    session.query(DagBundleModel)
-                    .filter(DagBundleModel.name == "")
-                    .first()
-                )
+                bundle = session.query(DagBundleModel).filter(DagBundleModel.name == "").first()
                 if not bundle:
                     bundle = DagBundleModel(name="", version=None)
                     session.add(bundle)
@@ -179,9 +166,7 @@ class TestAirflowOps(TestCase):
         Clean up
         """
         try:
-            service = cls.metadata.get_by_name(
-                entity=DatabaseService, fqn="test-service-ops"
-            )
+            service = cls.metadata.get_by_name(entity=DatabaseService, fqn="test-service-ops")
             if service:
                 service_id = str(service.id.root)
                 cls.metadata.delete(
@@ -263,7 +248,8 @@ class TestAirflowOps(TestCase):
         res = kill_all(dag_id="dag_status")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(
-            res.json, {"message": f"Workflow [dag_status] has been killed"}
+            res.json,
+            {"message": f"Workflow [dag_status] has been killed"},  # noqa: F541
         )
 
         res = status(dag_id="dag_status")
@@ -322,9 +308,7 @@ class TestAirflowOps(TestCase):
             sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline()),
             openMetadataServerConnection=self.conn,
             airflowConfig=AirflowConfig(),
-            service=EntityReference(
-                id=service.id, type="databaseService", name="test-service-ops"
-            ),
+            service=EntityReference(id=service.id, type="databaseService", name="test-service-ops"),
         )
 
         # Create the DAG
@@ -332,9 +316,7 @@ class TestAirflowOps(TestCase):
         res = deployer.deploy()
 
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(
-            res.json, {"message": "Workflow [my_new_dag] has been created"}
-        )
+        self.assertEqual(res.json, {"message": "Workflow [my_new_dag] has been created"})
 
         from airflow.configuration import conf as airflow_conf
 
@@ -362,9 +344,7 @@ class TestAirflowOps(TestCase):
         from airflow.utils.session import create_session
 
         with create_session() as session:
-            bundle = (
-                session.query(DagBundleModel).filter(DagBundleModel.name == "").first()
-            )
+            bundle = session.query(DagBundleModel).filter(DagBundleModel.name == "").first()
             if not bundle:
                 bundle = DagBundleModel(name="", version=None)
                 session.add(bundle)
@@ -385,9 +365,7 @@ class TestAirflowOps(TestCase):
                 dag_model = dag_model_obj
 
         serialized_stub = LazyDeserializedDAG.from_dag(stub_dag)
-        SerializedDagModel.write_dag(
-            serialized_stub, bundle_name="", bundle_version=None
-        )
+        SerializedDagModel.write_dag(serialized_stub, bundle_name="", bundle_version=None)
 
         self.assertIsNotNone(dag_model)
 

@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 import os
 from datetime import datetime
 from functools import partial
@@ -92,14 +93,8 @@ def get_connection_url(connection: BigQueryConnection) -> str:
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
             if not connection.credentials.gcpConfig.projectId.root:
-                url = (
-                    f"{connection.scheme.value}://"
-                    f"{connection.credentials.gcpConfig.projectId.root or ''}"
-                )
-            elif (
-                not connection.credentials.gcpConfig.privateKey
-                and connection.credentials.gcpConfig.projectId.root
-            ):
+                url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root or ''}"
+            elif not connection.credentials.gcpConfig.privateKey and connection.credentials.gcpConfig.projectId.root:
                 project_id = connection.credentials.gcpConfig.projectId.root
                 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
                 url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
@@ -116,8 +111,7 @@ def get_connection_url(connection: BigQueryConnection) -> str:
 
     # If gcpConfig is the JSON key path and projectId is defined, we use it by default
     elif (
-        isinstance(connection.credentials.gcpConfig, GcpCredentialsPath)
-        and connection.credentials.gcpConfig.projectId
+        isinstance(connection.credentials.gcpConfig, GcpCredentialsPath) and connection.credentials.gcpConfig.projectId
     ):
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcpConfig.projectId, SingleProjectId
@@ -129,10 +123,7 @@ def get_connection_url(connection: BigQueryConnection) -> str:
                 break
 
     # If gcpConfig is the GCP ADC and projectId is defined, we use it by default
-    elif (
-        isinstance(connection.credentials.gcpConfig, GcpADC)
-        and connection.credentials.gcpConfig.projectId
-    ):
+    elif isinstance(connection.credentials.gcpConfig, GcpADC) and connection.credentials.gcpConfig.projectId:
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
@@ -179,9 +170,7 @@ def test_connection(
 
     def get_tags(taxonomies):
         for taxonomy in taxonomies:
-            policy_tags = PolicyTagManagerClient().list_policy_tags(
-                parent=taxonomy.name
-            )
+            policy_tags = PolicyTagManagerClient().list_policy_tags(parent=taxonomy.name)
             return policy_tags
 
     def test_tags():
@@ -206,9 +195,7 @@ def test_connection(
         taxonomies = []
         for project_id in taxonomy_project_ids:
             taxonomies.extend(
-                PolicyTagManagerClient().list_taxonomies(
-                    parent=f"projects/{project_id}/locations/{taxonomy_location}"
-                )
+                PolicyTagManagerClient().list_taxonomies(parent=f"projects/{project_id}/locations/{taxonomy_location}")
             )
         return get_tags(taxonomies)
 

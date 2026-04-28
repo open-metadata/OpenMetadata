@@ -15,6 +15,7 @@ sync run history with per-phase (Extract/Process/Load) granularity.
 Fivetran automatically creates a Platform Connector in every destination that
 publishes operational metadata to fivetran_metadata.log with 90 days of history.
 """
+
 import json
 import traceback
 from datetime import datetime, timedelta, timezone
@@ -90,9 +91,7 @@ def query_sync_logs(
     engine = None
     try:
         connection_config = service.connection.config
-        modified_config = connection_config.model_copy(
-            deep=True, update={"database": log_database}
-        )
+        modified_config = connection_config.model_copy(deep=True, update={"database": log_database})
         engine = get_db_connection(modified_config)
 
         cutoff = datetime.now(timezone.utc) - timedelta(days=LOG_RETENTION_DAYS)
@@ -122,8 +121,7 @@ def query_sync_logs(
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(
-            f"Could not query fivetran_metadata.log for connector"
-            f" [{connector_id}] in database [{log_database}]: {exc}"
+            f"Could not query fivetran_metadata.log for connector [{connector_id}] in database [{log_database}]: {exc}"
         )
         return None
     finally:
@@ -251,11 +249,7 @@ def build_task_statuses(sync: dict) -> List[TaskStatus]:
     else:
         load_status = _determine_load_status(sync)
         sync_ended_ok = sync.get("sync_end_data", {}).get("status") == "SUCCESSFUL"
-        process_status = (
-            StatusType.Successful
-            if (sync.get("write_start_min") or sync_ended_ok)
-            else StatusType.Failed
-        )
+        process_status = StatusType.Successful if (sync.get("write_start_min") or sync_ended_ok) else StatusType.Failed
 
     return [
         TaskStatus(

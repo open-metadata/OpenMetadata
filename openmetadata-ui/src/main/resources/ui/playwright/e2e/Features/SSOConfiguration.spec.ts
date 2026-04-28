@@ -780,15 +780,20 @@ test.describe('SSO Configuration Tests', () => {
       // Typing filters the visible options
       await field.click();
       await field.locator('input').fill('Data');
+      await page.waitForResponse('/api/v1/roles/search?*');
       await expect(
         dropdown.locator(
           '.ant-select-item-option:not(.ant-select-item-option-disabled)'
         )
-      ).not.toHaveCount(0);
+      ).not.toHaveCount(0, { timeout: 15000 });
 
       // Pressing Enter on a non-existent value does not create an arbitrary tag
       await field.locator('input').clear();
+      const missingRoleSearchResponse = page.waitForResponse(
+        '/api/v1/roles/search?*'
+      );
       await field.locator('input').fill('NonExistentRoleXYZ123');
+      await missingRoleSearchResponse;
       await field.locator('input').press('Enter');
       await expect(field.locator('.ant-select-selection-item')).toHaveCount(0);
     });

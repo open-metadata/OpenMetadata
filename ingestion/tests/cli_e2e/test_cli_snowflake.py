@@ -12,6 +12,7 @@
 """
 Test Snowflake connector with CLI
 """
+
 from datetime import datetime
 from time import sleep
 from typing import Any, Dict, List, Optional, Tuple
@@ -124,9 +125,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def get_connector_name() -> str:
         return "snowflake"
 
-    def assert_for_vanilla_ingestion(
-        self, source_status: Status, sink_status: Status
-    ) -> None:
+    def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertGreaterEqual(len(source_status.filtered), 1)
@@ -141,9 +140,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             self.expected_tables(),
         )
 
-    def assert_for_table_with_profiler_time_partition(
-        self, source_status: Status, sink_status: Status
-    ) -> None:
+    def assert_for_table_with_profiler_time_partition(self, source_status: Status, sink_status: Status) -> None:
         self.assertEqual(len(source_status.failures), 0)
         self.assertEqual(len(sink_status.failures), 0)
         partitioned_fqn = "e2e_snowflake.E2E_DB.E2E_TEST.E2E_PARTITIONED_DATA"
@@ -184,9 +181,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         with open(self.test_file_path, "r", encoding="utf-8") as file:
             config = yaml.safe_load(file)
 
-        config["source"]["serviceConnection"]["config"][
-            "includeTransientTables"
-        ] = include_transient
+        config["source"]["serviceConnection"]["config"]["includeTransientTables"] = include_transient
 
         with open(self.test_file_path, "w", encoding="utf-8") as file:
             yaml.dump(config, file, default_flow_style=False)
@@ -236,9 +231,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 2
 
     def expected_sample_size(self) -> int:
-        return len(
-            [q for q in self.insert_data_queries if "E2E_DB.e2e_test.persons" in q]
-        )
+        return len([q for q in self.insert_data_queries if "E2E_DB.e2e_test.persons" in q])
 
     def view_column_lineage_count(self) -> int:
         return 2
@@ -370,11 +363,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             sleep(5)
             with cls.engine.connect() as conn:
                 latest = (
-                    conn.execute(
-                        text(
-                            'SELECT max(start_time) FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"'
-                        )
-                    )
+                    conn.execute(text('SELECT max(start_time) FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"'))
                     .scalar()
                     .timestamp()
                 )
@@ -610,16 +599,10 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         with self.engine.begin() as connection:
             # Tag + apply to table
             connection.execute(
-                text(
-                    "CREATE OR REPLACE TAG E2E_DB.e2e_test.e2e_sensitivity "
-                    "ALLOWED_VALUES 'PII', 'PUBLIC'"
-                )
+                text("CREATE OR REPLACE TAG E2E_DB.e2e_test.e2e_sensitivity ALLOWED_VALUES 'PII', 'PUBLIC'")
             )
             connection.execute(
-                text(
-                    "ALTER TABLE E2E_DB.e2e_test.regions SET TAG "
-                    "E2E_DB.e2e_test.e2e_sensitivity = 'PII'"
-                )
+                text("ALTER TABLE E2E_DB.e2e_test.regions SET TAG E2E_DB.e2e_test.e2e_sensitivity = 'PII'")
             )
 
             # Dynamic table
@@ -634,10 +617,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
             # Stream
             connection.execute(
-                text(
-                    "CREATE OR REPLACE STREAM E2E_DB.e2e_test.e2e_stream "
-                    "ON TABLE E2E_DB.e2e_test.regions"
-                )
+                text("CREATE OR REPLACE STREAM E2E_DB.e2e_test.e2e_stream ON TABLE E2E_DB.e2e_test.regions")
             )
 
             # FK constraint
@@ -692,9 +672,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         # the ingestion path doesn't fail.
 
         # Dynamic table
-        dynamic_table = self.retrieve_table(
-            "e2e_snowflake.E2E_DB.E2E_TEST.E2E_DYNAMIC_TABLE"
-        )
+        dynamic_table = self.retrieve_table("e2e_snowflake.E2E_DB.E2E_TEST.E2E_DYNAMIC_TABLE")
         self.assertIsNotNone(dynamic_table, "Dynamic table should be ingested")
         self.assertEqual(
             str(dynamic_table.tableType.value),
@@ -704,9 +682,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
         # Stream
         stream = self.retrieve_table("e2e_snowflake.E2E_DB.E2E_TEST.E2E_STREAM")
-        self.assertIsNotNone(
-            stream, "Stream should be ingested when includeStreams=true"
-        )
+        self.assertIsNotNone(stream, "Stream should be ingested when includeStreams=true")
 
         # FK constraint — tableConstraints is a lazy field, request it explicitly
         countries_table = self.openmetadata.get_by_name(
@@ -724,9 +700,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         fk_constraints = [
             c
             for c in countries_table.tableConstraints
-            if c.constraintType == ConstraintType.FOREIGN_KEY
-            and c.columns
-            and "REGION_ID" in c.columns
+            if c.constraintType == ConstraintType.FOREIGN_KEY and c.columns and "REGION_ID" in c.columns
         ]
         self.assertGreater(
             len(fk_constraints),
@@ -740,9 +714,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         )
 
         # Clustering / partition detection
-        clustered_table = self.retrieve_table(
-            "e2e_snowflake.E2E_DB.E2E_TEST.E2E_CLUSTERED_TABLE"
-        )
+        clustered_table = self.retrieve_table("e2e_snowflake.E2E_DB.E2E_TEST.E2E_CLUSTERED_TABLE")
         self.assertIsNotNone(clustered_table, "Clustered table should be ingested")
         self.assertIsNotNone(
             clustered_table.tablePartition,

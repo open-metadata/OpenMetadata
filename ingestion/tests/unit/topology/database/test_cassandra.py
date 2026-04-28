@@ -35,9 +35,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.cassandra.metadata import CassandraSource
 from metadata.ingestion.source.database.common_nosql_source import TableNameAndType
 
-mock_file_path = (
-    Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
-)
+mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
 with open(mock_file_path) as file:
     mock_data: dict = json.load(file)
 
@@ -165,18 +163,12 @@ MOCK_TABLE_NAMES = [
 
 
 def custom_column_compare(self, other):
-    return (
-        self.name == other.name
-        and self.description == other.description
-        and self.children == other.children
-    )
+    return self.name == other.name and self.description == other.description and self.children == other.children
 
 
 class CassandraUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.cassandra.connection.get_connection")
-    @patch(
-        "metadata.ingestion.source.database.cassandra.metadata.CassandraSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.cassandra.metadata.CassandraSource.test_connection")
     def __init__(self, methodName, get_connection, test_connection) -> None:
         super().__init__(methodName)
         get_connection.return_value = False
@@ -187,20 +179,12 @@ class CassandraUnitTest(TestCase):
             mock_cassandra_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.cassandra_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
-        self.cassandra_source.context.get().__dict__[
-            "database"
-        ] = MOCK_DATABASE.name.root
-        self.cassandra_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.cassandra_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.cassandra_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.cassandra_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_database_names(self):
-        assert EXPECTED_DATABASE_NAMES == list(
-            self.cassandra_source.get_database_names()
-        )
+        assert EXPECTED_DATABASE_NAMES == list(self.cassandra_source.get_database_names())
 
     def test_database_schema_names(self):
         with patch.object(
@@ -208,9 +192,7 @@ class CassandraUnitTest(TestCase):
             "get_schema_name_list",
             return_value=MOCK_DATABASE_SCHEMA_NAMES,
         ):
-            assert EXPECTED_DATABASE_SCHEMA_NAMES == list(
-                self.cassandra_source.get_database_schema_names()
-            )
+            assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.cassandra_source.get_database_schema_names())
 
     def test_table_names(self):
         with patch.object(
@@ -218,18 +200,9 @@ class CassandraUnitTest(TestCase):
             "query_table_names_and_types",
             return_value=MOCK_TABLE_NAMES,
         ):
-            assert EXPECTED_TABLE_NAMES == list(
-                self.cassandra_source.get_tables_name_and_type()
-            )
+            assert EXPECTED_TABLE_NAMES == list(self.cassandra_source.get_tables_name_and_type())
 
     def test_yield_tables(self):
         Column.__eq__ = custom_column_compare
-        with patch.object(
-            CassandraSource, "get_table_columns", return_value=MOCK_TABLE_COLUMNS_DATA
-        ):
-            assert (
-                MOCK_CREATE_TABLE
-                == next(
-                    self.cassandra_source.yield_table(EXPECTED_TABLE_NAMES[0])
-                ).right
-            )
+        with patch.object(CassandraSource, "get_table_columns", return_value=MOCK_TABLE_COLUMNS_DATA):
+            assert MOCK_CREATE_TABLE == next(self.cassandra_source.yield_table(EXPECTED_TABLE_NAMES[0])).right

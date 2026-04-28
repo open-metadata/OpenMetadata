@@ -24,9 +24,7 @@ from .models import AirbyteDestinationResponse, AirbyteSourceResponse, AirbyteSt
 logger = ingestion_logger()
 
 
-def get_source_table_details(
-    stream: AirbyteStream, source_connection: AirbyteSourceResponse
-) -> Optional[TableDetails]:
+def get_source_table_details(stream: AirbyteStream, source_connection: AirbyteSourceResponse) -> Optional[TableDetails]:
     """
     Get the source table details
     """
@@ -40,20 +38,14 @@ def get_source_table_details(
         AirbyteSource.MYSQL.value,
         AirbyteSource.MONGODB.value,
     ]:
-        logger.warning(
-            f"Lineage of airbyte pipeline with source [{source_name}] is not supported yet"
-        )
+        logger.warning(f"Lineage of airbyte pipeline with source [{source_name}] is not supported yet")
         return None
 
     if source_name == AirbyteSource.MYSQL.value:
         source_schema = source_database
         source_database = None
     elif source_name == AirbyteSource.MONGODB.value:
-        source_schema = (
-            (source_connection.connectionConfiguration or {})
-            .get("database_config", {})
-            .get("database")
-        )
+        source_schema = (source_connection.connectionConfiguration or {}).get("database_config", {}).get("database")
         source_database = None
 
     return TableDetails(
@@ -70,21 +62,15 @@ def get_destination_table_details(
     Get the destination table details
     """
     destination_name = destination_connection.destinationName
-    destination_database = (destination_connection.connectionConfiguration or {}).get(
-        "database"
-    )
-    destination_schema = (destination_connection.connectionConfiguration or {}).get(
-        "schema"
-    )
+    destination_database = (destination_connection.connectionConfiguration or {}).get("database")
+    destination_schema = (destination_connection.connectionConfiguration or {}).get("schema")
 
     if destination_name not in [
         AirbyteDestination.POSTGRES.value,
         AirbyteDestination.MSSQL.value,
         AirbyteDestination.MYSQL.value,
     ]:
-        logger.warning(
-            f"Lineage of airbyte pipeline with destination [{destination_name}] is not supported yet"
-        )
+        logger.warning(f"Lineage of airbyte pipeline with destination [{destination_name}] is not supported yet")
         return None
 
     if destination_name == AirbyteDestination.MYSQL.value:

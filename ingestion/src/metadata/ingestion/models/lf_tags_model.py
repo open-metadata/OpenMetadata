@@ -11,6 +11,7 @@
 """
 Custom models for LF tags
 """
+
 from typing import List, Optional
 
 from pydantic import BaseModel

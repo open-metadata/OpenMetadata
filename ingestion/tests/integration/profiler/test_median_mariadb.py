@@ -86,9 +86,7 @@ def mariadb_engine():
                 )
             )
             values = ", ".join(f"({row[0]}, {row[1]}, '{row[2]}')" for row in TEST_ROWS)
-            conn.execute(
-                text(f"INSERT INTO test_data (id, value, category) VALUES {values}")
-            )
+            conn.execute(text(f"INSERT INTO test_data (id, value, category) VALUES {values}"))
             conn.commit()
         yield engine
         engine.dispose()
@@ -104,27 +102,21 @@ class TestMariaDBMedianFn:
     def test_median_non_correlated(self, session):
         """PERCENTILE_CONT(0.50) OVER() returns correct median for entire table"""
         compiled = _compile_median_fn(session, "value", "test_data", 0.50)
-        result = session.execute(
-            text(f"SELECT {compiled} AS median_val FROM test_data LIMIT 1")
-        ).scalar()
+        result = session.execute(text(f"SELECT {compiled} AS median_val FROM test_data LIMIT 1")).scalar()
         assert result is not None
         assert result == pytest.approx(75.0, abs=1.0)
 
     def test_first_quartile_non_correlated(self, session):
         """PERCENTILE_CONT(0.25) OVER() returns correct Q1 for entire table"""
         compiled = _compile_median_fn(session, "value", "test_data", 0.25)
-        result = session.execute(
-            text(f"SELECT {compiled} AS q1_val FROM test_data LIMIT 1")
-        ).scalar()
+        result = session.execute(text(f"SELECT {compiled} AS q1_val FROM test_data LIMIT 1")).scalar()
         assert result is not None
         assert result == pytest.approx(32.5, abs=1.0)
 
     def test_third_quartile_non_correlated(self, session):
         """PERCENTILE_CONT(0.75) OVER() returns correct Q3 for entire table"""
         compiled = _compile_median_fn(session, "value", "test_data", 0.75)
-        result = session.execute(
-            text(f"SELECT {compiled} AS q3_val FROM test_data LIMIT 1")
-        ).scalar()
+        result = session.execute(text(f"SELECT {compiled} AS q3_val FROM test_data LIMIT 1")).scalar()
         assert result is not None
         assert result == pytest.approx(275.0, abs=1.0)
 
@@ -132,10 +124,7 @@ class TestMariaDBMedianFn:
         """MariaDBMedianFn with dimension_col generates PARTITION BY and returns per-group median"""
         compiled = _compile_median_fn(session, "value", "test_data", 0.50, "category")
         results = session.execute(
-            text(
-                f"SELECT DISTINCT category, {compiled} AS median_val "
-                "FROM test_data ORDER BY category"
-            )
+            text(f"SELECT DISTINCT category, {compiled} AS median_val FROM test_data ORDER BY category")
         ).fetchall()
         medians = {row[0]: row[1] for row in results}
         assert medians["a"] == pytest.approx(30.0, abs=1.0)
@@ -145,10 +134,7 @@ class TestMariaDBMedianFn:
         """MariaDBMedianFn Q1 with dimension_col returns per-group first quartile"""
         compiled = _compile_median_fn(session, "value", "test_data", 0.25, "category")
         results = session.execute(
-            text(
-                f"SELECT DISTINCT category, {compiled} AS q1_val "
-                "FROM test_data ORDER BY category"
-            )
+            text(f"SELECT DISTINCT category, {compiled} AS q1_val FROM test_data ORDER BY category")
         ).fetchall()
         medians = {row[0]: row[1] for row in results}
         assert medians["a"] == pytest.approx(20.0, abs=1.0)
@@ -158,10 +144,7 @@ class TestMariaDBMedianFn:
         """MariaDBMedianFn Q3 with dimension_col returns per-group third quartile"""
         compiled = _compile_median_fn(session, "value", "test_data", 0.75, "category")
         results = session.execute(
-            text(
-                f"SELECT DISTINCT category, {compiled} AS q3_val "
-                "FROM test_data ORDER BY category"
-            )
+            text(f"SELECT DISTINCT category, {compiled} AS q3_val FROM test_data ORDER BY category")
         ).fetchall()
         medians = {row[0]: row[1] for row in results}
         assert medians["a"] == pytest.approx(40.0, abs=1.0)
@@ -169,9 +152,7 @@ class TestMariaDBMedianFn:
 
     def test_compiled_sql_contains_partition_by(self, session):
         """Verify the compiled SQL includes PARTITION BY when dimension_col is set"""
-        compiled = str(
-            _compile_median_fn(session, "value", "test_data", 0.50, "category")
-        )
+        compiled = str(_compile_median_fn(session, "value", "test_data", 0.50, "category"))
         assert "PARTITION BY category" in compiled
 
     def test_compiled_sql_no_partition_without_dimension(self, session):

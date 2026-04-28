@@ -13,6 +13,7 @@ Microsoft Fabric Pipeline Client
 
 Wrapper around the shared FabricClient for pipeline-specific operations.
 """
+
 from typing import List, Optional
 
 from metadata.clients.microsoftfabric.fabric_client import FabricClient
@@ -50,8 +51,7 @@ class MicrosoftFabricPipelineClient:
                 tenant_id=self.connection.tenantId,
                 client_id=self.connection.clientId,
                 client_secret=self.connection.clientSecret.get_secret_value(),
-                authority_uri=self.connection.authorityUri
-                or "https://login.microsoftonline.com/",
+                authority_uri=self.connection.authorityUri or "https://login.microsoftonline.com/",
             )
         return self._fabric_client
 
@@ -69,20 +69,13 @@ class MicrosoftFabricPipelineClient:
 
     def get_pipeline_activities(self, pipeline_id: str) -> List[FabricActivity]:
         """Get activities (tasks) for a pipeline from its definition"""
-        return self.fabric_client.get_pipeline_activities(
-            self.workspace_id, pipeline_id
-        )
+        return self.fabric_client.get_pipeline_activities(self.workspace_id, pipeline_id)
 
     def get_pipeline_url(self, pipeline_id: str) -> str:
         """Generate URL to the pipeline in the Fabric UI"""
-        return (
-            f"https://app.fabric.microsoft.com/groups/{self.workspace_id}"
-            f"/pipelines/{pipeline_id}"
-        )
+        return f"https://app.fabric.microsoft.com/groups/{self.workspace_id}/pipelines/{pipeline_id}"
 
-    def get_pipeline_activity_runs(
-        self, pipeline_run_id: str, run: FabricPipelineRun
-    ) -> List[FabricActivityRun]:
+    def get_pipeline_activity_runs(self, pipeline_run_id: str, run: FabricPipelineRun) -> List[FabricActivityRun]:
         """
         Get activity-level execution details for a pipeline run.
 
@@ -93,6 +86,4 @@ class MicrosoftFabricPipelineClient:
         Returns:
             List of activity runs with detailed execution information
         """
-        return self.fabric_client.get_pipeline_activity_runs(
-            self.workspace_id, pipeline_run_id, run
-        )
+        return self.fabric_client.get_pipeline_activity_runs(self.workspace_id, pipeline_run_id, run)

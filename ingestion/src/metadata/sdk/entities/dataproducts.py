@@ -1,6 +1,7 @@
 """
 DataProducts entity SDK with fluent API
 """
+
 from typing import Any, Dict, List, Type, cast
 
 from metadata.generated.schema.api.domains.createDataProduct import (
@@ -37,9 +38,7 @@ class DataProducts(BaseEntity[DataProduct, CreateDataProductRequest]):
         return cls._handle_ports_operation(name, ports, "inputPorts", "add")
 
     @classmethod
-    def remove_input_ports(
-        cls, name: str, ports: List[EntityReference]
-    ) -> Dict[str, Any]:
+    def remove_input_ports(cls, name: str, ports: List[EntityReference]) -> Dict[str, Any]:
         """
         Remove input ports from a data product.
 
@@ -56,9 +55,7 @@ class DataProducts(BaseEntity[DataProduct, CreateDataProductRequest]):
     # Output Ports operations
     # ------------------------------------------------------------------
     @classmethod
-    def add_output_ports(
-        cls, name: str, ports: List[EntityReference]
-    ) -> Dict[str, Any]:
+    def add_output_ports(cls, name: str, ports: List[EntityReference]) -> Dict[str, Any]:
         """
         Add output ports to a data product.
 
@@ -72,9 +69,7 @@ class DataProducts(BaseEntity[DataProduct, CreateDataProductRequest]):
         return cls._handle_ports_operation(name, ports, "outputPorts", "add")
 
     @classmethod
-    def remove_output_ports(
-        cls, name: str, ports: List[EntityReference]
-    ) -> Dict[str, Any]:
+    def remove_output_ports(cls, name: str, ports: List[EntityReference]) -> Dict[str, Any]:
         """
         Remove output ports from a data product.
 

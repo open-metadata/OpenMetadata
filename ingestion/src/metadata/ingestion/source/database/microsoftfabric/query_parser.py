@@ -11,6 +11,7 @@
 """
 Microsoft Fabric query parser module
 """
+
 from abc import ABC
 from typing import Optional
 
@@ -43,7 +44,5 @@ class MicrosoftFabricQueryParserSource(QueryParserSource, ABC):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: MicrosoftFabricConnection = config.serviceConnection.root.config
         if not isinstance(connection, MicrosoftFabricConnection):
-            raise InvalidSourceException(
-                f"Expected MicrosoftFabricConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected MicrosoftFabricConnection, but got {connection}")
         return cls(config, metadata)

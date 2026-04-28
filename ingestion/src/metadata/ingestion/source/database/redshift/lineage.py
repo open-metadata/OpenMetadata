@@ -59,9 +59,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class RedshiftLineageSource(
-    RedshiftQueryParserSource, StoredProcedureLineageMixin, LineageSource
-):
+class RedshiftLineageSource(RedshiftQueryParserSource, StoredProcedureLineageMixin, LineageSource):
     provisioned_filters = """
         AND (
           querytxt ILIKE '%%create%%table%%as%%select%%'
@@ -88,9 +86,7 @@ class RedshiftLineageSource(
         if self.redshift_instance_type == RedshiftInstanceType.PROVISIONED:
             self.sql_stmt = REDSHIFT_SQL_STATEMENT_MAP[RedshiftInstanceType.PROVISIONED]
             self.filters = self.provisioned_filters
-            logger.info(
-                "Using STL views for lineage processing of Redshift Provisioned"
-            )
+            logger.info("Using STL views for lineage processing of Redshift Provisioned")
         else:
             self.sql_stmt = REDSHIFT_SQL_STATEMENT_MAP[RedshiftInstanceType.SERVERLESS]
             self.filters = self.serverless_filters
@@ -116,26 +112,20 @@ class RedshiftLineageSource(
                     try:
                         yield TableQuery(
                             dialect=self.dialect.value,
-                            query=query_dict["query_text"]
-                            .replace("\\n", "\n")
-                            .replace("\\r", ""),
+                            query=query_dict["query_text"].replace("\\n", "\n").replace("\\r", ""),
                             databaseName=self.get_database_name(query_dict),
                             serviceName=self.config.serviceName,
                             databaseSchema=self.get_schema_name(query_dict),
                         )
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
-                        logger.warning(
-                            f"Error processing query_dict {query_dict}: {exc}"
-                        )
+                        logger.warning(f"Error processing query_dict {query_dict}: {exc}")
 
     def get_stored_procedure_sql_statement(self) -> str:
         """
         Return the SQL statement to get the stored procedure queries
         """
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES_MAP[
-            self.redshift_instance_type
-        ].format(start_date=start)
+        query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES_MAP[self.redshift_instance_type].format(start_date=start)
 
         return query

@@ -11,6 +11,7 @@
 """
 Main ingestion entrypoint to run OM workflows
 """
+
 import os
 
 import yaml
@@ -81,15 +82,11 @@ def main():
     # DockerOperator expects an env var called config
     config = os.getenv("config")
     if not config:
-        raise RuntimeError(
-            "Missing environment variable `config`. This is needed to configure the Workflow."
-        )
+        raise RuntimeError("Missing environment variable `config`. This is needed to configure the Workflow.")
 
     pipeline_type = os.getenv("pipelineType")
     if not pipeline_type:
-        raise RuntimeError(
-            "Missing environment variable `pipelineType`. This is needed to load the Workflow class."
-        )
+        raise RuntimeError("Missing environment variable `pipelineType`. This is needed to load the Workflow class.")
 
     pipeline_run_id = os.getenv("pipelineRunId")
 

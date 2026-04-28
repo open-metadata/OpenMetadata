@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Db2 source module"""
+
 import traceback
 from typing import Iterable, Optional
 
@@ -66,15 +67,11 @@ class Db2Source(CommonDbSourceService):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: Db2Connection = config.serviceConnection.root.config
         if not isinstance(connection, Db2Connection):
-            raise InvalidSourceException(
-                f"Expected Db2Connection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected Db2Connection, but got {connection}")
         return cls(config, metadata)
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
@@ -85,18 +82,14 @@ class Db2Source(CommonDbSourceService):
                 yield schema_name.rstrip()
 
     @staticmethod
-    def get_table_description(
-        schema_name: str, table_name: str, inspector: Inspector
-    ) -> str:
+    def get_table_description(schema_name: str, table_name: str, inspector: Inspector) -> str:
         description = None
         try:
             table_info: dict = inspector.get_table_comment(table_name, schema_name)
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Table description error for table [{schema_name}.{table_name}]: {exc}"
-            )
+            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
         else:
             if table_info.get("text"):
                 description = table_info["text"]

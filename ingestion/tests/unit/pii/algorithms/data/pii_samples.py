@@ -15,6 +15,7 @@ In the future, we might want to use larger datasets to prevent regressions
 of the classifiers. These datasets should then be stored in separate files in a format
 like CSV, JSON or Parquet.
 """
+
 from typing import List, Optional, TypedDict
 
 from metadata.generated.schema.entity.data.table import DataType

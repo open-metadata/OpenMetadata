@@ -274,9 +274,7 @@ SELECT * from names
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_filtered_tables_excludes(source_status, sink_status)
 
-    def assert_for_vanilla_ingestion(
-        self, source_status: Status, sink_status: Status
-    ) -> None:
+    def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
         self.assertEqual(len(source_status.failures), 0)
         self.assertEqual(len(source_status.warnings), 0)
         self.assertGreaterEqual(len(source_status.filtered), 29)

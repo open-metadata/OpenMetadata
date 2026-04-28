@@ -14,6 +14,7 @@
 """
 Undetermined types for cases where we dont have typ mappings
 """
+
 from sqlalchemy.sql.sqltypes import String, TypeDecorator
 
 
@@ -31,8 +32,4 @@ class UndeterminedType(TypeDecorator):
         """
         We have no idea what is this type. So we just casr
         """
-        return (
-            f"OPENMETADATA_UNDETERMIND[{str(value)}]"
-            if value
-            else "OPENMETADATA_UNDETERMIND[]"
-        )
+        return f"OPENMETADATA_UNDETERMIND[{str(value)}]" if value else "OPENMETADATA_UNDETERMIND[]"

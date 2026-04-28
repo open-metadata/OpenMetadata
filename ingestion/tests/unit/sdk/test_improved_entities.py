@@ -2,6 +2,7 @@
 Comprehensive unit tests for improved SDK entities.
 This combines tests for multiple entities in one file for better maintainability.
 """
+
 import unittest
 from unittest.mock import MagicMock, patch
 from uuid import UUID
@@ -39,9 +40,7 @@ class TestImprovedTableEntity(unittest.TestCase):
             Column(name="email", dataType=DataType.STRING),
         ]
 
-        create_request = CreateTableRequest(
-            name="test_table", databaseSchema="database.schema", columns=columns
-        )
+        create_request = CreateTableRequest(name="test_table", databaseSchema="database.schema", columns=columns)
 
         expected_table = MagicMock(spec=TableEntity)
         expected_table.id = UUID("550e8400-e29b-41d4-a716-446655440000")
@@ -260,9 +259,7 @@ class TestImprovedPipelineEntity(unittest.TestCase):
         mock_ometa = MagicMock()
         mock_get_client.return_value = mock_ometa
 
-        create_request = CreatePipelineRequest(
-            name="etl-daily", service="airflow-prod", displayName="Daily ETL"
-        )
+        create_request = CreatePipelineRequest(name="etl-daily", service="airflow-prod", displayName="Daily ETL")
 
         expected_pipeline = MagicMock(spec=PipelineEntity)
         expected_pipeline.id = UUID("450e8400-e29b-41d4-a716-446655440000")
@@ -349,9 +346,7 @@ class TestImprovedUserEntity(unittest.TestCase):
         mock_ometa = MagicMock()
         mock_get_client.return_value = mock_ometa
 
-        create_request = CreateUserRequest(
-            name="john.doe", email="john.doe@company.com", displayName="John Doe"
-        )
+        create_request = CreateUserRequest(name="john.doe", email="john.doe@company.com", displayName="John Doe")
 
         expected_user = MagicMock(spec=UserEntity)
         expected_user.id = UUID("250e8400-e29b-41d4-a716-446655440000")

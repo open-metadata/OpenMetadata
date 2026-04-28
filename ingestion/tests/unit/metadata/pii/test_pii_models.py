@@ -11,6 +11,7 @@
 """
 Unit tests for auto-classification models.
 """
+
 import pytest
 
 from _openmetadata_testutils.factories.metadata.pii.models import ScoredTagFactory
@@ -32,9 +33,7 @@ class TestScoredTag:
         with pytest.raises(AttributeError):
             scored_email_tag.score = 0.9  # noqa
 
-    def test_scored_tag_is_hashable(
-        self, scored_email_tag: ScoredTag, scored_phone_tag: ScoredTag
-    ):
+    def test_scored_tag_is_hashable(self, scored_email_tag: ScoredTag, scored_phone_tag: ScoredTag):
         """Test that ScoredTag can be used in sets and as dict keys."""
         tag_set = {scored_email_tag, scored_phone_tag}
         assert len(tag_set) == 2

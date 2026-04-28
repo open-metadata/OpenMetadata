@@ -11,6 +11,7 @@
 """
 REST Auth & Client for Metabase
 """
+
 import json
 import traceback
 from typing import Dict, List, Optional
@@ -98,9 +99,7 @@ class MetabaseClient:
                 api_version=API_VERSION,
                 auth_header=AUTHORIZATION_HEADER,
                 auth_token=lambda: (NO_ACCESS_TOKEN, 0),
-                extra_headers={
-                    METABASE_API_HEADER: self.config.apiKey.get_secret_value()
-                },
+                extra_headers={METABASE_API_HEADER: self.config.apiKey.get_secret_value()},
             )
         else:
             # Use session-based authentication
@@ -115,36 +114,28 @@ class MetabaseClient:
 
         self.client = TrackedREST(client_config, source_name="metabase")
 
-    def get_dashboards_list(
-        self, collections: List[MetabaseCollection]
-    ) -> List[MetabaseDashboard]:
+    def get_dashboards_list(self, collections: List[MetabaseCollection]) -> List[MetabaseDashboard]:
         """
         Get List of all dashboards
         """
         dashboards = []
         for collection in collections or []:
             try:
-                resp_dashboards = self.client.get(
-                    f"/collection/{collection.id}/items?models=dashboard"
-                )
+                resp_dashboards = self.client.get(f"/collection/{collection.id}/items?models=dashboard")
                 if resp_dashboards:
                     dashboard_list = MetabaseDashboardList(**resp_dashboards)
                     dashboards.extend(dashboard_list.data)
             except Exception:
                 logger.debug(traceback.format_exc())
-                logger.warning("Failed to fetch the dashboard list")
+                logger.error("Failed to fetch the dashboard list")
         return dashboards
 
-    def get_dashboards_list_test_conn(
-        self, collections: List[MetabaseCollection]
-    ) -> List[MetabaseDashboard]:
+    def get_dashboards_list_test_conn(self, collections: List[MetabaseCollection]) -> List[MetabaseDashboard]:
         """
         Get List of all dashboards
         """
         for collection in collections or []:
-            resp_dashboards = self.client.get(
-                f"/collection/{collection.id}/items?models=dashboard"
-            )
+            resp_dashboards = self.client.get(f"/collection/{collection.id}/items?models=dashboard")
             if resp_dashboards:
                 dashboard_list = MetabaseDashboardList(**resp_dashboards)
                 return dashboard_list.data
@@ -171,7 +162,7 @@ class MetabaseClient:
                 return collection_list.collections
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the collections list")
+            logger.error("Failed to fetch the collections list")
         return []
 
     def get_charts_dict(self) -> Dict:
@@ -185,12 +176,10 @@ class MetabaseClient:
             return charts_dict
         except Exception as e:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the cards : {e}")
+            logger.error(f"Failed to fetch the cards : {e}")
         return {}
 
-    def _create_default_dashboard_details(
-        self, orphan_charts_id: List
-    ) -> MetabaseDashboardDetails:
+    def _create_default_dashboard_details(self, orphan_charts_id: List) -> MetabaseDashboardDetails:
         """
         Returns:
             MetabaseDashboardDetails object representing the default dashboard containing orphaned charts
@@ -241,12 +230,10 @@ class MetabaseClient:
             if resp_dashboard:
                 # Small hack needed to support Metabase versions older than 0.48
                 # https://www.metabase.com/releases/metabase-48#fyi--breaking-changes
-                return self._process_dashboard_response(
-                    resp_dashboard, charts_dict, dashboard_id
-                )
+                return self._process_dashboard_response(resp_dashboard, charts_dict, dashboard_id)
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the dashboard with id: {dashboard_id}")
+            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")
         return None
 
     def get_database(self, database_id: str) -> Optional[MetabaseDatabase]:
@@ -261,7 +248,7 @@ class MetabaseClient:
                 return MetabaseDatabase(**resp_database)
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the database with id: {database_id}")
+            logger.error(f"Failed to fetch the database with id: {database_id}")
         return None
 
     def get_table(self, table_id: str) -> Optional[MetabaseTable]:
@@ -276,7 +263,7 @@ class MetabaseClient:
                 return MetabaseTable(**resp_table)
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the table with id: {table_id}")
+            logger.error(f"Failed to fetch the table with id: {table_id}")
         return None
 
     def get_user_details(self, user_id: str) -> Optional[MetabaseUser]:
@@ -291,5 +278,5 @@ class MetabaseClient:
                 return MetabaseUser(**resp_table)
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the user with id: {user_id}")
+            logger.error(f"Failed to fetch the user with id: {user_id}")
         return None

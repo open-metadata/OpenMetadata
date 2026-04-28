@@ -111,9 +111,7 @@ def set_cache(cache: defaultdict, key: str, value):
 
 
 @database_entities_cache.wrap(lambda id_, metadata: f"DatabaseSchema(id={id_.root!r})")
-def _get_schema_cached(
-    entity_id: Uuid, metadata: OpenMetadata
-) -> Optional[DatabaseSchema]:
+def _get_schema_cached(entity_id: Uuid, metadata: OpenMetadata) -> Optional[DatabaseSchema]:
     """Cache schema lookups by id"""
     return metadata.get_by_id(
         entity=DatabaseSchema,
@@ -133,9 +131,7 @@ def _get_database_cached(entity_id: Uuid, metadata: OpenMetadata) -> Optional[Da
 
 
 @database_entities_cache.wrap(lambda id_, metadata: f"DatabaseService(id={id_.root!r})")
-def _get_service_cached(
-    entity_id: Uuid, metadata: OpenMetadata
-) -> Optional[DatabaseService]:
+def _get_service_cached(entity_id: Uuid, metadata: OpenMetadata) -> Optional[DatabaseService]:
     """Cache database service lookups by id"""
     return metadata.get_by_id(
         entity=DatabaseService,

@@ -23,6 +23,7 @@ The following steps are taken:
 5. Any specific configuration is done
 6. Needed configurations are yielded back to the test.
 """
+
 import io
 import time
 import uuid
@@ -80,17 +81,13 @@ def mlflow_environment():
     mysql_container_name = f"mlflow-db-{unique_id}"
     config.mysql_configs.container_name = mysql_container_name
     config.minio_configs.container_name = f"mlflow-artifact-{unique_id}"
-    config.mlflow_configs.backend_uri = (
-        f"mysql+pymysql://mlflow:password@{mysql_container_name}:3306/experiments"
-    )
+    config.mlflow_configs.backend_uri = f"mysql+pymysql://mlflow:password@{mysql_container_name}:3306/experiments"
 
     docker_network = get_docker_network(name=f"docker_mlflow_test_nw_{unique_id}")
 
     minio_container = get_minio_container(config.minio_configs)
     mysql_container = get_mysql_container(config.mysql_configs)
-    mlflow_container = build_and_get_mlflow_container(
-        config.mlflow_configs, config.minio_configs, unique_id
-    )
+    mlflow_container = build_and_get_mlflow_container(config.mlflow_configs, config.minio_configs, unique_id)
 
     with docker_network:
         minio_container.with_network(docker_network)
