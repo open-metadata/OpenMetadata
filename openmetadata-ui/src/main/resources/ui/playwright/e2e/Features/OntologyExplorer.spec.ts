@@ -197,7 +197,9 @@ test.describe('Ontology Explorer', () => {
       await waitForGraphLoaded(page);
       await applyRelationTypeFilter(page, 'Synonym');
 
-      await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
+      await expect(
+        page.getByTestId('ontology-graph-no-relations')
+      ).toBeVisible();
     });
   });
 
