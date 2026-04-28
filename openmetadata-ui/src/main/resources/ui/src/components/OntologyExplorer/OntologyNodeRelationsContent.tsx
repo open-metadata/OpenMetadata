@@ -92,12 +92,14 @@ export const OntologyNodeRelationsContent: React.FC<
     nodeRelations.incoming.length + nodeRelations.outgoing.length;
 
   const relatedDisplayName = useCallback(
-    (rel: RelationRow, end: 'from' | 'to') => {
+    (rel: RelationRow) => {
       return (
-        rel.relatedNode?.originalLabel ?? rel.relatedNode?.label ?? rel[end]
+        rel.relatedNode?.originalLabel ??
+        rel.relatedNode?.label ??
+        t('label.term-not-available')
       );
     },
-    []
+    [t]
   );
 
   const renderSection = (
@@ -105,8 +107,7 @@ export const OntologyNodeRelationsContent: React.FC<
     count: number,
     rows: RelationRow[],
     labelTestId: string,
-    countTestId: string,
-    otherEnd: 'from' | 'to'
+    countTestId: string
   ) => {
     if (rows.length === 0) {
       return null;
@@ -130,7 +131,7 @@ export const OntologyNodeRelationsContent: React.FC<
         <Card className="tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-utility-gray-blue-100 tw:p-4">
           <ul className="tw:m-0 tw:list-none tw:p-0">
             {rows.map((rel, rowIndex) => {
-              const labelText = relatedDisplayName(rel, otherEnd);
+              const labelText = relatedDisplayName(rel);
               const hasRowBelow = rowIndex < rows.length - 1;
 
               const meta = RELATION_META[rel.relationType];
@@ -201,16 +202,14 @@ export const OntologyNodeRelationsContent: React.FC<
         nodeRelations.outgoing.length,
         nodeRelations.outgoing,
         'outgoing-relation-label',
-        'outgoing-relation-count',
-        'to'
+        'outgoing-relation-count'
       )}
       {renderSection(
         t('label.incoming-relation-plural'),
         nodeRelations.incoming.length,
         nodeRelations.incoming,
         'incoming-relation-label',
-        'incoming-relation-count',
-        'from'
+        'incoming-relation-count'
       )}
     </>
   );
