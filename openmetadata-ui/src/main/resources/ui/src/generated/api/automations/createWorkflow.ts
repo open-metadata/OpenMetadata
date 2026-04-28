@@ -1274,7 +1274,8 @@ export interface ConfigObject {
      */
     instantClientDirectory?: string;
     /**
-     * Connect with oracle by either passing service name or database schema name.
+     * Connect with Oracle by using schema, service name, TNS connection string, or Oracle
+     * Autonomous wallet configuration.
      */
     oracleConnectionType?: OracleConnectionType;
     /**
@@ -4555,7 +4556,8 @@ export interface OpenAPISchemaConnection {
 }
 
 /**
- * Connect with oracle by either passing service name or database schema name.
+ * Connect with Oracle by using schema, service name, TNS connection string, or Oracle
+ * Autonomous wallet configuration.
  */
 export interface OracleConnectionType {
     /**
@@ -4574,6 +4576,25 @@ export interface OracleConnectionType {
      * (DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME))).
      */
     oracleTNSConnection?: string;
+    /**
+     * Service alias defined in the wallet tnsnames.ora file, such as myadb_high.
+     */
+    tnsAlias?: string;
+    /**
+     * Base64-encoded Oracle wallet zip content. Recommended for Docker/Kubernetes: download the
+     * wallet zip from Oracle Cloud Console, encode it with 'base64 -w 0 Wallet_mydb.zip'
+     * (Linux) or 'base64 -i Wallet_mydb.zip' (macOS), and paste the result here. OpenMetadata
+     * extracts it at runtime — no volume mounts needed.
+     */
+    walletContent?: string;
+    /**
+     * Wallet password for Oracle Autonomous mTLS connections, if required.
+     */
+    walletPassword?: string;
+    /**
+     * Path to the extracted Oracle wallet directory on the ingestion host.
+     */
+    walletPath?: string;
     [property: string]: any;
 }
 

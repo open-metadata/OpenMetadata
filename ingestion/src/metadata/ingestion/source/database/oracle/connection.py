@@ -12,10 +12,10 @@
 """
 Source connection handler
 """
+
 import base64
 import binascii
 import io
-
 import os
 import shutil
 import sys
@@ -23,6 +23,7 @@ import tempfile
 import weakref
 import zipfile
 from copy import deepcopy
+from pathlib import Path
 from typing import Optional
 from urllib.parse import quote_plus
 
@@ -35,13 +36,13 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
-    OracleConnection as OracleConnectionConfig,
-)
-from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleAutonomousConnection,
     OracleDatabaseSchema,
     OracleServiceName,
     OracleTNSConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
+    OracleConnection as OracleConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -77,8 +78,8 @@ logger = ingestion_logger()
 class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
     def __init__(self, connection: OracleConnectionConfig):
         super().__init__(connection)
-        self._wallet_temp_dir: Optional[str] = None
-        self._wallet_cleanup_finalizer: Optional[weakref.finalize] = None
+        self._wallet_temp_dir: str | None = None
+        self._wallet_cleanup_finalizer: weakref.finalize | None = None
 
     def _set_wallet_temp_dir(self, wallet_temp_dir: str) -> None:
         self._cleanup_wallet_temp_dir()
@@ -101,9 +102,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         self._wallet_temp_dir = None
 
     def _is_autonomous_connection(self) -> bool:
-        return isinstance(
-            self.service_connection.oracleConnectionType, OracleAutonomousConnection
-        )
+        return isinstance(self.service_connection.oracleConnectionType, OracleAutonomousConnection)
 
     @staticmethod
     def _get_autonomous_connection_config(
@@ -113,46 +112,34 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
 
     @staticmethod
     def _safe_extract_wallet_archive(zip_ref: zipfile.ZipFile, target_dir: str) -> None:
-        target_dir_real = os.path.realpath(target_dir)
-        safe_prefix = f"{target_dir_real}{os.sep}"
+        target_root = Path(target_dir).resolve()
 
         for member in zip_ref.infolist():
-            member_path = os.path.realpath(
-                os.path.join(target_dir_real, member.filename)
-            )
+            member_path = (target_root / member.filename).resolve()
 
-            if (
-                not member_path.startswith(safe_prefix)
-                and member_path != target_dir_real
-            ):
-                raise ValueError(
-                    "Invalid walletContent. Wallet zip contains unsafe file paths."
-                )
+            if member_path != target_root and target_root not in member_path.parents:
+                raise ValueError("Invalid walletContent. Wallet zip contains unsafe file paths.")
 
             if member.is_dir():
-                os.makedirs(member_path, exist_ok=True)
+                member_path.mkdir(parents=True, exist_ok=True)
                 continue
 
-            os.makedirs(os.path.dirname(member_path), exist_ok=True)
-            with zip_ref.open(member, "r") as source_file:
-                with open(
+            member_path.parent.mkdir(parents=True, exist_ok=True)
+            with (
+                zip_ref.open(member, "r") as source_file,
+                open(
                     member_path,
                     "wb",
-                    opener=lambda path, flags: os.open(
-                        path, flags, 0o600
-                    ),
-                ) as target_file:
-                    shutil.copyfileobj(source_file, target_file)
+                    opener=lambda path, flags: os.open(path, flags, 0o600),
+                ) as target_file,
+            ):
+                shutil.copyfileobj(source_file, target_file)
 
     def _extract_wallet_content(self, wallet_content: SecretStr) -> str:
         try:
-            decoded_wallet = base64.b64decode(
-                wallet_content.get_secret_value(), validate=True
-            )
+            decoded_wallet = base64.b64decode(wallet_content.get_secret_value(), validate=True)
         except (binascii.Error, TypeError) as exc:
-            raise ValueError(
-                "Invalid walletContent. Expected a base64-encoded wallet zip."
-            ) from exc
+            raise ValueError("Invalid walletContent. Expected a base64-encoded wallet zip.") from exc
 
         wallet_temp_dir = tempfile.mkdtemp(prefix="oracle_wallet_")
         self._set_wallet_temp_dir(wallet_temp_dir)
@@ -160,12 +147,11 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         try:
             with zipfile.ZipFile(io.BytesIO(decoded_wallet)) as zip_ref:
                 self._safe_extract_wallet_archive(zip_ref, wallet_temp_dir)
-        except (ValueError, zipfile.BadZipFile) as exc:
+        except zipfile.BadZipFile as exc:
             self._cleanup_wallet_temp_dir()
-            if isinstance(exc, zipfile.BadZipFile):
-                raise ValueError(
-                    "Invalid walletContent. Expected a valid zip archive."
-                ) from exc
+            raise ValueError("Invalid walletContent. Expected a valid zip archive.") from exc
+        except ValueError:
+            self._cleanup_wallet_temp_dir()
             raise
 
         return wallet_temp_dir
@@ -177,9 +163,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
 
         autonomous_connection = self._get_autonomous_connection_config(connection_type)
         if not self.service_connection.connectionArguments:
-            self.service_connection.connectionArguments = (
-                init_empty_connection_arguments()
-            )
+            self.service_connection.connectionArguments = init_empty_connection_arguments()
         elif self.service_connection.connectionArguments.root is None:
             self.service_connection.connectionArguments.root = {}
 
@@ -187,62 +171,40 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
 
         wallet_path = autonomous_connection.walletPath
         if autonomous_connection.walletContent:
-            if self._wallet_temp_dir and os.path.isdir(self._wallet_temp_dir):
+            if self._wallet_temp_dir and Path(self._wallet_temp_dir).is_dir():
                 wallet_path = self._wallet_temp_dir
             else:
-                wallet_path = self._extract_wallet_content(
-                    autonomous_connection.walletContent
-                )
+                wallet_path = self._extract_wallet_content(autonomous_connection.walletContent)
         else:
             self._cleanup_wallet_temp_dir()
 
         if not wallet_path:
-            raise ValueError(
-                "Oracle Autonomous connections require either walletPath or walletContent."
-            )
+            raise ValueError("Oracle Autonomous connections require either walletPath or walletContent.")
 
         connection_arguments["config_dir"] = wallet_path
         connection_arguments["wallet_location"] = wallet_path
 
         if autonomous_connection.walletPassword:
-            connection_arguments[
-                "wallet_password"
-            ] = autonomous_connection.walletPassword.get_secret_value()
+            connection_arguments["wallet_password"] = autonomous_connection.walletPassword.get_secret_value()
         else:
             connection_arguments.pop("wallet_password", None)
 
     def _uses_inline_wallet_content(self) -> bool:
         connection_type = self.service_connection.oracleConnectionType
-        return bool(
-            isinstance(connection_type, OracleAutonomousConnection)
-            and connection_type.walletContent
-        )
+        return bool(isinstance(connection_type, OracleAutonomousConnection) and connection_type.walletContent)
 
     def _get_client(self) -> Engine:
         """
         Create connection
         """
         self._configure_autonomous_connection_arguments()
-        try:
-            if self.service_connection.instantClientDirectory:
-                logger.info(f"Initializing Oracle thick client at {self.service_connection.instantClientDirectory}")
-                os.environ[LD_LIB_ENV] = self.service_connection.instantClientDirectory
-                oracledb.init_oracle_client(lib_dir=self.service_connection.instantClientDirectory)
-        except DatabaseError as err:
-            logger.info(f"Could not initialize Oracle thick client: {err}")
 
         if not self._is_autonomous_connection():
             try:
                 if self.service_connection.instantClientDirectory:
-                    logger.info(
-                        f"Initializing Oracle thick client at {self.service_connection.instantClientDirectory}"
-                    )
-                    os.environ[
-                        LD_LIB_ENV
-                    ] = self.service_connection.instantClientDirectory
-                    oracledb.init_oracle_client(
-                        lib_dir=self.service_connection.instantClientDirectory
-                    )
+                    logger.info(f"Initializing Oracle thick client at {self.service_connection.instantClientDirectory}")
+                    os.environ[LD_LIB_ENV] = self.service_connection.instantClientDirectory
+                    oracledb.init_oracle_client(lib_dir=self.service_connection.instantClientDirectory)
             except DatabaseError as err:
                 logger.info(f"Could not initialize Oracle thick client: {err}")
 
@@ -308,17 +270,10 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         elif isinstance(connection_copy.oracleConnectionType, OracleServiceName):
             connection_dict["database"] = connection_copy.oracleConnectionType.oracleServiceName
         elif isinstance(connection_copy.oracleConnectionType, OracleTNSConnection):
-            connection_dict[
-                "host"
-            ] = connection_copy.oracleConnectionType.oracleTNSConnection
-        elif isinstance(
-            connection_copy.oracleConnectionType, OracleAutonomousConnection
-        ):
-            autonomous_connection = self._get_autonomous_connection_config(
-                connection_copy.oracleConnectionType
-            )
-            connection_dict["host"] = autonomous_connection.tnsAlias
             connection_dict["host"] = connection_copy.oracleConnectionType.oracleTNSConnection
+        elif isinstance(connection_copy.oracleConnectionType, OracleAutonomousConnection):
+            autonomous_connection = self._get_autonomous_connection_config(connection_copy.oracleConnectionType)
+            connection_dict["host"] = autonomous_connection.tnsAlias
 
         # Add connection options if present
         if connection_copy.connectionOptions and connection_copy.connectionOptions.root:
@@ -372,9 +327,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
             return url
 
         if isinstance(connection.oracleConnectionType, OracleAutonomousConnection):
-            autonomous_connection = OracleConnection._get_autonomous_connection_config(
-                connection.oracleConnectionType
-            )
+            autonomous_connection = OracleConnection._get_autonomous_connection_config(connection.oracleConnectionType)
             url += autonomous_connection.tnsAlias
             return url
 
