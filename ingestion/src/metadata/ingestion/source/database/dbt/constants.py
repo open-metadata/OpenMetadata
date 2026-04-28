@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Constants required for dbt 
+Constants required for dbt
 """
 
 from enum import Enum

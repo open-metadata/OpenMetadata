@@ -446,6 +446,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.COLUMNS,
         icon: ColumnIcon,
+        iconClassName: 'text-grey-500',
       },
       [SearchIndex.STORED_PROCEDURE]: {
         label: t('label.stored-procedure-plural'),

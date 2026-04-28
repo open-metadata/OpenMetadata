@@ -81,20 +81,12 @@ import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
 import { performUserLogin, visitUserProfilePage } from '../../utils/user';
-const user = new UserClass();
-
-const domain = new Domain();
-
-const classification = new ClassificationClass({
-  provider: 'system',
-  mutuallyExclusive: true,
-});
-const tag = new TagClass({
-  classification: classification.data.name,
-});
-
-const glossary = new Glossary();
-const glossaryTerm = new GlossaryTerm(glossary);
+let user: UserClass;
+let domain: Domain;
+let classification: ClassificationClass;
+let tag: TagClass;
+let glossary: Glossary;
+let glossaryTerm: GlossaryTerm;
 
 const test = base.extend<{
   page: Page;
@@ -118,6 +110,16 @@ test.describe('Domains', () => {
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
+
+    user = new UserClass();
+    domain = new Domain();
+    classification = new ClassificationClass({
+      provider: 'system',
+      mutuallyExclusive: true,
+    });
+    tag = new TagClass({ classification: classification.data.name });
+    glossary = new Glossary();
+    glossaryTerm = new GlossaryTerm(glossary);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
@@ -1165,8 +1167,8 @@ test.describe('Domains', () => {
         });
 
         await expect(
-          page.locator('[data-testid="tag-suggestion"]')
-        ).toContainText(tag.data.displayName);
+          page.getByTestId('add-domain-form').getByText(tag.data.displayName)
+        ).toBeVisible();
       });
 
       await test.step('Save domain and verify tag is applied', async () => {
@@ -1217,8 +1219,8 @@ test.describe('Domains', () => {
         });
 
         await expect(
-          page.locator('[data-testid="tag-suggestion"]')
-        ).toContainText(tag.data.displayName);
+          page.getByTestId('add-domain-form').getByText(tag.data.displayName)
+        ).toBeVisible();
       });
 
       await test.step('Save subdomain and verify tag is applied', async () => {
@@ -1357,7 +1359,7 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
 
       const addDomainButton = page.click('[data-testid="add-domain"]');
-      await expect(page.getByTestId('add-domain')).toBeVisible();
+      await expect(page.getByTestId('add-domain-form')).toBeVisible();
       await addDomainButton;
 
       const formHeading = page.locator('[data-testid="form-heading"]');
@@ -2669,12 +2671,16 @@ test.describe('Domain Rename Comprehensive Tests', () => {
 test.describe('Domains Rbac', () => {
   test.slow(true);
 
-  const domain1 = new Domain();
-  const domain2 = new Domain();
-  const domain3 = new Domain();
-  const user1 = new UserClass();
+  let domain1: Domain;
+  let domain2: Domain;
+  let domain3: Domain;
+  let user1: UserClass;
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    domain1 = new Domain();
+    domain2 = new Domain();
+    domain3 = new Domain();
+    user1 = new UserClass();
     test.slow();
 
     const { apiContext, afterAction, page } = await performAdminLogin(browser);
@@ -2708,7 +2714,9 @@ test.describe('Domains Rbac', () => {
 
     // Add domain role to the user
     await visitUserProfilePage(page, user1.responseData.name);
+    const initialRolesResponse = page.waitForResponse('/api/v1/roles/search?*');
     await page.getByTestId('edit-roles-button').click();
+    await initialRolesResponse;
 
     await page.locator('[data-testid="user-profile-edit-popover"]').isVisible();
     const rolesCombobox = page.locator('input[role="combobox"]').nth(1);
@@ -2815,15 +2823,10 @@ test.describe('Domains Rbac', () => {
 test.describe('Data Consumer Domain Ownership', () => {
   test.slow(true);
 
-  const classification = new ClassificationClass({
-    provider: 'system',
-    mutuallyExclusive: true,
-  });
-  const tag = new TagClass({
-    classification: classification.data.name,
-  });
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
+  let classification: ClassificationClass;
+  let tag: TagClass;
+  let glossary: Glossary;
+  let glossaryTerm: GlossaryTerm;
 
   let testResources: {
     dataConsumerUser: UserClass;
@@ -2833,6 +2836,14 @@ test.describe('Data Consumer Domain Ownership', () => {
   };
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    classification = new ClassificationClass({
+      provider: 'system',
+      mutuallyExclusive: true,
+    });
+    tag = new TagClass({ classification: classification.data.name });
+    glossary = new Glossary();
+    glossaryTerm = new GlossaryTerm(glossary);
+
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await classification.create(apiContext);
     await tag.create(apiContext);

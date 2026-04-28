@@ -85,7 +85,7 @@ FROM pg_class c
 JOIN pg_namespace n ON n.oid = c.relnamespace 
 WHERE c.relkind IN ('v', 'm')
 AND n.nspname not in ('pg_catalog','information_schema')
-"""
+"""  # noqa: W291
 
 GREENPLUM_GET_DATABASE = """
 select datname from pg_catalog.pg_database
