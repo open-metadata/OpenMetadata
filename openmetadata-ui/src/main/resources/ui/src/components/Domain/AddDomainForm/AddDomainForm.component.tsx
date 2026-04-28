@@ -27,10 +27,12 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Users01 } from '@untitledui/icons';
 import { debounce, omit } from 'lodash';
+import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import imageClassBase from '../../../components/BlockEditor/Extensions/image/ImageClassBase';
+import { showNotistackError } from '../../../utils/NotistackUtils';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -210,6 +212,7 @@ const AddDomainForm = ({
   parentDomain,
 }: AddDomainFormProps) => {
   const { t } = useTranslation();
+  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { permissions } = usePermissionProvider();
   const [tagOptions, setTagOptions] = useState<DomainFormSelectItem[]>([]);
   const [domainOptions, setDomainOptions] = useState<DomainFormSelectItem[]>(
@@ -496,6 +499,19 @@ const AddDomainForm = ({
     type: FieldTypes.TEXT,
   };
 
+  const handleCoverImageValidationError = useCallback(
+    (message: string) => {
+      showNotistackError(
+        enqueueSnackbar,
+        message,
+        undefined,
+        { vertical: 'top', horizontal: 'center' },
+        closeSnackbar
+      );
+    },
+    [enqueueSnackbar, closeSnackbar]
+  );
+
   const coverImageField: FieldProp = {
     id: 'root/coverImage',
     label: t('label.cover-image'),
@@ -503,6 +519,34 @@ const AddDomainForm = ({
     placeholder: t('label.upload-cover-image'),
     props: {
       acceptedFileTypes: COVER_IMAGE_ACCEPTED_TYPES,
+      maxSizeMB: 5,
+      maxDimensions: { width: 800, height: 400 },
+      onValidationError: handleCoverImageValidationError,
+      coverImageLabels: {
+        clickToUpload: t('label.click-to-upload'),
+        orDragAndDrop: t('label.or-drag-and-drop'),
+        formatHint: (formats: string, maxSizeMB?: number) =>
+          t('message.cover-image-format-dimensions', {
+            formats,
+            width: 800,
+            height: 400,
+          }) + (maxSizeMB ? ` · ${maxSizeMB}MB` : ''),
+        replace: t('label.upload'),
+        remove: t('label.remove'),
+        reposition: t('label.reposition'),
+        savePosition: t('label.save-position'),
+        cancel: t('label.cancel'),
+        resetPosition: t('label.reset-position'),
+        dragHint: t('message.drag-to-adjust-position'),
+        imageTooSmallToReposition: t('message.image-too-small-to-reposition'),
+      },
+      validationMessages: {
+        sizeExceeded: (maxSizeMB: number) =>
+          t('message.file-size-exceeded', { size: `${maxSizeMB}MB` }),
+        dimensionsExceeded: (maxWidth: number, maxHeight: number) =>
+          t('message.image-dimensions-exceeded', { maxWidth, maxHeight }),
+        failedToLoad: t('message.failed-to-load-image'),
+      },
     },
     type: FieldTypes.COVER_IMAGE_UPLOAD,
   };

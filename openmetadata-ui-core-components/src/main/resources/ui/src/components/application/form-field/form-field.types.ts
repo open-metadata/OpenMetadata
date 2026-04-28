@@ -15,10 +15,17 @@ import type { FC, FocusEventHandler, ReactNode } from 'react';
 import type { Key } from 'react-aria-components';
 import type { RegisterOptions } from 'react-hook-form';
 import type { SelectItemType } from '@/components/base/select/select';
-import type { CoverImageUploadRenderPreviewContext } from './fields/cover-image-upload-field';
+import type {
+  CoverImageUploadLabels,
+  CoverImageUploadRenderPreviewContext,
+  CoverImageUploadValidationMessages,
+} from './fields/cover-image-upload-field';
 
 export type {
+  CoverImagePosition,
+  CoverImageUploadLabels,
   CoverImageUploadRenderPreviewContext,
+  CoverImageUploadValidationMessages,
   CoverImageUploadValue,
 } from './fields/cover-image-upload-field';
 
@@ -100,11 +107,18 @@ export interface FieldPropsMap {
   onSelect?: (files: FileList | null) => void;
   onSelectionChange?: (key: Key | null) => void;
   options?: FormSelectItem[];
+  coverImageLabels?: CoverImageUploadLabels;
+  maxDimensions?: { width: number; height: number };
+  maxSizeMB?: number;
+  onValidationError?: (message: string) => void;
   previewClassName?: string;
+  previewHeight?: number;
   renderItem?: (item: FormSelectItem) => ReactNode;
   renderPreview?: (ctx: CoverImageUploadRenderPreviewContext) => ReactNode;
+  repositionable?: boolean;
   selectedItems?: FormSelectItem[];
   size?: 'sm' | 'md';
+  validationMessages?: CoverImageUploadValidationMessages;
 }
 
 export interface FieldProp {

@@ -456,15 +456,19 @@ export const renderFieldElement = (
     case FieldTypes.COVER_IMAGE_UPLOAD:
       return (
         <CoverImageUploadField
-          acceptDirectory={props.acceptDirectory}
           acceptedFileTypes={props.acceptedFileTypes}
           ariaLabel={ariaLabel}
           data-testid={props['data-testid']}
-          defaultCamera={props.defaultCamera}
           isInvalid={isInvalid}
+          labels={props.coverImageLabels}
+          maxDimensions={props.maxDimensions}
+          maxSizeMB={props.maxSizeMB}
           placeholder={placeholder}
           previewClassName={props.previewClassName}
+          previewHeight={props.previewHeight}
           renderPreview={props.renderPreview}
+          repositionable={props.repositionable}
+          validationMessages={props.validationMessages}
           value={field.value as CoverImageUploadValue}
           onBlur={() => {
             field.onBlur();
@@ -473,6 +477,7 @@ export const renderFieldElement = (
           onChange={(next) => {
             field.onChange(next);
           }}
+          onValidationError={props.onValidationError}
         />
       );
 
