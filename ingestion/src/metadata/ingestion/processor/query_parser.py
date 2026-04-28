@@ -38,7 +38,7 @@ def parse_sql_statement(
     record: TableQuery,
     dialect: Dialect,
     parser_type: QueryParserType = QueryParserType.Auto,
-) -> Optional[ParsedData]:
+) -> Optional[ParsedData]:  # noqa: UP045
     """
     Use the lineage parser and work with the tokens
     to convert a RAW SQL statement into
@@ -106,14 +106,14 @@ class QueryParserProcessor(Processor):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
         **kwargs,
     ):
         config = ConfigModel.model_validate(config_dict)
         connection_type = kwargs.pop("connection_type", "")
         return cls(config, metadata, connection_type)
 
-    def _run(self, record: TableQueries) -> Optional[Either[QueryParserData]]:
+    def _run(self, record: TableQueries) -> Optional[Either[QueryParserData]]:  # noqa: UP045
         if record is None or record.queries is None:
             return None
 

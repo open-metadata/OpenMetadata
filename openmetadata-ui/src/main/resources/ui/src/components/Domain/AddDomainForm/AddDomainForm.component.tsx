@@ -10,411 +10,745 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, FormProps, Row, Space } from 'antd';
-import { omit } from 'lodash';
-import { useMemo } from 'react';
+import {
+  Autocomplete,
+  Avatar,
+  Box,
+  Button,
+  Dot,
+  FieldProp,
+  FieldTypes,
+  FormField,
+  FormItemLabel,
+  FormSelectItem,
+  getField,
+  HintText,
+  HookForm,
+} from '@openmetadata/ui-core-components';
+import { Users01 } from '@untitledui/icons';
+import { debounce, omit } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import imageClassBase from '../../../components/BlockEditor/Extensions/image/ImageClassBase';
-import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
+import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import {
   CreateDomain,
   DomainType,
 } from '../../../generated/api/domains/createDomain';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
-} from '../../../interface/FormUtils.interface';
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../../generated/type/tagLabel';
+import { searchDomains } from '../../../rest/domainAPI';
+import { searchQuery } from '../../../rest/searchAPI';
+import { formatTeamsResponse } from '../../../utils/APIUtils';
+import { getRandomColor } from '../../../utils/CommonUtils';
 import {
-  domainTypeTooltipDataRender,
-  iconTooltipDataRender,
-} from '../../../utils/DomainUtils';
-import { generateFormFields, getField } from '../../../utils/formUtils';
+  getEntityName,
+  getEntityReferenceListFromEntities,
+} from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
+import tagClassBase from '../../../utils/TagClassBase';
+import { getTagDisplay } from '../../../utils/TagsUtils';
 import {
+  AVAILABLE_ICONS,
   DEFAULT_DATA_PRODUCT_ICON,
   DEFAULT_DOMAIN_ICON,
 } from '../../common/IconPicker';
+import MUIGlossaryTagSuggestion from '../../common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
+import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
-import { AddDomainFormProps } from './AddDomainForm.interface';
+import {
+  AddDomainFormProps,
+  DomainFormSelectItem,
+  DomainFormValues,
+} from './AddDomainForm.interface';
+
+const COVER_IMAGE_ACCEPTED_TYPES = [
+  'image/svg+xml',
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+];
+
+export const DOMAIN_FORM_DEFAULTS: DomainFormValues = {
+  name: '',
+  displayName: '',
+  description: '',
+  color: '',
+  iconURL: '',
+  coverImage: null,
+  tags: [],
+  glossaryTerms: [],
+  owners: [],
+  experts: [],
+  domainType: null,
+  domains: undefined,
+};
+
+export const transformDomainFormData = (
+  formData: DomainFormValues,
+  type: DomainFormType,
+  parentDomain?: Domain
+): CreateDomain | CreateDataProduct => {
+  const tags = formData.tags.map((item) => item.value as TagLabel);
+  const expertsList = formData.experts.map(
+    (item) => item.value as EntityReference
+  );
+  const ownersList = formData.owners.map(
+    (item) => item.value as EntityReference
+  );
+
+  const updatedData = omit(
+    formData,
+    'color',
+    'iconURL',
+    'glossaryTerms',
+    'tags',
+    'owners',
+    'experts',
+    'domains',
+    'domainType'
+  );
+  const style: { color?: string; iconURL?: string } = {};
+  if (formData.color) {
+    style.color = formData.color;
+  }
+  if (formData.iconURL) {
+    style.iconURL = formData.iconURL;
+  }
+
+  const data: CreateDomain | CreateDataProduct = {
+    ...updatedData,
+    domainType: (formData.domainType?.value as DomainType) ?? undefined,
+    experts: expertsList.map((item) => item.name ?? ''),
+    owners: ownersList,
+    style,
+    tags: [...tags, ...formData.glossaryTerms],
+  } as CreateDomain | CreateDataProduct;
+
+  if (type === DomainFormType.DATA_PRODUCT) {
+    const domainRef = formData.domains?.value as EntityReference | undefined;
+    if (domainRef?.fullyQualifiedName) {
+      (data as CreateDataProduct).domains = [domainRef.fullyQualifiedName];
+    } else if (parentDomain?.fullyQualifiedName) {
+      (data as CreateDataProduct).domains = [parentDomain.fullyQualifiedName];
+    }
+  } else {
+    delete (data as CreateDomain & { domains?: unknown }).domains;
+  }
+
+  return data;
+};
+
+const createTagLabel = ({
+  description,
+  displayName,
+  name,
+  source,
+  style,
+  tagFQN,
+}: {
+  description?: string;
+  displayName?: string;
+  name?: string;
+  source: TagSource;
+  style?: TagLabel['style'];
+  tagFQN: string;
+}): TagLabel => ({
+  description,
+  displayName,
+  labelType: LabelType.Manual,
+  name,
+  source,
+  state: State.Confirmed,
+  style,
+  tagFQN,
+});
+
+const mapTagLabelToOption = (tagLabel: TagLabel): DomainFormSelectItem => ({
+  id: tagLabel.tagFQN,
+  label:
+    getTagDisplay(tagLabel.displayName || tagLabel.name) || tagLabel.tagFQN,
+  supportingText: tagLabel.displayName || tagLabel.name,
+  icon: tagLabel.style?.color ? (
+    <Dot size="sm" style={{ color: tagLabel.style.color }} />
+  ) : undefined,
+  value: tagLabel,
+});
+
+const mapEntityReferenceToOption = (
+  reference: EntityReference
+): DomainFormSelectItem => ({
+  id: reference.id,
+  label: getEntityName(reference),
+  supportingText: reference.fullyQualifiedName || reference.type,
+  value: reference,
+});
 
 const AddDomainForm = ({
+  form,
   isFormInDialog,
   loading,
   onCancel,
   onSubmit,
-  formRef,
   type,
   parentDomain,
 }: AddDomainFormProps) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm(formRef);
   const { permissions } = usePermissionProvider();
+  const [tagOptions, setTagOptions] = useState<DomainFormSelectItem[]>([]);
+  const [domainOptions, setDomainOptions] = useState<DomainFormSelectItem[]>(
+    []
+  );
+  const [userTeamOptions, setUserTeamOptions] = useState<
+    DomainFormSelectItem[]
+  >([]);
+  const [userOnlyOptions, setUserOnlyOptions] = useState<
+    DomainFormSelectItem[]
+  >([]);
+  const [descriptionEditorKey, setDescriptionEditorKey] = useState(0);
 
-  const domainTypeArray = Object.keys(DomainType).map((key) => ({
-    label: key,
-    value: DomainType[key as keyof typeof DomainType],
-  }));
+  const domainTypeOptions = Object.keys(DomainType).map((key) => {
+    const domainTypeValue = DomainType[key as keyof typeof DomainType];
 
-  const selectedColor = Form.useWatch('color', form);
+    return {
+      label: domainTypeValue,
+      id: domainTypeValue,
+      value: domainTypeValue,
+    };
+  });
+  const selectedColor = useWatch({
+    control: form.control,
+    name: 'color',
+  });
 
-  // Check if upload functionality is available (for showing/hiding cover image field)
   const { onImageUpload } =
     imageClassBase.getBlockEditorAttachmentProps() ?? {};
   const isCoverImageUploadAvailable = !!onImageUpload;
 
-  // Separate fields for custom layout
-  const coverImageField: FieldProp | null = isCoverImageUploadAvailable
-    ? {
-        name: 'coverImage',
-        id: 'root/coverImage',
-        label: t('label.cover-image'),
-        muiLabel: t('label.cover-image'),
-        required: false,
-        type: FieldTypes.COVER_IMAGE_UPLOAD_MUI,
-        props: {
-          'data-testid': 'cover-image',
-          maxSizeMB: 5,
-          maxDimensions: { width: 800, height: 400 },
-          // NO onUpload prop - this makes MUICoverImageUpload store file locally
-          // Parent component will handle upload after domain is created
-        },
-        formItemProps: {
-          valuePropName: 'value',
-          trigger: 'onChange',
-        },
-      }
-    : null;
+  const createPermission = useMemo(() => {
+    const resourceEntity =
+      type === DomainFormType.DATA_PRODUCT
+        ? ResourceEntity.DATA_PRODUCT
+        : ResourceEntity.DOMAIN;
 
-  const iconField: FieldProp = {
-    name: 'iconURL',
-    id: 'root/iconURL',
-    label: t('label.icon'),
-    muiLabel: t('label.icon'),
-    required: false,
-    type: FieldTypes.ICON_PICKER_MUI,
-    helperText: iconTooltipDataRender(),
-    props: {
-      'data-testid': 'icon-url',
-      allowUrl: true,
-      placeholder: t('label.icon-url'),
-      backgroundColor: selectedColor,
-      defaultIcon:
-        type === DomainFormType.DATA_PRODUCT
-          ? DEFAULT_DATA_PRODUCT_ICON
-          : DEFAULT_DOMAIN_ICON,
-      customStyles: {
-        searchBoxWidth: 366,
-      },
-    },
-    formItemLayout: FormItemLayout.HORIZONTAL,
-    formItemProps: {
-      valuePropName: 'value',
-      trigger: 'onChange',
-    },
-  };
+    return checkPermission(Operation.Create, resourceEntity, permissions);
+  }, [permissions, type]);
+  const defaultIcon = useMemo(
+    () =>
+      type === DomainFormType.DATA_PRODUCT
+        ? DEFAULT_DATA_PRODUCT_ICON
+        : DEFAULT_DOMAIN_ICON,
+    [type]
+  );
 
-  const colorField: FieldProp = {
-    name: 'color',
-    id: 'root/color',
-    label: t('label.color'),
-    muiLabel: t('label.color'),
-    required: false,
-    type: FieldTypes.COLOR_PICKER_MUI,
-    formItemLayout: FormItemLayout.HORIZONTAL,
-    formItemProps: {
-      valuePropName: 'value',
-      trigger: 'onChange',
+  const iconOptions = useMemo<DomainFormSelectItem[]>(() => {
+    return [
+      defaultIcon,
+      ...AVAILABLE_ICONS.filter((icon) => icon.name !== defaultIcon.name),
+    ].map((icon) => ({
+      id: icon.name,
+      icon: icon.component,
+      label: icon.name,
+      value: icon.name,
+    }));
+  }, [defaultIcon]);
+
+  const domainTypeFieldRequired = useMemo(
+    () => type === DomainFormType.DOMAIN || type === DomainFormType.SUBDOMAIN,
+    [type]
+  );
+
+  const fetchTagOptions = useCallback(async (searchText = '') => {
+    try {
+      const response = await tagClassBase.getTags(searchText, 1, true);
+      const nextOptions = (response?.data ?? [])
+        .map((option) => {
+          const tag = option.data as {
+            description?: string;
+            displayName?: string;
+            fullyQualifiedName?: string;
+            name?: string;
+            style?: TagLabel['style'];
+          };
+
+          if (!tag?.fullyQualifiedName) {
+            return null;
+          }
+
+          return mapTagLabelToOption(
+            createTagLabel({
+              description: tag.description,
+              displayName: tag.displayName,
+              name: tag.name,
+              source: TagSource.Classification,
+              style: tag.style,
+              tagFQN: tag.fullyQualifiedName,
+            })
+          );
+        })
+        .filter((option): option is DomainFormSelectItem => option !== null);
+
+      setTagOptions(nextOptions);
+    } catch {
+      setTagOptions([]);
+    }
+  }, []);
+
+  const fetchDomainOptions = useCallback(async (searchText = '') => {
+    try {
+      const domains = await searchDomains(searchText, 1);
+      const nextOptions = domains.map((domain: Domain) =>
+        mapEntityReferenceToOption({
+          displayName: domain.displayName,
+          fullyQualifiedName: domain.fullyQualifiedName,
+          id: domain.id,
+          name: domain.name,
+          type: EntityType.DOMAIN,
+        })
+      );
+
+      setDomainOptions(nextOptions);
+    } catch {
+      setDomainOptions([]);
+    }
+  }, []);
+
+  const fetchUserTeamOptions = useCallback(async (searchText = '') => {
+    try {
+      const [usersResponse, teamsResponse] = await Promise.all([
+        searchQuery({
+          pageNumber: 1,
+          pageSize: PAGE_SIZE_MEDIUM,
+          query: searchText,
+          queryFilter: getTermQuery({ isBot: 'false' }),
+          searchIndex: SearchIndex.USER,
+          sortField: 'displayName.keyword',
+          sortOrder: 'asc',
+        }),
+        searchQuery({
+          pageNumber: 1,
+          pageSize: PAGE_SIZE_MEDIUM,
+          query: searchText,
+          queryFilter: getTermQuery({}, 'must', undefined, {
+            matchTerms: { teamType: 'Group' },
+          }),
+          searchIndex: SearchIndex.TEAM,
+          sortField: 'displayName.keyword',
+          sortOrder: 'asc',
+        }),
+      ]);
+
+      const userOptions = usersResponse.hits.hits.map((hit) => {
+        const source = hit._source;
+
+        const name = getEntityName(source);
+        const { color, backgroundColor, character } = getRandomColor(
+          source.displayName ?? source.name ?? ''
+        );
+
+        return {
+          id: source.id,
+          label: name,
+          supportingText: source.fullyQualifiedName ?? EntityType.USER,
+          icon: (
+            <Avatar
+              initials={character}
+              size="xs"
+              src={source.profile?.images?.image ?? undefined}
+              style={{ color, backgroundColor }}
+            />
+          ),
+          value: {
+            id: source.id,
+            type: EntityType.USER,
+            name: source.name,
+            displayName: source.displayName,
+            fullyQualifiedName: source.fullyQualifiedName,
+          },
+        };
+      });
+
+      const teams = getEntityReferenceListFromEntities(
+        formatTeamsResponse(teamsResponse.hits.hits),
+        EntityType.TEAM
+      );
+
+      setUserOnlyOptions(userOptions);
+      setUserTeamOptions([
+        ...userOptions,
+        ...teams.map((reference) => ({
+          ...mapEntityReferenceToOption(reference),
+          icon: <Avatar placeholderIcon={Users01} size="xs" />,
+        })),
+      ]);
+    } catch {
+      setUserOnlyOptions([]);
+      setUserTeamOptions([]);
+    }
+  }, []);
+
+  const handleTagFocus = useCallback(() => {
+    void fetchTagOptions();
+  }, [fetchTagOptions]);
+
+  const handleDomainFocus = useCallback(() => {
+    void fetchDomainOptions();
+  }, [fetchDomainOptions]);
+
+  const handleUserTeamFocus = useCallback(() => {
+    void fetchUserTeamOptions();
+  }, [fetchUserTeamOptions]);
+
+  const debouncedTagSearch = useMemo(
+    () =>
+      debounce((searchText: string) => void fetchTagOptions(searchText), 250),
+    [fetchTagOptions]
+  );
+
+  const debouncedDomainSearch = useMemo(
+    () =>
+      debounce(
+        (searchText: string) => void fetchDomainOptions(searchText),
+        250
+      ),
+    [fetchDomainOptions]
+  );
+
+  const debouncedUserTeamSearch = useMemo(
+    () =>
+      debounce(
+        (searchText: string) => void fetchUserTeamOptions(searchText),
+        250
+      ),
+    [fetchUserTeamOptions]
+  );
+
+  useEffect(
+    () => () => {
+      debouncedTagSearch.cancel();
+      debouncedDomainSearch.cancel();
+      debouncedUserTeamSearch.cancel();
     },
-  };
+    [debouncedDomainSearch, debouncedTagSearch, debouncedUserTeamSearch]
+  );
+
+  useEffect(() => {
+    if (form.formState.isSubmitSuccessful) {
+      setDescriptionEditorKey((prev) => prev + 1);
+    }
+  }, [form.formState.isSubmitSuccessful]);
 
   const nameField: FieldProp = {
-    name: 'name',
     id: 'root/name',
     label: t('label.name'),
-    required: true,
+    name: 'name',
     placeholder: t('label.name'),
-    type: FieldTypes.TEXT_MUI,
-    props: {
-      'data-testid': 'name',
+    props: { 'data-testid': 'name' },
+    required: true,
+    rules: {
+      required: t('label.field-required', { field: t('label.name') }),
+      maxLength: {
+        message: t('message.entity-size-in-between', {
+          entity: t('label.name'),
+          max: 128,
+          min: 1,
+        }),
+        value: 128,
+      },
+      minLength: {
+        message: t('message.entity-size-in-between', {
+          entity: t('label.name'),
+          max: 128,
+          min: 1,
+        }),
+        value: 1,
+      },
+      pattern: {
+        message: t('message.entity-name-validation'),
+        value: ENTITY_NAME_REGEX,
+      },
     },
-    rules: NAME_FIELD_RULES,
+    type: FieldTypes.TEXT,
   };
 
   const displayNameField: FieldProp = {
-    name: 'displayName',
     id: 'root/displayName',
     label: t('label.display-name'),
-    required: false,
+    name: 'displayName',
     placeholder: t('label.display-name'),
-    type: FieldTypes.TEXT_MUI,
-    props: {
-      'data-testid': 'display-name',
-    },
+    props: { 'data-testid': 'display-name' },
+    type: FieldTypes.TEXT,
   };
 
-  const formFields: FieldProp[] = useMemo(
-    () => [
-      {
-        name: 'description',
-        required: true,
-        label: t('label.description'),
-        id: 'root/description',
-        type: FieldTypes.DESCRIPTION,
-        props: {
-          'data-testid': 'description',
-          initialValue: '',
-          height: 'auto',
-          className: 'add-domain-form-description new-form-style',
-        },
-      },
-      {
-        name: 'tags',
-        required: false,
-        label: t('label.tag-plural'),
-        id: 'root/tags',
-        type: FieldTypes.UT_TAG_SUGGESTION,
-        props: {
-          selectProps: {
-            'data-testid': 'tags-container',
-          },
-        },
-      },
-      {
-        name: 'glossaryTerms',
-        required: false,
-        label: t('label.glossary-term-plural'),
-        id: 'root/glossaryTerms',
-        type: FieldTypes.GLOSSARY_TAG_SUGGESTION_MUI,
-        props: {
-          'data-testid': 'glossary-terms',
-          placeholder: t('label.select-field', {
-            field: t('label.glossary-term-plural'),
-          }),
-        },
-      },
-    ],
-    [t]
-  );
-
-  const additionalFields: FieldProp[] = useMemo(() => {
-    const fields: FieldProp[] = [];
-
-    if (type === DomainFormType.DOMAIN || type === DomainFormType.SUBDOMAIN) {
-      const domainTypeField: FieldProp = {
-        name: 'domainType',
-        required: true,
-        label: t('label.domain-type'),
-        id: 'root/domainType',
-        type: FieldTypes.SELECT_MUI,
-        helperText: domainTypeTooltipDataRender(),
-        props: {
-          'data-testid': 'domainType',
-          options: domainTypeArray,
-          overlayClassName: 'domain-type-tooltip-container',
-          tooltipPlacement: 'top-start',
-          tooltipAlign: { targetOffset: [18, 0] },
-          slotProps: {
-            tooltip: {
-              sx: {
-                bgcolor: '#fff',
-                color: '#000',
-              },
-            },
-            arrow: {
-              sx: {
-                color: '#fff',
-              },
-            },
-          },
-        },
-        placeholder: t('label.select-entity', {
-          entity: t('label.domain-type'),
-        }),
-      };
-
-      fields.push(domainTypeField);
-    }
-
-    // Add domain selection field for Data Products ONLY when NOT in domain context
-    if (type === DomainFormType.DATA_PRODUCT && !parentDomain) {
-      const domainField: FieldProp = {
-        name: 'domains',
-        required: true,
-        label: t('label.domain'),
-        muiLabel: t('label.domain'),
-        id: 'root/domains',
-        type: FieldTypes.DOMAIN_SELECT_MUI,
-        props: {
-          'data-testid': 'domain-select',
-          hasPermission: true,
-          multiple: false,
-        },
-        formItemLayout: FormItemLayout.HORIZONTAL,
-        formItemProps: {
-          valuePropName: 'value',
-          trigger: 'onChange',
-        },
-      };
-
-      fields.push(domainField);
-    }
-
-    return fields;
-  }, [type, parentDomain, domainTypeArray, t]);
-
-  const ownerField: FieldProp = {
-    name: 'owners',
-    id: 'root/owner',
-    required: false,
-    label: t('label.owner-plural'),
-    type: FieldTypes.USER_TEAM_SELECT_MUI,
+  const coverImageField: FieldProp = {
+    id: 'root/coverImage',
+    label: t('label.cover-image'),
+    name: 'coverImage',
+    placeholder: t('label.upload-cover-image'),
     props: {
-      multipleUser: true,
-      multipleTeam: false,
-      label: t('label.owner-plural'),
+      acceptedFileTypes: COVER_IMAGE_ACCEPTED_TYPES,
+      children: (
+        <Button color="secondary" type="button">
+          {t('label.upload-cover-image')}
+        </Button>
+      ),
     },
-    formItemProps: {
-      valuePropName: 'value',
-      trigger: 'onChange',
+    type: FieldTypes.COVER_IMAGE_UPLOAD,
+  };
+
+  const iconField: FieldProp = {
+    id: 'root/iconURL',
+    label: t('label.icon'),
+    name: 'iconURL',
+    placeholder: t('label.select-field', { field: t('label.icon') }),
+    props: {
+      allowUrl: true,
+      'data-testid': 'icon-url',
+      backgroundColor: selectedColor,
+      defaultIcon,
+      options: iconOptions,
+      labels: {
+        customIconUrl: t('label.icon-url'),
+        emptyState: t('message.no-entity-available', {
+          entity: t('label.icon-plural'),
+        }),
+        enterIconUrl: t('label.enter-entity', {
+          entity: t('label.icon-url'),
+        }),
+        iconsTab: t('label.icon-plural'),
+        urlTab: t('label.url'),
+      },
     },
+    type: FieldTypes.ICON_PICKER,
+  };
+
+  const colorField: FieldProp = {
+    id: 'root/color',
+    label: t('label.color'),
+    name: 'color',
+    type: FieldTypes.COLOR_PICKER,
+  };
+
+  const tagsField: FieldProp = {
+    id: 'root/tags',
+    label: t('label.tag-plural'),
+    name: 'tags',
+    placeholder: t('label.select-field', { field: t('label.tag-plural') }),
+    props: {
+      'data-testid': 'tags-container',
+      filterOption: () => true,
+      multiple: true,
+      onFocus: handleTagFocus,
+      onSearchChange: (searchText: string) => debouncedTagSearch(searchText),
+      options: tagOptions,
+      renderItem: (item: FormSelectItem) => (
+        <Autocomplete.Item
+          avatarUrl={item.avatarUrl}
+          data-testid={`tag-option-${item.id}`}
+          icon={item.icon}
+          id={item.id}
+          isDisabled={item.isDisabled}
+          key={item.id}
+          label={item.label}
+          supportingText={item.supportingText}
+        />
+      ),
+    },
+    type: FieldTypes.TAG_SUGGESTION,
+  };
+
+  const domainTypeField: FieldProp = {
+    label: t('label.domain-type'),
+    name: 'domainType',
+    placeholder: t('label.select-entity', {
+      entity: t('label.domain-type'),
+    }),
+    props: {
+      options: domainTypeOptions,
+      size: 'sm',
+      fontSize: 'sm',
+    },
+    required: domainTypeFieldRequired,
+    rules: domainTypeFieldRequired
+      ? {
+          required: t('label.field-required', {
+            field: t('label.domain-type'),
+          }),
+        }
+      : undefined,
+    type: FieldTypes.SELECT,
+  };
+
+  const domainField: FieldProp = {
+    id: 'root/domains',
+    label: t('label.domain'),
+    name: 'domains',
+    placeholder: t('label.select-field', { field: t('label.domain') }),
+    props: {
+      filterOption: () => true,
+      onFocus: handleDomainFocus,
+      onSearchChange: (searchText: string) => debouncedDomainSearch(searchText),
+      options: domainOptions,
+    },
+    required: true,
+    rules: {
+      required: t('label.field-required', {
+        field: t('label.domain'),
+      }),
+    },
+    type: FieldTypes.DOMAIN_SELECT,
+  };
+
+  const ownersField: FieldProp = {
+    id: 'root/owners',
+    label: t('label.owner-plural'),
+    name: 'owners',
+    placeholder: t('label.select-field', {
+      field: t('label.owner-plural'),
+    }),
+    props: {
+      filterOption: () => true,
+      multiple: true,
+      onFocus: handleUserTeamFocus,
+      onSearchChange: (searchText: string) =>
+        debouncedUserTeamSearch(searchText),
+      options: userTeamOptions,
+    },
+    type: FieldTypes.USER_TEAM_SELECT_INPUT,
   };
 
   const expertsField: FieldProp = {
-    name: 'experts',
     id: 'root/experts',
-    required: false,
     label: t('label.expert-plural'),
-    type: FieldTypes.USER_TEAM_SELECT_MUI,
+    name: 'experts',
+    placeholder: t('label.select-field', {
+      field: t('label.expert-plural'),
+    }),
     props: {
-      userOnly: true,
-      multipleUser: true,
-      label: t('label.expert-plural'),
+      filterOption: () => true,
+      multiple: true,
+      onFocus: handleUserTeamFocus,
+      onSearchChange: (searchText: string) =>
+        debouncedUserTeamSearch(searchText),
+      options: userOnlyOptions,
     },
-    formItemProps: {
-      valuePropName: 'value',
-      trigger: 'onChange',
-      initialValue: [],
-    },
-  };
-
-  const createPermission = useMemo(
-    () =>
-      checkPermission(Operation.Create, ResourceEntity.GLOSSARY, permissions),
-    [permissions]
-  );
-
-  const selectedOwners =
-    Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
-
-  const ownersList = Array.isArray(selectedOwners)
-    ? selectedOwners
-    : [selectedOwners];
-
-  const expertsList = Form.useWatch<EntityReference[]>('experts', form) ?? [];
-
-  const handleFormSubmit: FormProps['onFinish'] = (formData) => {
-    const updatedData = omit(
-      formData,
-      'color',
-      'iconURL',
-      'glossaryTerms'
-      // Keep 'coverImage' - parent will extract and remove it before API call
-      // Don't exclude 'domains' - we need it for DataProducts
-    );
-    const style = {
-      color: formData.color,
-      iconURL: formData.iconURL,
-      // Don't include coverImage here - it's not uploaded yet
-      // Parent will add it to style after upload
-    };
-
-    // Build the data object
-    const data: CreateDomain | CreateDataProduct = {
-      ...updatedData,
-      style,
-      experts: expertsList.map((item) => item.name ?? ''),
-      owners: ownersList ?? [],
-      tags: [...(formData.tags ?? []), ...(formData.glossaryTerms ?? [])],
-    } as CreateDomain | CreateDataProduct;
-
-    // Handle domains field based on form type
-    if (type === DomainFormType.DATA_PRODUCT) {
-      // For DataProduct, set domains as array
-      if (formData.domains) {
-        (data as CreateDataProduct).domains = [
-          formData.domains.fullyQualifiedName,
-        ];
-      } else if (parentDomain?.fullyQualifiedName) {
-        // If creating within a domain context, use parent domain
-        (data as CreateDataProduct).domains = [parentDomain.fullyQualifiedName];
-      }
-    } else {
-      // For Domain/SubDomain, remove domains field if it exists
-      delete (data as CreateDomain & { domains?: unknown }).domains;
-    }
-
-    onSubmit(data)
-      .then(() => form.resetFields())
-      .catch(() => {
-        // Form will not be reset on error
-        // Error is already handled by parent component
-      });
+    type: FieldTypes.USER_TEAM_SELECT,
   };
 
   return (
-    <Form
-      data-testid="add-domain"
+    <HookForm
+      className="tw:flex tw:flex-col tw:gap-6"
+      data-testid="add-domain-form"
       form={form}
-      layout="vertical"
-      onFinish={handleFormSubmit}>
-      {/* Cover Image */}
-      {coverImageField && (
-        <div className="tw:mb-2">{getField(coverImageField)}</div>
+      onSubmit={form.handleSubmit(onSubmit)}>
+      {isCoverImageUploadAvailable && <div>{getField(coverImageField)}</div>}
+
+      <Box align="start" gap={4}>
+        <div className="tw:min-w-[40px] tw:basis-[10%] tw:flex-[0_0_10%]">
+          {getField(iconField)}
+        </div>
+        <div className="tw:min-w-0 tw:basis-[90%] tw:flex-[0_0_90%]">
+          {getField(colorField)}
+        </div>
+      </Box>
+
+      <Box gap={4}>
+        <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
+          {getField(nameField)}
+        </div>
+        <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
+          {getField(displayNameField)}
+        </div>
+      </Box>
+
+      <FormField
+        control={form.control}
+        name="description"
+        rules={{
+          required: t('label.field-required', {
+            field: t('label.description'),
+          }),
+        }}>
+        {({ field, fieldState }) => (
+          <Box
+            aria-invalid={fieldState.invalid || undefined}
+            className="tw:gap-[6px]"
+            direction="col">
+            <FormItemLabel required label={t('label.description')} />
+            <RichTextEditor
+              className="add-domain-form-description new-form-style"
+              initialValue={typeof field.value === 'string' ? field.value : ''}
+              key={descriptionEditorKey}
+              onTextChange={field.onChange}
+            />
+            {fieldState.error?.message && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </Box>
+        )}
+      </FormField>
+      <div>{getField(tagsField)}</div>
+      <FormField control={form.control} name="glossaryTerms">
+        {({ field }) => (
+          <MUIGlossaryTagSuggestion
+            data-testid="glossary-terms"
+            label={t('label.glossary-term-plural')}
+            placeholder={t('label.select-field', {
+              field: t('label.glossary-term-plural'),
+            })}
+            value={field.value}
+            onChange={field.onChange}
+          />
+        )}
+      </FormField>
+
+      {(type === DomainFormType.DOMAIN ||
+        type === DomainFormType.SUBDOMAIN) && (
+        <div data-testid="domainType">{getField(domainTypeField)}</div>
       )}
 
-      {/* Icon and Color row */}
-      <div className="tw:flex tw:items-start tw:gap-2">
-        <div>{getField(iconField)}</div>
-        <div className="tw:ml-auto">{getField(colorField)}</div>
-      </div>
+      {type === DomainFormType.DATA_PRODUCT && !parentDomain && (
+        <div data-testid="domain-select">{getField(domainField)}</div>
+      )}
 
-      {/* Name and Display Name row */}
-      <Row gutter={16}>
-        <Col span={12}>{getField(nameField)}</Col>
-        <Col span={12}>{getField(displayNameField)}</Col>
-      </Row>
-
-      {/* Remaining fields */}
-      {generateFormFields([...formFields, ...additionalFields])}
-      <div className="m-t-xss">{getField(ownerField)}</div>
-      <div className="m-t-xss">{getField(expertsField)}</div>
+      <div>{getField(ownersField)}</div>
+      <div>{getField(expertsField)}</div>
 
       {!isFormInDialog && (
-        <Space
-          className="w-full justify-end"
-          data-testid="cta-buttons"
-          size={16}>
-          <Button data-testid="cancel-domain" type="link" onClick={onCancel}>
+        <Box data-testid="cta-buttons" gap={4} justify="end">
+          <Button
+            color="tertiary"
+            data-testid="cancel-domain"
+            onPress={onCancel}>
             {t('label.cancel')}
           </Button>
           <Button
+            color="primary"
             data-testid="save-domain"
-            disabled={!createPermission}
-            htmlType="submit"
-            loading={loading}
-            type="primary">
+            isDisabled={!createPermission}
+            isLoading={loading}
+            type="submit">
             {t('label.save')}
           </Button>
-        </Space>
+        </Box>
       )}
-    </Form>
+    </HookForm>
   );
 };
 

@@ -1,4 +1,5 @@
 """High-level entry points for the OpenMetadata Python SDK."""
+
 from __future__ import annotations
 
 import os
@@ -41,7 +42,7 @@ from metadata.sdk.entities import (
 )
 from metadata.sdk.entities.base import BaseEntity
 
-_global_client: Optional[OpenMetadata] = None
+_global_client: Optional[OpenMetadata] = None  # noqa: UP045
 
 
 def to_entity_reference(entity: Any) -> dict[str, Any]:
@@ -107,7 +108,7 @@ def configure(
         >>> configure()
     """
 
-    global _global_client  # pylint: disable=global-statement
+    global _global_client  # pylint: disable=global-statement  # noqa: PLW0603
 
     if config is not None and (host or server_url or jwt_token or kwargs):
         raise TypeError("Pass either a config object or keyword arguments, not both")
@@ -118,15 +119,10 @@ def configure(
             config_obj = OpenMetadataConfig.from_env()
         else:
             resolved_server_url = (
-                host
-                or server_url
-                or os.environ.get("OPENMETADATA_HOST")
-                or os.environ.get("OPENMETADATA_SERVER_URL")
+                host or server_url or os.environ.get("OPENMETADATA_HOST") or os.environ.get("OPENMETADATA_SERVER_URL")
             )
             resolved_jwt_token = (
-                jwt_token
-                or os.environ.get("OPENMETADATA_JWT_TOKEN")
-                or os.environ.get("OPENMETADATA_API_KEY")
+                jwt_token or os.environ.get("OPENMETADATA_JWT_TOKEN") or os.environ.get("OPENMETADATA_API_KEY")
             )
 
             if not resolved_server_url:
@@ -135,9 +131,7 @@ def configure(
                     + "'OPENMETADATA_HOST'/'OPENMETADATA_SERVER_URL' environment variable"
                 )
 
-            config_obj = OpenMetadataConfig(
-                server_url=resolved_server_url, jwt_token=resolved_jwt_token, **kwargs
-            )
+            config_obj = OpenMetadataConfig(server_url=resolved_server_url, jwt_token=resolved_jwt_token, **kwargs)
     elif isinstance(config, Mapping):
         config_obj = OpenMetadataConfig(**dict(config))
     else:
@@ -156,7 +150,7 @@ def client() -> OpenMetadata:
 
 def reset() -> None:
     """Reset the SDK state, closing any cached client."""
-    global _global_client  # pylint: disable=global-statement
+    global _global_client  # pylint: disable=global-statement  # noqa: PLW0603
     OpenMetadata.reset()
     _global_client = None
 

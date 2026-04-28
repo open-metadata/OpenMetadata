@@ -13,12 +13,13 @@
 """
 Module to manage SSL certificates
 """
+
 import os
 import tempfile
 import traceback
 from functools import singledispatch, singledispatchmethod
 from ssl import CERT_REQUIRED, SSLContext
-from typing import List, Optional, Union, cast
+from typing import List, Optional, Union, cast  # noqa: UP035
 
 from pydantic import SecretStr
 
@@ -79,7 +80,7 @@ from metadata.ingestion.connections.builders import (
     init_empty_connection_arguments,
     init_empty_connection_options,
 )
-from metadata.ingestion.models.custom_pydantic import CustomSecretStr
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr  # noqa: TC001
 from metadata.ingestion.source.connections import get_connection
 from metadata.utils.logger import utils_logger
 
@@ -89,9 +90,7 @@ logger = utils_logger()
 class SSLManager:
     "SSL Manager to manage SSL certificates for service connections"
 
-    def __init__(
-        self, ca=None, key=None, cert=None, *args, **kwargs
-    ):  # pylint: disable=keyword-arg-before-vararg
+    def __init__(self, ca=None, key=None, cert=None, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
         self.temp_files = []
         self.ca_file_path = None
         self.cert_file_path = None
@@ -120,8 +119,8 @@ class SSLManager:
 
     def cleanup_temp_files(self):
         for temp_file in self.temp_files:
-            try:
-                os.remove(temp_file)
+            try:  # noqa: SIM105
+                os.remove(temp_file)  # noqa: PTH107
             except FileNotFoundError:
                 pass
         self.temp_files = []
@@ -152,12 +151,8 @@ class SSLManager:
     @setup_ssl.register(StarRocksConnection)
     def _(self, connection):
         # Use the temporary file paths for SSL configuration
-        connection = cast(
-            Union[MysqlConnection, DorisConnection, StarRocksConnection], connection
-        )
-        connection.connectionArguments = (
-            connection.connectionArguments or init_empty_connection_arguments()
-        )
+        connection = cast(Union[MysqlConnection, DorisConnection, StarRocksConnection], connection)  # noqa: TC006, UP007
+        connection.connectionArguments = connection.connectionArguments or init_empty_connection_arguments()
         ssl_args = connection.connectionArguments.root.get("ssl", {})
         if connection.sslConfig.root.caCertificate:
             ssl_args["ssl_ca"] = self.ca_file_path
@@ -170,14 +165,14 @@ class SSLManager:
 
     @setup_ssl.register(MatillionConnection)
     def _(self, connection):
-        matillion_connection = cast(MatillionConnection, connection)
-        if (
+        matillion_connection = cast(MatillionConnection, connection)  # noqa: TC006
+        if (  # noqa: SIM102
             matillion_connection.connection
             and hasattr(matillion_connection.connection, "sslConfig")
             and matillion_connection.connection.sslConfig
         ):
             if matillion_connection.connection.sslConfig.root.caCertificate:
-                setattr(
+                setattr(  # noqa: B010
                     matillion_connection.connection.sslConfig.root,
                     "caCertificate",
                     self.ca_file_path,
@@ -189,7 +184,7 @@ class SSLManager:
     @setup_ssl.register(GreenplumConnection)
     def _(self, connection):
         connection = cast(
-            Union[PostgresConnection, RedshiftConnection, GreenplumConnection],
+            Union[PostgresConnection, RedshiftConnection, GreenplumConnection],  # noqa: TC006, UP007
             connection,
         )
 
@@ -203,9 +198,7 @@ class SSLManager:
             if self.ca_file_path:
                 connection.connectionArguments.root["sslrootcert"] = self.ca_file_path
             else:
-                raise ValueError(
-                    "CA certificate is required for SSL mode verify-ca or verify-full"
-                )
+                raise ValueError("CA certificate is required for SSL mode verify-ca or verify-full")
         # sslcert and sslkey enable mutual TLS (client certificate authentication).
         # Previously these fields were extracted by check_ssl_and_init but never
         # forwarded to psycopg2, causing FATAL: connection requires a valid client
@@ -218,20 +211,16 @@ class SSLManager:
 
     @setup_ssl.register(SalesforceConnection)
     def _(self, connection):
-        import requests  # pylint: disable=import-outside-toplevel
+        import requests  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
-        connection: SalesforceConnection = cast(SalesforceConnection, connection)
-        connection.connectionArguments = (
-            connection.connectionArguments or init_empty_connection_arguments()
-        )
+        connection: SalesforceConnection = cast(SalesforceConnection, connection)  # noqa: TC006
+        connection.connectionArguments = connection.connectionArguments or init_empty_connection_arguments()
         session = requests.Session()
         if self.ca_file_path:
             session.verify = self.ca_file_path
         if self.cert_file_path and self.key_file_path:
             session.cert = (self.cert_file_path, self.key_file_path)
-        connection.connectionArguments.root = (
-            connection.connectionArguments.root or {}
-        )  # to satisfy mypy
+        connection.connectionArguments.root = connection.connectionArguments.root or {}  # to satisfy mypy
         connection.connectionArguments.root["session"] = session
         return connection
 
@@ -246,9 +235,7 @@ class SSLManager:
 
     @setup_ssl.register(MongoDBConnection)
     def _(self, connection: MongoDBConnection):
-        connection.connectionOptions = (
-            connection.connectionOptions or ConnectionOptions(root={})
-        )
+        connection.connectionOptions = connection.connectionOptions or ConnectionOptions(root={})
         connection.connectionOptions.root.update(
             {
                 "tls": "true",
@@ -261,7 +248,7 @@ class SSLManager:
     @setup_ssl.register(KafkaConnection)
     @setup_ssl.register(RedpandaConnection)
     def _(self, connection):
-        connection = cast(Union[KafkaConnection, RedpandaConnection], connection)
+        connection = cast(Union[KafkaConnection, RedpandaConnection], connection)  # noqa: TC006, UP007
         if connection.consumerConfigSSL:
             connection.consumerConfig = {
                 **connection.consumerConfig,
@@ -270,40 +257,30 @@ class SSLManager:
                 "ssl.certificate.location": getattr(self, "cert_consumer_config", None),
             }
         if connection.schemaRegistrySSL:
-            connection.schemaRegistryConfig["ssl.ca.location"] = getattr(
-                self, "ca_schema_registry", None
-            )
+            connection.schemaRegistryConfig["ssl.ca.location"] = getattr(self, "ca_schema_registry", None)
 
-            connection.schemaRegistryConfig["ssl.key.location"] = getattr(
-                self, "key_schema_registry", None
-            )
-            connection.schemaRegistryConfig["ssl.certificate.location"] = getattr(
-                self, "cert_schema_registry", None
-            )
+            connection.schemaRegistryConfig["ssl.key.location"] = getattr(self, "key_schema_registry", None)
+            connection.schemaRegistryConfig["ssl.certificate.location"] = getattr(self, "cert_schema_registry", None)
         return connection
 
     @setup_ssl.register(CassandraConnection)
     def _(self, connection):
-        connection = cast(CassandraConnection, connection)
+        connection = cast(CassandraConnection, connection)  # noqa: TC006
 
         ssl_context = None
         if connection.sslMode != SslMode.disable:
             ssl_context = SSLContext()
             ssl_context.load_verify_locations(cafile=self.ca_file_path)
             ssl_context.verify_mode = CERT_REQUIRED
-            ssl_context.load_cert_chain(
-                certfile=self.cert_file_path, keyfile=self.key_file_path
-            )
+            ssl_context.load_cert_chain(certfile=self.cert_file_path, keyfile=self.key_file_path)
 
-        connection.connectionArguments = (
-            connection.connectionArguments or init_empty_connection_arguments()
-        )
+        connection.connectionArguments = connection.connectionArguments or init_empty_connection_arguments()
         connection.connectionArguments.root["ssl_context"] = ssl_context
         return connection
 
     @setup_ssl.register(HiveConnection)
     def _(self, connection):
-        connection = cast(HiveConnection, connection)
+        connection = cast(HiveConnection, connection)  # noqa: TC006
 
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
@@ -326,7 +303,7 @@ class SSLManager:
 
     @setup_ssl.register(MssqlConnection)
     def _(self, connection):
-        connection = cast(MssqlConnection, connection)
+        connection = cast(MssqlConnection, connection)  # noqa: TC006
 
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
@@ -355,7 +332,7 @@ class SSLManager:
 
     @setup_ssl.register(Db2Connection)
     def _(self, connection):
-        connection = cast(Db2Connection, connection)
+        connection = cast(Db2Connection, connection)  # noqa: TC006
 
         if not connection.connectionOptions:
             connection.connectionOptions = init_empty_connection_options()
@@ -364,55 +341,43 @@ class SSLManager:
             connection.connectionOptions.root["SECURITY"] = "SSL"
 
             if self.ca_file_path:
-                connection.connectionOptions.root[
-                    "SSLServerCertificate"
-                ] = self.ca_file_path
+                connection.connectionOptions.root["SSLServerCertificate"] = self.ca_file_path
 
             if self.cert_file_path:
-                connection.connectionOptions.root[
-                    "SSLClientKeystoredb"
-                ] = self.cert_file_path
+                connection.connectionOptions.root["SSLClientKeystoredb"] = self.cert_file_path
 
             if self.key_file_path:
-                connection.connectionOptions.root[
-                    "SSLClientKeystash"
-                ] = self.key_file_path
+                connection.connectionOptions.root["SSLClientKeystash"] = self.key_file_path
 
         return connection
 
 
 @singledispatch
 def check_ssl_and_init(
-    _, *args, **kwargs  # pylint: disable=unused-argument
-) -> Optional[Union[SSLManager, List[SSLManager]]]:
+    _,
+    *args,
+    **kwargs,  # pylint: disable=unused-argument
+) -> Optional[Union[SSLManager, List[SSLManager]]]:  # noqa: UP006, UP007, UP045
     return None
 
 
 @check_ssl_and_init.register(MatillionConnection)
-def _(connection) -> Union[SSLManager, None]:
-    service_connection = cast(MatillionConnection, connection)
-    if service_connection.connection and hasattr(
-        service_connection.connection, "sslConfig"
-    ):
-        ssl: Optional[
-            verifySSLConfig.SslConfig
-        ] = service_connection.connection.sslConfig
+def _(connection) -> Union[SSLManager, None]:  # noqa: UP007
+    service_connection = cast(MatillionConnection, connection)  # noqa: TC006
+    if service_connection.connection and hasattr(service_connection.connection, "sslConfig"):
+        ssl: Optional[verifySSLConfig.SslConfig] = service_connection.connection.sslConfig  # noqa: UP045
         if ssl and ssl.root.caCertificate:
-            ssl_dict: dict[str, Union[CustomSecretStr, None]] = {
-                "ca": ssl.root.caCertificate
-            }
+            ssl_dict: dict[str, Union[CustomSecretStr, None]] = {"ca": ssl.root.caCertificate}  # noqa: UP007
             return SSLManager(**ssl_dict)
     return None
 
 
 @check_ssl_and_init.register(cls=SalesforceConnection)
-def _(connection) -> Union[SSLManager, None]:
-    service_connection = cast(SalesforceConnection, connection)
-    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
+def _(connection) -> Union[SSLManager, None]:  # noqa: UP007
+    service_connection = cast(SalesforceConnection, connection)  # noqa: TC006
+    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig  # noqa: UP045
     if ssl and ssl.root.caCertificate:
-        ssl_dict: dict[str, Union[CustomSecretStr, None]] = {
-            "ca": ssl.root.caCertificate
-        }
+        ssl_dict: dict[str, Union[CustomSecretStr, None]] = {"ca": ssl.root.caCertificate}  # noqa: UP007
         if (ssl.root.sslCertificate) and (ssl.root.sslKey):
             ssl_dict["cert"] = ssl.root.sslCertificate
             ssl_dict["key"] = ssl.root.sslKey
@@ -424,10 +389,8 @@ def _(connection) -> Union[SSLManager, None]:
 @check_ssl_and_init.register(DorisConnection)
 @check_ssl_and_init.register(StarRocksConnection)
 def _(connection):
-    service_connection = cast(
-        Union[MysqlConnection, DorisConnection, StarRocksConnection], connection
-    )
-    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
+    service_connection = cast(Union[MysqlConnection, DorisConnection, StarRocksConnection], connection)  # noqa: TC006, UP007
+    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig  # noqa: UP045
     if ssl and (ssl.root.caCertificate or ssl.root.sslCertificate or ssl.root.sslKey):
         return SSLManager(
             ca=ssl.root.caCertificate,
@@ -439,11 +402,9 @@ def _(connection):
 
 @check_ssl_and_init.register(MssqlConnection)
 def _(connection):
-    service_connection = cast(MssqlConnection, connection)
-    ssl: Optional[
-        verifySSLConfig.SslConfig
-    ] = service_connection.sslConfig or verifySSLConfig.SslConfig(
-        **{"caCertificate": None}
+    service_connection = cast(MssqlConnection, connection)  # noqa: TC006
+    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig or verifySSLConfig.SslConfig(  # noqa: UP045
+        **{"caCertificate": None}  # noqa: PIE804
     )
     return SSLManager(
         ca=ssl.root.caCertificate,
@@ -454,8 +415,8 @@ def _(connection):
 
 @check_ssl_and_init.register(MongoDBConnection)
 def _(connection):
-    service_connection = cast(Union[MysqlConnection, DorisConnection], connection)
-    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
+    service_connection = cast(Union[MysqlConnection, DorisConnection], connection)  # noqa: TC006, UP007
+    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig  # noqa: UP045
     if ssl and ssl.root.sslCertificate:
         raise ValueError(
             "MongoDB connection does not support SSL certificate. Only CA certificate is supported.\n"
@@ -474,16 +435,10 @@ def _(connection):
 @check_ssl_and_init.register(RedpandaConnection)
 def _(connection, *args, **kwargs):
 
-    service_connection = cast(Union[KafkaConnection, RedpandaConnection], connection)
-    ssl_consumer_config: Optional[
-        verifySSLConfig.SslConfig
-    ] = service_connection.consumerConfigSSL
-    ssl_schema_registry: Optional[
-        verifySSLConfig.SslConfig
-    ] = service_connection.schemaRegistrySSL
-    ssl_admin_api: Optional[verifySSLConfig.SslConfig] = getattr(
-        service_connection, "adminApiSSL", None
-    )
+    service_connection = cast(Union[KafkaConnection, RedpandaConnection], connection)  # noqa: TC006, UP007
+    ssl_consumer_config: Optional[verifySSLConfig.SslConfig] = service_connection.consumerConfigSSL  # noqa: UP045
+    ssl_schema_registry: Optional[verifySSLConfig.SslConfig] = service_connection.schemaRegistrySSL  # noqa: UP045
+    ssl_admin_api: Optional[verifySSLConfig.SslConfig] = getattr(service_connection, "adminApiSSL", None)  # noqa: UP045
 
     ssl_consumer_config_dict = {}
 
@@ -522,7 +477,7 @@ def _(connection, *args, **kwargs):
 @check_ssl_and_init.register(GreenplumConnection)
 def _(connection):
     connection = cast(
-        Union[PostgresConnection, RedshiftConnection, GreenplumConnection],
+        Union[PostgresConnection, RedshiftConnection, GreenplumConnection],  # noqa: TC006, UP007
         connection,
     )
     # Previously only caCertificate was extracted, causing sslCertificate and sslKey
@@ -540,21 +495,19 @@ def _(connection):
 
 @check_ssl_and_init.register(CassandraConnection)
 def _(connection):
-    service_connection = cast(CassandraConnection, connection)
-    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
+    service_connection = cast(CassandraConnection, connection)  # noqa: TC006
+    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig  # noqa: UP045
     if ssl and (ssl.root.caCertificate or ssl.root.sslCertificate or ssl.root.sslKey):
-        return SSLManager(
-            ca=ssl.root.caCertificate, cert=ssl.root.sslCertificate, key=ssl.root.sslKey
-        )
+        return SSLManager(ca=ssl.root.caCertificate, cert=ssl.root.sslCertificate, key=ssl.root.sslKey)
     return None
 
 
 @check_ssl_and_init.register(HiveConnection)
 def _(connection):
-    service_connection = cast(HiveConnection, connection)
-    if hasattr(service_connection, "useSSL") and service_connection.useSSL:
+    service_connection = cast(HiveConnection, connection)  # noqa: TC006
+    if hasattr(service_connection, "useSSL") and service_connection.useSSL:  # noqa: SIM102
         # Check if SSL config is provided in sslConfig (following MySQL pattern)
-        if hasattr(service_connection, "sslConfig") and service_connection.sslConfig:
+        if hasattr(service_connection, "sslConfig") and service_connection.sslConfig:  # noqa: SIM102
             if (
                 service_connection.sslConfig.root.caCertificate
                 or service_connection.sslConfig.root.sslCertificate
@@ -570,12 +523,10 @@ def _(connection):
 
 @check_ssl_and_init.register(Db2Connection)
 def _(connection):
-    service_connection = cast(Db2Connection, connection)
+    service_connection = cast(Db2Connection, connection)  # noqa: TC006
     if service_connection.sslMode and service_connection.sslMode != SslMode.disable:
-        ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
-        if ssl and (
-            ssl.root.caCertificate or ssl.root.sslCertificate or ssl.root.sslKey
-        ):
+        ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig  # noqa: UP045
+        if ssl and (ssl.root.caCertificate or ssl.root.sslCertificate or ssl.root.sslKey):
             return SSLManager(
                 ca=ssl.root.caCertificate,
                 cert=ssl.root.sslCertificate,

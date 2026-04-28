@@ -12,6 +12,7 @@
 """
 Validate Container entity fetcher filtering strategies
 """
+
 import uuid
 
 from metadata.generated.schema.entity.data.container import (
@@ -141,9 +142,7 @@ def test_container_filter_pattern_include():
     """Validate containerFilterPattern include functionality"""
     from metadata.generated.schema.type.filterPattern import FilterPattern
 
-    config = StorageServiceAutoClassificationPipeline(
-        containerFilterPattern=FilterPattern(includes=[".*structured.*"])
-    )
+    config = StorageServiceAutoClassificationPipeline(containerFilterPattern=FilterPattern(includes=[".*structured.*"]))
     fetcher = get_storage_fetcher(config)
 
     # Only containers with 'structured' in name should pass
@@ -155,9 +154,7 @@ def test_classification_filter_pattern():
     """Validate classificationFilterPattern functionality for containers"""
     from metadata.generated.schema.type.filterPattern import FilterPattern
 
-    config = StorageServiceAutoClassificationPipeline(
-        classificationFilterPattern=FilterPattern(includes=["PII.*"])
-    )
+    config = StorageServiceAutoClassificationPipeline(classificationFilterPattern=FilterPattern(includes=["PII.*"]))
     fetcher = get_storage_fetcher(config)
 
     # Container with PII tag should pass classification filter

@@ -11,6 +11,7 @@
 """
 RedPanda source ingestion
 """
+
 import traceback
 from typing import Iterable, Optional, cast
 
@@ -68,15 +69,11 @@ class RedpandaSource(CommonBrokerSource):
             )
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: RedpandaConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedpandaConnection):
-            raise InvalidSourceException(
-                f"Expected RedpandaConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected RedpandaConnection, but got {connection}")
         return cls(config, metadata)
 
     def yield_topic_lineage(

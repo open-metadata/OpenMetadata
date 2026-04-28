@@ -24,8 +24,8 @@ class TrinoTableParameter(BaseTableParameter):
         self,
         db_service: DatabaseService,
         table_fqn: str,
-        override_url: Optional[Union[str, dict]] = None,
-    ) -> Union[str, dict]:
+        override_url: Optional[Union[str, dict]] = None,  # noqa: UP007, UP045
+    ) -> Union[str, dict]:  # noqa: UP007
         source_url = super().get_data_diff_url(db_service, table_fqn, override_url)
         if isinstance(source_url, dict):
             # Work on a copy to avoid mutating a dict that might be reused
