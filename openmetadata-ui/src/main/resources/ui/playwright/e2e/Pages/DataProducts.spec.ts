@@ -198,10 +198,9 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Cleanup test assets', async () => {
-      const { apiContext, afterAction } = await performAdminLogin(
+      const { afterAction } = await performAdminLogin(
         page.context().browser()!
       );
-      await table.delete(apiContext);
       await afterAction();
     });
   });
@@ -467,9 +466,10 @@ test.describe('Data Products', () => {
         .fill(dataProduct.data.displayName);
       await page.locator(descriptionBox).fill(dataProduct.data.description);
 
-      const domainInput = page.getByTestId('domain-select');
-      await domainInput.scrollIntoViewIfNeeded();
-      await domainInput.waitFor({ state: 'visible' });
+      const domainContainer = page.getByTestId('domain-select');
+      await domainContainer.scrollIntoViewIfNeeded();
+      await domainContainer.waitFor({ state: 'visible' });
+      const domainInput = domainContainer.getByRole('combobox');
       await domainInput.click();
       const searchDomain = page.waitForResponse(
         '/api/v1/search/query?q=*index=domain*'
@@ -488,8 +488,8 @@ test.describe('Data Products', () => {
       });
 
       await expect(
-        page.locator('[data-testid="tag-suggestion"]')
-      ).toContainText(tag.data.displayName);
+        page.getByTestId('add-domain-form').getByText(tag.data.displayName)
+      ).toBeVisible();
     });
 
     await test.step('Save and verify tag is applied', async () => {

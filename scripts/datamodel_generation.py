@@ -65,6 +65,47 @@ for file_path in MISSING_IMPORTS:
                 file_.write("from typing import Union  # custom generate import\n\n")
 
 
+# datamodel-code-generator emits a module alias for paging.json that pydantic
+# later fails to resolve while importing the generated model during pytest
+# plugin bootstrap. Import the concrete type directly instead.
+DIRECT_IMPORT_FIXES = {
+    f"{ingestion_path}src/metadata/generated/schema/type/entityHistory.py": [
+        (
+            "from . import changeSummaryMap, paging",
+            "from . import changeSummaryMap\nfrom .paging import Paging",
+        ),
+        ("from . import paging as paging_module", "from .paging import Paging"),
+        ("Optional[paging.Paging]", "Optional[Paging]"),
+        ("Optional[paging_module.Paging]", "Optional[Paging]"),
+    ],
+}
+
+DIRECT_IMPORT_FIXES_EXPECTED = {
+    f"{ingestion_path}src/metadata/generated/schema/type/entityHistory.py": (
+        "from .paging import Paging"
+    ),
+}
+
+for file_path, replacements in DIRECT_IMPORT_FIXES.items():
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(
+            f"Expected generated file not found for DIRECT_IMPORT_FIXES: {file_path}"
+        )
+    with open(file_path, "r", encoding=UTF_8) as file_:
+        content = file_.read()
+    for old_value, new_value in replacements:
+        content = content.replace(old_value, new_value)
+    expected_marker = DIRECT_IMPORT_FIXES_EXPECTED.get(file_path)
+    if expected_marker is not None and expected_marker not in content:
+        raise RuntimeError(
+            f"DIRECT_IMPORT_FIXES produced no change in {file_path} "
+            f"(expected {expected_marker!r} to be present). "
+            "The generator output may have changed; update datamodel_generation.py."
+        )
+    with open(file_path, "w", encoding=UTF_8) as file_:
+        file_.write(content)
+
+
 # unsupported rust regex pattern for pydantic v2
 # https://docs.pydantic.dev/2.7/api/config/#pydantic.config.ConfigDict.regex_engine
 # We'll remove validation from the client and let it fail on the server, rather than on the model generation

@@ -14,7 +14,7 @@ Client to interact with SAP ERP APIs
 
 import math
 import traceback
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Union  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.database.sapErpConnection import (
     SapErpConnection,
@@ -37,7 +37,7 @@ logger = ingestion_logger()
 HEADERS = {"Accept": "*/*"}
 
 
-class SapErpApiException(Exception):
+class SapErpApiException(Exception):  # noqa: N818
     """
     Raise when API returns an error
     """
@@ -77,9 +77,7 @@ class SapErpClient:
         )
         if response_data:
             return response_data
-        raise SapErpApiException(
-            "Unable to fetch data from SAP ERP tables API check your connection."
-        )
+        raise SapErpApiException("Unable to fetch data from SAP ERP tables API check your connection.")
 
     def test_column_api(self):
         """
@@ -93,13 +91,11 @@ class SapErpClient:
         )
         if response_data:
             return response_data
-        raise SapErpApiException(
-            "Unable to fetch data from SAP ERP columns API check your connection."
-        )
+        raise SapErpApiException("Unable to fetch data from SAP ERP columns API check your connection.")
 
     def paginate(
         self, api_url: str, params_data: dict, entities_per_page: int, model_class: Any
-    ) -> List[Union[SapErpTable, SapErpColumn]]:
+    ) -> List[Union[SapErpTable, SapErpColumn]]:  # noqa: UP006, UP007
         """
         Method to paginate the APIs
         """
@@ -117,9 +113,7 @@ class SapErpClient:
                         "$skip": str(index * entities_per_page),
                     }
                 )
-                response_data = self.client.get(
-                    path=api_url, headers=HEADERS, data=params_data
-                )
+                response_data = self.client.get(path=api_url, headers=HEADERS, data=params_data)
                 response = model_class(**response_data)
                 entities_list.extend(response.d.results)
             except Exception as exc:
@@ -127,7 +121,7 @@ class SapErpClient:
                 logger.warning(f"Error fetching entities for pagination: {exc}")
         return entities_list
 
-    def list_tables(self) -> Optional[List[SapErpTable]]:
+    def list_tables(self) -> Optional[List[SapErpTable]]:  # noqa: UP006, UP045
         """
         List all tables on the SAP ERP instance
         """
@@ -143,22 +137,20 @@ class SapErpClient:
         )
         return table_list or None
 
-    def list_columns(self, table_name: str) -> Optional[List[SapErpColumn]]:
+    def list_columns(self, table_name: str) -> Optional[List[SapErpColumn]]:  # noqa: UP006, UP045
         """
         List all the columns on the SAP ERP instance
         """
         try:
             logger.debug(f"Fetching columns for table {table_name}")
-            params_data = {
-                "$filter": f"tabname eq '{table_name}' and fieldname ne '.INCLUDE'"
-            }
+            params_data = {"$filter": f"tabname eq '{table_name}' and fieldname ne '.INCLUDE'"}
             table_columns = self.paginate(
                 api_url="/ECC/DDIC/ZZ_I_DDIC_COL_CDS/",
                 params_data=params_data,
                 entities_per_page=self.config.paginationLimit,
                 model_class=SapErpColumnResponse,
             )
-            return table_columns or None
+            return table_columns or None  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching columns for table {table_name}: {exc}")

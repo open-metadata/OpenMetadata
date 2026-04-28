@@ -20,6 +20,7 @@ Note: The parquet reader uses s3fs (aiobotocore) which is incompatible
 with moto in this environment. Parquet credential flow is covered by
 unit tests in test_parquet_reader.py with mocked s3fs.
 """
+
 import io
 
 import boto3
@@ -29,13 +30,13 @@ import pytest
 moto = pytest.importorskip("moto", reason="moto not installed")
 mock_aws = moto.mock_aws
 
-from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
+from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (  # noqa: E402
     S3Config,
 )
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
-from metadata.readers.dataframe.avro import AvroDataFrameReader
-from metadata.readers.dataframe.dsv import CSVDataFrameReader
-from metadata.readers.dataframe.parquet import ParquetDataFrameReader
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials  # noqa: E402
+from metadata.readers.dataframe.avro import AvroDataFrameReader  # noqa: E402
+from metadata.readers.dataframe.dsv import CSVDataFrameReader  # noqa: E402
+from metadata.readers.dataframe.parquet import ParquetDataFrameReader  # noqa: E402
 
 BUCKET = "test-bucket"
 REGION = "us-east-1"

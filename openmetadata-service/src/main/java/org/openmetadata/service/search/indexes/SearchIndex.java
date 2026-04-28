@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
@@ -53,6 +52,23 @@ public interface SearchIndex {
           "upstreamLineage.pipeline.incrementalChangeDescription",
           "connection",
           "changeSummary");
+
+  /**
+   * Relationship/enrichment fields fetched by {@code EntityRepository.setFields} that every search
+   * document populates via {@link #populateCommonFields(Map, EntityInterface, String)}. Stored-JSON
+   * fields (name, displayName, description, service, entity-native counts) are NOT in this set —
+   * they live on the entity row and need no extra fetch.
+   */
+  Set<String> COMMON_REINDEX_FIELDS =
+      Set.of(
+          "owners",
+          "domains",
+          "reviewers",
+          "followers",
+          "votes",
+          "extension",
+          "certification",
+          "dataProducts");
 
   SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
   Logger LOG = LoggerFactory.getLogger(SearchIndex.class);
@@ -116,6 +132,23 @@ public interface SearchIndex {
   Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc);
 
   /**
+   * Returns the minimal set of fields the {@code SearchIndexApp} reindex path must ask
+   * {@code EntityRepository.setFields} to populate for this index to build a correct document.
+   *
+   * <p>Default is {@link #COMMON_REINDEX_FIELDS}, augmented with {@code "tags"} when the index
+   * implements {@link TaggableIndex}. Individual index classes override to add entity-specific
+   * relationships. Keep this method side-effect-free and safe to call on a probe instance whose
+   * entity is {@code null} — it is invoked without an entity to discover fields statically.
+   */
+  default Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(COMMON_REINDEX_FIELDS);
+    if (this instanceof TaggableIndex) {
+      fields.add("tags");
+    }
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
+  /**
    * Populates common entity fields into the search index document. Called automatically by {@link
    * #buildSearchIndexDoc()} for all EntityInterface-based entities. Individual index classes should
    * NOT call this — it is handled by the framework.
@@ -142,8 +175,11 @@ public interface SearchIndex {
     doc.put("domains", getEntitiesWithDisplayName(entity.getDomains()));
     doc.put("reviewers", getEntitiesWithDisplayName(entity.getReviewers()));
     doc.put("followers", SearchIndexUtils.parseFollowers(entity.getFollowers()));
-    Optional.ofNullable(entity.getEntityStatus())
-        .ifPresent(status -> doc.put("entityStatus", status.value()));
+    doc.put(
+        "entityStatus",
+        entity.getEntityStatus() != null
+            ? entity.getEntityStatus().value()
+            : org.openmetadata.schema.type.EntityStatus.UNPROCESSED.value());
     if (entity.getVotes() != null) {
       int upVotes = entity.getVotes().getUpVotes() != null ? entity.getVotes().getUpVotes() : 0;
       int downVotes =

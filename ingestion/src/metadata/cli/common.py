@@ -12,12 +12,13 @@
 """
 Handle workflow execution
 """
-from typing import Any, Dict
+
+from typing import Any, Dict  # noqa: UP035
 
 from metadata.workflow.base import BaseWorkflow
 
 
-def execute_workflow(workflow: BaseWorkflow, config_dict: Dict[str, Any]) -> None:
+def execute_workflow(workflow: BaseWorkflow, config_dict: Dict[str, Any]) -> None:  # noqa: UP006
     """Execute the workflow and raise if needed"""
     workflow.execute()
     workflow.stop()

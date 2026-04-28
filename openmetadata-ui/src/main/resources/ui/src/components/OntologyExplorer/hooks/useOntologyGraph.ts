@@ -236,10 +236,6 @@ interface UseOntologyGraphProps {
     }
   ) => void;
   onNodeDoubleClick: (node: OntologyNode) => void;
-  onNodeContextMenu: (
-    node: OntologyNode,
-    position: { x: number; y: number }
-  ) => void;
   onPaneClick: () => void;
   onScrollNearEdge?: () => void;
   setClickedEdgeId: (id: string | null) => void;
@@ -266,7 +262,6 @@ export function useOntologyGraph({
   dataSignature,
   onNodeClick,
   onNodeDoubleClick,
-  onNodeContextMenu,
   onPaneClick,
   onScrollNearEdge,
   setClickedEdgeId,
@@ -1192,23 +1187,8 @@ export function useOntologyGraph({
       }
     };
 
-    const handleNodeContextMenu = (e: IElementEvent) => {
-      e.preventDefault();
-      const id = e.target.id;
-      if (id) {
-        const node = findNodeById(id);
-        if (node) {
-          onNodeContextMenu(resolveNodeForCallback(node), {
-            x: e.clientX ?? 0,
-            y: e.clientY ?? 0,
-          });
-        }
-      }
-    };
-
     graph.on(NodeEvent.CLICK, handleNodeClick);
     graph.on(NodeEvent.DBLCLICK, handleNodeDblClick);
-    graph.on(NodeEvent.CONTEXT_MENU, handleNodeContextMenu);
     graph.on(CanvasEvent.CLICK, () => {
       setClickedEdgeIdRef.current(null);
       onPaneClick();
@@ -1372,7 +1352,6 @@ export function useOntologyGraph({
       resizeObserver.disconnect();
       graph.off(NodeEvent.CLICK, handleNodeClick);
       graph.off(NodeEvent.DBLCLICK, handleNodeDblClick);
-      graph.off(NodeEvent.CONTEXT_MENU, handleNodeContextMenu);
       graph.off(CanvasEvent.CLICK);
       graph.off('edge:click', handleEdgeClick);
       graph.off(GraphEvent.AFTER_TRANSFORM, scheduleTransformWork);

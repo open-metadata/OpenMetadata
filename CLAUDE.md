@@ -120,8 +120,8 @@ cd ingestion
 make install_dev_env           # Install in development mode
 make generate                  # Generate Pydantic models from JSON schemas
 make unit_ingestion_dev_env    # Run unit tests
-make lint                      # Run pylint
-make py_format                 # Format with black, isort, pycln
+make py_format                 # Apply ruff lint-fix + format
+make py_format_check           # Verify lint + format (matches CI; catches non-auto-fixable issues)
 make static-checks             # Run type checking with basedpyright
 ```
 
@@ -137,6 +137,22 @@ make static-checks             # Run type checking with basedpyright
 make run_e2e_tests             # Full E2E test suite
 make unit_ingestion            # Python unit tests with coverage
 yarn test:coverage             # Frontend test coverage
+```
+
+### Backend Integration Tests
+All backend API integration tests MUST be placed in `openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/` directory. Tests should:
+- Use naming convention `*IT.java` (Integration Test)
+- Extend `BaseEntityIT<T, K>` for entity CRUD tests
+- Be designed to run concurrently (use `@Execution(ExecutionMode.CONCURRENT)`)
+- Use `TestNamespace` for test isolation
+- Use `SdkClients` for API calls (e.g., `SdkClients.adminClient().tables().create(...)`)
+
+```bash
+# Run a specific integration test
+mvn test -pl openmetadata-integration-tests -Dtest=TaskResourceIT
+
+# Run all integration tests
+mvn test -pl openmetadata-integration-tests
 ```
 
 ## Code Generation and Schemas

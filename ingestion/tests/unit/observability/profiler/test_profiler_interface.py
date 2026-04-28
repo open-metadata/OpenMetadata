@@ -153,9 +153,7 @@ class ProfilerInterfaceTest(TestCase):
         self.assertIsNone(get_database_profiler_config(database_entity=None))
         database_entity_copy = deepcopy(self.database_entity)
         database_entity_copy.databaseProfilerConfig = None
-        self.assertIsNone(
-            get_database_profiler_config(database_entity=database_entity_copy)
-        )
+        self.assertIsNone(get_database_profiler_config(database_entity=database_entity_copy))
         self.assertEqual(
             get_database_profiler_config(database_entity=self.database_entity),
             self.database_profiler_config,
@@ -279,9 +277,7 @@ class ProfilerInterfaceTest(TestCase):
         )
         self.assertEqual(
             expected,
-            TableConfig.from_database_and_schema_config(
-                schema_config, table_fqn="demo"
-            ),
+            TableConfig.from_database_and_schema_config(schema_config, table_fqn="demo"),
         )
 
         expected = TableConfig(fullyQualifiedName="demo")
@@ -291,7 +287,5 @@ class ProfilerInterfaceTest(TestCase):
         )
         self.assertEqual(
             expected,
-            TableConfig.from_database_and_schema_config(
-                schema_config, table_fqn="demo"
-            ),
+            TableConfig.from_database_and_schema_config(schema_config, table_fqn="demo"),
         )

@@ -55,6 +55,14 @@
           "items": {
             "type": "string"
           }
+        },
+        "messagingServiceNames": {
+          "title": "Messaging Service Names List",
+          "description": "List of Messaging Service Names for creation of lineage",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

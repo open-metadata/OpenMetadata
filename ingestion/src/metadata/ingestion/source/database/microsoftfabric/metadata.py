@@ -14,8 +14,9 @@ Microsoft Fabric Database Source Module
 Extracts metadata from Microsoft Fabric Warehouses and Lakehouses
 via their SQL endpoints.
 """
+
 import traceback
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Optional  # noqa: UP035
 
 from sqlalchemy import text
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
@@ -94,17 +95,15 @@ class MicrosoftFabricSource(CommonDbSourceService, MultiDBSource):
         cls,
         config_dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # pylint: disable=unused-argument
+        pipeline_name: Optional[str] = None,  # pylint: disable=unused-argument  # noqa: UP045
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: MicrosoftFabricConnection = config.serviceConnection.root.config
         if not isinstance(connection, MicrosoftFabricConnection):
-            raise InvalidSourceException(
-                f"Expected MicrosoftFabricConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected MicrosoftFabricConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         """
         Return the configured database name if not ingesting all databases.
         """
@@ -139,9 +138,7 @@ class MicrosoftFabricSource(CommonDbSourceService, MultiDBSource):
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    database_fqn if self.source_config.useFqnForFiltering else new_database,
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -151,9 +148,7 @@ class MicrosoftFabricSource(CommonDbSourceService, MultiDBSource):
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(
-                        f"Error trying to connect to database {new_database}: {exc}"
-                    )
+                    logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
     def get_stored_procedures(self) -> Iterable[Any]:
         """List stored procedures to process"""
@@ -176,9 +171,7 @@ class MicrosoftFabricSource(CommonDbSourceService, MultiDBSource):
                 stored_procedure = FabricStoredProcedure.model_validate(dict(row))
                 yield stored_procedure
 
-    def yield_stored_procedure(
-        self, stored_procedure: Any
-    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+    def yield_stored_procedure(self, stored_procedure: Any) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Yield stored procedure requests from Fabric stored procedure metadata."""
         try:
             stored_procedure_request = CreateStoredProcedureRequest(

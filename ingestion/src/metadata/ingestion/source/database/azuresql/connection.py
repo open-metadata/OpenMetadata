@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional, Union
 from urllib.parse import quote_plus
 
@@ -41,7 +42,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection_url(connection: Union[AzureSQLConnection, MssqlConnection]) -> str:
+def get_connection_url(connection: Union[AzureSQLConnection, MssqlConnection]) -> str:  # noqa: UP007
     """
     Build the connection URL
     """
@@ -53,28 +54,19 @@ def get_connection_url(connection: Union[AzureSQLConnection, MssqlConnection]) -
     ):
         connection_string = f"Driver={connection.driver};Server={connection.hostPort};Database={connection.database};"
         connection_string += f"Uid={connection.username};"
-        if (
-            connection.authenticationMode.authentication
-            == Authentication.ActiveDirectoryPassword
-        ):
+        if connection.authenticationMode.authentication == Authentication.ActiveDirectoryPassword:
             connection_string += f"Pwd={connection.password.get_secret_value()};"
 
         connection_string += f"Encrypt={'yes' if connection.authenticationMode.encrypt else 'no'};TrustServerCertificate={'yes' if connection.authenticationMode.trustServerCertificate else 'no'};"
         connection_string += f"Connection Timeout={connection.authenticationMode.connectionTimeout or 30};Authentication={connection.authenticationMode.authentication.value};"
 
-        connection_url = URL.create(
-            "mssql+pyodbc", query={"odbc_connect": connection_string}
-        )
-        return connection_url
+        connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+        return connection_url  # noqa: RET504
     url = f"{connection.scheme.value}://"
 
     if connection.username:
         url += f"{quote_plus(connection.username)}"
-        url += (
-            f":{quote_plus(connection.password.get_secret_value())}"
-            if connection.password
-            else ""
-        )
+        url += f":{quote_plus(connection.password.get_secret_value())}" if connection.password else ""
         url += "@"
 
     url += f"{connection.hostPort}"
@@ -85,9 +77,7 @@ def get_connection_url(connection: Union[AzureSQLConnection, MssqlConnection]) -
     if options:
         if not connection.database:
             url += "/"
-        params = "&".join(
-            f"{key}={quote_plus(value)}" for key, value in options.items() if value
-        )
+        params = "&".join(f"{key}={quote_plus(value)}" for key, value in options.items() if value)
         url = f"{url}&{params}"
 
     return url
@@ -108,8 +98,8 @@ def test_connection(
     metadata: OpenMetadata,
     engine: Engine,
     service_connection: AzureSQLConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
