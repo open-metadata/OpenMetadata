@@ -135,7 +135,8 @@ class DatabricksEngineWrapper:
 
 
 def get_connection_url(connection: DatabricksConnection) -> str:
-    url = f"{connection.scheme.value}://{connection.hostPort}"
+    scheme = connection.scheme.value if connection.scheme else "databricks"
+    url = f"{scheme}://{connection.hostPort}"
     if connection.catalog:
         url = f"{url}?catalog={quote_plus(connection.catalog)}"
     return url

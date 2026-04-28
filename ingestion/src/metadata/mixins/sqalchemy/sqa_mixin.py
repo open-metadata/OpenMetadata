@@ -88,7 +88,7 @@ class SQAInterfaceMixin(Root):
             self.service_connection_config,
             (UnityCatalogConnection, DatabricksConnection),
         ):
-            catalog = self.service_connection_config.catalog
+            catalog = self.service_connection_config.catalog  # pyright: ignore[reportAttributeAccessIssue]
             if catalog:
                 quoted_catalog = session.connection().dialect.identifier_preparer.quote(catalog)
                 session.execute(text(f"USE CATALOG {quoted_catalog}"))

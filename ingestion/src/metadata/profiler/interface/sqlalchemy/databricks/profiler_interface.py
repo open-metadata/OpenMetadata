@@ -66,7 +66,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         return instance.get_system_metrics()
 
     def visit_column(self, *args, **kwargs):
-        result = SQLCompiler.visit_column(self, *args, **kwargs)
+        result = SQLCompiler.visit_column(self, *args, **kwargs)  # pyright: ignore[reportArgumentType]
         # the `result` here would be `db.schema.table` or `db.schema.table.column`
         # for struct it will be `db.schema.table.column.nestedchild.nestedchild` etc
         # the logic is to add the backticks to nested children.
@@ -80,7 +80,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         return result
 
     def visit_table(self, *args, **kwargs):
-        result = SQLCompiler.visit_table(self, *args, **kwargs)
+        result = SQLCompiler.visit_table(self, *args, **kwargs)  # pyright: ignore[reportArgumentType]
         # Handle table references with hyphens in database/schema names
         # Format: `database`.`schema`.`table` for Unity Catalog/Databricks
         if "." in result and not result.startswith("`"):

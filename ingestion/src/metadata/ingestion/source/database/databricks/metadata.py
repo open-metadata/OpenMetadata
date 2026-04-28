@@ -283,7 +283,9 @@ def get_view_names_reflection(self, schema=None, **kw):
     return []
 
 
-def get_view_names(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
+def get_view_names(  # pylint: disable=unused-argument
+    self, connection, schema=None, only_materialized=False, only_temp=False, **kw
+):
     if kw.get("db_name"):
         connection.execute(text(f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"))
     query = "SHOW VIEWS"
