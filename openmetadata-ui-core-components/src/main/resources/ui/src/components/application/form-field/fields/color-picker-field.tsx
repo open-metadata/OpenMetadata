@@ -43,17 +43,11 @@ export const ColorPickerField = ({
   value,
 }: ColorPickerFieldProps) => {
   const normalizedValue = normalizeHexColor(value);
-  const colorOptions = (Array.isArray(colors) ? colors : ENTITY_PALETTE_HEX)
+  const palette = (Array.isArray(colors) ? colors : ENTITY_PALETTE_HEX)
     .map((color) => normalizeHexColor(color))
     .filter((color): color is string => Boolean(color));
-  const palette = [...colorOptions];
 
-  if (
-    normalizedValue &&
-    !palette.some(
-      (color) => color.toLowerCase() === normalizedValue.toLowerCase()
-    )
-  ) {
+  if (normalizedValue && !palette.includes(normalizedValue)) {
     palette.push(normalizedValue);
   }
 
@@ -64,8 +58,7 @@ export const ColorPickerField = ({
       role="group"
       wrap="wrap">
       {palette.map((color, index) => {
-        const isSelected =
-          normalizedValue?.toLowerCase() === color.toLowerCase();
+        const isSelected = normalizedValue === color;
 
         return (
           <Button
