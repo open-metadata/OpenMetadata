@@ -53,6 +53,8 @@ The admin defaults should reflect the matching `docker-compose.yml` root credent
 
 Declares the source schema via SQLAlchemy Core. Portable tables (customers, transactions) come from `core/source/common_baseline.py` — extend with dialect-specific tables as needed. Carry dialect-specific INSERT templates on each `TableSeed` (e.g. `ON DUPLICATE KEY UPDATE` for MySQL, `ON CONFLICT DO UPDATE` for Postgres) so seeds are idempotent.
 
+**Convention for dialect-specific type coverage**: if your connector exercises native types not present in SQLAlchemy core (TINYINT/MEDIUMINT/ENUM on MySQL, ARRAY/JSONB/INET on Postgres, …), declare them on a single wide table named `all_types` with a `BigInteger` primary key column `id`. Three seed rows are enough — tests assert OM's type mapping, not row content. Mirroring the table name + PK shape across connectors keeps cross-dialect tests readable.
+
 Expose a cached `get_policy() -> EnforcementPolicy` (use `@lru_cache(maxsize=1)` so the SQLAlchemy engine is built once per session). For local Docker, policy mode is `"apply"`; for shared cloud sources, `"check_only"`.
 
 ### `connector.py`
