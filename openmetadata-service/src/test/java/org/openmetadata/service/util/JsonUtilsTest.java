@@ -295,16 +295,23 @@ class JsonUtilsTest {
         "both forms parse the same second");
   }
 
-  /** Malformed ISO strings should surface as JsonMappingException with the JSON path. */
+  /**
+   * Malformed ISO strings should surface through the public API as JsonParsingException, with the
+   * underlying Jackson cause carrying the field path and the lenient deserializer's message.
+   */
   @Test
   void testTagLabelAppliedAtMalformedRaisesMappingException() {
     String malformed = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"not-a-date\"}";
-    com.fasterxml.jackson.databind.JsonMappingException ex =
+    org.openmetadata.schema.exception.JsonParsingException ex =
         assertThrows(
-            com.fasterxml.jackson.databind.JsonMappingException.class,
+            org.openmetadata.schema.exception.JsonParsingException.class,
             () -> JsonUtils.readValue(malformed, TagLabel.class));
+    Throwable cause = ex.getCause();
     assertTrue(
-        ex.getMessage().contains("appliedAt") || ex.getMessage().contains("ISO-8601"),
-        "error should mention the field or expected format: " + ex.getMessage());
+        cause instanceof com.fasterxml.jackson.databind.JsonMappingException,
+        "cause should be JsonMappingException, was: " + cause);
+    assertTrue(
+        cause.getMessage().contains("appliedAt") || cause.getMessage().contains("ISO-8601"),
+        "error should mention the field or expected format: " + cause.getMessage());
   }
 }
