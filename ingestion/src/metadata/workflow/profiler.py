@@ -54,20 +54,14 @@ class ProfilerWorkflow(IngestionWorkflow):
         # We are forcing the secret evaluation to "ignore" null secrets down the line
         # Remove this when the issue above is fixed and empty secrets migrated
         source_config_class = type(self.config.source.serviceConnection.root.config)
-        dumped_config = self.config.source.serviceConnection.root.config.model_dump(
-            exclude_unset=True
-        )
-        self.config.source.serviceConnection.root.config = (
-            source_config_class.model_validate(dumped_config)
-        )
+        dumped_config = self.config.source.serviceConnection.root.config.model_dump(exclude_unset=True)
+        self.config.source.serviceConnection.root.config = source_config_class.model_validate(dumped_config)
 
         # NOTE: Call test_connection to update host value before creating the source class
         self.test_connection()
 
         source_class = self._get_source_class()
-        self.source = source_class.create(
-            self.config.model_dump(exclude_unset=True), self.metadata
-        )
+        self.source = source_class.create(self.config.model_dump(exclude_unset=True), self.metadata)
 
         profiler_processor = self._get_profiler_processor()
         sink = self._get_sink()
@@ -94,6 +88,4 @@ class ProfilerWorkflow(IngestionWorkflow):
         return sink
 
     def _get_profiler_processor(self) -> Processor:
-        return ProfilerProcessor.create(
-            self.config.model_dump(exclude_unset=True), self.metadata
-        )
+        return ProfilerProcessor.create(self.config.model_dump(exclude_unset=True), self.metadata)

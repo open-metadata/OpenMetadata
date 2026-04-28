@@ -31,9 +31,7 @@ logger = test_suite_logger()
 class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
     """SQLAlchemy implementation of Column Rule Library SQL Expression validator."""
 
-    def compile_sql_expression(
-        self, column_name: str, table_name: str
-    ) -> Tuple[str, Dict[str, str]]:
+    def compile_sql_expression(self, column_name: str, table_name: str) -> Tuple[str, Dict[str, str]]:
         """Compile SQL expression with SQLAlchemy bind parameters using Jinja2.
 
         For SQLAlchemy, user parameters are converted to bind parameters (:paramName)

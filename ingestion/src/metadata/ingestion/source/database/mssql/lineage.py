@@ -11,6 +11,7 @@
 """
 MSSQL lineage module
 """
+
 from datetime import datetime
 
 from metadata.ingestion.source.database.lineage_source import LineageSource
@@ -32,10 +33,7 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
 from metadata.utils.helpers import get_start_and_end
 
 
-class MssqlLineageSource(
-    MssqlQueryParserSource, StoredProcedureLineageMixin, LineageSource
-):
-
+class MssqlLineageSource(MssqlQueryParserSource, StoredProcedureLineageMixin, LineageSource):
     sql_stmt = MSSQL_SQL_STATEMENT
 
     filters = """
@@ -55,9 +53,7 @@ class MssqlLineageSource(
         returns sql statement to fetch query logs.
         """
         server_date_format = get_sqlalchemy_engine_dateformat(self.engine)
-        current_datetime_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(
-            server_date_format, DEFAULT_DATETIME_FORMAT
-        )
+        current_datetime_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(server_date_format, DEFAULT_DATETIME_FORMAT)
         return self.sql_stmt.format(
             start_time=start_time.strftime(current_datetime_format),
             end_time=end_time.strftime(current_datetime_format),
@@ -71,9 +67,7 @@ class MssqlLineageSource(
         """
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         server_date_format = get_sqlalchemy_engine_dateformat(self.engine)
-        current_datetime_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(
-            server_date_format, DEFAULT_DATETIME_FORMAT
-        )
+        current_datetime_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(server_date_format, DEFAULT_DATETIME_FORMAT)
         start = start.strftime(current_datetime_format)
         query = MSSQL_GET_STORED_PROCEDURE_QUERIES.format(
             start_date=start,

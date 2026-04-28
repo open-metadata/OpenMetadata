@@ -19,15 +19,11 @@ import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check.svg
 import { ReactComponent as TaskIcon } from '../../../../assets/svg/ic-task-new.svg';
 import { observerOptions } from '../../../../constants/Mydata.constants';
 import { EntityType } from '../../../../enums/entity.enum';
-import { ThreadType } from '../../../../generated/api/feed/createThread';
-import {
-  Thread,
-  ThreadTaskStatus,
-} from '../../../../generated/entity/feed/thread';
 import { useElementInView } from '../../../../hooks/useElementInView';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import ActivityFeedListV1New from '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1New.component';
+import { getTaskCounts, Task } from '../../../../rest/tasksAPI';
+import TaskListV1 from '../../../ActivityFeed/ActivityFeedList/TaskListV1.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { TaskFilter } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../common/Loader/Loader';
@@ -42,12 +38,12 @@ const TestCaseIncidentTab = () => {
   const owners = useMemo(() => testCase?.owners, [testCase]);
 
   const {
-    selectedThread,
-    setActiveThread,
-    entityThread,
-    getFeedData,
+    getTaskData,
     loading,
     entityPaging,
+    tasks,
+    selectedTask,
+    setActiveTask,
   } = useActivityFeedProvider();
   const [elementRef, isInView] = useElementInView({
     ...observerOptions,
@@ -55,19 +51,43 @@ const TestCaseIncidentTab = () => {
     rootMargin: '0px 0px 2px 0px',
   });
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
+  const [openTasksCount, setOpenTasksCount] = useState(0);
+  const [closedTasksCount, setClosedTasksCount] = useState(0);
+
+  const statusGroup = taskFilter === 'open' ? 'open' : 'closed';
+
+  const fetchCounts = useCallback(async () => {
+    if (!decodedFqn) {
+      return;
+    }
+    try {
+      const counts = await getTaskCounts({ aboutEntity: decodedFqn });
+      setOpenTasksCount(counts.open ?? 0);
+      setClosedTasksCount(counts.completed ?? 0);
+    } catch {
+      // Badge counts are a UI affordance; don't block on failure.
+    }
+  }, [decodedFqn]);
 
   const handleFeedFetchFromFeedList = useCallback(
     (after?: string) => {
-      getFeedData(
+      getTaskData(
         undefined,
         after,
-        ThreadType.Task,
         EntityType.TEST_CASE,
-        decodedFqn
+        decodedFqn,
+        statusGroup
       );
     },
-    [decodedFqn, getFeedData]
+    [decodedFqn, getTaskData, statusGroup]
   );
+
+  useEffect(() => {
+    if (decodedFqn) {
+      handleFeedFetchFromFeedList();
+      fetchCounts();
+    }
+  }, [decodedFqn, handleFeedFetchFromFeedList, fetchCounts]);
 
   useEffect(() => {
     if (decodedFqn && isInView && entityPaging.after && !loading) {
@@ -75,47 +95,23 @@ const TestCaseIncidentTab = () => {
     }
   }, [entityPaging, loading, isInView, decodedFqn]);
 
-  const handleFeedClick = useCallback(
-    (feed: Thread) => {
-      if (selectedThread?.id !== feed?.id) {
-        setActiveThread(feed);
+  const handleTaskClick = useCallback(
+    (task: Task) => {
+      if (selectedTask?.id !== task?.id) {
+        setActiveTask(task);
       }
     },
-    [setActiveThread, selectedThread]
+    [setActiveTask, selectedTask]
   );
 
   const loader = useMemo(() => (loading ? <Loader /> : null), [loading]);
-
-  const threads = useMemo(() => {
-    return entityThread.filter(
-      (thread) =>
-        taskFilter === 'open'
-          ? thread.task?.status === ThreadTaskStatus.Open
-          : thread.task?.status === ThreadTaskStatus.Closed,
-      []
-    );
-  }, [entityThread, taskFilter]);
-
-  const [openTasks, closedTasks] = useMemo(() => {
-    return entityThread.reduce(
-      (acc, curr) => {
-        if (curr.task?.status === ThreadTaskStatus.Open) {
-          acc[0] = acc[0] + 1;
-        } else {
-          acc[1] = acc[1] + 1;
-        }
-
-        return acc;
-      },
-      [0, 0]
-    );
-  }, [entityThread]);
 
   const handleUpdateTaskFilter = (filter: TaskFilter) => {
     setTaskFilter(filter);
   };
 
   const handleAfterTaskClose = () => {
+    fetchCounts();
     handleFeedFetchFromFeedList();
     handleUpdateTaskFilter('close');
   };
@@ -125,7 +121,7 @@ const TestCaseIncidentTab = () => {
       return;
     }
     handleUpdateTaskFilter(taskFilter === 'close' ? 'open' : 'close');
-    setActiveThread();
+    setActiveTask();
   };
 
   return (
@@ -146,7 +142,7 @@ const TestCaseIncidentTab = () => {
             )}
             data-testid="open-task"
             onClick={() => handleOpenCloseTaskClick('open')}>
-            <TaskIcon className="m-r-xss" width={14} /> {openTasks}{' '}
+            <TaskIcon className="m-r-xss" width={14} /> {openTasksCount}{' '}
             {t('label.open')}
           </Typography.Text>
           <Typography.Text
@@ -155,21 +151,18 @@ const TestCaseIncidentTab = () => {
             })}
             data-testid="closed-task"
             onClick={() => handleOpenCloseTaskClick('close')}>
-            <CheckIcon className="m-r-xss" width={14} /> {closedTasks}{' '}
+            <CheckIcon className="m-r-xss" width={14} /> {closedTasksCount}{' '}
             {t('label.closed')}
           </Typography.Text>
         </div>
 
-        <ActivityFeedListV1New
-          hidePopover
-          activeFeedId={selectedThread?.id}
+        <TaskListV1
+          activeFeedId={selectedTask?.id}
           emptyPlaceholderText={t('message.no-tasks-assigned')}
-          feedList={threads}
-          isForFeedTab={false}
           isLoading={false}
-          selectedThread={selectedThread}
-          showThread={false}
-          onFeedClick={handleFeedClick}
+          selectedTask={selectedTask}
+          taskList={tasks}
+          onTaskClick={handleTaskClick}
         />
         {loader}
         <div
@@ -182,13 +175,13 @@ const TestCaseIncidentTab = () => {
       </div>
       <div className="right-container" data-testid="right-container">
         {loader}
-        {selectedThread && !loading && (
+        {selectedTask && !loading && (
           <div id="task-panel">
             <TaskTabNew
               entityType={EntityType.TEST_CASE}
               isForFeedTab={false}
               owners={owners}
-              taskThread={selectedThread}
+              task={selectedTask}
               onAfterClose={handleAfterTaskClose}
             />
           </div>

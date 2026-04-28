@@ -43,9 +43,13 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { Domain } from '../../../generated/entity/domains/domain';
+import {
+  Domain,
+  EntityReference,
+} from '../../../generated/entity/domains/domain';
 import {
   BulkOperationResult,
+  Response as BulkResponse,
   Status,
 } from '../../../generated/type/bulkOperationResult';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -65,6 +69,7 @@ import {
 import { searchQuery } from '../../../rest/searchAPI';
 import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
+import { getDomainDryRunImpacts } from '../../../utils/Domain/DomainDryRunUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
 import {
@@ -86,6 +91,7 @@ import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import DomainAssetDryRunModal from '../DomainAssetDryRunModal/DomainAssetDryRunModal.component';
 import './asset-selection-model.style.less';
 
 export interface AssetSelectionContentProps {
@@ -118,6 +124,9 @@ export const useAssetSelectionContent = ({
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<SearchedDataProps['data']>([]);
   const [failedStatus, setFailedStatus] = useState<BulkOperationResult>();
+  const [dryRunWarnings, setDryRunWarnings] = useState<BulkResponse[]>();
+  const [pendingDomainEntities, setPendingDomainEntities] =
+    useState<EntityReference[]>();
   const [exportJob, setExportJob] = useState<Partial<CSVExportJob>>();
   const [selectedItems, setSelectedItems] =
     useState<Map<string, EntityDetailUnion>>();
@@ -283,6 +292,46 @@ export const useAssetSelectionContent = ({
     }
   };
 
+  const processSaveResponse = useCallback(
+    async (res: unknown) => {
+      if (isUndefined((res as CSVExportResponse).jobId)) {
+        if ((res as BulkOperationResult).status === Status.Success) {
+          await new Promise((resolve) => {
+            setTimeout(() => {
+              resolve('');
+              onSave?.();
+            }, ES_UPDATE_DELAY);
+          });
+          onCancel?.();
+        } else {
+          setFailedStatus(res as BulkOperationResult);
+        }
+      } else {
+        setAssetJobResponse(res as CSVExportResponse);
+      }
+    },
+    [onSave, onCancel]
+  );
+
+  const handleSaveError = useCallback(
+    (err: unknown) => {
+      if (variant === 'drawer') {
+        showNotistackError(
+          enqueueSnackbar,
+          err as AxiosError,
+          t('server.add-entity-error', {
+            entity: t('label.asset-plural').toLowerCase(),
+          }),
+          { vertical: 'top', horizontal: 'center' },
+          closeSnackbar
+        );
+      } else {
+        showErrorToast(err as AxiosError);
+      }
+    },
+    [variant, enqueueSnackbar, closeSnackbar, t]
+  );
+
   const handleSave = useCallback(async () => {
     try {
       setIsSaveLoading(true);
@@ -333,61 +382,68 @@ export const useAssetSelectionContent = ({
           res = await addAssetsToTags(activeEntity.id ?? '', entities);
 
           break;
-        case AssetsOfEntity.DOMAIN:
-          res = await addAssetsToDomain(
-            activeEntity.fullyQualifiedName ?? '',
-            entities
-          );
+        case AssetsOfEntity.DOMAIN: {
+          const domainFqn = activeEntity.fullyQualifiedName ?? '';
+          const dryRunResult = await addAssetsToDomain(domainFqn, entities, {
+            dryRun: true,
+          });
+          const impacts = getDomainDryRunImpacts(dryRunResult);
+          if (impacts.length > 0) {
+            setDryRunWarnings(impacts);
+            setPendingDomainEntities(entities);
+            setIsSaveLoading(false);
+
+            return;
+          }
+          res = await addAssetsToDomain(domainFqn, entities);
 
           break;
+        }
         default:
           break;
       }
 
-      if (isUndefined((res as CSVExportResponse).jobId)) {
-        if ((res as BulkOperationResult).status === Status.Success) {
-          await new Promise((resolve) => {
-            setTimeout(() => {
-              resolve('');
-              onSave?.();
-            }, ES_UPDATE_DELAY);
-          });
-          onCancel?.();
-        } else {
-          setFailedStatus(res as BulkOperationResult);
-        }
-      } else {
-        setAssetJobResponse(res as CSVExportResponse);
-      }
+      await processSaveResponse(res);
     } catch (err) {
-      if (variant === 'drawer') {
-        showNotistackError(
-          enqueueSnackbar,
-          err as AxiosError,
-          t('server.add-entity-error', {
-            entity: t('label.asset-plural').toLowerCase(),
-          }),
-          { vertical: 'top', horizontal: 'center' },
-          closeSnackbar
-        );
-      } else {
-        showErrorToast(err as AxiosError);
-      }
+      handleSaveError(err);
+    } finally {
+      setIsSaveLoading(false);
+    }
+  }, [activeEntity, selectedItems, type, processSaveResponse, handleSaveError]);
+
+  const onSaveAction = useCallback(() => {
+    handleSave();
+  }, [handleSave]);
+
+  const confirmDomainAssetMove = useCallback(async () => {
+    if (!activeEntity || !pendingDomainEntities) {
+      return;
+    }
+    try {
+      setIsSaveLoading(true);
+      const res = await addAssetsToDomain(
+        activeEntity.fullyQualifiedName ?? '',
+        pendingDomainEntities
+      );
+      setDryRunWarnings(undefined);
+      setPendingDomainEntities(undefined);
+      await processSaveResponse(res);
+    } catch (err) {
+      handleSaveError(err);
     } finally {
       setIsSaveLoading(false);
     }
   }, [
     activeEntity,
-    selectedItems,
-    onSave,
-    onCancel,
-    enqueueSnackbar,
-    closeSnackbar,
+    pendingDomainEntities,
+    processSaveResponse,
+    handleSaveError,
   ]);
 
-  const onSaveAction = useCallback(() => {
-    handleSave();
-  }, [handleSave]);
+  const cancelDomainAssetMove = useCallback(() => {
+    setDryRunWarnings(undefined);
+    setPendingDomainEntities(undefined);
+  }, []);
 
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
@@ -780,6 +836,17 @@ export const useAssetSelectionContent = ({
       )}
 
       {isLoading && <Loader size="small" />}
+
+      <DomainAssetDryRunModal
+        confirmText={t('label.move-anyway')}
+        header={t('label.confirm-asset-move')}
+        isLoading={isSaveLoading}
+        visible={!isUndefined(dryRunWarnings)}
+        warnings={dryRunWarnings ?? []}
+        warningsTestId="add-dry-run-warnings"
+        onCancel={cancelDomainAssetMove}
+        onConfirm={confirmDomainAssetMove}
+      />
     </Space>
   );
 

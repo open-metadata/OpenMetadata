@@ -12,6 +12,7 @@
 """
 Test suite for the custom import checker pylint plugin
 """
+
 import tempfile
 import textwrap
 
@@ -156,9 +157,7 @@ class TestImportChecker:
 
     def test_real_file_check(self):
         """Test the checker on actual files."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".py", delete=False
-        ) as temp_file:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as temp_file:
             temp_file.write(
                 textwrap.dedent(
                     """
@@ -177,8 +176,6 @@ class TestImportChecker:
                 exit=False,
             )
             messages = reporter.messages
-            import_err_msg = [
-                msg for msg in messages if msg.symbol == "ingestion-src-import"
-            ]
+            import_err_msg = [msg for msg in messages if msg.symbol == "ingestion-src-import"]
             assert len(import_err_msg) == 2
             assert all(msg.symbol == "ingestion-src-import" for msg in import_err_msg)

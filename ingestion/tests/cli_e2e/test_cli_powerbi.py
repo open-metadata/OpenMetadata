@@ -12,6 +12,7 @@
 """
 Test PowerBI connector with CLI
 """
+
 from pathlib import Path
 from typing import List
 
@@ -24,12 +25,7 @@ from .common.test_cli_dashboard import CliCommonDashboard
 class PowerBICliTest(CliCommonDashboard.TestSuite):
     # in case we want to do something before running the tests
     def prepare(self) -> None:
-        redshift_file_path = str(
-            Path(
-                PATH_TO_RESOURCES
-                + f"/dashboard/{self.get_connector_name()}/redshift.yaml"
-            )
-        )
+        redshift_file_path = str(Path(PATH_TO_RESOURCES + f"/dashboard/{self.get_connector_name()}/redshift.yaml"))
         self.run_command(test_file_path=redshift_file_path)
 
     @staticmethod

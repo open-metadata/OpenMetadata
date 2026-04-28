@@ -26,16 +26,12 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class TableColumnToMatchSetValidator(
-    BaseTableColumnToMatchSetValidator, PandasValidatorMixin
-):
+class TableColumnToMatchSetValidator(BaseTableColumnToMatchSetValidator, PandasValidatorMixin):
     """Validator table column name to match set test case"""
 
     def _run_results(self) -> List[str]:
         """compute result of the test case"""
         names = list(next(self.runner()).columns)
         if not names:
-            raise ValueError(
-                f"Column names for test case {self.test_case.name} returned None"
-            )
+            raise ValueError(f"Column names for test case {self.test_case.name} returned None")
         return names

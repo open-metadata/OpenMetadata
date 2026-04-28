@@ -12,6 +12,7 @@
 """
 Avro DataFrame reader - streams records in batches to avoid OOM
 """
+
 import traceback
 from functools import singledispatchmethod
 from typing import Iterator, List, Optional
@@ -58,9 +59,7 @@ class AvroDataFrameReader(DataFrameReader):
     """
 
     @staticmethod
-    def _stream_avro_records(
-        file_obj, batch_size: int = CHUNKSIZE
-    ) -> Iterator["DataFrame"]:
+    def _stream_avro_records(file_obj, batch_size: int = CHUNKSIZE) -> Iterator["DataFrame"]:  # noqa: F821
         """
         Stream Avro records in batches from a file-like object.
         Uses fastavro for streaming support.
@@ -93,16 +92,14 @@ class AvroDataFrameReader(DataFrameReader):
                 if isinstance(writer_schema, dict):
                     writer_schema = json.dumps(reader.writer_schema)
 
-                return parse_avro_schema(schema=writer_schema, cls=Column)
+                return parse_avro_schema(schema=writer_schema, cls=Column)  # pyright: ignore[reportArgumentType]
         except Exception as warn:
             logger.warning(f"Error reading Avro schema: {warn}")
             logger.debug(traceback.format_exc())
         return None
 
     @singledispatchmethod
-    def _read_avro_dispatch(
-        self, config_source: ConfigSource, key: str, bucket_name: str
-    ) -> DatalakeColumnWrapper:
+    def _read_avro_dispatch(self, config_source: ConfigSource, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         raise FileFormatException(config_source=config_source, file_name=key)
 
     @_read_avro_dispatch.register
@@ -182,6 +179,4 @@ class AvroDataFrameReader(DataFrameReader):
         return DatalakeColumnWrapper(columns=columns, dataframes=chunk_generator)
 
     def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
-        return self._read_avro_dispatch(
-            self.config_source, key=key, bucket_name=bucket_name
-        )
+        return self._read_avro_dispatch(self.config_source, key=key, bucket_name=bucket_name)

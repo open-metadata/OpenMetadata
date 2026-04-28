@@ -11,6 +11,7 @@
 """
 REST Auth & Client for QlikCloud
 """
+
 import json
 import re
 import traceback
@@ -96,9 +97,7 @@ class QlikCloudClient:
         if self.socket_connection:
             self.socket_connection.close()
 
-    def _websocket_send_request(
-        self, request: dict, response: bool = False
-    ) -> Optional[Dict]:
+    def _websocket_send_request(self, request: dict, response: bool = False) -> Optional[Dict]:
         """
         Method to send request to websocket
 
@@ -125,7 +124,7 @@ class QlikCloudClient:
             return data.result.qLayout.qAppObjectList.qItems
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard charts")
+            logger.error("Failed to fetch the dashboard charts")
         return []
 
     def get_dashboards_list(self) -> Iterable[QlikApp]:
@@ -140,14 +139,12 @@ class QlikCloudClient:
                     resp = QlikAppResponse(**resp_apps)
                     yield from resp.apps
                     if resp.links and resp.links.next and resp.links.next.href:
-                        link = resp.links.next.href.replace(
-                            f"{self.config.hostPort}{API_VERSION}", ""
-                        )
+                        link = resp.links.next.href.replace(f"{self.config.hostPort}{API_VERSION}", "")
                     else:
                         break
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the app list")
+            logger.error("Failed to fetch the app list")
 
     def get_dashboards_list_test_conn(self) -> Iterable[QlikApp]:
         resp_apps = self.client.get("/v1/items?resourceType=app")
@@ -167,7 +164,7 @@ class QlikCloudClient:
                 return QlikApp(**resp_dashboard.get("attributes"))
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the dashboard with id: {dashboard_id}")
+            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")
         return None
 
     def get_dashboard_models(self) -> List[QlikTable]:
@@ -197,7 +194,7 @@ class QlikCloudClient:
             return parsed_datamodels
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard datamodels")
+            logger.error("Failed to fetch the dashboard datamodels")
         return []
 
     def get_projects_list(self) -> Iterable[QlikSpace]:
@@ -212,14 +209,12 @@ class QlikCloudClient:
                     resp = QlikSpaceResponse(**resp_spaces)
                     yield from resp.spaces
                     if resp.links and resp.links.next and resp.links.next.href:
-                        link = resp.links.next.href.replace(
-                            f"{self.config.hostPort}{API_VERSION}", ""
-                        )
+                        link = resp.links.next.href.replace(f"{self.config.hostPort}{API_VERSION}", "")
                     else:
                         break
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the space list")
+            logger.error("Failed to fetch the space list")
 
     def get_script_tables(self) -> Optional[List[QlikTable]]:
         """Get script tables from the dashboard script"""
@@ -229,9 +224,7 @@ class QlikCloudClient:
             script_result = QlikScriptResult(**script_response)
             if script_result.result.qScript:
                 script_value = script_result.result.qScript
-                matches = re.findall(
-                    r'FROM\s+["\']?([a-zA-Z0-9_.]+)["\']?', script_value, re.IGNORECASE
-                )
+                matches = re.findall(r'FROM\s+["\']?([a-zA-Z0-9_.]+)["\']?', script_value, re.IGNORECASE)
                 if isinstance(matches, list):
                     for table in matches:
                         table_name = table.split(".")[-1]
@@ -241,7 +234,7 @@ class QlikCloudClient:
             return script_tables
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the script tables")
+            logger.error("Failed to fetch the script tables")
         return script_tables
 
     def get_data_files(self) -> List[QlikDataFile]:
@@ -253,5 +246,5 @@ class QlikCloudClient:
             data_files = parsed_resp.data or []
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch data files from api `/v1/data-files`")
+            logger.error("Failed to fetch data files from api `/v1/data-files`")
         return data_files

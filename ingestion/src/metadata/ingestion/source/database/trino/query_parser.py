@@ -11,6 +11,7 @@
 """
 Trino usage module
 """
+
 from abc import ABC
 from datetime import datetime
 from typing import Optional
@@ -36,16 +37,12 @@ class TrinoQueryParserSource(QueryParserSource, ABC):
     filters: str
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: TrinoConnection = config.serviceConnection.root.config
         if not isinstance(connection, TrinoConnection):
-            raise InvalidSourceException(
-                f"Expected TrinoConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected TrinoConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_sql_statement(

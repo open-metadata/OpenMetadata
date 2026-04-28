@@ -98,9 +98,7 @@ class DomoClient:
 
     def __init__(
         self,
-        config: Union[
-            DomoDashboardConnection, DomoPipelineConnection, DomoDatabaseConnection
-        ],
+        config: Union[DomoDashboardConnection, DomoPipelineConnection, DomoDatabaseConnection],
     ):
         self.config = config
         HEADERS.update({"X-DOMO-Developer-Token": self.config.accessToken})
@@ -127,14 +125,12 @@ class DomoClient:
                 return DomoChartDetails(
                     id=str(response[0]["id"]),
                     name=response[0]["title"],
-                    metadata=DomoChartMetadataDetails(
-                        chartType=response[0].get("metadata", {}).get("chartType", "")
-                    ),
+                    metadata=DomoChartMetadataDetails(chartType=response[0].get("metadata", {}).get("chartType", "")),
                     description=response[0].get("description", ""),
                 )
 
         except Exception as exc:
-            logger.warning(f"Error while getting details for Card {page_id} - {exc}")
+            logger.error(f"Error while getting details for Card {page_id} - {exc}")
             logger.debug(traceback.format_exc())
 
         return None
@@ -144,7 +140,7 @@ class DomoClient:
             response = self.client.get(path=WORKFLOW_URL, headers=HEADERS)
             return response
         except Exception as exc:
-            logger.warning(f"Error while getting pipelines - {exc}")
+            logger.error(f"Error while getting pipelines - {exc}")
             logger.debug(traceback.format_exc())
         return []
 
@@ -154,9 +150,7 @@ class DomoClient:
             response = self.client.get(path=url, headers=HEADERS)
             return response
         except Exception as exc:
-            logger.warning(
-                f"Error while getting runs for pipeline {workflow_id} - {exc}"
-            )
+            logger.warning(f"Error while getting runs for pipeline {workflow_id} - {exc}")
             logger.debug(traceback.format_exc())
         return []
 
@@ -170,7 +164,7 @@ class DomoClient:
             self.client.get(path="content/v1/cards", headers=HEADERS)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error listing cards due to [{exc}]")
+            logger.error(f"Error listing cards due to [{exc}]")
             raise exc
 
 

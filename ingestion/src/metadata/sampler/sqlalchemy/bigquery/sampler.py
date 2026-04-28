@@ -12,7 +12,8 @@
 Helper module to handle data sampling
 for the profiler
 """
-from copy import deepcopy
+
+from copy import deepcopy  # noqa: I001
 from typing import Dict, Optional, Union
 
 from sqlalchemy import Column
@@ -77,13 +78,8 @@ class BigQuerySampler(SQASampler):
 
         connection_config = deepcopy(service_connection_config)
         # Create a modified connection for BigQuery with the correct project ID
-        if (
-            hasattr(connection_config.credentials.gcpConfig, "projectId")
-            and self.entity.database
-        ):
-            connection_config.credentials.gcpConfig.projectId = SingleProjectId(
-                root=self.entity.database.name
-            )
+        if hasattr(connection_config.credentials.gcpConfig, "projectId") and self.entity.database:
+            connection_config.credentials.gcpConfig.projectId = SingleProjectId(root=self.entity.database.name)
             self.connection = get_ssl_connection(connection_config)
 
         self.session_factory = create_and_bind_thread_safe_session(self.connection)
@@ -99,9 +95,7 @@ class BigQuerySampler(SQASampler):
             and static.profileSampleType == ProfileSampleType.PERCENTAGE
             and self.raw_dataset_type != TableType.View
         ):
-            return selectable.tablesample(
-                text(f"{static.profileSample or 100} PERCENT")
-            )
+            return selectable.tablesample(text(f"{static.profileSample or 100} PERCENT"))
 
         return selectable
 
@@ -141,8 +135,6 @@ class BigQuerySampler(SQASampler):
             and static.profileSampleType == ProfileSampleType.PERCENTAGE
             and self.raw_dataset_type != TableType.View
         ):
-            return self._base_sample_query(column).cte(
-                f"{self.get_sampler_table_name()}_sample"
-            )
+            return self._base_sample_query(column).cte(f"{self.get_sampler_table_name()}_sample")
 
         return super().get_sample_query(column=column)

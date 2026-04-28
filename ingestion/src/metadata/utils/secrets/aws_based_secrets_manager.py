@@ -12,6 +12,7 @@
 """
 Abstract class for AWS based secrets manager implementations
 """
+
 import os
 from abc import ABC, abstractmethod
 from typing import Optional
@@ -46,7 +47,7 @@ def _() -> None:
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.airflow.value)
-def _() -> Optional["AWSCredentials"]:
+def _() -> Optional["AWSCredentials"]:  # noqa: F821
     from airflow.configuration import conf
 
     from metadata.generated.schema.security.credentials.awsCredentials import (
@@ -56,9 +57,7 @@ def _() -> Optional["AWSCredentials"]:
     aws_region = conf.get(SECRET_MANAGER_AIRFLOW_CONF, "aws_region", fallback=None)
     if aws_region:
         credentials = AWSCredentials(awsRegion=aws_region)
-        credentials.awsAccessKeyId = conf.get(
-            SECRET_MANAGER_AIRFLOW_CONF, "aws_access_key_id", fallback=""
-        )
+        credentials.awsAccessKeyId = conf.get(SECRET_MANAGER_AIRFLOW_CONF, "aws_access_key_id", fallback="")
         credentials.awsSecretAccessKey = CustomSecretStr(
             conf.get(SECRET_MANAGER_AIRFLOW_CONF, "aws_secret_access_key", fallback="")
         )
@@ -68,7 +67,7 @@ def _() -> Optional["AWSCredentials"]:
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.env.value)
-def _() -> Optional["AWSCredentials"]:
+def _() -> Optional["AWSCredentials"]:  # noqa: F821
     from metadata.generated.schema.security.credentials.awsCredentials import (
         AWSCredentials,
     )
@@ -103,7 +102,7 @@ class AWSBasedSecretsManager(ExternalSecretsManager, ABC):
         :return: The value of the secret
         """
 
-    def load_credentials(self) -> Optional["AWSCredentials"]:
+    def load_credentials(self) -> Optional["AWSCredentials"]:  # noqa: F821
         """Load the provider credentials based on the loader type"""
         try:
             loader_fn = secrets_manager_client_loader.registry.get(self.loader.value)

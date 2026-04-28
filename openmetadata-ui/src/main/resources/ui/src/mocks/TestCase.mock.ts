@@ -12,6 +12,13 @@
  */
 
 import { TestCaseStatus } from '../generated/tests/testCase';
+import {
+  Task,
+  TaskCategory,
+  TaskEntityStatus,
+  TaskEntityType,
+  TaskPriority,
+} from '../rest/tasksAPI';
 
 export const MOCK_TEST_CASE_DATA = {
   id: '4188c516-0d74-4692-bfe6-1727c58893f9',
@@ -150,6 +157,75 @@ export const MOCK_THREAD_DATA = [
       status: 'Open',
       testCaseResolutionStatusId: '65f7a1d2-ee28-4b43-b504-4be90c689f4d',
     },
+  },
+];
+
+export const MOCK_TASK_DATA: Task[] = [
+  {
+    id: '33873393-bd68-46e9-bccc-7701c1c41ad6',
+    taskId: 'TASK-00006',
+    name: 'test-case-failure-resolution-1',
+    category: TaskCategory.Incident,
+    type: TaskEntityType.TestCaseResolution,
+    status: TaskEntityStatus.Completed,
+    priority: TaskPriority.Medium,
+    about: {
+      id: '6206a003-281c-4984-9728-4e949a4e4023',
+      type: 'testCase',
+      fullyQualifiedName:
+        'sample_data.ecommerce_db.shopify.dim_address.table_column_count_between',
+    },
+    createdBy: {
+      id: '88e03a7b-3d53-4eaa-8daa-909cd535bedc',
+      type: 'user',
+      name: 'admin',
+      fullyQualifiedName: 'admin',
+    },
+    assignees: [
+      {
+        id: 'd75b492b-3b73-449d-922c-14b61bc44b3d',
+        type: 'user',
+        name: 'aaron_johnson0',
+        fullyQualifiedName: 'aaron_johnson0',
+        displayName: 'Aaron Johnson',
+      },
+    ],
+    comments: [],
+    createdAt: 1703570590556,
+    updatedAt: 1703570590652,
+  },
+  {
+    id: '9950d7a0-01a4-4e02-bd7f-c431d9cd77f1',
+    taskId: 'TASK-00009',
+    name: 'test-case-failure-resolution-2',
+    category: TaskCategory.Incident,
+    type: TaskEntityType.TestCaseResolution,
+    status: TaskEntityStatus.Open,
+    priority: TaskPriority.Medium,
+    about: {
+      id: '6206a003-281c-4984-9728-4e949a4e4023',
+      type: 'testCase',
+      fullyQualifiedName:
+        'sample_data.ecommerce_db.shopify.dim_address.table_column_count_between',
+    },
+    createdBy: {
+      id: '88e03a7b-3d53-4eaa-8daa-909cd535bedc',
+      type: 'user',
+      name: 'admin',
+      fullyQualifiedName: 'admin',
+    },
+    assignees: [
+      {
+        id: 'd75b492b-3b73-449d-922c-14b61bc44b3d',
+        type: 'user',
+        name: 'aaron_johnson0',
+        fullyQualifiedName: 'aaron_johnson0',
+        displayName: 'Aaron Johnson',
+      },
+    ],
+    comments: [],
+    createdAt: 1703570590829,
+    updatedAt: 1703570590829,
   },
 ];
 

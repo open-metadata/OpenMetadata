@@ -13,25 +13,23 @@
 
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { mockThreadData } from '../ActivityFeed/ActivityThreadPanel/ActivityThread.mock';
+import { MOCK_ANNOUNCEMENT_DATA } from '../../mocks/Announcement.mock';
 import AnnouncementThreads from './AnnouncementThreads';
 
-jest.mock('../../utils/FeedUtils', () => ({
-  getFeedListWithRelativeDays: jest.fn().mockReturnValue({
-    updatedFeedList: mockThreadData,
-    relativeDays: ['Today', 'Yesterday'],
-  }),
-}));
-
 const mockAnnouncementThreadsProp = {
-  threads: mockThreadData,
-  selectedThreadId: '',
+  announcements: [
+    ...MOCK_ANNOUNCEMENT_DATA.data,
+    {
+      ...MOCK_ANNOUNCEMENT_DATA.data[0],
+      id: 'expired-announcement',
+      name: 'expired-announcement',
+      startTime: 1,
+      endTime: 2,
+    },
+  ],
   editPermission: true,
-  postFeed: jest.fn(),
-  onThreadIdSelect: jest.fn(),
-  onThreadSelect: jest.fn(),
   onConfirmation: jest.fn(),
-  updateThreadHandler: jest.fn(),
+  updateAnnouncementHandler: jest.fn(),
 };
 
 jest.mock('./AnnouncementFeedCard.component', () => {

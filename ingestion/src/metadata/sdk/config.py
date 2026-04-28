@@ -1,4 +1,5 @@
 """Configuration helpers for the OpenMetadata SDK."""
+
 from __future__ import annotations
 
 import os
@@ -55,21 +56,15 @@ class OpenMetadataConfig:
         - OPENMETADATA_CA_BUNDLE: CA bundle path
         - OPENMETADATA_CLIENT_TIMEOUT: Client timeout in seconds (default: 30)
         """
-        server_url = os.environ.get("OPENMETADATA_HOST") or os.environ.get(
-            "OPENMETADATA_SERVER_URL"
-        )
+        server_url = os.environ.get("OPENMETADATA_HOST") or os.environ.get("OPENMETADATA_SERVER_URL")
         if not server_url:
             raise ValueError(
                 "Server URL must be provided via 'OPENMETADATA_HOST' or "
                 + "'OPENMETADATA_SERVER_URL' environment variable"
             )
 
-        jwt_token = os.environ.get("OPENMETADATA_JWT_TOKEN") or os.environ.get(
-            "OPENMETADATA_API_KEY"
-        )
-        verify_ssl = (
-            os.environ.get("OPENMETADATA_VERIFY_SSL", "false").lower() == "true"
-        )
+        jwt_token = os.environ.get("OPENMETADATA_JWT_TOKEN") or os.environ.get("OPENMETADATA_API_KEY")
+        verify_ssl = os.environ.get("OPENMETADATA_VERIFY_SSL", "false").lower() == "true"
         ca_bundle = os.environ.get("OPENMETADATA_CA_BUNDLE")
         client_timeout = int(os.environ.get("OPENMETADATA_CLIENT_TIMEOUT", "30"))
 

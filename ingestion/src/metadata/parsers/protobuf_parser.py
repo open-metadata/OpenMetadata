@@ -63,7 +63,7 @@ class ProtobufDataTypes(Enum):
         value = ", ".join([repr(v) for v in self._all_values])
         return (
             f"<"  # pylint: disable=no-member
-            f"{self.__class__.__name__,}"
+            f"{(self.__class__.__name__,)}"
             f"{self._name_}"
             f"{value}"
             f">"
@@ -124,9 +124,7 @@ class ProtobufParser:
             return proto_path, file_path
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}"
-            )
+            logger.warning(f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}")
         return None
 
     def get_protobuf_python_object(self, proto_path: str, file_path: str):
@@ -147,11 +145,7 @@ class ProtobufParser:
             # import the python file
             sys.path.append(self.generated_src_dir)
             generated_src_dir_path = Path(self.generated_src_dir)
-            py_file = glob.glob(
-                str(
-                    generated_src_dir_path.joinpath(f"{self.config.schema_name}_pb2.py")
-                )
-            )[0]
+            py_file = glob.glob(str(generated_src_dir_path.joinpath(f"{self.config.schema_name}_pb2.py")))[0]
             module_name = Path(py_file).stem
             message = importlib.import_module(module_name)
 
@@ -161,31 +155,23 @@ class ProtobufParser:
             return instance
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unable to create protobuf python module for {self.config.schema_name}: {exc}"
-            )
+            logger.warning(f"Unable to create protobuf python module for {self.config.schema_name}: {exc}")
         return None
 
-    def parse_protobuf_schema(
-        self, cls: Type[BaseModel] = FieldModel
-    ) -> Optional[List[Union[FieldModel, Column]]]:
+    def parse_protobuf_schema(self, cls: Type[BaseModel] = FieldModel) -> Optional[List[Union[FieldModel, Column]]]:
         """
         Method to parse the protobuf schema
         """
 
         try:
             proto_path, file_path = self.create_proto_files()
-            instance = self.get_protobuf_python_object(
-                proto_path=proto_path, file_path=file_path
-            )
+            instance = self.get_protobuf_python_object(proto_path=proto_path, file_path=file_path)
 
             field_models = [
                 cls(
                     name=instance.DESCRIPTOR.name,
                     dataType="RECORD",
-                    children=self.get_protobuf_fields(
-                        instance.DESCRIPTOR.fields, cls=cls
-                    ),
+                    children=self.get_protobuf_fields(instance.DESCRIPTOR.fields, cls=cls),
                 )
             ]
 
@@ -196,9 +182,7 @@ class ProtobufParser:
             return field_models
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}"
-            )
+            logger.warning(f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}")
         return None
 
     def _get_field_type(self, type_: int, cls: Type[BaseModel] = FieldModel) -> str:
@@ -223,17 +207,13 @@ class ProtobufParser:
                     cls(
                         name=field.name,
                         dataType=self._get_field_type(field.type, cls=cls),
-                        children=self.get_protobuf_fields(
-                            field.message_type.fields, cls=cls
-                        )
+                        children=self.get_protobuf_fields(field.message_type.fields, cls=cls)
                         if field.type == 11
                         else None,
                     )
                 )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unable to parse the protobuf schema into models: {exc}"
-                )
+                logger.warning(f"Unable to parse the protobuf schema into models: {exc}")
 
         return field_models

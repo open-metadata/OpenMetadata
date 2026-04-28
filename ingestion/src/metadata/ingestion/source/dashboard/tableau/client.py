@@ -11,6 +11,7 @@
 """
 Wrapper module of TableauServerConnection client
 """
+
 import math
 import traceback
 from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
@@ -106,9 +107,7 @@ class TableauClient:
     def site_id(self) -> str:
         return self.tableau_server.site_id
 
-    def get_tableau_owner(
-        self, owner_id: str, include_owners: bool = True
-    ) -> Optional[TableauOwner]:
+    def get_tableau_owner(self, owner_id: str, include_owners: bool = True) -> Optional[TableauOwner]:
         """
         Get tableau owner with optional include_owners flag
         """
@@ -119,9 +118,7 @@ class TableauClient:
                 return self.owner_cache[owner_id]
             owner = self.tableau_server.users.get_by_id(owner_id) if owner_id else None
             if owner:
-                owner_obj = TableauOwner(
-                    id=str(owner.id), name=owner.name, email=owner.email
-                )
+                owner_obj = TableauOwner(id=str(owner.id), name=owner.name, email=owner.email)
                 self.owner_cache[owner_id] = owner_obj
                 return owner_obj
         except Exception as err:
@@ -150,9 +147,7 @@ class TableauClient:
                 )
                 view_count += view.total_views
             except AttributeError as e:
-                logger.debug(
-                    f"Failed to process view due to missing attribute: {str(e)}"
-                )
+                logger.debug(f"Failed to process view due to missing attribute: {str(e)}")
                 continue
             except Exception as e:
                 logger.debug(f"Failed to process view: {str(e)}")
@@ -184,11 +179,7 @@ class TableauClient:
             while current_project_id:
                 # Find project with current ID
                 project = next(
-                    (
-                        proj
-                        for proj in self.all_projects
-                        if str(proj.id) == str(current_project_id)
-                    ),
+                    (proj for proj in self.all_projects if str(proj.id) == str(current_project_id)),
                     None,
                 )
 
@@ -198,9 +189,7 @@ class TableauClient:
                 parent_projects.append(project.name)
 
                 # Get parent ID and continue loop if exists
-                current_project_id = (
-                    project.parent_id if hasattr(project, "parent_id") else None
-                )
+                current_project_id = project.parent_id if hasattr(project, "parent_id") else None
 
             if parent_projects:
                 parent_projects = ".".join(reversed(parent_projects))
@@ -218,15 +207,11 @@ class TableauClient:
         for workbook in Pager(self.tableau_server.workbooks):
             try:
                 self.tableau_server.workbooks.populate_views(workbook, usage=True)
-                charts, user_views = self.get_workbook_charts_and_user_count(
-                    workbook.views, include_owners
-                )
+                charts, user_views = self.get_workbook_charts_and_user_count(workbook.views, include_owners)
                 workbook = TableauDashboard(
                     id=str(workbook.id),
                     name=workbook.name,
-                    project=TableauBaseModel(
-                        id=str(workbook.project_id), name=workbook.project_name
-                    ),
+                    project=TableauBaseModel(id=str(workbook.project_id), name=workbook.project_name),
                     owner=self.get_tableau_owner(workbook.owner_id, include_owners),
                     description=workbook.description,
                     tags=workbook.tags,
@@ -236,9 +221,7 @@ class TableauClient:
                 )
                 yield workbook
             except AttributeError as err:
-                logger.warning(
-                    f"Failed to process workbook due to missing attribute: {str(err)}"
-                )
+                logger.warning(f"Failed to process workbook due to missing attribute: {str(err)}")
                 continue
             except Exception as err:
                 logger.warning(f"Failed to process workbook: {str(err)}")
@@ -257,9 +240,7 @@ class TableauClient:
 
     def test_get_workbook_views(self, include_owners: bool = True):
         workbook = self.test_get_workbooks()
-        charts, _ = self.get_workbook_charts_and_user_count(
-            workbook.views, include_owners
-        )
+        charts, _ = self.get_workbook_charts_and_user_count(workbook.views, include_owners)
         if charts:
             return True
         raise TableauChartsException(
@@ -299,14 +280,10 @@ class TableauClient:
         workbook = self.test_get_workbooks()
 
         if workbook.id is None:
-            raise TableauDataModelsException(
-                "Unable to get any workbooks to fetch tableau data sources"
-            )
+            raise TableauDataModelsException("Unable to get any workbooks to fetch tableau data sources")
 
         # Take the 1st workbook's id and pass to the graphql query
-        data = self._query_datasources(
-            dashboard_id=workbook.id, entities_per_page=1, offset=0
-        )
+        data = self._query_datasources(dashboard_id=workbook.id, entities_per_page=1, offset=0)
         if data:
             return data
         raise TableauDataModelsException(
@@ -325,9 +302,7 @@ class TableauClient:
         """
         try:
             datasources_graphql_result = self.tableau_server.metadata.query(
-                query=TABLEAU_DATASOURCES_QUERY.format(
-                    workbook_id=dashboard_id, first=entities_per_page, offset=offset
-                )
+                query=TABLEAU_DATASOURCES_QUERY.format(workbook_id=dashboard_id, first=entities_per_page, offset=offset)
             )
             if datasources_graphql_result and datasources_graphql_result.get("data"):
                 if datasources_graphql_result["data"].get("workbooks"):
@@ -358,9 +333,7 @@ class TableauClient:
         """
         try:
             # Query the graphql endpoint once to get total count of data sources
-            tableau_datasource = self._query_datasources(
-                dashboard_id=dashboard_id, entities_per_page=1, offset=1
-            )
+            tableau_datasource = self._query_datasources(dashboard_id=dashboard_id, entities_per_page=1, offset=1)
             entities_per_page = min(50, self.pagination_limit)
             indexes = math.ceil(tableau_datasource.totalCount / entities_per_page)
 
@@ -398,9 +371,7 @@ class TableauClient:
         Fetch all custom SQL tables and cache their queries by workbook ID
         """
         try:
-            result = self.tableau_server.metadata.query(
-                query=TALEAU_GET_CUSTOM_SQL_QUERY
-            )
+            result = self.tableau_server.metadata.query(query=TALEAU_GET_CUSTOM_SQL_QUERY)
             if not result:
                 logger.debug("No result returned from GraphQL query")
                 return
@@ -413,16 +384,12 @@ class TableauClient:
             for tables in response.data.values():
                 for table in tables:
                     if not (table.query and table.downstreamDatasources):
-                        logger.debug(
-                            f"Skipping table {table} - missing query or workbooks"
-                        )
+                        logger.debug(f"Skipping table {table} - missing query or workbooks")
                         continue
 
                     query = table.query
                     for datasource in table.downstreamDatasources:
-                        self.custom_sql_table_queries.setdefault(
-                            datasource.id, []
-                        ).append(query)
+                        self.custom_sql_table_queries.setdefault(datasource.id, []).append(query)
 
         except Exception:
             logger.debug(traceback.format_exc())

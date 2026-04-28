@@ -12,7 +12,7 @@
 MSSQL SQLAlchemy Helper Methods
 """
 
-from typing import Optional
+from typing import Optional  # noqa: I001
 
 from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text
 from sqlalchemy import types as sqltypes
@@ -53,9 +53,7 @@ logger = ingestion_logger()
 
 
 @reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_comment(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     return get_table_comment_wrapper(
         self,
         connection,
@@ -69,9 +67,7 @@ def db_plus_owner_listing(fn):
     def wrap(dialect, connection, schema=None, **kw):
         schema = f"[{schema}]" if schema and "." in schema else schema
         dbname, owner = _owner_plus_db(dialect, schema)
-        return _switch_db(
-            dbname, connection, fn, dialect, connection, dbname, owner, schema, **kw
-        )
+        return _switch_db(dbname, connection, fn, dialect, connection, dbname, owner, schema, **kw)
 
     return update_wrapper(wrap, fn)
 
@@ -98,9 +94,7 @@ def db_plus_owner(fn):
 
 @reflection.cache
 @db_plus_owner
-def get_columns(
-    self, connection, tablename, dbname, owner, schema, **kw
-):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements
+def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements
     """
     This function overrides to add support for column comments
     """
@@ -158,8 +152,7 @@ def get_columns(
             computed_cols,
             onclause=sql.and_(
                 computed_cols.c.object_id == func.object_id(full_name),
-                computed_cols.c.name
-                == columns.c.column_name.collate("DATABASE_DEFAULT"),
+                computed_cols.c.name == columns.c.column_name.collate("DATABASE_DEFAULT"),
             ),
             isouter=True,
         )
@@ -167,8 +160,7 @@ def get_columns(
             identity_cols,
             onclause=sql.and_(
                 identity_cols.c.object_id == func.object_id(full_name),
-                identity_cols.c.name
-                == columns.c.column_name.collate("DATABASE_DEFAULT"),
+                identity_cols.c.name == columns.c.column_name.collate("DATABASE_DEFAULT"),
             ),
             isouter=True,
         )
@@ -267,9 +259,7 @@ def get_columns(
                     scale = numericscale
 
             coltype = coltype(**kwargs)
-        raw_data_type = get_display_datatype(
-            type_, char_len=charlen, precision=precision, scale=scale
-        )
+        raw_data_type = get_display_datatype(type_, char_len=charlen, precision=precision, scale=scale)
         cdict = {
             "name": name,
             "type": coltype,
@@ -312,9 +302,7 @@ def get_columns(
 
 @reflection.cache
 @db_plus_owner
-def get_view_definition(
-    self, connection, viewname, dbname, owner, schema, **kw
-):  # pylint: disable=unused-argument
+def get_view_definition(self, connection, viewname, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
     return get_view_definition_wrapper(
         self,
         connection,
@@ -326,9 +314,7 @@ def get_view_definition(
 
 @reflection.cache
 @db_plus_owner
-def get_pk_constraint(
-    self, connection, tablename, dbname, owner=None, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_pk_constraint(self, connection, tablename, dbname, owner=None, schema=None, **kw):  # pylint: disable=unused-argument
     """
     This function overrides to get pk constraint
     """
@@ -370,9 +356,7 @@ def get_unique_constraints(self, connection, table_name, schema=None, **kw):
 
 @reflection.cache
 @db_plus_owner
-def get_foreign_keys(
-    self, connection, tablename, dbname, owner=None, schema=None, **kw
-):  # pylint: disable=unused-argument, too-many-locals
+def get_foreign_keys(self, connection, tablename, dbname, owner=None, schema=None, **kw):  # pylint: disable=unused-argument, too-many-locals
     """
     This function overrides to get foreign key constraint
     """
@@ -455,9 +439,7 @@ def get_foreign_keys(
 
 @reflection.cache
 @db_plus_owner_listing
-def get_table_names(
-    self, connection, dbname, owner, schema, **kw
-):  # pylint: disable=unused-argument
+def get_table_names(self, connection, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
     tables = ischema.tables
     query_ = (
         sql.select(tables.c.table_name)
@@ -475,9 +457,7 @@ def get_table_names(
 
 @reflection.cache
 @db_plus_owner_listing
-def get_view_names(
-    self, connection, dbname, owner, schema, **kw
-):  # pylint: disable=unused-argument
+def get_view_names(self, connection, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
     tables = ischema.tables
     query_ = (
         sql.select(tables.c.table_name)

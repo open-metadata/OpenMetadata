@@ -12,6 +12,7 @@
 """
 Tests for JSONDataFrameReader
 """
+
 import gzip
 import json
 import tempfile
@@ -42,9 +43,7 @@ class TestJSONReader(unittest.TestCase):
     def test_json_lines_local(self):
         json_lines = '{"id": 1, "name": "Alice"}\n{"id": 2, "name": "Bob"}\n'
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".jsonl", delete=False
-        ) as tmp:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as tmp:
             tmp.write(json_lines)
             tmp_path = tmp.name
 
@@ -221,11 +220,7 @@ class TestJSONReader(unittest.TestCase):
         mock_fs.open.return_value.__exit__ = Mock(return_value=False)
         mock_fs.info.return_value = {"size": len(json_data)}
 
-        config = AzureConfig(
-            securityConfig=AzureCredentials(
-                accountName="test", clientId="test", tenantId="test"
-            )
-        )
+        config = AzureConfig(securityConfig=AzureCredentials(accountName="test", clientId="test", tenantId="test"))
         reader = JSONDataFrameReader(config, None)
 
         result = reader._read(key="test.json", bucket_name="test-container")
@@ -245,9 +240,7 @@ class TestJSONReader(unittest.TestCase):
         mock_client.head_object.return_value = {"ContentLength": len(json_data)}
 
         config = S3Config(
-            securityConfig=AWSCredentials(
-                awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1"
-            )
+            securityConfig=AWSCredentials(awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1")
         )
         reader = JSONDataFrameReader(config, mock_client)
 
