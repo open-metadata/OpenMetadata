@@ -31,10 +31,11 @@ QUESTDB_GET_VIEW_DEFINITION = textwrap.dedent(
     """
 )
 
-QUESTDB_GET_MATERIALIZED_VIEWS = textwrap.dedent(
+QUESTDB_GET_MATERIALIZED_VIEW_DEFINITION = textwrap.dedent(
     """
-    SELECT view_name, base_table_name, view_sql
+    SELECT view_sql
     FROM materialized_views()
+    WHERE view_name = :name
     """
 )
 

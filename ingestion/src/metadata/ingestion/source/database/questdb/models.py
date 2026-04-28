@@ -43,6 +43,4 @@ class QuestDBViewDefinitionRow(BaseModel):
 class QuestDBMaterializedViewRow(BaseModel):
     """One row from QuestDB's ``materialized_views()`` function."""
 
-    view_name: str
-    base_table_name: str
-    view_sql: str | None = None
+    view_sql: str

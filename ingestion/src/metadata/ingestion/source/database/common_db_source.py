@@ -576,8 +576,9 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                 table_name=table_name, schema_name=schema_name, inspector=self.inspector
             )
             if is_partitioned:
-                table_request.tableType = TableType.Partitioned.value
-                table_request.tablePartition = partition_details
+                if table_type not in (TableType.View, TableType.MaterializedView):
+                    table_request.tableType = TableType.Partitioned.value
+                    table_request.tablePartition = partition_details
 
             yield Either(right=table_request)
 

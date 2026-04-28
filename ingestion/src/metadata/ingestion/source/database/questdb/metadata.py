@@ -37,7 +37,10 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.questdb.connection import (
     QUESTDB_DEFAULT_DATABASE,
 )
-from metadata.ingestion.source.database.questdb.utils import _query_tables
+from metadata.ingestion.source.database.questdb.utils import (
+    _get_materialized_view_definition,
+    _query_tables,
+)
 
 
 class QuestDBSource(CommonDbSourceService):
@@ -92,6 +95,13 @@ class QuestDBSource(CommonDbSourceService):
             for row in self._tables_cache.values()
             if row.table_type in ("V", "M")
         ]
+
+    def get_schema_definition(self, table_type, table_name, schema_name, inspector):
+        if table_type == TableType.MaterializedView:
+            result = _get_materialized_view_definition(self.connection, table_name)
+            print(f"Materialized view definition {str(result).strip()}")
+            return str(result).strip() if result else None
+        return super().get_schema_definition(table_type, table_name, schema_name, inspector)
 
     def get_table_partition_details(
         self,

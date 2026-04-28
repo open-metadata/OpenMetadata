@@ -47,11 +47,13 @@ from sqlalchemy.types import (
 
 from metadata.ingestion.source.database.questdb.models import (
     QuestDBColumnRow,
+    QuestDBMaterializedViewRow,
     QuestDBTableRow,
     QuestDBViewDefinitionRow,
 )
 from metadata.ingestion.source.database.questdb.queries import (
     QUESTDB_GET_COLUMNS,
+    QUESTDB_GET_MATERIALIZED_VIEW_DEFINITION,
     QUESTDB_GET_TABLES,
     QUESTDB_GET_VIEW_DEFINITION,
 )
@@ -138,6 +140,20 @@ def _get_view_definition_from_views(
     if not raw:
         return None
     return QuestDBViewDefinitionRow.model_validate(dict(raw._mapping)).view_sql
+
+
+def _get_materialized_view_definition(
+    connection: Connection,
+    view_name: str,
+) -> str | None:
+    result = connection.execute(
+        text(QUESTDB_GET_MATERIALIZED_VIEW_DEFINITION),
+        {"name": view_name},
+    )
+    raw = result.fetchone()
+    if not raw:
+        return None
+    return QuestDBMaterializedViewRow.model_validate(dict(raw._mapping)).view_sql
 
 
 def patch_questdb_dialect(engine: Engine) -> Engine:
