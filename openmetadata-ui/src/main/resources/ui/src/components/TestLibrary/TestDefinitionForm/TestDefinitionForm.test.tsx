@@ -388,7 +388,9 @@ describe('TestDefinitionForm Component', () => {
           .getByLabelText('label.name')
           .closest('.ant-form-item');
 
-        expect(nameFormItem).toHaveTextContent('message.field-text-is-required');
+        expect(nameFormItem).toHaveTextContent(
+          'message.field-text-is-required'
+        );
       });
 
       it('entityType field is required', async () => {
