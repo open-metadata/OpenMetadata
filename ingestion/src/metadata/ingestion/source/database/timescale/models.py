@@ -13,7 +13,7 @@
 TimescaleDB models for metadata extraction
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, Field
 
@@ -24,18 +24,18 @@ class HypertableInfo(BaseModel):
     hypertable_schema: str
     hypertable_name: str
     compression_enabled: bool
-    column_name: Optional[str] = None
-    interval_length: Optional[int] = None
-    integer_interval: Optional[int] = None
-    integer_now_func: Optional[str] = None
+    column_name: Optional[str] = None  # noqa: UP045
+    interval_length: Optional[int] = None  # noqa: UP045
+    integer_interval: Optional[int] = None  # noqa: UP045
+    integer_now_func: Optional[str] = None  # noqa: UP045
     num_dimensions: int = 1
 
 
 class CompressionSettings(BaseModel):
     """Compression configuration for a hypertable"""
 
-    segment_by_columns: Optional[List[str]] = Field(default_factory=list)
-    order_by_columns: Optional[List[str]] = Field(default_factory=list)
+    segment_by_columns: Optional[List[str]] = Field(default_factory=list)  # noqa: UP006, UP045
+    order_by_columns: Optional[List[str]] = Field(default_factory=list)  # noqa: UP006, UP045
 
 
 class ContinuousAggregateInfo(BaseModel):
@@ -43,11 +43,11 @@ class ContinuousAggregateInfo(BaseModel):
 
     view_schema: str
     view_name: str
-    view_definition: Optional[str] = None
+    view_definition: Optional[str] = None  # noqa: UP045
     compression_enabled: bool = False
     materialized_only: bool = False
-    materialization_hypertable_schema: Optional[str] = None
-    materialization_hypertable_name: Optional[str] = None
+    materialization_hypertable_schema: Optional[str] = None  # noqa: UP045
+    materialization_hypertable_name: Optional[str] = None  # noqa: UP045
 
 
 class ChunkInfo(BaseModel):
@@ -55,7 +55,7 @@ class ChunkInfo(BaseModel):
 
     chunk_schema: str
     chunk_name: str
-    range_start: Optional[str] = None
-    range_end: Optional[str] = None
+    range_start: Optional[str] = None  # noqa: UP045
+    range_end: Optional[str] = None  # noqa: UP045
     is_compressed: bool = False
-    chunk_tablespace: Optional[str] = None
+    chunk_tablespace: Optional[str] = None  # noqa: UP045

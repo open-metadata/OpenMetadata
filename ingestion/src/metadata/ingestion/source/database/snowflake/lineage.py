@@ -13,7 +13,7 @@ Snowflake lineage module
 """
 
 import traceback
-from typing import Iterator
+from typing import Iterator  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -65,7 +65,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             account_usage=self.service_connection.accountUsageSchema,
         )
 
-        return query
+        return query  # noqa: RET504
 
     def yield_table_query(self) -> Iterator[TableQuery]:
         """

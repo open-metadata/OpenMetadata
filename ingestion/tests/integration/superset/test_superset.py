@@ -76,7 +76,7 @@ from metadata.ingestion.source.dashboard.superset.models import (
 )
 
 mock_file_path = Path(__file__).parent / "resources/superset_dataset.json"
-with open(mock_file_path, encoding="UTF-8") as file:
+with open(mock_file_path, encoding="UTF-8") as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 MOCK_DASHBOARD_RESP = SupersetDashboardCount(**mock_data["dashboard"])
@@ -226,21 +226,21 @@ def setup_sample_data(postgres_container):
                 CREATE TABLE ab_user (
                 id INT PRIMARY KEY,
                 username VARCHAR(50));
-        """
+        """  # noqa: N806
         CREATE_TABLE_DASHBOARDS = """
             CREATE TABLE dashboards (
             id INT PRIMARY KEY,
             created_by_fk INT,
             FOREIGN KEY (created_by_fk) REFERENCES ab_user(id));
-        """
+        """  # noqa: N806
         INSERT_AB_USER_DATA = """
             INSERT INTO ab_user (id, username)
             VALUES (1, 'test_user');
-        """
+        """  # noqa: N806
         INSERT_DASHBOARDS_DATA = """
             INSERT INTO dashboards (id, created_by_fk)
             VALUES (1, 1);
-        """
+        """  # noqa: N806
         CREATE_SLICES_TABLE = """
             CREATE TABLE slices (
                 id INTEGER PRIMARY KEY,
@@ -250,22 +250,22 @@ def setup_sample_data(postgres_container):
                 viz_type VARCHAR(255),
                 datasource_type VARCHAR(255)
             )
-        """
+        """  # noqa: N806
         INSERT_SLICES_DATA = """
             INSERT INTO slices(id, slice_name, description, datasource_id, viz_type, datasource_type)
             VALUES (1, 'Rural', 'desc', 99, 'bar_chart', 'table');
-        """
+        """  # noqa: N806
         CREATE_DBS_TABLE = """
             CREATE TABLE dbs (
                 id INTEGER PRIMARY KEY,
                 database_name VARCHAR(255),
                 sqlalchemy_uri TEXT
             )
-        """
+        """  # noqa: N806
         INSERT_DBS_DATA = """
             INSERT INTO dbs(id, database_name, sqlalchemy_uri)
             VALUES (5, 'test_db', 'postgres://user:pass@localhost:5432/examples');
-        """
+        """  # noqa: N806
         CREATE_TABLES_TABLE = """
             CREATE TABLE tables (
                 id INTEGER PRIMARY KEY,
@@ -274,11 +274,11 @@ def setup_sample_data(postgres_container):
                 database_id INTEGER,
                 sql VARCHAR(4000)
             );
-        """
+        """  # noqa: N806
         INSERT_TABLES_DATA = """
             INSERT INTO tables(id, table_name, schema, database_id)
             VALUES (99, 'sample_table', 'main', 5);
-        """
+        """  # noqa: N806
         CREATE_TABLE_COLUMNS_TABLE = """
             CREATE TABLE table_columns (
                 id INTEGER PRIMARY KEY,
@@ -288,7 +288,7 @@ def setup_sample_data(postgres_container):
                 type VARCHAR(255),
                 description VARCHAR(255)
             );
-        """
+        """  # noqa: N806
         CREATE_TABLE_COLUMNS_DATA = """
             INSERT INTO 
                 table_columns(id, table_name, table_id, column_name, type, description)
@@ -296,7 +296,7 @@ def setup_sample_data(postgres_container):
                 (1099, 'sample_table', 99, 'id', 'VARCHAR', 'dummy description'), 
                 (1199, 'sample_table', 99, 'timestamp', 'VARCHAR', 'dummy description'),
                 (1299, 'sample_table', 99, 'price', 'VARCHAR', 'dummy description');
-        """
+        """  # noqa: N806, W291
 
         connection.execute(sqlalchemy.text(CREATE_TABLE_AB_USER))
         connection.execute(sqlalchemy.text(INSERT_AB_USER_DATA))
@@ -317,7 +317,7 @@ superset_container = postgres_container = None  # noqa: F811
 
 
 def set_testcontainers():
-    global INITIAL_SETUP, superset_container, postgres_container
+    global INITIAL_SETUP, superset_container, postgres_container  # noqa: PLW0603
     if INITIAL_SETUP:
         # postgres test container
         postgres_container = PostgresContainer("postgres:16-alpine")
@@ -353,12 +353,12 @@ class SupersetUnitTest(TestCase):
         superset_container.stop()
         postgres_container.stop()
 
-    def __init__(self, methodName) -> None:
+    def __init__(self, methodName) -> None:  # noqa: N803
         super().__init__(methodName)
 
         superset_container, postgres_container = set_testcontainers()
 
-        MOCK_SUPERSET_API_CONFIG = {
+        MOCK_SUPERSET_API_CONFIG = {  # noqa: N806
             "source": {
                 "type": "superset",
                 "serviceName": "test_supserset",
@@ -391,7 +391,7 @@ class SupersetUnitTest(TestCase):
                 },
             },
         }
-        MOCK_SUPERSET_DB_CONFIG = {
+        MOCK_SUPERSET_DB_CONFIG = {  # noqa: N806
             "source": {
                 "type": "superset",
                 "serviceName": "test_supserset",

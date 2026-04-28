@@ -38,7 +38,7 @@ def get_connection(connection: DynamoDBConnection):
     return AWSClient(connection.awsConfig).get_dynamo_client()
 
 
-def check_list_tables(client):
+def check_list_tables(client):  # noqa: RET503
     """
     Test ListTables under dynamodb
     client.tables.all() passes even if wrong credentials are passed
@@ -52,8 +52,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: AWSClient,
     service_connection: DynamoDBConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part

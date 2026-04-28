@@ -11,9 +11,9 @@
 """BurstIQ-specific profiler interface overrides."""
 
 import traceback as _tb
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional  # noqa: UP035
 
-import pandas as _pd
+import pandas as _pd  # noqa: ICN001
 
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.profiler.interface.pandas.profiler_interface import (
@@ -49,7 +49,7 @@ _DATETIME_TYPES = {
 class BurstIQProfilerInterface(PandasProfilerInterface):
     """BurstIQ-specific profiler interface."""
 
-    def get_columns(self) -> List[Optional[SQALikeColumn]]:
+    def get_columns(self) -> List[Optional[SQALikeColumn]]:  # noqa: UP006, UP045
         """Override to fix type misclassification and column name consistency.
 
         The parent infers column types from pandas df dtypes. BurstIQ's timezone-aware
@@ -107,15 +107,15 @@ class BurstIQProfilerInterface(PandasProfilerInterface):
         def yield_type_casted_dfs():
             for df in original_dataset():
                 try:
-                    df = self._rename_complex_columns(df)
+                    df = self._rename_complex_columns(df)  # noqa: PLW2901
                     for col_name in numeric_cols:
                         if col_name in df.columns:
                             df[col_name] = _pd.to_numeric(df[col_name], errors="coerce")
                     if other_cast_map:
-                        filtered = {c: other_cast_map[c] for c in df.keys() if c in other_cast_map}
+                        filtered = {c: other_cast_map[c] for c in df.keys() if c in other_cast_map}  # noqa: SIM118
                         if filtered:
                             try:
-                                df = df.astype(filtered)
+                                df = df.astype(filtered)  # noqa: PLW2901
                             except (TypeError, ValueError) as err:
                                 logger.warning(f"NaN/NoneType found in the Dataframe: {err}")
                 except Exception as err:  # pylint: disable=broad-except
