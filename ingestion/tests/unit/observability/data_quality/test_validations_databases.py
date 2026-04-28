@@ -14,6 +14,7 @@ Test Table and Column Tests' validate implementations.
 
 Each test should validate the Success, Failure and Aborted statuses
 """
+
 from datetime import date, datetime
 from unittest.mock import patch
 
@@ -40,6 +41,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
     "columnValuesToNotMatchRegex",
     "tableCustomSQLQuery",
 }
+
 
 # pylint: disable=line-too-long
 @pytest.mark.parametrize(
@@ -1004,7 +1006,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
         ),
     ],
 )
-def test_suite_validation_database(
+def test_suite_validation_database(  # noqa: C901
     test_case_name,
     test_case_type,
     test_type,
@@ -1126,11 +1128,7 @@ def test_suite_validation_database(
         assert len(res.dimensionResults) == len(expected_dimension)
         for expected_dim in expected_dimension:
             dim = next(
-                (
-                    dim
-                    for dim in res.dimensionResults
-                    if dim.dimensionKey == expected_dim[0]
-                ),
+                (dim for dim in res.dimensionResults if dim.dimensionKey == expected_dim[0]),
                 None,
             )
             assert dim is not None

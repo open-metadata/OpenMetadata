@@ -303,7 +303,6 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
       if (makeInstance !== null) {
-        await mainEntity.cleanupCustomProperty(apiContext);
         await mainEntity.delete(apiContext);
         if (key === 'entity_dataProduct') {
           for (const domain of (mainEntity as DataProduct).getDomains()) {
@@ -495,9 +494,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await editButton.click();
 
           await page.locator("pre[role='presentation']").last().click();
-          await page.keyboard.type(
-            "SELECT id, name, email\nFROM users\nWHERE active = true\nAND department = 'engineering'\nORDER BY created_at DESC\nLIMIT 100"
-          );
+          const value =
+            "SELECT id, name, email\nFROM users\nWHERE active = true\nAND department = 'engineering'\nORDER BY created_at DESC\nLIMIT 100";
+          await page.keyboard.type(value + '\n' + value);
 
           const patchResponse = page.waitForResponse(
             `/api/v1/${entity.entityApiType}/*`

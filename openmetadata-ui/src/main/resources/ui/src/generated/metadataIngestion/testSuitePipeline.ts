@@ -191,6 +191,8 @@ export interface ServiceConnection {
  *
  * Salesforce Connection Config
  *
+ * SAP SuccessFactors Connection Config
+ *
  * SingleStore Database Connection Config
  *
  * Snowflake Connection Config
@@ -475,6 +477,8 @@ export interface ConfigObject {
      *
      * client_id for Sigma.
      *
+     * OAuth2 Client ID. Required when authType is OAuth2Credentials.
+     *
      * Azure Application (client) ID for service principal authentication.
      *
      * Azure Application (client) ID for Service Principal authentication.
@@ -706,6 +710,8 @@ export interface ConfigObject {
      *
      * Password to connect to Salesforce.
      *
+     * Password for BasicAuth authentication. Required when authType is BasicAuth.
+     *
      * Password to connect to SingleStore.
      *
      * Password to connect to Snowflake.
@@ -804,6 +810,11 @@ export interface ConfigObject {
      *
      * Username to connect to Salesforce. This user should have privileges to read all the
      * metadata in Salesforce.
+     *
+     * SAP SuccessFactors user login name. For BasicAuth: used as the credential username. For
+     * OAuth2Credentials: used as the SAML NameID — the user on whose behalf the token is
+     * requested. The user must exist in the SF system and be permitted to use the OAuth2
+     * application.
      *
      * Username to connect to SingleStore. This user should have privileges to read all the
      * metadata in MySQL.
@@ -944,6 +955,8 @@ export interface ConfigObject {
      *
      * ThoughtSpot API version to use
      *
+     * SAP SuccessFactors OData API version.
+     *
      * OpenMetadata server API version to use.
      *
      * Airbyte API version.
@@ -960,6 +973,8 @@ export interface ConfigObject {
      * Choose Auth Config Type.
      *
      * Choose Auth Configuration Type.
+     *
+     * Choose how to authenticate with SAP SuccessFactors OData API.
      *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
@@ -1538,6 +1553,26 @@ export interface ConfigObject {
      */
     sobjectNames?: string[];
     /**
+     * SAP SuccessFactors OData API base URL. For example: https://api4.successfactors.com
+     */
+    baseUrl?: string;
+    /**
+     * SAP SuccessFactors Company ID (tenant identifier). Required for all API calls.
+     */
+    companyId?: string;
+    /**
+     * PEM-encoded RSA private key used to sign SAML assertions for OAuth2 SAML Bearer flow.
+     * Required when authType is OAuth2Credentials.
+     *
+     * Connection to Snowflake instance via Private Key
+     */
+    privateKey?: string;
+    /**
+     * OAuth2 Token endpoint URL. Required when authType is OAuth2Credentials. For example:
+     * https://api4.successfactors.com/oauth/token
+     */
+    tokenUrl?: string;
+    /**
      * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
      * account is xyz1234.us-east-1.gcp
      *
@@ -1573,10 +1608,6 @@ export interface ConfigObject {
      * TRANSIENT tables.
      */
     includeTransientTables?: boolean;
-    /**
-     * Connection to Snowflake instance via Private Key
-     */
-    privateKey?: string;
     /**
      * Session query tag used to monitor usage on snowflake. To use a query tag snowflake user
      * should have enough privileges to alter the session.
@@ -2991,10 +3022,16 @@ export enum CloudRegion {
 }
 
 /**
+ * Choose how to authenticate with SAP SuccessFactors OData API.
+ *
+ * Authentication type to connect to SAP SuccessFactors.
+ *
  * Database Authentication types not requiring config.
  */
 export enum NoConfigAuthenticationTypes {
+    BasicAuth = "BasicAuth",
     OAuth2 = "OAuth2",
+    OAuth2Credentials = "OAuth2Credentials",
 }
 
 /**
@@ -5070,6 +5107,7 @@ export enum ConfigType {
     SapERP = "SapErp",
     SapHana = "SapHana",
     SapS4Hana = "SapS4Hana",
+    SapSuccessFactors = "SapSuccessFactors",
     ServiceNow = "ServiceNow",
     SharePoint = "SharePoint",
     Sigma = "Sigma",
