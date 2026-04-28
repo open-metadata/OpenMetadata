@@ -240,6 +240,21 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   }
 
   @Test
+  void post_pipelineWithEmptyTaskName_4xx(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_empty_task_name"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(List.of(new Task().withName("")));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating pipeline with empty task name should fail");
+  }
+
+  @Test
   void post_pipelineWithSourceUrl_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
