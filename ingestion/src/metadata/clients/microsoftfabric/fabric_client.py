@@ -18,7 +18,7 @@ Provides a unified REST client for Fabric APIs:
 import base64
 import json
 import traceback
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional  # noqa: UP035
 
 from metadata.clients.microsoftfabric.fabric_auth import (
     FABRIC_API_SCOPE,
@@ -60,7 +60,7 @@ class FabricClient:
             client_secret=client_secret,
             authority_uri=authority_uri,
         )
-        self._client: Optional[REST] = None
+        self._client: Optional[REST] = None  # noqa: UP045
 
     @property
     def client(self) -> REST:
@@ -81,7 +81,7 @@ class FabricClient:
 
     # ===== Workspace APIs =====
 
-    def get_workspaces(self) -> List[FabricWorkspace]:
+    def get_workspaces(self) -> List[FabricWorkspace]:  # noqa: UP006
         """List all workspaces accessible to the service principal"""
         try:
             response = self.client.get("/workspaces")
@@ -91,13 +91,13 @@ class FabricClient:
                     workspaces.append(FabricWorkspace.model_validate(item))
                 except Exception as exc:
                     logger.warning(f"Error parsing workspace: {exc}")
-            return workspaces
+            return workspaces  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching workspaces: {exc}")
             return []
 
-    def get_workspace(self, workspace_id: str) -> Optional[FabricWorkspace]:
+    def get_workspace(self, workspace_id: str) -> Optional[FabricWorkspace]:  # noqa: UP045
         """Get details of a specific workspace"""
         try:
             response = self.client.get(f"/workspaces/{workspace_id}")
@@ -109,7 +109,7 @@ class FabricClient:
 
     # ===== Item APIs =====
 
-    def get_workspace_items(self, workspace_id: str, item_type: Optional[str] = None) -> List[FabricItem]:
+    def get_workspace_items(self, workspace_id: str, item_type: Optional[str] = None) -> List[FabricItem]:  # noqa: UP006, UP045
         """
         List items in a workspace.
 
@@ -128,7 +128,7 @@ class FabricClient:
                     items.append(FabricItem.model_validate(item))
                 except Exception as exc:
                     logger.warning(f"Error parsing item: {exc}")
-            return items
+            return items  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching workspace items: {exc}")
@@ -136,29 +136,29 @@ class FabricClient:
 
     # ===== Database-specific APIs =====
 
-    def get_warehouses(self, workspace_id: str) -> List[FabricItem]:
+    def get_warehouses(self, workspace_id: str) -> List[FabricItem]:  # noqa: UP006
         """List Warehouses in a workspace"""
         return self.get_workspace_items(workspace_id, "Warehouse")
 
-    def get_lakehouses(self, workspace_id: str) -> List[FabricItem]:
+    def get_lakehouses(self, workspace_id: str) -> List[FabricItem]:  # noqa: UP006
         """List Lakehouses in a workspace"""
         return self.get_workspace_items(workspace_id, "Lakehouse")
 
-    def get_warehouse_details(self, workspace_id: str, warehouse_id: str) -> Optional[Dict[str, Any]]:
+    def get_warehouse_details(self, workspace_id: str, warehouse_id: str) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
         """Get detailed information about a specific warehouse"""
         try:
             response = self.client.get(f"/workspaces/{workspace_id}/warehouses/{warehouse_id}")
-            return response
+            return response  # noqa: RET504, TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching warehouse details: {exc}")
             return None
 
-    def get_lakehouse_details(self, workspace_id: str, lakehouse_id: str) -> Optional[Dict[str, Any]]:
+    def get_lakehouse_details(self, workspace_id: str, lakehouse_id: str) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
         """Get detailed information about a specific lakehouse"""
         try:
             response = self.client.get(f"/workspaces/{workspace_id}/lakehouses/{lakehouse_id}")
-            return response
+            return response  # noqa: RET504, TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching lakehouse details: {exc}")
@@ -166,7 +166,7 @@ class FabricClient:
 
     # ===== Pipeline APIs =====
 
-    def get_pipelines(self, workspace_id: str) -> List[FabricPipeline]:
+    def get_pipelines(self, workspace_id: str) -> List[FabricPipeline]:  # noqa: UP006
         """List Data Pipelines in a workspace"""
         try:
             # Fabric API uses /items endpoint with type filter
@@ -177,13 +177,13 @@ class FabricClient:
                     pipelines.append(FabricPipeline.model_validate(item))
                 except Exception as exc:
                     logger.warning(f"Error parsing pipeline: {exc}")
-            return pipelines
+            return pipelines  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching pipelines: {exc}")
             return []
 
-    def get_pipeline(self, workspace_id: str, pipeline_id: str) -> Optional[FabricPipeline]:
+    def get_pipeline(self, workspace_id: str, pipeline_id: str) -> Optional[FabricPipeline]:  # noqa: UP045
         """Get a specific pipeline"""
         try:
             # Fabric API uses /items/{itemId} endpoint
@@ -194,7 +194,7 @@ class FabricClient:
             logger.warning(f"Error fetching pipeline {pipeline_id}: {exc}")
             return None
 
-    def get_pipeline_runs(self, workspace_id: str, pipeline_id: str) -> List[FabricPipelineRun]:
+    def get_pipeline_runs(self, workspace_id: str, pipeline_id: str) -> List[FabricPipelineRun]:  # noqa: UP006
         """Get pipeline run history"""
         try:
             # Note: Fabric API might use /items/{itemId}/jobs/instances for runs
@@ -206,7 +206,7 @@ class FabricClient:
                     runs.append(FabricPipelineRun.model_validate(item))
                 except Exception as exc:
                     logger.warning(f"Error parsing pipeline run: {exc}")
-            return runs
+            return runs  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching pipeline runs: {exc}")
@@ -214,7 +214,7 @@ class FabricClient:
 
     def get_pipeline_activities(  # pylint: disable=too-many-nested-blocks
         self, workspace_id: str, pipeline_id: str
-    ) -> List[FabricActivity]:
+    ) -> List[FabricActivity]:  # noqa: UP006
         """
         Get pipeline activities (tasks) from the pipeline definition.
 
@@ -242,7 +242,7 @@ class FabricClient:
                                     logger.warning(f"Error parsing activity: {exc}")
                         except Exception as exc:
                             logger.warning(f"Error decoding pipeline content: {exc}")
-            return activities
+            return activities  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching pipeline activities: {exc}")
@@ -250,7 +250,7 @@ class FabricClient:
 
     def get_pipeline_activity_runs(  # pylint: disable=import-outside-toplevel
         self, workspace_id: str, pipeline_run_id: str, run: FabricPipelineRun
-    ) -> List[FabricActivityRun]:
+    ) -> List[FabricActivityRun]:  # noqa: UP006
         """
         Get activity-level execution details for a pipeline run.
 
@@ -267,7 +267,7 @@ class FabricClient:
             List of FabricActivityRun objects with detailed execution information
         """
         try:
-            from datetime import timedelta
+            from datetime import timedelta  # noqa: PLC0415
 
             # Use the run's start/end time to define the query range
             # Add buffer to ensure we capture all activity runs
@@ -275,7 +275,7 @@ class FabricClient:
                 last_updated_after = (run.start_time - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
                 last_updated_before = (run.end_time + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
             else:
-                from datetime import datetime, timezone
+                from datetime import datetime, timezone  # noqa: PLC0415
 
                 now = datetime.now(timezone.utc)
                 last_updated_after = (now - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -299,7 +299,7 @@ class FabricClient:
                     activity_runs.append(FabricActivityRun.model_validate(item))
                 except Exception as exc:
                     logger.warning(f"Error parsing activity run: {exc}")
-            return activity_runs
+            return activity_runs  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching activity runs for {pipeline_run_id}: {exc}")

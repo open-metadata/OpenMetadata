@@ -15,18 +15,18 @@ Test Datalake connector with CLI
 
 import urllib.parse
 from pathlib import Path
-from typing import List
+from typing import List  # noqa: UP035
 
 import pytest
 
-from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.metadata import MetadataWorkflow  # noqa: TC001
 
-from .base.e2e_types import E2EType
+from .base.e2e_types import E2EType  # noqa: TID252
 
 # TODO: Remove skip once AWS credentials are available in CI
 pytestmark = pytest.mark.skip(reason="Skipped: AWS credentials not available")
-from .base.test_cli import PATH_TO_RESOURCES
-from .common.test_cli_db import CliCommonDB
+from .base.test_cli import PATH_TO_RESOURCES  # noqa: E402, TID252
+from .common.test_cli_db import CliCommonDB  # noqa: E402, TID252
 
 
 class DatalakeCliTest(CliCommonDB.TestSuite):
@@ -77,15 +77,15 @@ class DatalakeCliTest(CliCommonDB.TestSuite):
         return None
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:
+    def get_includes_schemas() -> List[str]:  # noqa: UP006
         return ["aws-datalake-e2e"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:
+    def get_includes_tables() -> List[str]:  # noqa: UP006
         return [".*example.*"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:
+    def get_excludes_tables() -> List[str]:  # noqa: UP006
         return [".*test.*"]
 
     @staticmethod

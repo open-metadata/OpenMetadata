@@ -17,7 +17,7 @@ import os
 import traceback
 from abc import ABC
 from datetime import datetime, timedelta, timezone
-from typing import Iterable
+from typing import Iterable  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -44,15 +44,15 @@ class UsageSource(QueryParserSource, ABC):
         """
         try:
             query_log_path = self.config.sourceConfig.config.queryLogFilePath
-            if os.path.isfile(query_log_path):
+            if os.path.isfile(query_log_path):  # noqa: PTH113
                 file_paths = [query_log_path]
-            elif os.path.isdir(query_log_path):
-                file_paths = [os.path.join(query_log_path, f) for f in os.listdir(query_log_path) if f.endswith(".csv")]
+            elif os.path.isdir(query_log_path):  # noqa: PTH112
+                file_paths = [os.path.join(query_log_path, f) for f in os.listdir(query_log_path) if f.endswith(".csv")]  # noqa: PTH118, PTH208
             else:
-                raise ValueError(f"{query_log_path} is neither a file nor a directory.")
+                raise ValueError(f"{query_log_path} is neither a file nor a directory.")  # noqa: TRY301
             for file_path in file_paths:
                 query_list = []
-                with open(file_path, "r", encoding="utf-8") as fin:
+                with open(file_path, "r", encoding="utf-8") as fin:  # noqa: PTH123
                     for record in csv.DictReader(fin):
                         query_dict = dict(record)
 
@@ -120,7 +120,7 @@ class UsageSource(QueryParserSource, ABC):
                         row_count = 0
                         for row in rows:
                             row_count += 1
-                            row = row._asdict()
+                            row = row._asdict()  # noqa: PLW2901
                             try:
                                 row.update({k.lower(): v for k, v in row.items()})
                                 logger.debug(f"Processing row: {row}")
@@ -154,7 +154,7 @@ class UsageSource(QueryParserSource, ABC):
             except Exception as exc:
                 if query:
                     logger.debug(
-                        (
+                        (  # noqa: UP034
                             f"###### USAGE QUERY #######\n{mask_query(query, self.dialect.value) or query}"
                             "\n##########################"
                         )

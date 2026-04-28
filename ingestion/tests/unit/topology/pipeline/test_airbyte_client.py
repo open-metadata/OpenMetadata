@@ -509,7 +509,7 @@ class TestAirbyteCloudClient:
             auth=BasicAuthentication(username="user", password="pass"),
         )
 
-        with pytest.raises(ValueError, match="OAuth 2.0"):
+        with pytest.raises(ValueError, match="OAuth 2.0"):  # noqa: RUF043
             AirbyteCloudClient(config)
 
     @patch(MOCK_REQUESTS_POST)

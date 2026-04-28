@@ -14,7 +14,7 @@ Validator for column values to be unique test case
 """
 
 import logging
-from typing import List, Optional, cast
+from typing import List, Optional, cast  # noqa: UP035
 
 from sqlalchemy import Column, case, func, inspect, literal_column, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -66,7 +66,7 @@ class ColumnValuesToBeUniqueValidator(
         """
         return count - unique_count
 
-    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -97,7 +97,7 @@ class ColumnValuesToBeUniqueValidator(
             self.value = dict(row._mapping)  # type: ignore
             res = self.value.get(Metrics.valuesCount.name)
         except Exception as exc:
-            raise SQLAlchemyError(exc)
+            raise SQLAlchemyError(exc)  # noqa: B904
 
         if res is None:
             raise ValueError(
@@ -109,7 +109,7 @@ class ColumnValuesToBeUniqueValidator(
 
         return res
 
-    def _get_unique_count(self, metric: Metrics, column: Column) -> Optional[int]:
+    def _get_unique_count(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
         """Get unique count of values"""
 
         return self.value.get(metric.name)
@@ -119,9 +119,9 @@ class ColumnValuesToBeUniqueValidator(
         column: Column,
         dimension_col: Column,
         metrics_to_compute: dict,
-        test_params: Optional[dict],
+        test_params: Optional[dict],  # noqa: UP045
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional validation for uniqueness using two-pass approach
 
         Two-pass query strategy for accurate "Others" unique count:
@@ -214,7 +214,7 @@ class ColumnValuesToBeUniqueValidator(
         return build_others_metric_expressions
 
     def filter(self):
-        self.runner = cast(QueryRunner, self.runner)
+        self.runner = cast(QueryRunner, self.runner)  # noqa: TC006
         col = self.get_column_from_list(
             self.test_case.entityLink.root,
             inspect(self.runner.dataset).c,

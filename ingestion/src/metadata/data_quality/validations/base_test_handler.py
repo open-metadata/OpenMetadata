@@ -18,7 +18,7 @@ from __future__ import annotations
 import reprlib
 import traceback
 from abc import ABC, abstractmethod
-from typing import (
+from typing import (  # noqa: UP035
     TYPE_CHECKING,
     Callable,
     List,
@@ -32,7 +32,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 
-from metadata.data_quality.api.models import TestCaseResultResponse
+from metadata.data_quality.api.models import TestCaseResultResponse  # noqa: TC001
 from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
@@ -46,11 +46,11 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
-from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
-from metadata.generated.schema.type.basic import Timestamp
-from metadata.profiler.processor.runner import PandasRunner, QueryRunner
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue  # noqa: TC001
+from metadata.generated.schema.type.basic import Timestamp  # noqa: TC001
+from metadata.profiler.processor.runner import PandasRunner, QueryRunner  # noqa: TC001
 from metadata.utils.logger import test_suite_logger
-from metadata.utils.sqa_like_column import SQALikeColumn
+from metadata.utils.sqa_like_column import SQALikeColumn  # noqa: TC001
 
 if TYPE_CHECKING:
     from sqlalchemy import Column
@@ -82,9 +82,9 @@ class TestEvaluation(TypedDict, total=False):
     """
 
     matched: bool
-    passed_rows: Optional[int]
-    failed_rows: Optional[int]
-    total_rows: Optional[int]
+    passed_rows: Optional[int]  # noqa: UP045
+    failed_rows: Optional[int]  # noqa: UP045
+    total_rows: Optional[int]  # noqa: UP045
 
 
 class DimensionInfo(TypedDict):
@@ -107,7 +107,7 @@ class BaseTestValidator(ABC):
 
     def __init__(
         self,
-        runner: Union[QueryRunner, PandasRunner],
+        runner: Union[QueryRunner, PandasRunner],  # noqa: UP007
         test_case: TestCase,
         execution_date: Timestamp,
     ) -> None:
@@ -177,7 +177,7 @@ class BaseTestValidator(ABC):
 
         return test_result
 
-    def result_with_failed_samples(self, result: TestCaseResultResponse) -> None:
+    def result_with_failed_samples(self, result: TestCaseResultResponse) -> None:  # noqa: B027
         """Hook for failed row sampling. No-op by default.
 
         Overridden by FailedSampleValidatorMixin to fetch and stash
@@ -196,7 +196,7 @@ class BaseTestValidator(ABC):
         """
         raise NotImplementedError
 
-    def _run_dimensional_validation(self) -> List[DimensionResult]:
+    def _run_dimensional_validation(self) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional validation for this test
 
         Default implementation that delegates to _execute_dimensional_validation
@@ -219,7 +219,7 @@ class BaseTestValidator(ABC):
             if not dimension_columns:
                 return []
 
-            column: Union[SQALikeColumn, Column] = self.get_column()
+            column: Union[SQALikeColumn, Column] = self.get_column()  # noqa: UP007
 
             test_params = self._get_test_parameters()
             metrics_to_compute = self._get_metrics_to_compute(test_params)
@@ -241,7 +241,7 @@ class BaseTestValidator(ABC):
                     logger.debug(traceback.format_exc())
                     continue
 
-            return dimension_results
+            return dimension_results  # noqa: TRY300
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional validation: {exc}")
@@ -259,7 +259,7 @@ class BaseTestValidator(ABC):
         """
         return {}
 
-    def _get_metrics_to_compute(self, test_params: Optional[dict] = None) -> dict:
+    def _get_metrics_to_compute(self, test_params: Optional[dict] = None) -> dict:  # noqa: UP045
         """Get metrics that need to be computed for this test
 
         Default implementation returns empty dict. Override in child classes
@@ -274,7 +274,7 @@ class BaseTestValidator(ABC):
         """
         return {}
 
-    def get_column(self, column_name: Optional[str] = None) -> Union[SQALikeColumn, Column]:
+    def get_column(self, column_name: Optional[str] = None) -> Union[SQALikeColumn, Column]:  # noqa: UP007, UP045
         """Get column object from column_name. If no column_name is present,
         it returns the main column for the test.
 
@@ -289,12 +289,12 @@ class BaseTestValidator(ABC):
 
     def _execute_dimensional_validation(
         self,
-        column: Union[SQALikeColumn, Column],
-        dimension_col: Union[SQALikeColumn, Column],
+        column: Union[SQALikeColumn, Column],  # noqa: UP007
+        dimension_col: Union[SQALikeColumn, Column],  # noqa: UP007
         metrics_to_compute: dict,
-        test_params: Optional[dict],
+        test_params: Optional[dict],  # noqa: UP045
         top_n: int = DEFAULT_TOP_DIMENSIONS,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional validation query for a single dimension column
 
         Must be implemented by child classes to support dimensional validation.
@@ -316,7 +316,7 @@ class BaseTestValidator(ABC):
             f"{self.__class__.__name__} must implement _execute_dimensional_validation() for dimensional validation"
         )
 
-    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:  # noqa: UP045
         """Evaluate the test condition based on computed metrics
 
         This is the core logic that determines if the test passes or fails.
@@ -346,8 +346,8 @@ class BaseTestValidator(ABC):
     def _format_result_message(
         self,
         metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,
-        test_params: Optional[dict] = None,
+        dimension_info: Optional[DimensionInfo] = None,  # noqa: UP045
+        test_params: Optional[dict] = None,  # noqa: UP045
     ) -> str:
         """Format the result message for the test
 
@@ -384,7 +384,7 @@ class BaseTestValidator(ABC):
         self,
         row: dict,
         metrics_to_compute: dict,
-        test_params: Optional[dict] = None,
+        test_params: Optional[dict] = None,  # noqa: UP045
     ) -> dict:
         """Build metric_values dictionary from result row
 
@@ -396,14 +396,14 @@ class BaseTestValidator(ABC):
         Returns:
             dict: Metric values with enum names as keys, defaulting to 0 for missing values
         """
-        return {metric_name: row.get(metric_name, 0) or 0 for metric_name in metrics_to_compute.keys()}
+        return {metric_name: row.get(metric_name, 0) or 0 for metric_name in metrics_to_compute.keys()}  # noqa: SIM118
 
     def _build_dimension_metric_values(
         self,
         row: dict,
         metrics_to_compute: dict,
-        test_params: Optional[dict] = None,
-    ) -> Optional[dict]:
+        test_params: Optional[dict] = None,  # noqa: UP045
+    ) -> Optional[dict]:  # noqa: UP045
         """Hook for custom metric extraction in dimensional validation.
 
         Override in child classes that need custom metric extraction logic,
@@ -418,10 +418,10 @@ class BaseTestValidator(ABC):
         result_rows,
         dimension_col_name: str,
         metrics_to_compute: dict,
-        test_params: Optional[dict],
-    ) -> List["DimensionResult"]:
+        test_params: Optional[dict],  # noqa: UP045
+    ) -> List["DimensionResult"]:  # noqa: UP006, UP037
         """Common loop: build metrics, evaluate, create result for each row."""
-        results: List[DimensionResult] = []
+        results: List[DimensionResult] = []  # noqa: UP006
         for row in result_rows:
             metric_values = self._build_dimension_metric_values(row, metrics_to_compute, test_params)
             if metric_values is None:
@@ -438,7 +438,7 @@ class BaseTestValidator(ABC):
         dimension_col_name: str,
         metric_values: dict,
         evaluation: TestEvaluation,
-        test_params: Optional[dict] = None,
+        test_params: Optional[dict] = None,  # noqa: UP045
     ) -> DimensionResult:
         """Create a DimensionResult from a result row
 
@@ -485,12 +485,12 @@ class BaseTestValidator(ABC):
 
     @staticmethod
     def get_test_case_param_value(
-        test_case_param_vals: List[TestCaseParameterValue],
+        test_case_param_vals: List[TestCaseParameterValue],  # noqa: UP006
         name: str,
         type_: T,
-        default: Optional[R] = None,
-        pre_processor: Optional[Callable] = None,
-    ) -> Optional[Union[R, T]]:
+        default: Optional[R] = None,  # noqa: UP045
+        pre_processor: Optional[Callable] = None,  # noqa: UP045
+    ) -> Optional[Union[R, T]]:  # noqa: UP007, UP045
         return utils.get_test_case_param_value(test_case_param_vals, name, type_, default, pre_processor)
 
     def get_test_case_result_object(  # pylint: disable=too-many-arguments
@@ -498,12 +498,12 @@ class BaseTestValidator(ABC):
         execution_date: Timestamp,
         status: TestCaseStatus,
         result: str,
-        test_result_value: List[TestResultValue],
-        row_count: Optional[int] = None,
-        failed_rows: Optional[int] = None,
-        passed_rows: Optional[int] = None,
-        min_bound: Optional[float] = None,
-        max_bound: Optional[float] = None,
+        test_result_value: List[TestResultValue],  # noqa: UP006
+        row_count: Optional[int] = None,  # noqa: UP045
+        failed_rows: Optional[int] = None,  # noqa: UP045
+        passed_rows: Optional[int] = None,  # noqa: UP045
+        min_bound: Optional[float] = None,  # noqa: UP045
+        max_bound: Optional[float] = None,  # noqa: UP045
     ) -> TestCaseResult:
         """Returns a TestCaseResult object with the given args
 
@@ -541,9 +541,9 @@ class BaseTestValidator(ABC):
 
     def _convert_to_test_case_dimension_results(
         self,
-        dimension_results: List[DimensionResult],
+        dimension_results: List[DimensionResult],  # noqa: UP006
         test_result: TestCaseResult,
-    ) -> List[TestCaseDimensionResult]:
+    ) -> List[TestCaseDimensionResult]:  # noqa: UP006
         """Convert DimensionResult objects to TestCaseDimensionResult objects"""
         test_case_dimension_results = []
 
@@ -602,7 +602,7 @@ class BaseTestValidator(ABC):
                 )
                 return False
 
-            return True
+            return True  # noqa: TRY300
 
         except Exception as exc:
             logger.warning(f"Unable to validate dimension columns: {exc}")
@@ -613,12 +613,12 @@ class BaseTestValidator(ABC):
         dimension_values: dict,
         test_case_status: TestCaseStatus,
         result: str,
-        test_result_value: List[TestResultValue],
-        total_rows: Optional[int] = None,
-        passed_rows: Optional[int] = None,
-        failed_rows: Optional[int] = None,
-        impact_score: Optional[float] = None,
-    ) -> "DimensionResult":
+        test_result_value: List[TestResultValue],  # noqa: UP006
+        total_rows: Optional[int] = None,  # noqa: UP045
+        passed_rows: Optional[int] = None,  # noqa: UP045
+        failed_rows: Optional[int] = None,  # noqa: UP045
+        impact_score: Optional[float] = None,  # noqa: UP045
+    ) -> "DimensionResult":  # noqa: UP037
         """Returns a DimensionResult object with automatic percentage calculations
 
         Args:
@@ -665,9 +665,9 @@ class BaseTestValidator(ABC):
             impactScore=round(impact_score, 4) if impact_score is not None else None,
         )
 
-        return dimension_result
+        return dimension_result  # noqa: RET504
 
-    def format_column_list(self, status: TestCaseStatus, cols: List):
+    def format_column_list(self, status: TestCaseStatus, cols: List):  # noqa: UP006
         """Format column list based on the test status
 
         Args:
@@ -687,7 +687,7 @@ class BaseTestValidator(ABC):
         """
         return TestCaseStatus.Success if condition else TestCaseStatus.Failed
 
-    def get_min_bound(self, param_name: str) -> Optional[float]:
+    def get_min_bound(self, param_name: str) -> Optional[float]:  # noqa: UP045
         """get min value for max value in column test case"""
         return self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
@@ -696,7 +696,7 @@ class BaseTestValidator(ABC):
             default=float("-inf"),
         )
 
-    def get_max_bound(self, param_name: str) -> Optional[float]:
+    def get_max_bound(self, param_name: str) -> Optional[float]:  # noqa: UP045
         """get max value for max value in column test case"""
         return self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
@@ -705,11 +705,11 @@ class BaseTestValidator(ABC):
             default=float("inf"),
         )
 
-    def get_predicted_value(self) -> Optional[str]:
+    def get_predicted_value(self) -> Optional[str]:  # noqa: UP045
         """Get predicted value"""
         return None
 
-    def get_runtime_parameters(self, setter_class: Type[S]) -> S:
+    def get_runtime_parameters(self, setter_class: Type[S]) -> S:  # noqa: UP006
         """Get runtime parameters"""
         for param in self.test_case.parameterValues or []:
             if param.name == setter_class.__name__:

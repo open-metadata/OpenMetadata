@@ -223,7 +223,7 @@ class MetabaseUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.metabase.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:
+    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         get_connection.return_value = False
         test_connection.return_value = False
@@ -252,9 +252,9 @@ class MetabaseUnitTest(TestCase):
         results = self.metabase.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS)
         for result in results:
             if isinstance(result, Either) and result.right:
-                chart_list.append(result.right)
+                chart_list.append(result.right)  # noqa: PERF401
 
-        for expected, original in zip(EXPECTED_CHARTS, chart_list):
+        for expected, original in zip(EXPECTED_CHARTS, chart_list):  # noqa: B905
             self.assertEqual(expected, original)
 
     def test_yield_dashboard(self):

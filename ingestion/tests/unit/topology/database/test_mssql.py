@@ -216,7 +216,7 @@ class MssqlUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def __init__(
         self,
-        methodName,
+        methodName,  # noqa: N803
         test_connection,
     ) -> None:
         super().__init__(methodName)
@@ -237,7 +237,7 @@ class MssqlUnitTest(TestCase):
         self.mssql._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
 
     def test_yield_database(self):
-        assert EXPECTED_DATABASE == [either.right for either in self.mssql.yield_database(MOCK_DATABASE.name.root)]
+        assert EXPECTED_DATABASE == [either.right for either in self.mssql.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
 
         self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
@@ -257,14 +257,14 @@ class MssqlUnitTest(TestCase):
         self.assertEqual(result, "[your.schema]")
 
     def test_yield_schema(self):
-        assert EXPECTED_DATABASE_SCHEMA == [
+        assert EXPECTED_DATABASE_SCHEMA == [  # noqa: SIM300
             either.right for either in self.mssql.yield_database_schema(model_str(MOCK_DATABASE_SCHEMA.name))
         ]
 
         self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_table(self):
-        assert EXPECTED_TABLE == [either.right for either in self.mssql.yield_table(("sample_table", "Regular"))]
+        assert EXPECTED_TABLE == [either.right for either in self.mssql.yield_table(("sample_table", "Regular"))]  # noqa: SIM300
 
     def test_get_stored_procedures(self):
         """
@@ -317,7 +317,7 @@ class TestUpdateMssqlIschemaNames:
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
-    EXPECTED_MSSQL_TYPES = [
+    EXPECTED_MSSQL_TYPES = [  # noqa: RUF012
         "nvarchar",
         "nchar",
         "ntext",

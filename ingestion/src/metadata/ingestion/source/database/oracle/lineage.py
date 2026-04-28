@@ -72,4 +72,4 @@ class OracleLineageSource(OracleQueryParserSource, StoredProcedureLineageMixin, 
             start_date=start,
         )
 
-        return query
+        return query  # noqa: RET504

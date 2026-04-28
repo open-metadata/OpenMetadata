@@ -80,9 +80,9 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
 
     def _get_cloudsql_engine(self, connection: MySQLConnectionConfig) -> Engine:
         try:
-            from google.cloud.sql.connectors import Connector
+            from google.cloud.sql.connectors import Connector  # noqa: PLC0415
         except ImportError:
-            raise ImportError(
+            raise ImportError(  # noqa: B904
                 "google-cloud-sql-connector is required for GCP CloudSQL connections. "
                 "Install it with: pip install 'cloud-sql-python-connector[pymysql]>=1.0.0'"
             )
@@ -130,8 +130,8 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

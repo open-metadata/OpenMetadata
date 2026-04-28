@@ -18,7 +18,7 @@ import traceback
 from abc import ABC
 from typing import Optional
 
-from azure.keyvault.secrets import KeyVaultSecret
+from azure.keyvault.secrets import KeyVaultSecret  # noqa: TC002
 
 from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
@@ -48,9 +48,9 @@ def _() -> None:
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.airflow.value)
 def _() -> Optional["AzureCredentials"]:  # noqa: F821
-    from airflow.configuration import conf
+    from airflow.configuration import conf  # noqa: PLC0415
 
-    from metadata.generated.schema.security.credentials.azureCredentials import (
+    from metadata.generated.schema.security.credentials.azureCredentials import (  # noqa: PLC0415
         AzureCredentials,
     )
 
@@ -72,7 +72,7 @@ def _() -> Optional["AzureCredentials"]:  # noqa: F821
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.env.value)
 def _() -> Optional["AzureCredentials"]:  # noqa: F821
-    from metadata.generated.schema.security.credentials.azureCredentials import (
+    from metadata.generated.schema.security.credentials.azureCredentials import (  # noqa: PLC0415
         AzureCredentials,
     )
 
@@ -108,11 +108,11 @@ class AzureKVSecretsManager(ExternalSecretsManager, ABC):
         try:
             secret: KeyVaultSecret = self.client.get_secret(secret_id)
             logger.debug(f"Got value for secret {secret_id}")
-            return secret.value
+            return secret.value  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")
-            raise exc
+            raise exc  # noqa: TRY201
 
     def load_credentials(self) -> Optional["AzureCredentials"]:  # noqa: F821
         """Load the provider credentials based on the loader type"""
@@ -120,4 +120,4 @@ class AzureKVSecretsManager(ExternalSecretsManager, ABC):
             loader_fn = secrets_manager_client_loader.registry.get(self.loader.value)
             return loader_fn()
         except Exception as err:
-            raise SecretsManagerConfigException(f"Error loading credentials - [{err}]")
+            raise SecretsManagerConfigException(f"Error loading credentials - [{err}]")  # noqa: B904
