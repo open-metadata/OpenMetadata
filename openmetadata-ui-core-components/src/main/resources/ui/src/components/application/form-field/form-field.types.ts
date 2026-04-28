@@ -15,6 +15,12 @@ import type { FC, FocusEventHandler, ReactNode } from 'react';
 import type { Key } from 'react-aria-components';
 import type { RegisterOptions } from 'react-hook-form';
 import type { SelectItemType } from '@/components/base/select/select';
+import type { CoverImageUploadRenderPreviewContext } from './fields/cover-image-upload-field';
+
+export type {
+  CoverImageUploadRenderPreviewContext,
+  CoverImageUploadValue,
+} from './fields/cover-image-upload-field';
 
 export enum HelperTextType {
   ALERT = 'alert',
@@ -94,7 +100,9 @@ export interface FieldPropsMap {
   onSelect?: (files: FileList | null) => void;
   onSelectionChange?: (key: Key | null) => void;
   options?: FormSelectItem[];
+  previewClassName?: string;
   renderItem?: (item: FormSelectItem) => ReactNode;
+  renderPreview?: (ctx: CoverImageUploadRenderPreviewContext) => ReactNode;
   selectedItems?: FormSelectItem[];
   size?: 'sm' | 'md';
 }

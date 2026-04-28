@@ -503,11 +503,6 @@ const AddDomainForm = ({
     placeholder: t('label.upload-cover-image'),
     props: {
       acceptedFileTypes: COVER_IMAGE_ACCEPTED_TYPES,
-      children: (
-        <Button color="secondary" type="button">
-          {t('label.upload-cover-image')}
-        </Button>
-      ),
     },
     type: FieldTypes.COVER_IMAGE_UPLOAD,
   };
