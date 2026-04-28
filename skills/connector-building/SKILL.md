@@ -158,11 +158,12 @@ Read `${CLAUDE_SKILL_DIR}/standards/registration.md` for detailed instructions. 
 |------|------|--------|
 | 1 | `openmetadata-spec/.../entity/services/{serviceType}Service.json` | Add to type enum + connection oneOf |
 | 2 | `ingestion/setup.py` | Add connector pip extras block |
-| 3 | `openmetadata-ui/.../utils/{ServiceType}ServiceUtils.tsx` | Import schema + add switch case |
-| 4 | `openmetadata-ui/.../assets/img/service-icon-{name}.png` | Add service logo asset |
-| 5 | `openmetadata-ui/.../utils/ServiceIconUtils.ts` | Import asset + register in `SERVICE_ICON_LOADERS` |
-| 6 | `openmetadata-ui/.../public/locales/en-US/{ServiceType}/{Name}.md` | Field-level docs rendered in the Add Service form |
-| 7 | `openmetadata-ui/.../constants/ServiceType.constant.ts` | Append to `BETA_SERVICES` — new connectors always ship as Beta |
+| 3 | `ingestion/src/metadata/examples/workflows/{name}.yaml` | Runnable CLI workflow example (`metadata ingest -c`) |
+| 4 | `openmetadata-ui/.../utils/{ServiceType}ServiceUtils.tsx` | Import schema + add switch case |
+| 5 | `openmetadata-ui/.../assets/img/service-icon-{name}.png` | Add service logo asset |
+| 6 | `openmetadata-ui/.../utils/ServiceIconUtils.ts` | Import asset + register in `SERVICE_ICON_LOADERS` |
+| 7 | `openmetadata-ui/.../public/locales/en-US/{ServiceType}/{Name}.md` | Field-level docs rendered in the Add Service form |
+| 8 | `openmetadata-ui/.../constants/ServiceType.constant.ts` | Append to `BETA_SERVICES` — new connectors always ship as Beta |
 
 > i18n locale files do **not** need edits — display names come from the generated service type enum. `Services.constant.ts` is deprecated (re-export shim only); register icons in `ServiceIconUtils.ts`.
 
@@ -212,6 +213,7 @@ Fix any issues it reports. Then verify the full checklist:
 [ ] Lineage: no wildcard table_name="*" — skip if no table-level info available
 [ ] Tests: unit + connection integration + metadata integration pass (no empty stubs)
 [ ] Registration: service schema, setup.py, {ServiceType}ServiceUtils.tsx all updated
+[ ] Registration: CLI workflow example in ingestion/src/metadata/examples/workflows/
 [ ] Registration: service icon asset present + registered in ServiceIconUtils.ts
 [ ] Registration: docs markdown in public/locales/en-US/{ServiceType}/{Name}.md
 [ ] Registration: service type appended to BETA_SERVICES in ServiceType.constant.ts
