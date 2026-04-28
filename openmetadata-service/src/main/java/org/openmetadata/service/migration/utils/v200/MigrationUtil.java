@@ -1,8 +1,17 @@
 package org.openmetadata.service.migration.utils.v200;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 
 /**
@@ -72,5 +81,65 @@ public class MigrationUtil {
       LOG.error("Error adding tableColumn search settings", e);
       throw new RuntimeException("Failed to add tableColumn search settings", e);
     }
+  }
+
+  public static void migrateTestCaseDataContractReferences(CollectionDAO collectionDAO) {
+    LOG.info("Starting test case data contract migration");
+
+    int totalTestCasesMigrated = 0;
+    int dataContractsProcessed = 0;
+    int pageSize = 1000;
+    int offset = 0;
+
+    while (true) {
+      List<String> dataContractJsons =
+          collectionDAO.dataContractDAO().listAfterWithOffset(pageSize, offset);
+      if (dataContractJsons.isEmpty()) {
+        break;
+      }
+      offset += pageSize;
+
+      for (String dataContractJson : dataContractJsons) {
+        try {
+          DataContract dataContract = JsonUtils.readValue(dataContractJson, DataContract.class);
+
+          if (nullOrEmpty(dataContract.getQualityExpectations())) {
+            continue;
+          }
+
+          dataContractsProcessed++;
+          int testCasesUpdated = 0;
+
+          for (EntityReference testCaseRef : dataContract.getQualityExpectations()) {
+            try {
+              TestCase testCase = collectionDAO.testCaseDAO().findEntityById(testCaseRef.getId());
+              if (testCase == null || testCase.getDataContract() != null) {
+                continue;
+              }
+
+              testCase.setDataContract(
+                  new EntityReference()
+                      .withId(dataContract.getId())
+                      .withType(Entity.DATA_CONTRACT)
+                      .withFullyQualifiedName(dataContract.getFullyQualifiedName()));
+
+              collectionDAO.testCaseDAO().update(testCase);
+              testCasesUpdated++;
+            } catch (Exception e) {
+              LOG.warn("Failed to update test case {}: {}", testCaseRef.getId(), e.getMessage());
+            }
+          }
+
+          totalTestCasesMigrated += testCasesUpdated;
+        } catch (Exception e) {
+          LOG.error("Failed to process data contract: {}", e.getMessage(), e);
+        }
+      }
+    }
+
+    LOG.info(
+        "Test case data contract migration complete: {} contracts processed, {} test cases updated",
+        dataContractsProcessed,
+        totalTestCasesMigrated);
   }
 }
