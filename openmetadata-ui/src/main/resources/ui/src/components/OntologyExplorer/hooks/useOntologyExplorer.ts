@@ -332,6 +332,7 @@ export function useOntologyExplorer({
     relationTypes,
     settings,
     scope,
+    entityId,
     glossaryId,
     termGlossaryId,
     dataSource,
@@ -1192,6 +1193,7 @@ export function useOntologyExplorer({
         const nextFilters: GraphFilters = {
           ...filters,
           viewMode: 'overview' satisfies GraphViewMode,
+          showCrossGlossaryOnly: false,
         };
         if (graphData) {
           dataModeInitialLoadUsesSpinnerRef.current = true;
@@ -1207,6 +1209,7 @@ export function useOntologyExplorer({
         setFilters({
           ...filters,
           viewMode: modelFiltersRef.current.viewMode,
+          showCrossGlossaryOnly: modelFiltersRef.current.showCrossGlossaryOnly,
         });
         setTermAssetCounts({});
       }
