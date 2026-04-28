@@ -2004,12 +2004,12 @@ public class SearchResourceIT {
     JsonNode withChildrenHits =
         OBJECT_MAPPER.readTree(withChildren.body()).path("hits").path("hits");
     assertTrue(
-        anyHitOfType(withChildrenHits, "column"),
-        "Default flags on index=table must still surface column hits — otherwise the test "
+        anyHitOfType(withChildrenHits, "tableColumn"),
+        "Default flags on index=table must still surface tableColumn hits — otherwise the test "
             + "fixture is broken and the no-columns assertion would pass vacuously. body="
             + withChildren.body());
 
-    // Fix path: explicit fetchChildAliases=false drops the column hits.
+    // Fix path: explicit fetchChildAliases=false drops the tableColumn hits.
     HttpResponse<String> withoutChildren =
         httpGetJson(
             "/v1/search/query?q=" + unique + "&index=table&fetchChildAliases=false&size=20");
@@ -2017,8 +2017,8 @@ public class SearchResourceIT {
     JsonNode withoutChildrenHits =
         OBJECT_MAPPER.readTree(withoutChildren.body()).path("hits").path("hits");
     assertFalse(
-        anyHitOfType(withoutChildrenHits, "column"),
-        "fetchChildAliases=false on index=table must drop column hits, got: "
+        anyHitOfType(withoutChildrenHits, "tableColumn"),
+        "fetchChildAliases=false on index=table must drop tableColumn hits, got: "
             + withoutChildren.body());
   }
 
@@ -2044,8 +2044,8 @@ public class SearchResourceIT {
     assertEquals(200, response.statusCode());
     JsonNode hits = OBJECT_MAPPER.readTree(response.body()).path("hits").path("hits");
     assertTrue(
-        anyHitOfType(hits, "column"),
-        "Default flags must still expand the alias so column docs appear (legacy contract): "
+        anyHitOfType(hits, "tableColumn"),
+        "Default flags must still expand the alias so tableColumn docs appear (legacy contract): "
             + response.body());
   }
 
@@ -2102,11 +2102,11 @@ public class SearchResourceIT {
     boolean defaultHasColumn =
         java.util.Arrays.stream(defaultBody.split("\n"))
             .skip(1)
-            .anyMatch(row -> row.toLowerCase().startsWith("column,"));
+            .anyMatch(row -> row.toLowerCase().startsWith("tablecolumn,"));
     assertTrue(
         defaultHasColumn,
-        "Default export on index=table must include column rows under the legacy alias expansion;"
-            + " otherwise the no-columns assertion below is vacuous. body="
+        "Default export on index=table must include tableColumn rows under the legacy alias "
+            + "expansion; otherwise the no-columns assertion below is vacuous. body="
             + defaultBody);
 
     HttpResponse<String> filteredExport =
@@ -2116,8 +2116,8 @@ public class SearchResourceIT {
     String filteredBody = filteredExport.body();
     for (String row : filteredBody.split("\n")) {
       assertFalse(
-          row.toLowerCase().startsWith("column,"),
-          "fetchChildAliases=false on /export must drop column rows, got: " + row);
+          row.toLowerCase().startsWith("tablecolumn,"),
+          "fetchChildAliases=false on /export must drop tableColumn rows, got: " + row);
     }
   }
 
@@ -2137,35 +2137,40 @@ public class SearchResourceIT {
 
     awaitColumnIndexed(unique);
 
+    // value=.* — the aggregate endpoint always wraps the terms agg in
+    // .include(regexp(fieldValue.toLowerCase())), so an empty fieldValue compiles to an empty
+    // regex that matches no bucket keys. ".*" sidesteps that filter.
     HttpResponse<String> defaultAggregate =
         httpGetJson(
-            "/v1/search/aggregate?index=table&field=entityType.keyword&q=" + unique + "&size=20");
+            "/v1/search/aggregate?index=table&field=entityType.keyword&value=.*&q="
+                + unique
+                + "&size=20");
     assertEquals(200, defaultAggregate.statusCode());
     JsonNode defaultBuckets = OBJECT_MAPPER.readTree(defaultAggregate.body()).findPath("buckets");
     boolean defaultHasColumn = false;
     for (JsonNode bucket : defaultBuckets) {
-      if ("column".equalsIgnoreCase(bucket.path("key").asText())) {
+      if ("tablecolumn".equalsIgnoreCase(bucket.path("key").asText())) {
         defaultHasColumn = true;
         break;
       }
     }
     assertTrue(
         defaultHasColumn,
-        "Default aggregate on index=table must include a 'column' bucket under the legacy alias "
-            + "expansion; otherwise the no-columns assertion below is vacuous. body="
+        "Default aggregate on index=table must include a 'tablecolumn' bucket under the legacy "
+            + "alias expansion; otherwise the no-columns assertion below is vacuous. body="
             + defaultAggregate.body());
 
     HttpResponse<String> filteredAggregate =
         httpGetJson(
-            "/v1/search/aggregate?index=table&field=entityType.keyword&q="
+            "/v1/search/aggregate?index=table&field=entityType.keyword&value=.*&q="
                 + unique
                 + "&fetchChildAliases=false&size=20");
     assertEquals(200, filteredAggregate.statusCode());
     JsonNode filteredBuckets = OBJECT_MAPPER.readTree(filteredAggregate.body()).findPath("buckets");
     for (JsonNode bucket : filteredBuckets) {
       assertFalse(
-          "column".equalsIgnoreCase(bucket.path("key").asText()),
-          "fetchChildAliases=false on /aggregate must drop 'column' bucket: " + bucket);
+          "tablecolumn".equalsIgnoreCase(bucket.path("key").asText()),
+          "fetchChildAliases=false on /aggregate must drop 'tablecolumn' bucket: " + bucket);
     }
   }
 }
