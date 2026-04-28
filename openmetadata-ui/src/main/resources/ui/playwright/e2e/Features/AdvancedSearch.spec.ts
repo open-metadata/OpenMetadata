@@ -297,6 +297,7 @@ test.describe(
           EntityDataClass.dashboardDataModel1.entityResponseData.project || '',
           EntityDataClass.dashboardDataModel2.entityResponseData.project || '',
         ],
+        entityStatus: ['Approved', 'In Review'],
         // Some common field value search criteria are causing problems in not equal filter tests
         // TODO: Refactor the advanced search tests so that these fields can be added back
         // tableType: [table.entity.tableType, 'MaterializedView'],
