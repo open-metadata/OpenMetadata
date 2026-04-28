@@ -37,9 +37,10 @@ class TestGetConnection:
         )
 
     def test_raises_source_connection_exception_on_client_failure(self):
+        host_port = "https://tab.example.com"
         connection = MagicMock()
         connection.type.value = "TableauPipeline"
-        connection.hostPort = "https://tab.example.com"
+        connection.hostPort = host_port
         original = RuntimeError("sign-in 401")
 
         with (
@@ -56,9 +57,10 @@ class TestGetConnection:
 
         # Message should carry service type + host, not the whole connection
         # object (which may include credentials in repr).
-        assert "TableauPipeline" in str(excinfo.value)
-        assert "https://tab.example.com" in str(excinfo.value)
-        assert "sign-in 401" in str(excinfo.value)
+        message = str(excinfo.value)
+        assert "TableauPipeline" in message
+        assert host_port in message
+        assert "sign-in 401" in message
         # Exception chain must preserve the original traceback via __cause__
         assert excinfo.value.__cause__ is original
 
