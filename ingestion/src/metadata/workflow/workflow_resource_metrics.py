@@ -22,7 +22,7 @@ import psutil
 class WorkflowResourceMetrics:
     """Captures CPU and memory metrics for a workflow process and all its children."""
 
-    def __init__(self, pid: Optional[int] = None):
+    def __init__(self, pid: Optional[int] = None):  # noqa: UP045
         """Initialize metrics for the given process ID (defaults to current process)."""
         self.pid: int = pid or os.getpid()
         self._collect_metrics()

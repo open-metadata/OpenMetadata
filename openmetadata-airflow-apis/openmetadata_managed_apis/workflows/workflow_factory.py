@@ -17,19 +17,19 @@ Called in dag_runner.j2
 
 import pathlib
 import traceback
-from typing import Any, Dict
+from typing import Any, Dict  # noqa: UP035
 
 from airflow.models import DAG
-
-# these are params that cannot be a dag name
-from openmetadata_managed_apis.utils.logger import workflow_logger
-from openmetadata_managed_apis.workflows.config import load_config_file
-from openmetadata_managed_apis.workflows.workflow_builder import WorkflowBuilder
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
+
+# these are params that cannot be a dag name
+from openmetadata_managed_apis.utils.logger import workflow_logger
+from openmetadata_managed_apis.workflows.config import load_config_file
+from openmetadata_managed_apis.workflows.workflow_builder import WorkflowBuilder
 
 logger = workflow_logger()
 
@@ -76,10 +76,10 @@ class WorkflowFactory:
         return workflow
 
     @staticmethod
-    def register_dag(dag: DAG, globals_namespace: Dict[str, Any]) -> None:
+    def register_dag(dag: DAG, globals_namespace: Dict[str, Any]) -> None:  # noqa: UP006
         globals_namespace[dag.dag_id]: DAG = dag
 
-    def generate_dag(self, globals_namespace: Dict[str, Any]) -> None:
+    def generate_dag(self, globals_namespace: Dict[str, Any]) -> None:  # noqa: UP006
         dag = self.build_dag()
         self.dag = dag
         self.register_dag(dag, globals_namespace)

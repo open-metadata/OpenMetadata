@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import logging
-from typing import Callable
+from typing import Callable  # noqa: UP035
 
 import pytest
 from faker import Faker
@@ -25,7 +25,7 @@ def analyzer():
     # You might want to comment the following line when debugging tests
     set_presidio_logger_level()
     analyzer = build_analyzer_engine()
-    return analyzer
+    return analyzer  # noqa: RET504
 
 
 @pytest.fixture
