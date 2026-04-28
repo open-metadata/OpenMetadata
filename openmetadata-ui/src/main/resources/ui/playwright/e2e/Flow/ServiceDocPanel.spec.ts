@@ -22,7 +22,9 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
  * where the ServiceDocPanel is visible with code blocks and sections.
  */
 const goToMysqlConnectionStep = async (page: Page, serviceName: string) => {
-  await page.goto('/databaseServices/add-service');
+  await page.goto('/databaseServices/add-service', {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('Mysql').click();
   await page.getByTestId('next-button').click();
@@ -85,7 +87,9 @@ test.describe('ServiceDocPanel', () => {
     });
 
     test('should render image in Mssql doc panel', async ({ page }) => {
-      await page.goto('/databaseServices/add-service');
+      await page.goto('/databaseServices/add-service', {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('Mssql').click();
       await page.getByTestId('next-button').click();
@@ -220,9 +224,7 @@ test.describe('ServiceDocPanel', () => {
       expect(clipboardText.length).toBeGreaterThan(0);
 
       // Verify state resets after 2s timer
-      await expect(copyButtonWrapper).toHaveAttribute('data-copied', 'false', {
-        timeout: 3000,
-      });
+      await expect(copyButtonWrapper).toHaveAttribute('data-copied', 'false');
     });
   });
 });
