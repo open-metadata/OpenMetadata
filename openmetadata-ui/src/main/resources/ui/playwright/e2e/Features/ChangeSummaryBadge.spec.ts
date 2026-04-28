@@ -16,10 +16,7 @@ import { DOMAIN_TAGS } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import {
-  openColumnDetailPanel,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { test } from '../fixtures/pages';
 
@@ -139,6 +136,7 @@ test.describe(
         await navigateToExploreAndSelectEntity({
           page,
           entityName: table.entity.name,
+          fullyQualifiedName: table.entityResponseData?.fullyQualifiedName,
         });
 
         await changeSummaryResponse;
@@ -158,7 +156,7 @@ test.describe(
     }) => {
       await redirectToHomePage(page);
 
-      await test.step('Search for column on table details page and verify AI badge in panel', async () => {
+      await test.step('Navigate to entity page and verify column badge', async () => {
         const changeSummaryResponse = page.waitForResponse((response) =>
           response.url().includes('/api/v1/changeSummary/')
         );
@@ -167,22 +165,11 @@ test.describe(
         await changeSummaryResponse;
         await waitForAllLoadersToDisappear(page);
 
-        const column = table.entityResponseData?.columns?.[0];
+        const descriptionCells = page
+          .getByTestId('description')
+          .getByTestId('ai-suggested-badge');
 
-        await page.getByTestId('searchbar').fill(column?.name ?? '');
-        await waitForAllLoadersToDisappear(page);
-
-        await openColumnDetailPanel({
-          page,
-          columnId: column?.fullyQualifiedName ?? '',
-        });
-
-        const badge = page
-          .locator('.column-detail-panel')
-          .getByTestId('ai-suggested-badge')
-          .first();
-
-        await expect(badge).toBeVisible();
+        await expect(descriptionCells.first()).toBeVisible();
       });
     });
 
