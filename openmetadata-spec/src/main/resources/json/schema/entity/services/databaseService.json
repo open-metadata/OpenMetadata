@@ -50,6 +50,7 @@
         "CustomDatabase",
         "Dbt",
         "SapHana",
+        "SapSuccessFactors",
         "MongoDB",
         "Cassandra",
         "Couchbase",
@@ -178,6 +179,9 @@
         },
         {
           "name": "SapHana"
+        },
+        {
+          "name": "SapSuccessFactors"
         },
         {
           "name": "MongoDB"
@@ -328,6 +332,9 @@
             },
             {
               "$ref": "./connections/database/salesforceConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sapSuccessFactorsConnection.json"
             },
             {
               "$ref": "./connections/database/singleStoreConnection.json"

@@ -3,19 +3,19 @@ import unittest
 """
 Unit tests for plural SDK entity classes
 """
-from unittest.mock import MagicMock, patch
-from uuid import UUID
+from unittest.mock import MagicMock, patch  # noqa: E402
+from uuid import UUID  # noqa: E402
 
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
-from metadata.generated.schema.entity.data.chart import Chart
-from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.mlmodel import MlModel
-from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest  # noqa: E402
+from metadata.generated.schema.entity.data.chart import Chart  # noqa: E402
+from metadata.generated.schema.entity.data.dashboard import Dashboard  # noqa: E402
+from metadata.generated.schema.entity.data.database import Database  # noqa: E402
+from metadata.generated.schema.entity.data.mlmodel import MlModel  # noqa: E402
+from metadata.generated.schema.entity.data.pipeline import Pipeline  # noqa: E402
+from metadata.generated.schema.entity.data.table import Table  # noqa: E402
 
 # Import plural SDK classes
-from metadata.sdk import Charts, Dashboards, Databases, MLModels, Pipelines, Tables
+from metadata.sdk import Charts, Dashboards, Databases, MLModels, Pipelines, Tables  # noqa: E402
 
 
 class TestTablesSDK:
@@ -89,9 +89,7 @@ class TestTablesSDK:
         mock_ometa.patch.return_value = updated_table
 
         # Act
-        result = Tables.update_column_description(
-            table_id, column_name, new_description
-        )
+        result = Tables.update_column_description(table_id, column_name, new_description)
 
         # Assert
         assert result.columns[0].description == new_description
@@ -151,9 +149,7 @@ class TestChartsSDK:
         result = Charts.retrieve_by_name("service.Sales Chart")
 
         assert result.name == "Sales Chart"
-        mock_ometa.get_by_name.assert_called_once_with(
-            entity=Chart, fqn="service.Sales Chart", fields=None
-        )
+        mock_ometa.get_by_name.assert_called_once_with(entity=Chart, fqn="service.Sales Chart", fields=None)
 
 
 class TestDashboardsSDK:
@@ -208,9 +204,7 @@ class TestPipelinesSDK:
 
         assert len(results) == 1
         assert results[0].name == "etl_pipeline"
-        mock_ometa.es_search_from_fqn.assert_called_once_with(
-            entity_type=Pipeline, fqn_search_string="test", size=10
-        )
+        mock_ometa.es_search_from_fqn.assert_called_once_with(entity_type=Pipeline, fqn_search_string="test", size=10)
 
 
 class TestMLModelsSDK:

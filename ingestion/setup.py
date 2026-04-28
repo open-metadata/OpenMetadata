@@ -13,8 +13,7 @@
 Python Dependencies
 """
 
-import sys
-from typing import Dict, List, Set
+from typing import Dict, List, Set  # noqa: UP035
 
 from setuptools import setup
 
@@ -104,9 +103,7 @@ COMMONS = {
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
-        VERSIONS[
-            "grpc-tools"
-        ],  # grpcio-tools already depends on grpcio. No need to add separately
+        VERSIONS["grpc-tools"],  # grpcio-tools already depends on grpcio. No need to add separately
         "protobuf",
     },
     "postgres": {
@@ -176,12 +173,11 @@ base_requirements = {
     "jaraco.context==6.0.1",
     # TODO: Remove one once we have updated datadiff version
     VERSIONS["snowflake-connector"],
-    "mysql-connector-python>=8.0.29;python_version<'3.9'",
-    "mysql-connector-python>=9.1;python_version>='3.9'",
+    "mysql-connector-python>=9.1",
     "httpx~=0.28.0",
 }
 
-plugins: Dict[str, Set[str]] = {
+plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "airflow": {
         "opentelemetry-exporter-otlp==1.37.0",
         "attrs",
@@ -399,16 +395,14 @@ plugins: Dict[str, Set[str]] = {
 }
 
 dev = {
-    "black==22.3.0",
+    "ruff~=0.15.12",
     "uvloop==0.21.0",
     "datamodel-code-generator==0.25.6",
     "boto3-stubs",
     "mypy-boto3-glue",
-    "isort",
+    "nox",
     "pre-commit",
-    "pycln",
-    "pylint~=3.2.0",  # 3.3.0+ breaks our current linting
-    "basedpyright~=1.14",
+    "basedpyright~=1.39.0",
     # For publishing
     "twine",
     "build",
@@ -467,8 +461,7 @@ test = {
     VERSIONS["cockroach"],
     # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
     VERSIONS["starrocks"],
-    "testcontainers==3.7.1;python_version<'3.9'",
-    "testcontainers~=4.8.0;python_version>='3.9'",
+    "testcontainers~=4.8.0",
     "minio==7.2.5",
     *plugins["mlflow"],
     *plugins["datalake-s3"],
@@ -494,14 +487,12 @@ test = {
     VERSIONS["opensearch"],
     VERSIONS["kafka-connect"],
     VERSIONS["factory-boy"],
+    "locust~=2.32.0",
 }
 
 docs = {
     VERSIONS["griffe2md"],
 }
-
-if sys.version_info >= (3, 9):
-    test.add("locust~=2.32.0")
 
 e2e_test = {
     # playwright dependencies
@@ -529,16 +520,10 @@ playwright_dependencies = {
 }
 
 
-def filter_requirements(filtered: Set[str]) -> List[str]:
+def filter_requirements(filtered: Set[str]) -> List[str]:  # noqa: UP006
     """Filter out requirements from base_requirements"""
     return list(
-        base_requirements.union(
-            *[
-                requirements
-                for plugin, requirements in plugins.items()
-                if plugin not in filtered
-            ]
-        )
+        base_requirements.union(*[requirements for plugin, requirements in plugins.items() if plugin not in filtered])
     )
 
 
@@ -554,9 +539,7 @@ setup(
         # FIXME: all-dev-env is a temporary solution to install all dependencies except
         #   those that might conflict with each other or cause issues in the dev environment
         #   This covers all development cases where none of the plugins are used
-        "all-dev-env": filter_requirements(
-            {"airflow", "db2", "great-expectations", "pymssql"}
-        ),
+        "all-dev-env": filter_requirements({"airflow", "db2", "great-expectations", "pymssql"}),
         # enf-of-fixme
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),
         "playwright": list(playwright_dependencies),

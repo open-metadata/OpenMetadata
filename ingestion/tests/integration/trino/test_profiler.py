@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import List
+from typing import List  # noqa: UP035
 
 import pytest
 
@@ -51,7 +51,7 @@ def run_profiler(
 class ProfilerTestParameters:
     table_fqn: str
     expected_table_profile: TableProfile
-    expected_column_profiles: List[ColumnProfile] = None
+    expected_column_profiles: List[ColumnProfile] = None  # noqa: UP006
     config_predicate: Callable[[DatabaseServiceProfilerPipeline], bool] = lambda x: True
 
 
@@ -117,7 +117,7 @@ class ProfilerTestParameters:
                     nullCount=0,
                 )
             ],
-            lambda x: x.useStatistics == False,
+            lambda x: x.useStatistics == False,  # noqa: E712
         ),
         ProfilerTestParameters(
             "{database_service}.minio.my_schema.empty",
@@ -130,7 +130,7 @@ class ProfilerTestParameters:
                     nullCount=0,
                 )
             ],
-            lambda x: x.useStatistics == True,
+            lambda x: x.useStatistics == True,  # noqa: E712
         ),
         ProfilerTestParameters(
             "{database_service}.minio.my_schema.complex_and_simple",  # complex types ignored
@@ -142,9 +142,7 @@ class ProfilerTestParameters:
                     valuesCount=2,
                     nullCount=0,
                 ),
-                ColumnProfile(
-                    name="validto", timestamp=Timestamp(0), valuesCount=2, nullCount=0
-                ),
+                ColumnProfile(name="validto", timestamp=Timestamp(0), valuesCount=2, nullCount=0),
                 ColumnProfile(
                     name="vouchercode",
                     timestamp=Timestamp(0),
@@ -161,35 +159,23 @@ class ProfilerTestParameters:
     ],
     ids=lambda x: x.table_fqn.split(".")[-1],
 )
-def test_profiler(
-    run_profiler, metadata, db_service, parameters: ProfilerTestParameters
-):
+def test_profiler(run_profiler, metadata, db_service, parameters: ProfilerTestParameters):
     if not parameters.config_predicate(
-        DatabaseServiceProfilerPipeline.model_validate(
-            run_profiler["source"]["sourceConfig"]["config"]
-        )
+        DatabaseServiceProfilerPipeline.model_validate(run_profiler["source"]["sourceConfig"]["config"])
     ):
-        pytest.skip(
-            "Skipping test because it's not supported for this profiler configuration"
-        )
+        pytest.skip("Skipping test because it's not supported for this profiler configuration")
     table: Table = metadata.get_latest_table_profile(
         parameters.table_fqn.format(database_service=db_service.fullyQualifiedName.root)
     )
     assert_equal_pydantic_objects(
         parameters.expected_table_profile,
         # we dont want to validate the timestamp because it will be different for each run
-        table.profile.model_copy(
-            update={"timestamp": parameters.expected_table_profile.timestamp}
-        ),
+        table.profile.model_copy(update={"timestamp": parameters.expected_table_profile.timestamp}),
     )
     for profile in parameters.expected_column_profiles:
-        column = next(
-            (col for col in table.columns if col.profile.name == profile.name), None
-        )
+        column = next((col for col in table.columns if col.profile.name == profile.name), None)
         if column is None:
-            raise AssertionError(
-                f"Column [{profile.name}] not found in table [{table.fullyQualifiedName.root}]"
-            )
+            raise AssertionError(f"Column [{profile.name}] not found in table [{table.fullyQualifiedName.root}]")
         assert_equal_pydantic_objects(
             profile,
             column.profile.model_copy(update={"timestamp": profile.timestamp}),
@@ -203,25 +189,17 @@ def test_profiler(
             "{database_service}.minio.my_schema.empty",
             TableProfile(timestamp=Timestamp(0), rowCount=None),
             [],
-            lambda x: x.useStatistics == True,
+            lambda x: x.useStatistics == True,  # noqa: E712
         ),
     ],
     ids=lambda x: x.table_fqn.split(".")[-1],
 )
-def test_no_statistics(
-    run_profiler, metadata, db_service, parameters: ProfilerTestParameters
-):
+def test_no_statistics(run_profiler, metadata, db_service, parameters: ProfilerTestParameters):
     if not parameters.config_predicate(
-        DatabaseServiceProfilerPipeline.model_validate(
-            run_profiler["source"]["sourceConfig"]["config"]
-        )
+        DatabaseServiceProfilerPipeline.model_validate(run_profiler["source"]["sourceConfig"]["config"])
     ):
-        pytest.skip(
-            "Skipping test becuase its not supported for this profiler configuation"
-        )
+        pytest.skip("Skipping test becuase its not supported for this profiler configuation")
     table: Table = metadata.get_latest_table_profile(
         parameters.table_fqn.format(database_service=db_service.fullyQualifiedName.root)
     )
-    assert (
-        table.profile.rowCount is None
-    ), "expected empty row count for a table with no collected statistics"
+    assert table.profile.rowCount is None, "expected empty row count for a table with no collected statistics"
