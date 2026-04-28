@@ -11,6 +11,7 @@
 """
 SQL queries used during QuestDB ingestion
 """
+
 import textwrap
 
 QUESTDB_GET_COLUMNS = "SELECT * FROM table_columns('{table_name}')"

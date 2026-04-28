@@ -11,7 +11,6 @@
 """
 QuestDB models
 """
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -22,10 +21,8 @@ class QuestDBTableRow(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     name: str = Field(alias="table_name")
-    partition_by: Optional[str] = Field(alias="partitionBy", default=None)
-    designated_timestamp: Optional[str] = Field(
-        alias="designatedTimestamp", default=None
-    )
+    partition_by: str | None = Field(alias="partitionBy", default=None)
+    designated_timestamp: str | None = Field(alias="designatedTimestamp", default=None)
     table_type: str
 
 
@@ -48,4 +45,4 @@ class QuestDBMaterializedViewRow(BaseModel):
 
     view_name: str
     base_table_name: str
-    view_sql: Optional[str] = None
+    view_sql: str | None = None

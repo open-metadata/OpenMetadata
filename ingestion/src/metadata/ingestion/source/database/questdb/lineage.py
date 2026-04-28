@@ -11,8 +11,9 @@
 """
 QuestDB lineage module
 """
+
 import traceback
-from typing import Iterable, Optional, Union
+from collections.abc import Iterable
 
 from sqlalchemy import text
 
@@ -46,20 +47,16 @@ _QUESTDB_PUBLIC_SCHEMA = "public"
 
 class QuestDBLineageSource(LineageSource):
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: QuestDBConnection = config.serviceConnection.root.config
         if not isinstance(connection, QuestDBConnection):
-            raise InvalidSourceException(
-                f"Expected QuestDBConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected QuestDBConnection, but got {connection}")
         return cls(config, metadata)
 
     def yield_view_lineage(
         self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+    ) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         yield from super().yield_view_lineage()
         yield from self._yield_materialized_view_lineage()
 
@@ -87,10 +84,7 @@ class QuestDBLineageSource(LineageSource):
                             )
                         except Exception as exc:
                             logger.debug(traceback.format_exc())
-                            logger.warning(
-                                f"Error creating lineage for materialized view "
-                                f"[{row}]: {exc}"
-                            )
+                            logger.warning(f"Error creating lineage for materialized view [{row}]: {exc}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching materialized views for lineage: {exc}")

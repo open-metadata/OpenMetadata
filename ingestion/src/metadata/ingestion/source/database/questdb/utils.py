@@ -23,8 +23,9 @@ QuestDB's schema model.
 The dialect is patched on the per-engine ``Dialect`` instance returned by
 ``sqlalchemy.create_engine``, scoping the patch to that engine.
 """
+
 import types
-from typing import Any, Dict, List, Optional, Type
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection, Engine
@@ -60,7 +61,7 @@ logger = ingestion_logger()
 
 QUESTDB_DEFAULT_SCHEMA = "public"
 
-_QUESTDB_NATIVE_TYPE_MAP: Dict[str, Type[TypeEngine]] = {
+_QUESTDB_NATIVE_TYPE_MAP: dict[str, type[TypeEngine]] = {
     "boolean": BOOLEAN,
     "byte": SMALLINT,
     "short": SMALLINT,
@@ -82,17 +83,17 @@ _QUESTDB_NATIVE_TYPE_MAP: Dict[str, Type[TypeEngine]] = {
 }
 
 
-def _questdb_native_type(data_type: str) -> Type[TypeEngine]:
+def _questdb_native_type(data_type: str) -> type[TypeEngine]:
     return _QUESTDB_NATIVE_TYPE_MAP.get(data_type.lower(), NullType)
 
 
 def _get_columns(
     connection: Connection,
     table_name: str,
-    schema: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    schema: str | None = None,
+) -> list[dict[str, Any]]:
     result = connection.execute(text(QUESTDB_GET_COLUMNS.format(table_name=table_name)))
-    columns: List[Dict[str, Any]] = []
+    columns: list[dict[str, Any]] = []
     for raw in result:
         row = QuestDBColumnRow.model_validate(dict(raw._mapping))
         columns.append(
@@ -106,19 +107,19 @@ def _get_columns(
     return columns
 
 
-def _empty_pk_constraint(*_args: Any, **_kwargs: Any) -> Dict[str, Any]:
+def _empty_pk_constraint(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
     return {"constrained_columns": [], "name": None}
 
 
-def _empty_list(*_args: Any, **_kwargs: Any) -> List[Any]:
+def _empty_list(*_args: Any, **_kwargs: Any) -> list[Any]:
     return []
 
 
-def _empty_table_comment(*_args: Any, **_kwargs: Any) -> Dict[str, Any]:
+def _empty_table_comment(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
     return {"text": None}
 
 
-def _query_tables(connection: Connection) -> List[QuestDBTableRow]:
+def _query_tables(connection: Connection) -> list[QuestDBTableRow]:
     """
     Return all rows from QuestDB's ``tables()`` function as ``QuestDBTableRow`` instances.
     """
@@ -129,8 +130,8 @@ def _query_tables(connection: Connection) -> List[QuestDBTableRow]:
 def _get_view_definition_from_views(
     connection: Connection,
     view_name: str,
-    schema: Optional[str] = None,
-) -> Optional[str]:
+    schema: str | None = None,
+) -> str | None:
     result = connection.execute(
         text(QUESTDB_GET_VIEW_DEFINITION),
         {"name": view_name},
@@ -150,29 +151,15 @@ def patch_questdb_dialect(engine: Engine) -> Engine:
     logger.debug("Patching PostgreSQL dialect for QuestDB engine %s", engine.url)
 
     dialect.get_columns = types.MethodType(
-        lambda self, connection, table_name, schema=None, **_kw: _get_columns(
-            connection, table_name, schema
-        ),
+        lambda self, connection, table_name, schema=None, **_kw: _get_columns(connection, table_name, schema),
         dialect,
     )
-    dialect.get_pk_constraint = types.MethodType(
-        lambda self, *a, **kw: _empty_pk_constraint(), dialect
-    )
-    dialect.get_foreign_keys = types.MethodType(
-        lambda self, *a, **kw: _empty_list(), dialect
-    )
-    dialect.get_unique_constraints = types.MethodType(
-        lambda self, *a, **kw: _empty_list(), dialect
-    )
-    dialect.get_indexes = types.MethodType(
-        lambda self, *a, **kw: _empty_list(), dialect
-    )
-    dialect.get_check_constraints = types.MethodType(
-        lambda self, *a, **kw: _empty_list(), dialect
-    )
-    dialect.get_table_comment = types.MethodType(
-        lambda self, *a, **kw: _empty_table_comment(), dialect
-    )
+    dialect.get_pk_constraint = types.MethodType(lambda self, *a, **kw: _empty_pk_constraint(), dialect)
+    dialect.get_foreign_keys = types.MethodType(lambda self, *a, **kw: _empty_list(), dialect)
+    dialect.get_unique_constraints = types.MethodType(lambda self, *a, **kw: _empty_list(), dialect)
+    dialect.get_indexes = types.MethodType(lambda self, *a, **kw: _empty_list(), dialect)
+    dialect.get_check_constraints = types.MethodType(lambda self, *a, **kw: _empty_list(), dialect)
+    dialect.get_table_comment = types.MethodType(lambda self, *a, **kw: _empty_table_comment(), dialect)
     dialect.get_view_definition = types.MethodType(
         lambda self, connection, view_name, schema=None, **_kw: _get_view_definition_from_views(
             connection, view_name, schema

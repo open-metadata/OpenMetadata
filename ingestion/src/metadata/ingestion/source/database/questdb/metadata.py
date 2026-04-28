@@ -11,7 +11,8 @@
 """
 QuestDB source module
 """
-from typing import Dict, Iterable, List, Optional, Tuple
+
+from collections.abc import Iterable
 
 from sqlalchemy.engine.reflection import Inspector
 
@@ -36,7 +37,6 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.questdb.connection import (
     QUESTDB_DEFAULT_DATABASE,
 )
-from metadata.ingestion.source.database.questdb.models import QuestDBTableRow
 from metadata.ingestion.source.database.questdb.utils import _query_tables
 
 
@@ -48,50 +48,36 @@ class QuestDBSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection = config.serviceConnection.root.config
         if not isinstance(connection, QuestDBConnection):
-            raise InvalidSourceException(
-                f"Expected QuestDBConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected QuestDBConnection, but got {connection}")
         return cls(config, metadata)
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata) -> None:
         super().__init__(config, metadata)
-        self._tables_cache: Dict[str, QuestDBTableRow] = {
-            row.name: row for row in _query_tables(self.connection)
-        }
+        self._tables_cache = {row.name: row for row in _query_tables(self.connection)}
 
     def get_database_names(self) -> Iterable[str]:
         yield self.service_connection.databaseName or QUESTDB_DEFAULT_DATABASE
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Yield ``TableNameAndType`` entries for QuestDB tables (``table_type == "T"``).
 
         Tables with a ``partitionBy`` value other than ``NONE`` are typed
         ``TableType.Partitioned``; all others are ``TableType.Regular``.
         """
-        result: List[TableNameAndType] = []
+        result: list[TableNameAndType] = []
         for row in self._tables_cache.values():
             if row.table_type != "T":
                 continue
-            table_type = (
-                TableType.Partitioned
-                if row.partition_by and row.partition_by != "NONE"
-                else TableType.Regular
-            )
+            table_type = TableType.Partitioned if row.partition_by and row.partition_by != "NONE" else TableType.Regular
             result.append(TableNameAndType(name=row.name, type_=table_type))
         return result
 
-    def query_view_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Yield ``TableNameAndType`` entries for QuestDB views and materialized views.
 
@@ -101,11 +87,7 @@ class QuestDBSource(CommonDbSourceService):
         return [
             TableNameAndType(
                 name=row.name,
-                type_=(
-                    TableType.View
-                    if row.table_type == "V"
-                    else TableType.MaterializedView
-                ),
+                type_=(TableType.View if row.table_type == "V" else TableType.MaterializedView),
             )
             for row in self._tables_cache.values()
             if row.table_type in ("V", "M")
@@ -116,7 +98,7 @@ class QuestDBSource(CommonDbSourceService):
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Tuple[bool, Optional[TablePartition]]:
+    ) -> tuple[bool, TablePartition | None]:
         """
         Return the partition details for a QuestDB table.
 
@@ -129,11 +111,7 @@ class QuestDBSource(CommonDbSourceService):
             return False, None
         partition_by = row.partition_by
         designated_timestamp = row.designated_timestamp
-        if (
-            not partition_by
-            or partition_by in ("NONE", "N/A")
-            or not designated_timestamp
-        ):
+        if not partition_by or partition_by in ("NONE", "N/A") or not designated_timestamp:
             return False, None
         return True, TablePartition(
             columns=[

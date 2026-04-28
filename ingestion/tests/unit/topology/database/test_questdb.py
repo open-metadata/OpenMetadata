@@ -11,6 +11,7 @@
 """
 Unit tests for the QuestDB connector — no live cluster required.
 """
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -235,9 +236,7 @@ def test_get_columns_falls_back_to_nulltype_for_unknown_type():
     """Unknown data types must not raise — return NullType so SQLAlchemy
     can still reflect the column rather than failing the whole table."""
     connection = MagicMock()
-    connection.execute.return_value = [
-        _row(column="weird_col", type="magical_unknown_type", designated=False)
-    ]
+    connection.execute.return_value = [_row(column="weird_col", type="magical_unknown_type", designated=False)]
 
     columns = _get_columns(connection, "t", "public")
 
@@ -350,13 +349,9 @@ def test_get_view_definition_from_views_returns_sql():
         view_sql="SELECT ts, sensor_id FROM iot_alerts WHERE severity = 'critical'"
     )
 
-    definition = _get_view_definition_from_views(
-        connection, "iot_critical_alerts", "public"
-    )
+    definition = _get_view_definition_from_views(connection, "iot_critical_alerts", "public")
 
-    assert (
-        definition == "SELECT ts, sensor_id FROM iot_alerts WHERE severity = 'critical'"
-    )
+    assert definition == "SELECT ts, sensor_id FROM iot_alerts WHERE severity = 'critical'"
     query_text = str(connection.execute.call_args[0][0])
     assert "views()" in query_text
 
@@ -487,9 +482,7 @@ def test_get_table_partition_details_returns_partition():
     source = _make_source_with_cache(
         mock_tuples=[("sensor_readings", "DAY", "ts", "T")],
     )
-    is_partitioned, partition = source.get_table_partition_details(
-        "sensor_readings", "public", MagicMock()
-    )
+    is_partitioned, partition = source.get_table_partition_details("sensor_readings", "public", MagicMock())
 
     assert is_partitioned is True
     assert partition is not None
@@ -502,9 +495,7 @@ def test_get_table_partition_details_includes_column_name():
     source = _make_source_with_cache(
         mock_tuples=[("sensor_readings", "DAY", "created_at", "T")],
     )
-    _, partition = source.get_table_partition_details(
-        "sensor_readings", "public", MagicMock()
-    )
+    _, partition = source.get_table_partition_details("sensor_readings", "public", MagicMock())
 
     assert partition.columns[0].columnName == "created_at"
 
@@ -514,9 +505,7 @@ def test_get_table_partition_details_returns_false_for_none():
     source = _make_source_with_cache(
         mock_tuples=[("orders", "NONE", None, "T")],
     )
-    is_partitioned, partition = source.get_table_partition_details(
-        "orders", "public", MagicMock()
-    )
+    is_partitioned, partition = source.get_table_partition_details("orders", "public", MagicMock())
 
     assert is_partitioned is False
     assert partition is None
@@ -525,9 +514,7 @@ def test_get_table_partition_details_returns_false_for_none():
 def test_get_table_partition_details_returns_false_for_missing_table():
     """Unknown table names must return (False, None) gracefully."""
     source = _make_source_with_cache(mock_tuples=[])
-    is_partitioned, partition = source.get_table_partition_details(
-        "ghost_table", "public", MagicMock()
-    )
+    is_partitioned, partition = source.get_table_partition_details("ghost_table", "public", MagicMock())
 
     assert is_partitioned is False
     assert partition is None
@@ -537,9 +524,7 @@ def test_get_table_partition_details_hour_interval():
     source = _make_source_with_cache(
         mock_tuples=[("trades", "HOUR", "ts", "T")],
     )
-    is_partitioned, partition = source.get_table_partition_details(
-        "trades", "public", MagicMock()
-    )
+    is_partitioned, partition = source.get_table_partition_details("trades", "public", MagicMock())
 
     assert is_partitioned is True
     assert partition.columns[0].interval == "HOUR"
@@ -567,9 +552,7 @@ def test_patch_questdb_dialect_binds_on_real_pg_dialect():
     assert engine.dialect.get_unique_constraints(connection, "t", schema="public") == []
     assert engine.dialect.get_indexes(connection, "t", schema="public") == []
     assert engine.dialect.get_check_constraints(connection, "t", schema="public") == []
-    assert engine.dialect.get_table_comment(connection, "t", schema="public") == {
-        "text": None
-    }
+    assert engine.dialect.get_table_comment(connection, "t", schema="public") == {"text": None}
 
 
 def test_patch_questdb_dialect_view_definition_queries_views_func():
@@ -699,9 +682,7 @@ def test_yield_materialized_view_lineage_skips_row_on_lineage_error():
     source.get_engine = MagicMock(return_value=iter([mock_engine]))
 
     bad_row = _row(view_name="bad_mv", base_table_name="src", view_sql=None)
-    good_row = _row(
-        view_name="good_mv", base_table_name="sensor_readings", view_sql=None
-    )
+    good_row = _row(view_name="good_mv", base_table_name="sensor_readings", view_sql=None)
     mock_conn.execute.return_value = [bad_row, good_row]
 
     good_lineage = MagicMock()
@@ -723,9 +704,7 @@ def test_yield_materialized_view_lineage_uses_config_database_name():
     mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
     mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
     source.get_engine = MagicMock(return_value=iter([mock_engine]))
-    mock_conn.execute.return_value = [
-        _row(view_name="mv", base_table_name="t", view_sql="SELECT 1")
-    ]
+    mock_conn.execute.return_value = [_row(view_name="mv", base_table_name="t", view_sql="SELECT 1")]
 
     with patch(
         "metadata.ingestion.source.database.questdb.lineage._create_lineage_by_table_name",
@@ -745,9 +724,7 @@ def test_yield_materialized_view_lineage_defaults_database_to_qdb():
     mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
     mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
     source.get_engine = MagicMock(return_value=iter([mock_engine]))
-    mock_conn.execute.return_value = [
-        _row(view_name="mv", base_table_name="t", view_sql=None)
-    ]
+    mock_conn.execute.return_value = [_row(view_name="mv", base_table_name="t", view_sql=None)]
 
     with patch(
         "metadata.ingestion.source.database.questdb.lineage._create_lineage_by_table_name",
@@ -779,15 +756,15 @@ def test_yield_view_lineage_chains_parent_and_materialized():
     parent_item = MagicMock()
     mat_item = MagicMock()
 
-    with patch.object(
-        QuestDBLineageSource.__bases__[0],
-        "yield_view_lineage",
-        return_value=iter([parent_item]),
+    with (
+        patch.object(
+            QuestDBLineageSource.__bases__[0],
+            "yield_view_lineage",
+            return_value=iter([parent_item]),
+        ),
+        patch.object(source, "_yield_materialized_view_lineage", return_value=iter([mat_item])),
     ):
-        with patch.object(
-            source, "_yield_materialized_view_lineage", return_value=iter([mat_item])
-        ):
-            results = list(source.yield_view_lineage())
+        results = list(source.yield_view_lineage())
 
     assert parent_item in results
     assert mat_item in results

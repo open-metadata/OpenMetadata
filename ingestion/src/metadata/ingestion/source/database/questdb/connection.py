@@ -11,7 +11,7 @@
 """
 Source connection handler
 """
-from typing import Optional
+
 from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
@@ -62,9 +62,7 @@ def get_connection_url(connection: QuestDBConnectionConfig) -> str:
 
     options = get_connection_options_dict(connection)
     if options:
-        params = "&".join(
-            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
-        )
+        params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
         url = f"{url}?{params}"
     return url
 
@@ -90,8 +88,8 @@ class QuestDBConnection(BaseConnection[QuestDBConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
