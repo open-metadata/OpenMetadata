@@ -190,7 +190,7 @@ export const removeFirstNTestCasesFromLogicalTestSuite = async (
   count: number
 ) => {
   const rowActionDropdown = page
-    .locator('.ant-table-tbody')
+    .locator('[data-testid="test-case-table"] tbody')
     .locator(`[data-testid^="${ACTION_DROPDOWN_PREFIX}"]`);
 
   for (let i = 0; i < count; i++) {
@@ -277,8 +277,8 @@ export const selectTestCasesByCheckbox = async (
   await expect(rows.first()).toBeVisible();
 
   for (let i = 0; i < count; i++) {
-    const checkbox = rows.nth(i).locator('input[type="checkbox"]');
-    await checkbox.check();
+    const checkboxLabel = rows.nth(i).locator('label[slot="selection"]');
+    await checkboxLabel.click();
   }
 };
 

@@ -76,7 +76,9 @@ export const validateDataContractInsideBundleTestSuites = async (
       response.status() === 200
   );
 
-  await page.getByTestId('bundle-suite-radio-btn').click();
+  await page
+    .locator('label:has([data-testid="bundle-suite-radio-btn"])')
+    .click();
 
   await bundleSuitesResponse;
 

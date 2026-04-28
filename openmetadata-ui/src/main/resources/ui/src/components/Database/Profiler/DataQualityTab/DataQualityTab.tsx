@@ -383,10 +383,13 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     fetchTestCases?.();
   };
 
-  const renderStatusCell = (result: TestCaseResult | undefined) => {
+  const renderStatusCell = (
+    result: TestCaseResult | undefined,
+    name: string
+  ) => {
     return result?.testCaseStatus ? (
       <StatusBadge
-        dataTestId="status-badge"
+        dataTestId={`status-badge-${name}`}
         label={TEST_CASE_STATUS_LABELS[result.testCaseStatus]}
         status={toLower(result.testCaseStatus) as StatusType}
       />
@@ -562,7 +565,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     return (
       <Table.Row id={record.id ?? record.name ?? ''} key={record.id}>
         <Table.Cell className="tw:w-35 tw:overflow-hidden">
-          {renderStatusCell(record.testCaseResult)}
+          {renderStatusCell(record.testCaseResult, record.name ?? '')}
         </Table.Cell>
         <Table.Cell className="tw:max-w-60 tw:overflow-hidden">
           {renderReasonCell(record.testCaseResult, record)}
@@ -572,12 +575,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         </Table.Cell>
         <Table.Cell className="tw:max-w-50 tw:overflow-hidden">
           <div
+            data-testid={record.name}
             role="presentation"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}>
             <Link
               className="break-word"
-              data-testid={record.name}
               state={{ breadcrumbData }}
               to={{
                 pathname: getTestCaseDetailPagePath(
