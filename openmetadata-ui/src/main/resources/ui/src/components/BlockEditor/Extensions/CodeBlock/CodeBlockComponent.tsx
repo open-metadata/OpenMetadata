@@ -33,6 +33,9 @@ const CodeBlockComponent: FC<NodeViewProps> = ({ node }) => {
     try {
       await navigator.clipboard.writeText(node.textContent);
       setCopied(true);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
       timerRef.current = setTimeout(() => setCopied(false), 2000);
     } catch {
       // clipboard write failed silently
