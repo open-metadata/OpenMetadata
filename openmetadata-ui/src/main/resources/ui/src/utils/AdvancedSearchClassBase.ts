@@ -1399,9 +1399,12 @@ class AdvancedSearchClassBase {
       }
 
       case 'hyperlink-cp': {
+        const keywordSuffix =
+          searchOutputType === SearchOutputType.ElasticSearch ? '.keyword' : '';
+
         return [
           {
-            subfieldsKey: `${field.name}.url.keyword`,
+            subfieldsKey: `${field.name}.url${keywordSuffix}`,
             dataObject: {
               type: 'text',
               label: `${label} ${t('label.url')}`,
@@ -1409,7 +1412,7 @@ class AdvancedSearchClassBase {
             },
           },
           {
-            subfieldsKey: `${field.name}.displayText.keyword`,
+            subfieldsKey: `${field.name}.displayText${keywordSuffix}`,
             dataObject: {
               type: 'text',
               label: `${label} ${t('label.display-text')}`,
