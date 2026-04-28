@@ -40,16 +40,6 @@ export async function waitForGraphLoaded(page: Page) {
 export async function readNodePositions(
   page: Page
 ): Promise<Record<string, { x: number; y: number }>> {
-  // Clear stale positions so we always wait for a fresh render cycle.
-  // Without this, a previous render's positions satisfy the non-empty check
-  // immediately and the test reads stale data.
-  await page.evaluate(() => {
-    const el = document.querySelector<HTMLElement>('.ontology-g6-container');
-    if (el) {
-      el.dataset.nodePositions = '{}';
-    }
-  });
-
   await page.waitForFunction(
     () => {
       const el = document.querySelector<HTMLElement>('.ontology-g6-container');

@@ -525,10 +525,15 @@ test.describe('Ontology Explorer', () => {
         .getByTestId('ontology-graph-search')
         .locator('input');
       await searchInput.fill(term1.data.name);
-      const filteredCount = Object.keys(await readNodePositions(page)).length;
+      // Search does not re-run layout, so read existing positions without clearing.
+      const filteredCount = Object.keys(
+        await readNodePositions(page)
+      ).length;
 
       await searchInput.clear();
-      const restoredCount = Object.keys(await readNodePositions(page)).length;
+      const restoredCount = Object.keys(
+        await readNodePositions(page)
+      ).length;
       expect(restoredCount).toBeGreaterThanOrEqual(filteredCount);
     });
 
