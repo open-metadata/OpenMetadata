@@ -46,7 +46,6 @@ test.describe('Data Product Rename', () => {
       const { apiContext, afterAction } = await createNewPage(browser);
       await adminUser.create(apiContext);
       await adminUser.setAdminRole(apiContext);
-      await EntityDataClass.preRequisitesForTests(apiContext);
       await domain.create(apiContext);
       await dataProduct.create(apiContext);
       await table.create(apiContext);
