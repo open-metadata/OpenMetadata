@@ -179,7 +179,6 @@ export const CoverImageUploadField = ({
   'data-testid': dataTestId,
 }: CoverImageUploadFieldProps) => {
   const replaceInputRef = useRef<HTMLInputElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const dragStartYRef = useRef(0);
   const dragStartOffsetRef = useRef(0);
 
@@ -189,6 +188,11 @@ export const CoverImageUploadField = ({
   const [isRepositioning, setIsRepositioning] = useState(false);
   const [isRepositionDragging, setIsRepositionDragging] = useState(false);
   const [tempOffsetY, setTempOffsetY] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  const setContainerNode = useCallback((node: HTMLDivElement | null) => {
+    setContainerWidth(node?.offsetWidth ?? 0);
+  }, []);
 
   const mergedLabels = useMemo(
     () => ({ ...DEFAULT_LABELS, ...labels }),
@@ -315,15 +319,12 @@ export const CoverImageUploadField = ({
   }, [onChange]);
 
   const getScaledImageHeight = useCallback(() => {
-    if (!containerRef.current || !imageNaturalWidth || !imageNaturalHeight) {
+    if (!containerWidth || !imageNaturalWidth || !imageNaturalHeight) {
       return 0;
     }
 
-    return (
-      (imageNaturalHeight / imageNaturalWidth) *
-      containerRef.current.offsetWidth
-    );
-  }, [imageNaturalHeight, imageNaturalWidth]);
+    return (imageNaturalHeight / imageNaturalWidth) * containerWidth;
+  }, [imageNaturalHeight, imageNaturalWidth, containerWidth]);
 
   const getBounds = useCallback(() => {
     const scaledHeight = getScaledImageHeight();
@@ -527,7 +528,7 @@ export const CoverImageUploadField = ({
             previewClassName
           )}
           data-testid="cover-image-upload-preview-container"
-          ref={containerRef}
+          ref={setContainerNode}
           style={{ height: previewHeight }}
           tabIndex={isRepositioning ? 0 : -1}
           onKeyDown={handleRepositionKeyDown}>
