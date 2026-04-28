@@ -22,7 +22,7 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 
-def merge_and_clean_protobuf_schema(schema_text: Optional[str]) -> Optional[str]:
+def merge_and_clean_protobuf_schema(schema_text: Optional[str]) -> Optional[str]:  # noqa: UP045
     """
     Remove the import and extra syntax lines for a schema with references
     """

@@ -13,7 +13,7 @@
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional  # noqa: UP035
 
 import lkml
 
@@ -58,14 +58,14 @@ class BulkLkmlParser(metaclass=Singleton):
     def __init__(
         self,
         reader: LocalReader,
-        additional_readers: Optional[List[LocalReader]] = None,
+        additional_readers: Optional[List[LocalReader]] = None,  # noqa: UP006, UP045
     ):
-        self._views_cache: Dict[ViewName, LookMlView] = {}
-        self._visited_files: Dict[Includes, List[Includes]] = {}
+        self._views_cache: Dict[ViewName, LookMlView] = {}  # noqa: UP006
+        self._visited_files: Dict[Includes, List[Includes]] = {}  # noqa: UP006
 
         # To store the raw string of the lkml explores
-        self.parsed_files: Dict[Includes, str] = {}
-        self.parsed_view: Dict[str, List[Includes]] = {}
+        self.parsed_files: Dict[Includes, str] = {}  # noqa: UP006
+        self.parsed_view: Dict[str, List[Includes]] = {}  # noqa: UP006
 
         self.reader = reader
         self.additional_readers = additional_readers or []
@@ -90,7 +90,7 @@ class BulkLkmlParser(metaclass=Singleton):
             except Exception as err:
                 logger.debug(f"Error parsing file {_path}: {err}")
 
-    def _read_file(self, path: Includes, reader: Optional[LocalReader] = None) -> str:
+    def _read_file(self, path: Includes, reader: Optional[LocalReader] = None) -> str:  # noqa: UP045
         """
         Read the LookML file
         """
@@ -110,7 +110,7 @@ class BulkLkmlParser(metaclass=Singleton):
 
         raise ReadException(f"Error trying to read the file [{path}]")
 
-    def get_view_from_cache(self, view_name: ViewName) -> Optional[LookMlView]:
+    def get_view_from_cache(self, view_name: ViewName) -> Optional[LookMlView]:  # noqa: UP045
         """
         Check if view is cached, and return it.
         Otherwise, return None
@@ -120,7 +120,7 @@ class BulkLkmlParser(metaclass=Singleton):
 
         return None
 
-    def find_view(self, view_name: ViewName) -> Optional[LookMlView]:
+    def find_view(self, view_name: ViewName) -> Optional[LookMlView]:  # noqa: UP045
         """
         Parse an incoming file (either from a `source_file` or an `include`),
         cache the views and return the list of includes to parse if

@@ -272,7 +272,7 @@ vars:
             "http://localhost:8585\nwith\nnewlines",  # URL class even accepts newlines
         ]
 
-        print(f"\nTesting {len(valid_urls)} valid URLs:")
+        print(f"\nTesting {len(valid_urls)} valid URLs:")  # noqa: T201
         for url in valid_urls:
             with self.subTest(url=url):
                 try:
@@ -281,7 +281,7 @@ vars:
                         openmetadata_jwt_token="test-jwt-token",
                         openmetadata_service_name="test_service",
                     )
-                    print(f"✅ {url!r} - VALID")
+                    print(f"✅ {url!r} - VALID")  # noqa: T201
                 except Exception as e:
                     self.fail(f"Valid URL {url!r} was rejected: {e}")
 
@@ -315,16 +315,16 @@ vars:
             "12345",
         ]
 
-        print(f"\nTesting {len(invalid_urls)} invalid URLs:")
+        print(f"\nTesting {len(invalid_urls)} invalid URLs:")  # noqa: T201
         for url in invalid_urls:
             with self.subTest(url=url):
-                with self.assertRaises(ValueError, msg=f"Invalid URL {repr(url)} should have been rejected"):
+                with self.assertRaises(ValueError, msg=f"Invalid URL {repr(url)} should have been rejected"):  # noqa: RUF010
                     OpenMetadataDBTConfig(
                         openmetadata_host_port=url,
                         openmetadata_jwt_token="test-jwt-token",
                         openmetadata_service_name="test_service",
                     )
-                print(f"✅ {repr(url)} - CORRECTLY REJECTED")
+                print(f"✅ {repr(url)} - CORRECTLY REJECTED")  # noqa: RUF010, T201
 
         # Test edge cases with None and non-string types
         edge_cases = [
@@ -336,19 +336,19 @@ vars:
             False,
         ]
 
-        print(f"\nTesting {len(edge_cases)} edge cases:")
+        print(f"\nTesting {len(edge_cases)} edge cases:")  # noqa: T201
         for case in edge_cases:
             with self.subTest(case=case):
                 with self.assertRaises(
                     (ValueError, TypeError),
-                    msg=f"Edge case {repr(case)} should have been rejected",
+                    msg=f"Edge case {repr(case)} should have been rejected",  # noqa: RUF010
                 ):
                     OpenMetadataDBTConfig(
                         openmetadata_host_port=case,
                         openmetadata_jwt_token="test-jwt-token",
                         openmetadata_service_name="test_service",
                     )
-                print(f"✅ {repr(case)} - CORRECTLY REJECTED")
+                print(f"✅ {repr(case)} - CORRECTLY REJECTED")  # noqa: RUF010, T201
 
     def test_dbt_project_yml_vars_format_validation(self):
         """Test that dbt_project.yml vars follow correct format and naming convention"""
@@ -356,7 +356,7 @@ vars:
         vars_section = config["vars"]
 
         # Test that we only use standard OpenMetadata naming
-        standard_vars = [var for var in vars_section.keys() if var.startswith("openmetadata_")]
+        standard_vars = [var for var in vars_section.keys() if var.startswith("openmetadata_")]  # noqa: SIM118
         self.assertGreaterEqual(
             len(standard_vars),
             3,

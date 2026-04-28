@@ -90,8 +90,8 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
@@ -204,6 +204,6 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
 
         if isinstance(connection.oracleConnectionType, OracleServiceName):
             url = f"{url}/?service_name={connection.oracleConnectionType.oracleServiceName}"
-            return url
+            return url  # noqa: RET504
 
         raise ValueError(f"Unknown connection type {connection.oracleConnectionType}")

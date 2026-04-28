@@ -15,7 +15,7 @@ import uuid
 
 import pytest
 
-from ..containers import MySqlContainerConfigs, get_mysql_container
+from ..containers import MySqlContainerConfigs, get_mysql_container  # noqa: TID252
 
 MYSQL_CONFIG = """
 source:
