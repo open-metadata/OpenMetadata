@@ -32,7 +32,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import imageClassBase from '../../../components/BlockEditor/Extensions/image/ImageClassBase';
-import { showNotistackError } from '../../../utils/NotistackUtils';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -61,6 +60,7 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../utils/EntityUtils';
+import { showNotistackError } from '../../../utils/NotistackUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
 import tagClassBase from '../../../utils/TagClassBase';
