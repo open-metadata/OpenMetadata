@@ -88,8 +88,8 @@ jest.mock('../../../utils/TasksUtils', () => ({
 }));
 
 jest.mock('../../../utils/FeedUtils', () => ({
-  getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
-  getEntityType: jest.fn().mockReturnValue('table'),
+  getEntityFQNFromAbout: jest.fn().mockReturnValue('entityFQN'),
+  getEntityTypeFromAbout: jest.fn().mockReturnValue('table'),
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
@@ -118,8 +118,10 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Admin User'),
 }));
 
-jest.mock('../../../rest/feedsAPI', () => ({
-  updateTask: jest.fn().mockResolvedValue({}),
+jest.mock('../../../rest/tasksAPI', () => ({
+  ...jest.requireActual('../../../rest/tasksAPI'),
+  resolveTask: jest.fn().mockResolvedValue({}),
+  closeTask: jest.fn().mockResolvedValue({}),
 }));
 
 const mockProps = {
@@ -205,7 +207,7 @@ describe('TaskFeedCardNew Component', () => {
   });
 
   it('should handle approve button click', async () => {
-    const { updateTask } = require('../../../rest/feedsAPI');
+    const { resolveTask } = require('../../../rest/tasksAPI');
     const { useAuth } = require('../../../hooks/authHooks');
     useAuth.mockReturnValue({ isAdminUser: true });
 
@@ -220,11 +222,11 @@ describe('TaskFeedCardNew Component', () => {
       fireEvent.click(approveButton);
     });
 
-    expect(updateTask).toHaveBeenCalled();
+    expect(resolveTask).toHaveBeenCalled();
   });
 
   it('should handle reject button click', async () => {
-    const { updateTask } = require('../../../rest/feedsAPI');
+    const { resolveTask } = require('../../../rest/tasksAPI');
     const { useAuth } = require('../../../hooks/authHooks');
     useAuth.mockReturnValue({ isAdminUser: true });
 
@@ -239,7 +241,12 @@ describe('TaskFeedCardNew Component', () => {
       fireEvent.click(rejectButton);
     });
 
-    expect(updateTask).toHaveBeenCalled();
+    expect(resolveTask).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        resolutionType: 'Rejected',
+      })
+    );
   });
 
   it('should display replies count when posts are available', async () => {
@@ -295,7 +302,7 @@ describe('TaskFeedCardNew Component', () => {
   });
 
   it('should handle recognizer feedback approval', async () => {
-    const { updateTask } = require('../../../rest/feedsAPI');
+    const { resolveTask } = require('../../../rest/tasksAPI');
     const {
       useApplicationStore,
     } = require('../../../hooks/useApplicationStore');
@@ -323,8 +330,7 @@ describe('TaskFeedCardNew Component', () => {
       fireEvent.click(approveButton);
     });
 
-    expect(updateTask).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(resolveTask).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         newValue: 'approved',
@@ -333,7 +339,7 @@ describe('TaskFeedCardNew Component', () => {
   });
 
   it('should handle recognizer feedback rejection', async () => {
-    const { updateTask } = require('../../../rest/feedsAPI');
+    const { resolveTask } = require('../../../rest/tasksAPI');
     const {
       useApplicationStore,
     } = require('../../../hooks/useApplicationStore');
@@ -361,8 +367,7 @@ describe('TaskFeedCardNew Component', () => {
       fireEvent.click(rejectButton);
     });
 
-    expect(updateTask).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(resolveTask).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         newValue: 'Rejected',

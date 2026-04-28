@@ -190,7 +190,7 @@ public class FeedResource {
           boolean resolved,
       @Parameter(
               description =
-                  "The type of thread to filter the results. It can take one of 'Conversation', 'Task', 'Announcement'",
+                  "The type of thread to filter the results. It can take one of 'Conversation', 'Task'. Legacy announcement threads are no longer served from this API.",
               schema = @Schema(implementation = ThreadType.class))
           @QueryParam("type")
           ThreadType threadType,
@@ -199,20 +199,14 @@ public class FeedResource {
                   "The status of tasks to filter the results. It can take one of 'Open', 'Closed'. This filter will take effect only when type is set to Task",
               schema = @Schema(implementation = TaskStatus.class))
           @QueryParam("taskStatus")
-          TaskStatus taskStatus,
-      @Parameter(
-              description =
-                  "Whether to filter results by announcements that are currently active. This filter will take effect only when type is set to Announcement",
-              schema = @Schema(type = "boolean"))
-          @QueryParam("activeAnnouncement")
-          Boolean activeAnnouncement) {
+          TaskStatus taskStatus) {
+    rejectLegacyAnnouncementAccess(threadType == ThreadType.Announcement);
     SubjectContext subjectContext = getSubjectContext(securityContext);
     RestUtil.validateCursors(before, after);
     FeedFilter filter =
         FeedFilter.builder()
             .threadType(threadType)
             .taskStatus(taskStatus)
-            .activeAnnouncement(activeAnnouncement)
             .resolved(resolved)
             .filterType(filterType)
             .paginationType(before != null ? PaginationType.BEFORE : PaginationType.AFTER)
@@ -252,7 +246,9 @@ public class FeedResource {
       @Parameter(description = "Id of the Thread", schema = @Schema(type = "string"))
           @PathParam("id")
           UUID id) {
-    return addHref(uriInfo, dao.get(id));
+    Thread thread = dao.get(id);
+    rejectLegacyAnnouncementThread(thread);
+    return addHref(uriInfo, thread);
   }
 
   @GET
@@ -363,6 +359,7 @@ public class FeedResource {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    rejectLegacyAnnouncementThread(dao.get(UUID.fromString(id)));
     PatchResponse<Thread> response =
         dao.patchThread(
             uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
@@ -416,6 +413,7 @@ public class FeedResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateThread create) {
+    rejectLegacyAnnouncementAccess(create.getType() == ThreadType.Announcement);
     Thread thread = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, dao.create(thread));
     return Response.created(thread.getHref())
@@ -447,6 +445,7 @@ public class FeedResource {
           @PathParam("id")
           UUID id,
       @Valid CreatePost createPost) {
+    rejectLegacyAnnouncementThread(dao.get(id));
     Post post = postMapper.createToEntity(createPost, securityContext.getUserPrincipal().getName());
     Thread thread =
         addHref(
@@ -492,6 +491,7 @@ public class FeedResource {
           JsonPatch patch) {
     // validate and get thread & post
     Thread thread = dao.get(threadId);
+    rejectLegacyAnnouncementThread(thread);
     Post post = dao.getPostById(thread, postId);
 
     PatchResponse<Post> response =
@@ -519,6 +519,7 @@ public class FeedResource {
           UUID threadId) {
     // validate and get the thread
     Thread thread = dao.get(threadId);
+    rejectLegacyAnnouncementThread(thread);
     // delete thread only if the admin/bot/author tries to delete it
     OperationContext operationContext =
         new OperationContext(Entity.THREAD, MetadataOperation.DELETE);
@@ -552,6 +553,7 @@ public class FeedResource {
           UUID postId) {
     // validate and get thread & post
     Thread thread = dao.get(threadId);
+    rejectLegacyAnnouncementThread(thread);
     Post post = dao.getPostById(thread, postId);
     // delete post only if the admin/bot/author tries to delete it
     OperationContext operationContext =
@@ -581,6 +583,19 @@ public class FeedResource {
       @Parameter(description = "Id of the thread", schema = @Schema(type = "string"))
           @PathParam("id")
           UUID id) {
+    rejectLegacyAnnouncementThread(dao.get(id));
     return new ResultList<>(dao.listPosts(id));
+  }
+
+  private void rejectLegacyAnnouncementAccess(boolean announcementRequest) {
+    if (announcementRequest) {
+      throw new IllegalArgumentException(
+          "Announcements are no longer served from /v1/feed. Use /v1/announcements instead.");
+    }
+  }
+
+  private void rejectLegacyAnnouncementThread(Thread thread) {
+    rejectLegacyAnnouncementAccess(
+        thread != null && thread.getType() != null && thread.getType() == ThreadType.Announcement);
   }
 }

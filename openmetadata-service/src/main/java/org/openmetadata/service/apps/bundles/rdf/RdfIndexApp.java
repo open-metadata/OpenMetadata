@@ -142,6 +142,19 @@ public class RdfIndexApp extends AbstractNativeApplication {
       return;
     }
 
+    try {
+      rdfRepository.ensureStorageReady();
+    } catch (Exception e) {
+      LOG.error("RDF storage is not ready; aborting indexing job", e);
+      updateJobStatus(EventPublisherJob.Status.FAILED);
+      jobData.setFailure(
+          new IndexingError()
+              .withErrorSource(IndexingError.ErrorSource.JOB)
+              .withMessage("RDF storage is not ready: " + e.getMessage()));
+      sendUpdates(jobExecutionContext, true);
+      return;
+    }
+
     String jobName = jobExecutionContext.getJobDetail().getKey().getName();
     if (jobName.equals(ON_DEMAND_JOB)) {
       Map<String, Object> jsonAppConfig = JsonUtils.convertValue(jobData, Map.class);

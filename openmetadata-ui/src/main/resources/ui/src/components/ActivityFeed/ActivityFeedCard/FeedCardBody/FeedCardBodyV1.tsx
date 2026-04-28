@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Typography } from 'antd';
+import { Button } from 'antd';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -25,7 +24,6 @@ import {
   AlertType,
   EventSubscription,
 } from '../../../../generated/events/eventSubscription';
-import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import {
   getEntityFQN,
@@ -45,9 +43,7 @@ const FeedCardBodyV1 = ({
   feed,
   isEditPost,
   className,
-  showSchedule = true,
   message,
-  announcement,
   onUpdate,
   onEditCancel,
 }: FeedCardBodyV1Props) => {
@@ -56,9 +52,9 @@ const FeedCardBodyV1 = ({
 
   const { entityFQN, entityType, cardStyle } = useMemo(() => {
     return {
-      entityFQN: getEntityFQN(feed.about) ?? '',
-      entityType: getEntityType(feed.about) ?? '',
-      cardStyle: feed.cardStyle ?? '',
+      entityFQN: getEntityFQN(feed?.about ?? '') ?? '',
+      entityType: getEntityType(feed?.about ?? '') ?? '',
+      cardStyle: feed?.cardStyle ?? '',
     };
   }, [feed]);
 
@@ -71,7 +67,7 @@ const FeedCardBodyV1 = ({
   };
 
   const feedBodyStyleCardsRender = useMemo(() => {
-    if (!isPost) {
+    if (!isPost && feed) {
       if (cardStyle === CardStyle.Description) {
         return <DescriptionFeed feed={feed} />;
       }
@@ -81,7 +77,7 @@ const FeedCardBodyV1 = ({
       }
 
       if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
-        const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
+        const entityInfo = feed?.feedInfo?.entitySpecificInfo?.entity;
         const isExecutableTestSuite =
           entityType === EntityType.TEST_SUITE && entityInfo.basic;
         const isObservabilityAlert =
@@ -165,41 +161,7 @@ const FeedCardBodyV1 = ({
   return (
     <div
       className={classNames('p-y-sm rounded-6', isEditPost ? '' : className)}>
-      <div className="feed-message">
-        {!isUndefined(announcement) ? (
-          <>
-            <Row>
-              <Col span={24}>
-                {showSchedule && (
-                  <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
-                    {t('label.schedule')}{' '}
-                    {formatDateTime(announcement.startTime)}{' '}
-                    {t('label.to-lowercase')}{' '}
-                    {formatDateTime(announcement.endTime)}
-                  </Typography.Text>
-                )}
-              </Col>
-            </Row>
-            <Row>
-              <Col span={24}>
-                <Typography.Text className="font-semibold">
-                  {message}
-                </Typography.Text>
-              </Col>
-            </Row>
-            <Row>
-              <Col span={24}>
-                <RichTextEditorPreviewerV1
-                  className="text-wrap"
-                  markdown={announcement.description ?? ''}
-                />
-              </Col>
-            </Row>
-          </>
-        ) : (
-          feedBodyRender
-        )}
-      </div>
+      <div className="feed-message">{feedBodyRender}</div>
     </div>
   );
 };

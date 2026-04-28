@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,251 +10,591 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { APIRequestContext, expect, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
+import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { ContainerClass } from '../../support/entity/ContainerClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
-import { createTableTagsSuggestions } from '../../utils/suggestions';
+import { getApiContext } from '../../utils/common';
+import {
+  addCommentToTask,
+  buildTaskRoute,
+  closeTaskFromDetails,
+  createTagTaskFromForm,
+  editTagsAndAccept,
+  openEntityTasksTab,
+  openTaskDetails,
+  openTaskForm,
+} from '../../utils/taskWorkflow';
 
+const requesterUser = new UserClass();
+const reviewerUser = new UserClass();
 const table = new TableClass();
-const table2 = new TableClass();
-const user1 = new UserClass();
-const user2 = new UserClass();
-let entityLinkList: string[];
+const topic = new TopicClass();
+const container = new ContainerClass();
+const apiEndpoint = new ApiEndpointClass();
+const createdTaskIds: string[] = [];
 
-test.describe('Tags Suggestions Table Entity', () => {
-  test.slow(true);
+const ENTITY_ENDPOINTS = {
+  table: '/api/v1/tables/name/',
+  topic: '/api/v1/topics/name/',
+  container: '/api/v1/containers/name/',
+  apiEndpoint: '/api/v1/apiEndpoints/name/',
+} as const;
 
-  test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-    await table.create(apiContext);
-    await table2.create(apiContext);
+const findFieldByPath = (
+  fields: Array<{
+    name: string;
+    children?: unknown[];
+    tags?: Array<{ tagFQN: string }>;
+  }> = [],
+  pathSegments: string[]
+): { tags?: Array<{ tagFQN: string }> } | undefined => {
+  const [currentField, ...remainingSegments] = pathSegments;
+  const matchedField = fields.find((field) => field.name === currentField);
 
-    entityLinkList = table.entityLinkColumnsName.map(
-      (entityLinkName) =>
-        `<#E::table::${table.entityResponseData.fullyQualifiedName}::columns::${entityLinkName}>`
-    );
-    await user1.create(apiContext);
-    await user2.create(apiContext);
+  if (!matchedField) {
+    return undefined;
+  }
 
-    // Create suggestions for both users
-    for (const entityLink of entityLinkList) {
-      await createTableTagsSuggestions(apiContext, entityLink);
-    }
+  if (remainingSegments.length === 0) {
+    return matchedField;
+  }
 
-    await afterAction();
-  });
+  return findFieldByPath(
+    (matchedField.children as Array<{
+      name: string;
+      children?: unknown[];
+      tags?: Array<{ tagFQN: string }>;
+    }>) ?? [],
+    remainingSegments
+  );
+};
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-    await table.delete(apiContext);
-    await table2.delete(apiContext);
-    await user1.delete(apiContext);
-    await user2.delete(apiContext);
-    await afterAction();
-  });
+const fetchEntityDetails = async (
+  apiContext: APIRequestContext,
+  entityType: keyof typeof ENTITY_ENDPOINTS,
+  fqn: string
+) => {
+  const response = await apiContext.get(
+    `${ENTITY_ENDPOINTS[entityType]}${encodeURIComponent(fqn)}?fields=*`
+  );
 
-  test('View, Close, Reject and Accept the Suggestions', async ({
-    browser,
-  }) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+  return response.json();
+};
 
-    await test.step('View and Open the Suggestions', async () => {
-      await redirectToHomePage(page);
-      await table.visitEntityPage(page);
+const getTagFqns = (tags?: Array<{ tagFQN: string }>) =>
+  (tags ?? []).map((tag) => tag.tagFQN).sort();
 
-      await expect(page.getByText('Suggested Tags')).toBeVisible();
+test.describe.serial(
+  'Tag Task Workflows',
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  () => {
+    test.slow(true);
 
-      const allAvatarSuggestion = page
-        .getByTestId('asset-description-container')
-        .getByTestId('profile-avatar');
+    test.beforeAll('Setup users and entities', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      // Two users profile will be visible, 3rd one will come after AllFetch is clicked
-      await expect(allAvatarSuggestion).toHaveCount(1);
+      try {
+        await requesterUser.create(apiContext);
+        await requesterUser.setAdminRole(apiContext);
+        await reviewerUser.create(apiContext);
+        await reviewerUser.setAdminRole(apiContext);
 
-      // Click the first avatar
-      await allAvatarSuggestion.nth(0).click();
-
-      // Actions Buttons should be visible
-      await expect(page.getByTestId('accept-all-suggestions')).toBeVisible();
-      await expect(page.getByTestId('reject-all-suggestions')).toBeVisible();
-      await expect(page.getByTestId('close-suggestion')).toBeVisible();
-
-      // All Column Suggestions Card should be visible
-      await expect(
-        page.getByTestId('suggested-SuggestTagLabel-card')
-      ).toHaveCount(table.entityLinkColumnsName.length);
-
-      // Close the suggestions
-      await page.getByTestId('close-suggestion').click();
-
-      await expect(allAvatarSuggestion).toHaveCount(1); // suggestion should not reject or disappear
+        await table.create(apiContext);
+        await topic.create(apiContext);
+        await container.create(apiContext);
+        await apiEndpoint.create(apiContext);
+      } finally {
+        await afterAction();
+      }
     });
 
-    await test.step('Accept Single Suggestion', async () => {
-      const allAvatarSuggestion = page
-        .getByTestId('asset-description-container')
-        .getByTestId('profile-avatar');
+    test.afterAll('Cleanup users and entities', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      // Click the first avatar
-      await allAvatarSuggestion.nth(0).click();
+      try {
+        for (const taskId of createdTaskIds) {
+          await apiContext
+            .delete(`/api/v1/tasks/${taskId}?hardDelete=true`)
+            .catch(() => undefined);
+        }
+        await apiEndpoint.delete(apiContext);
+        await container.delete(apiContext);
+        await topic.delete(apiContext);
+        await table.delete(apiContext);
+        await reviewerUser.delete(apiContext);
+        await requesterUser.delete(apiContext);
+      } finally {
+        await afterAction();
+      }
+    });
 
-      const singleResolveResponse = page.waitForResponse(
-        '/api/v1/suggestions/*/accept'
+    test('should add and accept requested tags for a table asset', async ({
+      page,
+      browser,
+    }) => {
+      await requesterUser.login(page);
+      await openTaskForm(
+        page,
+        buildTaskRoute({
+          action: 'request-tags',
+          entityType: 'table',
+          fqn: table.entityResponseData.fullyQualifiedName,
+        })
       );
 
-      await page
-        .locator(
-          `[data-row-key*=${table.columnsName[0]}] [data-testid="accept-suggestion"]`
-        )
-        .click();
+      const task = await createTagTaskFromForm({
+        page,
+        assigneeName: reviewerUser.responseData.name,
+      });
+      createdTaskIds.push(task.id);
 
-      await singleResolveResponse;
+      const reviewerPage = await browser.newPage();
+      try {
+        await reviewerUser.login(reviewerPage);
+        await table.visitEntityPage(reviewerPage);
+        await openEntityTasksTab(reviewerPage);
+        await openTaskDetails(reviewerPage, task);
+        await editTagsAndAccept({
+          page: reviewerPage,
+          searchText: 'PII.None',
+          tagTestId: 'tag-PII.None',
+        });
 
-      await expect(
-        page.locator(
-          `[data-row-key*=${table.columnsName[0]}] [data-testid="tags-container"]`
-        )
-      ).toContainText('Personal');
+        const { apiContext, afterAction } = await getApiContext(reviewerPage);
+        try {
+          await expect
+            .poll(async () => {
+              const entity = await fetchEntityDetails(
+                apiContext,
+                'table',
+                table.entityResponseData.fullyQualifiedName
+              );
+
+              return getTagFqns(entity.tags).includes('PII.None');
+            })
+            .toBe(true);
+        } finally {
+          await afterAction();
+        }
+      } finally {
+        await reviewerPage.close();
+      }
     });
 
-    await test.step('Reject Single Suggestion', async () => {
-      const allAvatarSuggestion = page
-        .getByTestId('asset-description-container')
-        .getByTestId('profile-avatar');
+    test('should edit and accept suggested tags for a table column', async ({
+      page,
+      browser,
+    }) => {
+      const columnPath = table.entityLinkColumnsName[0];
 
-      // Click the first avatar
-      await allAvatarSuggestion.nth(0).click();
-
-      const singleResolveResponse = page.waitForResponse(
-        '/api/v1/suggestions/*/reject'
+      await requesterUser.login(page);
+      await openTaskForm(
+        page,
+        buildTaskRoute({
+          action: 'update-tags',
+          entityType: 'table',
+          fqn: table.entityResponseData.fullyQualifiedName,
+          field: 'columns',
+          value: columnPath,
+        })
       );
 
-      await page
-        .locator(
-          `[data-row-key*=${table.columnsName[1]}] [data-testid="reject-suggestion"]`
-        )
-        .click();
+      const task = await createTagTaskFromForm({
+        page,
+        assigneeName: reviewerUser.responseData.name,
+        searchText: 'PII.Sensitive',
+        tagTestId: 'tag-PII.Sensitive',
+      });
+      createdTaskIds.push(task.id);
 
-      await singleResolveResponse;
+      const reviewerPage = await browser.newPage();
+      try {
+        await reviewerUser.login(reviewerPage);
+        await table.visitEntityPage(reviewerPage);
+        await openEntityTasksTab(reviewerPage);
+        await openTaskDetails(reviewerPage, task);
+        await editTagsAndAccept({
+          page: reviewerPage,
+          searchText: 'PersonalData.Personal',
+          tagTestId: 'tag-PersonalData.Personal',
+        });
 
-      await expect(
-        page.locator(
-          `[data-row-key*=${table.columnsName[1]}] [data-testid="tags-container"]`
-        )
-      ).not.toContainText('Personal');
+        const { apiContext, afterAction } = await getApiContext(reviewerPage);
+        try {
+          await expect
+            .poll(async () => {
+              const entity = await fetchEntityDetails(
+                apiContext,
+                'table',
+                table.entityResponseData.fullyQualifiedName
+              );
+              const field = findFieldByPath(
+                entity.columns ?? [],
+                columnPath.split('.')
+              );
+
+              return getTagFqns(field?.tags);
+            })
+            .toEqual(['PII.Sensitive', 'PersonalData.Personal']);
+        } finally {
+          await afterAction();
+        }
+      } finally {
+        await reviewerPage.close();
+      }
     });
 
-    await test.step('Accept all Suggestion', async () => {
-      const allAvatarSuggestion = page
-        .getByTestId('asset-description-container')
-        .getByTestId('profile-avatar');
+    test('should add and accept requested tags for a topic schema field', async ({
+      page,
+      browser,
+    }) => {
+      const topicFieldPath = [
+        topic.children[0].name,
+        topic.children[0].children?.[0].name ?? '',
+        'first_name',
+      ].join('.');
 
-      // Click the first avatar
-      await allAvatarSuggestion.nth(0).click();
-
-      const acceptResponse = page.waitForResponse(
-        '/api/v1/suggestions/accept-all?userId=*&entityFQN=*&suggestionType=SuggestTagLabel'
+      await requesterUser.login(page);
+      await openTaskForm(
+        page,
+        buildTaskRoute({
+          action: 'request-tags',
+          entityType: 'topic',
+          fqn: topic.entityResponseData.fullyQualifiedName,
+          field: 'messageSchema.schemaFields',
+          value: topicFieldPath,
+        })
       );
 
-      await page.click(`[data-testid="accept-all-suggestions"]`);
+      const task = await createTagTaskFromForm({
+        page,
+        assigneeName: reviewerUser.responseData.name,
+      });
+      createdTaskIds.push(task.id);
 
-      await acceptResponse;
+      const reviewerPage = await browser.newPage();
+      try {
+        await reviewerUser.login(reviewerPage);
+        await topic.visitEntityPage(reviewerPage);
+        await openEntityTasksTab(reviewerPage);
+        await openTaskDetails(reviewerPage, task);
+        await editTagsAndAccept({
+          page: reviewerPage,
+          searchText: 'PII.None',
+          tagTestId: 'tag-PII.None',
+        });
 
-      // check the third column description, since other two are already checked
-      await expect(
-        page.locator(
-          `[data-row-key*=${table.columnsName[5]}] [data-testid="tags-container"]`
-        )
-      ).toContainText('Personal');
+        const { apiContext, afterAction } = await getApiContext(reviewerPage);
+        try {
+          await expect
+            .poll(async () => {
+              const entity = await fetchEntityDetails(
+                apiContext,
+                'topic',
+                topic.entityResponseData.fullyQualifiedName
+              );
+              const field = findFieldByPath(
+                entity.messageSchema?.schemaFields ?? [],
+                topicFieldPath.split('.')
+              );
 
-      // Actions Buttons should not be visible
-      await expect(
-        page.getByTestId('accept-all-suggestions')
-      ).not.toBeVisible();
-      await expect(
-        page.getByTestId('reject-all-suggestions')
-      ).not.toBeVisible();
-      await expect(page.getByTestId('close-suggestion')).not.toBeVisible();
+              return getTagFqns(field?.tags).includes('PII.None');
+            })
+            .toBe(true);
+        } finally {
+          await afterAction();
+        }
+      } finally {
+        await reviewerPage.close();
+      }
     });
 
-    await afterAction();
-  });
+    test('should add and accept requested tags for an api endpoint request schema field', async ({
+      page,
+      browser,
+    }) => {
+      const requestFieldPath = 'default.name.last_name';
 
-  test('Accept the Suggestions for Tier Card', async ({ browser }) => {
-    const { page, apiContext, afterAction } = await performAdminLogin(browser);
+      await requesterUser.login(page);
+      await openTaskForm(
+        page,
+        buildTaskRoute({
+          action: 'request-tags',
+          entityType: 'apiEndpoint',
+          fqn: apiEndpoint.entityResponseData.fullyQualifiedName,
+          field: 'requestSchema.schemaFields',
+          value: requestFieldPath,
+        })
+      );
 
-    await createTableTagsSuggestions(
-      apiContext,
-      `<#E::table::${table.entityResponseData.fullyQualifiedName}>`,
-      true
-    );
+      const task = await createTagTaskFromForm({
+        page,
+        assigneeName: reviewerUser.responseData.name,
+      });
+      createdTaskIds.push(task.id);
 
-    await redirectToHomePage(page);
-    await table.visitEntityPage(page);
+      const reviewerPage = await browser.newPage();
+      try {
+        await reviewerUser.login(reviewerPage);
+        await apiEndpoint.visitEntityPage(reviewerPage);
+        await openEntityTasksTab(reviewerPage);
+        await openTaskDetails(reviewerPage, task);
+        await editTagsAndAccept({
+          page: reviewerPage,
+          searchText: 'PII.None',
+          tagTestId: 'tag-PII.None',
+        });
 
-    const allAvatarSuggestion = page
-      .getByTestId('asset-description-container')
-      .getByTestId('profile-avatar');
+        const { apiContext, afterAction } = await getApiContext(reviewerPage);
+        try {
+          await expect
+            .poll(async () => {
+              const entity = await fetchEntityDetails(
+                apiContext,
+                'apiEndpoint',
+                apiEndpoint.entityResponseData.fullyQualifiedName
+              );
+              const field = findFieldByPath(
+                entity.requestSchema?.schemaFields ?? [],
+                requestFieldPath.split('.')
+              );
 
-    // Click the first avatar
-    await allAvatarSuggestion.nth(0).click();
+              return getTagFqns(field?.tags).includes('PII.None');
+            })
+            .toBe(true);
+        } finally {
+          await afterAction();
+        }
+      } finally {
+        await reviewerPage.close();
+      }
+    });
 
-    const singleResolveResponse = page.waitForResponse(
-      '/api/v1/suggestions/*/accept'
-    );
+    test('should edit and accept suggested tags for an api endpoint response schema field', async ({
+      page,
+      browser,
+    }) => {
+      const responseFieldPath = 'default.name.first_name';
 
-    await page
-      .locator(
-        `[data-testid="tier-suggestion-container"] [data-testid="accept-suggestion"]`
-      )
-      .click();
+      await requesterUser.login(page);
+      await openTaskForm(
+        page,
+        buildTaskRoute({
+          action: 'update-tags',
+          entityType: 'apiEndpoint',
+          fqn: apiEndpoint.entityResponseData.fullyQualifiedName,
+          field: 'responseSchema.schemaFields',
+          value: responseFieldPath,
+        })
+      );
 
-    await singleResolveResponse;
+      const task = await createTagTaskFromForm({
+        page,
+        assigneeName: reviewerUser.responseData.name,
+        searchText: 'PII.Sensitive',
+        tagTestId: 'tag-PII.Sensitive',
+      });
+      createdTaskIds.push(task.id);
 
-    await expect(
-      page.locator(
-        `[data-testid="header-tier-container"] [data-testid="tag-redirect-link"]`
-      )
-    ).toContainText('Tier1');
+      const reviewerPage = await browser.newPage();
+      try {
+        await reviewerUser.login(reviewerPage);
+        await apiEndpoint.visitEntityPage(reviewerPage);
+        await openEntityTasksTab(reviewerPage);
+        await openTaskDetails(reviewerPage, task);
+        await editTagsAndAccept({
+          page: reviewerPage,
+          searchText: 'PersonalData.Personal',
+          tagTestId: 'tag-PersonalData.Personal',
+        });
 
-    await afterAction();
-  });
+        const { apiContext, afterAction } = await getApiContext(reviewerPage);
+        try {
+          await expect
+            .poll(async () => {
+              const entity = await fetchEntityDetails(
+                apiContext,
+                'apiEndpoint',
+                apiEndpoint.entityResponseData.fullyQualifiedName
+              );
+              const field = findFieldByPath(
+                entity.responseSchema?.schemaFields ?? [],
+                responseFieldPath.split('.')
+              );
 
-  test('Reject All Suggestions', async ({ browser }) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+              return getTagFqns(field?.tags);
+            })
+            .toEqual(['PII.Sensitive', 'PersonalData.Personal']);
+        } finally {
+          await afterAction();
+        }
+      } finally {
+        await reviewerPage.close();
+      }
+    });
 
-    await redirectToHomePage(page);
-    await table.visitEntityPage(page);
+    test('should decline requested tags for an api endpoint request schema field', async ({
+      page,
+      browser,
+    }) => {
+      const requestFieldPath = 'default.club_name';
 
-    const allAvatarSuggestion = page
-      .getByTestId('asset-description-container')
-      .getByTestId('profile-avatar');
+      await requesterUser.login(page);
+      await openTaskForm(
+        page,
+        buildTaskRoute({
+          action: 'request-tags',
+          entityType: 'apiEndpoint',
+          fqn: apiEndpoint.entityResponseData.fullyQualifiedName,
+          field: 'requestSchema.schemaFields',
+          value: requestFieldPath,
+        })
+      );
 
-    // Click the first avatar
-    await allAvatarSuggestion.nth(0).click();
+      const task = await createTagTaskFromForm({
+        page,
+        assigneeName: reviewerUser.responseData.name,
+      });
+      createdTaskIds.push(task.id);
 
-    const acceptResponse = page.waitForResponse(
-      '/api/v1/suggestions/reject-all?userId=*&entityFQN=*&suggestionType=SuggestTagLabel'
-    );
+      const reviewerPage = await browser.newPage();
+      try {
+        await reviewerUser.login(reviewerPage);
+        await apiEndpoint.visitEntityPage(reviewerPage);
+        await openEntityTasksTab(reviewerPage);
+        await openTaskDetails(reviewerPage, task);
+        await addCommentToTask(
+          reviewerPage,
+          'Declining the requested api request schema field tags.'
+        );
+        await closeTaskFromDetails(reviewerPage);
 
-    await page.click(`[data-testid="reject-all-suggestions"]`);
+        const { apiContext, afterAction } = await getApiContext(reviewerPage);
+        try {
+          await expect
+            .poll(async () => {
+              const taskResponse = await apiContext.get(
+                `/api/v1/tasks/${task.id}`
+              );
+              const taskDetails = await taskResponse.json();
 
-    await acceptResponse;
+              return taskDetails.status !== 'Open';
+            })
+            .toBe(true);
 
-    // check the last column tags
-    await expect(
-      page.locator(
-        `[data-row-key*=${table.columnsName[1]}] [data-testid="tags-container"]`
-      )
-    ).not.toContainText('Personal');
+          await expect
+            .poll(async () => {
+              const entity = await fetchEntityDetails(
+                apiContext,
+                'apiEndpoint',
+                apiEndpoint.entityResponseData.fullyQualifiedName
+              );
+              const field = findFieldByPath(
+                entity.requestSchema?.schemaFields ?? [],
+                requestFieldPath.split('.')
+              );
 
-    // Actions Buttons should not be visible
-    await expect(page.getByTestId('accept-all-suggestions')).not.toBeVisible();
-    await expect(page.getByTestId('reject-all-suggestions')).not.toBeVisible();
-    await expect(page.getByTestId('close-suggestion')).not.toBeVisible();
+              return getTagFqns(field?.tags).length;
+            })
+            .toBe(0);
+        } finally {
+          await afterAction();
+        }
+      } finally {
+        await reviewerPage.close();
+      }
+    });
 
-    await afterAction();
-  });
-});
+    test('should decline suggested tags for a container column', async ({
+      page,
+      browser,
+    }) => {
+      const containerColumnName =
+        container.entityResponseData.dataModel?.columns?.[0].name ?? '';
+
+      await requesterUser.login(page);
+      await openTaskForm(
+        page,
+        buildTaskRoute({
+          action: 'update-tags',
+          entityType: 'container',
+          fqn: container.entityResponseData.fullyQualifiedName,
+          field: 'dataModel.columns',
+          value: containerColumnName,
+        })
+      );
+
+      const task = await createTagTaskFromForm({
+        page,
+        assigneeName: reviewerUser.responseData.name,
+        searchText: 'PII.Sensitive',
+        tagTestId: 'tag-PII.Sensitive',
+      });
+      createdTaskIds.push(task.id);
+
+      const reviewerPage = await browser.newPage();
+      try {
+        await reviewerUser.login(reviewerPage);
+        await container.visitEntityPage(reviewerPage);
+        await openEntityTasksTab(reviewerPage);
+        await openTaskDetails(reviewerPage, task);
+        await addCommentToTask(
+          reviewerPage,
+          'Declining the suggested container tags.'
+        );
+        await closeTaskFromDetails(reviewerPage);
+
+        const { apiContext, afterAction } = await getApiContext(reviewerPage);
+        try {
+          await expect
+            .poll(async () => {
+              const taskResponse = await apiContext.get(
+                `/api/v1/tasks/${task.id}`
+              );
+              const taskDetails = await taskResponse.json();
+
+              return taskDetails.status !== 'Open';
+            })
+            .toBe(true);
+
+          await expect
+            .poll(async () => {
+              const entity = await fetchEntityDetails(
+                apiContext,
+                'container',
+                container.entityResponseData.fullyQualifiedName
+              );
+              const field = findFieldByPath(entity.dataModel?.columns ?? [], [
+                containerColumnName,
+              ]);
+
+              return getTagFqns(field?.tags).includes('PII.Sensitive');
+            })
+            .toBe(false);
+        } finally {
+          await afterAction();
+        }
+      } finally {
+        await reviewerPage.close();
+      }
+    });
+  }
+);

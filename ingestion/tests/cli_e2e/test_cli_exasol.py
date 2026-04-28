@@ -12,15 +12,16 @@
 """
 Test Exasol connector with CLI
 """
+
 import subprocess
-from typing import List
+from typing import List  # noqa: UP035
 
 import pytest
 from sqlalchemy import text
 
-from .base.e2e_types import E2EType
-from .common.test_cli_db import CliCommonDB
-from .common_e2e_sqa_mixins import SQACommonMethods
+from .base.e2e_types import E2EType  # noqa: TID252
+from .common.test_cli_db import CliCommonDB  # noqa: TID252
+from .common_e2e_sqa_mixins import SQACommonMethods  # noqa: TID252
 
 SERVICE_NAME = "local_exasol"
 SCHEMA_NAME = "openmetadata_schema"
@@ -55,7 +56,7 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             FROM {SCHEMA_NAME}.{TABLE_NAME}
     """
 
-    insert_data_queries: List[str] = [
+    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
         f"""
             INSERT INTO {SCHEMA_NAME}.{TABLE_NAME} (col_boolean, col_decimal, col_date, col_timestamp, col_timestamp_local, col_char, col_varchar) VALUES
             (TRUE, 18.5, '2023-07-13', '2023-07-13 06:04:45', '2023-07-13 04:04:45', 'a', 'b');
@@ -76,7 +77,7 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @classmethod
     def setUpClass(cls):
-        subprocess.run(
+        subprocess.run(  # noqa: PLW1510
             [
                 "itde",
                 "spawn-test-environment",
@@ -95,12 +96,10 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         super().setUpClass()
         with cls.engine.connect() as connection:
             connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_NAME}"))
-            connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS IGNORE_SCHEMA"))
+            connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS IGNORE_SCHEMA"))  # noqa: F541
             connection.execute(text(cls.create_table_query))
             connection.execute(
-                text(
-                    f"CREATE OR REPLACE TABLE {SCHEMA_NAME}.IGNORE_TABLE AS SELECT * FROM {SCHEMA_NAME}.{TABLE_NAME}"
-                )
+                text(f"CREATE OR REPLACE TABLE {SCHEMA_NAME}.IGNORE_TABLE AS SELECT * FROM {SCHEMA_NAME}.{TABLE_NAME}")
             )
             connection.commit()
 
@@ -117,9 +116,7 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             1. build config file for ingest with filters
             2. run ingest `self.run_command()` defaults to `ingestion`
         """
-        self.build_config_file(
-            E2EType.INGEST_DB_FILTER_TABLE, {"excludes": self.get_excludes_tables()}
-        )
+        self.build_config_file(E2EType.INGEST_DB_FILTER_TABLE, {"excludes": self.get_excludes_tables()})
         result = self.run_command()
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_filtered_tables_excludes(source_status, sink_status)
@@ -135,19 +132,19 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         SQACommonMethods.delete_table_and_view(self)
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:
+    def get_includes_schemas() -> List[str]:  # noqa: UP006
         return [f"{SCHEMA_NAME}.*"]
 
     @classmethod
-    def get_excludes_schemas(cls) -> List[str]:
+    def get_excludes_schemas(cls) -> List[str]:  # noqa: UP006
         return ["IGNORE_SCHEMA.*"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:
+    def get_includes_tables() -> List[str]:  # noqa: UP006
         return [f"{TABLE_NAME}"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:
+    def get_excludes_tables() -> List[str]:  # noqa: UP006
         return ["IGNORE_TABLE"]
 
     @staticmethod

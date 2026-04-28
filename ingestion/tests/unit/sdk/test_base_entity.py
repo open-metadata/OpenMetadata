@@ -1,6 +1,7 @@
 """
 Unit tests for BaseEntity class with comprehensive mocking.
 """
+
 import asyncio
 import unittest
 from unittest.mock import MagicMock
@@ -88,9 +89,7 @@ class TestBaseEntity(unittest.TestCase):
 
         # Assert
         self.assertIsNotNone(result.columns)
-        self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=TableEntity, entity_id=self.table_id, fields=fields
-        )
+        self.mock_ometa.get_by_id.assert_called_once_with(entity=TableEntity, entity_id=self.table_id, fields=fields)
 
     def test_retrieve_by_name(self):
         """Test retrieving an entity by name"""
@@ -117,18 +116,14 @@ class TestBaseEntity(unittest.TestCase):
 
         # Mock the get_by_id to return the current state
         current_entity = MagicMock(spec=type(table_to_update))
-        current_entity.id = (
-            table_to_update.id
-            if hasattr(table_to_update, "id")
-            else UUID(self.entity_id)
-        )
+        current_entity.id = table_to_update.id if hasattr(table_to_update, "id") else UUID(self.entity_id)
         self.mock_ometa.get_by_id.return_value = current_entity
 
         # Mock the patch to return the updated entity
         self.mock_ometa.patch.return_value = table_to_update
 
         # Act
-        result = Tables.update(table_to_update)
+        result = Tables.update(table_to_update)  # noqa: F841
         # Verify get_by_id was called to fetch current state
         self.mock_ometa.get_by_id.assert_called_once()
         # Verify patch was called with source and destination

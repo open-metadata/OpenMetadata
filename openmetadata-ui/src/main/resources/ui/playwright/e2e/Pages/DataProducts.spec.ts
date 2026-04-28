@@ -198,10 +198,9 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Cleanup test assets', async () => {
-      const { apiContext, afterAction } = await performAdminLogin(
+      const { afterAction } = await performAdminLogin(
         page.context().browser()!
       );
-      await table.delete(apiContext);
       await afterAction();
     });
   });

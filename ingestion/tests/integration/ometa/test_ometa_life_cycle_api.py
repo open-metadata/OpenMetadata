@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Table Life Cycle test
 """
+
 import pytest
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -56,17 +57,13 @@ def test_schema(metadata, test_database):
 
     yield schema
 
-    metadata.delete(
-        entity=DatabaseSchema, entity_id=schema.id, recursive=True, hard_delete=True
-    )
+    metadata.delete(entity=DatabaseSchema, entity_id=schema.id, recursive=True, hard_delete=True)
 
 
 @pytest.fixture(scope="module")
 def created_user(metadata):
     """User representing entity creator."""
-    user = metadata.create_or_update(
-        data=CreateUserRequest(name="created-user", email="created@user.com")
-    )
+    user = metadata.create_or_update(data=CreateUserRequest(name="created-user", email="created@user.com"))
 
     yield user
 
@@ -76,9 +73,7 @@ def created_user(metadata):
 @pytest.fixture(scope="module")
 def updated_user(metadata):
     """User representing entity updater."""
-    user = metadata.create_or_update(
-        data=CreateUserRequest(name="updated-user", email="updated@user.com")
-    )
+    user = metadata.create_or_update(data=CreateUserRequest(name="updated-user", email="updated@user.com"))
 
     yield user
 
@@ -102,9 +97,7 @@ def life_cycle(created_user, updated_user):
     return LifeCycle(
         created=AccessDetails(timestamp=1693569600000, accessedBy=created_user_ref),
         updated=AccessDetails(timestamp=1693665000000, accessedBy=updated_user_ref),
-        accessed=AccessDetails(
-            timestamp=1693755900000, accessedByAProcess="OpenMetadata"
-        ),
+        accessed=AccessDetails(timestamp=1693755900000, accessedByAProcess="OpenMetadata"),
     )
 
 
@@ -142,21 +135,15 @@ class TestOMetaLifeCycleAPI:
         """
         Test the life cycle API
         """
-        table_entity = self.create_table_entity(
-            metadata, test_schema, "test_ingest_life_cycle"
-        )
+        table_entity = self.create_table_entity(metadata, test_schema, "test_ingest_life_cycle")
 
         metadata.patch_life_cycle(entity=table_entity, life_cycle=life_cycle)
 
-    def test_life_cycle_get_methods(
-        self, metadata, database_service, test_database, test_schema, life_cycle
-    ):
+    def test_life_cycle_get_methods(self, metadata, database_service, test_database, test_schema, life_cycle):
         """
         We can fetch a Table by name/id and pass the field for lifeCycle
         """
-        entity = self.create_table_entity(
-            metadata, test_schema, "test_life_cycle_get_methods"
-        )
+        entity = self.create_table_entity(metadata, test_schema, "test_life_cycle_get_methods")
         metadata.patch_life_cycle(entity=entity, life_cycle=life_cycle)
 
         expected_fqn = f"{database_service.name.root}.{test_database.name.root}.{test_schema.name.root}.test_life_cycle_get_methods"
@@ -168,9 +155,7 @@ class TestOMetaLifeCycleAPI:
         )
         assert res.lifeCycle == life_cycle
 
-        res_id = metadata.get_by_id(
-            entity=Table, entity_id=str(res.id.root), fields=["lifeCycle"]
-        )
+        res_id = metadata.get_by_id(entity=Table, entity_id=str(res.id.root), fields=["lifeCycle"])
         assert res_id.lifeCycle == life_cycle
 
     def test_update_life_cycle(
@@ -186,9 +171,7 @@ class TestOMetaLifeCycleAPI:
         Test the update of life cycle fields for a entity
         Only the latest information should get updated for the life cycle fields.
         """
-        entity = self.create_table_entity(
-            metadata, test_schema, "test_update_life_cycle"
-        )
+        entity = self.create_table_entity(metadata, test_schema, "test_update_life_cycle")
 
         metadata.patch_life_cycle(entity=entity, life_cycle=life_cycle)
 
@@ -208,7 +191,9 @@ class TestOMetaLifeCycleAPI:
             accessedBy=updated_user_ref,
         )
 
-        expected_fqn = f"{database_service.name.root}.{test_database.name.root}.{test_schema.name.root}.test_update_life_cycle"
+        expected_fqn = (
+            f"{database_service.name.root}.{test_database.name.root}.{test_schema.name.root}.test_update_life_cycle"
+        )
 
         updated_entity = metadata.get_by_name(
             entity=Table,
