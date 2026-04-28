@@ -121,3 +121,9 @@ $$section
 
 URL of the Redpanda Admin API, typically running on port 9644. When configured, OpenMetadata will extract data transform metadata to create topic-to-topic lineage. E.g., `http://localhost:9644`
 $$
+
+$$section
+### Admin API SSL $(id="adminApiSSL")
+
+SSL configuration for the Redpanda Admin API connection. Use this when the Admin API is exposed over HTTPS with a custom CA or mutual TLS. Provide the CA certificate to validate the server certificate, and optionally the client certificate and private key for mTLS authentication.
+$$

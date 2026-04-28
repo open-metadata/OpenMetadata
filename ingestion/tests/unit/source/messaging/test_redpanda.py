@@ -609,6 +609,42 @@ class TestConsumerGroupExtraction:
         partition_numbers = [po.partition for po in groups[0].partitionOffsets]
         assert partition_numbers == [0, 1, 2, 3]
 
+    def test_consumer_groups_emitted_in_sorted_order(self):
+        """Consumer groups on a topic must be emitted in ascending groupId order."""
+        from metadata.ingestion.source.messaging.common_broker_source import (
+            CommonBrokerSource,
+        )
+
+        source = MagicMock(spec=CommonBrokerSource)
+        source._get_consumer_groups_for_topic = (
+            CommonBrokerSource._get_consumer_groups_for_topic.__get__(
+                source, CommonBrokerSource
+            )
+        )
+
+        def _entry(state="Stable"):
+            return {
+                "state": state,
+                "partition_assignor": "range",
+                "members": {},
+                "offsets": {},
+            }
+
+        # Intentionally unordered insertion: zeta, alpha, mu, beta
+        source._topic_consumer_groups = {
+            "my-topic": {
+                "zeta": _entry(),
+                "alpha": _entry(),
+                "mu": _entry(),
+                "beta": _entry(),
+            }
+        }
+
+        groups = source._get_consumer_groups_for_topic("my-topic")
+        assert groups is not None
+        group_ids = [g.groupId for g in groups]
+        assert group_ids == ["alpha", "beta", "mu", "zeta"]
+
 
 class TestBatchEndOffsets:
     """Test batched end-offset fetching in _fetch_consumer_group_offsets"""
