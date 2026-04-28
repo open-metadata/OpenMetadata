@@ -31,6 +31,7 @@ import org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeamMember;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContractExecutionStatus;
@@ -41,6 +42,7 @@ import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DataContracts;
 import org.openmetadata.sdk.fluent.DataContracts.FluentDataContract;
+import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.resources.data.DataContractResource;
@@ -6679,6 +6681,391 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             .get(0)
             .getIdentities()
             .contains("manager@company.com"));
+  }
+
+  // ===================================================================
+  // QUALITY EXPECTATIONS TESTS
+  // ===================================================================
+
+  private TestCase createTestCaseForTable(TestNamespace ns, Table table, String suffix) {
+    return TestCaseBuilder.create(SdkClients.adminClient())
+        .name(ns.prefix("tc_" + suffix))
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+  }
+
+  @Test
+  void testCreateContractWithQualityExpectations_TestCasesLinked(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    TestCase tc1 = createTestCaseForTable(ns, table, "qe1");
+    TestCase tc2 = createTestCaseForTable(ns, table, "qe2");
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("qe_create"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Contract with quality expectations")
+            .withQualityExpectations(
+                List.of(
+                    new EntityReference().withId(tc1.getId()).withType("testCase"),
+                    new EntityReference().withId(tc2.getId()).withType("testCase")));
+
+    DataContract contract = createEntity(request);
+
+    assertNotNull(contract.getQualityExpectations());
+    assertEquals(2, contract.getQualityExpectations().size());
+
+    // Verify test cases now have dataContract reference
+    TestCase fetchedTc1 = SdkClients.adminClient().testCases().get(tc1.getId().toString());
+    assertNotNull(
+        fetchedTc1.getDataContract(), "Test case should have dataContract reference after create");
+    assertEquals(contract.getId(), fetchedTc1.getDataContract().getId());
+
+    TestCase fetchedTc2 = SdkClients.adminClient().testCases().get(tc2.getId().toString());
+    assertNotNull(fetchedTc2.getDataContract());
+    assertEquals(contract.getId(), fetchedTc2.getDataContract().getId());
+  }
+
+  @Test
+  void testUpdateContractQualityExpectations_TestCasesUpdated(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    TestCase tc1 = createTestCaseForTable(ns, table, "upd1");
+    TestCase tc2 = createTestCaseForTable(ns, table, "upd2");
+    TestCase tc3 = createTestCaseForTable(ns, table, "upd3");
+
+    // Create contract with tc1 and tc2
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("qe_update"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Contract for update test")
+            .withQualityExpectations(
+                List.of(
+                    new EntityReference().withId(tc1.getId()).withType("testCase"),
+                    new EntityReference().withId(tc2.getId()).withType("testCase")));
+
+    DataContract contract = createEntity(request);
+
+    // Update: remove tc1, keep tc2, add tc3
+    contract.setQualityExpectations(
+        List.of(
+            new EntityReference().withId(tc2.getId()).withType("testCase"),
+            new EntityReference().withId(tc3.getId()).withType("testCase")));
+    DataContract updated = patchEntity(contract.getId().toString(), contract);
+
+    assertEquals(2, updated.getQualityExpectations().size());
+
+    // tc1 should have lost its dataContract reference
+    TestCase fetchedTc1 = SdkClients.adminClient().testCases().get(tc1.getId().toString());
+    assertTrue(
+        fetchedTc1.getDataContract() == null
+            || !fetchedTc1.getDataContract().getId().equals(contract.getId()),
+        "Removed test case should no longer reference this contract");
+
+    // tc2 should still reference the contract
+    TestCase fetchedTc2 = SdkClients.adminClient().testCases().get(tc2.getId().toString());
+    assertNotNull(fetchedTc2.getDataContract());
+    assertEquals(contract.getId(), fetchedTc2.getDataContract().getId());
+
+    // tc3 should now reference the contract
+    TestCase fetchedTc3 = SdkClients.adminClient().testCases().get(tc3.getId().toString());
+    assertNotNull(
+        fetchedTc3.getDataContract(), "Newly added test case should have dataContract reference");
+    assertEquals(contract.getId(), fetchedTc3.getDataContract().getId());
+  }
+
+  @Test
+  void testDeleteContractWithQualityExpectations_TestCasesUnlinked(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    TestCase tc1 = createTestCaseForTable(ns, table, "del1");
+    TestCase tc2 = createTestCaseForTable(ns, table, "del2");
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("qe_delete"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Contract for delete test")
+            .withQualityExpectations(
+                List.of(
+                    new EntityReference().withId(tc1.getId()).withType("testCase"),
+                    new EntityReference().withId(tc2.getId()).withType("testCase")));
+
+    DataContract contract = createEntity(request);
+
+    // Verify test cases are linked
+    TestCase beforeDelete = SdkClients.adminClient().testCases().get(tc1.getId().toString());
+    assertNotNull(beforeDelete.getDataContract());
+
+    // Hard delete the contract
+    hardDeleteEntity(contract.getId().toString());
+
+    // Test cases should no longer reference the contract
+    TestCase afterDelete1 = SdkClients.adminClient().testCases().get(tc1.getId().toString());
+    assertTrue(
+        afterDelete1.getDataContract() == null
+            || !afterDelete1.getDataContract().getId().equals(contract.getId()),
+        "Test case should lose dataContract reference after contract deletion");
+
+    TestCase afterDelete2 = SdkClients.adminClient().testCases().get(tc2.getId().toString());
+    assertTrue(
+        afterDelete2.getDataContract() == null
+            || !afterDelete2.getDataContract().getId().equals(contract.getId()),
+        "Test case should lose dataContract reference after contract deletion");
+  }
+
+  @Test
+  void testContractWithoutQualityExpectations_NoTestSuite(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("no_qe"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Contract without quality expectations");
+
+    DataContract contract = createEntity(request);
+
+    assertNull(
+        contract.getQualityExpectations(),
+        "Contract without quality expectations should have null quality expectations");
+    assertNull(
+        contract.getTestSuite(), "Contract without quality expectations should have no test suite");
+  }
+
+  @Test
+  void testValidateContractWithTestResultsCompilesQualityScore(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    TestCase tc1 = createTestCaseForTable(ns, table, "val1");
+    TestCase tc2 = createTestCaseForTable(ns, table, "val2");
+
+    // Add test results so validation can use them instead of triggering pipeline
+    SdkClients.adminClient()
+        .testCaseResults()
+        .forTestCase(tc1.getFullyQualifiedName())
+        .passed()
+        .result("Row count matches")
+        .create();
+
+    SdkClients.adminClient()
+        .testCaseResults()
+        .forTestCase(tc2.getFullyQualifiedName())
+        .failed()
+        .result("Row count mismatch")
+        .create();
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("qe_validate"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Contract for validation test")
+            .withQualityExpectations(
+                List.of(
+                    new EntityReference().withId(tc1.getId()).withType("testCase"),
+                    new EntityReference().withId(tc2.getId()).withType("testCase")));
+
+    DataContract contract = createEntity(request);
+
+    // Validate: since both tests have results, quality score should be computed
+    DataContractResult result = SdkClients.adminClient().dataContracts().validate(contract.getId());
+
+    assertNotNull(result);
+    assertNotNull(result.getQualityValidation(), "Validation result should have quality section");
+  }
+
+  @Test
+  void testCreateContractWithQualityExpectations_TestSuiteCreated(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    TestCase tc1 = createTestCaseForTable(ns, table, "ts1");
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("qe_testsuite"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Contract to verify test suite creation")
+            .withQualityExpectations(
+                List.of(new EntityReference().withId(tc1.getId()).withType("testCase")));
+
+    DataContract contract = createEntity(request);
+
+    // Re-fetch with fields to get testSuite
+    DataContract fetched =
+        SdkClients.adminClient()
+            .dataContracts()
+            .get(contract.getId().toString(), "testSuite,qualityExpectations");
+
+    assertNotNull(fetched.getQualityExpectations());
+    assertEquals(1, fetched.getQualityExpectations().size());
+  }
+
+  @Test
+  void testCreateOrUpdateContractWithQualityExpectations(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    TestCase tc1 = createTestCaseForTable(ns, table, "cou1");
+    TestCase tc2 = createTestCaseForTable(ns, table, "cou2");
+
+    // Create contract without quality expectations
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("qe_cou"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Contract for createOrUpdate test");
+
+    DataContract contract = SdkClients.adminClient().dataContracts().createOrUpdate(request);
+    assertNull(contract.getQualityExpectations());
+
+    // Update with quality expectations via createOrUpdate
+    request.setQualityExpectations(
+        List.of(
+            new EntityReference().withId(tc1.getId()).withType("testCase"),
+            new EntityReference().withId(tc2.getId()).withType("testCase")));
+
+    DataContract updated = SdkClients.adminClient().dataContracts().createOrUpdate(request);
+    assertEquals(contract.getId(), updated.getId());
+    assertNotNull(updated.getQualityExpectations());
+    assertEquals(2, updated.getQualityExpectations().size());
+
+    // Verify test cases got linked
+    TestCase fetchedTc1 = SdkClients.adminClient().testCases().get(tc1.getId().toString());
+    assertNotNull(fetchedTc1.getDataContract());
+    assertEquals(contract.getId(), fetchedTc1.getDataContract().getId());
+  }
+
+  // ===================================================================
+  // DATA CONTRACT REFERENCE INTEGRITY TESTS
+  // ===================================================================
+
+  @Test
+  void testDeleteContract_DoesNotWipeOtherContractRef(TestNamespace ns) {
+    Table table1 = createTestTable(ns);
+    Table table2 = createTestTable(ns);
+    TestCase tc = createTestCaseForTable(ns, table1, "shared");
+
+    // Create contractA with tc
+    CreateDataContract requestA =
+        new CreateDataContract()
+            .withName(ns.prefix("contractA"))
+            .withEntity(table1.getEntityReference())
+            .withDescription("Contract A")
+            .withQualityExpectations(
+                List.of(new EntityReference().withId(tc.getId()).withType("testCase")));
+
+    DataContract contractA = createEntity(requestA);
+
+    // Verify tc references contractA
+    TestCase fetched = SdkClients.adminClient().testCases().get(tc.getId().toString());
+    assertNotNull(fetched.getDataContract());
+    assertEquals(contractA.getId(), fetched.getDataContract().getId());
+
+    // Create contractB for a different table, and reassign tc to contractB
+    CreateDataContract requestB =
+        new CreateDataContract()
+            .withName(ns.prefix("contractB"))
+            .withEntity(table2.getEntityReference())
+            .withDescription("Contract B")
+            .withQualityExpectations(
+                List.of(new EntityReference().withId(tc.getId()).withType("testCase")));
+
+    DataContract contractB = createEntity(requestB);
+
+    // tc should now reference contractB (the latest contract that claimed it)
+    fetched = SdkClients.adminClient().testCases().get(tc.getId().toString());
+    assertNotNull(fetched.getDataContract());
+    assertEquals(contractB.getId(), fetched.getDataContract().getId());
+
+    // Delete contractA - this should NOT wipe tc's reference to contractB
+    hardDeleteEntity(contractA.getId().toString());
+
+    // tc should still reference contractB
+    fetched = SdkClients.adminClient().testCases().get(tc.getId().toString());
+    assertNotNull(
+        fetched.getDataContract(),
+        "Deleting contractA should not wipe tc's reference to contractB");
+    assertEquals(
+        contractB.getId(),
+        fetched.getDataContract().getId(),
+        "tc should still reference contractB after contractA deletion");
+  }
+
+  @Test
+  void testDataContractRef_IncludesName(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    TestCase tc = createTestCaseForTable(ns, table, "name_check");
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("ref_name"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Contract ref name test")
+            .withQualityExpectations(
+                List.of(new EntityReference().withId(tc.getId()).withType("testCase")));
+
+    DataContract contract = createEntity(request);
+
+    TestCase fetched = SdkClients.adminClient().testCases().get(tc.getId().toString());
+    assertNotNull(fetched.getDataContract());
+    assertEquals(contract.getId(), fetched.getDataContract().getId());
+    assertNotNull(
+        fetched.getDataContract().getName(), "dataContract EntityReference should include name");
+    assertEquals(contract.getName(), fetched.getDataContract().getName());
+    assertNotNull(fetched.getDataContract().getFullyQualifiedName());
+  }
+
+  @Test
+  void testUpdateContract_RemoveTestCase_OnlyRemovesOwnRef(TestNamespace ns) {
+    Table table1 = createTestTable(ns);
+    Table table2 = createTestTable(ns);
+    TestCase tc1 = createTestCaseForTable(ns, table1, "own1");
+    TestCase tc2 = createTestCaseForTable(ns, table1, "own2");
+
+    // Create contractA with tc1 and tc2
+    CreateDataContract requestA =
+        new CreateDataContract()
+            .withName(ns.prefix("own_refA"))
+            .withEntity(table1.getEntityReference())
+            .withDescription("Contract A owns tc1 and tc2")
+            .withQualityExpectations(
+                List.of(
+                    new EntityReference().withId(tc1.getId()).withType("testCase"),
+                    new EntityReference().withId(tc2.getId()).withType("testCase")));
+
+    DataContract contractA = createEntity(requestA);
+
+    // Create contractB and reassign tc1 to it
+    CreateDataContract requestB =
+        new CreateDataContract()
+            .withName(ns.prefix("own_refB"))
+            .withEntity(table2.getEntityReference())
+            .withDescription("Contract B takes tc1")
+            .withQualityExpectations(
+                List.of(new EntityReference().withId(tc1.getId()).withType("testCase")));
+
+    DataContract contractB = createEntity(requestB);
+
+    // tc1 should now point to contractB
+    TestCase fetchedTc1 = SdkClients.adminClient().testCases().get(tc1.getId().toString());
+    assertEquals(contractB.getId(), fetchedTc1.getDataContract().getId());
+
+    // Update contractA: remove tc1 from its quality expectations
+    contractA.setQualityExpectations(
+        List.of(new EntityReference().withId(tc2.getId()).withType("testCase")));
+    patchEntity(contractA.getId().toString(), contractA);
+
+    // tc1 should still reference contractB (removeDataContractFromOldTestCases is contract-aware)
+    fetchedTc1 = SdkClients.adminClient().testCases().get(tc1.getId().toString());
+    assertNotNull(
+        fetchedTc1.getDataContract(),
+        "tc1 should still have dataContract ref after being removed from contractA");
+    assertEquals(
+        contractB.getId(),
+        fetchedTc1.getDataContract().getId(),
+        "tc1 should still reference contractB");
+
+    // tc2 should still reference contractA
+    TestCase fetchedTc2 = SdkClients.adminClient().testCases().get(tc2.getId().toString());
+    assertNotNull(fetchedTc2.getDataContract());
+    assertEquals(contractA.getId(), fetchedTc2.getDataContract().getId());
   }
 
   @Test

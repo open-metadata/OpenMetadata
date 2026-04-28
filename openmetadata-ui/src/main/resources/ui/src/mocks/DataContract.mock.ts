@@ -32,6 +32,7 @@ export const MOCK_DATA_CONTRACT = {
   entity: {
     id: 'ee9d44a0-815d-4ac9-8422-4f9d02ddf04d',
     type: 'table',
+    fullyQualifiedName: 'redshift prod.dev.dbt_jaffle.customers',
     href: 'https://demo.getcollate.io/v1/tables/ee9d44a0-815d-4ac9-8422-4f9d02ddf04d',
   },
   testSuite: {

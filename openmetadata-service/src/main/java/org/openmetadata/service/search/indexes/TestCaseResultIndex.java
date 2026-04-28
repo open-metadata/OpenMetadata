@@ -55,7 +55,7 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
           Entity.getEntityByName(
               Entity.TEST_CASE,
               testCaseResult.getTestCaseFQN(),
-              "testSuites,testSuite,testDefinition,entityLink,owners,tags,domains",
+              "testSuites,testSuite,testDefinition,entityLink,dataContract,owners,tags,domains",
               Include.ALL);
     } catch (EntityNotFoundException ex) {
       LOG.warn(
@@ -88,7 +88,8 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
     esDoc.put("testSuite", testCaseMap.get("testSuite"));
     testCaseMap
         .keySet()
-        .removeAll(Set.of("testSuites", "testSuite", "testCaseResult", "testDefinition"));
+        .removeAll(
+            Set.of("testSuites", "testSuite", "testCaseResult", "testDefinition", "dataContract"));
     esDoc.put("testCase", testCaseMap);
     esDoc.put("@timestamp", testCaseResult.getTimestamp());
     if (testDefinition != null) {
@@ -96,6 +97,9 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
     }
     if (!nullOrEmpty(testCase.getDomains())) {
       esDoc.put("domains", getEntitiesWithDisplayName(testCase.getDomains()));
+    }
+    if (testCase.getDataContract() != null) {
+      esDoc.put("dataContract", JsonUtils.getMap(testCase.getDataContract()));
     }
     setParentRelationships(testCase, esDoc);
     return esDoc;

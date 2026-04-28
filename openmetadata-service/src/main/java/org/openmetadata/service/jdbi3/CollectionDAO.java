@@ -8840,6 +8840,46 @@ public interface CollectionDAO {
         return new TestCaseRecord(rs.getString("json"), rs.getInt("ranked"));
       }
     }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE test_case SET json = JSON_SET(json, '$.dataContract', CAST(:dataContractJson AS JSON)) WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE test_case SET json = jsonb_set(json, '{dataContract}', :dataContractJson::jsonb, true) WHERE id = :id",
+        connectionType = POSTGRES)
+    void updateTestCaseDataContract(
+        @Bind("id") String id, @Bind("dataContractJson") String dataContractJson);
+
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE test_case SET json = JSON_REMOVE(json, '$.dataContract') WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE test_case SET json = json - 'dataContract' WHERE id = :id",
+        connectionType = POSTGRES)
+    void removeTestCaseDataContract(@Bind("id") String id);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE test_case SET json = JSON_REMOVE(json, '$.dataContract') WHERE id = :id AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.dataContract.id')) = :dataContractId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE test_case SET json = json - 'dataContract' WHERE id = :id AND json->'dataContract'->>'id' = :dataContractId",
+        connectionType = POSTGRES)
+    void removeTestCaseDataContractForSpecificContract(
+        @Bind("id") String id, @Bind("dataContractId") String dataContractId);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE test_case SET json = JSON_REMOVE(json, '$.dataContract') WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.dataContract.id')) = :dataContractId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE test_case SET json = json - 'dataContract' WHERE json->'dataContract'->>'id' = :dataContractId",
+        connectionType = POSTGRES)
+    void removeAllTestCaseDataContractReferences(@Bind("dataContractId") String dataContractId);
   }
 
   interface WebAnalyticEventDAO extends EntityDAO<WebAnalyticEvent> {

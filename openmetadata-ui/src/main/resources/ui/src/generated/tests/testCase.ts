@@ -32,6 +32,10 @@ export interface TestCase {
      */
     createdBy?: string;
     /**
+     * Data Contract that this test case is associated with.
+     */
+    dataContract?: EntityReference;
+    /**
      * List of data products this test case is part of. When not set, the test case inherits the
      * data products from the table it belongs to.
      */
@@ -229,15 +233,17 @@ export interface FieldChange {
 }
 
 /**
- * List of data products this test case is part of. When not set, the test case inherits the
- * data products from the table it belongs to.
+ * Data Contract that this test case is associated with.
  *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * List of data products this test case is part of. When not set, the test case inherits the
+ * data products from the table it belongs to.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.

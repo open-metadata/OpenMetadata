@@ -303,6 +303,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String testCaseFQN = getQueryParam("testCaseFQN");
     String testCaseStatus = getQueryParam("testCaseStatus");
     String testSuiteId = getQueryParam("testSuiteId");
+    String dataContractId = getQueryParam("dataContractId");
 
     if (entityFQN != null)
       conditions.add(getTestCaseForEntityCondition(entityFQN, "testCase.entityFQN"));
@@ -328,6 +329,10 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           getDataQualityDimensionCondition(
               dataQualityDimension, "testDefinition.dataQualityDimension"));
+    if (dataContractId != null)
+      conditions.add(
+          String.format(
+              "{\"term\": {\"dataContract.id\": \"%s\"}}", escapeDoubleQuotes(dataContractId)));
     return addCondition(conditions);
   }
 
