@@ -164,6 +164,29 @@ class SearchRepositoryAliasResolutionTest {
         "Unprefixed token must be prefixed exactly once: " + mixed);
   }
 
+  /**
+   * Empty tokens from inputs like {@code "table,"} (trailing comma) or {@code ","} must not
+   * materialize as bare-prefixed index targets such as {@code "tenant42_"} — those would 404 in
+   * a confusing way at the ES boundary.
+   */
+  @Test
+  void resolveIndexesDropsEmptyTokensFromStrayCommas() {
+    String trailing =
+        SearchRepository.resolveIndexes(
+            "table,", false, false, entityIndexMap, aliasToChildEntityTypes, "tenant42");
+    assertEquals("tenant42_table_search_index", trailing);
+
+    String embedded =
+        SearchRepository.resolveIndexes(
+            "table, ,topic", false, false, entityIndexMap, aliasToChildEntityTypes, "tenant42");
+    List<String> tokens = Arrays.asList(embedded.split(","));
+    assertTrue(tokens.contains("tenant42_table_search_index"));
+    assertTrue(tokens.contains("tenant42_topic_search_index"));
+    assertFalse(
+        tokens.contains("tenant42_"),
+        "Bare cluster prefix must not be emitted from empty tokens: " + embedded);
+  }
+
   @Test
   void buildReverseMapMatchesEveryEntityWithItsDeclaredParents() {
     for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
