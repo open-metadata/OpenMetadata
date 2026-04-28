@@ -167,6 +167,47 @@ class TestDatalakeUtils(TestCase):
         for el in zip(expected, actual):  # noqa: B905
             self.assertDictEqual(el[0], el[1])
 
+    def test_unique_json_structure_with_list_of_dicts(self):
+        """list-of-dicts values are merged into a struct shape (e.g. Iceberg `schema.fields`)."""
+        sample_data = [
+            {
+                "schema": {
+                    "fields": [
+                        {"id": 1, "name": "customer_id", "type": "string"},
+                        {"id": 2, "name": "customer_type_cd", "type": "string"},
+                    ]
+                }
+            }
+        ]
+
+        actual = GenericDataFrameColumnParser.unique_json_structure(sample_data)
+        fields_value = actual["schema"]["fields"]
+
+        from metadata.utils.datalake.datalake_utils import _ArrayOfStruct
+
+        assert isinstance(fields_value, _ArrayOfStruct)
+        assert set(fields_value.struct.keys()) == {"id", "name", "type"}
+
+    def test_construct_column_with_array_of_struct(self):
+        """list-of-dicts values render as ARRAY<STRUCT<...>> with children for the struct fields."""
+        structure = {
+            "schema": {
+                "fields": [
+                    {"id": 1, "name": "customer_id", "type": "string"},
+                    {"id": 2, "name": "ciam_id", "type": "string"},
+                ]
+            }
+        }
+        merged = GenericDataFrameColumnParser.unique_json_structure([structure])
+        children = GenericDataFrameColumnParser.construct_json_column_children(merged)
+
+        schema_col = children[0]
+        fields_col = next(c for c in schema_col["children"] if c["name"] == "fields")
+
+        assert fields_col["dataType"] == DataType.ARRAY.value
+        assert fields_col["arrayDataType"] == DataType.STRUCT
+        assert {child["name"] for child in fields_col["children"]} == {"id", "name", "type"}
+
     def test_create_column_object(self):
         """test create column object fn"""
         formatted_column = GenericDataFrameColumnParser.construct_json_column_children(STRUCTURE)
