@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 
+from .._om_compat import unwrap_root_list
 from ..fluent.om_client import OmClient
 from ..source.types import Diff, DiffKind
 from .types import (
@@ -304,14 +305,13 @@ def _diff_table(
 
     # owner (single-owner check — matches when exp.owner appears in any actual owner)
     if node.owner is not None:
-        owners = actual.owners.root if actual.owners else []
-        actual_owners = {o.name for o in owners}
+        actual_owners = {o.name for o in unwrap_root_list(actual.owners)}
         if node.owner not in actual_owners:
             diffs.append(Diff(path=f"{path}.owner", expected=node.owner, actual=sorted(actual_owners)))
 
     # tags (subset match — all expected tags must be present).
     if node.tags:
-        actual_tags = {model_str(t.tagFQN) for t in (actual.tags or [])}
+        actual_tags = {model_str(t.tagFQN) for t in unwrap_root_list(actual.tags)}
         if node.tags - actual_tags:
             diffs.append(Diff(path=f"{path}.tags", expected=sorted(node.tags), actual=sorted(actual_tags)))
 
@@ -324,7 +324,7 @@ def _diff_table(
             )
 
     # columns — no separate OM fetch; walk the actual.columns set in place.
-    actual_columns_by_name = {model_str(c.name): c for c in (actual.columns or [])}
+    actual_columns_by_name = {model_str(c.name): c for c in unwrap_root_list(actual.columns)}
     for exp_col in node.columns:
         _diff_column(exp_col, path, actual_columns_by_name, diffs)
 
@@ -384,7 +384,7 @@ def _diff_column(
     if exp_col.constraint is not None and actual.constraint != exp_col.constraint:
         diffs.append(Diff(path=f"{path}.constraint", expected=exp_col.constraint, actual=actual.constraint))
     if exp_col.tags:
-        actual_tags = {model_str(t.tagFQN) for t in (actual.tags or [])}
+        actual_tags = {model_str(t.tagFQN) for t in unwrap_root_list(actual.tags)}
         if exp_col.tags - actual_tags:
             diffs.append(Diff(path=f"{path}.tags", expected=sorted(exp_col.tags), actual=sorted(actual_tags)))
     if exp_col.description is not None:

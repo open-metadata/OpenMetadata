@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 
+from .._om_compat import unwrap_root_list
 from .eventually import EventuallyRunner
 
 
@@ -103,7 +104,7 @@ class ColumnProfileAssert:
         table = self._om.get_latest_table_profile(self._fqn)
         if table is None:
             raise AssertionError(f"Table not found: {self._fqn}")
-        for c in table.columns or []:
+        for c in unwrap_root_list(table.columns):
             if model_str(c.name) == self._column_name:
                 if c.profile is None:
                     raise AssertionError(f"Column {self._fqn}.{self._column_name} has no profile yet")

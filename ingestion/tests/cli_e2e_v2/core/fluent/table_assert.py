@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 
+from .._om_compat import unwrap_root_list
 from .entity_assert import EntityAssert
 from .lineage_assert import LineageAssert
 from .profile_assert import ProfileAssert
@@ -45,14 +46,14 @@ def _fk_matches(
     """
     if constraint.constraintType != ConstraintType.FOREIGN_KEY:
         return False
-    own_cols = {model_str(x) for x in (constraint.columns or [])}
+    own_cols = {model_str(x) for x in unwrap_root_list(constraint.columns)}
     if column not in own_cols:
         return False
     wanted_tail = f".{referenced_table}.{referenced_column}"
     wanted_short = f"{referenced_table}.{referenced_column}"
     return any(
         model_str(ref).endswith(wanted_tail) or model_str(ref) == wanted_short
-        for ref in (constraint.referredColumns or [])
+        for ref in unwrap_root_list(constraint.referredColumns)
     )
 
 
@@ -67,7 +68,7 @@ class TableAssert(EntityAssert[Table]):
     def has_tag(self, fqn: str) -> "TableAssert":
         def _check() -> None:
             table = self._fetch()
-            actual = {model_str(t.tagFQN) for t in (table.tags or [])}
+            actual = {model_str(t.tagFQN) for t in unwrap_root_list(table.tags)}
             if fqn not in actual:
                 raise AssertionError(f"Table {self._fqn} missing tag {fqn!r}. Actual tags: {sorted(actual)}")
 
@@ -77,8 +78,7 @@ class TableAssert(EntityAssert[Table]):
     def has_owner(self, name: str) -> "TableAssert":
         def _check() -> None:
             table = self._fetch()
-            owners = table.owners.root if table.owners else []
-            actual = {o.name for o in owners}
+            actual = {o.name for o in unwrap_root_list(table.owners)}
             if name not in actual:
                 raise AssertionError(f"Table {self._fqn} missing owner {name!r}. Actual owners: {sorted(actual)}")
 
@@ -99,7 +99,7 @@ class TableAssert(EntityAssert[Table]):
         """
 
         def _check() -> None:
-            constraints = list(self._fetch(fields=["tableConstraints"]).tableConstraints or [])
+            constraints = unwrap_root_list(self._fetch(fields=["tableConstraints"]).tableConstraints)
             if any(_fk_matches(c, column, referenced_table, referenced_column) for c in constraints):
                 return
             raise AssertionError(
@@ -213,14 +213,14 @@ class ColumnAssert:
         )
         if table is None:
             raise AssertionError(f"Table not found: {self._table_fqn}")
-        for c in table.columns or []:
+        for c in unwrap_root_list(table.columns):
             if model_str(c.name) == self._column_name:
                 return c
         raise AssertionError(f"Column {self._column_name!r} not found on table {self._table_fqn}")
 
     def has_tag(self, fqn: str) -> "ColumnAssert":
         column = self._fetch_column()
-        actual = {model_str(t.tagFQN) for t in (column.tags or [])}
+        actual = {model_str(t.tagFQN) for t in unwrap_root_list(column.tags)}
         if fqn not in actual:
             raise AssertionError(
                 f"Column {self._table_fqn}.{self._column_name} missing tag {fqn!r}. Actual tags: {sorted(actual)}"
@@ -236,7 +236,7 @@ class ColumnAssert:
         cleanly even when every column gets PII-flagged.
         """
         column = self._fetch_column()
-        actual = {model_str(t.tagFQN) for t in (column.tags or [])}
+        actual = {model_str(t.tagFQN) for t in unwrap_root_list(column.tags)}
         if fqn in actual:
             raise AssertionError(
                 f"Column {self._table_fqn}.{self._column_name} unexpectedly "
