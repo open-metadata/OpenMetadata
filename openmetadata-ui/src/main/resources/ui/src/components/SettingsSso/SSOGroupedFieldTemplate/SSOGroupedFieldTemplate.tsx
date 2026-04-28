@@ -16,310 +16,117 @@ import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Button, Collapse, Space } from 'antd';
+import { Button, Space } from 'antd';
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
-import { createElement, Fragment, FunctionComponent } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ADVANCED_PROPERTIES } from '../../../constants/Services.constant';
+import { isUndefined } from 'lodash';
+import { createElement, Fragment, FunctionComponent, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
-  SSO_ADVANCED_AUTH_FIELDS,
-  SSO_ADVANCED_OIDC_FIELDS,
-  SSO_ADVANCED_SAML_FIELDS,
+  SSOFieldLayout,
+  SSOSectionLayout,
 } from '../../../constants/SSO.constant';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import './sso-grouped-field-template.less';
-import { FieldGroup, PropertyMap } from './SSOGroupedFieldTemplate.interface';
+
+const ROOT_PREFIX = 'root/';
+
+const stripRootPrefix = (idSchemaId: string): string =>
+  idSchemaId.startsWith(ROOT_PREFIX)
+    ? idSchemaId.slice(ROOT_PREFIX.length)
+    : idSchemaId;
+
+const isVisibleProperty = (prop: ObjectFieldTemplatePropertyType): boolean => {
+  const element = prop.content;
+  if (!element || prop.hidden) {
+    return false;
+  }
+
+  if (
+    element.type === 'input' &&
+    element.props &&
+    element.props.type === 'hidden'
+  ) {
+    return false;
+  }
+
+  return !(element.props?.style?.display === 'none' || element.props?.hidden);
+};
+
+const partitionByLayout = (
+  properties: ObjectFieldTemplatePropertyType[],
+  sectionLayout: SSOSectionLayout | undefined
+): {
+  mainProperties: ObjectFieldTemplatePropertyType[];
+  advancedProperties: ObjectFieldTemplatePropertyType[];
+} => {
+  if (!sectionLayout) {
+    return { mainProperties: properties, advancedProperties: [] };
+  }
+
+  const mainProperties: ObjectFieldTemplatePropertyType[] = [];
+  const advancedProperties: ObjectFieldTemplatePropertyType[] = [];
+
+  for (const prop of properties) {
+    if (sectionLayout[prop.name] === 'advanced') {
+      advancedProperties.push(prop);
+    } else {
+      mainProperties.push(prop);
+    }
+  }
+
+  return { mainProperties, advancedProperties };
+};
+
+const renderProperty = (
+  element: ObjectFieldTemplatePropertyType,
+  index: number,
+  hasAdditionalProperties?: boolean
+) => (
+  <div
+    className={classNames('property-wrapper', {
+      'additional-fields': hasAdditionalProperties,
+    })}
+    key={`${element.content.key}-${index}`}>
+    {element.content}
+  </div>
+);
 
 export const SSOGroupedFieldTemplate: FunctionComponent<
   ObjectFieldTemplateProps
 > = (props: ObjectFieldTemplateProps) => {
-  const { t } = useTranslation();
   const { formContext, idSchema, title, onAddClick, schema, properties } =
     props;
 
-  const currentId = idSchema.$id;
-  const isOIDCConfigContext =
-    currentId === 'root/authenticationConfiguration/oidcConfiguration';
-  const isSAMLConfigContext =
-    currentId === 'root/authenticationConfiguration/samlConfiguration';
-  const isAuthConfigRootContext =
-    currentId === 'root/authenticationConfiguration';
+  const fieldLayout = formContext?.fieldLayout as SSOFieldLayout | undefined;
+  const advancedFieldsContainer = formContext?.advancedFieldsContainer as
+    | HTMLElement
+    | null
+    | undefined;
+  const sectionPath = stripRootPrefix(idSchema.$id);
+  const sectionLayout = fieldLayout?.[sectionPath];
 
-  const contextAdvancedFields = isOIDCConfigContext
-    ? SSO_ADVANCED_OIDC_FIELDS
-    : isSAMLConfigContext
-      ? SSO_ADVANCED_SAML_FIELDS
-      : isAuthConfigRootContext
-        ? SSO_ADVANCED_AUTH_FIELDS
-        : [];
+  const { mainProperties, advancedProperties } = useMemo(() => {
+    const visibleProperties = properties.filter(isVisibleProperty);
 
-  const { advancedProperties, normalProperties } = properties.reduce(
-    (propertyMap, currentProperty) => {
-      const isAdvancedProperty =
-        ADVANCED_PROPERTIES.includes(currentProperty.name) ||
-        contextAdvancedFields.includes(currentProperty.name);
+    const { properties: enrichedNormalProperties } =
+      serviceUtilClassBase.getProperties(visibleProperties);
 
-      let advancedProperties = [...propertyMap.advancedProperties];
-      let normalProperties = [...propertyMap.normalProperties];
+    return partitionByLayout(enrichedNormalProperties, sectionLayout);
+  }, [properties, sectionLayout]);
 
-      if (isAdvancedProperty) {
-        advancedProperties = [...advancedProperties, currentProperty];
-      } else {
-        normalProperties = [...normalProperties, currentProperty];
-      }
-
-      return { ...propertyMap, advancedProperties, normalProperties };
-    },
-    {
-      advancedProperties: [],
-      normalProperties: [],
-    } as PropertyMap
+  const additionalFieldData = useMemo(
+    () => serviceUtilClassBase.getProperties(properties),
+    [properties]
   );
 
-  const {
-    properties: updatedNormalProperties,
-    additionalField: AdditionalField,
-    additionalFieldContent,
-  } = serviceUtilClassBase.getProperties(normalProperties);
+  const AdditionalField = additionalFieldData.additionalField;
+  const additionalFieldContent = additionalFieldData.additionalFieldContent;
 
-  // Apply grouping only to the main SSO configuration objects
-  const isAuthConfigRoot = idSchema.$id === 'root/authenticationConfiguration';
-  const isAuthorizerConfig = idSchema.$id === 'root/authorizerConfiguration';
-  const isOIDCConfig =
-    idSchema.$id === 'root/authenticationConfiguration/oidcConfiguration';
-  const isLDAPConfig =
-    idSchema.$id === 'root/authenticationConfiguration/ldapConfiguration';
-  const isSAMLConfig =
-    idSchema.$id === 'root/authenticationConfiguration/samlConfiguration';
+  const hasAdvanced = advancedProperties.length > 0;
+  const hasAdditional = Boolean(schema.additionalProperties);
+  const canPortalAdvanced = hasAdvanced && Boolean(advancedFieldsContainer);
 
-  // Only apply special grouping to these specific main configuration objects
-  const shouldApplyGrouping =
-    isAuthConfigRoot ||
-    isAuthorizerConfig ||
-    isOIDCConfig ||
-    isLDAPConfig ||
-    isSAMLConfig;
-
-  const filterVisibleProperties = (
-    properties: ObjectFieldTemplatePropertyType[]
-  ): ObjectFieldTemplatePropertyType[] => {
-    return properties.filter((prop) => {
-      const element = prop.content;
-
-      // No element, nothing to render
-      if (!element) {
-        return false;
-      }
-
-      // If schema or UI schema marked this as hidden
-      if (prop.hidden) {
-        return false;
-      }
-
-      // If it's an <input type="hidden">
-      if (
-        element.type === 'input' &&
-        element.props &&
-        element.props.type === 'hidden'
-      ) {
-        return false;
-      }
-
-      // Explicit style-based hiding
-      if (element.props?.style?.display === 'none' || element.props?.hidden) {
-        return false;
-      }
-
-      return true;
-    });
-  };
-
-  // Define field groups for SSO forms with logical grouping
-  const getFieldGroups = (
-    properties: ObjectFieldTemplatePropertyType[]
-  ): FieldGroup[] => {
-    // For non-main configuration objects, use default rendering without extra background
-    if (!shouldApplyGrouping) {
-      return [
-        {
-          properties: filterVisibleProperties(properties),
-          showDivider: false,
-        },
-      ];
-    }
-
-    const groups: FieldGroup[] = [];
-    const visibleProperties = filterVisibleProperties(properties);
-
-    if (isAuthConfigRoot) {
-      // Root authentication configuration grouping
-      const basicConfigFields = visibleProperties.filter((prop) =>
-        ['provider', 'providerName'].includes(prop.name)
-      );
-      if (basicConfigFields.length > 0) {
-        groups.push({
-          title: 'Basic Configuration',
-          properties: basicConfigFields,
-          showDivider: false,
-        });
-      }
-
-      const clientFields = visibleProperties.filter((prop) =>
-        ['clientType', 'enableSelfSignup', 'clientId', 'callbackUrl'].includes(
-          prop.name
-        )
-      );
-      if (clientFields.length > 0) {
-        groups.push({
-          title: 'Client Configuration',
-          properties: clientFields,
-          showDivider: false,
-        });
-      }
-
-      const authorityFields = visibleProperties.filter((prop) =>
-        ['authority', 'domain'].includes(prop.name)
-      );
-      if (authorityFields.length > 0) {
-        groups.push({
-          title: 'Authority Settings',
-          properties: authorityFields,
-          showDivider: false,
-        });
-      }
-
-      const securityFields = visibleProperties.filter((prop) =>
-        ['publicKeyUrls', 'tokenValidationAlgorithm'].includes(prop.name)
-      );
-      if (securityFields.length > 0) {
-        groups.push({
-          title: 'Security Configuration',
-          properties: securityFields,
-          showDivider: false,
-        });
-      }
-
-      const credentialsFields = visibleProperties.filter((prop) =>
-        ['secret', 'clientSecret'].includes(prop.name)
-      );
-      if (credentialsFields.length > 0) {
-        groups.push({
-          title: 'Credentials',
-          properties: credentialsFields,
-          showDivider: false,
-        });
-      }
-
-      const configObjectFields = visibleProperties.filter((prop) =>
-        [
-          'oidcConfiguration',
-          'ldapConfiguration',
-          'samlConfiguration',
-        ].includes(prop.name)
-      );
-      configObjectFields.forEach((field) => {
-        groups.push({
-          properties: [field],
-          showDivider: false,
-        });
-      });
-
-      // Remaining fields
-      const groupedFieldNames = [
-        ...basicConfigFields,
-        ...clientFields,
-        ...authorityFields,
-        ...securityFields,
-        ...credentialsFields,
-        ...configObjectFields,
-      ].map((p) => p.name);
-      const remainingFields = visibleProperties.filter(
-        (prop) => !groupedFieldNames.includes(prop.name)
-      );
-      if (remainingFields.length > 0) {
-        groups.push({
-          title: 'Advanced Configuration',
-          properties: remainingFields,
-          showDivider: false,
-        });
-      }
-    } else if (isAuthorizerConfig) {
-      // Authorizer configuration grouping
-      const principalFields = visibleProperties.filter((prop) =>
-        [
-          'adminPrincipals',
-          'botPrincipals',
-          'principalDomain',
-          'enforcePrincipalDomain',
-        ].includes(prop.name)
-      );
-      if (principalFields.length > 0) {
-        groups.push({
-          title: 'Principal Management',
-          properties: principalFields,
-          showDivider: false,
-        });
-      }
-
-      const connectionFields = visibleProperties.filter((prop) =>
-        [
-          'enableSecureSocketConnection',
-          'className',
-          'containerRequestFilter',
-        ].includes(prop.name)
-      );
-      if (connectionFields.length > 0) {
-        groups.push({
-          title: 'Connection Settings',
-          properties: connectionFields,
-          showDivider: false,
-        });
-      }
-
-      // Remaining authorizer fields
-      const groupedFieldNames = [...principalFields, ...connectionFields].map(
-        (p) => p.name
-      );
-      const remainingFields = visibleProperties.filter(
-        (prop) => !groupedFieldNames.includes(prop.name)
-      );
-      if (remainingFields.length > 0) {
-        groups.push({
-          properties: remainingFields,
-          showDivider: false,
-        });
-      }
-    } else if (isOIDCConfig) {
-      // OIDC configuration - all fields in a single group with title
-      groups.push({
-        title: 'OIDC Configuration',
-        properties: visibleProperties,
-        showDivider: false,
-      });
-    } else if (isLDAPConfig) {
-      // LDAP configuration - all fields in a single group without extra grouping
-      groups.push({
-        properties: visibleProperties,
-        showDivider: false,
-      });
-    } else if (isSAMLConfig) {
-      // SAML configuration - all fields in a single group without extra grouping
-      groups.push({
-        properties: visibleProperties,
-        showDivider: false,
-      });
-    }
-
-    // Filter out only completely empty groups
-    return groups.filter(
-      (group) => group.properties && group.properties.length > 0
-    );
-  };
-
-  const fieldGroups = getFieldGroups(updatedNormalProperties);
-
-  const fieldElement = (
+  return (
     <Fragment>
       {title && title.trim() !== '' && (
         <Space className="w-full justify-between header-title-wrapper">
@@ -332,7 +139,7 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
             {title}
           </label>
 
-          {schema.additionalProperties && (
+          {hasAdditional && (
             <Button
               data-testid={`add-item-${title}`}
               icon={
@@ -345,7 +152,7 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
                 onAddClick(schema)();
               }}
               onFocus={() => {
-                if (!isUndefined(formContext.handleFocus)) {
+                if (!isUndefined(formContext?.handleFocus)) {
                   formContext.handleFocus(idSchema.$id);
                 }
               }}
@@ -355,78 +162,23 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
       )}
 
       {AdditionalField &&
-        createElement(AdditionalField, {
-          data: additionalFieldContent,
-        })}
+        createElement(AdditionalField, { data: additionalFieldContent })}
 
-      {/* Render field groups */}
-      {fieldGroups.map((group, groupIndex) => {
-        // For LDAP and SAML, use special styling to keep background but avoid nesting
-        const isLDAPOrSAMLGroup = isLDAPConfig || isSAMLConfig;
-        const isOIDCSingleGroup = isOIDCConfig && fieldGroups.length === 1;
+      <div className="sso-main-fields">
+        {mainProperties.map((element, index) =>
+          renderProperty(element, index, hasAdditional)
+        )}
+      </div>
 
-        return (
-          <div
-            className={classNames({
-              // Use sso-field-group-box for main auth config groups with titles AND OIDC groups
-              'sso-field-group-box':
-                shouldApplyGrouping &&
-                !isLDAPOrSAMLGroup &&
-                (group.title || isOIDCConfig),
-              'sso-field-group-spaced':
-                shouldApplyGrouping &&
-                groupIndex > 0 &&
-                !isLDAPOrSAMLGroup &&
-                !isOIDCSingleGroup,
-              // Use special nested styling for LDAP/SAML (keeps background, removes border)
-              'sso-field-group-box ldap-saml-group':
-                shouldApplyGrouping && isLDAPOrSAMLGroup,
-              // Default for non-grouped only
-              'default-object-field': !shouldApplyGrouping,
-            })}
-            key={`group-${groupIndex}`}>
-            {/* Render properties */}
-            {group.properties.map((element, index) => (
-              <div
-                className={classNames('property-wrapper', {
-                  'additional-fields': schema.additionalProperties,
-                })}
-                key={`${element.content.key}-${index}`}>
-                {element.content}
-              </div>
-            ))}
-          </div>
-        );
-      })}
-
-      {!isEmpty(advancedProperties) && (
-        <Collapse
-          destroyInactivePanel
-          className={classNames('sso-advanced-properties-collapse', {
-            'm-t-sm': shouldApplyGrouping,
-          })}
-          expandIconPosition="end">
-          <Collapse.Panel header={t('label.advanced-config')} key="1">
-            <div
-              className={classNames({
-                'sso-field-group-box': shouldApplyGrouping,
-                'default-object-field': !shouldApplyGrouping,
-              })}>
-              {advancedProperties.map((element, index) => (
-                <div
-                  className={classNames('property-wrapper', {
-                    'additional-fields': schema.additionalProperties,
-                  })}
-                  key={`${element.content.key}-${index}`}>
-                  {element.content}
-                </div>
-              ))}
-            </div>
-          </Collapse.Panel>
-        </Collapse>
-      )}
+      {canPortalAdvanced &&
+        createPortal(
+          <div className="sso-advanced-section" data-section={sectionPath}>
+            {advancedProperties.map((element, index) =>
+              renderProperty(element, index, hasAdditional)
+            )}
+          </div>,
+          advancedFieldsContainer as HTMLElement
+        )}
     </Fragment>
   );
-
-  return fieldElement;
 };

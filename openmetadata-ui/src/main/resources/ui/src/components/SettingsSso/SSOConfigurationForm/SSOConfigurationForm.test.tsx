@@ -34,6 +34,7 @@ import {
   patchSecurityConfiguration,
   SecurityConfiguration,
   SecurityValidationResponse,
+  testSecurityConfiguration,
   validateSecurityConfiguration,
 } from '../../../rest/securityConfigAPI';
 import { getAuthConfig } from '../../../utils/AuthProvider.util';
@@ -46,6 +47,39 @@ import { SSOConfigurationFormProps } from './SSOConfigurationForm.interface';
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
+}));
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Accordion: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="accordion">{children}</div>
+  ),
+  AccordionItem: ({
+    children,
+    id,
+  }: {
+    children: React.ReactNode;
+    id?: string;
+  }) => (
+    <div data-id={id} data-testid="accordion-item">
+      {children}
+    </div>
+  ),
+  AccordionHeader: ({
+    children,
+    ...rest
+  }: React.PropsWithChildren<Record<string, unknown>>) => (
+    <button data-testid="accordion-header" {...rest}>
+      {children}
+    </button>
+  ),
+  AccordionPanel: ({
+    children,
+    ...rest
+  }: React.PropsWithChildren<Record<string, unknown>>) => (
+    <div data-testid="accordion-panel" {...rest}>
+      {children}
+    </div>
+  ),
 }));
 
 // Mock SSOUtils - use actual implementations where needed
@@ -204,6 +238,10 @@ const mockValidateSecurityConfiguration =
 const mockGetSecurityConfiguration =
   getSecurityConfiguration as jest.MockedFunction<
     typeof getSecurityConfiguration
+  >;
+const mockTestSecurityConfiguration =
+  testSecurityConfiguration as jest.MockedFunction<
+    typeof testSecurityConfiguration
   >;
 
 const mockFetchAuthenticationConfig =
@@ -1951,6 +1989,186 @@ describe('SSOConfigurationForm', () => {
         expect(
           screen.getByTestId('sso-configuration-form-card')
         ).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Provider-specific Display Blocks', () => {
+    beforeEach(() => {
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
+    });
+
+    it('should render OIDC callback URL display for Google provider', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Google });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('oidc-callback-url-display')
+        ).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('oidc-callback-url')).toBeInTheDocument();
+      expect(screen.getByTestId('oidc-callback-url-copy')).toBeInTheDocument();
+    });
+
+    it('should render SAML ACS info banner with ACS URL and SP Entity ID', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Saml });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('saml-acs-info-banner')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('saml-acs-url')).toBeInTheDocument();
+      expect(screen.getByTestId('saml-sp-entity-id')).toBeInTheDocument();
+    });
+
+    it('should not render OIDC callback display for SAML provider', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Saml });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('saml-acs-info-banner')).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId('oidc-callback-url-display')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not render SAML banner for OIDC providers', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Okta });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('oidc-callback-url-display')
+        ).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId('saml-acs-info-banner')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not render OIDC callback display for LDAP provider', async () => {
+      renderComponent({ selectedProvider: AuthProvider.LDAP });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-configuration-form-card')
+        ).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId('oidc-callback-url-display')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('saml-acs-info-banner')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Advanced Fields Accordion', () => {
+    beforeEach(() => {
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
+    });
+
+    it('should render exactly one top-level Advanced Fields accordion when a provider is selected', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Google });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-advanced-fields-toggle')
+        ).toBeInTheDocument();
+      });
+
+      expect(
+        screen.getAllByTestId('sso-advanced-fields-toggle')
+      ).toHaveLength(1);
+      expect(
+        screen.getByTestId('sso-advanced-fields-panel')
+      ).toBeInTheDocument();
+    });
+
+    it('should render the Advanced Fields accordion for SAML provider', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Saml });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-advanced-fields-toggle')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should render the Advanced Fields accordion for LDAP provider', async () => {
+      renderComponent({ selectedProvider: AuthProvider.LDAP });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-advanced-fields-toggle')
+        ).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Test Login Flow', () => {
+    const mockSetCurrentUser = jest.fn();
+
+    beforeEach(() => {
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
+      mockUseApplicationStore.mockReturnValue({
+        setIsAuthenticated: mockSetIsAuthenticated,
+        setAuthConfig: mockSetAuthConfig,
+        setAuthorizerConfig: mockSetAuthorizerConfig,
+        setCurrentUser: mockSetCurrentUser,
+        currentUser: { email: 'admin@example.com' },
+      } as unknown as ApplicationStore);
+    });
+
+    it('should render Test Login button when a provider is selected', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Google });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-login-button')).toBeInTheDocument();
+      });
+    });
+
+    it('should auto-fill adminPrincipals and principalDomain on success', async () => {
+      mockTestSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse({
+          component: 'authentication',
+          status: VALIDATION_STATUS.SUCCESS,
+        })
+      );
+
+      renderComponent({ selectedProvider: AuthProvider.Google });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-login-button')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('test-login-button'));
+
+      await waitFor(() => {
+        expect(mockTestSecurityConfiguration).toHaveBeenCalled();
+      });
+    });
+
+    it('should show error toast when test login fails', async () => {
+      const axiosError = {
+        response: { data: { errors: [] } },
+      } as unknown as AxiosError;
+      mockTestSecurityConfiguration.mockRejectedValue(axiosError);
+
+      renderComponent({ selectedProvider: AuthProvider.Google });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-login-button')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('test-login-button'));
+
+      await waitFor(() => {
+        expect(mockTestSecurityConfiguration).toHaveBeenCalled();
+        expect(mockShowErrorToast).toHaveBeenCalled();
       });
     });
   });

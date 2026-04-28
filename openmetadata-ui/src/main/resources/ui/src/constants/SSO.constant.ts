@@ -12,6 +12,7 @@
  */
 
 import { ClientType } from '../generated/configuration/securityConfiguration';
+import { AuthProvider } from '../generated/settings/settings';
 import {
   getAuthorityUrl,
   getCallbackUrl,
@@ -191,8 +192,8 @@ export const LDAP_UI_SCHEMA = {
     sslEnabled: { 'ui:title': 'Enable SSL' },
     maxPoolSize: { 'ui:title': 'Max Pool Size' },
     isFullDn: { 'ui:title': 'Full DN Required' },
-    roleAdminName: { 'ui:title': 'Admin Role Name' },
-    allAttributeName: { 'ui:title': 'All Attribute Name' },
+    roleAdminName: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    allAttributeName: { 'ui:widget': 'hidden', 'ui:hideError': true },
     mailAttributeName: { 'ui:title': 'Mail Attribute Name' },
     usernameAttributeName: { 'ui:widget': 'hidden', 'ui:hideError': true },
     groupAttributeName: { 'ui:title': 'Group Attribute Name' },
@@ -286,10 +287,6 @@ export const LDAP_UI_SCHEMA = {
 };
 
 // SAML Configuration UI Schema
-// Main form shows only IdP fields (entityId, ssoLoginUrl, idpX509Certificate,
-// nameId). SP fields are hidden (derived from server URL and surfaced in the
-// banner). Signing/security fields land in the Advanced accordion (wired up in
-// SSOGroupedFieldTemplate via SSO_ADVANCED_SAML_FIELDS).
 export const SAML_UI_SCHEMA = {
   samlConfiguration: {
     'ui:title': 'SAML Configuration',
@@ -298,7 +295,10 @@ export const SAML_UI_SCHEMA = {
       'ui:title': 'Identity Provider (IdP)',
       entityId: { 'ui:title': 'IdP Entity ID' },
       ssoLoginUrl: { 'ui:title': 'IdP SSO Login URL' },
-      authorityUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
+      authorityUrl: {
+        'ui:widget': 'hidden',
+        'ui:hideError': true,
+      },
       idpX509Certificate: {
         'ui:title': 'IdP X.509 Certificate',
         'ui:widget': 'textarea',
@@ -307,8 +307,6 @@ export const SAML_UI_SCHEMA = {
     },
     sp: {
       'ui:title': 'Service Provider (SP)',
-      // SP Entity ID and ACS URL are shown in the "Register with your SAML IdP"
-      // banner above the form; the backend derives them from the server URL.
       entityId: { 'ui:widget': 'hidden', 'ui:hideError': true },
       acs: { 'ui:widget': 'hidden', 'ui:hideError': true },
       callback: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -328,6 +326,7 @@ export const SAML_UI_SCHEMA = {
       wantAssertionsSigned: { 'ui:title': 'Want Assertions Signed' },
       wantMessagesSigned: { 'ui:title': 'Want Messages Signed' },
       sendSignedAuthRequest: { 'ui:title': 'Send Signed Auth Request' },
+      // Hide unwanted security fields
       validateXml: { 'ui:widget': 'hidden', 'ui:hideError': true },
       sendEncryptedNameId: { 'ui:widget': 'hidden', 'ui:hideError': true },
       signSpMetadata: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -337,21 +336,25 @@ export const SAML_UI_SCHEMA = {
       keyStorePassword: { 'ui:widget': 'hidden', 'ui:hideError': true },
     },
   },
+  // Hide LDAP/OIDC specific fields for SAML
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide jwtPrincipalClaims for SAML - default value auto-filled to prevent lockouts
   jwtPrincipalClaims: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide jwtPrincipalClaimsMapping for SAML - not used in SAML flow
   jwtPrincipalClaimsMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide jwtTeamClaimMapping for SAML - not used in SAML flow
   jwtTeamClaimMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  // Hide clientType for SAML as it defaults to public
   clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide root level authority and callbackUrl for SAML - will be managed via IDP/SP sections
   authority: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  clientId: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  clientId: COMMON_UI_FIELDS.clientId,
   callbackUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide publicKeyUrls for SAML - uses internal LocalJwkProvider
   publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  // discoveryUri is an OIDC-only concept — hide for SAML.
-  discoveryUri: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  emailClaim: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // OIDC Configuration UI Schema
@@ -362,7 +365,7 @@ export const OIDC_UI_SCHEMA = {
     id: COMMON_UI_FIELDS.oidcClientId,
     secret: COMMON_UI_FIELDS.oidcClientSecret,
     scope: COMMON_UI_FIELDS.oidcScope,
-    discoveryUri: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    discoveryUri: COMMON_UI_FIELDS.oidcDiscoveryUri,
     useNonce: COMMON_UI_FIELDS.oidcUseNonce,
     preferredJwsAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
     responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -401,7 +404,7 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
     id: COMMON_UI_FIELDS.oidcClientId,
     secret: COMMON_UI_FIELDS.oidcClientSecret,
     scope: COMMON_UI_FIELDS.oidcScope,
-    discoveryUri: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    discoveryUri: COMMON_UI_FIELDS.oidcDiscoveryUri,
     useNonce: COMMON_UI_FIELDS.oidcUseNonce,
     preferredJwsAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
     responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -428,7 +431,7 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
   publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
-// Azure-specific UI schema. Tenant is derived by the backend from discoveryUri.
+// Azure-specific UI schema with required tenant for confidential client
 export const AZURE_OAUTH_UI_SCHEMA = {
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -438,7 +441,7 @@ export const AZURE_OAUTH_UI_SCHEMA = {
     id: COMMON_UI_FIELDS.oidcClientId,
     secret: COMMON_UI_FIELDS.oidcClientSecret,
     scope: COMMON_UI_FIELDS.oidcScope,
-    discoveryUri: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    discoveryUri: COMMON_UI_FIELDS.oidcDiscoveryUri,
     useNonce: COMMON_UI_FIELDS.oidcUseNonce,
     preferredJwsAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
     responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -447,7 +450,7 @@ export const AZURE_OAUTH_UI_SCHEMA = {
     clientAuthenticationMethod: { 'ui:widget': 'hidden', 'ui:hideError': true },
     tokenValidity: COMMON_UI_FIELDS.oidcTokenValidity,
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
-    tenant: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    tenant: COMMON_UI_FIELDS.oidcTenant,
     serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
     callbackUrl: {
       'ui:title': 'OIDC Callback URL',
@@ -465,7 +468,7 @@ export const AZURE_OAUTH_UI_SCHEMA = {
   publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
-// Okta-specific UI schema - shows clientAuthenticationMethod, hides tenant
+// Okta-specific UI schema - keeps clientAuthenticationMethod visible, hides tenant
 export const OKTA_OAUTH_UI_SCHEMA = {
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -475,7 +478,7 @@ export const OKTA_OAUTH_UI_SCHEMA = {
     id: COMMON_UI_FIELDS.oidcClientId,
     secret: COMMON_UI_FIELDS.oidcClientSecret,
     scope: COMMON_UI_FIELDS.oidcScope,
-    discoveryUri: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    discoveryUri: COMMON_UI_FIELDS.oidcDiscoveryUri,
     useNonce: COMMON_UI_FIELDS.oidcUseNonce,
     preferredJwsAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
     responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -511,8 +514,11 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
     type: { 'ui:widget': 'hidden', 'ui:hideError': true },
     id: COMMON_UI_FIELDS.oidcClientId,
     secret: COMMON_UI_FIELDS.oidcClientSecret,
-    scope: { 'ui:widget': 'hidden', 'ui:hideError': true },
-    discoveryUri: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    scope: COMMON_UI_FIELDS.oidcScope,
+    discoveryUri: {
+      'ui:title': 'OIDC Discovery URI',
+      'ui:placeholder': GOOGLE_SSO_DEFAULTS.discoveryUri,
+    },
     useNonce: COMMON_UI_FIELDS.oidcUseNonce,
     preferredJwsAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
     responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -549,65 +555,46 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
 };
 
-// OIDC configuration fields that belong in the Advanced Configuration accordion.
-// The main view shows only id (Client ID), secret (Client Secret), and root-level
-// discoveryUri. Everything else is editable but collapsed to avoid overwhelming users.
-export const SSO_ADVANCED_OIDC_FIELDS = [
-  'scope',
-  'useNonce',
-  'disablePkce',
-  'maxClockSkew',
-  'clientAuthenticationMethod',
-  'tokenValidity',
-  'customParams',
-  'maxAge',
-  'prompt',
-  'sessionExpiry',
-  'preferredJwsAlgorithm',
-];
-
-// Root authentication fields that belong in Advanced Configuration accordion.
-export const SSO_ADVANCED_AUTH_FIELDS = [
-  'jwtPrincipalClaims',
-  'jwtPrincipalClaimsMapping',
-  'jwtTeamClaimMapping',
-  'emailClaim',
-  'enableAutoRedirect',
-];
-
-// For SAML, main form shows only idp.entityId, idp.ssoLoginUrl,
-// idp.idpX509Certificate, idp.nameId. All other groups (sp, security) and
-// debugMode move to the Advanced Configuration accordion.
-export const SSO_ADVANCED_SAML_FIELDS = ['sp', 'security', 'debugMode'];
-
 // Common field titles
 export const COMMON_FIELD_TITLES = {
-  provider: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  providerName: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  authority: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  provider: {
+    'ui:title': 'Provider',
+    'ui:options': { 'data-testid': 'sso-provider-field' },
+  },
+  providerName: {
+    'ui:title': 'Provider Name',
+    'ui:placeholder': 'e.g. My Company SSO',
+  },
+  authority: {
+    'ui:title': 'Authority',
+    'ui:placeholder': 'e.g. https://accounts.google.com',
+  },
   clientId: COMMON_UI_FIELDS.clientId,
-  callbackUrl: {
-    'ui:title': 'Callback URL',
-    'ui:readonly': true,
+  callbackUrl: COMMON_UI_FIELDS.callbackUrl,
+  publicKeyUrls: COMMON_UI_FIELDS.publicKeyUrls,
+  tokenValidationAlgorithm: { 'ui:title': 'Token Validation Algorithm' },
+  jwtPrincipalClaims: {
+    'ui:title': 'JWT Principal Claims',
+    'ui:placeholder': 'Enter value (e.g. email, sub, name) and press ENTER',
     'ui:help':
-      'Copy this URL and register it as a Redirect URI in your Identity Provider.',
+      '⚠️ CRITICAL: Incorrect claims will lock out ALL users including admins! ' +
+      'Order matters - first matching claim is used. ' +
+      'These claims must exist in JWT tokens from your provider. ' +
+      'Default values work for most configurations.',
   },
-  publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  jwtPrincipalClaims: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  jwtPrincipalClaimsMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  jwtTeamClaimMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  discoveryUri: {
-    'ui:title': 'Discovery URI',
+  jwtPrincipalClaimsMapping: {
+    'ui:title': 'JWT Principal Claims Mapping',
     'ui:placeholder':
-      'e.g. https://accounts.google.com/.well-known/openid-configuration',
+      'Enter mappings (e.g. username:preferred_username, email:email). Both username and email are required.',
   },
-  emailClaim: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  enableSelfSignup: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  enableAutoRedirect: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableAutoRedirect: { 'ui:title': 'Enable Auto Redirect' },
   clientType: {
-    'ui:title': 'Authentication Mode',
-    'ui:widget': 'AuthModeWidget',
+    'ui:title': 'Client Type',
+    'ui:widget': 'radio',
+    'ui:options': {
+      inline: true,
+    },
   },
   secret: COMMON_UI_FIELDS.clientSecret,
 };
@@ -616,15 +603,39 @@ export const COMMON_FIELD_TITLES = {
 export const AUTHORIZER_FIELD_TITLES = {
   className: { 'ui:widget': 'hidden', 'ui:hideError': true },
   containerRequestFilter: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  adminPrincipals: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  botPrincipals: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  principalDomain: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  enforcePrincipalDomain: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  enableSecureSocketConnection: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  useRolesFromProvider: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  allowedEmailRegistrationDomains: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  allowedDomains: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  defaultOAuthRole: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  adminPrincipals: {
+    'ui:title': 'Admin Principals',
+    'ui:placeholder':
+      'Enter value (e.g. admin@example.com, security@example.com) and press ENTER',
+  },
+  botPrincipals: {
+    'ui:title': 'Bot Principals',
+    'ui:placeholder':
+      'Enter value (e.g. ingestion-bot@example.com) and press ENTER',
+  },
+  principalDomain: {
+    'ui:title': 'Principal Domain',
+    'ui:placeholder': 'e.g. https://accounts.google.com',
+  },
+  enforcePrincipalDomain: { 'ui:title': 'Enforce Principal Domain' },
+  enableSecureSocketConnection: {
+    'ui:title': 'Enable Secure Socket Connection',
+  },
+  useRolesFromProvider: { 'ui:title': 'Use Roles From Provider' },
+  defaultOAuthRole: {
+    'ui:title': 'Default OAuth Role',
+    'ui:placeholder': 'e.g. DataConsumer',
+  },
+  allowedEmailRegistrationDomains: {
+    'ui:title': 'Allowed Email Registration Domains',
+    'ui:placeholder':
+      'Enter domain (e.g. example.com) and press ENTER. Use "all" to allow all domains.',
+  },
+  allowedDomains: {
+    'ui:title': 'Allowed Domains',
+    'ui:placeholder':
+      'Enter domain (e.g. example.com) and press ENTER. Used for CORS / referrer whitelisting.',
+  },
 };
 
 // Type definitions for UI Schema
@@ -833,8 +844,6 @@ export interface AuthenticationConfiguration {
   enableAutoRedirect?: boolean;
   clientType?: ClientType;
   secret?: string;
-  discoveryUri?: string;
-  emailClaim?: string;
   ldapConfiguration?: Record<string, unknown>;
   samlConfiguration?: Record<string, unknown>;
   oidcConfiguration?: Record<string, unknown>;
@@ -849,3 +858,168 @@ export interface AuthorizerConfiguration {
   enableSecureSocketConnection: boolean;
   botPrincipals?: string[];
 }
+
+export type SSOFieldTier = 'main' | 'advanced';
+export type SSOSectionLayout = Record<string, SSOFieldTier>;
+export type SSOFieldLayout = Record<string, SSOSectionLayout>;
+
+const OIDC_CONFIDENTIAL_AUTH_ROOT: SSOSectionLayout = {
+  oidcConfiguration: 'main',
+  jwtPrincipalClaims: 'advanced',
+  jwtPrincipalClaimsMapping: 'advanced',
+  jwtTeamClaimMapping: 'advanced',
+  enableAutoRedirect: 'advanced',
+};
+
+const OIDC_CONFIDENTIAL_SUBSECTION: SSOSectionLayout = {
+  id: 'main',
+  discoveryUri: 'main',
+  secret: 'main',
+  scope: 'advanced',
+  clientAuthenticationMethod: 'advanced',
+  prompt: 'advanced',
+  useNonce: 'advanced',
+  disablePkce: 'advanced',
+  customParams: 'advanced',
+  tokenValidity: 'advanced',
+  sessionExpiry: 'advanced',
+  maxAge: 'advanced',
+  maxClockSkew: 'advanced',
+  preferredJwsAlgorithm: 'advanced',
+  tenant: 'advanced',
+  callbackUrl: 'advanced',
+};
+
+const OIDC_PUBLIC_AUTH_ROOT: SSOSectionLayout = {
+  clientId: 'main',
+  authority: 'main',
+  publicKeyUrls: 'advanced',
+  jwtPrincipalClaims: 'advanced',
+  jwtPrincipalClaimsMapping: 'advanced',
+  jwtTeamClaimMapping: 'advanced',
+  enableAutoRedirect: 'advanced',
+  tokenValidationAlgorithm: 'advanced',
+};
+
+const SAML_AUTH_ROOT: SSOSectionLayout = {
+  samlConfiguration: 'main',
+};
+
+const SAML_SUBSECTION: SSOSectionLayout = {
+  idp: 'main',
+  sp: 'advanced',
+  security: 'advanced',
+  debugMode: 'advanced',
+};
+
+const LDAP_AUTH_ROOT: SSOSectionLayout = {
+  ldapConfiguration: 'main',
+};
+
+const LDAP_SUBSECTION: SSOSectionLayout = {
+  host: 'main',
+  port: 'main',
+  dnAdminPrincipal: 'main',
+  dnAdminPassword: 'main',
+  userBaseDN: 'main',
+  mailAttributeName: 'main',
+  sslEnabled: 'advanced',
+  maxPoolSize: 'advanced',
+  isFullDn: 'advanced',
+  truststoreConfigType: 'advanced',
+  truststoreFormat: 'advanced',
+  trustStoreConfig: 'advanced',
+  groupBaseDN: 'advanced',
+  groupAttributeName: 'advanced',
+  groupAttributeValue: 'advanced',
+  groupMemberAttributeName: 'advanced',
+  authRolesMapping: 'advanced',
+  authReassignRoles: 'advanced',
+};
+
+const AUTHORIZER_LAYOUT: SSOSectionLayout = {
+  adminPrincipals: 'main',
+  principalDomain: 'main',
+  enforcePrincipalDomain: 'advanced',
+  useRolesFromProvider: 'advanced',
+  defaultOAuthRole: 'advanced',
+  allowedEmailRegistrationDomains: 'advanced',
+  allowedDomains: 'advanced',
+  enableSelfSignup: 'advanced',
+  enableSecureSocketConnection: 'advanced',
+};
+
+const buildOidcConfidentialLayout = (): SSOFieldLayout => ({
+  authenticationConfiguration: OIDC_CONFIDENTIAL_AUTH_ROOT,
+  'authenticationConfiguration/oidcConfiguration': OIDC_CONFIDENTIAL_SUBSECTION,
+  authorizerConfiguration: AUTHORIZER_LAYOUT,
+});
+
+const buildOidcPublicLayout = (): SSOFieldLayout => ({
+  authenticationConfiguration: OIDC_PUBLIC_AUTH_ROOT,
+  authorizerConfiguration: AUTHORIZER_LAYOUT,
+});
+
+const SAML_FIELD_LAYOUT: SSOFieldLayout = {
+  authenticationConfiguration: SAML_AUTH_ROOT,
+  'authenticationConfiguration/samlConfiguration': SAML_SUBSECTION,
+  authorizerConfiguration: AUTHORIZER_LAYOUT,
+};
+
+const LDAP_FIELD_LAYOUT: SSOFieldLayout = {
+  authenticationConfiguration: LDAP_AUTH_ROOT,
+  'authenticationConfiguration/ldapConfiguration': LDAP_SUBSECTION,
+  authorizerConfiguration: AUTHORIZER_LAYOUT,
+};
+
+const OIDC_PROVIDERS: ReadonlySet<string> = new Set([
+  AuthProvider.Google,
+  AuthProvider.Auth0,
+  AuthProvider.Azure,
+  AuthProvider.Okta,
+  AuthProvider.AwsCognito,
+  AuthProvider.CustomOidc,
+]);
+
+export const getProviderFieldLayout = (
+  provider: string | undefined,
+  clientType: ClientType | undefined
+): SSOFieldLayout | undefined => {
+  if (!provider) {
+    return undefined;
+  }
+
+  if (provider === AuthProvider.Saml) {
+    return SAML_FIELD_LAYOUT;
+  }
+
+  if (provider === AuthProvider.LDAP) {
+    return LDAP_FIELD_LAYOUT;
+  }
+
+  if (OIDC_PROVIDERS.has(provider)) {
+    return clientType === ClientType.Public
+      ? buildOidcPublicLayout()
+      : buildOidcConfidentialLayout();
+  }
+
+  return undefined;
+};
+
+export const hasAnyAdvancedFields = (
+  fieldLayout: SSOFieldLayout | undefined
+): boolean => {
+  if (!fieldLayout) {
+    return false;
+  }
+
+  for (const sectionLayout of Object.values(fieldLayout)) {
+    for (const tier of Object.values(sectionLayout)) {
+      if (tier === 'advanced') {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};

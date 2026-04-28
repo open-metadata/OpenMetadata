@@ -875,6 +875,69 @@
   }
 }
 
+.saml-idp-info-banner,
+.oidc-callback-display {
+  background-color: @grey-9;
+  border: 1px solid @grey-15;
+  border-radius: @border-rad-xs;
+  padding: @size-md;
+  display: flex;
+  flex-direction: column;
+  gap: @size-xs;
+}
+
+.copyable-url-field {
+  display: flex;
+  flex-direction: column;
+  gap: @size-xxs;
+
+  .copyable-url-label {
+    color: @grey-600;
+  }
+
+  .copyable-url-value-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: @size-xs;
+    background-color: @white;
+    border: 1px solid @grey-15;
+    border-radius: @border-rad-xs;
+    padding: @size-xxs @size-xs;
+
+    .copyable-url-value {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: monospace;
+      font-size: 12px;
+    }
+  }
+}
+
+.sso-top-advanced-accordion {
+  margin-top: @size-md;
+
+  .sso-advanced-section {
+    .property-wrapper {
+      margin-bottom: @size-md;
+
+      .form-group {
+        margin-bottom: 0;
+      }
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    &:not(:last-child) {
+      margin-bottom: @size-md;
+    }
+  }
+}
+
 .sso-form-sticky-header {
   height: @size-lg;
   background-color: @white;
