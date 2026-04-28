@@ -7,10 +7,10 @@ from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
 Simple test for CSV operations to verify the implementation.
 Tests the CSVMixin functionality directly.
 """
-from unittest.mock import Mock
+from unittest.mock import Mock  # noqa: E402
 
-from metadata.generated.schema.entity.data.glossary import Glossary
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+from metadata.generated.schema.entity.data.glossary import Glossary  # noqa: E402
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (  # noqa: E402
     AuthProvider,
     OpenMetadataConnection,
 )

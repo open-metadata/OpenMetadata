@@ -223,7 +223,7 @@ class FabricAuthenticatorTest(TestCase):
         self.assertTrue(callable(callback))
 
         # Calling it should return token
-        token, expires_in = callback()
+        token, expires_in = callback()  # noqa: RUF059
         self.assertEqual(token, "callback-token")
 
 

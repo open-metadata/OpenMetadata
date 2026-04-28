@@ -15,7 +15,7 @@ Snowflake source module
 import json  # noqa: I001
 import traceback
 from datetime import datetime
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple  # noqa: UP035
 
 import sqlalchemy.types as sqltypes
 import sqlparse
@@ -220,8 +220,8 @@ class SnowflakeSource(
         self.schema_tags_map = {}
         self.database_tags_map = {}
 
-        self._account: Optional[str] = None
-        self._org_name: Optional[str] = None
+        self._account: Optional[str] = None  # noqa: UP045
+        self._org_name: Optional[str] = None  # noqa: UP045
         self.life_cycle_query = SNOWFLAKE_LIFE_CYCLE_QUERY
         self.context.get_global().deleted_tables = []
         self.pipeline_name = pipeline_name
@@ -235,7 +235,7 @@ class SnowflakeSource(
             )
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SnowflakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, SnowflakeConnection):
@@ -245,7 +245,7 @@ class SnowflakeSource(
         return cls(config, metadata, pipeline_name, incremental_config)
 
     @property
-    def account(self) -> Optional[str]:
+    def account(self) -> Optional[str]:  # noqa: UP045
         """
         Query the account information
             ref https://docs.snowflake.com/en/sql-reference/functions/current_account_name
@@ -256,7 +256,7 @@ class SnowflakeSource(
         return self._account
 
     @property
-    def org_name(self) -> Optional[str]:
+    def org_name(self) -> Optional[str]:  # noqa: UP045
         """
         Query the Organization information.
             ref https://docs.snowflake.com/en/sql-reference/functions/current_organization_name
@@ -369,19 +369,19 @@ class SnowflakeSource(
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch database tags: {exc}")
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:
+    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the schema description
         """
         return self.schema_desc_map.get((self.context.get().database, schema_name))
 
-    def get_database_description(self, database_name: str) -> Optional[str]:
+    def get_database_description(self, database_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the database description
         """
         return self.database_desc_map.get(database_name)
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         return self.service_connection.database
 
     def get_database_names_raw(self) -> Iterable[str]:
@@ -432,7 +432,7 @@ class SnowflakeSource(
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Error trying to connect to database {new_database}: {exc}")
 
-    def __clean_append(self, token: Token, result_list: List) -> None:
+    def __clean_append(self, token: Token, result_list: List) -> None:  # noqa: UP006
         """
         Appends the real name of the given token to the result list if it exists.
 
@@ -447,7 +447,7 @@ class SnowflakeSource(
         if name is not None:
             result_list.append(name)
 
-    def __get_identifier_from_function(self, function_token: Function) -> List:
+    def __get_identifier_from_function(self, function_token: Function) -> List:  # noqa: UP006
         identifiers = []
         for token in function_token.get_parameters():
             if isinstance(token, Function):
@@ -457,7 +457,7 @@ class SnowflakeSource(
                 self.__clean_append(token, identifiers)
         return identifiers
 
-    def parse_column_name_from_expr(self, cluster_key_expr: str) -> Optional[List[str]]:
+    def parse_column_name_from_expr(self, cluster_key_expr: str) -> Optional[List[str]]:  # noqa: UP006, UP045
         try:
             parser = sqlparse.parse(cluster_key_expr)
             if not parser:
@@ -469,7 +469,7 @@ class SnowflakeSource(
                     result.extend(self.__get_identifier_from_function(token))
                 elif isinstance(token, Identifier):
                     self.__clean_append(token, result)
-            return result
+            return result  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to parse cluster key - {err}")
@@ -480,8 +480,8 @@ class SnowflakeSource(
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-        partition_columns: Optional[List[str]],
-    ) -> List[str]:
+        partition_columns: Optional[List[str]],  # noqa: UP006, UP045
+    ) -> List[str]:  # noqa: UP006
         if partition_columns:
             columns = []
             table_columns = inspector.get_columns(table_name=table_name, schema=schema_name)
@@ -495,7 +495,7 @@ class SnowflakeSource(
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, Optional[TablePartition]]:
+    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
         cluster_key = self.partition_details.get(f"{schema_name}.{table_name}")
         if cluster_key:
             partition_columns = self.parse_column_name_from_expr(cluster_key)
@@ -617,7 +617,7 @@ class SnowflakeSource(
 
     def _get_table_names_and_types(
         self, schema_name: str, table_type: TableType = TableType.Regular
-    ) -> List[TableNameAndType]:
+    ) -> List[TableNameAndType]:  # noqa: UP006
 
         snowflake_tables = self.inspector.get_table_names(
             schema=schema_name,
@@ -643,7 +643,7 @@ class SnowflakeSource(
 
         return [TableNameAndType(name=table.name, type_=table.type_) for table in snowflake_tables.get_not_deleted()]
 
-    def _get_stream_names_and_types(self, schema_name: str) -> List[TableNameAndType]:
+    def _get_stream_names_and_types(self, schema_name: str) -> List[TableNameAndType]:  # noqa: UP006
         table_type = TableType.Stream
 
         snowflake_streams = self.inspector.get_stream_names(
@@ -667,7 +667,7 @@ class SnowflakeSource(
 
         return [TableNameAndType(name=stream.name, type_=table_type) for stream in snowflake_streams.get_not_deleted()]
 
-    def _get_stage_names_and_types(self, schema_name: str) -> List[TableNameAndType]:
+    def _get_stage_names_and_types(self, schema_name: str) -> List[TableNameAndType]:  # noqa: UP006
         """Fetch named stages from the schema"""
         table_type = TableType.Stage
 
@@ -694,7 +694,7 @@ class SnowflakeSource(
 
         return table_list
 
-    def _get_org_name(self) -> Optional[str]:
+    def _get_org_name(self) -> Optional[str]:  # noqa: UP045
         try:
             with self.engine.connect() as conn:
                 res = conn.execute(text(SNOWFLAKE_GET_ORGANIZATION_NAME)).one()
@@ -705,7 +705,7 @@ class SnowflakeSource(
             logger.debug(f"Failed to fetch Organization name due to: {exc}")
         return None
 
-    def _get_current_account(self) -> Optional[str]:
+    def _get_current_account(self) -> Optional[str]:  # noqa: UP045
         try:
             with self.engine.connect() as conn:
                 res = conn.execute(text(SNOWFLAKE_GET_CURRENT_ACCOUNT)).one()
@@ -716,7 +716,7 @@ class SnowflakeSource(
             logger.debug(f"Failed to fetch current account due to: {exc}")
         return None
 
-    def _get_source_url_root(self, database_name: Optional[str] = None, schema_name: Optional[str] = None) -> str:
+    def _get_source_url_root(self, database_name: Optional[str] = None, schema_name: Optional[str] = None) -> str:  # noqa: UP045
         url = (
             f"https://{self.service_connection.snowflakeSourceHost}/{self.org_name.lower()}"
             f"/{self.account.lower()}/#/data/databases/{database_name}"
@@ -728,11 +728,11 @@ class SnowflakeSource(
 
     def get_source_url(
         self,
-        database_name: Optional[str] = None,
-        schema_name: Optional[str] = None,
-        table_name: Optional[str] = None,
-        table_type: Optional[TableType] = None,
-    ) -> Optional[str]:
+        database_name: Optional[str] = None,  # noqa: UP045
+        schema_name: Optional[str] = None,  # noqa: UP045
+        table_name: Optional[str] = None,  # noqa: UP045
+        table_type: Optional[TableType] = None,  # noqa: UP045
+    ) -> Optional[str]:  # noqa: UP045
         """
         Method to get the source url for snowflake tables
         """
@@ -750,12 +750,12 @@ class SnowflakeSource(
 
     def get_procedure_source_url(
         self,
-        database_name: Optional[str] = None,
-        schema_name: Optional[str] = None,
-        procedure_name: Optional[str] = None,
-        procedure_signature: Optional[str] = None,
-        procedure_type: Optional[str] = None,
-    ) -> Optional[str]:
+        database_name: Optional[str] = None,  # noqa: UP045
+        schema_name: Optional[str] = None,  # noqa: UP045
+        procedure_name: Optional[str] = None,  # noqa: UP045
+        procedure_signature: Optional[str] = None,  # noqa: UP045
+        procedure_type: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[str]:  # noqa: UP045
         """
         Method to get the source url for snowflake stored procedures
         """
@@ -971,7 +971,7 @@ class SnowflakeSource(
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Optional[str]:
+    ) -> Optional[str]:  # noqa: UP045
         """
         Get the DDL statement, View Definition or Stream Definition for a table
 
@@ -1003,7 +1003,7 @@ class SnowflakeSource(
             elif self.source_config.includeDDL or table_type == TableType.Dynamic:
                 schema_definition = inspector.get_table_ddl(self.connection, table_name, schema_name)
             schema_definition = str(schema_definition).strip() if schema_definition is not None else None
-            return schema_definition
+            return schema_definition  # noqa: RET504, TRY300
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -1021,7 +1021,7 @@ class SnowflakeSource(
             account_usage=self.service_connection.accountUsageSchema,
         )
 
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Method to process the table owners
 
@@ -1042,14 +1042,14 @@ class SnowflakeSource(
         parts = fqn.split(tag_fqn) if tag_fqn else []
         return parts[0] if parts else tag_fqn
 
-    def _has_classification(self, classification_name: str, tag_list: List[TagLabel]) -> bool:
+    def _has_classification(self, classification_name: str, tag_list: List[TagLabel]) -> bool:  # noqa: UP006
         """Check if a tag with the given classification name already exists"""
-        for tag in tag_list:
+        for tag in tag_list:  # noqa: SIM110
             if self._get_classification_name(tag) == classification_name:
                 return True
         return False
 
-    def get_schema_tag_labels(self, schema_name: str) -> Optional[List[TagLabel]]:
+    def get_schema_tag_labels(self, schema_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         Return tags for schema entity including:
         1. Snowflake schema-level tags
@@ -1088,7 +1088,7 @@ class SnowflakeSource(
 
         return schema_tags if schema_tags else None
 
-    def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
+    def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         Override to include inherited tags from both schema and database levels.
         This method combines:

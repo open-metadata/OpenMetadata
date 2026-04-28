@@ -40,7 +40,7 @@ def test_connection(
     metadata: OpenMetadata,
     client: MicroStrategyClient,
     service_connection: MicroStrategyConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part

@@ -57,7 +57,7 @@ Example Scores:
     - 100 rows, 90 failed (90%): 0.405 (medium - concerning pattern)
     - 10,000 rows, 9,000 failed (90%): 0.810 (high - major issue at scale)
     - 10,000 rows, 1,000 failed (10%): 0.010 (low - minor issue despite volume)
-"""
+"""  # noqa: RUF002
 
 from typing import TYPE_CHECKING
 
@@ -69,7 +69,7 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 if TYPE_CHECKING:
-    pass
+    pass  # noqa: TC005
 
 # Configuration constants
 DEFAULT_SAMPLE_WEIGHT_THRESHOLD = 100.0  # Samples needed for full weight
@@ -179,7 +179,7 @@ def get_impact_score_expression(
     raw_impact = failure_severity * volume_factor * sample_weight
 
     # Normalize to approximately 0-1 range
-    # Max theoretical value: 1.0 (failure²) × 1.5 (max volume tier) × 1.0 (sample) = 1.5
+    # Max theoretical value: 1.0 (failure²) × 1.5 (max volume tier) × 1.0 (sample) = 1.5  # noqa: RUF003
     # Divide by normalization_factor (1.5) to normalize to 0-1 range
     normalized_impact = raw_impact / normalization_factor
 
@@ -230,7 +230,7 @@ def calculate_impact_score_pandas(
         1         EU         0.188
         2       Asia         0.005
     """
-    import numpy as np
+    import numpy as np  # noqa: PLC0415
 
     # Create a copy to avoid modifying original
     df = df_grouped.copy()

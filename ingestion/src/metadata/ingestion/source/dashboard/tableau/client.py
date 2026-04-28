@@ -14,7 +14,7 @@ Wrapper module of TableauServerConnection client
 
 import math
 import traceback
-from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
 
 import validators
 from cached_property import cached_property
@@ -47,25 +47,25 @@ from metadata.utils.ssl_manager import SSLManager
 logger = ometa_logger()
 
 
-class TableauWorkBookException(Exception):
+class TableauWorkBookException(Exception):  # noqa: N818
     """
     Raise when Workbooks information is not retrieved from the Tableau APIs
     """
 
 
-class TableauChartsException(Exception):
+class TableauChartsException(Exception):  # noqa: N818
     """
     Raise when Charts information is not retrieved from the Tableau APIs
     """
 
 
-class TableauOwnersNotFound(Exception):
+class TableauOwnersNotFound(Exception):  # noqa: N818
     """
     Raise when Owner information is not retrieved from the Tableau APIs
     """
 
 
-class TableauDataModelsException(Exception):
+class TableauDataModelsException(Exception):  # noqa: N818
     """
     Raise when Data Source information is not retrieved from the Tableau Graphql Query
     """
@@ -78,11 +78,11 @@ class TableauClient:
 
     def __init__(
         self,
-        tableau_server_auth: Union[PersonalAccessTokenAuth, TableauAuth],
+        tableau_server_auth: Union[PersonalAccessTokenAuth, TableauAuth],  # noqa: UP007
         config,
-        verify_ssl: Union[bool, str],
+        verify_ssl: Union[bool, str],  # noqa: UP007
         pagination_limit: int,
-        ssl_manager: Optional[SSLManager] = None,
+        ssl_manager: Optional[SSLManager] = None,  # noqa: UP045
     ):
         self.tableau_server = Server(str(config.hostPort), use_server_version=True)
         if config.apiVersion:
@@ -91,9 +91,9 @@ class TableauClient:
         self.tableau_server.auth.sign_in(tableau_server_auth)
         self.config = config
         self.pagination_limit = pagination_limit
-        self.custom_sql_table_queries: Dict[str, List[str]] = {}
-        self.owner_cache: Dict[str, TableauOwner] = {}
-        self.all_projects: List[ProjectItem] = []
+        self.custom_sql_table_queries: Dict[str, List[str]] = {}  # noqa: UP006
+        self.owner_cache: Dict[str, TableauOwner] = {}  # noqa: UP006
+        self.all_projects: List[ProjectItem] = []  # noqa: UP006
         self.ssl_manager = ssl_manager
 
     @cached_property
@@ -107,7 +107,7 @@ class TableauClient:
     def site_id(self) -> str:
         return self.tableau_server.site_id
 
-    def get_tableau_owner(self, owner_id: str, include_owners: bool = True) -> Optional[TableauOwner]:
+    def get_tableau_owner(self, owner_id: str, include_owners: bool = True) -> Optional[TableauOwner]:  # noqa: UP045
         """
         Get tableau owner with optional include_owners flag
         """
@@ -122,17 +122,19 @@ class TableauClient:
                 self.owner_cache[owner_id] = owner_obj
                 return owner_obj
         except Exception as err:
-            logger.debug(f"Failed to fetch owner details for ID {owner_id}: {str(err)}")
+            logger.debug(f"Failed to fetch owner details for ID {owner_id}: {str(err)}")  # noqa: RUF010
         return None
 
     def get_workbook_charts_and_user_count(
-        self, views: List[ViewItem], include_owners: bool = True
-    ) -> Optional[Tuple[Optional[int], Optional[List[TableauChart]]]]:
+        self,
+        views: list[ViewItem],
+        include_owners: bool = True,
+    ) -> Optional[Tuple[Optional[int], Optional[List[TableauChart]]]]:  # noqa: UP006, UP045
         """
         Fetches workbook charts and dashboard user view count
         """
         view_count = 0
-        charts: Optional[List[TableauChart]] = []
+        charts: Optional[List[TableauChart]] = []  # noqa: UP006, UP045
         for view in views or []:
             try:
                 charts.append(
@@ -147,10 +149,10 @@ class TableauClient:
                 )
                 view_count += view.total_views
             except AttributeError as e:
-                logger.debug(f"Failed to process view due to missing attribute: {str(e)}")
+                logger.debug(f"Failed to process view due to missing attribute: {str(e)}")  # noqa: RUF010
                 continue
             except Exception as e:
-                logger.debug(f"Failed to process view: {str(e)}")
+                logger.debug(f"Failed to process view: {str(e)}")  # noqa: RUF010
                 continue
 
         return charts, view_count
@@ -161,14 +163,14 @@ class TableauClient:
         """
         try:
             logger.debug("Getting all projects from the tableau server")
-            all_projects: List[ProjectItem] = []
+            all_projects: List[ProjectItem] = []  # noqa: UP006
             for project in Pager(self.tableau_server.projects):
-                all_projects.append(project)
+                all_projects.append(project)  # noqa: PERF402
             self.all_projects = all_projects
         except Exception as e:
-            logger.debug(f"Failed to get all projects: {str(e)}")
+            logger.debug(f"Failed to get all projects: {str(e)}")  # noqa: RUF010
 
-    def get_project_parents_by_id(self, project_id: str) -> Optional[str]:
+    def get_project_parents_by_id(self, project_id: str) -> Optional[str]:  # noqa: UP045
         """
         Get the parents of a project by id
         """
@@ -193,9 +195,9 @@ class TableauClient:
 
             if parent_projects:
                 parent_projects = ".".join(reversed(parent_projects))
-                return parent_projects
+                return parent_projects  # noqa: RET504
         except Exception as e:
-            logger.debug(f"Failed to get project parents by id: {str(e)}")
+            logger.debug(f"Failed to get project parents by id: {str(e)}")  # noqa: RUF010
         return None
 
     def get_workbooks(self, include_owners: bool = True) -> Iterable[TableauDashboard]:
@@ -208,7 +210,7 @@ class TableauClient:
             try:
                 self.tableau_server.workbooks.populate_views(workbook, usage=True)
                 charts, user_views = self.get_workbook_charts_and_user_count(workbook.views, include_owners)
-                workbook = TableauDashboard(
+                workbook = TableauDashboard(  # noqa: PLW2901
                     id=str(workbook.id),
                     name=workbook.name,
                     project=TableauBaseModel(id=str(workbook.project_id), name=workbook.project_name),
@@ -221,10 +223,10 @@ class TableauClient:
                 )
                 yield workbook
             except AttributeError as err:
-                logger.warning(f"Failed to process workbook due to missing attribute: {str(err)}")
+                logger.warning(f"Failed to process workbook due to missing attribute: {str(err)}")  # noqa: RUF010
                 continue
             except Exception as err:
-                logger.warning(f"Failed to process workbook: {str(err)}")
+                logger.warning(f"Failed to process workbook: {str(err)}")  # noqa: RUF010
                 continue
 
     def test_get_workbooks(self):
@@ -248,7 +250,7 @@ class TableauClient:
             "Please check if the user has permissions to access the Charts information"
         )
 
-    def test_get_owners(self, include_owners: bool = True) -> Optional[TableauOwner]:
+    def test_get_owners(self, include_owners: bool = True) -> Optional[TableauOwner]:  # noqa: UP045
         workbook = self.test_get_workbooks()
         owners = self.get_tableau_owner(workbook.owner_id, include_owners)
         if owners is not None:
@@ -296,7 +298,7 @@ class TableauClient:
 
     def _query_datasources(
         self, dashboard_id: str, entities_per_page: int, offset: int
-    ) -> Optional[TableauDatasources]:
+    ) -> Optional[TableauDatasources]:  # noqa: UP045
         """
         Method to query the graphql endpoint to get data sources
         """
@@ -310,7 +312,7 @@ class TableauClient:
                         **datasources_graphql_result["data"]["workbooks"][0]
                     )
                     return tableau_datasource_connection.embeddedDatasourcesConnection
-                else:
+                else:  # noqa: RET505
                     logger.warning(
                         f"No Datasources found in GraphQL datasources query result for the workbook {dashboard_id}. "
                         "If this is a recently created or updated workbook, it may take some time "
@@ -327,7 +329,7 @@ class TableauClient:
             )
         return None
 
-    def get_datasources(self, dashboard_id: str) -> Optional[List[DataSource]]:
+    def get_datasources(self, dashboard_id: str) -> Optional[List[DataSource]]:  # noqa: UP006, UP045
         """
         Paginate and get the list of all data sources of the workbook
         """
@@ -348,13 +350,13 @@ class TableauClient:
                 )
                 if tableau_datasource:
                     data_sources.extend(tableau_datasource.nodes)
-            return data_sources
+            return data_sources  # noqa: TRY300
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Unable to fetch Data Sources")
         return []
 
-    def get_custom_sql_table_queries(self, datasource_id: str) -> Optional[List[str]]:
+    def get_custom_sql_table_queries(self, datasource_id: str) -> Optional[List[str]]:  # noqa: UP006, UP045
         """
         Get custom SQL table queries for a specific dashboard/workbook ID
         """

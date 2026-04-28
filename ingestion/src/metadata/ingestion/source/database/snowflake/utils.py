@@ -15,7 +15,7 @@ Module to define overridden dialect methods
 
 import operator  # noqa: I001
 from functools import reduce
-from typing import Dict, Optional
+from typing import Dict, Optional  # noqa: UP035
 
 import sqlalchemy.types as sqltypes
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
@@ -62,7 +62,7 @@ logger = ingestion_logger()
 
 dialect = SnowflakeDialect()
 Query = str
-QueryMap = Dict[str, Query]
+QueryMap = Dict[str, Query]  # noqa: UP006
 
 
 TABLE_QUERY_MAPS = {
@@ -108,7 +108,7 @@ def _denormalize_quote_join(*idents):
     return ".".join(normalized_identifiers)
 
 
-def _quoted_name(entity_name: Optional[str]) -> Optional[str]:
+def _quoted_name(entity_name: Optional[str]) -> Optional[str]:  # noqa: UP045
     if entity_name:
         return fqn.quote_name(entity_name)
 
@@ -178,7 +178,7 @@ def get_stage_names_reflection(self, schema=None, **kw):
         return self.dialect.get_stage_names(conn, schema, info_cache=self.info_cache, **kw)
 
 
-def _get_query_map(incremental: Optional[IncrementalConfig], query_maps: Dict[str, QueryMap]):
+def _get_query_map(incremental: Optional[IncrementalConfig], query_maps: Dict[str, QueryMap]):  # noqa: UP006, UP045
     """Returns the proper queries depending if the extraction is Incremental or Full."""
     if incremental and incremental.enabled:
         return query_maps["incremental"]
@@ -189,10 +189,10 @@ def _get_query_parameters(
     self,
     connection,
     schema: str,
-    incremental: Optional[IncrementalConfig],
-    account_usage: Optional[str] = None,
-    include_transient_tables: Optional[bool] = False,
-    include_views: Optional[bool] = False,
+    incremental: Optional[IncrementalConfig],  # noqa: UP045
+    account_usage: Optional[str] = None,  # noqa: UP045
+    include_transient_tables: Optional[bool] = False,  # noqa: UP045
+    include_views: Optional[bool] = False,  # noqa: UP045
 ):
     """Returns the proper query parameters depending if the extraction is Incremental or Full"""
     parameters = {
@@ -242,7 +242,7 @@ def get_table_names(self, connection, schema: str, **kw):
             for row in cursor
         ]
     )
-    return result
+    return result  # noqa: RET504
 
 
 def _get_table_type(table_type: str) -> TableType:
@@ -274,7 +274,7 @@ def get_view_names(self, connection, schema, **kw):
     result = SnowflakeTableList(
         tables=[SnowflakeTable(name=self.normalize_name(row[0]), deleted=row[1]) for row in cursor]
     )
-    return result
+    return result  # noqa: RET504
 
 
 def get_stream_names(self, connection, schema, **kw):
@@ -289,7 +289,7 @@ def get_stream_names(self, connection, schema, **kw):
     result = SnowflakeTableList(
         tables=[SnowflakeTable(name=self.normalize_name(row[1]), deleted=None) for row in cursor]
     )
-    return result
+    return result  # noqa: RET504
 
 
 def get_stage_names(self, connection, schema, **kw):
@@ -306,7 +306,7 @@ def get_stage_names(self, connection, schema, **kw):
             for row in cursor
         ]
     )
-    return result
+    return result  # noqa: RET504
 
 
 @reflection.cache
@@ -406,8 +406,8 @@ def get_schema_columns(self, connection, schema, **kw):
         identity_increment,
         ordinal_position,
     ) in result:
-        table_name = self.normalize_name(fqn.quote_name(table_name))
-        column_name = self.normalize_name(column_name)
+        table_name = self.normalize_name(fqn.quote_name(table_name))  # noqa: PLW2901
+        column_name = self.normalize_name(column_name)  # noqa: PLW2901
         if table_name not in ans:
             ans[table_name] = []
         if column_name.startswith("sys_clustering_column"):
@@ -499,7 +499,7 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
 
 @reflection.cache
 def get_schema_foreign_keys(self, connection, schema, **kw):
-    current_database, current_schema = self._current_database_schema(connection, **kw)
+    current_database, current_schema = self._current_database_schema(connection, **kw)  # noqa: RUF059
     result = connection.execute(
         text(f"SHOW /* sqlalchemy:_get_schema_foreign_keys */ IMPORTED KEYS IN SCHEMA {schema}")
     )
@@ -533,7 +533,7 @@ def get_schema_foreign_keys(self, connection, schema, **kw):
 
     ans = {}
 
-    for _, v in foreign_key_map.items():
+    for _, v in foreign_key_map.items():  # noqa: PERF102
         if v["table_name"] not in ans:
             ans[v["table_name"]] = []
         ans[v["table_name"]].append({k2: v2 for k2, v2 in v.items() if k2 != "table_name"})

@@ -13,7 +13,7 @@ SAP Hana lineage module
 """
 
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -81,7 +81,7 @@ class SaphanaLineageSource(Source):
         """By default, there's nothing to prepare"""
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SapHanaConnection = config.serviceConnection.root.config
         if not isinstance(connection, SapHanaConnection):

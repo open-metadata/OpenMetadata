@@ -14,7 +14,7 @@ Fivetran source to extract metadata
 
 import traceback
 from datetime import datetime
-from typing import Iterable, List, Optional, Union, cast
+from typing import Iterable, List, Optional, Union, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -98,14 +98,14 @@ class FivetranSource(PipelineServiceSource):
 
     @property
     def fivetran_client(self) -> FivetranClient:
-        return cast(FivetranClient, self.client)
+        return cast(FivetranClient, self.client)  # noqa: TC006
 
     @classmethod
     def create(
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ) -> "FivetranSource":
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: FivetranConnection = config.serviceConnection.root.config
@@ -116,8 +116,8 @@ class FivetranSource(PipelineServiceSource):
     def get_connections_jobs(
         self,
         pipeline_details: FivetranPipelineDetails,
-        source_url: Optional[SourceUrl] = None,
-    ) -> List[Task]:
+        source_url: Optional[SourceUrl] = None,  # noqa: UP045
+    ) -> List[Task]:  # noqa: UP006
         """Returns the three ELT phase tasks for a Fivetran connector."""
         return [
             Task(
@@ -186,7 +186,7 @@ class FivetranSource(PipelineServiceSource):
 
         yield from self._get_status_from_rest(pipeline_details, pipeline_fqn)
 
-    def _resolve_log_source(self, log_service_type: str) -> Optional[DatabaseService]:
+    def _resolve_log_source(self, log_service_type: str) -> Optional[DatabaseService]:  # noqa: UP045
         """Resolve the warehouse DatabaseService that holds fivetran_metadata.log.
 
         Fivetran calls this warehouse the "destination" but from OM's
@@ -203,7 +203,7 @@ class FivetranSource(PipelineServiceSource):
                     continue
                 if log_service_type and service.serviceType.value.lower() != log_service_type.lower():
                     continue
-                return service
+                return service  # noqa: TRY300
             except Exception as exc:
                 logger.debug(f"Could not resolve service [{service_name}]: {exc}")
         return None
@@ -212,7 +212,7 @@ class FivetranSource(PipelineServiceSource):
         self,
         pipeline_details: FivetranPipelineDetails,
         pipeline_fqn: str,
-    ) -> Optional[List[OMetaPipelineStatus]]:
+    ) -> Optional[List[OMetaPipelineStatus]]:  # noqa: UP006, UP045
         # Fivetran's "destination" config holds the warehouse where logs live
         log_database = self._get_database_name(pipeline_details.destination)
         if not log_database:
@@ -433,8 +433,8 @@ class FivetranSource(PipelineServiceSource):
         is_messaging_source: bool,
         table_name: str,
         schema_name: str,
-        database_name: Optional[str],
-    ) -> Optional[Union[Table, Topic]]:
+        database_name: Optional[str],  # noqa: UP045
+    ) -> Optional[Union[Table, Topic]]:  # noqa: UP007, UP045
         if is_messaging_source:
             for svc_name in self.get_messaging_service_names() or []:
                 entity_fqn = fqn.build(
@@ -464,9 +464,9 @@ class FivetranSource(PipelineServiceSource):
     def _resolve_destination_table(
         self,
         table_name: str,
-        schema_name: Optional[str],
-        database_name: Optional[str],
-    ) -> Optional[Table]:
+        schema_name: Optional[str],  # noqa: UP045
+        database_name: Optional[str],  # noqa: UP045
+    ) -> Optional[Table]:  # noqa: UP045
         for db_service_name in self.get_db_service_names() or []:
             entity_fqn = fqn.build(
                 self.metadata,
@@ -481,7 +481,7 @@ class FivetranSource(PipelineServiceSource):
                 return entity
         return None
 
-    def _get_pipeline_entity(self) -> Optional[Pipeline]:
+    def _get_pipeline_entity(self) -> Optional[Pipeline]:  # noqa: UP045
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
             entity_type=Pipeline,
@@ -498,7 +498,7 @@ class FivetranSource(PipelineServiceSource):
         table_name: str,
         from_table_entity: Table,
         to_table_entity: Table,
-    ) -> List[ColumnLineage]:
+    ) -> List[ColumnLineage]:  # noqa: UP006
         col_lineage = []
         for (
             column_name,
@@ -564,7 +564,7 @@ class FivetranSource(PipelineServiceSource):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _get_database_name(details: dict) -> Optional[str]:
+    def _get_database_name(details: dict) -> Optional[str]:  # noqa: UP045
         """Extract database name from a Fivetran source or destination config.
 
         Different connector types store the database/catalog/project name
@@ -581,7 +581,7 @@ class FivetranSource(PipelineServiceSource):
     @staticmethod
     def _get_schedule_interval(
         pipeline_details: FivetranPipelineDetails,
-    ) -> Optional[str]:
+    ) -> Optional[str]:  # noqa: UP045
         sync_freq = pipeline_details.source.get("sync_frequency")
         if not sync_freq:
             return None
@@ -610,10 +610,10 @@ class FivetranSource(PipelineServiceSource):
 
     def get_source_url(
         self,
-        connector_id: Optional[str],
-        group_id: Optional[str],
-        source_name: Optional[str],
-    ) -> Optional[SourceUrl]:
+        connector_id: Optional[str],  # noqa: UP045
+        group_id: Optional[str],  # noqa: UP045
+        source_name: Optional[str],  # noqa: UP045
+    ) -> Optional[SourceUrl]:  # noqa: UP045
         try:
             if connector_id and group_id and source_name:
                 return SourceUrl(

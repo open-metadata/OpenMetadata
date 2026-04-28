@@ -42,13 +42,13 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class InvalidKafkaCreds(Exception):
+class InvalidKafkaCreds(Exception):  # noqa: N818
     """
     Class to indicate invalid kafka credentials exception
     """
 
 
-class SchemaRegistryException(Exception):
+class SchemaRegistryException(Exception):  # noqa: N818
     """
     Class to indicate invalid schema registry not initialized
     """
@@ -65,7 +65,7 @@ class KafkaClient:
         self.consumer_client = consumer_client
 
 
-def get_connection(connection: Union[KafkaConnection, RedpandaConnection]) -> KafkaClient:
+def get_connection(connection: Union[KafkaConnection, RedpandaConnection]) -> KafkaClient:  # noqa: UP007
     """
     Create connection
     """
@@ -119,9 +119,9 @@ def get_connection(connection: Union[KafkaConnection, RedpandaConnection]) -> Ka
 def test_connection(
     metadata: OpenMetadata,
     client: KafkaClient,
-    service_connection: Union[KafkaConnection, RedpandaConnection],
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    service_connection: Union[KafkaConnection, RedpandaConnection],  # noqa: UP007
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -130,9 +130,9 @@ def test_connection(
 
     def custom_executor():
         try:
-            client.admin_client.list_topics(timeout=TIMEOUT_SECONDS).topics
+            client.admin_client.list_topics(timeout=TIMEOUT_SECONDS).topics  # noqa: B018
         except KafkaException as err:
-            raise InvalidKafkaCreds(
+            raise InvalidKafkaCreds(  # noqa: B904
                 f"Failed to fetch topics due to: {err}. "
                 "Please validate credentials and check if you are using correct security protocol"
             )

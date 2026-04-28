@@ -70,7 +70,7 @@ def _get_serverless_workgroup(host: str) -> str:
     Extract the workgroup name from a Redshift Serverless host.
     Serverless hosts follow: workgroup-name.account-id.region.redshift-serverless.amazonaws.com
     """
-    return host.split(".")[0]
+    return host.split(".")[0]  # noqa: PLC0207
 
 
 def _get_provisioned_cluster_identifier(host: str) -> str:
@@ -78,7 +78,7 @@ def _get_provisioned_cluster_identifier(host: str) -> str:
     Extract the cluster identifier from a Redshift Provisioned host.
     Provisioned hosts follow: cluster-id.xxxxx.region.redshift.amazonaws.com
     """
-    return host.split(".")[0]
+    return host.split(".")[0]  # noqa: PLC0207
 
 
 def _get_serverless_iam_credentials(connection: RedshiftConnection, host: str) -> tuple:
@@ -193,7 +193,7 @@ def get_redshift_instance_type(engine: Engine) -> RedshiftInstanceType:
             conn.execute(probe_query)
 
         logger.info("Redshift instance type detected: PROVISIONED (STL tables accessible)")
-        return RedshiftInstanceType.PROVISIONED
+        return RedshiftInstanceType.PROVISIONED  # noqa: TRY300
 
     except ProgrammingError:
         logger.info("Redshift instance type detected: SERVERLESS (STL tables not accessible, will use SYS_* views)")
@@ -204,8 +204,8 @@ def test_connection(
     metadata: OpenMetadata,
     engine: Engine,
     service_connection: RedshiftConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -223,7 +223,7 @@ def test_connection(
                 raise SourceConnectionException(
                     f"We don't have the right permissions to list queries from sys views (Redshift Serverless) - {res}"
                     if redshift_instance_type == RedshiftInstanceType.SERVERLESS
-                    else f"We don't have the right permissions to list queries from stl views (Redshift Provisioned) - {res}"  # noqa: E501
+                    else f"We don't have the right permissions to list queries from stl views (Redshift Provisioned) - {res}"  # noqa: E501, RUF100
                 )
 
     test_fn = {

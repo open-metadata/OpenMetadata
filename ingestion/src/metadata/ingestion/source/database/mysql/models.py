@@ -36,7 +36,7 @@ class MysqlRoutine(BaseModel):
 
     name: str = Field(alias="routine_name")
     schema: str = Field(alias="schema_name")
-    definition: Optional[str] = None
+    definition: Optional[str] = None  # noqa: UP045
     language: str = Field(default="SQL")
-    routine_type: Optional[str] = Field(None, alias="routine_type")
-    description: Optional[str] = Field(None, alias="description")
+    routine_type: Optional[str] = Field(None, alias="routine_type")  # noqa: UP045
+    description: Optional[str] = Field(None, alias="description")  # noqa: UP045

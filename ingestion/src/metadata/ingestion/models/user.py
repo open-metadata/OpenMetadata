@@ -12,7 +12,7 @@
 Custom class for User data
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from pydantic.main import BaseModel
 
@@ -23,5 +23,5 @@ from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 
 class OMetaUserProfile(BaseModel):
     user: CreateUserRequest
-    teams: Optional[List[CreateTeamRequest]] = None
-    roles: Optional[List[CreateRoleRequest]] = None
+    teams: Optional[List[CreateTeamRequest]] = None  # noqa: UP006, UP045
+    roles: Optional[List[CreateRoleRequest]] = None  # noqa: UP006, UP045
