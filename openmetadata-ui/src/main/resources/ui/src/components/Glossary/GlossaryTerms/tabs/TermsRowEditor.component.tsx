@@ -33,6 +33,8 @@ import {
   TermsRowProps,
 } from './RelatedTerms.interface';
 
+const NO_RESULTS_KEY = '__no_results__';
+
 const TermsRow: React.FC<TermsRowProps> = ({
   rowId,
   initialRelationType,
@@ -50,9 +52,11 @@ const TermsRow: React.FC<TermsRowProps> = ({
     initialTerms.map((term) => ({ id: term.value, label: term.label }))
   );
   const [searchedTerms, setSearchedTerms] = useState<GlossaryTerm[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const activeTerms = searchedTerms.length > 0 ? searchedTerms : preloadedTerms;
+  const isSearchActive = searchQuery.trim().length > 0;
+  const activeTerms = isSearchActive ? searchedTerms : preloadedTerms;
 
   const termEntityMap = useMemo(() => {
     const map: Record<string, EntityReference> = {};
@@ -73,16 +77,20 @@ const TermsRow: React.FC<TermsRowProps> = ({
     return map;
   }, [preloadedTerms, searchedTerms, initialTerms]);
 
-  const dropdownItems = useMemo<TermSelectItem[]>(
-    () =>
-      activeTerms
-        .filter((term) => term.fullyQualifiedName !== excludeFQN)
-        .map((term) => ({
-          id: term.fullyQualifiedName ?? '',
-          label: getEntityName(term),
-        })),
-    [activeTerms, excludeFQN]
-  );
+  const dropdownItems = useMemo<TermSelectItem[]>(() => {
+    const items = activeTerms
+      .filter((term) => term.fullyQualifiedName !== excludeFQN)
+      .map((term) => ({
+        id: term.fullyQualifiedName ?? '',
+        label: getEntityName(term),
+      }));
+
+    if (isSearchActive && items.length === 0) {
+      return [{ id: NO_RESULTS_KEY, label: t('message.no-match-found') }];
+    }
+
+    return items;
+  }, [activeTerms, excludeFQN, isSearchActive, t]);
 
   const toTermItems = useCallback(
     (items: TermSelectItem[]): TermItem[] =>
@@ -103,6 +111,7 @@ const TermsRow: React.FC<TermsRowProps> = ({
   );
 
   const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
     if (searchTimerRef.current) {
       clearTimeout(searchTimerRef.current);
     }
@@ -120,13 +129,16 @@ const TermsRow: React.FC<TermsRowProps> = ({
         });
         setSearchedTerms(result.data);
       } catch {
-        // search failures fall back to preloaded terms
+        // silently handle
       }
     }, 300);
   }, []);
 
   const handleItemInserted = useCallback(
     (key: Key) => {
+      if (key === NO_RESULTS_KEY) {
+        return;
+      }
       const term = [...preloadedTerms, ...searchedTerms].find(
         (t) => t.fullyQualifiedName === key
       );
@@ -137,6 +149,8 @@ const TermsRow: React.FC<TermsRowProps> = ({
         ];
         setSelectedTerms(updated);
         onTermsChange(rowId, toTermItems(updated));
+        setSearchQuery('');
+        setSearchedTerms([]);
       }
     },
     [
@@ -188,7 +202,12 @@ const TermsRow: React.FC<TermsRowProps> = ({
           onItemInserted={handleItemInserted}
           onSearchChange={handleSearchChange}>
           {(item) => (
-            <Autocomplete.Item id={item.id} key={item.id} label={item.label} />
+            <Autocomplete.Item
+              id={item.id}
+              isDisabled={item.id === NO_RESULTS_KEY}
+              key={item.id}
+              label={item.label}
+            />
           )}
         </Autocomplete>
       </div>

@@ -67,7 +67,7 @@ class BaseTableRowInsertedCountToBeBetweenValidator(BaseTestValidator):
         except Exception as exc:
             msg = f"Error computing {self.test_case.name}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
-            logger.warning(msg)
+            logger.error(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,

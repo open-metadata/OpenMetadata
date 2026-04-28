@@ -13,7 +13,7 @@
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { ChevronRight } from '@untitledui/icons';
 import { get, omit, pick } from 'lodash';
-import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column-new.svg';
+import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-new.svg';
 import { CondensedBreadcrumb } from '../../components/CondensedBreadcrumb/CondensedBreadcrumb.component';
 import {

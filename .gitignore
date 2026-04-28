@@ -202,4 +202,7 @@ ingestion/.claude/agents
 .claude/scheduled_tasks.lock
 .claude/plans/
 
+# Serena MCP language-server cache — local tooling, not committed
+.serena/
+
 test-results/
