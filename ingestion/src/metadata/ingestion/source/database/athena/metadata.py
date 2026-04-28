@@ -354,7 +354,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             return None
         if table_type != TableType.Iceberg:
             return None
-        schema_name = self.context.get().database_schema
+        schema_name: str = getattr(self.context.get(), "database_schema", "")
         tbl_properties = self._fetch_iceberg_properties(schema_name, table_name)
         if not tbl_properties:
             return None
@@ -375,6 +375,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
                                 displayName=prop_name,
                                 description=prop_name,
                                 propertyType=self._string_property_type_ref,
+                                customPropertyConfig=None,
                             ),
                         )
                     )
