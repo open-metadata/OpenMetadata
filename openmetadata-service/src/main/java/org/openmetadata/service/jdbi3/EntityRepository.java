@@ -1207,12 +1207,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String afterId = cursorMap.get("id");
       List<String> jsons = dao.listAfter(filter, limitParam + 1, afterName, afterId);
 
-      for (String json : jsons) {
-        T entity = JsonUtils.readValue(json, entityClass);
-        entities.add(entity);
-      }
-      setFieldsInBulk(fields, entities);
-      entities.forEach(entity -> withHref(uriInfo, entity));
+      entities = listInternal(jsons, fields, uriInfo);
 
       String beforeCursor;
       String afterCursor = null;
@@ -1227,6 +1222,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // limit == 0 , return total count of entity.
       return getResultList(entities, null, null, total);
     }
+  }
+
+  public ResultList<T> listAfterWithOffset(
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limit, int offset) {
+    int total = dao.listCount(filter);
+    List<String> jsons = dao.listAfter(filter, limit, offset);
+
+    List<T> entities = listInternal(jsons, fields, uriInfo);
+
+    return new ResultList<>(entities, offset, limit, total);
+  }
+
+  private List<T> listInternal(List<String> jsons, Fields fields, UriInfo uriInfo) {
+    List<T> entities = JsonUtils.readObjects(jsons, entityClass);
+    setFieldsInBulk(fields, entities);
+    entities.forEach(entity -> withHref(uriInfo, entity));
+    return entities;
   }
 
   public ResultList<T> listAfterKeyset(
