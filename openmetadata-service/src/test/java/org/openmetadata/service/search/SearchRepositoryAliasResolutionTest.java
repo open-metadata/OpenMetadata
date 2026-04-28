@@ -128,6 +128,42 @@ class SearchRepositoryAliasResolutionTest {
         "Comma-separated tokens must be deduplicated: " + resolved);
   }
 
+  /**
+   * Defense-in-depth: even after the resource-layer pre-resolution was removed for /aggregate,
+   * /fieldQuery, and /entityTypeCounts, an already-prefixed token must not be prefixed again if
+   * any future code path hands it back into the resolver. Exercises the fallback path of
+   * {@link SearchRepository#resolveIndexes}, which routes unknown tokens through
+   * {@code prefixWithClusterAlias}.
+   */
+  @Test
+  void resolveIndexesDoesNotDoublePrefixAlreadyPrefixedTokens() {
+    String alreadyPrefixed =
+        SearchRepository.resolveIndexes(
+            "tenant42_some_search_index",
+            false,
+            false,
+            entityIndexMap,
+            aliasToChildEntityTypes,
+            "tenant42");
+    assertEquals("tenant42_some_search_index", alreadyPrefixed);
+
+    String mixed =
+        SearchRepository.resolveIndexes(
+            "tenant42_some_search_index,topic_search_index",
+            false,
+            false,
+            entityIndexMap,
+            aliasToChildEntityTypes,
+            "tenant42");
+    List<String> tokens = Arrays.asList(mixed.split(","));
+    assertTrue(
+        tokens.contains("tenant42_some_search_index"),
+        "Already-prefixed token must not be re-prefixed: " + mixed);
+    assertTrue(
+        tokens.contains("tenant42_topic_search_index"),
+        "Unprefixed token must be prefixed exactly once: " + mixed);
+  }
+
   @Test
   void buildReverseMapMatchesEveryEntityWithItsDeclaredParents() {
     for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {

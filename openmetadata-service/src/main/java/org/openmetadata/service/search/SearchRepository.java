@@ -669,8 +669,15 @@ public class SearchRepository {
     if (clusterAlias == null || clusterAlias.isEmpty()) {
       return name;
     }
+    String prefix = clusterAlias + INDEX_NAME_SEPARATOR;
+    // Defense-in-depth idempotency. The root-cause double-prefix is fixed by routing
+    // resource-layer resolution through the flag-aware overload exactly once, but tokens that
+    // already start with "<clusterAlias>_" should never get prefixed again — guards against any
+    // future code path that hands an already-resolved canonical index name back into this method
+    // (e.g. a helper layered on top of the new resolver).
     return Arrays.stream(name.split(","))
-        .map(index -> clusterAlias + INDEX_NAME_SEPARATOR + index.trim())
+        .map(String::trim)
+        .map(index -> index.startsWith(prefix) ? index : prefix + index)
         .collect(Collectors.joining(","));
   }
 
@@ -804,17 +811,21 @@ public class SearchRepository {
   }
 
   private static String prefixWithClusterAlias(String token, String clusterAlias) {
-    return clusterAlias == null || clusterAlias.isEmpty()
-        ? token
-        : clusterAlias + INDEX_NAME_SEPARATOR + token;
+    if (clusterAlias == null || clusterAlias.isEmpty()) {
+      return token;
+    }
+    String prefix = clusterAlias + INDEX_NAME_SEPARATOR;
+    return token.startsWith(prefix) ? token : prefix + token;
   }
 
   private static String prefixCommaList(String name, String clusterAlias) {
     if (clusterAlias == null || clusterAlias.isEmpty()) {
       return name;
     }
+    String prefix = clusterAlias + INDEX_NAME_SEPARATOR;
     return Arrays.stream(name.split(","))
-        .map(t -> clusterAlias + INDEX_NAME_SEPARATOR + t.trim())
+        .map(String::trim)
+        .map(t -> t.startsWith(prefix) ? t : prefix + t)
         .collect(Collectors.joining(","));
   }
 
