@@ -241,20 +241,24 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
         }
       />
 
-      <div className="tw:ml-auto tw:flex tw:items-center tw:gap-2">
+      <div className="tw:ml-auto tw:flex tw:items-center">
         {onLoadMore !== undefined &&
           loadedTermCount !== undefined &&
           totalTermCount !== undefined && (
             <Typography
               as="span"
-              className="tw:whitespace-nowrap tw:text-(--color-text-tertiary)"
+              className="tw:whitespace-nowrap tw:pr-3 tw:text-(--color-text-tertiary)"
               size="text-sm">
-              {loadedTermCount}/{totalTermCount}{' '}
-              {t('label.term-plural-lowercase')}
+              {t('label.loaded-x-of-y-entity', {
+                loaded: loadedTermCount,
+                total: totalTermCount,
+                entity: t('label.term-plural'),
+              })}
             </Typography>
           )}
         {onLoadMore !== undefined && (
           <Button
+            className="tw:text-brand-600"
             color="tertiary"
             data-testid="ontology-load-more-btn"
             isDisabled={!hasMoreTerms || isLoading || isLoadingMore}

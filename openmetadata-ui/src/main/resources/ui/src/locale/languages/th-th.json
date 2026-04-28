@@ -2121,7 +2121,6 @@
     "term-lowercase": "คำศัพท์",
     "term-not-available": "ไม่มีคำศัพท์นี้",
     "term-plural": "คำศัพท์หลายรายการ",
-    "term-plural-lowercase": "terms",
     "terms-of-service": "ข้อตกลงการให้บริการ",
     "test": "ทดสอบ",
     "test-applied-on-entity": "ทดสอบที่ใช้กับ {{entity}}",

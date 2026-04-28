@@ -20,7 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { SearchMd } from '@untitledui/icons';
 import classNames from 'classnames';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -141,6 +141,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   });
 
   const [searchInput, setSearchInput] = useState(filters.searchQuery);
+  const searchInputRef = useRef(searchInput);
+  searchInputRef.current = searchInput;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -151,7 +153,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   }, [searchInput, setFilters]);
 
   useEffect(() => {
-    if (filters.searchQuery !== searchInput) {
+    if (filters.searchQuery !== searchInputRef.current) {
       setSearchInput(filters.searchQuery);
     }
   }, [filters.searchQuery]);

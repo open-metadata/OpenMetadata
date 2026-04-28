@@ -2121,7 +2121,6 @@
     "term-lowercase": "термин",
     "term-not-available": "Термин недоступен",
     "term-plural": "Термины",
-    "term-plural-lowercase": "terms",
     "terms-of-service": "Условия обслуживания",
     "test": "Тест",
     "test-applied-on-entity": "Тест применён к {{entity}}",

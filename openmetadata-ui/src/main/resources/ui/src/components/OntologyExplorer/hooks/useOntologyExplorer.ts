@@ -139,7 +139,10 @@ async function fetchAllTermsForGlossary(
   return terms;
 }
 
-async function fetchAllGlossariesPaginated(): Promise<Glossary[]> {
+async function fetchAllGlossariesPaginated(): Promise<{
+  glossaries: Glossary[];
+  complete: boolean;
+}> {
   const collected: Glossary[] = [];
   let afterCursor: string | undefined;
   let pages = 0;
@@ -155,11 +158,11 @@ async function fetchAllGlossariesPaginated(): Promise<Glossary[]> {
       afterCursor = response.paging?.after;
       pages += 1;
     } catch {
-      break;
+      return { glossaries: collected, complete: false };
     }
   } while (afterCursor && pages < MAX_SAFE_PAGES);
 
-  return collected;
+  return { glossaries: collected, complete: true };
 }
 
 async function fetchRdfGraphData(
@@ -278,6 +281,7 @@ export function useOntologyExplorer({
     Record<string, number>
   >({});
   const [hasMoreTerms, setHasMoreTerms] = useState(false);
+  const [glossaryListComplete, setGlossaryListComplete] = useState(false);
   const [dataModeRefreshKey, setDataModeRefreshKey] = useState(0);
 
   // --- Refs ---
@@ -353,8 +357,11 @@ export function useOntologyExplorer({
   );
 
   const totalTermCount = useMemo(
-    () => glossaries.reduce((acc, g) => acc + (g.termCount ?? 0), 0),
-    [glossaries]
+    () =>
+      glossaryListComplete
+        ? glossaries.reduce((acc, g) => acc + (g.termCount ?? 0), 0)
+        : undefined,
+    [glossaries, glossaryListComplete]
   );
 
   // --- Data fetching callbacks ---
@@ -850,12 +857,14 @@ export function useOntologyExplorer({
     async (glossaryIdParam?: string) => {
       setLoading(true);
       try {
-        const [allGlossaries, metricsResponse] = await Promise.all([
+        const [glossaryResult, metricsResponse] = await Promise.all([
           fetchAllGlossariesPaginated(),
           fetchAllMetrics().catch(() => [] as Metric[]),
         ]);
 
+        const allGlossaries = glossaryResult.glossaries;
         setGlossaries(allGlossaries);
+        setGlossaryListComplete(glossaryResult.complete);
 
         let data: OntologyGraphData | null = null;
 
