@@ -42,6 +42,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName, Markdown
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.custom_properties import (
@@ -360,20 +361,20 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             return None
         registered_properties = {}
         for prop_name, prop_value in tbl_properties.items():
-            if prop_value is None or prop_value == "":
+            if not prop_value:
                 continue
             sanitized_name = PROPERTY_NAME_INVALID_CHARS_PATTERN.sub(PROPERTY_NAME_REPLACEMENT, prop_name)
             if len(sanitized_name) > PROPERTY_NAME_MAX_LENGTH:
                 sanitized_name = hashlib.md5(prop_name.encode("utf-8"), usedforsecurity=False).hexdigest()
             if sanitized_name not in self._processed_prop:
                 try:
-                    self.metadata.create_or_update_custom_property(
+                    _ = self.metadata.create_or_update_custom_property(
                         OMetaCustomProperties(
                             entity_type=Table,
                             createCustomPropertyRequest=CreateCustomPropertyRequest(
-                                name=sanitized_name,
+                                name=EntityName(sanitized_name),
                                 displayName=prop_name,
-                                description=prop_name,
+                                description=Markdown(prop_name),
                                 propertyType=self._string_property_type_ref,
                                 customPropertyConfig=None,
                             ),
