@@ -188,6 +188,22 @@ class TestDatalakeUtils(TestCase):
         assert isinstance(fields_value, _ArrayOfStruct)
         assert set(fields_value.struct.keys()) == {"id", "name", "type"}
 
+    def test_unique_json_structure_merges_list_of_dicts_across_samples(self):
+        """list-of-dicts values across multiple samples are unioned, not overwritten."""
+        from metadata.utils.datalake.datalake_utils import _ArrayOfStruct
+
+        sample_data = [
+            {"schema": {"fields": [{"id": 1, "name": "customer_id", "type": "string"}]}},
+            {"schema": {"fields": [{"id": 2, "required": False, "type": "string"}]}},
+            {"schema": {"fields": [{"description": "ciam id"}]}},
+        ]
+
+        actual = GenericDataFrameColumnParser.unique_json_structure(sample_data)
+        fields_value = actual["schema"]["fields"]
+
+        assert isinstance(fields_value, _ArrayOfStruct)
+        assert set(fields_value.struct.keys()) == {"id", "name", "type", "required", "description"}
+
     def test_construct_column_with_array_of_struct(self):
         """list-of-dicts values render as ARRAY<STRUCT<...>> with children for the struct fields."""
         structure = {

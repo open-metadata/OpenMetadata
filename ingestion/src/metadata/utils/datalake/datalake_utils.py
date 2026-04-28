@@ -414,7 +414,9 @@ class GenericDataFrameColumnParser:
                     )
                 elif isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
                     merged_struct = cls.unique_json_structure(value)
-                    result[key] = _ArrayOfStruct(merged_struct)
+                    existing = result.get(key)
+                    existing_struct = existing.struct if isinstance(existing, _ArrayOfStruct) else {}
+                    result[key] = _ArrayOfStruct(cls.unique_json_structure([existing_struct, merged_struct]))
                 else:
                     result[key] = value
         return result
