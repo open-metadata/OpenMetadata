@@ -427,7 +427,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
     if (makeInstance !== null) {
       test(`Set & Update all CP types on ${entity.name}`, async ({ page }) => {
-        test.slow(true);
+        // 5 minutes timeout since the test handles set->update operation on all
+        // custom property types sequentially
+        test.setTimeout(300000);
         const properties = Object.values(CustomPropertyTypeByName);
 
         await test.step('Set all CP types', async () => {
