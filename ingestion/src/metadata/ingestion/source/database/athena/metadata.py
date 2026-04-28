@@ -368,7 +368,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
                 sanitized_name = hashlib.md5(prop_name.encode("utf-8"), usedforsecurity=False).hexdigest()
             if sanitized_name not in self._processed_prop:
                 try:
-                    _ = self.metadata.create_or_update_custom_property(
+                    self.metadata.create_or_update_custom_property(  # pyright: ignore[reportUnknownMemberType, reportUnusedCallResult]
                         OMetaCustomProperties(
                             entity_type=Table,
                             createCustomPropertyRequest=CreateCustomPropertyRequest(
