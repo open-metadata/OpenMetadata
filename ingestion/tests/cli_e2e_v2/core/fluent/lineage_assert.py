@@ -35,17 +35,23 @@ class LineageAssert:
         return self._om.get_lineage_by_name(entity=Table, fqn=self._fqn) or {}
 
     def _check_edge(self, direction: _Direction, fqn: str) -> None:
+        """Pin assertion to direction-typed edges only.
+
+        OM's lineage payload returns both `upstreamEdges` / `downstreamEdges`
+        (direction-typed) and `nodes` (full graph participants, both
+        directions mixed). Accepting `nodes` as a fallback would let an
+        upstream-only relationship satisfy a `has_downstream` check —
+        silent direction inversion. The full `nodes` list is still in the
+        failure message for triage.
+        """
         data = self._lineage()
         edges = {n.get("fullyQualifiedName") for n in (data.get(f"{direction}Edges") or [])}
         if fqn in edges:
             return
-        # Fallback: some responses put participants in `nodes` instead of
-        # `<direction>Edges`. Accept either so we don't over-fit the shape.
         nodes = {n.get("fullyQualifiedName") for n in (data.get("nodes") or [])}
-        if fqn not in nodes:
-            raise AssertionError(
-                f"Table {self._fqn} has no {direction} {fqn!r}. {direction}s={sorted(edges)} nodes={sorted(nodes)}"
-            )
+        raise AssertionError(
+            f"Table {self._fqn} has no {direction} {fqn!r}. {direction}Edges={sorted(edges)} nodes={sorted(nodes)}"
+        )
 
     def has_upstream(self, fqn: str) -> "LineageAssert":
         self._eventually.run(
