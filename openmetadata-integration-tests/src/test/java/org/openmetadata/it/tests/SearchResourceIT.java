@@ -1981,11 +1981,19 @@ public class SearchResourceIT {
             "/v1/search/query?q=" + unique + "&index=table&fetchChildAliases=false&size=20");
     assertEquals(200, filtered.statusCode());
     JsonNode filteredHits = OBJECT_MAPPER.readTree(filtered.body()).path("hits").path("hits");
+    assertTrue(
+        filteredHits.size() > 0,
+        "fetchChildAliases=false with index=table must still return at least one table hit "
+            + "for q="
+            + unique
+            + "; response: "
+            + filtered.body());
     for (JsonNode hit : filteredHits) {
       String entityType = hit.path("_source").path("entityType").asText();
-      assertFalse(
-          "column".equalsIgnoreCase(entityType),
-          "fetchChildAliases=false must not return column hits when index=table; got: "
+      assertEquals(
+          "table",
+          entityType.toLowerCase(),
+          "fetchChildAliases=false with index=table must return only table hits; got: "
               + hit.path("_source"));
     }
   }
@@ -2092,6 +2100,12 @@ public class SearchResourceIT {
     assertEquals(200, response.statusCode());
     String body = response.body();
     String[] lines = body.split("\n");
+    assertTrue(
+        lines.length > 1,
+        "Export must contain at least one data row in addition to the header for q="
+            + unique
+            + "; body: "
+            + body);
     for (int i = 1; i < lines.length; i++) {
       String row = lines[i];
       assertFalse(
@@ -2132,13 +2146,21 @@ public class SearchResourceIT {
     assertEquals(200, response.statusCode(), "Aggregate must return 200");
     JsonNode root = OBJECT_MAPPER.readTree(response.body());
     JsonNode buckets = root.findPath("buckets");
-    if (buckets.isArray()) {
-      for (JsonNode bucket : buckets) {
-        String key = bucket.path("key").asText();
-        assertFalse(
-            "column".equalsIgnoreCase(key),
-            "fetchChildAliases=false on /aggregate must not include 'column' bucket: " + bucket);
+    assertTrue(buckets.isArray(), "Aggregate response must contain a buckets array");
+    assertTrue(
+        buckets.size() > 0, "Aggregate response must contain at least one bucket for q=" + unique);
+    boolean hasTableBucket = false;
+    for (JsonNode bucket : buckets) {
+      String key = bucket.path("key").asText();
+      if ("table".equalsIgnoreCase(key)) {
+        hasTableBucket = true;
       }
+      assertFalse(
+          "column".equalsIgnoreCase(key),
+          "fetchChildAliases=false on /aggregate must not include 'column' bucket: " + bucket);
     }
+    assertTrue(
+        hasTableBucket,
+        "Aggregate must include a 'table' bucket — otherwise the test passes vacuously");
   }
 }

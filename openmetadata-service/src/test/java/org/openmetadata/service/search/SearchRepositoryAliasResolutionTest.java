@@ -38,7 +38,7 @@ class SearchRepositoryAliasResolutionTest {
   }
 
   @Test
-  void defaultFlagsLeaveTokenUnchangedWhenAliasHasNoExpansion() {
+  void bothFlagsFalseReturnsOnlyOwnIndex() {
     String resolved =
         SearchRepository.resolveIndexes(
             "table", false, false, entityIndexMap, aliasToChildEntityTypes, "");
@@ -112,6 +112,44 @@ class SearchRepositoryAliasResolutionTest {
           token.startsWith("tenant42_"),
           "Every resolved index must carry the cluster prefix: " + resolved);
     }
+  }
+
+  /**
+   * Regression: search managers (Elastic/OpenSearch) re-invoke the resolver on an index list
+   * that the resource layer already pre-resolved, so the prefix step must be idempotent —
+   * already-prefixed tokens stay as-is — otherwise multi-tenant deployments see
+   * {@code tenant_tenant_table_search_index} and queries 404. We exercise this through the
+   * fallback path of {@link SearchRepository#resolveIndexes}: an already-prefixed token that
+   * isn't in the entity index map must be returned unchanged, and a mixed comma-list must
+   * prefix only the non-prefixed entries.
+   */
+  @Test
+  void resolveIndexesIsIdempotentForAlreadyPrefixedTokens() {
+    String alreadyPrefixed =
+        SearchRepository.resolveIndexes(
+            "tenant42_some_search_index",
+            false,
+            false,
+            entityIndexMap,
+            aliasToChildEntityTypes,
+            "tenant42");
+    assertEquals("tenant42_some_search_index", alreadyPrefixed);
+
+    String mixed =
+        SearchRepository.resolveIndexes(
+            "tenant42_some_search_index,topic_search_index",
+            false,
+            false,
+            entityIndexMap,
+            aliasToChildEntityTypes,
+            "tenant42");
+    List<String> tokens = Arrays.asList(mixed.split(","));
+    assertTrue(
+        tokens.contains("tenant42_some_search_index"),
+        "Already-prefixed token must not be re-prefixed: " + mixed);
+    assertTrue(
+        tokens.contains("tenant42_topic_search_index"),
+        "Unprefixed token must be prefixed exactly once: " + mixed);
   }
 
   @Test

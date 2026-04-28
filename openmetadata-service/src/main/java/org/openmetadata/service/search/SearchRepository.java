@@ -669,8 +669,14 @@ public class SearchRepository {
     if (clusterAlias == null || clusterAlias.isEmpty()) {
       return name;
     }
+    String prefix = clusterAlias + INDEX_NAME_SEPARATOR;
+    // Idempotent: tokens that already carry the cluster prefix pass through unchanged. Search
+    // managers (Elastic/OpenSearch) call this method again on indexes that resource-layer code
+    // already resolved through getIndexOrAliasName(name, fetchParents, fetchChildren), so without
+    // this guard a non-empty clusterAlias would yield "tenant_tenant_table_search_index".
     return Arrays.stream(name.split(","))
-        .map(index -> clusterAlias + INDEX_NAME_SEPARATOR + index.trim())
+        .map(String::trim)
+        .map(index -> index.startsWith(prefix) ? index : prefix + index)
         .collect(Collectors.joining(","));
   }
 
@@ -804,17 +810,21 @@ public class SearchRepository {
   }
 
   private static String prefixWithClusterAlias(String token, String clusterAlias) {
-    return clusterAlias == null || clusterAlias.isEmpty()
-        ? token
-        : clusterAlias + INDEX_NAME_SEPARATOR + token;
+    if (clusterAlias == null || clusterAlias.isEmpty()) {
+      return token;
+    }
+    String prefix = clusterAlias + INDEX_NAME_SEPARATOR;
+    return token.startsWith(prefix) ? token : prefix + token;
   }
 
   private static String prefixCommaList(String name, String clusterAlias) {
     if (clusterAlias == null || clusterAlias.isEmpty()) {
       return name;
     }
+    String prefix = clusterAlias + INDEX_NAME_SEPARATOR;
     return Arrays.stream(name.split(","))
-        .map(t -> clusterAlias + INDEX_NAME_SEPARATOR + t.trim())
+        .map(String::trim)
+        .map(t -> t.startsWith(prefix) ? t : prefix + t)
         .collect(Collectors.joining(","));
   }
 
