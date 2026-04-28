@@ -219,8 +219,13 @@ export const setRemoteRunnerAsDefault = async (
 
   const remoteRunner = runners.find((r) => r.name === REMOTE_RUNNER_NAME);
   if (remoteRunner && !remoteRunner.isDefault) {
-    await apiContext.put(
+    const putRes = await apiContext.put(
       `/api/v1/ingestionRunners/setDefault/${remoteRunner.id}`
     );
+    if (!putRes.ok()) {
+      throw new Error(
+        `Failed to set RemoteRunner as default: ${putRes.status()} ${putRes.statusText()}`
+      );
+    }
   }
 };
