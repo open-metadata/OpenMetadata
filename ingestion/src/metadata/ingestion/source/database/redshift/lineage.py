@@ -31,7 +31,7 @@ workflowConfig:
 """
 
 import traceback
-from typing import Iterator
+from typing import Iterator  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -128,4 +128,4 @@ class RedshiftLineageSource(RedshiftQueryParserSource, StoredProcedureLineageMix
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES_MAP[self.redshift_instance_type].format(start_date=start)
 
-        return query
+        return query  # noqa: RET504

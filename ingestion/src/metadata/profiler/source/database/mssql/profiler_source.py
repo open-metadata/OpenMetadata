@@ -69,17 +69,17 @@ class MssqlProfilerSource(ProfilerSource):
 
         # Set the appropriate is_disconnect method based on the scheme
         if scheme == MssqlScheme.mssql_pytds:
-            from sqlalchemy_pytds.dialect import MSDialect_pytds
+            from sqlalchemy_pytds.dialect import MSDialect_pytds  # noqa: PLC0415
 
             original_is_disconnect = MSDialect_pytds.is_disconnect
             MSDialect_pytds.is_disconnect = is_disconnect(original_is_disconnect)
         elif scheme == MssqlScheme.mssql_pyodbc:
-            from sqlalchemy.dialects.mssql.pyodbc import MSDialect_pyodbc
+            from sqlalchemy.dialects.mssql.pyodbc import MSDialect_pyodbc  # noqa: PLC0415
 
             original_is_disconnect = MSDialect_pyodbc.is_disconnect
             MSDialect_pyodbc.is_disconnect = is_disconnect(original_is_disconnect)
         elif scheme == MssqlScheme.mssql_pymssql:
-            from sqlalchemy.dialects.mssql.pymssql import MSDialect_pymssql
+            from sqlalchemy.dialects.mssql.pymssql import MSDialect_pymssql  # noqa: PLC0415
 
             original_is_disconnect = MSDialect_pymssql.is_disconnect
             MSDialect_pymssql.is_disconnect = is_disconnect(original_is_disconnect)

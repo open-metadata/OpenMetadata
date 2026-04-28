@@ -13,7 +13,7 @@ Validator for column value max to be between test case
 """
 
 from collections import defaultdict
-from typing import List, Optional, cast
+from typing import List, Optional, cast  # noqa: UP035
 
 import pandas as pd
 
@@ -41,7 +41,7 @@ logger = test_suite_logger()
 class ColumnValueMaxToBeBetweenValidator(BaseColumnValueMaxToBeBetweenValidator, PandasValidatorMixin):
     """Validator for column value max to be between test case"""
 
-    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -57,7 +57,7 @@ class ColumnValueMaxToBeBetweenValidator(BaseColumnValueMaxToBeBetweenValidator,
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional validation for max with proper aggregation
 
         Follows the iterate pattern from the Mean metric's df_fn method to handle
@@ -94,11 +94,11 @@ class ColumnValueMaxToBeBetweenValidator(BaseColumnValueMaxToBeBetweenValidator,
             )
 
             for df in dfs:
-                df_typed = cast(pd.DataFrame, df)
+                df_typed = cast(pd.DataFrame, df)  # noqa: TC006
                 grouped = df_typed.groupby(dimension_col.name, dropna=False)
 
                 for dimension_value, group_df in grouped:
-                    dimension_value = self.format_dimension_value(dimension_value)
+                    dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
 
                     dimension_aggregates[dimension_value][Metrics.max.name] = max_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.max.name],

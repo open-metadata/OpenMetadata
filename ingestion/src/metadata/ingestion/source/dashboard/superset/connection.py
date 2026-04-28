@@ -54,7 +54,7 @@ from metadata.utils.constants import THREE_MIN
 
 def get_connection(
     connection: SupersetConnection,
-) -> Union[SupersetAPIClient, Engine, None]:
+) -> Union[SupersetAPIClient, Engine, None]:  # noqa: UP007
     """
     Create connection
     """
@@ -69,10 +69,10 @@ def get_connection(
 
 def test_connection(
     metadata: OpenMetadata,
-    client: Union[SupersetAPIClient, Engine],
+    client: Union[SupersetAPIClient, Engine],  # noqa: UP007
     service_connection: SupersetConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part

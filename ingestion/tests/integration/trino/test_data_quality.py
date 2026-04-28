@@ -43,7 +43,7 @@ def prepare_data(create_test_data, trino_container):
                 comments
             FROM minio.my_schema.userdata
             WHERE MOD(id, 13) != 0
-        """
+        """  # noqa: W291
         ).fetchall()
 
 
