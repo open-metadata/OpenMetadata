@@ -533,7 +533,11 @@ class CommonDbSourceService(
         by default there will be no location path
         """
 
-    def get_table_extensions(self, table_name: str):
+    def get_table_extensions(
+        self,
+        table_name: str,  # pyright: ignore[reportUnusedParameter]
+        table_type: TableType | None = None,  # pyright: ignore[reportUnusedParameter]
+    ):
         """
         Method to fetch the extensions of the table
         """
@@ -618,10 +622,8 @@ class CommonDbSourceService(
                     table_type=table_type,
                 ),
                 owners=self.get_owner_ref(table_name=table_name),
-                locationPath=self.get_location_path(
-                    table_name=table_name, schema_name=schema_name
-                ),
-                extension=self.get_table_extensions(table_name=table_name),
+                locationPath=self.get_location_path(table_name=table_name, schema_name=schema_name),
+                extension=self.get_table_extensions(table_name=table_name, table_type=table_type),
             )
 
             is_partitioned, partition_details = self.get_table_partition_details(
