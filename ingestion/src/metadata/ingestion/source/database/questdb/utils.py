@@ -24,6 +24,7 @@ The dialect is patched on the per-engine ``Dialect`` instance returned by
 ``sqlalchemy.create_engine``, scoping the patch to that engine.
 """
 
+import traceback
 import types
 from typing import Any
 
@@ -124,8 +125,16 @@ def _query_tables(connection: Connection) -> list[QuestDBTableRow]:
     """
     Return all rows from QuestDB's ``tables()`` function as ``QuestDBTableRow`` instances.
     """
-    result = connection.execute(text(QUESTDB_GET_TABLES))
-    return [QuestDBTableRow.model_validate(dict(row._mapping)) for row in result]
+    try:
+        result = connection.execute(text(QUESTDB_GET_TABLES))
+        rows = [QuestDBTableRow.model_validate(dict(row._mapping)) for row in result]
+        logger.debug("_query_tables returned %d rows", len(rows))
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning("Failed to query QuestDB tables(): %s", exc)
+        raise
+    else:
+        return rows
 
 
 def _get_view_definition_from_views(

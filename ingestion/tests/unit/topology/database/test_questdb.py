@@ -618,9 +618,7 @@ def test_lineage_create_raises_for_wrong_connection_type():
 def test_get_materialized_view_definition_returns_sql():
     """Must return the view_sql string when the materialized view exists."""
     connection = MagicMock()
-    connection.execute.return_value.fetchone.return_value = _row(
-        view_sql="SELECT ts FROM sensor_readings"
-    )
+    connection.execute.return_value.fetchone.return_value = _row(view_sql="SELECT ts FROM sensor_readings")
 
     result = _get_materialized_view_definition(connection, "sensor_daily")
 
