@@ -29,21 +29,24 @@ test.describe('Pipeline validation', () => {
     afterAction = response.afterAction;
 
     const serviceName = `pw-pipeline-validation-service-${uuid()}`;
-    const serviceResponse = await apiContext.post('/api/v1/services/pipelineServices', {
-      data: {
-        name: serviceName,
-        serviceType: 'Dagster',
-        connection: {
-          config: {
-            type: 'Dagster',
-            host: 'admin',
-            token: 'admin',
-            timeout: '1000',
-            supportsMetadataExtraction: true,
+    const serviceResponse = await apiContext.post(
+      '/api/v1/services/pipelineServices',
+      {
+        data: {
+          name: serviceName,
+          serviceType: 'Dagster',
+          connection: {
+            config: {
+              type: 'Dagster',
+              host: 'admin',
+              token: 'admin',
+              timeout: '1000',
+              supportsMetadataExtraction: true,
+            },
           },
         },
-      },
-    });
+      }
+    );
 
     expect(serviceResponse.status()).toBe(201);
     const serviceData = await serviceResponse.json();
