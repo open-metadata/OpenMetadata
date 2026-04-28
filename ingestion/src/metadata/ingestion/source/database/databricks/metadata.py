@@ -287,8 +287,8 @@ def get_view_names(  # pylint: disable=unused-argument
     self: Any,
     connection: Any,
     schema: str | None = None,
-    only_materialized: bool = False,
-    only_temp: bool = False,
+    only_materialized: bool = False,  # pyright: ignore[reportUnusedParameter]
+    only_temp: bool = False,  # pyright: ignore[reportUnusedParameter]
     **kw: Any,
 ) -> list[str]:
     if kw.get("db_name"):
@@ -331,7 +331,7 @@ def get_table_comment(  # pylint: disable=unused-argument
     )
     try:
         for result in list(cursor):
-            data = tuple(result)
+            data = tuple(result)  # pyright: ignore[reportUnknownArgumentType]
             if data[0] and data[0].strip() == "Comment":
                 return {"text": data[1] if data and data[1] else None}
     except Exception:
@@ -863,7 +863,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 schema=schema_name,
             )
             for result in list(cursor):
-                data = tuple(result)
+                data = tuple(result)  # pyright: ignore[reportUnknownArgumentType]
                 if data[0] and data[0].strip() == "Comment":
                     description = data[1] if data and data[1] else None
                     return description  # noqa: RET504
@@ -890,7 +890,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 schema=schema_name,
             )
             for result in list(cursor):
-                data = tuple(result)
+                data = tuple(result)  # pyright: ignore[reportUnknownArgumentType]
                 if data[0] and data[0].strip() == "Comment":
                     description = data[1] if data and data[1] else None
                 elif data[0] and data[0].strip() == "Location":

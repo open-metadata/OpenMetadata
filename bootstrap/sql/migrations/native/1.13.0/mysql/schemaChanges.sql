@@ -135,7 +135,7 @@ WHERE ue.name = 'mcpapplicationbot'
 UPDATE dbservice_entity
 SET json = JSON_SET(json, '$.connection.config.scheme', 'databricks')
 WHERE serviceType IN ('Databricks', 'UnityCatalog')
-  AND JSON_EXTRACT(json, '$.connection.config.scheme') = 'databricks+connector';
+  AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.connection.config.scheme')) = 'databricks+connector';
 
 UPDATE entity_extension
 SET json = JSON_SET(

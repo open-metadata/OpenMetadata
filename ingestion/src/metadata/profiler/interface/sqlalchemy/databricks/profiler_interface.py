@@ -66,7 +66,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         return instance.get_system_metrics()
 
     def visit_column(self, *args, **kwargs):
-        result = SQLCompiler.visit_column(self, *args, **kwargs)  # pyright: ignore[reportArgumentType]
+        result = SQLCompiler.visit_column(self, *args, **kwargs)  # pyright: ignore[reportArgumentType, reportUnknownArgumentType]
         # the `result` here would be `db.schema.table` or `db.schema.table.column`
         # for struct it will be `db.schema.table.column.nestedchild.nestedchild` etc
         # the logic is to add the backticks to nested children.
@@ -80,7 +80,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         return result
 
     def visit_table(self, *args, **kwargs):
-        result = SQLCompiler.visit_table(self, *args, **kwargs)  # pyright: ignore[reportArgumentType]
+        result = SQLCompiler.visit_table(self, *args, **kwargs)  # pyright: ignore[reportArgumentType, reportUnknownMemberType, reportUnknownArgumentType]
         # Handle table references with hyphens in database/schema names
         # Format: `database`.`schema`.`table` for Unity Catalog/Databricks
         if "." in result and not result.startswith("`"):
@@ -115,12 +115,11 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
             if statement_compiler is None:
                 logger.warning("DatabricksDialect.statement_compiler not found; skipping Databricks compiler patches.")
                 return
-            statement_compiler.visit_column = DatabricksProfilerInterface.visit_column
-            statement_compiler.visit_table = DatabricksProfilerInterface.visit_table
+            statement_compiler.visit_column = DatabricksProfilerInterface.visit_column  # pyright: ignore[reportUnknownMemberType]
+            statement_compiler.visit_table = DatabricksProfilerInterface.visit_table  # pyright: ignore[reportUnknownMemberType]
         except Exception as exc:
             logger.warning(
-                "Failed to patch Databricks statement compiler: %s. "
-                "Profiling will continue without struct/hyphen quoting overrides.",
+                "Failed to patch Databricks statement compiler: %s. Profiling will continue without struct/hyphen quoting overrides.",
                 exc,
             )
 
@@ -141,9 +140,9 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
                     table_service_type=DatabaseServiceType.Databricks,
                     _quote=False,
                 )
-                sqa_col._set_parent(  # pylint: disable=protected-access
-                    self.table.__table__,
-                    all_names={c.name: c for c in self.table.__table__.columns},
+                sqa_col._set_parent(  # pylint: disable=protected-access  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType, reportUnknownVariableType]
+                    self.table.__table__,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+                    all_names={c.name: c for c in self.table.__table__.columns},  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
                     allow_replacements=True,
                 )
                 columns_list.append(sqa_col)
@@ -160,9 +159,9 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
                 columns.extend(self._get_struct_columns(column_obj.children, column_obj.name.root))
             else:
                 col = build_orm_col(idx, column_obj, DatabaseServiceType.Databricks)
-                col._set_parent(  # pylint: disable=protected-access
-                    self.table.__table__,
-                    all_names={c.name: c for c in self.table.__table__.columns},
+                col._set_parent(  # pylint: disable=protected-access  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType, reportUnknownVariableType]
+                    self.table.__table__,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+                    all_names={c.name: c for c in self.table.__table__.columns},  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
                     allow_replacements=True,
                 )
                 columns.append(col)

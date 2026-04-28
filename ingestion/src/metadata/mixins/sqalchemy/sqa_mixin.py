@@ -90,8 +90,8 @@ class SQAInterfaceMixin(Root):
         ):
             catalog = self.service_connection_config.catalog  # pyright: ignore[reportAttributeAccessIssue]
             if catalog:
-                quoted_catalog = session.connection().dialect.identifier_preparer.quote(catalog)
-                session.execute(text(f"USE CATALOG {quoted_catalog}"))
+                quoted_catalog = session.connection().dialect.identifier_preparer.quote(catalog)  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
+                session.execute(text(f"USE CATALOG {quoted_catalog}"))  # pyright: ignore[reportUnknownMemberType]
 
         if isinstance(self.service_connection_config, (MysqlConnection, MariaDBConnection)):
             session.execute(
