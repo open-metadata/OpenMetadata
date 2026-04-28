@@ -2,6 +2,7 @@ package org.openmetadata.service.workflows.searchIndex;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.partitionErrors;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +12,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Include;
@@ -117,9 +119,13 @@ public class PaginatedEntityTimeSeriesSource
       } else {
         result = repository.listWithOffset(currentCursor, filter, batchSize, true);
       }
+      int warningsCount = filterStaleRelationshipErrors(result);
       LOG.debug(
-          "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
-          batchSize, result.getData().size(), result.getErrors().size());
+          "[PaginatedEntityTimeSeriesSource] Batch Stats :- Submitted: {} Success: {} Failed: {} Warnings: {}",
+          batchSize,
+          result.getData().size(),
+          result.getErrors().size(),
+          warningsCount);
     } catch (Exception e) {
       IndexingError indexingError =
           new IndexingError()
@@ -149,18 +155,29 @@ public class PaginatedEntityTimeSeriesSource
         result = repository.listWithOffset(cursor, filter, batchSize, true);
       }
 
+      int warningsCount = filterStaleRelationshipErrors(result);
+
       if (!result.getErrors().isEmpty()) {
+        LOG.warn(
+            "[PaginatedEntityTimeSeriesSource] Real errors found: {}", result.getErrors().size());
+        result.getErrors().forEach(error -> LOG.warn("Error: {}", error.getMessage()));
         lastFailedCursor = this.cursor.get();
         if (result.getPaging().getAfter() == null) {
+          this.cursor.set(null);
           isDone.set(true);
         } else {
           this.cursor.set(result.getPaging().getAfter());
         }
+        updateStats(result.getData().size(), result.getErrors().size(), warningsCount);
         return result;
       }
       LOG.debug(
-          "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
-          batchSize, result.getData().size(), result.getErrors().size());
+          "[PaginatedEntityTimeSeriesSource] Batch Stats :- Submitted: {} Success: {} Failed: {} Warnings: {}",
+          batchSize,
+          result.getData().size(),
+          result.getErrors().size(),
+          warningsCount);
+      updateStats(result.getData().size(), 0, warningsCount);
     } catch (Exception e) {
       lastFailedCursor = this.cursor.get();
       int remainingRecords =
@@ -214,11 +231,13 @@ public class PaginatedEntityTimeSeriesSource
               cachedTotal,
               true);
 
+      int warningsCount = filterStaleRelationshipErrors(result);
       LOG.debug(
-          "[PaginatedEntityTimeSeriesSource] Keyset batch stats — Submitted: {} Success: {} Failed: {}",
+          "[PaginatedEntityTimeSeriesSource] Keyset batch stats — Submitted: {} Success: {} Failed: {} Warnings: {}",
           batchSize,
           result.getData().size(),
-          result.getErrors() != null ? result.getErrors().size() : 0);
+          result.getErrors() != null ? result.getErrors().size() : 0,
+          warningsCount);
       return result;
     } catch (Exception e) {
       LOG.error(
@@ -267,6 +286,39 @@ public class PaginatedEntityTimeSeriesSource
   @Override
   public void updateStats(int currentSuccess, int currentFailed) {
     getUpdatedStats(stats, currentSuccess, currentFailed);
+  }
+
+  public void updateStats(int currentSuccess, int currentFailed, int currentWarnings) {
+    getUpdatedStats(stats, currentSuccess, currentFailed, currentWarnings);
+  }
+
+  /**
+   * Splits the errors on {@code result} into real failures and stale-relationship warnings,
+   * mutating {@code result} so its errors list contains only real failures and its warnings count
+   * reflects the skipped stale relationships. Returns the warnings count for callers that want to
+   * include it in their own logging or stats updates.
+   *
+   * <p>Stale relationships happen for time-series records (testCaseResolutionStatus,
+   * testCaseResult, ...) whose parent entity was hard-deleted out-of-band, or whose parentOf
+   * entity_relationship row was lost during a past migration. Such records cannot be indexed but
+   * should not fail the entire batch.
+   */
+  private int filterStaleRelationshipErrors(
+      ResultList<? extends EntityTimeSeriesInterface> result) {
+    if (result == null || result.getErrors() == null || result.getErrors().isEmpty()) {
+      return 0;
+    }
+    List<EntityError> warnings = new ArrayList<>();
+    List<EntityError> realErrors = partitionErrors(result.getErrors(), warnings);
+    if (!warnings.isEmpty()) {
+      LOG.debug(
+          "[PaginatedEntityTimeSeriesSource] {} stale-relationship warnings for entity type {}",
+          warnings.size(),
+          entityType);
+    }
+    result.setErrors(realErrors);
+    result.setWarningsCount(warnings.size());
+    return warnings.size();
   }
 
   public ListFilter getFilter() {

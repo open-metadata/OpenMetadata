@@ -15,6 +15,7 @@ package org.openmetadata.service.workflows.searchIndex;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isEntityNotFoundError;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -377,16 +378,5 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
 
   public void updateStats(int currentSuccess, int currentFailed, int currentWarnings) {
     getUpdatedStats(stats, currentSuccess, currentFailed, currentWarnings);
-  }
-
-  private boolean isEntityNotFoundError(EntityError error) {
-    if (error == null || error.getMessage() == null) {
-      return false;
-    }
-    String message = error.getMessage().toLowerCase();
-    return message.contains("not found")
-        || message.contains("instance for")
-        || message.contains("does not exist")
-        || message.contains("entitynotfoundexception");
   }
 }

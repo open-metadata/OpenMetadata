@@ -65,6 +65,41 @@ public class ReindexingUtil {
         (stats.getWarningRecords() != null ? stats.getWarningRecords() : 0) + currentWarnings);
   }
 
+  /**
+   * Returns true when an EntityError represents a stale relationship to a missing entity. These
+   * are expected during reindexing — for example when a time-series record (testCaseResolutionStatus,
+   * testCaseResult) was migrated without a corresponding entity_relationship row, or when an entity
+   * was hard-deleted out-of-band leaving its relationship rows behind. Such records cannot be
+   * meaningfully indexed and are reported as warnings rather than failing the entire batch.
+   */
+  public static boolean isEntityNotFoundError(EntityError error) {
+    if (error == null || error.getMessage() == null) {
+      return false;
+    }
+    String message = error.getMessage().toLowerCase();
+    return message.contains("not found")
+        || message.contains("instance for")
+        || message.contains("does not exist")
+        || message.contains("entitynotfoundexception")
+        || message.contains("expected relationship");
+  }
+
+  public static List<EntityError> partitionErrors(
+      List<EntityError> errors, List<EntityError> warningsOut) {
+    if (CommonUtil.nullOrEmpty(errors)) {
+      return new ArrayList<>();
+    }
+    List<EntityError> realErrors = new ArrayList<>(errors.size());
+    for (EntityError error : errors) {
+      if (isEntityNotFoundError(error)) {
+        warningsOut.add(error);
+      } else {
+        realErrors.add(error);
+      }
+    }
+    return realErrors;
+  }
+
   public static boolean isDataInsightIndex(String entityType) {
     return Entity.getSearchRepository().getDataInsightReports().contains(entityType);
   }
