@@ -13,12 +13,35 @@
 Datalake Base Client
 """
 
+import re
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Iterable, Optional, Tuple  # noqa: UP035
+from typing import Any, Callable, Dict, Iterable, Optional, Tuple  # noqa: UP035
 
 
 class DatalakeBaseClient(ABC):
     """Base DL client implementation"""
+
+    _ICEBERG_METADATA_RE = re.compile(r"^(.*)/metadata/v(\d+)\.metadata\.json$")
+
+    def _update_iceberg_entry(
+        self,
+        iceberg_tables: Dict[str, Tuple[int, str, Optional[int]]],  # noqa: UP006, UP045
+        name: str,
+        size: Optional[int],  # noqa: UP045
+    ) -> bool:
+        """
+        If name matches the Iceberg metadata pattern, update iceberg_tables with
+        the highest-version entry and return True. Otherwise return False.
+        """
+        match = self._ICEBERG_METADATA_RE.match(name)
+        if not match:
+            return False
+        table_dir, version = match.group(1), int(match.group(2))
+        existing = iceberg_tables.get(table_dir)
+        if existing is None or version > existing[0]:
+            iceberg_tables[table_dir] = (version, name, size)
+        return True
+
 
     def __init__(self, client: Any, session: Any = None, **kwargs):
         self._client = client

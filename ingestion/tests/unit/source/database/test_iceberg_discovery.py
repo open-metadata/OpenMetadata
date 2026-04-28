@@ -17,14 +17,19 @@ import types
 from unittest.mock import MagicMock, patch
 
 # Stub google.cloud.storage so this test file runs without the google-cloud-storage
-# package being installed. The logic under test (_get_iceberg_tables, get_table_names)
-# only interacts with the storage client through our own mock objects.
-_gcloud_mod = types.ModuleType("google.cloud")
-_storage_mod = types.ModuleType("google.cloud.storage")
-_storage_mod.Client = MagicMock
-sys.modules.setdefault("google", types.ModuleType("google"))
-sys.modules["google.cloud"] = _gcloud_mod
-sys.modules["google.cloud.storage"] = _storage_mod
+# package being installed. setdefault preserves the real module if it is already
+# present, which prevents breaking other tests or masking integration issues.
+_google_mod = sys.modules.setdefault("google", types.ModuleType("google"))
+_gcloud_mod = sys.modules.setdefault("google.cloud", types.ModuleType("google.cloud"))
+_storage_mod = sys.modules.setdefault(
+    "google.cloud.storage", types.ModuleType("google.cloud.storage")
+)
+if not hasattr(_storage_mod, "Client"):
+    _storage_mod.Client = MagicMock
+if not hasattr(_google_mod, "cloud"):
+    _google_mod.cloud = _gcloud_mod
+if not hasattr(_gcloud_mod, "storage"):
+    _gcloud_mod.storage = _storage_mod
 
 from metadata.ingestion.source.database.datalake.clients.gcs import (  # noqa: E402
     DatalakeGcsClient,

@@ -13,9 +13,8 @@
 Datalake S3 Client
 """
 
-import re
 from functools import partial
-from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple  # noqa: UP035
+from typing import Callable, Dict, Iterable, Optional, Set, Tuple  # noqa: UP035
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
@@ -62,8 +61,6 @@ class DatalakeS3Client(DatalakeBaseClient):
             for bucket in self._client.list_buckets()["Buckets"]:
                 yield bucket["Name"]
 
-    _ICEBERG_METADATA_RE = re.compile(r"^(.*)/metadata/v(\d+)\.metadata\.json$")
-
     @staticmethod
     def _should_skip_s3_cold_storage(key: dict) -> bool:
         storage_class = key.get("StorageClass", "STANDARD")
@@ -73,22 +70,6 @@ class DatalakeS3Client(DatalakeBaseClient):
             "DEEP_ARCHIVE_ACCESS",
         }
 
-    def _classify_s3_object(
-        self,
-        iceberg_tables: Dict[str, Tuple[int, str, Optional[int]]],  # noqa: UP006, UP045
-        regular_files: List[Tuple[str, Optional[int]]],  # noqa: UP006, UP045
-        key_name: str,
-        size: Optional[int],  # noqa: UP045
-    ) -> None:
-        match = self._ICEBERG_METADATA_RE.match(key_name)
-        if match:
-            table_dir, version = match.group(1), int(match.group(2))
-            existing = iceberg_tables.get(table_dir)
-            if existing is None or version > existing[0]:
-                iceberg_tables[table_dir] = (version, key_name, size)
-        else:
-            regular_files.append((key_name, size))
-
     def get_table_names(
         self,
         bucket_name: str,
@@ -96,19 +77,17 @@ class DatalakeS3Client(DatalakeBaseClient):
         skip_cold_storage: bool = False,
     ) -> Iterable[Tuple[str, Optional[int]]]:  # noqa: UP006, UP045
         """
-        Lists tables in an S3 bucket using a single pass.
+        Lists tables in an S3 bucket using a two-pass approach.
 
-        Iceberg table directories are identified by objects matching
-        ``<table_dir>/metadata/v<N>.metadata.json``. Only the object with the
-        highest integer version is yielded per table directory. Regular files
-        not under any Iceberg table directory are also yielded.
+        Pass 1 collects only the Iceberg table dict (memory proportional to the
+        number of Iceberg tables, which is always small). Pass 2 streams regular
+        files without accumulation, keeping memory overhead at O(1) per object.
         """
         kwargs: Dict[str, str] = {"Bucket": bucket_name}  # noqa: UP006
         if prefix:
             kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
 
         iceberg_tables: Dict[str, Tuple[int, str, Optional[int]]] = {}  # noqa: UP006
-        regular_files: List[Tuple[str, Optional[int]]] = []  # noqa: UP006
 
         for key in list_s3_objects(self._client, **kwargs):
             key_name = key["Key"]
@@ -120,14 +99,21 @@ class DatalakeS3Client(DatalakeBaseClient):
                     f"ArchiveStatus: {key.get('ArchiveStatus', '')})"
                 )
                 continue
-            self._classify_s3_object(iceberg_tables, regular_files, key_name, size)
+            self._update_iceberg_entry(iceberg_tables, key_name, size)
 
         iceberg_dirs = set(iceberg_tables.keys())
         for _, metadata_key, size in iceberg_tables.values():
             yield metadata_key, size
-        for file_path, size in regular_files:
-            if not any(file_path.startswith(d + "/") for d in iceberg_dirs):
-                yield file_path, size
+
+        for key in list_s3_objects(self._client, **kwargs):
+            key_name = key["Key"]
+            size = key.get("Size")
+            if skip_cold_storage and self._should_skip_s3_cold_storage(key):
+                continue
+            if not self._ICEBERG_METADATA_RE.match(key_name) and not any(
+                key_name.startswith(d + "/") for d in iceberg_dirs
+            ):
+                yield key_name, size
 
     def get_folders_prefix(self, bucket_name: str, prefix: Optional[str]) -> Iterable[str]:  # noqa: UP045
         for page in self._client.get_paginator("list_objects_v2").paginate(

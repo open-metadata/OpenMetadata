@@ -153,7 +153,17 @@ class JSONDataFrameReader(DataFrameReader):
             return True
         try:
             obj = json.loads(first_line)
-            return isinstance(obj, dict) and not obj.get("$schema")
+            if not isinstance(obj, dict):
+                return False
+            if obj.get("$schema") is not None:
+                return False
+            if obj.get("format-version") is not None:
+                return False
+            if isinstance(obj.get("schema"), dict) and isinstance(
+                obj.get("schema", {}).get("fields"), list
+            ):
+                return False
+            return True
         except json.JSONDecodeError:
             return False
 
