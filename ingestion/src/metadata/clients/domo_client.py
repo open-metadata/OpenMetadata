@@ -15,7 +15,7 @@ DomoClient source to extract data from DOMO
 
 import traceback
 from dataclasses import dataclass
-from typing import List, Optional, Union
+from typing import List, Optional, Union  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict
 from pydomo import Domo
@@ -56,7 +56,7 @@ class DomoOwner(BaseModel):
     Owner Owner Details
     """
 
-    displayName: str
+    displayName: str  # noqa: N815
     id: str
 
 
@@ -65,10 +65,10 @@ class DomoDashboardDetails(DomoBaseModel):
     Response from Domo API
     """
 
-    cardIds: Optional[List[int]] = None
-    collectionIds: Optional[List[int]] = None
-    description: Optional[str] = None
-    owners: Optional[List[DomoOwner]] = None
+    cardIds: Optional[List[int]] = None  # noqa: N815, UP006, UP045
+    collectionIds: Optional[List[int]] = None  # noqa: N815, UP006, UP045
+    description: Optional[str] = None  # noqa: UP045
+    owners: Optional[List[DomoOwner]] = None  # noqa: UP006, UP045
 
 
 class DomoChartMetadataDetails(BaseModel):
@@ -78,7 +78,7 @@ class DomoChartMetadataDetails(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    chartType: Optional[str] = None
+    chartType: Optional[str] = None  # noqa: N815, UP045
 
 
 class DomoChartDetails(DomoBaseModel):
@@ -87,7 +87,7 @@ class DomoChartDetails(DomoBaseModel):
     """
 
     metadata: DomoChartMetadataDetails
-    description: Optional[str] = None
+    description: Optional[str] = None  # noqa: UP045
 
 
 class DomoClient:
@@ -98,9 +98,7 @@ class DomoClient:
 
     def __init__(
         self,
-        config: Union[
-            DomoDashboardConnection, DomoPipelineConnection, DomoDatabaseConnection
-        ],
+        config: Union[DomoDashboardConnection, DomoPipelineConnection, DomoDatabaseConnection],  # noqa: UP007
     ):
         self.config = config
         HEADERS.update({"X-DOMO-Developer-Token": self.config.accessToken})
@@ -112,7 +110,7 @@ class DomoClient:
         )
         self.client = TrackedREST(client_config)
 
-    def get_chart_details(self, page_id) -> Optional[DomoChartDetails]:
+    def get_chart_details(self, page_id) -> Optional[DomoChartDetails]:  # noqa: UP045
         """
         Getting chart details for particular page
         """
@@ -127,14 +125,12 @@ class DomoClient:
                 return DomoChartDetails(
                     id=str(response[0]["id"]),
                     name=response[0]["title"],
-                    metadata=DomoChartMetadataDetails(
-                        chartType=response[0].get("metadata", {}).get("chartType", "")
-                    ),
+                    metadata=DomoChartMetadataDetails(chartType=response[0].get("metadata", {}).get("chartType", "")),
                     description=response[0].get("description", ""),
                 )
 
         except Exception as exc:
-            logger.warning(f"Error while getting details for Card {page_id} - {exc}")
+            logger.error(f"Error while getting details for Card {page_id} - {exc}")
             logger.debug(traceback.format_exc())
 
         return None
@@ -142,9 +138,9 @@ class DomoClient:
     def get_pipelines(self):
         try:
             response = self.client.get(path=WORKFLOW_URL, headers=HEADERS)
-            return response
+            return response  # noqa: RET504, TRY300
         except Exception as exc:
-            logger.warning(f"Error while getting pipelines - {exc}")
+            logger.error(f"Error while getting pipelines - {exc}")
             logger.debug(traceback.format_exc())
         return []
 
@@ -152,11 +148,9 @@ class DomoClient:
         try:
             url = f"dataprocessing/v1/dataflows/{workflow_id}/executions?limit=100&offset=0"
             response = self.client.get(path=url, headers=HEADERS)
-            return response
+            return response  # noqa: RET504, TRY300
         except Exception as exc:
-            logger.warning(
-                f"Error while getting runs for pipeline {workflow_id} - {exc}"
-            )
+            logger.warning(f"Error while getting runs for pipeline {workflow_id} - {exc}")
             logger.debug(traceback.format_exc())
         return []
 
@@ -170,8 +164,8 @@ class DomoClient:
             self.client.get(path="content/v1/cards", headers=HEADERS)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error listing cards due to [{exc}]")
-            raise exc
+            logger.error(f"Error listing cards due to [{exc}]")
+            raise exc  # noqa: TRY201
 
 
 @dataclass

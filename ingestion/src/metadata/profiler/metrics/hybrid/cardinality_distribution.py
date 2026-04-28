@@ -12,7 +12,8 @@
 """
 Cardinality Distribution Metric definition
 """
-from typing import TYPE_CHECKING, Any, Dict, Optional
+
+from typing import TYPE_CHECKING, Any, Dict, Optional  # noqa: UP035
 
 from sqlalchemy import case, column, desc, func, or_
 from sqlalchemy.orm import Session
@@ -55,10 +56,10 @@ class CardinalityDistribution(HybridMetric):
 
     def fn(
         self,
-        sample: Optional[type],
-        res: Dict[str, Any],
-        session: Optional[Session] = None,
-    ) -> Optional[Dict[str, Any]]:
+        sample: Optional[type],  # noqa: UP045
+        res: Dict[str, Any],  # noqa: UP006
+        session: Optional[Session] = None,  # noqa: UP045
+    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
         """
         Build the Cardinality Distribution metric query
         """
@@ -81,9 +82,7 @@ class CardinalityDistribution(HybridMetric):
             return None
 
         if total_count == distinct_count:
-            logger.debug(
-                f"CardinalityDistribution not applicable for {self.col.name} because all values are distinct."
-            )
+            logger.debug(f"CardinalityDistribution not applicable for {self.col.name} because all values are distinct.")
             return {"allValuesUnique": True}
 
         col = column(self.col.name, self.col.type)
@@ -98,7 +97,7 @@ class CardinalityDistribution(HybridMetric):
                 ValueRank(col).fn(),
             )
             .select_from(sample)
-            .where(col != None)
+            .where(col != None)  # noqa: E711
             .group_by(col)
             .cte("value_counts")
         )
@@ -137,12 +136,12 @@ class CardinalityDistribution(HybridMetric):
             }
         return None
 
-    def df_fn(self, res: Dict[str, Any], dfs: Optional["PandasRunner"] = None):
+    def df_fn(self, res: Dict[str, Any], dfs: Optional["PandasRunner"] = None):  # noqa: UP006
         """
         Pandas implementation for dataframes
         """
         # pylint: disable=import-outside-toplevel
-        import pandas as pd
+        import pandas as pd  # noqa: PLC0415
 
         if self.col is None:
             return None
@@ -161,9 +160,7 @@ class CardinalityDistribution(HybridMetric):
             return None
 
         if total_count == distinct_count:
-            logger.debug(
-                f"CardinalityDistribution not applicable for {self.col.name} because all values are distinct."
-            )
+            logger.debug(f"CardinalityDistribution not applicable for {self.col.name} because all values are distinct.")
             return {"allValuesUnique": True}
 
         try:
@@ -176,9 +173,7 @@ class CardinalityDistribution(HybridMetric):
 
             for df in dfs:
                 df_value_counts = df[self.col.name].value_counts()
-                combined_value_counts = combined_value_counts.add(
-                    df_value_counts, fill_value=0
-                )
+                combined_value_counts = combined_value_counts.add(df_value_counts, fill_value=0)
 
             top_categories = {}
             others_count = 0
@@ -205,14 +200,12 @@ class CardinalityDistribution(HybridMetric):
                 counts.append(int(others_count))
                 percentages.append(round((others_count / total_count) * 100, 2))
 
-            return {
+            return {  # noqa: TRY300
                 "categories": categories,
                 "counts": counts,
                 "percentages": percentages,
             }
 
         except Exception as err:
-            logger.debug(
-                f"Error computing CardinalityDistribution for {self.col.name}: {err}"
-            )
+            logger.debug(f"Error computing CardinalityDistribution for {self.col.name}: {err}")
             return None

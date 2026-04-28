@@ -12,9 +12,10 @@
 """
 Test Snowflake connector with CLI
 """
+
 from datetime import datetime
 from time import sleep
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple  # noqa: UP035
 
 import pytest
 from sqlalchemy import text
@@ -31,9 +32,9 @@ from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.api.status import Status
 
-from .base.e2e_types import E2EType
-from .common.test_cli_db import CliCommonDB
-from .common_e2e_sqa_mixins import SQACommonMethods
+from .base.e2e_types import E2EType  # noqa: TID252
+from .common.test_cli_db import CliCommonDB  # noqa: TID252
+from .common_e2e_sqa_mixins import SQACommonMethods  # noqa: TID252
 
 
 class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
@@ -41,12 +42,12 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     Snowflake CLI Tests
     """
 
-    prepare_db_setup: List[str] = [
+    prepare_db_setup: List[str] = [  # noqa: RUF012, UP006
         "DROP DATABASE IF EXISTS E2E_DB;",
         "CREATE OR REPLACE DATABASE E2E_DB;",
     ]
 
-    prepare_snowflake_e2e: List[str] = [
+    prepare_snowflake_e2e: List[str] = [  # noqa: RUF012, UP006
         "CREATE OR REPLACE SCHEMA E2E_DB.e2e_test;",
         "CREATE OR REPLACE TABLE E2E_DB.e2e_test.regions(region_id INT PRIMARY KEY,region_name VARCHAR(25));",
         "CREATE OR REPLACE TABLE E2E_DB.e2e_test.countries(country_id CHAR(2) PRIMARY KEY,country_name VARCHAR (40),region_id INT NOT NULL);",
@@ -75,7 +76,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             FROM E2E_DB.e2e_test.persons;
     """
 
-    insert_data_queries: List[str] = [
+    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
         "INSERT INTO E2E_DB.e2e_test.persons (person_id, full_name) VALUES (1,'Peter Parker');",
         "INSERT INTO E2E_DB.e2e_test.persons (person_id, full_name) VALUES (2, 'Clark Kent');",
         "INSERT INTO E2E_DB.e2e_test.e2e_table (varchar_column, int_column) VALUES ('e2e_test.e2e_table', 1);",
@@ -97,7 +98,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         DROP VIEW IF EXISTS E2E_DB.e2e_test.view_persons;
     """
 
-    teardown_sql_statements: List[str] = [
+    teardown_sql_statements: List[str] = [  # noqa: RUF012, UP006
         "DROP TABLE IF EXISTS E2E_DB.e2e_test.e2e_table;",
         "DROP TABLE IF EXISTS E2E_DB.public.e2e_table;",
         "DROP TABLE IF EXISTS E2E_DB.public.public_table;",
@@ -124,9 +125,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def get_connector_name() -> str:
         return "snowflake"
 
-    def assert_for_vanilla_ingestion(
-        self, source_status: Status, sink_status: Status
-    ) -> None:
+    def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertGreaterEqual(len(source_status.filtered), 1)
@@ -141,9 +140,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             self.expected_tables(),
         )
 
-    def assert_for_table_with_profiler_time_partition(
-        self, source_status: Status, sink_status: Status
-    ) -> None:
+    def assert_for_table_with_profiler_time_partition(self, source_status: Status, sink_status: Status) -> None:
         self.assertEqual(len(source_status.failures), 0)
         self.assertEqual(len(sink_status.failures), 0)
         partitioned_fqn = "e2e_snowflake.E2E_DB.E2E_TEST.E2E_PARTITIONED_DATA"
@@ -181,14 +178,12 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
         self.build_config_file(E2EType.INGEST)
 
-        with open(self.test_file_path, "r", encoding="utf-8") as file:
+        with open(self.test_file_path, "r", encoding="utf-8") as file:  # noqa: PTH123
             config = yaml.safe_load(file)
 
-        config["source"]["serviceConnection"]["config"][
-            "includeTransientTables"
-        ] = include_transient
+        config["source"]["serviceConnection"]["config"]["includeTransientTables"] = include_transient
 
-        with open(self.test_file_path, "w", encoding="utf-8") as file:
+        with open(self.test_file_path, "w", encoding="utf-8") as file:  # noqa: PTH123
             yaml.dump(config, file, default_flow_style=False)
 
     @pytest.mark.order(2)
@@ -236,9 +231,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 2
 
     def expected_sample_size(self) -> int:
-        return len(
-            [q for q in self.insert_data_queries if "E2E_DB.e2e_test.persons" in q]
-        )
+        return len([q for q in self.insert_data_queries if "E2E_DB.e2e_test.persons" in q])
 
     def view_column_lineage_count(self) -> int:
         return 2
@@ -259,15 +252,15 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return "e2e_snowflake.E2E_DB.E2E_TEST.TRANSIENT_SAMPLE_TABLE"
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:
+    def get_includes_schemas() -> List[str]:  # noqa: UP006
         return ["e2e_test.*"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:
+    def get_includes_tables() -> List[str]:  # noqa: UP006
         return ["^test.*"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:
+    def get_excludes_tables() -> List[str]:  # noqa: UP006
         return [".*ons"]
 
     @staticmethod
@@ -291,7 +284,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 7
 
     @staticmethod
-    def delete_queries() -> List[str]:
+    def delete_queries() -> List[str]:  # noqa: UP006
         return [
             """
             DELETE FROM E2E_DB.E2E_TEST.PERSONS WHERE full_name = 'Peter Parker'
@@ -299,14 +292,14 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         ]
 
     @staticmethod
-    def update_queries() -> List[str]:
+    def update_queries() -> List[str]:  # noqa: UP006
         return [
             """
             UPDATE E2E_DB.E2E_TEST.PERSONS SET full_name = 'Bruce Wayne' WHERE full_name = 'Clark Kent'
             """,
         ]
 
-    def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:
+    def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:  # noqa: UP006
         return [
             (
                 "e2e_snowflake.E2E_DB.E2E_TEST.E2E_TABLE",
@@ -370,11 +363,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             sleep(5)
             with cls.engine.connect() as conn:
                 latest = (
-                    conn.execute(
-                        text(
-                            'SELECT max(start_time) FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"'
-                        )
-                    )
+                    conn.execute(text('SELECT max(start_time) FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"'))
                     .scalar()
                     .timestamp()
                 )
@@ -384,7 +373,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def get_data_quality_table(self):
         return self.fqn_created_table()
 
-    def get_test_case_definitions(self) -> List[TestCaseDefinition]:
+    def get_test_case_definitions(self) -> List[TestCaseDefinition]:  # noqa: UP006
         return [
             TestCaseDefinition(
                 name="snowflake_data_diff",
@@ -434,7 +423,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
         self.build_config_file(E2EType.INGEST)
 
-        with open(self.test_file_path, "r", encoding="utf-8") as file:
+        with open(self.test_file_path, "r", encoding="utf-8") as file:  # noqa: PTH123
             config = yaml.safe_load(file)
 
         config["source"]["type"] = "snowflake-usage"
@@ -446,20 +435,20 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             }
         }
 
-        with open(self.test_file_path, "w", encoding="utf-8") as file:
+        with open(self.test_file_path, "w", encoding="utf-8") as file:  # noqa: PTH123
             yaml.dump(config, file, default_flow_style=False)
 
     def build_config_file_with_overrides(
         self,
-        source_config_overrides: Optional[Dict[str, Any]] = None,
-        connection_overrides: Optional[Dict[str, Any]] = None,
+        source_config_overrides: Optional[Dict[str, Any]] = None,  # noqa: UP006, UP045
+        connection_overrides: Optional[Dict[str, Any]] = None,  # noqa: UP006, UP045
     ) -> None:
         """Build config file with arbitrary overrides for sourceConfig and/or connection"""
         import yaml
 
         self.build_config_file(E2EType.INGEST)
 
-        with open(self.test_file_path, "r", encoding="utf-8") as file:
+        with open(self.test_file_path, "r", encoding="utf-8") as file:  # noqa: PTH123
             config = yaml.safe_load(file)
 
         if source_config_overrides:
@@ -470,7 +459,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             for key, value in connection_overrides.items():
                 config["source"]["serviceConnection"]["config"][key] = value
 
-        with open(self.test_file_path, "w", encoding="utf-8") as file:
+        with open(self.test_file_path, "w", encoding="utf-8") as file:  # noqa: PTH123
             yaml.dump(config, file, default_flow_style=False)
 
     @pytest.mark.order(14)
@@ -610,16 +599,10 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         with self.engine.begin() as connection:
             # Tag + apply to table
             connection.execute(
-                text(
-                    "CREATE OR REPLACE TAG E2E_DB.e2e_test.e2e_sensitivity "
-                    "ALLOWED_VALUES 'PII', 'PUBLIC'"
-                )
+                text("CREATE OR REPLACE TAG E2E_DB.e2e_test.e2e_sensitivity ALLOWED_VALUES 'PII', 'PUBLIC'")
             )
             connection.execute(
-                text(
-                    "ALTER TABLE E2E_DB.e2e_test.regions SET TAG "
-                    "E2E_DB.e2e_test.e2e_sensitivity = 'PII'"
-                )
+                text("ALTER TABLE E2E_DB.e2e_test.regions SET TAG E2E_DB.e2e_test.e2e_sensitivity = 'PII'")
             )
 
             # Dynamic table
@@ -634,10 +617,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
             # Stream
             connection.execute(
-                text(
-                    "CREATE OR REPLACE STREAM E2E_DB.e2e_test.e2e_stream "
-                    "ON TABLE E2E_DB.e2e_test.regions"
-                )
+                text("CREATE OR REPLACE STREAM E2E_DB.e2e_test.e2e_stream ON TABLE E2E_DB.e2e_test.regions")
             )
 
             # FK constraint
@@ -692,9 +672,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         # the ingestion path doesn't fail.
 
         # Dynamic table
-        dynamic_table = self.retrieve_table(
-            "e2e_snowflake.E2E_DB.E2E_TEST.E2E_DYNAMIC_TABLE"
-        )
+        dynamic_table = self.retrieve_table("e2e_snowflake.E2E_DB.E2E_TEST.E2E_DYNAMIC_TABLE")
         self.assertIsNotNone(dynamic_table, "Dynamic table should be ingested")
         self.assertEqual(
             str(dynamic_table.tableType.value),
@@ -704,9 +682,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
         # Stream
         stream = self.retrieve_table("e2e_snowflake.E2E_DB.E2E_TEST.E2E_STREAM")
-        self.assertIsNotNone(
-            stream, "Stream should be ingested when includeStreams=true"
-        )
+        self.assertIsNotNone(stream, "Stream should be ingested when includeStreams=true")
 
         # FK constraint — tableConstraints is a lazy field, request it explicitly
         countries_table = self.openmetadata.get_by_name(
@@ -724,9 +700,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         fk_constraints = [
             c
             for c in countries_table.tableConstraints
-            if c.constraintType == ConstraintType.FOREIGN_KEY
-            and c.columns
-            and "REGION_ID" in c.columns
+            if c.constraintType == ConstraintType.FOREIGN_KEY and c.columns and "REGION_ID" in c.columns
         ]
         self.assertGreater(
             len(fk_constraints),
@@ -740,9 +714,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         )
 
         # Clustering / partition detection
-        clustered_table = self.retrieve_table(
-            "e2e_snowflake.E2E_DB.E2E_TEST.E2E_CLUSTERED_TABLE"
-        )
+        clustered_table = self.retrieve_table("e2e_snowflake.E2E_DB.E2E_TEST.E2E_CLUSTERED_TABLE")
         self.assertIsNotNone(clustered_table, "Clustered table should be ingested")
         self.assertIsNotNone(
             clustered_table.tablePartition,
