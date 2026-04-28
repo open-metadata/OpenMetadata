@@ -13,7 +13,7 @@
 Source connection handler
 """
 
-from typing import Optional
+from typing import Optional, cast
 
 from confluent_kafka.admin import KafkaException
 
@@ -39,6 +39,7 @@ from metadata.ingestion.source.messaging.kafka.connection import (
 )
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_manager import SSLManager
 
 logger = ingestion_logger()
 
@@ -98,7 +99,7 @@ def test_connection(
         )
         from metadata.utils.ssl_manager import check_ssl_and_init
 
-        ssl_manager = check_ssl_and_init(service_connection)
+        ssl_manager = cast(Optional[SSLManager], check_ssl_and_init(service_connection))
         client_kwargs = ssl_manager.admin_api_http_kwargs() if ssl_manager else {}
         try:
             admin_client = RedpandaAdminClient(
@@ -119,7 +120,9 @@ def test_connection(
     return test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
-        service_type=service_connection.type.value,
+        service_type=service_connection.type.value
+        if service_connection.type
+        else "Redpanda",
         automation_workflow=automation_workflow,
         timeout_seconds=timeout_seconds,
     )

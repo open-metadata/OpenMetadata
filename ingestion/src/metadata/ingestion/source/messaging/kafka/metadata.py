@@ -29,16 +29,27 @@ from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 class KafkaSource(CommonBrokerSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         self.ssl_manager = None
-        self.service_connection = cast(KafkaConnection, config.serviceConnection.root.config)  # noqa: TC006
-        self.ssl_manager: Optional[SSLManager] = check_ssl_and_init(self.service_connection)
+        self.service_connection = cast(
+            KafkaConnection,
+            config.serviceConnection.root.config,  # pyright: ignore[reportOptionalMemberAccess]
+        )  # noqa: TC006
+        self.ssl_manager: Optional[SSLManager] = cast(
+            Optional[SSLManager], check_ssl_and_init(self.service_connection)
+        )
         if self.ssl_manager:
-            self.service_connection = self.ssl_manager.setup_ssl(self.service_connection)
+            self.service_connection = self.ssl_manager.setup_ssl(
+                self.service_connection
+            )
         super().__init__(config, metadata)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: KafkaConnection = config.serviceConnection.root.config
         if not isinstance(connection, KafkaConnection):
-            raise InvalidSourceException(f"Expected KafkaConnection, but got {connection}")
+            raise InvalidSourceException(
+                f"Expected KafkaConnection, but got {connection}"
+            )
         return cls(config, metadata)

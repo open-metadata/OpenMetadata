@@ -46,10 +46,11 @@ class RedpandaSource(CommonBrokerSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         self.ssl_manager = None
         self.service_connection = cast(
-            RedpandaConnection, config.serviceConnection.root.config
+            RedpandaConnection,
+            config.serviceConnection.root.config,  # pyright: ignore[reportOptionalMemberAccess]
         )
-        self.ssl_manager: Optional[SSLManager] = check_ssl_and_init(
-            self.service_connection
+        self.ssl_manager: Optional[SSLManager] = cast(
+            Optional[SSLManager], check_ssl_and_init(self.service_connection)
         )
         if self.ssl_manager:
             self.service_connection = self.ssl_manager.setup_ssl(
@@ -69,11 +70,15 @@ class RedpandaSource(CommonBrokerSource):
             )
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: RedpandaConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedpandaConnection):
-            raise InvalidSourceException(f"Expected RedpandaConnection, but got {connection}")
+            raise InvalidSourceException(
+                f"Expected RedpandaConnection, but got {connection}"
+            )
         return cls(config, metadata)
 
     def yield_topic_lineage(
@@ -94,13 +99,17 @@ class RedpandaSource(CommonBrokerSource):
 
         current_topic = topic_details.topic_name
 
+        service_name = getattr(self.context.get(), "messaging_service", "") or ""
         for transform in self._transforms_cache.get(current_topic, []):
 
-            source_topic_fqn = fqn.build(
-                metadata=self.metadata,
-                entity_type=TopicEntity,
-                service_name=self.context.get().messaging_service,
-                topic_name=transform.input_topic,
+            source_topic_fqn = (
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=TopicEntity,
+                    service_name=service_name,
+                    topic_name=transform.input_topic,
+                )
+                or ""
             )
             source_topic = self.metadata.get_by_name(
                 entity=TopicEntity, fqn=source_topic_fqn
@@ -110,11 +119,14 @@ class RedpandaSource(CommonBrokerSource):
 
             for output_topic_name in transform.output_topics:
                 try:
-                    target_topic_fqn = fqn.build(
-                        metadata=self.metadata,
-                        entity_type=TopicEntity,
-                        service_name=self.context.get().messaging_service,
-                        topic_name=output_topic_name,
+                    target_topic_fqn = (
+                        fqn.build(
+                            metadata=self.metadata,
+                            entity_type=TopicEntity,
+                            service_name=service_name,
+                            topic_name=output_topic_name,
+                        )
+                        or ""
                     )
                     target_topic = self.metadata.get_by_name(
                         entity=TopicEntity, fqn=target_topic_fqn
@@ -126,18 +138,18 @@ class RedpandaSource(CommonBrokerSource):
                         )
                         continue
 
-                    yield Either(
-                        right=AddLineageRequest(
+                    yield Either(  # pyright: ignore[reportCallIssue]
+                        right=AddLineageRequest(  # pyright: ignore[reportCallIssue]
                             edge=EntitiesEdge(
-                                fromEntity=EntityReference(
+                                fromEntity=EntityReference(  # pyright: ignore[reportCallIssue]
                                     id=source_topic.id,
                                     type="topic",
                                 ),
-                                toEntity=EntityReference(
+                                toEntity=EntityReference(  # pyright: ignore[reportCallIssue]
                                     id=target_topic.id,
                                     type="topic",
                                 ),
-                                lineageDetails=LineageDetails(
+                                lineageDetails=LineageDetails(  # pyright: ignore[reportCallIssue]
                                     source=LineageSource.PipelineLineage,
                                     description=(
                                         f"Redpanda data transform '{transform.name}'"
@@ -147,12 +159,11 @@ class RedpandaSource(CommonBrokerSource):
                         )
                     )
                 except Exception as exc:
-                    yield Either(
+                    yield Either(  # pyright: ignore[reportCallIssue]
                         left=StackTraceError(
                             name=topic_details.topic_name,
                             error=(
-                                f"Failed to create lineage for transform "
-                                f"'{transform.name}': {exc}"
+                                f"Failed to create lineage for transform '{transform.name}': {exc}"
                             ),
                             stackTrace=traceback.format_exc(),
                         )

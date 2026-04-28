@@ -18,7 +18,7 @@ import time
 import traceback
 from abc import ABC
 from collections import defaultdict
-from typing import Iterable, Optional  # noqa: UP035
+from typing import Any, Iterable, Optional  # noqa: UP035
 
 import confluent_kafka
 from confluent_kafka import ConsumerGroupTopicPartitions, KafkaError, KafkaException
@@ -102,8 +102,8 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         self.admin_client = self.connection.admin_client
         self.schema_registry_client = self.connection.schema_registry_client
         self.context.processed_schemas = {}
-        self.extract_consumer_groups = (
-            self.config.sourceConfig.config.extractConsumerGroups
+        self.extract_consumer_groups = getattr(
+            self.config.sourceConfig.config, "extractConsumerGroups", False
         )
         self._topic_consumer_groups = None
         if self.generate_sample_data:
@@ -133,7 +133,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.info(f"Fetching topic schema {topic_details.topic_name}")
             topic_schema = self._parse_topic_metadata(topic_details.topic_name)
             logger.info(f"Fetching topic config {topic_details.topic_name}")
-            topic = CreateTopicRequest(
+            topic = CreateTopicRequest(  # pyright: ignore[reportCallIssue]
                 name=EntityName(topic_details.topic_name),
                 service=FullyQualifiedEntityName(self.context.get().messaging_service),
                 partitions=len(topic_details.topic_metadata.partitions),
@@ -144,7 +144,8 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             topic_config_resource = self.admin_client.describe_configs(
                 [
                     ConfigResource(
-                        confluent_kafka.admin.RESOURCE_TOPIC, topic_details.topic_name
+                        confluent_kafka.admin.RESOURCE_TOPIC,  # pyright: ignore[reportAttributeAccessIssue]
+                        topic_details.topic_name,
                     )
                 ]
             )
@@ -167,7 +168,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
                 topic.messageSchema = Topic(
                     schemaText=topic_schema.schema_str,
-                    schemaType=schema_type_map.get(
+                    schemaType=schema_type_map.get(  # pyright: ignore[reportArgumentType]
                         topic_schema.schema_type.lower(), SchemaType.Other.value
                     ),
                     schemaFields=schema_fields if schema_fields is not None else [],
@@ -394,7 +395,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         return str(record.decode("utf-8"))
 
     @staticmethod
-    def _map_consumer_group_state(state) -> str:
+    def _map_consumer_group_state(state: Any) -> str:
         """Map confluent_kafka ConsumerGroupState to schema enum values."""
         if state is None:
             return "Unknown"
@@ -444,7 +445,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         return topic_cg_map
 
     def _index_group_by_topic(
-        self, group_id: str, group_desc, topic_cg_map: dict
+        self, group_id: str, group_desc: Any, topic_cg_map: dict
     ) -> None:
         """Index a described consumer group into topic_cg_map by topic."""
         state = self._map_consumer_group_state(group_desc.state)
