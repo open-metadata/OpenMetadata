@@ -13,7 +13,7 @@ Source connection handler
 """
 
 from functools import partial
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional  # noqa: UP035
 from urllib.parse import quote_plus
 
 from sqlalchemy import inspect
@@ -56,7 +56,7 @@ def get_database_connection_url(connection: SapHanaConnection) -> str:
     conn = connection.connection
 
     if not isinstance(conn, SapHanaSQLConnection):
-        raise ValueError("Database Connection requires the SQL connection details")
+        raise ValueError("Database Connection requires the SQL connection details")  # noqa: TRY004
 
     url = (
         f"{connection.scheme.value}://"
@@ -83,7 +83,7 @@ def get_hdb_connection_url(connection: SapHanaConnection) -> str:
     """
 
     if not isinstance(connection.connection, SapHanaHDBConnection):
-        raise ValueError("Database Connection requires the SQL connection details")
+        raise ValueError("Database Connection requires the SQL connection details")  # noqa: TRY004
 
     return f"{connection.scheme.value}://userkey={connection.connection.userKey}"
 
@@ -110,7 +110,7 @@ def get_connection(connection: SapHanaConnection) -> Engine:
     raise ValueError("Unrecognized SAP Hana connection type!")
 
 
-def _build_test_fn_dict(engine: Engine, service_connection: SapHanaConnection) -> Dict[str, Callable]:
+def _build_test_fn_dict(engine: Engine, service_connection: SapHanaConnection) -> Dict[str, Callable]:  # noqa: UP006
     """
     Build the test connection steps dict
     """
@@ -125,7 +125,7 @@ def _build_test_fn_dict(engine: Engine, service_connection: SapHanaConnection) -
         inspector_fn = getattr(inspector, inspector_fn_str)
 
         # HDB connection won't have a databaseSchema
-        if getattr(service_connection.connection, "databaseSchema"):
+        if getattr(service_connection.connection, "databaseSchema"):  # noqa: B009
             inspector_fn(service_connection.connection.databaseSchema)
         else:
             schema_name = inspector.get_schema_names() or []
@@ -156,8 +156,8 @@ def test_connection(
     metadata: OpenMetadata,
     engine: Engine,
     service_connection: SapHanaConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part

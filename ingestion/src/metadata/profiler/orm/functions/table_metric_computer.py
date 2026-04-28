@@ -18,7 +18,7 @@ import traceback
 from abc import ABC, abstractmethod
 from collections import namedtuple
 from datetime import datetime as _datetime
-from typing import Callable, List, Optional, Tuple, Type
+from typing import Callable, List, Optional, Tuple, Type  # noqa: UP035
 
 from sqlalchemy import (
     BigInteger,
@@ -71,7 +71,7 @@ ERROR_MSG = "Schema/Table name not found in table args. Falling back to default 
 class AbstractTableMetricComputer(ABC):
     """Base table computer"""
 
-    def __init__(self, runner: QueryRunner, metrics: List[Metrics], conn_config, entity: OMTable):
+    def __init__(self, runner: QueryRunner, metrics: List[Metrics], conn_config, entity: OMTable):  # noqa: UP006
         """Instantiate base table computer"""
         self._runner = runner
         self._metrics = metrics
@@ -118,7 +118,7 @@ class AbstractTableMetricComputer(ABC):
             self._schema_name = self.runner.schema_name
             self._table_name = self.runner.table_name
         except AttributeError:
-            raise AttributeError(ERROR_MSG)
+            raise AttributeError(ERROR_MSG)  # noqa: B904
 
     def _build_table(self, table, schema) -> Table:
         """build table object from table name and schema name
@@ -134,7 +134,7 @@ class AbstractTableMetricComputer(ABC):
             return Table(table, MetaData(), schema=schema)
         return Table(table, MetaData())
 
-    def _get_col_names_and_count(self) -> Tuple[str, int]:
+    def _get_col_names_and_count(self) -> Tuple[str, int]:  # noqa: UP006
         """get column names and count from table
 
         Args:
@@ -149,9 +149,9 @@ class AbstractTableMetricComputer(ABC):
 
     def _build_query(
         self,
-        columns: List[Column],
+        columns: List[Column],  # noqa: UP006
         table: Table,
-        where_clause: Optional[List[ColumnOperators]] = None,
+        where_clause: Optional[List[ColumnOperators]] = None,  # noqa: UP006, UP045
     ):
         query = select(*columns).select_from(table)
         if where_clause:
@@ -347,7 +347,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             Column("table_id") == self.table_name,
         ]
         schema = (
-            self.schema_name.startswith(f"{self._entity.database.name}.")
+            self.schema_name.startswith(f"{self._entity.database.name}.")  # noqa: RUF021
             and self.schema_name
             or f"{self._entity.database.name}.{self.schema_name}"
         )
@@ -369,7 +369,7 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
     """MySQL Table Metric Computer"""
 
     @inject
-    def compute(self, metrics: Inject[Type[MetricRegistry]] = None):
+    def compute(self, metrics: Inject[Type[MetricRegistry]] = None):  # noqa: UP006
         """compute table metrics for mysql"""
 
         if metrics is None:
@@ -454,7 +454,7 @@ class TimescaleTableMetricComputer(PostgresTableMetricComputer):
                 sa_text(TIMESCALE_IS_HYPERTABLE),
                 {"schema": self.schema_name, "table": self.table_name},
             ).first()
-            return result is not None
+            return result is not None  # noqa: TRY300
         except Exception:
             return False
 
@@ -830,7 +830,7 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
     convert to a namedtuple so the date can be patched before returning.
     """
 
-    def _parse_created_datetime(self, value) -> Optional[_datetime]:
+    def _parse_created_datetime(self, value) -> Optional[_datetime]:  # noqa: UP045
         for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%m/%d/%Y"):
             try:
                 return _datetime.strptime(str(value), fmt)
@@ -845,8 +845,8 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
         These FunctionElement subclasses have @compiles(Dialects.Informix) overrides
         that set literal_binds=True, inlining values directly into SQL.
         """
-        from metadata.profiler.metrics.static.column_count import ColumnCountFn
-        from metadata.profiler.metrics.static.column_names import ColunNameFn
+        from metadata.profiler.metrics.static.column_count import ColumnCountFn  # noqa: PLC0415
+        from metadata.profiler.metrics.static.column_names import ColunNameFn  # noqa: PLC0415
 
         col_names = ColunNameFn(literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String)).label(
             COLUMN_NAMES
@@ -889,7 +889,7 @@ class TableMetricComputer:
         self,
         dialect: str,
         runner: QueryRunner,
-        metrics: List[Metrics],
+        metrics: List[Metrics],  # noqa: UP006
         conn_config,
         entity: OMTable,
     ):
@@ -916,7 +916,7 @@ class TableMetricComputer:
         TimescaleDB uses the PostgreSQL SQLAlchemy dialect but requires its own
         metric computer. We detect this by checking the connection config type.
         """
-        if dialect == Dialects.Postgres:
+        if dialect == Dialects.Postgres:  # noqa: SIM102
             if isinstance(conn_config, TimescaleConnectionConfig):
                 return Dialects.Timescale
         return dialect
@@ -948,7 +948,7 @@ class TableMetricComputerFactory:
         try:
             construct_instance: AbstractTableMetricComputer = construct(**kwargs)
             construct_instance._set_table_and_schema_name()
-            return construct_instance
+            return construct_instance  # noqa: TRY300
         except Exception:
             # if an error occurs, fallback to the base construct
             logger.debug(traceback.format_exc())

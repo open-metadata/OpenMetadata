@@ -59,7 +59,7 @@ RESOURCES_DIR = Path(__file__).parent.parent.parent / "resources" / "saphana"
 def test_parse_analytic_view() -> None:
     """Read the resource and parse the file"""
 
-    with open(RESOURCES_DIR / "cdata_analytic_view.xml") as file:
+    with open(RESOURCES_DIR / "cdata_analytic_view.xml") as file:  # noqa: PTH123
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.ANALYTIC_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
@@ -79,7 +79,7 @@ def test_parse_analytic_view() -> None:
 def test_parse_attribute_view() -> None:
     """Read the resource and parse the file"""
 
-    with open(RESOURCES_DIR / "cdata_attribute_view.xml") as file:
+    with open(RESOURCES_DIR / "cdata_attribute_view.xml") as file:  # noqa: PTH123
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.ATTRIBUTE_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
@@ -102,7 +102,7 @@ def test_parse_attribute_view() -> None:
 def test_parse_cv_tab() -> None:
     """Read the resource and parse the file"""
 
-    with open(RESOURCES_DIR / "cdata_calculation_view_tab.xml") as file:
+    with open(RESOURCES_DIR / "cdata_calculation_view_tab.xml") as file:  # noqa: PTH123
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
@@ -128,7 +128,7 @@ def test_parse_cv_tab() -> None:
 
 def test_parse_cv_view() -> None:
     """Read the resource and parse the file"""
-    with open(RESOURCES_DIR / "cdata_calculation_view_cv.xml") as file:
+    with open(RESOURCES_DIR / "cdata_calculation_view_cv.xml") as file:  # noqa: PTH123
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
@@ -158,7 +158,7 @@ def test_parse_cv_view() -> None:
 
 def test_parse_cv() -> None:
     """Read the resource and parse the file"""
-    with open(RESOURCES_DIR / "cdata_calculation_view.xml") as file:
+    with open(RESOURCES_DIR / "cdata_calculation_view.xml") as file:  # noqa: PTH123
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
@@ -277,7 +277,7 @@ def test_parsed_lineage_with_schema_mapping():
 
 def test_join_view_duplicate_column_mapping() -> None:
     """Test that Join views correctly handle duplicate column mappings by keeping the first occurrence"""
-    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join.xml") as file:
+    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join.xml") as file:  # noqa: PTH123
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
@@ -325,7 +325,7 @@ def test_join_view_duplicate_column_mapping() -> None:
 
 def test_union_view_with_multiple_projections() -> None:
     """Test parsing of calculation view with Union combining multiple Projection sources"""
-    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml") as file:
+    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml") as file:  # noqa: PTH123
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
@@ -372,7 +372,7 @@ def test_union_view_with_multiple_projections() -> None:
 
 def test_analytic_view_formula_column_source_mapping() -> None:
     """Test that formula columns correctly map to their source table columns"""
-    with open(RESOURCES_DIR / "custom" / "cdata_analytic_view_formula_column.xml") as file:
+    with open(RESOURCES_DIR / "custom" / "cdata_analytic_view_formula_column.xml") as file:  # noqa: PTH123
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.ANALYTIC_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
@@ -434,7 +434,7 @@ def test_analytic_view_formula_column_source_mapping() -> None:
 def test_formula_columns_reference_correct_layer():
     """Test that formula columns reference the correct calculation view layer"""
     # Load the complex star join view XML
-    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml") as file:
+    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml") as file:  # noqa: PTH123
         xml = file.read()
 
     ns = {
@@ -477,7 +477,7 @@ def test_formula_columns_reference_correct_layer():
 
 def test_projection_formula_columns():
     """Test that projection view formula columns reference the correct layer"""
-    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml") as file:
+    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml") as file:  # noqa: PTH123
         xml = file.read()
 
     ns = {
@@ -521,7 +521,7 @@ def test_projection_formula_columns():
 
 def test_formula_columns_in_final_lineage():
     """Test that formula columns are correctly resolved in the final lineage"""
-    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml") as file:
+    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml") as file:  # noqa: PTH123
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed = parse_fn(cdata)
@@ -585,7 +585,7 @@ def test_formula_parsing_comprehensive():
       </measure>
     </calculatedMeasures>
   </logicalModel>
-</Calculation:scenario>"""
+</Calculation:scenario>"""  # noqa: W291
 
     parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
     parsed = parse_fn(logical_model_xml)
@@ -830,7 +830,7 @@ def test_sap_hana_lineage_filter_pattern() -> None:
                     return super().__getitem__(key.lower())
 
                 def keys(self):
-                    return [k.lower() for k in self._data.keys()]
+                    return [k.lower() for k in self._data.keys()]  # noqa: SIM118
 
                 def get(self, key, default=None):
                     try:
@@ -878,7 +878,7 @@ def test_renamed_attribute_in_calculated_column() -> None:
     Fix: Now we use mapping.sources from the base lineage, which contains the actual
          source column names after traversing datasources.
     """
-    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_renamed_attribute.xml") as file:
+    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_renamed_attribute.xml") as file:  # noqa: PTH123
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
@@ -935,7 +935,7 @@ def test_calculation_view_end_to_end_lineage() -> None:
     - Aggregation, Projection, and Union views with mappings
     - Formula column USAGE_PCT = SEATSOCC_ALL / SEATSMAX_ALL
     """
-    with open(RESOURCES_DIR / "cdata_calculation_view.xml") as file:
+    with open(RESOURCES_DIR / "cdata_calculation_view.xml") as file:  # noqa: PTH123
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
@@ -1093,7 +1093,7 @@ def test_parse_calculation_view_with_table_function() -> None:
     - Column mappings are correctly traced through the Projection layer
     - The DataSource location preserves the package::name format
     """
-    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_table_function.xml") as file:
+    with open(RESOURCES_DIR / "custom" / "cdata_calculation_view_table_function.xml") as file:  # noqa: PTH123
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)

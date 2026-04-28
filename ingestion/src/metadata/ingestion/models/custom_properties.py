@@ -13,7 +13,7 @@ Custom models for custom properties
 """
 
 from enum import Enum
-from typing import Optional, Type, TypeVar
+from typing import Optional, Type, TypeVar  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -44,8 +44,8 @@ class CustomPropertyDataTypes(Enum):
 
 
 class OMetaCustomProperties(BaseModel):
-    entity_type: Type[T]
-    createCustomPropertyRequest: CreateCustomPropertyRequest
+    entity_type: Type[T]  # noqa: UP006
+    createCustomPropertyRequest: CreateCustomPropertyRequest  # noqa: N815
 
 
 class CustomPropertyType(BaseModel):
@@ -55,12 +55,12 @@ class CustomPropertyType(BaseModel):
 
     id: basic.Uuid
     name: basic.EntityName
-    displayName: Optional[str] = None
-    fullyQualifiedName: Optional[basic.FullyQualifiedEntityName] = None
-    description: Optional[basic.Markdown] = None
-    category: Optional[str] = None
-    nameSpace: Optional[str] = None
-    version: Optional[entityHistory.EntityVersion] = None
-    updatedAt: Optional[basic.Timestamp] = None
-    updatedBy: Optional[str] = None
-    href: Optional[basic.Href] = None
+    displayName: Optional[str] = None  # noqa: N815, UP045
+    fullyQualifiedName: Optional[basic.FullyQualifiedEntityName] = None  # noqa: N815, UP045
+    description: Optional[basic.Markdown] = None  # noqa: UP045
+    category: Optional[str] = None  # noqa: UP045
+    nameSpace: Optional[str] = None  # noqa: N815, UP045
+    version: Optional[entityHistory.EntityVersion] = None  # noqa: UP045
+    updatedAt: Optional[basic.Timestamp] = None  # noqa: N815, UP045
+    updatedBy: Optional[str] = None  # noqa: N815, UP045
+    href: Optional[basic.Href] = None  # noqa: UP045

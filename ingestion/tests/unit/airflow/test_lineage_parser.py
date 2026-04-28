@@ -13,7 +13,7 @@ Test lineage parser to get inlets and outlets information
 """
 
 from datetime import datetime
-from typing import List, Set
+from typing import List, Set  # noqa: UP035
 
 import pytest
 
@@ -40,12 +40,12 @@ from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
 SLEEP = "sleep 1"
 
 
-def xlet_fqns(xlet: XLets, xlet_mode: XLetsMode) -> Set[str]:
+def xlet_fqns(xlet: XLets, xlet_mode: XLetsMode) -> Set[str]:  # noqa: UP006
     """Helper method to get a set of FQNs out of the xlet"""
-    return set(elem.fqn for elem in getattr(xlet, xlet_mode.value))
+    return set(elem.fqn for elem in getattr(xlet, xlet_mode.value))  # noqa: C401
 
 
-def assert_xlets_equals(first: List[XLets], second: List[XLets]):
+def assert_xlets_equals(first: List[XLets], second: List[XLets]):  # noqa: UP006
     """
     Check that both XLet lists are the same
 

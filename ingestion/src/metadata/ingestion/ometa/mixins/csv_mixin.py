@@ -3,7 +3,7 @@ CSV import/export mixin for OpenMetadata client.
 """
 
 import logging
-from typing import Dict, Type, TypeVar
+from typing import Dict, Type, TypeVar  # noqa: UP035
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -26,7 +26,7 @@ class CSVMixin:
     Implements export_csv and import_csv following the same pattern as Java SDK.
     """
 
-    def export_csv(self, entity: Type[T], name: str) -> str:
+    def export_csv(self, entity: Type[T], name: str) -> str:  # noqa: UP006
         """
         Export entity data in CSV format.
 
@@ -52,7 +52,7 @@ class CSVMixin:
             logger.error(f"Failed to export CSV for {entity.__name__} '{name}': {err}")
             raise
 
-    def export_csv_async(self, entity: Type[T], name: str) -> str:
+    def export_csv_async(self, entity: Type[T], name: str) -> str:  # noqa: UP006
         """
         Export entity data in CSV format asynchronously.
 
@@ -76,7 +76,7 @@ class CSVMixin:
             logger.error(f"Failed to start async CSV export for {entity.__name__} '{name}': {err}")
             raise
 
-    def import_csv(self, entity: Type[T], name: str, csv_data: str, dry_run: bool = False) -> Dict:
+    def import_csv(self, entity: Type[T], name: str, csv_data: str, dry_run: bool = False) -> Dict:  # noqa: UP006
         """
         Import entity data from CSV format.
 
@@ -110,7 +110,7 @@ class CSVMixin:
             logger.error(f"Failed to import CSV for {entity.__name__} '{name}': {err}")
             raise
 
-    def import_csv_async(self, entity: Type[T], name: str, csv_data: str, dry_run: bool = False) -> str:
+    def import_csv_async(self, entity: Type[T], name: str, csv_data: str, dry_run: bool = False) -> str:  # noqa: UP006
         """
         Import entity data from CSV format asynchronously.
 
@@ -142,7 +142,7 @@ class CSVMixin:
             logger.error(f"Failed to start async CSV import for {entity.__name__} '{name}': {err}")
             raise
 
-    def _get_csv_endpoint(self, entity: Type[T]) -> str:
+    def _get_csv_endpoint(self, entity: Type[T]) -> str:  # noqa: UP006
         """
         Get the API endpoint for CSV operations based on entity type.
 

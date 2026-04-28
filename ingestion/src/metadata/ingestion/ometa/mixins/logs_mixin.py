@@ -92,7 +92,7 @@ class OMetaLogsMixin:
             # The REST client returns None for successful requests with empty response body (HTTP 200/201/204)
             # If we reach this point without an exception, the request was successful
             logger.debug(f"Successfully sent {log_batch['lineCount']} log lines for pipeline {pipeline_fqn}")
-            return True
+            return True  # noqa: TRY300
 
         except Exception as e:
             line_count = log_content.count("\n") + 1
@@ -147,7 +147,7 @@ class OMetaLogsMixin:
                     else:
                         logger.debug(f"Successfully shipped {line_count} log lines to server")
                     return metrics
-                else:
+                else:  # noqa: PLR5501, RET505
                     if attempt < max_retries:
                         wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
                         logger.warning(
@@ -239,7 +239,7 @@ class OMetaLogsMixin:
 
             logger.debug(f"Successfully closed log stream for pipeline {pipeline_fqn}")
 
-            return True
+            return True  # noqa: TRY300
 
         except Exception as e:
             logger.warning(f"Failed to close log stream for pipeline {pipeline_fqn}: {e}")
@@ -251,7 +251,7 @@ class OMetaLogsMixin:
         run_id: UUID,
         offset: int = 0,
         limit: int = 1000,
-    ) -> Optional[str]:
+    ) -> Optional[str]:  # noqa: UP045
         """
         Retrieve logs from S3 storage for a pipeline run.
 
@@ -288,7 +288,7 @@ class OMetaLogsMixin:
 
                 return log_data
 
-            return None
+            return None  # noqa: TRY300
 
         except Exception as e:
             logger.error(f"Failed to retrieve logs from S3 for pipeline {pipeline_fqn}: {e}")

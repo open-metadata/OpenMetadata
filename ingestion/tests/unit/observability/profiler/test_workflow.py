@@ -453,5 +453,5 @@ def test_service_name_validation_raised(*_):
     """Test the service name validation for the profiler
     workflow is raised correctly
     """
-    with raises(ValueError, match="Service name `.*` does not exist"):
+    with raises(ValueError, match="Service name `.*` does not exist"):  # noqa: RUF043
         ProfilerWorkflow.create(config)
