@@ -481,7 +481,9 @@ class GenericDataFrameColumnParser:
                     value = json.loads(value)  # noqa: PLW2901
                 except (TypeError, ValueError):
                     continue
-            if isinstance(value, list):
+            if isinstance(value, dict):
+                flattened.append(value)
+            elif isinstance(value, list):
                 flattened.extend(item for item in value if isinstance(item, dict))
         if not flattened:
             return []
