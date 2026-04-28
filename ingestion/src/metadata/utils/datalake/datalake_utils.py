@@ -153,7 +153,7 @@ def fetch_dataframe_first_chunk(
 _ICEBERG_METADATA_PATH_RE = re.compile(r"([^/]+)/metadata/v\d+\.metadata\.json$")
 
 
-def get_iceberg_table_name_from_metadata_path(metadata_path: str) -> Optional[str]:
+def get_iceberg_table_name_from_metadata_path(metadata_path: str) -> str | None:
     """
     Extracts the Iceberg table directory name from a metadata file path.
 

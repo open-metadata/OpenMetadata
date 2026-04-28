@@ -125,11 +125,9 @@ class JSONDataFrameReader(DataFrameReader):
             if isinstance(data, dict)
             and (
                 data.get("$schema") is not None  # JSON Schema files
-                or data.get("format-version")
-                is not None  # Apache Iceberg table metadata
+                or data.get("format-version") is not None  # Apache Iceberg table metadata
                 or (  # Delta Lake / Iceberg schema structure
-                    isinstance(data.get("schema"), dict)
-                    and isinstance(data.get("schema", {}).get("fields"), list)
+                    isinstance(data.get("schema"), dict) and isinstance(data.get("schema", {}).get("fields"), list)
                 )
             )
             else None
@@ -153,19 +151,16 @@ class JSONDataFrameReader(DataFrameReader):
             return True
         try:
             obj = json.loads(first_line)
+        except json.JSONDecodeError:
+            return False
+        else:
             if not isinstance(obj, dict):
                 return False
             if obj.get("$schema") is not None:
                 return False
             if obj.get("format-version") is not None:
                 return False
-            if isinstance(obj.get("schema"), dict) and isinstance(
-                obj.get("schema", {}).get("fields"), list
-            ):
-                return False
-            return True
-        except json.JSONDecodeError:
-            return False
+            return not (isinstance(obj.get("schema"), dict) and isinstance(obj.get("schema", {}).get("fields"), list))
 
     def _read_json_smart(
         self,

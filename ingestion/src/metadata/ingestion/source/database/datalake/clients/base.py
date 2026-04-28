@@ -42,7 +42,6 @@ class DatalakeBaseClient(ABC):
             iceberg_tables[table_dir] = (version, name, size)
         return True
 
-
     def __init__(self, client: Any, session: Any = None, **kwargs):
         self._client = client
         self._session = session

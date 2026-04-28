@@ -87,7 +87,7 @@ class DatalakeS3Client(DatalakeBaseClient):
         if prefix:
             kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
 
-        iceberg_tables: Dict[str, Tuple[int, str, Optional[int]]] = {}  # noqa: UP006
+        iceberg_tables: Dict[str, Tuple[int, str, int | None]] = {}  # noqa: UP006
 
         for key in list_s3_objects(self._client, **kwargs):
             key_name = key["Key"]
@@ -105,15 +105,23 @@ class DatalakeS3Client(DatalakeBaseClient):
         for _, metadata_key, size in iceberg_tables.values():
             yield metadata_key, size
 
-        for key in list_s3_objects(self._client, **kwargs):
-            key_name = key["Key"]
-            size = key.get("Size")
-            if skip_cold_storage and self._should_skip_s3_cold_storage(key):
-                continue
-            if not self._ICEBERG_METADATA_RE.match(key_name) and not any(
-                key_name.startswith(d + "/") for d in iceberg_dirs
-            ):
+        if not iceberg_dirs:
+            for key in list_s3_objects(self._client, **kwargs):
+                key_name = key["Key"]
+                size = key.get("Size")
+                if skip_cold_storage and self._should_skip_s3_cold_storage(key):
+                    continue
                 yield key_name, size
+        else:
+            for key in list_s3_objects(self._client, **kwargs):
+                key_name = key["Key"]
+                size = key.get("Size")
+                if skip_cold_storage and self._should_skip_s3_cold_storage(key):
+                    continue
+                if not self._ICEBERG_METADATA_RE.match(key_name) and not any(
+                    key_name.startswith(d + "/") for d in iceberg_dirs
+                ):
+                    yield key_name, size
 
     def get_folders_prefix(self, bucket_name: str, prefix: Optional[str]) -> Iterable[str]:  # noqa: UP045
         for page in self._client.get_paginator("list_objects_v2").paginate(

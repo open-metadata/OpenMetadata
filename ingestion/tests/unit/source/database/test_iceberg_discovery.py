@@ -12,6 +12,7 @@
 """
 Tests for Iceberg table directory detection in DatalakeGcsClient and DatalakeS3Client.
 """
+
 import sys
 import types
 from unittest.mock import MagicMock, patch
@@ -21,9 +22,7 @@ from unittest.mock import MagicMock, patch
 # present, which prevents breaking other tests or masking integration issues.
 _google_mod = sys.modules.setdefault("google", types.ModuleType("google"))
 _gcloud_mod = sys.modules.setdefault("google.cloud", types.ModuleType("google.cloud"))
-_storage_mod = sys.modules.setdefault(
-    "google.cloud.storage", types.ModuleType("google.cloud.storage")
-)
+_storage_mod = sys.modules.setdefault("google.cloud.storage", types.ModuleType("google.cloud.storage"))
 if not hasattr(_storage_mod, "Client"):
     _storage_mod.Client = MagicMock
 if not hasattr(_google_mod, "cloud"):
@@ -39,9 +38,7 @@ from metadata.ingestion.source.database.datalake.clients.s3 import (  # noqa: E4
 )
 
 
-def _make_blob(
-    name: str, size: int = 1024, storage_class: str = "STANDARD"
-) -> MagicMock:
+def _make_blob(name: str, size: int = 1024, storage_class: str = "STANDARD") -> MagicMock:
     blob = MagicMock()
     blob.name = name
     blob.size = size
@@ -54,9 +51,7 @@ def _make_gcs_client(blobs: list) -> DatalakeGcsClient:
     mock_bucket = MagicMock()
     mock_storage_client.get_bucket.return_value = mock_bucket
     mock_bucket.list_blobs.return_value = blobs
-    mock_bucket.get_blob.side_effect = lambda name: next(
-        (b for b in blobs if b.name == name), None
-    )
+    mock_bucket.get_blob.side_effect = lambda name: next((b for b in blobs if b.name == name), None)
     client = DatalakeGcsClient.__new__(DatalakeGcsClient)
     client._client = mock_storage_client
     client._temp_credentials_file_path_list = []
@@ -166,7 +161,7 @@ class TestGcsIcebergDiscovery:
 
 
 class TestS3IcebergDiscovery:
-    def _make_s3_client(self, keys: list, sizes: dict = None) -> DatalakeS3Client:
+    def _make_s3_client(self, keys: list, sizes: dict | None = None) -> DatalakeS3Client:
         """Helper: create a DatalakeS3Client backed by a mocked boto3 client."""
         mock_boto_client = MagicMock()
         client = DatalakeS3Client.__new__(DatalakeS3Client)
@@ -174,9 +169,7 @@ class TestS3IcebergDiscovery:
         client._session = None
         self._mock_boto_client = mock_boto_client
         sizes = sizes or {}
-        self._s3_objects = [
-            {"Key": k, "Size": sizes.get(k, 1024)} for k in keys
-        ]
+        self._s3_objects = [{"Key": k, "Size": sizes.get(k, 1024)} for k in keys]
         return client
 
     def test_s3_iceberg_table_detected(self):
@@ -275,24 +268,9 @@ class TestIcebergTableNameHelper:
             get_iceberg_table_name_from_metadata_path,
         )
 
-        assert (
-            get_iceberg_table_name_from_metadata_path(
-                "warehouse/orders/metadata/v2.metadata.json"
-            )
-            == "orders"
-        )
-        assert (
-            get_iceberg_table_name_from_metadata_path(
-                "my_prefix/sales/metadata/v1.metadata.json"
-            )
-            == "sales"
-        )
-        assert (
-            get_iceberg_table_name_from_metadata_path(
-                "simple/metadata/v3.metadata.json"
-            )
-            == "simple"
-        )
+        assert get_iceberg_table_name_from_metadata_path("warehouse/orders/metadata/v2.metadata.json") == "orders"
+        assert get_iceberg_table_name_from_metadata_path("my_prefix/sales/metadata/v1.metadata.json") == "sales"
+        assert get_iceberg_table_name_from_metadata_path("simple/metadata/v3.metadata.json") == "simple"
 
     def test_non_iceberg_path_returns_none(self):
         from metadata.utils.datalake.datalake_utils import (
@@ -300,14 +278,9 @@ class TestIcebergTableNameHelper:
         )
 
         assert get_iceberg_table_name_from_metadata_path("data/orders.json") is None
-        assert (
-            get_iceberg_table_name_from_metadata_path("warehouse/orders.json") is None
-        )
+        assert get_iceberg_table_name_from_metadata_path("warehouse/orders.json") is None
         assert get_iceberg_table_name_from_metadata_path("metadata/v1.json") is None
-        assert (
-            get_iceberg_table_name_from_metadata_path("orders/metadata/snapshot.avro")
-            is None
-        )
+        assert get_iceberg_table_name_from_metadata_path("orders/metadata/snapshot.avro") is None
 
     def test_table_type_iceberg_for_metadata_files(self):
         from metadata.generated.schema.entity.data.table import TableType
@@ -317,9 +290,7 @@ class TestIcebergTableNameHelper:
 
         key_name = "warehouse/orders/metadata/v1.metadata.json"
         table_type = (
-            TableType.Iceberg
-            if get_iceberg_table_name_from_metadata_path(key_name) is not None
-            else TableType.Regular
+            TableType.Iceberg if get_iceberg_table_name_from_metadata_path(key_name) is not None else TableType.Regular
         )
         assert table_type == TableType.Iceberg
 
@@ -335,9 +306,7 @@ class TestIcebergTableNameHelper:
                 if get_iceberg_table_name_from_metadata_path(key_name) is not None
                 else TableType.Regular
             )
-            assert (
-                table_type == TableType.Regular
-            ), f"Expected Regular for {key_name}, got {table_type}"
+            assert table_type == TableType.Regular, f"Expected Regular for {key_name}, got {table_type}"
 
 
 class TestSlice4FetchKeyCorrectness:
@@ -375,7 +344,7 @@ class TestSlice4FetchKeyCorrectness:
             file_size,
             original_key,
         )
-        table_name, table_type, table_extension, t_file_size, fetch_key = tuple_5
+        table_name, _table_type, table_extension, t_file_size, fetch_key = tuple_5
 
         wrapper = DatalakeTableSchemaWrapper(
             key=fetch_key,
@@ -384,12 +353,8 @@ class TestSlice4FetchKeyCorrectness:
             file_size=t_file_size,
         )
 
-        assert (
-            wrapper.key == original_key
-        ), f"fetch key should be original blob path, got {wrapper.key!r}"
-        assert (
-            wrapper.key != display_name
-        ), f"fetch key must NOT be the display name '{display_name}'"
+        assert wrapper.key == original_key, f"fetch key should be original blob path, got {wrapper.key!r}"
+        assert wrapper.key != display_name, f"fetch key must NOT be the display name '{display_name}'"
         assert table_name == display_name
 
     def test_non_iceberg_fetch_key_equals_table_name(self):
@@ -406,9 +371,7 @@ class TestSlice4FetchKeyCorrectness:
         )
 
         key_name = "data/orders.parquet"
-        table_name = (
-            key_name  # standardize_table_name returns unchanged for non-Iceberg
-        )
+        table_name = key_name  # standardize_table_name returns unchanged for non-Iceberg
 
         assert get_iceberg_table_name_from_metadata_path(key_name) is None
 

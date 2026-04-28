@@ -126,13 +126,12 @@ class DatalakeGcsClient(DatalakeBaseClient):
         files without accumulation, keeping memory overhead at O(1) per object.
         """
         bucket = self._client.get_bucket(bucket_name)
-        iceberg_tables: Dict[str, Tuple[int, str, Optional[int]]] = {}  # noqa: UP006
+        iceberg_tables: Dict[str, Tuple[int, str, int | None]] = {}  # noqa: UP006
 
         for blob in bucket.list_blobs(prefix=prefix):
             if skip_cold_storage and self._should_skip_gcs_cold_storage(blob):
                 logger.debug(
-                    f"Skipping cold storage object: {blob.name} "
-                    f"(storage_class: {getattr(blob, 'storage_class', None)})"
+                    f"Skipping cold storage object: {blob.name} (storage_class: {getattr(blob, 'storage_class', None)})"
                 )
                 continue
             self._update_iceberg_entry(iceberg_tables, blob.name, blob.size)
@@ -141,13 +140,19 @@ class DatalakeGcsClient(DatalakeBaseClient):
         for _, metadata_blob_path, size in iceberg_tables.values():
             yield metadata_blob_path, size
 
-        for blob in bucket.list_blobs(prefix=prefix):
-            if skip_cold_storage and self._should_skip_gcs_cold_storage(blob):
-                continue
-            if not self._ICEBERG_METADATA_RE.match(blob.name) and not any(
-                blob.name.startswith(d + "/") for d in iceberg_dirs
-            ):
+        if not iceberg_dirs:
+            for blob in bucket.list_blobs(prefix=prefix):
+                if skip_cold_storage and self._should_skip_gcs_cold_storage(blob):
+                    continue
                 yield blob.name, blob.size
+        else:
+            for blob in bucket.list_blobs(prefix=prefix):
+                if skip_cold_storage and self._should_skip_gcs_cold_storage(blob):
+                    continue
+                if not self._ICEBERG_METADATA_RE.match(blob.name) and not any(
+                    blob.name.startswith(d + "/") for d in iceberg_dirs
+                ):
+                    yield blob.name, blob.size
 
     def close(self, service_connection):
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")
