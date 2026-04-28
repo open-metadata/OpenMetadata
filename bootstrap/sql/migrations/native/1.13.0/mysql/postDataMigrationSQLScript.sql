@@ -79,6 +79,8 @@ WHERE NOT EXISTS (
 UPDATE glossary_term_entity
 SET json = JSON_REMOVE(json, '$.relatedTerms')
 WHERE JSON_EXTRACT(json, '$.relatedTerms') IS NOT NULL;
+-- entity_extension version snapshots: handled by Java migration
+-- migrateGlossaryTermVersionRelatedTermsToTermRelation (transforms in place to preserve history).
 
 -- Same fix as above, for version snapshots used by GET /versions/{v}.
 -- Only legacy snapshots: first item has bare `id` (EntityReference) instead of `term` (TermRelation).

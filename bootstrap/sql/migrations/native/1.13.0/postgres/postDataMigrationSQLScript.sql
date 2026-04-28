@@ -82,12 +82,8 @@ UPDATE glossary_term_entity
 SET json = (json::jsonb - 'relatedTerms')::json
 WHERE jsonb_exists(json::jsonb, 'relatedTerms');
 
--- Same fix as above, for version snapshots used by GET /versions/{v}.
--- Only legacy snapshots: first item has bare `id` (EntityReference) instead of `term` (TermRelation).
-UPDATE entity_extension
-SET json = (json::jsonb - 'relatedTerms')::json
-WHERE extension LIKE 'glossaryTerm.version.%'
-  AND ((json::jsonb)->'relatedTerms'->0) ? 'id';
+-- entity_extension version snapshots: handled by Java migration
+-- migrateGlossaryTermVersionRelatedTermsToTermRelation (transforms in place to preserve history).
 
 -- Backfill conceptMappings for existing glossary terms
 UPDATE glossary_term_entity
