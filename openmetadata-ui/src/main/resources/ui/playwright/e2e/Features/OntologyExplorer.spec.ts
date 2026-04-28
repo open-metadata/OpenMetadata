@@ -526,14 +526,10 @@ test.describe('Ontology Explorer', () => {
         .locator('input');
       await searchInput.fill(term1.data.name);
       // Search does not re-run layout, so read existing positions without clearing.
-      const filteredCount = Object.keys(
-        await readNodePositions(page)
-      ).length;
+      const filteredCount = Object.keys(await readNodePositions(page)).length;
 
       await searchInput.clear();
-      const restoredCount = Object.keys(
-        await readNodePositions(page)
-      ).length;
+      const restoredCount = Object.keys(await readNodePositions(page)).length;
       expect(restoredCount).toBeGreaterThanOrEqual(filteredCount);
     });
 
