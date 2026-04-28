@@ -274,10 +274,7 @@ pythonVersion = "3.10"
 
 # `standard` is the surveyed-2025-2026 production-default. `recommended`
 # (basedpyright's default) enables `reportUnknown*` which is catastrophic
-# on a 75-connector codebase with partially-typed third-party deps. Every
-# mature OSS pyright/basedpyright config (Pydantic, Litestar, FastAPI,
-# OpenAI/Anthropic SDKs, Polars, Strawberry, Airflow, AnyIO) sits at
-# `standard` or stricter-with-Unknown-off.
+# on a 75-connector codebase with partially-typed third-party deps.
 typeCheckingMode = "standard"
 # Don't fail CI on warnings; only errors gate. Warnings are signals to
 # tighten later via the ratchet plan below.
