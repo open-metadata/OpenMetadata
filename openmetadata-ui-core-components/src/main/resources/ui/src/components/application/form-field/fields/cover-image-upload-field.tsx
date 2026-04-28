@@ -139,30 +139,21 @@ const formatAcceptedTypes = (types: string[] | undefined): string => {
     .join(', ');
 };
 
-const validateImageDimensions = (
-  file: File,
-  maxDimensions: { width: number; height: number },
-  failedToLoadMessage: string
-): Promise<{ valid: true } | { valid: false; error: string }> =>
-  new Promise((resolve) => {
+const measureImage = (
+  file: File
+): Promise<{ width: number; height: number }> =>
+  new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
 
     img.onload = () => {
       URL.revokeObjectURL(url);
-      if (
-        img.width > maxDimensions.width ||
-        img.height > maxDimensions.height
-      ) {
-        resolve({ valid: false, error: '' });
-      } else {
-        resolve({ valid: true });
-      }
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
     };
 
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      resolve({ valid: false, error: failedToLoadMessage });
+      reject(new Error('failed to load image'));
     };
 
     img.src = url;
@@ -208,25 +199,26 @@ export const CoverImageUploadField = ({
     [validationMessages]
   );
 
-  const previewSrc = useMemo(() => {
+  const [previewSrc, setPreviewSrc] = useState('');
+
+  useEffect(() => {
     if (hasFile(value)) {
-      return URL.createObjectURL(value.file);
+      const url = URL.createObjectURL(value.file);
+      setPreviewSrc(url);
+
+      return () => URL.revokeObjectURL(url);
     }
 
     if (hasUrl(value)) {
-      return value.url;
+      setPreviewSrc(value.url);
+
+      return undefined;
     }
 
-    return '';
-  }, [value]);
+    setPreviewSrc('');
 
-  useEffect(() => {
-    return () => {
-      if (previewSrc.startsWith('blob:')) {
-        URL.revokeObjectURL(previewSrc);
-      }
-    };
-  }, [previewSrc]);
+    return undefined;
+  }, [value]);
 
   useEffect(() => {
     setImageError(false);
@@ -243,34 +235,34 @@ export const CoverImageUploadField = ({
 
   const acceptFile = useCallback(
     async (file: File) => {
-      if (maxDimensions) {
-        const result = await validateImageDimensions(
-          file,
-          maxDimensions,
-          mergedValidationMessages.failedToLoad
-        );
-        if (!result.valid) {
-          reportValidationError(
-            result.error ||
-              mergedValidationMessages.dimensionsExceeded(
-                maxDimensions.width,
-                maxDimensions.height
-              )
-          );
+      let dims: { width: number; height: number };
+      try {
+        dims = await measureImage(file);
+      } catch {
+        reportValidationError(mergedValidationMessages.failedToLoad);
 
-          return;
-        }
+        return;
       }
 
-      onChange({ file, position: value?.position });
+      if (
+        maxDimensions &&
+        (dims.width > maxDimensions.width || dims.height > maxDimensions.height)
+      ) {
+        reportValidationError(
+          mergedValidationMessages.dimensionsExceeded(
+            maxDimensions.width,
+            maxDimensions.height
+          )
+        );
+
+        return;
+      }
+
+      setImageNaturalWidth(dims.width);
+      setImageNaturalHeight(dims.height);
+      onChange({ file, position: undefined });
     },
-    [
-      maxDimensions,
-      mergedValidationMessages,
-      reportValidationError,
-      onChange,
-      value,
-    ]
+    [maxDimensions, mergedValidationMessages, reportValidationError, onChange]
   );
 
   const handleDropFiles = useCallback(
