@@ -11,6 +11,7 @@
 """
 Postgres models
 """
+
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -22,6 +23,6 @@ class PostgresStoredProcedure(BaseModel):
     name: str = Field(alias="procedure_name")
     schema: str = Field(alias="schema_name")
     definition: str
-    language: Optional[str] = None
-    procedure_type: Optional[str] = Field(None, alias="procedure_type")
-    description: Optional[str] = Field(None, alias="description")
+    language: Optional[str] = None  # noqa: UP045
+    procedure_type: Optional[str] = Field(None, alias="procedure_type")  # noqa: UP045
+    description: Optional[str] = Field(None, alias="description")  # noqa: UP045

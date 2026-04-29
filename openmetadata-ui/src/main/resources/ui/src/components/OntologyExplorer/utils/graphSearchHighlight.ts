@@ -27,12 +27,16 @@ export interface GraphSearchHighlightInput {
   highlightedGlossaryIds: readonly string[];
 }
 
+function normalize(text: string): string {
+  return toLower(text).normalize('NFD').replace(/\p{M}/gu, '');
+}
+
 function textMatches(query: string, value: string | undefined): boolean {
   if (!value) {
     return false;
   }
 
-  return includes(toLower(value), query);
+  return includes(normalize(value), query);
 }
 
 export function ontologyEdgeKey(edge: OntologyEdge): string {
@@ -50,7 +54,7 @@ export function computeGraphSearchHighlight(
   glossaries: Glossary[],
   relationTypes: GlossaryTermRelationType[]
 ): GraphSearchHighlightInput | null {
-  const query = rawQuery.trim().toLowerCase();
+  const query = normalize(rawQuery.trim());
   if (!query) {
     return null;
   }

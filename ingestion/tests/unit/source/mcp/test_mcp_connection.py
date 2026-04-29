@@ -109,9 +109,7 @@ class TestMcpConnectionManager:
         assert http_server.transport == "SSE"
         assert http_server.url == "http://localhost:8080"
 
-    @patch(
-        "metadata.ingestion.source.mcp.connection.discover_servers_from_config_files"
-    )
+    @patch("metadata.ingestion.source.mcp.connection.discover_servers_from_config_files")
     def test_discover_from_config_files(self, mock_discover, config_file_connection):
         mock_discover.return_value = [
             McpServerInfo(name="server1", command="cmd1"),
@@ -198,9 +196,7 @@ class TestMcpConnectionManager:
         assert result is False
 
     @patch("metadata.ingestion.source.mcp.connection.McpClient")
-    def test_test_server_connection_closes_on_success(
-        self, mock_client_class, direct_connection
-    ):
+    def test_test_server_connection_closes_on_success(self, mock_client_class, direct_connection):
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
 
