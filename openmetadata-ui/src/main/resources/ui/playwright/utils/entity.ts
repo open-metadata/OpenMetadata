@@ -918,6 +918,9 @@ export const removeTag = async (page: Page, tags: string[]) => {
     await page.getByTestId('saveAssociatedTag').click();
     await patchRequest;
 
+    await waitForAllLoadersToDisappear(page);
+    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+
     await expect(
       page
         .getByTestId('KnowledgePanel.Tags')
