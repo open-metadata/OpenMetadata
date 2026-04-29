@@ -4586,11 +4586,12 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   // ===================================================================
 
   /**
-   * Get the full Elasticsearch index name with cluster alias prefix.
-   * In test environment, cluster alias is "openmetadata" so table index is "openmetadata_table_search_index"
+   * Get the full Elasticsearch index name with cluster alias prefix. The alias is randomized
+   * per JUnit session by {@link org.openmetadata.it.bootstrap.TestSuiteBootstrap}.
    */
   private String getTableSearchIndexName() {
-    return "openmetadata_table_search_index";
+    return org.openmetadata.it.bootstrap.TestSuiteBootstrap.getClusterAlias()
+        + "_table_search_index";
   }
 
   // ===================================================================

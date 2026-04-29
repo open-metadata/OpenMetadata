@@ -65,8 +65,9 @@ public class SearchIndexFieldLimitIT {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final String TABLE_TYPE_NAME = "table";
   private static final int NUM_CUSTOM_PROPERTIES = 50;
-  // Index name with cluster alias prefix (from TestSuiteBootstrap.ELASTIC_SEARCH_CLUSTER_ALIAS)
-  private static final String TABLE_INDEX = "openmetadata_table_search_index";
+  // Index name uses the cluster alias resolved by TestSuiteBootstrap (randomized per session).
+  private static final String TABLE_INDEX =
+      org.openmetadata.it.bootstrap.TestSuiteBootstrap.getClusterAlias() + "_table_search_index";
 
   private static Type STRING_TYPE;
   private static Type INTEGER_TYPE;

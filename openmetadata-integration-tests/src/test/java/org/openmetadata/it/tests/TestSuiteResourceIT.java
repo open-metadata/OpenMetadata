@@ -1139,7 +1139,8 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   private String getTestSuiteSearchIndexName() {
-    return "openmetadata_test_suite_search_index";
+    return org.openmetadata.it.bootstrap.TestSuiteBootstrap.getClusterAlias()
+        + "_test_suite_search_index";
   }
 
   private void refreshTestSuiteSearchIndex(Rest5Client searchClient) throws Exception {

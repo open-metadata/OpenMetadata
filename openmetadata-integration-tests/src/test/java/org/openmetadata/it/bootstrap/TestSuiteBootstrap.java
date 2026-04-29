@@ -106,7 +106,35 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static final Integer ELASTIC_BATCH_SIZE = 10;
   private static final IndexMappingLanguage ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE =
       IndexMappingLanguage.EN;
-  private static final String ELASTIC_SEARCH_CLUSTER_ALIAS = "openmetadata";
+
+  /**
+   * Cluster alias used as the prefix for all search indices in this test session.
+   *
+   * <p>The OpenSearch / Elasticsearch testcontainer is shared across the entire JUnit launcher
+   * session (single static container, see {@link #SEARCH_CONTAINER}). When tests run in parallel
+   * (the {@code parallel-tests} profile sets {@code junit.jupiter.execution.parallel.enabled=true}
+   * and {@code reuseForks=true} keeps everything in one JVM), every test reads and writes against
+   * the same set of indices. {@link org.openmetadata.it.util.TestNamespace} only isolates entity
+   * FQNs in the database — it does not isolate documents in the search index.
+   *
+   * <p>To prevent cross-test pollution between concurrent CI runs that share the cluster, the alias
+   * is randomized per session so each session writes to its own {@code <alias>_*} indices. Set
+   * {@code -DclusterAlias=openmetadata} (or any fixed value) to pin the alias for reproducible
+   * debugging.
+   */
+  private static final String ELASTIC_SEARCH_CLUSTER_ALIAS = resolveClusterAlias();
+
+  private static String resolveClusterAlias() {
+    String override = System.getProperty("clusterAlias");
+    if (override != null && !override.isBlank()) {
+      return override.trim().toLowerCase(java.util.Locale.ROOT);
+    }
+    return "omtest_" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+  }
+
+  public static String getClusterAlias() {
+    return ELASTIC_SEARCH_CLUSTER_ALIAS;
+  }
 
   // Default images (can be overridden by system properties)
   private static final String DEFAULT_POSTGRES_IMAGE = "postgres:15";
@@ -164,6 +192,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     LOG.info("=== TestSuiteBootstrap: Starting test infrastructure ===");
     LOG.info("Database type: {}", databaseType);
     LOG.info("Search type: {}", searchType);
+    LOG.info("Search cluster alias: {}", ELASTIC_SEARCH_CLUSTER_ALIAS);
     LOG.info("RDF enabled: {}", rdfEnabled);
     LOG.info("Cache provider: {}", cacheProvider);
     boolean k8sEnabled = isK8sTestsRequested();
