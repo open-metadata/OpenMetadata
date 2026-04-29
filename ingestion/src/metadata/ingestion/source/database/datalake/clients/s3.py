@@ -70,6 +70,45 @@ class DatalakeS3Client(DatalakeBaseClient):
             "DEEP_ARCHIVE_ACCESS",
         }
 
+    def _discover_iceberg_dirs(
+        self,
+        skip_cold_storage: bool,
+        **kwargs: str,
+    ) -> Tuple[Dict[str, Tuple[int, str, int | None]], Set[str]]:  # noqa: UP006
+        """Pass 1: discover Iceberg table directories and return (iceberg_tables, iceberg_dirs)."""
+        iceberg_tables: Dict[str, Tuple[int, str, int | None]] = {}  # noqa: UP006
+        cold_iceberg_dirs: Set[str] = set()  # noqa: UP006
+
+        for key in list_s3_objects(self._client, **kwargs):
+            key_name = key["Key"]
+            size = key.get("Size")
+            if skip_cold_storage and self._should_skip_s3_cold_storage(key):
+                match = self._ICEBERG_METADATA_RE.match(key_name)
+                if match:
+                    cold_iceberg_dirs.add(match.group(1))
+                continue
+            self._update_iceberg_entry(iceberg_tables, key_name, size)
+
+        return iceberg_tables, set(iceberg_tables.keys()) | cold_iceberg_dirs
+
+    def _yield_regular_files(
+        self,
+        skip_cold_storage: bool,
+        iceberg_dirs: Set[str],  # noqa: UP006
+        **kwargs: str,
+    ) -> Iterable[Tuple[str, Optional[int]]]:  # noqa: UP006, UP045
+        """Pass 2: stream regular files, skipping Iceberg directory contents."""
+        for key in list_s3_objects(self._client, **kwargs):
+            key_name = key["Key"]
+            size = key.get("Size")
+            if skip_cold_storage and self._should_skip_s3_cold_storage(key):
+                continue
+            if iceberg_dirs and (
+                self._ICEBERG_METADATA_RE.match(key_name) or any(key_name.startswith(d + "/") for d in iceberg_dirs)
+            ):
+                continue
+            yield key_name, size
+
     def get_table_names(
         self,
         bucket_name: str,
@@ -87,46 +126,12 @@ class DatalakeS3Client(DatalakeBaseClient):
         if prefix:
             kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
 
-        iceberg_tables: Dict[str, Tuple[int, str, int | None]] = {}  # noqa: UP006
-        cold_iceberg_dirs: Set[str] = set()  # noqa: UP006
+        iceberg_tables, iceberg_dirs = self._discover_iceberg_dirs(skip_cold_storage, **kwargs)
 
-        for key in list_s3_objects(self._client, **kwargs):
-            key_name = key["Key"]
-            size = key.get("Size")
-            is_cold = skip_cold_storage and self._should_skip_s3_cold_storage(key)
-            if is_cold:
-                logger.debug(
-                    f"Skipping cold storage object: {key_name} "
-                    f"(StorageClass: {key.get('StorageClass', 'STANDARD')}, "
-                    f"ArchiveStatus: {key.get('ArchiveStatus', '')})"
-                )
-                match = self._ICEBERG_METADATA_RE.match(key_name)
-                if match:
-                    cold_iceberg_dirs.add(match.group(1))
-                continue
-            self._update_iceberg_entry(iceberg_tables, key_name, size)
-
-        iceberg_dirs = set(iceberg_tables.keys()) | cold_iceberg_dirs
         for _, metadata_key, size in iceberg_tables.values():
             yield metadata_key, size
 
-        if not iceberg_dirs:
-            for key in list_s3_objects(self._client, **kwargs):
-                key_name = key["Key"]
-                size = key.get("Size")
-                if skip_cold_storage and self._should_skip_s3_cold_storage(key):
-                    continue
-                yield key_name, size
-        else:
-            for key in list_s3_objects(self._client, **kwargs):
-                key_name = key["Key"]
-                size = key.get("Size")
-                if skip_cold_storage and self._should_skip_s3_cold_storage(key):
-                    continue
-                if not self._ICEBERG_METADATA_RE.match(key_name) and not any(
-                    key_name.startswith(d + "/") for d in iceberg_dirs
-                ):
-                    yield key_name, size
+        yield from self._yield_regular_files(skip_cold_storage, iceberg_dirs, **kwargs)
 
     def get_folders_prefix(self, bucket_name: str, prefix: Optional[str]) -> Iterable[str]:  # noqa: UP045
         for page in self._client.get_paginator("list_objects_v2").paginate(
