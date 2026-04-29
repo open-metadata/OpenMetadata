@@ -717,9 +717,9 @@ public class SearchRepository {
    * inputs. The accepted syntax is documented on the schema fields:
    *
    * <ul>
-   *   <li>{@code null}, empty / whitespace, {@code "none"}, or the legacy {@code "false"} —
-   *       reject every candidate (no expansion).
-   *   <li>{@code "*"}, {@code "all"}, or the legacy {@code "true"} — accept every candidate.
+   *   <li>{@code null}, empty / whitespace, or {@code "none"} — reject every candidate (no
+   *       expansion).
+   *   <li>{@code "*"} or {@code "all"} — accept every candidate.
    *   <li>{@code "table,topic"} — accept only the listed entity types.
    * </ul>
    */
@@ -740,14 +740,10 @@ public class SearchRepository {
         return NONE;
       }
       String trimmed = raw.trim();
-      if (trimmed.isEmpty()
-          || "none".equalsIgnoreCase(trimmed)
-          || "false".equalsIgnoreCase(trimmed)) {
+      if (trimmed.isEmpty() || "none".equalsIgnoreCase(trimmed)) {
         return NONE;
       }
-      if ("*".equals(trimmed)
-          || "all".equalsIgnoreCase(trimmed)
-          || "true".equalsIgnoreCase(trimmed)) {
+      if ("*".equals(trimmed) || "all".equalsIgnoreCase(trimmed)) {
         return ALL;
       }
       Set<String> allowed =

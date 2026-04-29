@@ -111,12 +111,12 @@
       "default": true
     },
     "fetchParentsAliases": {
-      "description": "Selective expansion of the requested index toward its parent aliases declared in indexMapping.json. Pass `*` (or `all`) to include every parent, `none` (or empty) to include none, or a comma-separated list of specific entity types (e.g. `database,databaseSchema`) to include only those. Defaults to `none`. The legacy boolean tokens `true` / `false` are accepted and aliased to `*` / `none`.",
+      "description": "Selective expansion of the requested index toward its parent aliases declared in indexMapping.json. Pass `*` (or `all`) to include every parent, `none` (or empty) to include none, or a comma-separated list of specific entity types (e.g. `database,databaseSchema`) to include only those. Defaults to `none`.",
       "type": "string",
       "default": "none"
     },
     "fetchChildAliases": {
-      "description": "Selective expansion of the requested index toward its child aliases (entities that list this alias in their parentAliases). Pass `*` (or `all`) for every child, `none` (or empty) for none, or a comma-separated list of specific entity types (e.g. `tableColumn`) to include only those. Defaults to `none` so a query for `index=table` is scoped to table documents and does not bleed in column documents from indexes that share the alias. The legacy boolean tokens `true` / `false` are accepted and aliased to `*` / `none`.",
+      "description": "Selective expansion of the requested index toward its child aliases (entities that list this alias in their parentAliases). Pass `*` (or `all`) for every child, `none` (or empty) for none, or a comma-separated list of specific entity types (e.g. `tableColumn`) to include only those. Defaults to `none` so a query for `index=table` is scoped to table documents and does not bleed in column documents from indexes that share the alias.",
       "type": "string",
       "default": "none"
     }

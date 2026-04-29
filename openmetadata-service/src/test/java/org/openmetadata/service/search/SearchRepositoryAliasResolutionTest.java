@@ -172,23 +172,6 @@ class SearchRepositoryAliasResolutionTest {
   }
 
   /**
-   * Legacy boolean tokens kept working so that any existing client that still sends
-   * {@code fetchChildAliases=true} doesn't regress.
-   */
-  @Test
-  void legacyBooleanTokensAreAcceptedAsAliases() {
-    String trueChildren =
-        SearchRepository.resolveIndexes(
-            "table", "none", "true", entityIndexMap, aliasToChildEntityTypes, "");
-    assertTrue(Arrays.asList(trueChildren.split(",")).contains("column_search_index"));
-
-    String falseChildren =
-        SearchRepository.resolveIndexes(
-            "table", "false", "false", entityIndexMap, aliasToChildEntityTypes, "");
-    assertEquals("table_search_index", falseChildren);
-  }
-
-  /**
    * Defense-in-depth: even after the resource-layer pre-resolution was removed for /aggregate,
    * /fieldQuery, and /entityTypeCounts, an already-prefixed token must not be prefixed again if
    * any future code path hands it back into the resolver. Exercises the fallback path of

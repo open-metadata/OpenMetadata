@@ -222,13 +222,13 @@ public class SearchResource {
           boolean includeAggregations,
       @Parameter(
               description =
-                  "Selective expansion toward parent aliases declared in indexMapping.json. Pass `*` (or `all`) for every parent, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `database,databaseSchema`). Defaults to `none`. Legacy `true` / `false` aliased to `*` / `none`.")
+                  "Selective expansion toward parent aliases declared in indexMapping.json. Pass `*` (or `all`) for every parent, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `database,databaseSchema`). Defaults to `none`.")
           @DefaultValue("none")
           @QueryParam("fetchParentsAliases")
           String fetchParentsAliases,
       @Parameter(
               description =
-                  "Selective expansion toward child aliases (entities that list this alias in their parentAliases). Pass `*` (or `all`) for every child, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `tableColumn`). Defaults to `none` so the response is scoped to the requested index. Legacy `true` / `false` aliased to `*` / `none`.")
+                  "Selective expansion toward child aliases (entities that list this alias in their parentAliases). Pass `*` (or `all`) for every child, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `tableColumn`). Defaults to `none` so the response is scoped to the requested index.")
           @DefaultValue("none")
           @QueryParam("fetchChildAliases")
           String fetchChildAliases)
@@ -327,13 +327,13 @@ public class SearchResource {
           int from,
       @Parameter(
               description =
-                  "Selective expansion toward parent aliases declared in indexMapping.json. Pass `*` (or `all`) for every parent, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `database,databaseSchema`). Defaults to `none`. Legacy `true` / `false` aliased to `*` / `none`.")
+                  "Selective expansion toward parent aliases declared in indexMapping.json. Pass `*` (or `all`) for every parent, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `database,databaseSchema`). Defaults to `none`.")
           @DefaultValue("none")
           @QueryParam("fetchParentsAliases")
           String fetchParentsAliases,
       @Parameter(
               description =
-                  "Selective expansion toward child aliases (entities that list this alias in their parentAliases). Pass `*` (or `all`) for every child, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `tableColumn`). Defaults to `none` so the response is scoped to the requested index. Legacy `true` / `false` aliased to `*` / `none`.")
+                  "Selective expansion toward child aliases (entities that list this alias in their parentAliases). Pass `*` (or `all`) for every child, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `tableColumn`). Defaults to `none` so the response is scoped to the requested index.")
           @DefaultValue("none")
           @QueryParam("fetchChildAliases")
           String fetchChildAliases)
@@ -540,13 +540,13 @@ public class SearchResource {
           boolean explain,
       @Parameter(
               description =
-                  "Selective expansion toward parent aliases declared in indexMapping.json. Pass `*` (or `all`) for every parent, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `database,databaseSchema`). Defaults to `none`. Legacy `true` / `false` aliased to `*` / `none`.")
+                  "Selective expansion toward parent aliases declared in indexMapping.json. Pass `*` (or `all`) for every parent, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `database,databaseSchema`). Defaults to `none`.")
           @DefaultValue("none")
           @QueryParam("fetchParentsAliases")
           String fetchParentsAliases,
       @Parameter(
               description =
-                  "Selective expansion toward child aliases (entities that list this alias in their parentAliases). Pass `*` (or `all`) for every child, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `tableColumn`). Defaults to `none` so the response is scoped to the requested index. Legacy `true` / `false` aliased to `*` / `none`.")
+                  "Selective expansion toward child aliases (entities that list this alias in their parentAliases). Pass `*` (or `all`) for every child, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `tableColumn`). Defaults to `none` so the response is scoped to the requested index.")
           @DefaultValue("none")
           @QueryParam("fetchChildAliases")
           String fetchChildAliases)
@@ -640,13 +640,13 @@ public class SearchResource {
           boolean deleted,
       @Parameter(
               description =
-                  "Selective expansion toward parent aliases declared in indexMapping.json. Pass `*` (or `all`) for every parent, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `database,databaseSchema`). Defaults to `none`. Legacy `true` / `false` aliased to `*` / `none`.")
+                  "Selective expansion toward parent aliases declared in indexMapping.json. Pass `*` (or `all`) for every parent, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `database,databaseSchema`). Defaults to `none`.")
           @DefaultValue("none")
           @QueryParam("fetchParentsAliases")
           String fetchParentsAliases,
       @Parameter(
               description =
-                  "Selective expansion toward child aliases (entities that list this alias in their parentAliases). Pass `*` (or `all`) for every child, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `tableColumn`). Defaults to `none` so the response is scoped to the requested index. Legacy `true` / `false` aliased to `*` / `none`.")
+                  "Selective expansion toward child aliases (entities that list this alias in their parentAliases). Pass `*` (or `all`) for every child, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `tableColumn`). Defaults to `none` so the response is scoped to the requested index.")
           @DefaultValue("none")
           @QueryParam("fetchChildAliases")
           String fetchChildAliases)
@@ -733,13 +733,13 @@ public class SearchResource {
           String queryText,
       @Parameter(
               description =
-                  "Selective expansion toward parent aliases declared in indexMapping.json. Pass `*` (or `all`) for every parent, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `database,databaseSchema`). Defaults to `none`. Legacy `true` / `false` aliased to `*` / `none`.")
+                  "Selective expansion toward parent aliases declared in indexMapping.json. Pass `*` (or `all`) for every parent, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `database,databaseSchema`). Defaults to `none`.")
           @DefaultValue("none")
           @QueryParam("fetchParentsAliases")
           String fetchParentsAliases,
       @Parameter(
               description =
-                  "Selective expansion toward child aliases (entities that list this alias in their parentAliases). Pass `*` (or `all`) for every child, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `tableColumn`). Defaults to `none` so the response is scoped to the requested index. Legacy `true` / `false` aliased to `*` / `none`.")
+                  "Selective expansion toward child aliases (entities that list this alias in their parentAliases). Pass `*` (or `all`) for every child, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `tableColumn`). Defaults to `none` so the response is scoped to the requested index.")
           @DefaultValue("none")
           @QueryParam("fetchChildAliases")
           String fetchChildAliases)
@@ -821,13 +821,13 @@ public class SearchResource {
           String postFilter,
       @Parameter(
               description =
-                  "Selective expansion toward parent aliases declared in indexMapping.json. Pass `*` (or `all`) for every parent, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `database,databaseSchema`). Defaults to `none`. Legacy `true` / `false` aliased to `*` / `none`.")
+                  "Selective expansion toward parent aliases declared in indexMapping.json. Pass `*` (or `all`) for every parent, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `database,databaseSchema`). Defaults to `none`.")
           @DefaultValue("none")
           @QueryParam("fetchParentsAliases")
           String fetchParentsAliases,
       @Parameter(
               description =
-                  "Selective expansion toward child aliases (entities that list this alias in their parentAliases). Pass `*` (or `all`) for every child, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `tableColumn`). Defaults to `none` so the response is scoped to the requested index. Legacy `true` / `false` aliased to `*` / `none`.")
+                  "Selective expansion toward child aliases (entities that list this alias in their parentAliases). Pass `*` (or `all`) for every child, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `tableColumn`). Defaults to `none` so the response is scoped to the requested index.")
           @DefaultValue("none")
           @QueryParam("fetchChildAliases")
           String fetchChildAliases)

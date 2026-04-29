@@ -60,12 +60,12 @@
       "default": false
     },
     "fetchParentsAliases": {
-      "description": "Selective expansion toward parent aliases. Pass `*`/`all` for every parent, `none` (or empty) for none, or a comma-separated list of entity types. Defaults to `none`. Legacy `true` / `false` are aliased to `*` / `none`.",
+      "description": "Selective expansion toward parent aliases. Pass `*`/`all` for every parent, `none` (or empty) for none, or a comma-separated list of entity types. Defaults to `none`.",
       "type": "string",
       "default": "none"
     },
     "fetchChildAliases": {
-      "description": "Selective expansion toward child aliases. Pass `*`/`all` for every child, `none` (or empty) for none, or a comma-separated list of entity types. Defaults to `none`. Legacy `true` / `false` are aliased to `*` / `none`.",
+      "description": "Selective expansion toward child aliases. Pass `*`/`all` for every child, `none` (or empty) for none, or a comma-separated list of entity types. Defaults to `none`.",
       "type": "string",
       "default": "none"
     }

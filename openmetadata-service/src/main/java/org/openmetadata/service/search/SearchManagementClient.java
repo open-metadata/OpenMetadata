@@ -77,11 +77,10 @@ public interface SearchManagementClient {
    * Variant that honors {@code fetchParentsAliases} / {@code fetchChildAliases} when resolving
    * the supplied {@code index} alias. Lets the alias-graph traversal happen exactly once, at
    * the manager boundary, instead of the resource pre-resolving and the manager re-prefixing.
-   * Filter syntax: {@code "*"} (or {@code "all"}, legacy {@code "true"}) for every alias,
-   * {@code "none"} (or empty, legacy {@code "false"}) for none, or a comma-separated list of
-   * specific entity types. Default implementation delegates to the legacy 4-arg signature so
-   * existing implementations pick up the conservative behavior (children expanded, parents not)
-   * until they implement the filter-aware path.
+   * Filter syntax: {@code "*"} (or {@code "all"}) for every alias, {@code "none"} (or empty) for
+   * none, or a comma-separated list of specific entity types. Default implementation delegates
+   * to the legacy 4-arg signature so existing implementations pick up the conservative behavior
+   * (no expansion) until they implement the filter-aware path.
    */
   default Response searchByField(
       String fieldName,
