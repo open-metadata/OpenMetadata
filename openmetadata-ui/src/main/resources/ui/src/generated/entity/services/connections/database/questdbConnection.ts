@@ -21,17 +21,9 @@ export interface QuestdbConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Regex to only include/exclude databases that matches the pattern.
-     */
-    databaseFilterPattern?: FilterPattern;
-    /**
      * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
      */
     hostPort: string;
-    /**
-     * Regex to only include/exclude schemas that matches the pattern.
-     */
-    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -65,13 +57,16 @@ export interface AuthConfigurationType {
 }
 
 /**
- * Regex to only include/exclude databases that matches the pattern.
+ * SQLAlchemy driver scheme options.
+ */
+export enum QuestDBScheme {
+    PostgresqlPsycopg2 = "postgresql+psycopg2",
+}
+
+/**
+ * Regex to only include/exclude tables that matches the pattern.
  *
  * Regex to only fetch entities that matches the pattern.
- *
- * Regex to only include/exclude schemas that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -82,13 +77,6 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
-}
-
-/**
- * SQLAlchemy driver scheme options.
- */
-export enum QuestDBScheme {
-    PostgresqlPsycopg2 = "postgresql+psycopg2",
 }
 
 /**

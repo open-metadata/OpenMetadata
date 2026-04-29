@@ -45,12 +45,6 @@ Host and port of the QuestDB service using the PostgreSQL wire protocol. The def
 $$
 
 $$section
-### Database Name $(id="databaseName")
-
-Optional display name for the QuestDB database in OpenMetadata. QuestDB exposes a single physical database (`qdb`); this value is used only for display and for building the fully qualified name. Defaults to `qdb` if left blank.
-$$
-
-$$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.
@@ -63,19 +57,7 @@ Additional connection arguments such as security or protocol configs that can be
 $$
 
 $$section
-### Schema Filter Pattern $(id="schemaFilterPattern")
-
-Regex to only include/exclude schemas that match the pattern. QuestDB exposes a single schema (`public`), so this is rarely needed.
-$$
-
-$$section
 ### Table Filter Pattern $(id="tableFilterPattern")
 
 Regex to only include/exclude tables that match the pattern.
-$$
-
-$$section
-### Database Filter Pattern $(id="databaseFilterPattern")
-
-Regex to only include/exclude databases that match the pattern. QuestDB exposes a single database (`qdb`), so this is rarely needed.
 $$

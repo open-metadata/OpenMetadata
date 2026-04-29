@@ -69,31 +69,13 @@ def minimal_connection():
     )
 
 
-@pytest.fixture
-def named_connection():
-    return QuestDBConnectionConfig(
-        username="admin",
-        authType=BasicAuth(password="quest"),
-        hostPort="localhost:8812",
-        databaseName="production-questdb",
-    )
-
-
 # ── get_connection_url ────────────────────────────────────────────────────────
 
 
 def test_url_always_targets_qdb_database(minimal_connection):
-    """QuestDB exposes a single database (qdb); URL must hardcode it regardless
-    of what the user sets in databaseName (which is the OpenMetadata display
-    name, not the psycopg2 connection target)."""
+    """QuestDB exposes a single fixed database (qdb); URL must always hardcode it."""
     url = get_connection_url(minimal_connection)
     assert url == "postgresql+psycopg2://admin:quest@localhost:8812/qdb"
-
-
-def test_url_still_targets_qdb_when_database_name_set(named_connection):
-    url = get_connection_url(named_connection)
-    assert url.endswith("/qdb")
-    assert "production-questdb" not in url
 
 
 def test_url_omits_password_segment_when_password_empty():
@@ -158,10 +140,9 @@ def test_create_raises_for_wrong_connection_type():
 # ── get_database_names ────────────────────────────────────────────────────────
 
 
-def test_get_database_names_defaults_to_qdb(minimal_connection):
-    """Without databaseName, the display name must default to ``qdb`` (the
-    actual QuestDB database) rather than the generic ``default`` from the
-    base class."""
+def test_get_database_names_always_returns_qdb(minimal_connection):
+    """QuestDB has a single fixed database (qdb); get_database_names must always
+    yield it regardless of any connection configuration."""
     with patch(
         "metadata.ingestion.source.database.questdb.metadata.QuestDBSource.__init__",
         return_value=None,
@@ -170,17 +151,6 @@ def test_get_database_names_defaults_to_qdb(minimal_connection):
         source.service_connection = minimal_connection
 
     assert list(source.get_database_names()) == [QUESTDB_DEFAULT_DATABASE]
-
-
-def test_get_database_names_uses_configured_name(named_connection):
-    with patch(
-        "metadata.ingestion.source.database.questdb.metadata.QuestDBSource.__init__",
-        return_value=None,
-    ):
-        source = QuestDBSource.__new__(QuestDBSource)
-        source.service_connection = named_connection
-
-    assert list(source.get_database_names()) == ["production-questdb"]
 
 
 # ── utils: _get_columns ───────────────────────────────────────────────────────
