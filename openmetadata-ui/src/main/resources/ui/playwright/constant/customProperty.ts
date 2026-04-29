@@ -213,4 +213,14 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
 };
 
 export const CUSTOM_PROPERTY_NAME_VALIDATION_ERROR =
-  "Name must not contain '::'.";
+  'Name must start with a letter or number. Invalid characters: " : ^ $';
+
+export const CUSTOM_PROPERTY_INVALID_NAMES = {
+  STARTS_WITH_SPECIAL_CHAR: '_invalidName',
+  DISALLOWED_COLON: 'name:with:colon',
+  DISALLOWED_DOLLAR: 'name$invalid',
+  DISALLOWED_CARET: 'name^invalid',
+  DISALLOWED_QUOTE: 'name"invalid',
+};
+
+export const NAME_SUFFIX = ".!@#%`&*()_-=+{}[]~|\\;'<>,.?/";
