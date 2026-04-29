@@ -432,7 +432,8 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       } else if (layout === 'dagre') {
         const positions = await computeELKPositions(
           g6Data.nodes ?? [],
-          g6Data.edges ?? []
+          g6Data.edges ?? [],
+          focusNodeId
         );
         if (cancelled) {
           return;
@@ -523,7 +524,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           return;
         }
         if (graph) {
-          await applyInitialFocus(graph, g6Data.nodes ?? [], focusNodeId);
+          await applyInitialFocus(graph, focusNodeId);
         }
         if (!cancelled) {
           setGraphReady(true);

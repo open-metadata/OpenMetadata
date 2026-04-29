@@ -13,6 +13,7 @@
 
 import { NodeData } from '@antv/g6';
 import { Box, Typography } from '@openmetadata/ui-core-components';
+import React from 'react';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import './custom-node.less';
 
@@ -64,4 +65,16 @@ function CustomNode({ nodeData }: Readonly<CustomNodeProps>) {
   );
 }
 
-export default CustomNode;
+export default React.memo(CustomNode, (prev, next) => {
+  const p = prev.nodeData.data;
+  const n = next.nodeData.data;
+
+  return (
+    prev.nodeData.id === next.nodeData.id &&
+    p?.highlighted === n?.highlighted &&
+    p?.label === n?.label &&
+    p?.type === n?.type &&
+    p?.colorMain === n?.colorMain &&
+    p?.colorLight === n?.colorLight
+  );
+});

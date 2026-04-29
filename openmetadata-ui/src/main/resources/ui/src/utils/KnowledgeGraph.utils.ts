@@ -81,22 +81,106 @@ const ELK_KG_LAYOUT_OPTIONS = {
   'elk.direction': 'LEFT',
   'elk.spacing.nodeNode': '60',
   'elk.layered.spacing.nodeNodeBetweenLayers': '20',
-  'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+  'elk.layered.nodePlacement.strategy': 'SIMPLE',
   'elk.spacing.edgeNode': '10',
   'elk.spacing.edgeEdge': '10',
+  'elk.partitioning.activate': 'true',
+};
+
+const buildDirectedAdjacency = (
+  nodes: G6NodeData[],
+  edges: G6EdgeData[]
+): { forward: Map<string, string[]>; backward: Map<string, string[]> } => {
+  const forward = new Map<string, string[]>();
+  const backward = new Map<string, string[]>();
+  nodes.forEach((n) => {
+    forward.set(n.id, []);
+    backward.set(n.id, []);
+  });
+  edges.forEach((e) => {
+    forward.get(String(e.source))?.push(String(e.target));
+    backward.get(String(e.target))?.push(String(e.source));
+  });
+
+  return { forward, backward };
+};
+
+const bfsFromNode = (
+  adj: Map<string, string[]>,
+  startId: string
+): Map<string, number> => {
+  const depth = new Map<string, number>();
+  depth.set(startId, 0);
+  const queue = [startId];
+  while (queue.length > 0) {
+    const cur = queue.shift()!;
+    const d = depth.get(cur)!;
+    for (const nbr of adj.get(cur) ?? []) {
+      if (!depth.has(nbr)) {
+        depth.set(nbr, d + 1);
+        queue.push(nbr);
+      }
+    }
+  }
+
+  return depth;
+};
+
+const computeDirectedBFSPartitions = (
+  nodes: G6NodeData[],
+  edges: G6EdgeData[],
+  focusNodeId: string
+): Map<string, number> => {
+  const { forward, backward } = buildDirectedAdjacency(nodes, edges);
+  const backDepth = bfsFromNode(backward, focusNodeId);
+  const fwdDepth = bfsFromNode(forward, focusNodeId);
+
+  let maxBack = 0;
+  backDepth.forEach((d) => {
+    if (d > maxBack) {
+      maxBack = d;
+    }
+  });
+
+  const partitions = new Map<string, number>();
+  partitions.set(focusNodeId, maxBack);
+  // Pure predecessors only — nodes reachable in both directions participate in
+  // cycles or cross-paths; assigning them a partition would create backward edges
+  // in ELK's layer graph, causing a negative-index crash.
+  backDepth.forEach((d, id) => {
+    if (id !== focusNodeId && !fwdDepth.has(id)) {
+      partitions.set(id, maxBack - d);
+    }
+  });
+  fwdDepth.forEach((d, id) => {
+    if (id !== focusNodeId && !backDepth.has(id)) {
+      partitions.set(id, maxBack + d);
+    }
+  });
+
+  return partitions;
 };
 
 export const computeELKPositions = async (
   nodes: G6NodeData[],
-  edges: G6EdgeData[]
+  edges: G6EdgeData[],
+  focusNodeId?: string
 ): Promise<Map<string, { x: number; y: number }>> => {
+  const partitions = focusNodeId
+    ? computeDirectedBFSPartitions(nodes, edges, focusNodeId)
+    : new Map<string, number>();
+
   const elkNodes: ElkNode[] = nodes.map((node) => {
     const size = node.style?.size as [number, number] | undefined;
+    const partition = partitions.get(node.id);
 
     return {
       id: node.id,
       width: size?.[0] ?? NODE_WIDTH,
       height: size?.[1] ?? NODE_HEIGHT,
+      ...(partition !== undefined && {
+        layoutOptions: { 'elk.partitioning.partition': String(partition) },
+      }),
     };
   });
 
@@ -116,16 +200,39 @@ export const computeELKPositions = async (
     };
   });
 
-  const result = await ELKLayout.getElk().layout({
-    id: 'root',
-    layoutOptions: ELK_KG_LAYOUT_OPTIONS,
-    children: elkNodes,
-    edges: elkEdges,
-  });
+  const toPositionMap = (children: ElkNode[]) =>
+    new Map(children.map((n) => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }]));
 
-  return new Map(
-    (result.children ?? []).map((n) => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }])
-  );
+  try {
+    const result = await ELKLayout.getElk().layout({
+      id: 'root',
+      layoutOptions: ELK_KG_LAYOUT_OPTIONS,
+      children: elkNodes,
+      edges: elkEdges,
+    });
+
+    return toPositionMap(result.children ?? []);
+  } catch {
+    // Partition constraints on cyclic/cross-path graphs cause ELK to crash with a
+    // negative-index exception. Retry without partition hints so ELK assigns layers
+    // automatically — this always succeeds regardless of graph topology.
+    const elkNodesNoPartitions = elkNodes.map(({ id, width, height }) => ({
+      id,
+      width,
+      height,
+    }));
+    const result = await ELKLayout.getElk().layout({
+      id: 'root',
+      layoutOptions: {
+        ...ELK_KG_LAYOUT_OPTIONS,
+        'elk.partitioning.activate': 'false',
+      },
+      children: elkNodesNoPartitions,
+      edges: elkEdges,
+    });
+
+    return toPositionMap(result.children ?? []);
+  }
 };
 
 // Border-to-border gap (px) between every pair of adjacent rings in the radial
@@ -381,37 +488,6 @@ export const computeELKRadialPositions = async (
   }
 };
 
-const buildNodePorts = (
-  nodeId: string,
-  myX: number,
-  edges: G6EdgeData[],
-  posMap: Map<string, number>,
-  centerX: number,
-  leftPort: NodePortStyleProps,
-  rightPort: NodePortStyleProps
-): NodePortStyleProps[] => {
-  let needsLeft = false;
-  let needsRight = false;
-  for (const edge of edges) {
-    let otherId: string | null = null;
-    if (edge.source === nodeId) {
-      otherId = edge.target;
-    } else if (edge.target === nodeId) {
-      otherId = edge.source;
-    }
-    if (otherId !== null) {
-      const otherX = posMap.get(String(otherId)) ?? centerX;
-      if (otherX < myX) {
-        needsLeft = true;
-      } else {
-        needsRight = true;
-      }
-    }
-  }
-
-  return [...(needsLeft ? [leftPort] : []), ...(needsRight ? [rightPort] : [])];
-};
-
 export const assignRadialPorts = (
   nodes: G6NodeData[],
   edges: G6EdgeData[],
@@ -423,20 +499,32 @@ export const assignRadialPorts = (
   const posMap = new Map<string, number>();
   nodes.forEach((n) => posMap.set(n.id, (n.style?.x as number) ?? centerX));
 
+  const needsLeft = new Map<string, boolean>();
+  const needsRight = new Map<string, boolean>();
+  nodes.forEach((n) => {
+    needsLeft.set(n.id, false);
+    needsRight.set(n.id, false);
+  });
+  edges.forEach((edge) => {
+    const srcX = posMap.get(String(edge.source)) ?? centerX;
+    const tgtX = posMap.get(String(edge.target)) ?? centerX;
+    if (srcX > tgtX) {
+      needsLeft.set(String(edge.source), true);
+      needsRight.set(String(edge.target), true);
+    } else {
+      needsRight.set(String(edge.source), true);
+      needsLeft.set(String(edge.target), true);
+    }
+  });
+
   return nodes.map((node) => {
     if (node.id === focusNodeId) {
       return node;
     }
-    const myX = posMap.get(node.id) ?? centerX;
-    const ports = buildNodePorts(
-      node.id,
-      myX,
-      edges,
-      posMap,
-      centerX,
-      leftPort,
-      rightPort
-    );
+    const ports: NodePortStyleProps[] = [
+      ...(needsLeft.get(node.id) ? [leftPort] : []),
+      ...(needsRight.get(node.id) ? [rightPort] : []),
+    ];
 
     return { ...node, style: { ...node.style, ports } };
   });
@@ -465,18 +553,8 @@ const traceBackPath = (
 const shortestForwardPath = (
   fromId: string,
   toId: string,
-  nodes: G6NodeData[],
-  edges: G6EdgeData[]
+  fwdAdj: Map<string, Array<{ target: string; edgeId: string }>>
 ): { nodeIds: Set<string>; edgeIds: Set<string> } => {
-  const fwdAdj = new Map<string, Array<{ target: string; edgeId: string }>>();
-  nodes.forEach((n) => fwdAdj.set(n.id, []));
-  edges.forEach((e) => {
-    if (e.id === undefined) {
-      return;
-    }
-    fwdAdj.get(e.source)?.push({ target: e.target, edgeId: String(e.id) });
-  });
-
   const parent = new Map<string, { nodeId: string; edgeId: string }>();
   const visited = new Set<string>([fromId]);
   const queue: string[] = [fromId];
@@ -514,17 +592,14 @@ const shortestForwardPath = (
 export const findHighlightPath = (
   originId: string,
   clickedId: string,
-  nodes: G6NodeData[],
-  edges: G6EdgeData[]
+  fwdAdj: Map<string, Array<{ target: string; edgeId: string }>>
 ): { nodeIds: Set<string>; edgeIds: Set<string> } => {
   if (clickedId === originId) {
     return { nodeIds: new Set([originId]), edgeIds: new Set() };
   }
 
-  // Path from origin down to clicked node
-  const forward = shortestForwardPath(originId, clickedId, nodes, edges);
-  // Path from clicked node back up to origin (via any reverse/back edges)
-  const backward = shortestForwardPath(clickedId, originId, nodes, edges);
+  const forward = shortestForwardPath(originId, clickedId, fwdAdj);
+  const backward = shortestForwardPath(clickedId, originId, fwdAdj);
 
   return {
     nodeIds: new Set([...forward.nodeIds, ...backward.nodeIds]),
@@ -561,7 +636,12 @@ export const transformToG6Format = (data: GraphData | null): G6GraphData => {
   const edgeGroups = new Map<string, typeof data.edges>();
   data.edges.forEach((edge) => {
     const key = `${edge.from}→${edge.to}`;
-    edgeGroups.set(key, [...(edgeGroups.get(key) ?? []), edge]);
+    const existing = edgeGroups.get(key);
+    if (existing) {
+      existing.push(edge);
+    } else {
+      edgeGroups.set(key, [edge]);
+    }
   });
 
   type MergedEdge = (typeof data.edges)[number] & {
@@ -644,10 +724,10 @@ export const buildEdgeHighlightStyle = (primaryColor: string) => ({
 
 export const buildNodeUpdateData = (
   id: string,
-  nodes: G6NodeData[],
+  nodeMap: Map<string, G6NodeData>,
   highlighted: boolean
 ) => {
-  const n = nodes.find((node) => node.id === id);
+  const n = nodeMap.get(id);
 
   return {
     id,
@@ -660,19 +740,13 @@ export const buildNodeUpdateData = (
 
 export const applyInitialFocus = async (
   graph: Graph,
-  nodes: G6NodeData[],
   focusNodeId: string
 ): Promise<void> => {
   if (!focusNodeId) {
     return;
   }
   await graph.focusElement(focusNodeId);
-  graph.updateNodeData(
-    nodes.map((n) => ({
-      id: n.id,
-      data: { ...n.data, highlighted: n.id === focusNodeId, dimmed: false },
-    }))
-  );
+  graph.updateNodeData([{ id: focusNodeId, data: { highlighted: true } }]);
   await graph.draw();
 };
 
@@ -680,14 +754,25 @@ export const setupGraphEventHandlers = (ctx: GraphInteractionCtx): void => {
   const { graph, graphDataNodes, selectedNodeIdRef, setSelectedNode } = ctx;
   const activeHighlightEdges = new Set<string>();
   const activeHighlightNodes = new Set<string>();
+  const nodeMap = new Map(ctx.g6Nodes.map((n) => [n.id, n]));
+
+  const fwdAdj = new Map<string, Array<{ target: string; edgeId: string }>>();
+  ctx.g6Nodes.forEach((n) => fwdAdj.set(n.id, []));
+  ctx.g6Edges.forEach((e) => {
+    if (e.id === undefined) {
+      return;
+    }
+    fwdAdj
+      .get(String(e.source))
+      ?.push({ target: String(e.target), edgeId: String(e.id) });
+  });
 
   const applyPathHighlight = (nodeId: string): void => {
     ctx.pendingHighlightRef.current = nodeId;
     const { nodeIds: pathNodes, edgeIds: pathEdges } = findHighlightPath(
       ctx.focusNodeId,
       nodeId,
-      ctx.g6Nodes,
-      ctx.g6Edges
+      fwdAdj
     );
 
     const edgesToReset = [...activeHighlightEdges].filter(
@@ -705,7 +790,7 @@ export const setupGraphEventHandlers = (ctx: GraphInteractionCtx): void => {
     );
     if (nodesToReset.length > 0) {
       graph.updateNodeData(
-        nodesToReset.map((id) => buildNodeUpdateData(id, ctx.g6Nodes, false))
+        nodesToReset.map((id) => buildNodeUpdateData(id, nodeMap, false))
       );
       nodesToReset.forEach((id) => activeHighlightNodes.delete(id));
     }
@@ -728,7 +813,7 @@ export const setupGraphEventHandlers = (ctx: GraphInteractionCtx): void => {
     );
     if (newPathNodes.length > 0) {
       graph.updateNodeData(
-        newPathNodes.map((id) => buildNodeUpdateData(id, ctx.g6Nodes, true))
+        newPathNodes.map((id) => buildNodeUpdateData(id, nodeMap, true))
       );
       newPathNodes.forEach((id) => activeHighlightNodes.add(id));
     }
@@ -750,7 +835,7 @@ export const setupGraphEventHandlers = (ctx: GraphInteractionCtx): void => {
     if (activeHighlightNodes.size > 0) {
       graph.updateNodeData(
         [...activeHighlightNodes].map((id) =>
-          buildNodeUpdateData(id, ctx.g6Nodes, false)
+          buildNodeUpdateData(id, nodeMap, false)
         )
       );
       activeHighlightNodes.clear();

@@ -47,6 +47,21 @@ const makeEdge = (id: string, source: string, target: string) => ({
   target,
 });
 
+type TestNode = ReturnType<typeof makeNode>;
+type TestEdge = ReturnType<typeof makeEdge>;
+
+const makeAdjMaps = (nodes: TestNode[], edges: TestEdge[]) => {
+  const fwdAdj = new Map<string, Array<{ target: string; edgeId: string }>>();
+  nodes.forEach((n) => fwdAdj.set(n.id, []));
+  edges.forEach((e) =>
+    fwdAdj.get(e.source)?.push({ target: e.target, edgeId: e.id })
+  );
+
+  return { fwdAdj };
+};
+
+const makeNodeMap = (nodes: TestNode[]) => new Map(nodes.map((n) => [n.id, n]));
+
 describe('KnowledgeGraph.utils', () => {
   describe('computeNodeWidth', () => {
     it('returns minimum width for a very short label and type', () => {
@@ -96,7 +111,9 @@ describe('KnowledgeGraph.utils', () => {
 
   describe('findHighlightPath', () => {
     it('returns only the origin node when origin equals clicked node', () => {
-      const result = findHighlightPath('A', 'A', [makeNode('A')], []);
+      const nodes = [makeNode('A')];
+      const { fwdAdj } = makeAdjMaps(nodes, []);
+      const result = findHighlightPath('A', 'A', fwdAdj);
 
       expect([...result.nodeIds]).toEqual(['A']);
       expect(result.edgeIds.size).toBe(0);
@@ -105,7 +122,8 @@ describe('KnowledgeGraph.utils', () => {
     it('includes origin, target, and their connecting edge for a direct connection', () => {
       const nodes = [makeNode('A'), makeNode('B')];
       const edges = [makeEdge('e1', 'A', 'B')];
-      const result = findHighlightPath('A', 'B', nodes, edges);
+      const { fwdAdj } = makeAdjMaps(nodes, edges);
+      const result = findHighlightPath('A', 'B', fwdAdj);
 
       expect(result.nodeIds.has('A')).toBe(true);
       expect(result.nodeIds.has('B')).toBe(true);
@@ -114,7 +132,8 @@ describe('KnowledgeGraph.utils', () => {
 
     it('returns empty sets when there is no path between nodes', () => {
       const nodes = [makeNode('A'), makeNode('B')];
-      const result = findHighlightPath('A', 'B', nodes, []);
+      const { fwdAdj } = makeAdjMaps(nodes, []);
+      const result = findHighlightPath('A', 'B', fwdAdj);
 
       expect(result.nodeIds.size).toBe(0);
       expect(result.edgeIds.size).toBe(0);
@@ -123,7 +142,8 @@ describe('KnowledgeGraph.utils', () => {
     it('includes all intermediate nodes and edges in a multi-hop path', () => {
       const nodes = [makeNode('A'), makeNode('B'), makeNode('C')];
       const edges = [makeEdge('e1', 'A', 'B'), makeEdge('e2', 'B', 'C')];
-      const result = findHighlightPath('A', 'C', nodes, edges);
+      const { fwdAdj } = makeAdjMaps(nodes, edges);
+      const result = findHighlightPath('A', 'C', fwdAdj);
 
       expect(result.nodeIds.has('A')).toBe(true);
       expect(result.nodeIds.has('B')).toBe(true);
@@ -135,7 +155,8 @@ describe('KnowledgeGraph.utils', () => {
     it('combines both directions for bidirectional edges', () => {
       const nodes = [makeNode('A'), makeNode('B')];
       const edges = [makeEdge('e1', 'A', 'B'), makeEdge('e2', 'B', 'A')];
-      const result = findHighlightPath('A', 'B', nodes, edges);
+      const { fwdAdj } = makeAdjMaps(nodes, edges);
+      const result = findHighlightPath('A', 'B', fwdAdj);
 
       expect(result.nodeIds.has('A')).toBe(true);
       expect(result.nodeIds.has('B')).toBe(true);
@@ -160,7 +181,7 @@ describe('KnowledgeGraph.utils', () => {
   describe('buildNodeUpdateData', () => {
     it('returns payload with zIndex 100 and highlighted true when highlighted', () => {
       const nodes = [makeNode('A')];
-      const result = buildNodeUpdateData('A', nodes, true);
+      const result = buildNodeUpdateData('A', makeNodeMap(nodes), true);
 
       expect(result.id).toBe('A');
       expect(result.style).toEqual({ zIndex: 100 });
@@ -169,14 +190,14 @@ describe('KnowledgeGraph.utils', () => {
 
     it('returns payload with zIndex 0 and highlighted false when not highlighted', () => {
       const nodes = [makeNode('A')];
-      const result = buildNodeUpdateData('A', nodes, false);
+      const result = buildNodeUpdateData('A', makeNodeMap(nodes), false);
 
       expect(result.style).toEqual({ zIndex: 0 });
       expect(result.data).toMatchObject({ highlighted: false });
     });
 
     it('returns minimal payload when node id is not found', () => {
-      const result = buildNodeUpdateData('Z', [], true);
+      const result = buildNodeUpdateData('Z', new Map(), true);
 
       expect(result.id).toBe('Z');
       expect(result.data).toEqual({ highlighted: true });
@@ -406,7 +427,7 @@ describe('KnowledgeGraph.utils', () => {
         draw: jest.fn().mockResolvedValue(undefined),
       };
 
-      await applyInitialFocus(mockGraph as unknown as Graph, [], '');
+      await applyInitialFocus(mockGraph as unknown as Graph, '');
 
       expect(mockGraph.focusElement).not.toHaveBeenCalled();
       expect(mockGraph.updateNodeData).not.toHaveBeenCalled();
@@ -418,23 +439,12 @@ describe('KnowledgeGraph.utils', () => {
         updateNodeData: jest.fn(),
         draw: jest.fn().mockResolvedValue(undefined),
       };
-      const nodes = [
-        { id: 'focus', data: { label: 'FocusNode' }, style: {} },
-        { id: 'other', data: { label: 'OtherNode' }, style: {} },
-      ];
 
-      await applyInitialFocus(mockGraph as unknown as Graph, nodes, 'focus');
+      await applyInitialFocus(mockGraph as unknown as Graph, 'focus');
 
       expect(mockGraph.focusElement).toHaveBeenCalledWith('focus');
       expect(mockGraph.updateNodeData).toHaveBeenCalledWith([
-        {
-          id: 'focus',
-          data: { label: 'FocusNode', highlighted: true, dimmed: false },
-        },
-        {
-          id: 'other',
-          data: { label: 'OtherNode', highlighted: false, dimmed: false },
-        },
+        { id: 'focus', data: { highlighted: true } },
       ]);
       expect(mockGraph.draw).toHaveBeenCalled();
     });
@@ -449,11 +459,11 @@ describe('KnowledgeGraph.utils', () => {
     });
 
     const buildCtx = (graphOverride?: ReturnType<typeof buildMockGraph>) => {
-      const graph = graphOverride ?? buildMockGraph();
+      const mockGraph = graphOverride ?? buildMockGraph();
 
       return {
         ctx: {
-          graph: graph as unknown as Graph,
+          graph: mockGraph as unknown as Graph,
           g6Nodes: [makeNode('A'), makeNode('B')],
           g6Edges: [makeEdge('e1', 'A', 'B')],
           focusNodeId: 'A',
@@ -475,7 +485,7 @@ describe('KnowledgeGraph.utils', () => {
           selectedNodeIdRef: { current: null },
           setSelectedNode: jest.fn(),
         },
-        graph: graph as unknown as Graph,
+        graph: mockGraph,
       };
     };
 
