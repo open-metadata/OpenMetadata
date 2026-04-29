@@ -93,18 +93,6 @@
       },
       "required": [
         "tnsAlias"
-      ],
-      "anyOf": [
-        {
-          "required": [
-            "walletPath"
-          ]
-        },
-        {
-          "required": [
-            "walletContent"
-          ]
-        }
       ]
     }
   },
