@@ -427,12 +427,16 @@ public class GlossaryOntologyExportIT {
           default -> TURTLE_CONTENT_TYPE;
         };
 
+    // RDF/XML serialization in Jena is significantly slower than Turtle/N-Triples/JSON-LD
+    // (O(N^2)-ish QName resolution) and contends with Quartz/WorkflowEventConsumer daemon
+    // threads that @Isolated does not stop. Observed ~69s server time in CI for what is
+    // typically a sub-second call; 180s gives headroom without masking real hangs.
     HttpRequest request =
         HttpRequest.newBuilder()
             .uri(URI.create(url))
             .header("Authorization", "Bearer " + token)
             .header("Accept", acceptHeader)
-            .timeout(Duration.ofSeconds(60))
+            .timeout(Duration.ofSeconds(180))
             .GET()
             .build();
 
