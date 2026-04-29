@@ -52,6 +52,12 @@ export interface ExtensionOptions {
   utilityExtensions?: boolean;
   tableExtensions?: boolean;
   advancedContextExtensions?: boolean;
+  /**
+   * Enable section node extension to preserve <section data-id data-highlighted> elements.
+   * Required when rendering connector documentation with scroll-to-field support.
+   * @default false
+   */
+  enableSectionNode?: boolean;
 }
 
 export interface BlockEditorProps {

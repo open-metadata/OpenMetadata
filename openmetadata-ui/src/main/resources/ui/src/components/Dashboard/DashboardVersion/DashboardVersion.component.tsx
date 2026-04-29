@@ -57,6 +57,9 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   tier,
   slashedDashboardName,
   versionList,
+  onLoadMore,
+  hasMore,
+  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -300,9 +303,12 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={version ?? ''}
         entityType={EntityType.DASHBOARD}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
+        onLoadMore={onLoadMore}
       />
     </>
   );

@@ -765,6 +765,8 @@ cache:
     # Connection pool settings
     poolSize: ${CACHE_REDIS_POOL_SIZE:-64}
     connectTimeoutMs: ${CACHE_REDIS_CONNECT_TIMEOUT:-2000}
+    # Per-command timeout. Bounds request-thread blocking when Redis is slow.
+    commandTimeoutMs: ${CACHE_REDIS_COMMAND_TIMEOUT:-300}
 
     # AWS ElastiCache IAM Authentication (only if using ElastiCache)
     aws:

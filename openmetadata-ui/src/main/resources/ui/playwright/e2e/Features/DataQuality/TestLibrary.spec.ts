@@ -941,6 +941,7 @@ test.describe(
     test('should maintain page on edit and reset to first page on delete', async ({
       page,
     }) => {
+      test.slow();
       const PAGINATION_TEST_NAME = `zzzzPaginationTest${uuid()}`;
       const PAGINATION_TEST_DISPLAY_NAME = `Zzzz Pagination Test ${uuid()}`;
       const UPDATED_DISPLAY_NAME = `Updated ${PAGINATION_TEST_DISPLAY_NAME}`;
