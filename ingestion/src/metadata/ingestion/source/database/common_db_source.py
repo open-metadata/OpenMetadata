@@ -412,6 +412,15 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         except Exception as err:
             logger.warning(f"Fetching tables names failed for schema {schema_name} due to - {err}")
             logger.debug(traceback.format_exc())
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+                schema_name=schema_name,
+            )
+            if schema_fqn:
+                self.schemas_with_table_listing_errors.add(schema_fqn)
 
     @calculate_execution_time()
     def get_schema_definition(
