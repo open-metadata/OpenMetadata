@@ -125,7 +125,12 @@ public class JwtFilter implements ContainerRequestFilter {
             .map(s -> s.split(":"))
             .collect(Collectors.toMap(s -> s[0], s -> s[1]));
     validatePrincipalClaimsMapping(jwtPrincipalClaimsMapping);
-    this.emailClaim = authenticationConfiguration.getEmailClaim();
+    // SAML reissues OM's own JWT with a hardcoded "email" claim, so honoring
+    // the configured emailClaim here would always fail to find it.
+    this.emailClaim =
+        providerType == AuthProvider.SAML
+            ? null
+            : authenticationConfiguration.getEmailClaim();
     this.jwtTeamClaimMapping = authenticationConfiguration.getJwtTeamClaimMapping();
 
     ImmutableList.Builder<URL> publicKeyUrlsBuilder = ImmutableList.builder();
