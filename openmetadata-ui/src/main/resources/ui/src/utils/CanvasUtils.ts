@@ -93,11 +93,19 @@ const getBaseNodeHeightFromType = (
   return isRootNode ? baseHeight + 10 : baseHeight;
 };
 
+const getNodeYPadding = (node: Node): number => {
+  const { children } = getEntityChildrenAndLabel(node.data.node);
+
+  const sourceYPadding = children.length > 0 ? 48 : 0;
+
+  return sourceYPadding;
+};
+
 export function getNodeHeight(
   node: Node,
-  isColumnLineage: boolean,
+  isColumnLineage?: boolean,
   columnCount?: number
-) {
+): number {
   const isRootNode = node.data?.isRootNode ?? false;
 
   const visibleColumnCount = isColumnLineage
@@ -123,15 +131,6 @@ export function getNodeHeight(
 
   return height;
 }
-
-const getNodeYPadding = (node: Node): number => {
-  const { children } = getEntityChildrenAndLabel(node.data.node);
-
-  const sourceYPadding = children.length > 0 ? 48 : 0;
-
-  // Add padding for the node's border
-  return sourceYPadding;
-};
 
 interface ColumnLineageData {
   columnIds: string[];
@@ -252,10 +251,10 @@ function getColumnLineageCoordinates(
 function getEntityLineageCoordinates(
   sourceNode: Node,
   targetNode: Node,
-  isColumnLineage: boolean
+  _isColumnLineage: boolean
 ): EdgeCoordinates {
-  const sourceHeight = getNodeHeight(sourceNode, isColumnLineage, 0);
-  const targetHeight = getNodeHeight(targetNode, isColumnLineage, 0);
+  const sourceHeight = sourceNode.height ?? 0;
+  const targetHeight = targetNode.height ?? 0;
 
   return {
     sourceX: sourceNode.position.x + (sourceNode.width ?? 0),
