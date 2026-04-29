@@ -24,7 +24,7 @@ import weakref
 import zipfile
 from copy import deepcopy
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import quote_plus
 
 import oracledb
@@ -79,7 +79,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
     def __init__(self, connection: OracleConnectionConfig):
         super().__init__(connection)
         self._wallet_temp_dir: str | None = None
-        self._wallet_cleanup_finalizer: weakref.finalize | None = None
+        self._wallet_cleanup_finalizer: Any = None
 
     def _set_wallet_temp_dir(self, wallet_temp_dir: str) -> None:
         self._cleanup_wallet_temp_dir()
@@ -164,10 +164,10 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         autonomous_connection = self._get_autonomous_connection_config(connection_type)
         if not self.service_connection.connectionArguments:
             self.service_connection.connectionArguments = init_empty_connection_arguments()
-        elif self.service_connection.connectionArguments.root is None:
+        if self.service_connection.connectionArguments.root is None:
             self.service_connection.connectionArguments.root = {}
 
-        connection_arguments = self.service_connection.connectionArguments.root
+        connection_arguments: dict[str, Any] = self.service_connection.connectionArguments.root
 
         wallet_path = autonomous_connection.walletPath
         if autonomous_connection.walletContent:
