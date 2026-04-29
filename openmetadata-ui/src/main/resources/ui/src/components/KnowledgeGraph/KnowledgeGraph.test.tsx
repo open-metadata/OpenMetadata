@@ -854,7 +854,9 @@ describe('KnowledgeGraph', () => {
       const dropdownRoots = screen.getAllByTestId('dropdown-root');
 
       expect(dropdownRoots[0]).toHaveAttribute('data-open', 'false');
+
       fireEvent.click(dropdownRoots[0]);
+
       expect(dropdownRoots[0]).toHaveAttribute('data-open', 'true');
     });
 
@@ -923,7 +925,9 @@ describe('KnowledgeGraph', () => {
       const dropdownRoots = screen.getAllByTestId('dropdown-root');
 
       expect(dropdownRoots[1]).toHaveAttribute('data-open', 'false');
+
       fireEvent.click(dropdownRoots[1]);
+
       expect(dropdownRoots[1]).toHaveAttribute('data-open', 'true');
     });
 
@@ -1065,6 +1069,7 @@ describe('KnowledgeGraph', () => {
 
       expect(anchors.length).toBeGreaterThan(0);
       expect(anchors[0].value.download).toBe('knowledge-graph.png');
+
       createElementSpy.mockRestore();
     });
 
@@ -1159,6 +1164,7 @@ describe('KnowledgeGraph', () => {
       await waitFor(() =>
         expect(screen.getByTestId('slideout-menu')).toBeInTheDocument()
       );
+
       expect(screen.getByTestId('entity-summary-panel')).toBeInTheDocument();
     });
 

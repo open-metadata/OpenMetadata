@@ -27,7 +27,9 @@ function CustomNode({ nodeData }: Readonly<CustomNodeProps>) {
 
   return (
     <div
-      className={`knowledge-graph-custom-node${highlighted ? ' highlighted' : ''}`}
+      className={`knowledge-graph-custom-node${
+        highlighted ? ' highlighted' : ''
+      }`}
       data-node-id={nodeData.id}
       data-testid={`node-${nodeData.data?.label as string}`}>
       <Box align="center" className="tw:overflow-hidden" gap={2}>

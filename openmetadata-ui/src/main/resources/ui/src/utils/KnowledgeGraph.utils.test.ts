@@ -16,6 +16,8 @@ jest.mock('./EntityUtils', () => ({
   getEntityLinkFromType: jest.fn().mockReturnValue('/test/entity/path'),
 }));
 
+import { Graph, NodePortStyleProps } from '@antv/g6';
+import { ELK } from 'elkjs/lib/elk-api';
 import {
   applyInitialFocus,
   assignRadialPorts,
@@ -53,6 +55,7 @@ describe('KnowledgeGraph.utils', () => {
 
     it('returns MAX_NODE_WIDTH when the label is very long', () => {
       const longLabel = 'VeryLongEntityLabelThatExceedsMaximumWidth';
+
       expect(computeNodeWidth(longLabel, 'sometype')).toBe(MAX_NODE_WIDTH);
     });
 
@@ -190,7 +193,7 @@ describe('KnowledgeGraph.utils', () => {
         nodes: [{ id: 'n1', label: 'MyTable', type: 'table' }],
         edges: [],
       };
-      const result = transformToG6Format(data as any);
+      const result = transformToG6Format(data);
 
       expect(result.nodes).toHaveLength(1);
       expect(result.nodes?.[0].id).toBe('n1');
@@ -210,7 +213,7 @@ describe('KnowledgeGraph.utils', () => {
         ],
         edges: [{ from: 'n1', to: 'n2', label: 'owns' }],
       };
-      const result = transformToG6Format(data as any);
+      const result = transformToG6Format(data);
 
       expect(result.edges).toHaveLength(1);
       expect(result.edges?.[0].style).toMatchObject({
@@ -232,9 +235,10 @@ describe('KnowledgeGraph.utils', () => {
           { from: 'n2', to: 'n1', label: 'ownedBy' },
         ],
       };
-      const result = transformToG6Format(data as any);
+      const result = transformToG6Format(data);
 
       expect(result.edges).toHaveLength(2);
+
       result.edges?.forEach((edge) => {
         expect(edge.style?.curveOffset).toBe(60);
         expect(edge.style?.labelPlacement).toBe(0.35);
@@ -252,7 +256,7 @@ describe('KnowledgeGraph.utils', () => {
           { from: 'n1', to: 'n2', label: 'rel2' },
         ],
       };
-      const result = transformToG6Format(data as any);
+      const result = transformToG6Format(data);
 
       expect(result.edges).toHaveLength(1);
       expect(result.edges?.[0].style?.labelText).toBe('rel1 · rel2');
@@ -260,8 +264,8 @@ describe('KnowledgeGraph.utils', () => {
   });
 
   describe('assignRadialPorts', () => {
-    const leftPort = { key: 'left', placement: 'left' } as any;
-    const rightPort = { key: 'right', placement: 'right' } as any;
+    const leftPort = { key: 'left', placement: 'left' };
+    const rightPort = { key: 'right', placement: 'right' };
 
     it('passes the focus node through unchanged (no ports added)', () => {
       const nodes = [
@@ -270,12 +274,12 @@ describe('KnowledgeGraph.utils', () => {
       ];
       const edges = [makeEdge('e1', 'focus', 'neighbor')];
       const result = assignRadialPorts(
-        nodes as any,
+        nodes,
         edges,
         'focus',
         200,
-        leftPort,
-        rightPort
+        leftPort as NodePortStyleProps,
+        rightPort as NodePortStyleProps
       );
       const focusResult = result.find((n) => n.id === 'focus');
 
@@ -289,12 +293,12 @@ describe('KnowledgeGraph.utils', () => {
       ];
       const edges = [makeEdge('e1', 'A', 'B')];
       const result = assignRadialPorts(
-        nodes as any,
+        nodes,
         edges,
         'B',
         200,
-        leftPort,
-        rightPort
+        leftPort as NodePortStyleProps,
+        rightPort as NodePortStyleProps
       );
       const nodeA = result.find((n) => n.id === 'A')!;
 
@@ -308,12 +312,12 @@ describe('KnowledgeGraph.utils', () => {
       ];
       const edges = [makeEdge('e1', 'A', 'B')];
       const result = assignRadialPorts(
-        nodes as any,
+        nodes,
         edges,
         'B',
         200,
-        leftPort,
-        rightPort
+        leftPort as NodePortStyleProps,
+        rightPort as NodePortStyleProps
       );
       const nodeA = result.find((n) => n.id === 'A')!;
 
@@ -344,7 +348,7 @@ describe('KnowledgeGraph.utils', () => {
           ],
           edges: [],
         }),
-      } as any);
+      } as unknown as ELK);
 
       const nodes = [makeNode('n1'), makeNode('n2')];
       const result = await computeELKPositions(nodes, []);
@@ -377,7 +381,7 @@ describe('KnowledgeGraph.utils', () => {
     it('falls back to uniform radial distribution when ELK layout throws', async () => {
       jest.spyOn(ELKLayout, 'getElk').mockReturnValueOnce({
         layout: jest.fn().mockRejectedValue(new Error('ELK error')),
-      } as any);
+      } as unknown as ELK);
 
       const nodes = [makeNode('focus'), makeNode('A')];
       const edges = [makeEdge('e1', 'focus', 'A')];
@@ -402,7 +406,7 @@ describe('KnowledgeGraph.utils', () => {
         draw: jest.fn().mockResolvedValue(undefined),
       };
 
-      await applyInitialFocus(mockGraph as any, [], '');
+      await applyInitialFocus(mockGraph as unknown as Graph, [], '');
 
       expect(mockGraph.focusElement).not.toHaveBeenCalled();
       expect(mockGraph.updateNodeData).not.toHaveBeenCalled();
@@ -419,7 +423,7 @@ describe('KnowledgeGraph.utils', () => {
         { id: 'other', data: { label: 'OtherNode' }, style: {} },
       ];
 
-      await applyInitialFocus(mockGraph as any, nodes, 'focus');
+      await applyInitialFocus(mockGraph as unknown as Graph, nodes, 'focus');
 
       expect(mockGraph.focusElement).toHaveBeenCalledWith('focus');
       expect(mockGraph.updateNodeData).toHaveBeenCalledWith([
@@ -449,7 +453,7 @@ describe('KnowledgeGraph.utils', () => {
 
       return {
         ctx: {
-          graph: graph as any,
+          graph: graph as unknown as Graph,
           g6Nodes: [makeNode('A'), makeNode('B')],
           g6Edges: [makeEdge('e1', 'A', 'B')],
           focusNodeId: 'A',
@@ -466,12 +470,12 @@ describe('KnowledgeGraph.utils', () => {
               fullyQualifiedName: 'user.B',
               label: 'B',
             },
-          ] as any,
+          ],
           pendingHighlightRef: { current: null },
           selectedNodeIdRef: { current: null },
           setSelectedNode: jest.fn(),
         },
-        graph,
+        graph: graph as unknown as Graph,
       };
     };
 
@@ -480,6 +484,7 @@ describe('KnowledgeGraph.utils', () => {
       setupGraphEventHandlers(ctx);
 
       expect(graph.on).toHaveBeenCalledTimes(5);
+
       const registeredEvents = graph.on.mock.calls.map(
         ([event]: [string]) => event
       );

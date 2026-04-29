@@ -13,10 +13,10 @@
 
 import {
   EdgeData as G6EdgeData,
-  GraphData as G6GraphData,
-  NodeData as G6NodeData,
   Graph,
+  GraphData as G6GraphData,
   IElementEvent,
+  NodeData as G6NodeData,
   NodePortStyleProps,
 } from '@antv/g6';
 import { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';

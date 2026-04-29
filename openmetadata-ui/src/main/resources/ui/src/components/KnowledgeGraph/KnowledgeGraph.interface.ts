@@ -12,8 +12,8 @@
  */
 import {
   EdgeData as G6EdgeData,
-  NodeData as G6NodeData,
   Graph,
+  NodeData as G6NodeData,
 } from '@antv/g6';
 import { BrandColors } from '../../context/UntitledUIThemeProvider/theme-provider.interface';
 import { EntityReference } from '../../generated/entity/type';

@@ -12,10 +12,10 @@
  */
 
 import {
-  ExtensionCategory,
   EdgeData as G6EdgeData,
-  NodeData as G6NodeData,
+  ExtensionCategory,
   Graph,
+  NodeData as G6NodeData,
   NodePortStyleProps,
   register,
 } from '@antv/g6';
@@ -567,7 +567,10 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         if (!nativeCanvas) {
           return;
         }
-        if (nativeCanvas === e.target || nativeCanvas.contains(e.target as Node)) {
+        if (
+          nativeCanvas === e.target ||
+          nativeCanvas.contains(e.target as Node)
+        ) {
           return;
         }
         e.preventDefault();

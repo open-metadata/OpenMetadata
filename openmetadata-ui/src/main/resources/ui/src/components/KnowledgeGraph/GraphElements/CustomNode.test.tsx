@@ -26,14 +26,20 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const R = require('react');
 
   return {
-    Box: ({ children, ...p }: React.PropsWithChildren<Record<string, unknown>>) =>
+    Box: ({
+      children,
+      ...p
+    }: React.PropsWithChildren<Record<string, unknown>>) =>
       R.createElement('div', p, children),
     Typography: ({
       children,
       'data-testid': testId,
       style,
       ...p
-    }: React.PropsWithChildren<{ 'data-testid'?: string; style?: React.CSSProperties }>) =>
+    }: React.PropsWithChildren<{
+      'data-testid'?: string;
+      style?: React.CSSProperties;
+    }>) =>
       R.createElement('span', { 'data-testid': testId, style, ...p }, children),
   };
 });
@@ -113,13 +119,17 @@ describe('CustomNode', () => {
     it('does NOT add highlighted class when highlighted is undefined', () => {
       render(<CustomNode nodeData={makeNodeData()} />);
 
-      expect(screen.getByTestId('node-TestNode')).not.toHaveClass('highlighted');
+      expect(screen.getByTestId('node-TestNode')).not.toHaveClass(
+        'highlighted'
+      );
     });
 
     it('does NOT add highlighted class when highlighted is false', () => {
       render(<CustomNode nodeData={makeNodeData({ highlighted: false })} />);
 
-      expect(screen.getByTestId('node-TestNode')).not.toHaveClass('highlighted');
+      expect(screen.getByTestId('node-TestNode')).not.toHaveClass(
+        'highlighted'
+      );
     });
 
     it('DOES add highlighted class when highlighted is true', () => {
@@ -159,9 +169,7 @@ describe('CustomNode', () => {
     });
 
     it('does NOT apply inline style when only colorMain is provided', () => {
-      render(
-        <CustomNode nodeData={makeNodeData({ colorMain: '#1677ff' })} />
-      );
+      render(<CustomNode nodeData={makeNodeData({ colorMain: '#1677ff' })} />);
 
       expect(screen.getByTestId('type-tag')).not.toHaveStyle({
         color: '#1677ff',
@@ -169,9 +177,7 @@ describe('CustomNode', () => {
     });
 
     it('does NOT apply inline style when only colorLight is provided', () => {
-      render(
-        <CustomNode nodeData={makeNodeData({ colorLight: '#e6f4ff' })} />
-      );
+      render(<CustomNode nodeData={makeNodeData({ colorLight: '#e6f4ff' })} />);
 
       expect(screen.getByTestId('type-tag')).not.toHaveStyle({
         backgroundColor: '#e6f4ff',
