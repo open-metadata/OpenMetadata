@@ -11,7 +11,7 @@
 """REST source module"""
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional  # noqa: UP035
 
 from pydantic import AnyUrl
 
@@ -66,15 +66,11 @@ class RestSource(ApiServiceSource):
         super().__init__(config, metadata)
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: RestConnection = config.serviceConnection.root.config
         if not isinstance(connection, RestConnection):
-            raise InvalidSourceException(
-                f"Expected RestConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected RestConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_api_collections(self, *args, **kwargs) -> Iterable[RESTCollection]:
@@ -102,28 +98,24 @@ class RestSource(ApiServiceSource):
                 collections_list.append({"name": DEFAULT_TAG})
             # iterate through paths if there's any missing collection not present in tags
             collections_set = set()
-            for path, methods in self.json_response.get("paths", {}).items():
-                for method_type, info in methods.items():
-                    collections_set.update({tag for tag in info.get("tags", [])})
+            for path, methods in self.json_response.get("paths", {}).items():  # noqa: B007, PERF102
+                for method_type, info in methods.items():  # noqa: B007, PERF102
+                    collections_set.update({tag for tag in info.get("tags", [])})  # noqa: C416
             for collection_name in collections_set:
                 if collection_name not in tags_collection_set:
-                    collections_list.append({"name": collection_name})
+                    collections_list.append({"name": collection_name})  # noqa: PERF401
             for collection in collections_list:
                 if filter_by_collection(
                     self.source_config.apiCollectionFilterPattern,
                     collection.get("name"),
                 ):
-                    self.status.filter(
-                        collection.get("name"), "Collection filtered out"
-                    )
+                    self.status.filter(collection.get("name"), "Collection filtered out")
                     continue
                 yield RESTCollection(**collection)
         except Exception as err:
             logger.error(f"Error while fetching collections from schema URL :{err}")
 
-    def yield_api_collection(
-        self, collection: RESTCollection
-    ) -> Iterable[Either[CreateAPICollectionRequest]]:
+    def yield_api_collection(self, collection: RESTCollection) -> Iterable[Either[CreateAPICollectionRequest]]:
         """Method to return api collection Entities"""
         try:
             collection.url = self._generate_collection_url(collection.name.root)
@@ -145,26 +137,20 @@ class RestSource(ApiServiceSource):
                 )
             )
 
-    def yield_api_endpoint(
-        self, collection: RESTCollection
-    ) -> Iterable[Either[CreateAPIEndpointRequest]]:
+    def yield_api_endpoint(self, collection: RESTCollection) -> Iterable[Either[CreateAPIEndpointRequest]]:
         """Method to return api endpoint Entities"""
         filtered_endpoints = self._filter_collection_endpoints(collection) or {}
         for path, methods in filtered_endpoints.items():
             for method_type, info in methods.items():
                 try:
-                    endpoint = self._prepare_endpoint_data(
-                        path, method_type, info, collection
-                    )
+                    endpoint = self._prepare_endpoint_data(path, method_type, info, collection)
                     if not endpoint:
                         continue
                     if filter_by_endpoint(
                         self.source_config.apiEndpointFilterPattern,
                         endpoint.display_name,
                     ):
-                        self.status.filter(
-                            endpoint.display_name, "Endpoint filtered out"
-                        )
+                        self.status.filter(endpoint.display_name, "Endpoint filtered out")
                         continue
                     yield Either(
                         right=CreateAPIEndpointRequest(
@@ -194,85 +180,72 @@ class RestSource(ApiServiceSource):
                         )
                     )
 
-    def _filter_collection_endpoints(
-        self, collection: RESTCollection
-    ) -> Optional[dict]:
+    def _filter_collection_endpoints(self, collection: RESTCollection) -> Optional[dict]:  # noqa: UP045
         """filter endpoints related to specific collection"""
         try:
             filtered_paths = {}
             for path, methods in self.json_response.get("paths", {}).items():
-                for method_type, info in methods.items():
+                for method_type, info in methods.items():  # noqa: B007, PERF102
                     if (
                         collection.name.root == DEFAULT_TAG and not info.get("tags")
                     ) or collection.name.root in info.get("tags", []):
                         filtered_paths.update({path: methods})
                     break
-            return filtered_paths
-        except Exception as err:
-            logger.warning(
-                f"Error while filtering endpoints for collection {collection.name.root}"
-            )
+            return filtered_paths  # noqa: TRY300
+        except Exception as err:  # noqa: F841
+            logger.warning(f"Error while filtering endpoints for collection {collection.name.root}")
             return None
 
-    def _prepare_endpoint_data(
-        self, path, method_type, info, collection
-    ) -> Optional[RESTEndpoint]:
+    def _prepare_endpoint_data(self, path, method_type, info, collection) -> Optional[RESTEndpoint]:  # noqa: UP045
         try:
             endpoint = RESTEndpoint(**info)
             path_clean_name = clean_uri(path)
             endpoint.name = f"{path_clean_name}/{method_type}"
             endpoint.display_name = f"{path_clean_name}"
             endpoint.url = self._generate_endpoint_url(collection, endpoint)
-            return endpoint
+            return endpoint  # noqa: TRY300
         except Exception as err:
             logger.warning(f"Error while parsing endpoint data: {err}")
         return None
 
-    def _get_fallback_url(self) -> Optional[AnyUrl]:
+    def _get_fallback_url(self) -> Optional[AnyUrl]:  # noqa: UP045
         """Return openAPISchemaURL if available, otherwise None."""
         schema_conn = self.config.serviceConnection.root.config.openAPISchemaConnection
         if isinstance(schema_conn, OpenAPISchemaURL):
             return schema_conn.openAPISchemaURL
         return None
 
-    def _generate_collection_url(self, collection_name: str) -> Optional[AnyUrl]:
+    def _generate_collection_url(self, collection_name: str) -> Optional[AnyUrl]:  # noqa: UP045
         """generate collection url"""
         try:
             base_url = self.config.serviceConnection.root.config.docURL
             if not base_url:
-                logger.debug(
-                    f"Could not generate collection url for {collection_name}"
-                    " because docURL is not present"
-                )
+                logger.debug(f"Could not generate collection url for {collection_name} because docURL is not present")
                 return self._get_fallback_url()
             base_url = str(base_url)
-            if base_url.endswith("#/") or base_url.endswith("#"):
+            if base_url.endswith("#/") or base_url.endswith("#"):  # noqa: PIE810
                 base_url = base_url.split("#")[0]
             return AnyUrl(f"{clean_uri(base_url)}/#/{collection_name}")
         except Exception as err:
-            logger.warning(
-                f"Error while generating collection url for {collection_name}: {err}"
-            )
+            logger.warning(f"Error while generating collection url for {collection_name}: {err}")
         return self._get_fallback_url()
 
-    def _generate_endpoint_url(
-        self, collection: RESTCollection, endpoint: RESTEndpoint
-    ) -> Optional[AnyUrl]:
+    def _generate_endpoint_url(self, collection: RESTCollection, endpoint: RESTEndpoint) -> Optional[AnyUrl]:  # noqa: UP045
         """generate endpoint url"""
         try:
             if not collection.url or not endpoint.operationId:
                 logger.debug(
-                    f"Could not generate endpoint url for {str(endpoint.name)},"
-                    f" collection url: {str(collection.url)},"
-                    f" endpoint operation id: {str(endpoint.operationId)}"
+                    f"Could not generate endpoint url for {str(endpoint.name)},"  # noqa: RUF010
+                    f" collection url: {str(collection.url)},"  # noqa: RUF010
+                    f" endpoint operation id: {str(endpoint.operationId)}"  # noqa: RUF010
                 )
                 return self._get_fallback_url()
-            return AnyUrl(f"{str(collection.url)}/{endpoint.operationId}")
+            return AnyUrl(f"{str(collection.url)}/{endpoint.operationId}")  # noqa: RUF010
         except Exception as err:
             logger.warning(f"Error while generating collection url: {err}")
         return self._get_fallback_url()
 
-    def _get_api_request_method(self, method_type: str) -> Optional[str]:
+    def _get_api_request_method(self, method_type: str) -> Optional[str]:  # noqa: UP045
         """fetch endpoint request method"""
         try:
             return ApiRequestMethod[method_type.upper()]
@@ -280,16 +253,12 @@ class RestSource(ApiServiceSource):
             logger.warning(f"Keyerror while fetching request method: {err}")
         return None
 
-    def _get_request_schema(self, info: dict) -> Optional[APISchema]:
+    def _get_request_schema(self, info: dict) -> Optional[APISchema]:  # noqa: UP045
         """fetch request schema - supports both OpenAPI 3.0 and Swagger 2.0"""
         try:
             # Try OpenAPI 3.0 format first (requestBody)
             schema_ref = (
-                info.get("requestBody", {})
-                .get("content", {})
-                .get("application/json", {})
-                .get("schema", {})
-                .get("$ref")
+                info.get("requestBody", {}).get("content", {}).get("application/json", {}).get("schema", {}).get("$ref")
             )
 
             if schema_ref:
@@ -301,9 +270,7 @@ class RestSource(ApiServiceSource):
                 if param.get("in") == "body" and "schema" in param:
                     schema_ref = param["schema"].get("$ref")
                     if schema_ref:
-                        return APISchema(
-                            schemaFields=self.process_schema_fields(schema_ref)
-                        )
+                        return APISchema(schemaFields=self.process_schema_fields(schema_ref))
 
             # Try to get query/path parameters for GET/DELETE requests
             # This handles Swagger 2.0 and OpenAPI 3.0 query parameters
@@ -311,7 +278,7 @@ class RestSource(ApiServiceSource):
             for param in parameters:
                 # Resolve parameter $ref if present
                 if "$ref" in param:
-                    param = self._resolve_parameter_ref(param.get("$ref"))
+                    param = self._resolve_parameter_ref(param.get("$ref"))  # noqa: PLW2901
                     if not param:
                         continue
 
@@ -324,19 +291,19 @@ class RestSource(ApiServiceSource):
                 return APISchema(schemaFields=param_fields)
 
             logger.debug("No request schema found for the endpoint")
-            return None
+            return None  # noqa: TRY300
         except Exception as err:
             logger.warning(f"Error while parsing request schema: {err}")
         return None
 
-    def _resolve_parameter_ref(self, param_ref: str) -> Optional[dict]:
+    def _resolve_parameter_ref(self, param_ref: str) -> Optional[dict]:  # noqa: UP045
         """Resolve parameter $ref to actual parameter definition"""
         try:
             # Parameter refs look like: "#/parameters/ParameterName"
             if not param_ref or not param_ref.startswith("#/parameters/"):
                 return None
 
-            param_name = param_ref.split("/")[-1]
+            param_name = param_ref.split("/")[-1]  # noqa: PLC0207
 
             # Swagger 2.0: parameters at root level
             if self.json_response.get("parameters"):
@@ -344,19 +311,15 @@ class RestSource(ApiServiceSource):
 
             # OpenAPI 3.0: components.parameters
             if self.json_response.get("components"):
-                return (
-                    self.json_response.get("components", {})
-                    .get("parameters", {})
-                    .get(param_name)
-                )
+                return self.json_response.get("components", {}).get("parameters", {}).get(param_name)
 
             logger.debug(f"Parameter reference '{param_name}' not found")
-            return None
+            return None  # noqa: TRY300
         except Exception as err:
             logger.warning(f"Error resolving parameter reference: {err}")
             return None
 
-    def _parse_openapi_type(self, openapi_type: Optional[str]) -> DataTypeTopic:
+    def _parse_openapi_type(self, openapi_type: Optional[str]) -> DataTypeTopic:  # noqa: UP045
         """
         Parse OpenAPI type string to DataTypeTopic enum.
         Shared type conversion logic used across the codebase.
@@ -365,9 +328,7 @@ class RestSource(ApiServiceSource):
             return DataTypeTopic.UNKNOWN
 
         # Handle INTEGER -> INT conversion
-        normalized_type = (
-            "INT" if openapi_type.upper() == "INTEGER" else openapi_type.upper()
-        )
+        normalized_type = "INT" if openapi_type.upper() == "INTEGER" else openapi_type.upper()
 
         # Check if type exists in DataTypeTopic enum
         if normalized_type in DataTypeTopic.__members__:
@@ -375,7 +336,7 @@ class RestSource(ApiServiceSource):
 
         return DataTypeTopic.UNKNOWN
 
-    def _convert_parameter_to_field(self, param: dict) -> Optional[FieldModel]:
+    def _convert_parameter_to_field(self, param: dict) -> Optional[FieldModel]:  # noqa: UP045
         """Convert OpenAPI/Swagger parameter to FieldModel for query/path parameters"""
         try:
             param_name = param.get("name")
@@ -410,7 +371,7 @@ class RestSource(ApiServiceSource):
             logger.warning(f"Error converting parameter to field: {err}")
             return None
 
-    def _process_inline_schema(self, properties: dict) -> Optional[APISchema]:
+    def _process_inline_schema(self, properties: dict) -> Optional[APISchema]:  # noqa: UP045
         """Process inline schema properties (schemas without $ref)"""
         try:
             fields = []
@@ -445,15 +406,13 @@ class RestSource(ApiServiceSource):
     def _extract_schema_from_response(self, response: dict) -> dict:
         """Extract schema from a response object (supports both OpenAPI 3.0 and Swagger 2.0)"""
         # OpenAPI 3.0: response.content.application/json.schema
-        schema = (
-            response.get("content", {}).get("application/json", {}).get("schema", {})
-        )
+        schema = response.get("content", {}).get("application/json", {}).get("schema", {})
         # Swagger 2.0: response.schema
         if not schema:
             schema = response.get("schema", {})
         return schema
 
-    def _get_response_schema(self, info: dict) -> Optional[APISchema]:
+    def _get_response_schema(self, info: dict) -> Optional[APISchema]:  # noqa: UP045
         """fetch response schema - supports OpenAPI 3.0, Swagger 2.0, arrays, and inline schemas"""
         try:
             # Try response code 200 first
@@ -499,38 +458,32 @@ class RestSource(ApiServiceSource):
                 return self._process_inline_schema(properties)
 
             logger.debug("No processable response schema found for the endpoint")
-            return None
+            return None  # noqa: TRY300
         except Exception as err:
             logger.warning(f"Error while parsing response schema: {err}")
         return None
 
     def process_schema_fields(
-        self, schema_ref: str, parent_refs: Optional[List[str]] = None
-    ) -> Optional[List[FieldModel]]:
+        self,
+        schema_ref: str,
+        parent_refs: Optional[List[str]] = None,  # noqa: UP006, UP045
+    ) -> Optional[List[FieldModel]]:  # noqa: UP006, UP045
         try:
             if parent_refs is None:
                 parent_refs = []
-            schema_name = schema_ref.split("/")[-1]
+            schema_name = schema_ref.split("/")[-1]  # noqa: PLC0207
 
             # Support both OpenAPI 3.0 (components.schemas) and Swagger 2.0 (definitions)
             schema_fields = None
             if self.json_response.get("components"):
                 # OpenAPI 3.0: components.schemas.{SchemaName}
-                schema_fields = (
-                    self.json_response.get("components", {})
-                    .get("schemas", {})
-                    .get(schema_name)
-                )
+                schema_fields = self.json_response.get("components", {}).get("schemas", {}).get(schema_name)
             elif self.json_response.get("definitions"):
                 # Swagger 2.0: definitions.{SchemaName}
-                schema_fields = self.json_response.get("definitions", {}).get(
-                    schema_name
-                )
+                schema_fields = self.json_response.get("definitions", {}).get(schema_name)
 
             if not schema_fields:
-                logger.warning(
-                    f"Schema '{schema_name}' not found in components.schemas or definitions"
-                )
+                logger.warning(f"Schema '{schema_name}' not found in components.schemas or definitions")
                 return None
 
             parent_refs.append(schema_ref)
@@ -546,24 +499,16 @@ class RestSource(ApiServiceSource):
                         if children_ref:
                             # check infinite recursion by checking pre-processed schemas(parent_refs)
                             if children_ref not in parent_refs:
-                                logger.debug(
-                                    f"Processing array fields inside schema: {children_ref}"
-                                )
-                                children = self.process_schema_fields(
-                                    children_ref, parent_refs
-                                )
-                                logger.debug(
-                                    f"Completed processing array fields inside schema: {children_ref}"
-                                )
+                                logger.debug(f"Processing array fields inside schema: {children_ref}")
+                                children = self.process_schema_fields(children_ref, parent_refs)
+                                logger.debug(f"Completed processing array fields inside schema: {children_ref}")
                             else:
                                 logger.debug(
                                     f"Skipping array fields inside schema: {children_ref} to avoid infinite recursion"
                                 )
                     # Extract description if available
                     description = val.get("description")
-                    description_obj = (
-                        Markdown(root=description) if description is not None else None
-                    )
+                    description_obj = Markdown(root=description) if description is not None else None
 
                     fetched_fields.append(
                         FieldModel(
@@ -580,18 +525,14 @@ class RestSource(ApiServiceSource):
                     if val.get("$ref"):
                         # check infinite recursion by checking pre-processed schemas(parent_refs)
                         if val.get("$ref") not in parent_refs:
-                            children = self.process_schema_fields(
-                                val.get("$ref"), parent_refs
-                            )
+                            children = self.process_schema_fields(val.get("$ref"), parent_refs)
                         else:
                             logger.debug(
                                 f"Skipping object fields inside schema: {val.get('$ref')} to avoid infinite recursion"
                             )
                     # Extract description if available
                     description = val.get("description")
-                    description_obj = (
-                        Markdown(root=description) if description is not None else None
-                    )
+                    description_obj = Markdown(root=description) if description is not None else None
 
                     fetched_fields.append(
                         FieldModel(
@@ -604,12 +545,10 @@ class RestSource(ApiServiceSource):
                     )
             if parent_refs and (schema_ref in parent_refs):
                 parent_refs.pop()
-            return fetched_fields
+            return fetched_fields  # noqa: TRY300
         except Exception as err:
             logger.warning(f"Error while processing schema fields: {err}")
             if parent_refs and (schema_ref in parent_refs):
                 parent_refs.pop()
-                logger.debug(
-                    f"Popping {schema_ref} from parent_refs due to processing error"
-                )
+                logger.debug(f"Popping {schema_ref} from parent_refs due to processing error")
         return None

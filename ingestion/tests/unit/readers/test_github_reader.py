@@ -12,6 +12,7 @@
 """
 Test GitHub Reader
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.security.credentials.githubCredentials import (
@@ -29,9 +30,7 @@ class TestGitHubReader(TestCase):
         """
         We build the headers correctly
         """
-        creds = GitHubCredentials(
-            repositoryName="name", repositoryOwner="owner", token="token"
-        )
+        creds = GitHubCredentials(repositoryName="name", repositoryOwner="owner", token="token")
 
         reader = GitHubReader(creds)
 

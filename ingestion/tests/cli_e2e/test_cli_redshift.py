@@ -12,7 +12,8 @@
 """
 Redshift E2E tests
 """
-from typing import List, Tuple
+
+from typing import List, Tuple  # noqa: UP035
 
 import pytest
 from sqlalchemy import text
@@ -21,8 +22,8 @@ from metadata.generated.schema.entity.data.table import DmlOperationType, System
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.api.status import Status
 
-from .common.test_cli_db import CliCommonDB
-from .common_e2e_sqa_mixins import SQACommonMethods
+from .common.test_cli_db import CliCommonDB  # noqa: TID252
+from .common_e2e_sqa_mixins import SQACommonMethods  # noqa: TID252
 
 
 class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
@@ -41,7 +42,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             FROM e2e_cli_tests.dbt_jaffle.persons;
     """
 
-    insert_data_queries: List[str] = [
+    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
         """
     INSERT INTO e2e_cli_tests.dbt_jaffle.persons (person_id, full_name, birthdate, bigint_col) VALUES
         (1,'Peter Parker', '2004-08-10', 9223372036854775807),
@@ -67,9 +68,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def tearDown(self) -> None:
         self.delete_table_and_view()
 
-    def assert_for_vanilla_ingestion(
-        self, source_status: Status, sink_status: Status
-    ) -> None:
+    def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
         self.assertEqual(len(source_status.failures), 0)
         self.assertEqual(len(source_status.warnings), 0)
         self.assertEqual(len(source_status.filtered), 1)
@@ -99,10 +98,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                     connection.execute(text(self.drop_table_query))
                 break
             except OperationalError as e:
-                if (
-                    "server closed the connection" in str(e)
-                    and attempt < max_retries - 1
-                ):
+                if "server closed the connection" in str(e) and attempt < max_retries - 1:
                     continue
                 raise
 
@@ -154,19 +150,19 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         }
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:
+    def get_includes_schemas() -> List[str]:  # noqa: UP006
         return ["dbt_jaffle"]
 
     @classmethod
-    def get_excludes_schemas(cls) -> List[str]:
+    def get_excludes_schemas(cls) -> List[str]:  # noqa: UP006
         return ["dbt_jaffle", "information_schema"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:
+    def get_includes_tables() -> List[str]:  # noqa: UP006
         return ["customer", "listing"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:
+    def get_excludes_tables() -> List[str]:  # noqa: UP006
         return ["foo"]
 
     @staticmethod
@@ -241,7 +237,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         }
 
     @staticmethod
-    def delete_queries() -> List[str]:
+    def delete_queries() -> List[str]:  # noqa: UP006
         return [
             """
             DELETE FROM e2e_cli_tests.dbt_jaffle.persons WHERE person_id IN (1,2)
@@ -249,7 +245,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         ]
 
     @staticmethod
-    def update_queries() -> List[str]:
+    def update_queries() -> List[str]:  # noqa: UP006
         return [
             """
             UPDATE e2e_cli_tests.dbt_jaffle.persons SET full_name = 'Bruce Wayne' WHERE person_id = 3
@@ -260,7 +256,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def test_profiler_with_time_partition(self) -> None:
         pass
 
-    def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:
+    def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:  # noqa: UP006
         return [
             (
                 "e2e_redshift.e2e_cli_tests.dbt_jaffle.persons",

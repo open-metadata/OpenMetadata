@@ -5,7 +5,7 @@ Runs data quality tests against a PostgreSQL database and asserts that
 failed row samples are published for failing tests and not for passing tests.
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 import pandas as pd
 import pytest
@@ -34,14 +34,14 @@ class SampleDataParameters(BaseModel):
         arbitrary_types_allowed = True
 
     test_case_definition: TestCaseDefinition
-    assumptions: List[Assumption]
+    assumptions: List[Assumption]  # noqa: UP006
     table: str = "customer"
-    expected_query: Optional[str] = None
+    expected_query: Optional[str] = None  # noqa: UP045
 
     def __init__(self, *args, **kwargs):
         if args:
             field_names = list(self.__annotations__.keys())
-            kwargs.update(dict(zip(field_names, args)))
+            kwargs.update(dict(zip(field_names, args)))  # noqa: B905
         super().__init__(**kwargs)
 
 
@@ -241,9 +241,7 @@ def prepare_postgres(postgres_container, sql_commands):
     from sqlalchemy import create_engine, text
     from sqlalchemy.engine.url import make_url
 
-    engine = create_engine(
-        make_url(postgres_container.get_connection_url()).set(database="dvdrental")
-    )
+    engine = create_engine(make_url(postgres_container.get_connection_url()).set(database="dvdrental"))
     with engine.begin() as conn:
         for command in sql_commands:
             conn.execute(text(command))
@@ -264,11 +262,7 @@ def ingest_postgres_metadata(
             "type": postgres_service.connection.config.type.value.lower(),
             "serviceName": postgres_service.fullyQualifiedName.root,
             "serviceConnection": postgres_service.connection.model_copy(
-                update={
-                    "config": postgres_service.connection.config.model_copy(
-                        update={"ingestAllDatabases": True}
-                    )
-                }
+                update={"config": postgres_service.connection.config.model_copy(update={"ingestAllDatabases": True})}
             ),
             "sourceConfig": {
                 "config": {
@@ -304,9 +298,7 @@ def _run_test_suite(
         },
         "processor": {
             "type": "orm-test-runner",
-            "config": TestSuiteProcessorConfig(
-                testCases=test_case_definitions
-            ).model_dump(),
+            "config": TestSuiteProcessorConfig(testCases=test_case_definitions).model_dump(),
         },
         "sink": sink_config,
         "workflowConfig": workflow_config,
@@ -354,9 +346,7 @@ def test_failing_tests_publish_failed_samples(
     assert test_case_entity.testCaseResult.testCaseStatus == TestCaseStatus.Failed
     failed_sample = metadata.get_failed_rows_sample(test_case_entity)
     assert failed_sample is not None
-    df = pd.DataFrame(
-        failed_sample.rows, columns=[c.root for c in failed_sample.columns]
-    )
+    df = pd.DataFrame(failed_sample.rows, columns=[c.root for c in failed_sample.columns])
     assert len(df) <= SAMPLE_DATA_DEFAULT_COUNT
     assert len(df) > 0
     for assumption in parameters.assumptions:

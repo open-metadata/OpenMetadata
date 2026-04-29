@@ -12,7 +12,8 @@
  */
 
 import { isAxiosError } from 'axios';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { isEqual } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -138,23 +139,30 @@ async function fetchAllTermsForGlossary(
   return terms;
 }
 
-async function fetchAllGlossariesPaginated(): Promise<Glossary[]> {
+async function fetchAllGlossariesPaginated(): Promise<{
+  glossaries: Glossary[];
+  complete: boolean;
+}> {
   const collected: Glossary[] = [];
   let afterCursor: string | undefined;
   let pages = 0;
   const MAX_SAFE_PAGES = 500;
   do {
-    const response = await getGlossariesList({
-      fields: 'owners,tags',
-      limit: 100,
-      after: afterCursor,
-    });
-    collected.push(...response.data);
-    afterCursor = response.paging?.after;
-    pages += 1;
+    try {
+      const response = await getGlossariesList({
+        fields: 'owners,tags,termCount',
+        limit: 100,
+        after: afterCursor,
+      });
+      collected.push(...response.data);
+      afterCursor = response.paging?.after;
+      pages += 1;
+    } catch {
+      return { glossaries: collected, complete: false };
+    }
   } while (afterCursor && pages < MAX_SAFE_PAGES);
 
-  return collected;
+  return { glossaries: collected, complete: true };
 }
 
 async function fetchRdfGraphData(
@@ -249,6 +257,7 @@ export function useOntologyExplorer({
   // --- State ---
 
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [graphData, setGraphData] = useState<OntologyGraphData | null>(null);
   const [assetGraphData, setAssetGraphData] =
@@ -272,6 +281,7 @@ export function useOntologyExplorer({
     Record<string, number>
   >({});
   const [hasMoreTerms, setHasMoreTerms] = useState(false);
+  const [glossaryListComplete, setGlossaryListComplete] = useState(false);
   const [dataModeRefreshKey, setDataModeRefreshKey] = useState(0);
 
   // --- Refs ---
@@ -285,6 +295,8 @@ export function useOntologyExplorer({
   const savedModelGraphRef = useRef<OntologyGraphData | null>(null);
   const isInGlobalDataModeRef = useRef(false);
 
+  const assetFetchControllers = useRef<Map<string, AbortController>>(new Map());
+  const scrollThrottleRef = useRef<number>(0);
   const pendingGlossariesRef = useRef<Glossary[]>([]);
   const partialGlossaryRef = useRef<{
     glossary: Glossary;
@@ -311,6 +323,7 @@ export function useOntologyExplorer({
   glossariesRef.current = glossaries;
 
   const {
+    combinedGraphData,
     filteredGraphData,
     hierarchyGraphData,
     graphDataToShow,
@@ -332,10 +345,24 @@ export function useOntologyExplorer({
     relationTypes,
     settings,
     scope,
+    entityId,
     glossaryId,
     termGlossaryId,
     dataSource,
   });
+
+  const loadedTermCount = useMemo(
+    () => (graphData?.nodes ?? []).filter(isTermNode).length,
+    [graphData]
+  );
+
+  const totalTermCount = useMemo(
+    () =>
+      glossaryListComplete
+        ? glossaries.reduce((acc, g) => acc + (g.termCount ?? 0), 0)
+        : undefined,
+    [glossaries, glossaryListComplete]
+  );
 
   // --- Data fetching callbacks ---
 
@@ -428,6 +455,10 @@ export function useOntologyExplorer({
         return;
       }
 
+      assetFetchControllers.current.get(termNode.id)?.abort();
+      const controller = new AbortController();
+      assetFetchControllers.current.set(termNode.id, controller);
+
       setLoadingTermIds((prev) => new Set(prev).add(termNode.id));
 
       const size = Math.max(1, pageSize);
@@ -443,6 +474,10 @@ export function useOntologyExplorer({
             'tags.tagFQN': termNode.fullyQualifiedName,
           }) as Record<string, unknown>,
         });
+
+        if (controller.signal.aborted) {
+          return;
+        }
 
         const hits = res.hits.hits ?? [];
         const newAssetNodes: OntologyNode[] = [];
@@ -505,17 +540,22 @@ export function useOntologyExplorer({
           return { nodes: mergedNodes, edges: mergedEdges };
         });
       } catch (error) {
-        showErrorToast(
-          isAxiosError(error) ? error : String(error),
-          t('server.entity-fetch-error')
-        );
+        if (!controller.signal.aborted) {
+          showErrorToast(
+            isAxiosError(error) ? error : String(error),
+            t('server.entity-fetch-error')
+          );
+        }
       } finally {
-        setLoadingTermIds((prev) => {
-          const next = new Set(prev);
-          next.delete(termNode.id);
+        if (!controller.signal.aborted) {
+          setLoadingTermIds((prev) => {
+            const next = new Set(prev);
+            next.delete(termNode.id);
 
-          return next;
-        });
+            return next;
+          });
+        }
+        assetFetchControllers.current.delete(termNode.id);
       }
     },
     [t]
@@ -609,11 +649,13 @@ export function useOntologyExplorer({
       );
 
       if (!isDataMode) {
-        const loadedIds = new Set(accumulated.map((term) => term.id));
-        const missingIds = collectMissingRelatedTermIds(accumulated, loadedIds);
+        const CONCURRENCY = 8;
+        const MAX_RESOLUTION_DEPTH = 5;
+        const loadedIds = new Set(accumulated.map((term) => term.id ?? ''));
+        let missingIds = collectMissingRelatedTermIds(accumulated, loadedIds);
+        let depth = 0;
 
-        if (missingIds.size > 0) {
-          const CONCURRENCY = 8;
+        while (missingIds.size > 0 && depth < MAX_RESOLUTION_DEPTH) {
           const missingIdList = Array.from(missingIds);
           for (let i = 0; i < missingIdList.length; i += CONCURRENCY) {
             const batch = missingIdList.slice(i, i + CONCURRENCY);
@@ -632,9 +674,12 @@ export function useOntologyExplorer({
             fetched.forEach((r) => {
               if (r.status === 'fulfilled') {
                 accumulated.push(r.value);
+                loadedIds.add(r.value.id ?? '');
               }
             });
           }
+          missingIds = collectMissingRelatedTermIds(accumulated, loadedIds);
+          depth++;
         }
       }
 
@@ -769,18 +814,12 @@ export function useOntologyExplorer({
       }
 
       if (glossaryIdParam) {
-        const fetchedIds = new Set(allTerms.map((term) => term.id));
-        const missingIds = new Set<string>();
-        allTerms.forEach((term) => {
-          term.relatedTerms?.forEach((relation) => {
-            const id = relation.term?.id;
-            if (id && !fetchedIds.has(id)) {
-              missingIds.add(id);
-            }
-          });
-        });
+        const MAX_RESOLUTION_DEPTH = 5;
+        const fetchedIds = new Set(allTerms.map((term) => term.id ?? ''));
+        let missingIds = collectMissingRelatedTermIds(allTerms, fetchedIds);
+        let depth = 0;
 
-        if (missingIds.size > 0) {
+        while (missingIds.size > 0 && depth < MAX_RESOLUTION_DEPTH) {
           const missingIdList = Array.from(missingIds);
           for (let i = 0; i < missingIdList.length; i += CONCURRENCY) {
             const batch = missingIdList.slice(i, i + CONCURRENCY);
@@ -799,9 +838,12 @@ export function useOntologyExplorer({
             fetched.forEach((r) => {
               if (r.status === 'fulfilled') {
                 allTerms.push(r.value);
+                fetchedIds.add(r.value.id ?? '');
               }
             });
           }
+          missingIds = collectMissingRelatedTermIds(allTerms, fetchedIds);
+          depth++;
         }
       }
 
@@ -815,12 +857,14 @@ export function useOntologyExplorer({
     async (glossaryIdParam?: string) => {
       setLoading(true);
       try {
-        const [allGlossaries, metricsResponse] = await Promise.all([
+        const [glossaryResult, metricsResponse] = await Promise.all([
           fetchAllGlossariesPaginated(),
           fetchAllMetrics().catch(() => [] as Metric[]),
         ]);
 
+        const allGlossaries = glossaryResult.glossaries;
         setGlossaries(allGlossaries);
+        setGlossaryListComplete(glossaryResult.complete);
 
         let data: OntologyGraphData | null = null;
 
@@ -853,6 +897,7 @@ export function useOntologyExplorer({
         filterFetchedGlossariesRef.current = new Set();
         setAssetGraphData(null);
         setTermAssetCounts({});
+        setFetchError(false);
         setGraphData(mergedData);
         lastLoadCompletedRef.current = Date.now();
       } catch (error) {
@@ -860,6 +905,7 @@ export function useOntologyExplorer({
           isAxiosError(error) ? error : String(error),
           t('server.entity-fetch-error')
         );
+        setFetchError(true);
         setGraphData(null);
       } finally {
         setLoading(false);
@@ -973,6 +1019,14 @@ export function useOntologyExplorer({
   );
 
   // --- Effects ---
+
+  useEffect(() => {
+    return () => {
+      graphRef.current = null;
+      assetFetchControllers.current.forEach((c) => c.abort());
+      assetFetchControllers.current.clear();
+    };
+  }, []);
 
   useEffect(() => {
     const initializeSettings = async () => {
@@ -1192,6 +1246,7 @@ export function useOntologyExplorer({
         const nextFilters: GraphFilters = {
           ...filters,
           viewMode: 'overview' satisfies GraphViewMode,
+          showCrossGlossaryOnly: false,
         };
         if (graphData) {
           dataModeInitialLoadUsesSpinnerRef.current = true;
@@ -1207,6 +1262,7 @@ export function useOntologyExplorer({
         setFilters({
           ...filters,
           viewMode: modelFiltersRef.current.viewMode,
+          showCrossGlossaryOnly: modelFiltersRef.current.showCrossGlossaryOnly,
         });
         setTermAssetCounts({});
       }
@@ -1260,18 +1316,16 @@ export function useOntologyExplorer({
     loadAssetsForDataMode,
   ]);
 
-  const handleScrollNearEdge = useCallback(() => {
+  const performLoadMore = useCallback(() => {
     const activeGlossaryFilter =
       withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0;
 
     if (
       explorationMode === 'data' ||
-      filters.viewMode !== 'overview' ||
       activeGlossaryFilter ||
       !hasMoreTerms ||
       isLoadingMoreRef.current ||
-      scope !== 'global' ||
-      Date.now() - lastLoadCompletedRef.current < 2000
+      scope !== 'global'
     ) {
       return;
     }
@@ -1287,7 +1341,7 @@ export function useOntologyExplorer({
           }
           const existingNodeIds = new Set(prev.nodes.map((n) => n.id));
           const existingEdgeKeys = new Set(
-            prev.edges.map((e) => `${e.from}-${e.to}`)
+            prev.edges.map((e) => `${e.from}-${e.to}-${e.relationType}`)
           );
 
           return {
@@ -1299,15 +1353,14 @@ export function useOntologyExplorer({
             edges: [
               ...prev.edges,
               ...newPageData.edges.filter(
-                (e) => !existingEdgeKeys.has(`${e.from}-${e.to}`)
+                (e) =>
+                  !existingEdgeKeys.has(`${e.from}-${e.to}-${e.relationType}`)
               ),
             ],
           };
         });
       })
-      .catch(() => {
-        // keep existing graph on error
-      })
+      .catch(() => {})
       .finally(() => {
         lastLoadCompletedRef.current = Date.now();
         isLoadingMoreRef.current = false;
@@ -1316,7 +1369,6 @@ export function useOntologyExplorer({
   }, [
     explorationMode,
     filters.glossaryIds,
-    filters.viewMode,
     hasMoreTerms,
     scope,
     loadNextTermPage,
@@ -1324,12 +1376,30 @@ export function useOntologyExplorer({
     glossaries,
   ]);
 
+  const handleLoadMore = useCallback(() => {
+    performLoadMore();
+  }, [performLoadMore]);
+
+  const handleScrollNearEdge = useCallback(() => {
+    const now = Date.now();
+    if (now - scrollThrottleRef.current < 150) {
+      return;
+    }
+    scrollThrottleRef.current = now;
+
+    if (now - lastLoadCompletedRef.current < 2000) {
+      return;
+    }
+
+    performLoadMore();
+  }, [performLoadMore]);
+
   const handleSettingsChange = useCallback((nextSettings: GraphSettings) => {
-    setSettings(nextSettings);
+    setSettings((prev) => (isEqual(prev, nextSettings) ? prev : nextSettings));
   }, []);
 
   const handleFiltersChange = useCallback((newFilters: GraphFilters) => {
-    setFilters(newFilters);
+    setFilters((prev) => (isEqual(prev, newFilters) ? prev : newFilters));
   }, []);
 
   const handleViewModeChange = useCallback((viewMode: GraphViewMode) => {
@@ -1409,6 +1479,7 @@ export function useOntologyExplorer({
   return {
     graphRef,
     loading,
+    fetchError,
     isLoadingMore,
     glossaries,
     relationTypes,
@@ -1419,6 +1490,7 @@ export function useOntologyExplorer({
     expandedTermIds,
     rdfEnabled,
     graphDataToShow,
+    combinedGraphData,
     filteredGraphData,
     hierarchyGraphData,
     hierarchyBakedPositions,
@@ -1426,6 +1498,9 @@ export function useOntologyExplorer({
     glossaryColorMap,
     isHierarchyView,
     exportableGlossaryId,
+    hasMoreTerms,
+    loadedTermCount,
+    totalTermCount,
     setFilters,
     setSelectedNode,
     handleZoomIn,
@@ -1438,6 +1513,7 @@ export function useOntologyExplorer({
     handleModeChange,
     handleViewModeChange,
     handleRefresh,
+    handleLoadMore,
     handleScrollNearEdge,
     handleSettingsChange,
     handleFiltersChange,

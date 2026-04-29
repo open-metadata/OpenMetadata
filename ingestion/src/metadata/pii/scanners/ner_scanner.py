@@ -13,11 +13,12 @@ NER Scanner based on Presidio.
 
 Supported Entities https://microsoft.github.io/presidio/supported_entities/
 """
+
 import json
 import logging
 import traceback
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict
 
@@ -58,39 +59,29 @@ class NERScanner(BaseScanner):
     """Based on https://microsoft.github.io/presidio/"""
 
     def __init__(self):
-        from presidio_analyzer import AnalyzerEngine
-        from presidio_analyzer.nlp_engine.spacy_nlp_engine import SpacyNlpEngine
+        from presidio_analyzer import AnalyzerEngine  # noqa: PLC0415
+        from presidio_analyzer.nlp_engine.spacy_nlp_engine import SpacyNlpEngine  # noqa: PLC0415
 
         _load_spacy_model(SPACY_EN_MODEL)
 
-        nlp_engine_model = NLPEngineModel(
-            lang_code=SUPPORTED_LANG, model_name=SPACY_EN_MODEL
-        )
+        nlp_engine_model = NLPEngineModel(lang_code=SUPPORTED_LANG, model_name=SPACY_EN_MODEL)
 
         # Set the presidio logger to talk less about internal entities unless we are debugging
         logging.getLogger(PRESIDIO_LOGGER).setLevel(
-            logging.INFO
-            if logging.getLogger(METADATA_LOGGER).level == logging.DEBUG
-            else logging.ERROR
+            logging.INFO if logging.getLogger(METADATA_LOGGER).level == logging.DEBUG else logging.ERROR
         )
 
-        self.analyzer = AnalyzerEngine(
-            nlp_engine=SpacyNlpEngine(models=[nlp_engine_model.model_dump()])
-        )
+        self.analyzer = AnalyzerEngine(nlp_engine=SpacyNlpEngine(models=[nlp_engine_model.model_dump()]))
 
     @staticmethod
-    def get_highest_score_label(
-        entities_score: Dict[str, StringAnalysis]
-    ) -> Tuple[str, float]:
+    def get_highest_score_label(entities_score: Dict[str, StringAnalysis]) -> Tuple[str, float]:  # noqa: UP006
         top_entity = max(
             entities_score,
-            key=lambda type_: entities_score[type_].score
-            * entities_score[type_].appearances
-            * 0.8,
+            key=lambda type_: entities_score[type_].score * entities_score[type_].appearances * 0.8,
         )
         return top_entity, entities_score[top_entity].score
 
-    def scan(self, data: List[Any]) -> Optional[TagAndConfidence]:
+    def scan(self, data: List[Any]) -> Optional[TagAndConfidence]:  # noqa: UP006, UP045
         """
         Scan the column's sample data rows and look for PII.
 
@@ -114,18 +105,14 @@ class NERScanner(BaseScanner):
         logger.debug("Processing '%s'", data)
 
         # Initialize an empty dict for the given row list
-        entities_score: Dict[str, StringAnalysis] = defaultdict(
-            lambda: StringAnalysis(score=0, appearances=0)
-        )
+        entities_score: Dict[str, StringAnalysis] = defaultdict(lambda: StringAnalysis(score=0, appearances=0))  # noqa: UP006
 
-        str_sample_data_rows = [
-            str(row)[:MAX_NLP_TEXT_LENGTH] for row in data if row is not None
-        ]
+        str_sample_data_rows = [str(row)[:MAX_NLP_TEXT_LENGTH] for row in data if row is not None]
         for row in str_sample_data_rows:
             try:
                 self.process_data(row=row, entities_score=entities_score)
             except Exception as exc:
-                logger.warning(f"Unknown error while processing {row} - {exc}")
+                logger.error(f"Unknown error while processing {row} - {exc}")
                 logger.debug(traceback.format_exc())
 
         if entities_score:
@@ -145,35 +132,31 @@ class NERScanner(BaseScanner):
 
         return None
 
-    def process_data(self, row: str, entities_score: Dict[str, StringAnalysis]) -> None:
+    def process_data(self, row: str, entities_score: Dict[str, StringAnalysis]) -> None:  # noqa: UP006
         """Process the Sample Data rows, checking if they are of JSON format as well"""
         # first, check if the data is JSON or we can work with strings
         is_json, value = self.is_json_data(row)
         if is_json and isinstance(value, dict):
             for val in value.values():
-                self.process_data(
-                    row=str(val)[:MAX_NLP_TEXT_LENGTH], entities_score=entities_score
-                )
+                self.process_data(row=str(val)[:MAX_NLP_TEXT_LENGTH], entities_score=entities_score)
         elif is_json and isinstance(value, list):
             for val in value:
-                self.process_data(
-                    row=str(val)[:MAX_NLP_TEXT_LENGTH], entities_score=entities_score
-                )
+                self.process_data(row=str(val)[:MAX_NLP_TEXT_LENGTH], entities_score=entities_score)
         else:
             self.scan_value(value=row, entities_score=entities_score)
 
     @staticmethod
-    def is_json_data(value: str) -> Tuple[bool, Union[dict, list, None]]:
+    def is_json_data(value: str) -> Tuple[bool, Union[dict, list, None]]:  # noqa: UP006, UP007
         """Check if the value is a JSON object that we need to process differently than strings"""
         try:
             res = json.loads(value)
             if isinstance(res, (dict, list)):
                 return True, res
-            return False, None
+            return False, None  # noqa: TRY300
         except json.JSONDecodeError:
             return False, None
 
-    def scan_value(self, value: str, entities_score: Dict[str, StringAnalysis]):
+    def scan_value(self, value: str, entities_score: Dict[str, StringAnalysis]):  # noqa: UP006
         """Scan the value for PII"""
         results = self.analyzer.analyze(value, language="en")
         for result in results:

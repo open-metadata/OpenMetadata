@@ -15,7 +15,7 @@ Glue pipeline source to extract metadata
 
 import re
 import traceback
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
 from urllib.parse import urlparse
 
 from metadata.clients.aws_client import AWSClient
@@ -117,18 +117,14 @@ class GluepipelineSource(PipelineServiceSource):
         self.job_name_list = set()
         self.glue = self.connection
         self._s3_client = None
-        self._glue_connection_cache: Dict[str, Optional[dict]] = {}
+        self._glue_connection_cache: Dict[str, Optional[dict]] = {}  # noqa: UP006, UP045
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GluePipelineConnection = config.serviceConnection.root.config
         if not isinstance(connection, GluePipelineConnection):
-            raise InvalidSourceException(
-                f"Expected GlueConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected GlueConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_pipelines_list(self) -> Iterable[dict]:
@@ -139,9 +135,7 @@ class GluepipelineSource(PipelineServiceSource):
     def get_pipeline_name(self, pipeline_details: dict) -> str:
         return pipeline_details[NAME]
 
-    def yield_pipeline(
-        self, pipeline_details: Any
-    ) -> Iterable[Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details: Any) -> Iterable[Either[CreatePipelineRequest]]:
         """Method to Get Pipeline Entity"""
         source_url = SourceUrl(
             f"https://{self.service_connection.awsConfig.awsRegion}.console.aws.amazon.com/glue/home?"
@@ -159,21 +153,19 @@ class GluepipelineSource(PipelineServiceSource):
         yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
 
-    def get_tasks(self, pipeline_details: Any) -> List[Task]:
+    def get_tasks(self, pipeline_details: Any) -> List[Task]:  # noqa: UP006
         task_list = []
         for task in pipeline_details["Graph"]["Nodes"]:
             self.task_id_mapping[task["UniqueId"]] = task["Name"][:128]
             if task["Type"] == JOB_TYPE:
                 self.job_name_list.add(task[NAME])
         for task in pipeline_details[GRAPH][NODES]:
-            task_list.append(
+            task_list.append(  # noqa: PERF401
                 Task(
                     name=task[NAME],
                     displayName=task[NAME],
                     taskType=task["Type"],
-                    downstreamTasks=self.get_downstream_tasks(
-                        task["UniqueId"], pipeline_details[GRAPH]
-                    ),
+                    downstreamTasks=self.get_downstream_tasks(task["UniqueId"], pipeline_details[GRAPH]),
                 )
             )
         return task_list
@@ -181,21 +173,17 @@ class GluepipelineSource(PipelineServiceSource):
     def get_downstream_tasks(self, task_unique_id, tasks):
         downstream_tasks = []
         for edges in tasks["Edges"]:
-            if edges["SourceId"] == task_unique_id and self.task_id_mapping.get(
-                edges["DestinationId"]
-            ):
-                downstream_tasks.append(self.task_id_mapping[edges["DestinationId"]])
+            if edges["SourceId"] == task_unique_id and self.task_id_mapping.get(edges["DestinationId"]):
+                downstream_tasks.append(self.task_id_mapping[edges["DestinationId"]])  # noqa: PERF401
         return downstream_tasks
 
     @property
     def s3_client(self):
         if self._s3_client is None:
-            self._s3_client = AWSClient(
-                self.service_connection.awsConfig
-            ).get_s3_client()
+            self._s3_client = AWSClient(self.service_connection.awsConfig).get_s3_client()
         return self._s3_client
 
-    def get_lineage_details(self, job) -> Optional[dict]:
+    def get_lineage_details(self, job) -> Optional[dict]:  # noqa: UP045
         """
         Get the Lineage Details of the pipeline.
 
@@ -205,31 +193,19 @@ class GluepipelineSource(PipelineServiceSource):
         """
         lineage_details = {"sources": [], "targets": []}
         try:
-            job_details = JobNodeResponse.model_validate(
-                self.glue.get_job(JobName=job)
-            ).Job
+            job_details = JobNodeResponse.model_validate(self.glue.get_job(JobName=job)).Job
             if job_details and job_details.config_nodes:
-                self._extract_visual_etl_lineage(
-                    job_details.config_nodes, lineage_details
-                )
-            elif (
-                job_details
-                and job_details.command
-                and job_details.command.ScriptLocation
-            ):
-                self._extract_script_lineage(
-                    job_details.command.ScriptLocation, lineage_details
-                )
+                self._extract_visual_etl_lineage(job_details.config_nodes, lineage_details)
+            elif job_details and job_details.command and job_details.command.ScriptLocation:
+                self._extract_script_lineage(job_details.command.ScriptLocation, lineage_details)
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to get lineage details for job : {job} due to : {exc}"
-            )
+            logger.warning(f"Failed to get lineage details for job : {job} due to : {exc}")
         return lineage_details
 
     def _extract_visual_etl_lineage(self, config_nodes: dict, lineage_details: dict):
-        for _, node in config_nodes.items():
+        for _, node in config_nodes.items():  # noqa: PERF102
             for key, entity in node.items():
                 table_model, storage_model = None, None
                 if key in TABLE_MODEL_MAP:
@@ -259,9 +235,7 @@ class GluepipelineSource(PipelineServiceSource):
                             break
                 if storage_model:
                     for path in storage_model.Paths or [storage_model.Path]:
-                        container = self.metadata.es_search_container_by_path(
-                            full_path=path
-                        )
+                        container = self.metadata.es_search_container_by_path(full_path=path)
                         if container and container[0]:
                             storage_entity = EntityReference(
                                 id=container[0].id,
@@ -288,16 +262,12 @@ class GluepipelineSource(PipelineServiceSource):
 
         self._resolve_s3_entities(result.s3_sources, lineage_details, "sources")
         self._resolve_s3_entities(result.s3_targets, lineage_details, "targets")
-        self._resolve_catalog_entities(
-            result.catalog_sources, lineage_details, "sources"
-        )
-        self._resolve_catalog_entities(
-            result.catalog_targets, lineage_details, "targets"
-        )
+        self._resolve_catalog_entities(result.catalog_sources, lineage_details, "sources")
+        self._resolve_catalog_entities(result.catalog_targets, lineage_details, "targets")
         self._resolve_jdbc_entities(result.jdbc_sources, lineage_details, "sources")
         self._resolve_jdbc_entities(result.jdbc_targets, lineage_details, "targets")
 
-    def _download_s3_script(self, s3_uri: str) -> Optional[str]:
+    def _download_s3_script(self, s3_uri: str) -> Optional[str]:  # noqa: UP045
         try:
             parsed = urlparse(s3_uri)
             bucket = parsed.netloc
@@ -308,24 +278,18 @@ class GluepipelineSource(PipelineServiceSource):
             response = self.s3_client.get_object(Bucket=bucket, Key=key)
             return response["Body"].read().decode("utf-8")
         except Exception as exc:
-            logger.warning(f"Failed to download script from {s3_uri}: {exc}")
+            logger.error(f"Failed to download script from {s3_uri}: {exc}")
             logger.debug(traceback.format_exc())
             return None
 
-    def _resolve_s3_entities(
-        self, paths: List[str], lineage_details: dict, direction: str
-    ):
+    def _resolve_s3_entities(self, paths: List[str], lineage_details: dict, direction: str):  # noqa: UP006
         for path in paths:
             try:
                 # Normalize: try both with and without trailing slash
                 normalized = path.rstrip("/")
-                container = self.metadata.es_search_container_by_path(
-                    full_path=normalized
-                )
+                container = self.metadata.es_search_container_by_path(full_path=normalized)
                 if not container or not container[0]:
-                    container = self.metadata.es_search_container_by_path(
-                        full_path=normalized + "/"
-                    )
+                    container = self.metadata.es_search_container_by_path(full_path=normalized + "/")
                 if container and container[0]:
                     storage_entity = EntityReference(
                         id=container[0].id,
@@ -342,9 +306,7 @@ class GluepipelineSource(PipelineServiceSource):
             except Exception as exc:
                 logger.debug(f"Failed to resolve S3 path {path}: {exc}")
 
-    def _resolve_catalog_entities(
-        self, refs: list, lineage_details: dict, direction: str
-    ):
+    def _resolve_catalog_entities(self, refs: list, lineage_details: dict, direction: str):
         for ref in refs:
             for db_service_name in self.get_db_service_names() or ["*"]:
                 try:
@@ -364,8 +326,7 @@ class GluepipelineSource(PipelineServiceSource):
                         break
                 except Exception as exc:
                     logger.debug(
-                        f"Failed to resolve catalog ref {ref.database}.{ref.table} "
-                        f"in service {db_service_name}: {exc}"
+                        f"Failed to resolve catalog ref {ref.database}.{ref.table} in service {db_service_name}: {exc}"
                     )
 
     def _resolve_jdbc_entities(self, refs: list, lineage_details: dict, direction: str):
@@ -406,12 +367,9 @@ class GluepipelineSource(PipelineServiceSource):
                         lineage_details[direction].append(table_entity)
                         break
                 except Exception as exc:
-                    logger.debug(
-                        f"Failed to resolve JDBC ref {table_name} "
-                        f"in service {db_service_name}: {exc}"
-                    )
+                    logger.debug(f"Failed to resolve JDBC ref {table_name} in service {db_service_name}: {exc}")
 
-    def _resolve_glue_connection(self, connection_name: str) -> Optional[dict]:
+    def _resolve_glue_connection(self, connection_name: str) -> Optional[dict]:  # noqa: UP045
         if connection_name in self._glue_connection_cache:
             return self._glue_connection_cache[connection_name]
 
@@ -421,16 +379,14 @@ class GluepipelineSource(PipelineServiceSource):
             jdbc_url = props.get("JDBC_CONNECTION_URL", "")
             result = self._parse_jdbc_url(jdbc_url)
             self._glue_connection_cache[connection_name] = result
-            return result
+            return result  # noqa: TRY300
         except Exception as exc:
-            logger.debug(
-                f"Failed to resolve Glue connection '{connection_name}': {exc}"
-            )
+            logger.debug(f"Failed to resolve Glue connection '{connection_name}': {exc}")
             self._glue_connection_cache[connection_name] = None
             return None
 
     @staticmethod
-    def _parse_jdbc_url(jdbc_url: str) -> Optional[dict]:
+    def _parse_jdbc_url(jdbc_url: str) -> Optional[dict]:  # noqa: UP045
         if not jdbc_url:
             return None
         # jdbc:redshift://host:port/database
@@ -442,9 +398,7 @@ class GluepipelineSource(PipelineServiceSource):
             return {"database": db_name, "schema": None}
         return None
 
-    def yield_pipeline_status(
-        self, pipeline_details: Any
-    ) -> Iterable[Either[OMetaPipelineStatus]]:
+    def yield_pipeline_status(self, pipeline_details: Any) -> Iterable[Either[OMetaPipelineStatus]]:
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
             entity_type=Pipeline,
@@ -460,31 +414,15 @@ class GluepipelineSource(PipelineServiceSource):
                     task_status.append(
                         TaskStatus(
                             name=attempt["JobName"],
-                            executionStatus=STATUS_MAP.get(
-                                attempt["JobRunState"].lower(), StatusType.Pending
-                            ).value,
-                            startTime=Timestamp(
-                                datetime_to_timestamp(
-                                    attempt["StartedOn"], milliseconds=True
-                                )
-                            ),
-                            endTime=Timestamp(
-                                datetime_to_timestamp(
-                                    attempt["CompletedOn"], milliseconds=True
-                                )
-                            ),
+                            executionStatus=STATUS_MAP.get(attempt["JobRunState"].lower(), StatusType.Pending).value,
+                            startTime=Timestamp(datetime_to_timestamp(attempt["StartedOn"], milliseconds=True)),
+                            endTime=Timestamp(datetime_to_timestamp(attempt["CompletedOn"], milliseconds=True)),
                         )
                     )
                     pipeline_status = PipelineStatus(
                         taskStatus=task_status,
-                        timestamp=Timestamp(
-                            datetime_to_timestamp(
-                                attempt["StartedOn"], milliseconds=True
-                            )
-                        ),
-                        executionStatus=STATUS_MAP.get(
-                            attempt["JobRunState"].lower(), StatusType.Pending
-                        ).value,
+                        timestamp=Timestamp(datetime_to_timestamp(attempt["StartedOn"], milliseconds=True)),
+                        executionStatus=STATUS_MAP.get(attempt["JobRunState"].lower(), StatusType.Pending).value,
                     )
                     yield Either(
                         right=OMetaPipelineStatus(
@@ -501,9 +439,7 @@ class GluepipelineSource(PipelineServiceSource):
                     )
                 )
 
-    def yield_pipeline_lineage_details(
-        self, pipeline_details: Any
-    ) -> Iterable[Either[AddLineageRequest]]:
+    def yield_pipeline_lineage_details(self, pipeline_details: Any) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between pipeline and data sources
         """
@@ -515,9 +451,7 @@ class GluepipelineSource(PipelineServiceSource):
                 pipeline_name=self.context.get().pipeline,
             )
 
-            pipeline_entity = self.metadata.get_by_name(
-                entity=Pipeline, fqn=pipeline_fqn
-            )
+            pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
             lineage_details = LineageDetails(
                 pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),

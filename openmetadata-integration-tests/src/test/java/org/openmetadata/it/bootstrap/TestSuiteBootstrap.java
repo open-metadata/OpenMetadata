@@ -230,7 +230,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       mysql.withDatabaseName("openmetadata");
       mysql.withUsername("test");
       mysql.withPassword("test");
-      mysql.withCommand("mysqld", "--max_allowed_packet=" + mysqlMaxAllowedPacket);
+      mysql.withCommand(
+          "mysqld",
+          "--max_allowed_packet=" + mysqlMaxAllowedPacket,
+          // The tag list query (TagDAO.listAfter) joins three tables and sorts by tag.name,
+          // tag.id; under the parallel-tests fork the tag table grows large and the default
+          // 256KB sort_buffer_size overflows with "Out of sort memory" (#27649). 8MB is plenty
+          // for an integration-test workload and well under the 4GB overall limit.
+          "--sort_buffer_size=8M");
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
       mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=2g"));
@@ -278,7 +285,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "-c",
           "synchronous_commit=off",
           "-c",
-          "full_page_writes=off");
+          "full_page_writes=off",
+          // Bump work_mem for the same reason MySQL gets a larger sort_buffer above:
+          // TagDAO.listAfter joins three tables and sorts; default 4MB spills to temp files
+          // under load.
+          "-c",
+          "work_mem=32MB");
       postgres.withTmpFs(java.util.Map.of("/var/lib/postgresql/data", "rw,size=2g"));
       postgres.withCreateContainerCmdModifier(
           cmd ->

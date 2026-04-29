@@ -13,8 +13,8 @@ class CreateTagRequestFactory(factory.Factory):
     classification = factory.LazyAttribute(lambda o: o.tag_classification)
     description = RootSubFactory(MarkdownFactory)
     recognizers = factory.LazyFunction(list)
-    autoClassificationEnabled = True
-    autoClassificationPriority = 80
+    autoClassificationEnabled = True  # noqa: N815
+    autoClassificationPriority = 80  # noqa: N815
 
     class Meta:
         model = CreateTagRequest

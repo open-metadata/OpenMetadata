@@ -42,12 +42,11 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>Test isolation: Uses TestNamespace for unique entity naming.
  *
- * <p>Parallelization: Runs with @Execution(ExecutionMode.SAME_THREAD) because each test
- * blocks a server thread on synchronous Fuseki writes; concurrent execution can exhaust the
- * server thread pool and cause request timeouts. The class is also @Isolated because the
- * @BeforeAll hook flips global RDF configuration to a test Fuseki container — any other
- * test class running concurrently would inherit that state and contend for the same backend
- * (matches the pattern used by RdfResourceIT for the same reason).
+ * <p>Parallelization: Annotated {@code @Isolated} because {@link RdfUpdater} is a JVM-wide
+ * singleton. {@code @BeforeAll} flips it on, so any test class running concurrently starts doing
+ * synchronous Fuseki writes on every entity create — saturating the Dropwizard thread pool and
+ * causing 60s request timeouts (see issue #27649). {@code @Execution(SAME_THREAD)} alone only
+ * serializes within this class and does not prevent that cross-class leakage.
  */
 @Isolated
 @Execution(ExecutionMode.SAME_THREAD)

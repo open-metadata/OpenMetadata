@@ -12,6 +12,7 @@
 """
 Unit tests for ResultCapturingProcessor
 """
+
 from unittest.mock import MagicMock, create_autospec
 from uuid import uuid4
 
@@ -50,9 +51,7 @@ def sample_test_case():
     return TestCase.model_construct(
         id=uuid4(),
         name=TestCaseEntityName(root="test_case_1"),
-        fullyQualifiedName=FullyQualifiedEntityName(
-            root="MySQL.default.test_db.test_table.test_case_1"
-        ),
+        fullyQualifiedName=FullyQualifiedEntityName(root="MySQL.default.test_db.test_table.test_case_1"),
     )
 
 
@@ -87,13 +86,9 @@ def mock_record():
     return MagicMock(spec=Entity)
 
 
-def test_captures_single_result(
-    mock_processor, sample_test_result_response, mock_record
-):
+def test_captures_single_result(mock_processor, sample_test_result_response, mock_record):
     """Verify single TestCaseResult captured"""
-    test_case_results = TestCaseResults.model_construct(
-        test_results=[sample_test_result_response]
-    )
+    test_case_results = TestCaseResults.model_construct(test_results=[sample_test_result_response])
     mock_processor._run.return_value = Either(right=test_case_results)
 
     capturer = ResultCapturingProcessor(mock_processor)
@@ -129,9 +124,7 @@ def test_captures_multiple_results(mock_processor, sample_test_case, mock_record
         testCase=sample_test_case,
     )
 
-    test_case_results = TestCaseResults.model_construct(
-        test_results=[test_result_1, test_result_2, test_result_3]
-    )
+    test_case_results = TestCaseResults.model_construct(test_results=[test_result_1, test_result_2, test_result_3])
     mock_processor._run.return_value = Either(right=test_case_results)
 
     capturer = ResultCapturingProcessor(mock_processor)
@@ -191,13 +184,9 @@ def test_delegates_attributes_to_wrapped_processor(mock_processor):
     mock_processor.custom_method.assert_called_once()
 
 
-def test_passes_through_result_unchanged(
-    mock_processor, sample_test_result_response, mock_record
-):
+def test_passes_through_result_unchanged(mock_processor, sample_test_result_response, mock_record):
     """Verify result not modified"""
-    test_case_results = TestCaseResults.model_construct(
-        test_results=[sample_test_result_response]
-    )
+    test_case_results = TestCaseResults.model_construct(test_results=[sample_test_result_response])
     mock_processor._run.return_value = Either(right=test_case_results)
 
     capturer = ResultCapturingProcessor(mock_processor)
@@ -232,17 +221,13 @@ def test_handles_non_test_case_results(mock_processor, mock_record):
     """Verify other result types ignored"""
     create_test_suite_request = CreateTestSuiteRequest.model_construct(
         name=EntityName("test_suite"),
-        executableEntityReference=FullyQualifiedEntityName(
-            root="MySQL.default.test_db.test_table"
-        ),
+        executableEntityReference=FullyQualifiedEntityName(root="MySQL.default.test_db.test_table"),
     )
 
     table = Table.model_construct(
         id=uuid4(),
         name=EntityName("test_table"),
-        fullyQualifiedName=FullyQualifiedEntityName(
-            root="MySQL.default.test_db.test_table"
-        ),
+        fullyQualifiedName=FullyQualifiedEntityName(root="MySQL.default.test_db.test_table"),
     )
 
     mock_processor._run.side_effect = [
@@ -281,13 +266,9 @@ def test_run_calls_wrapped_processor_run(mock_processor, mock_record):
     mock_processor._run.assert_called_once_with(mock_record)
 
 
-def test_captures_mixed_results_and_non_results(
-    mock_processor, sample_test_result_response, mock_record
-):
+def test_captures_mixed_results_and_non_results(mock_processor, sample_test_result_response, mock_record):
     """Verify capturer handles mix of TestCaseResults and other types"""
-    test_case_results = TestCaseResults.model_construct(
-        test_results=[sample_test_result_response]
-    )
+    test_case_results = TestCaseResults.model_construct(test_results=[sample_test_result_response])
     table = Table.model_construct(
         id=uuid4(),
         name=EntityName("test_table"),

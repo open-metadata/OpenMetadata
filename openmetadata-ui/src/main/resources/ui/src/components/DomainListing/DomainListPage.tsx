@@ -12,10 +12,10 @@
  */
 
 import { Box, Card } from '@openmetadata/ui-core-components';
-import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { ROUTES } from '../../constants/constants';
@@ -23,17 +23,17 @@ import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
-import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../generated/api/domains/createDomain';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { addDomains, patchDomains } from '../../rest/domainAPI';
 import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
+import { submitAndClose } from '../../utils/FormDrawerUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
 import { useDomainTableColumns } from '../common/atoms/domain/ui/useDomainTableColumns';
-import { useFormDrawerWithRef } from '../common/atoms/drawer';
+import { useFormDrawerWithHook } from '../common/atoms/drawer';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
 import { useBreadcrumbs } from '../common/atoms/navigation/useBreadcrumbs';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
@@ -45,7 +45,11 @@ import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveS
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import AddDomainForm from '../Domain/AddDomainForm/AddDomainForm.component';
+import AddDomainForm, {
+  DOMAIN_FORM_DEFAULTS,
+  transformDomainFormData,
+} from '../Domain/AddDomainForm/AddDomainForm.component';
+import { DomainFormValues } from '../Domain/AddDomainForm/AddDomainForm.interface';
 import { DomainFormType } from '../Domain/DomainPage.interface';
 import DomainTreeView from './components/DomainTreeView';
 import { useDomainListingData } from './hooks/useDomainListingData';
@@ -55,7 +59,9 @@ const DomainListPage = () => {
   const { isMarketplace, domainBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const [form] = useForm();
+  const form = useForm<DomainFormValues>({
+    defaultValues: DOMAIN_FORM_DEFAULTS,
+  });
   const [isLoading, setIsLoading] = useState(false);
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const [treeRefreshToken, setTreeRefreshToken] = useState(0);
@@ -73,49 +79,76 @@ const DomainListPage = () => {
     onFilterChange: domainListing.handleFilterChange,
   });
 
-  const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
-    title: t('label.add-entity', { entity: t('label.domain') }),
-    width: 670,
-    closeOnEscape: false,
-    className: 'tw:z-[20]',
-    onCancel: () => {
-      form.resetFields();
+  const handleDomainSubmit = useCallback(
+    async (data: DomainFormValues) => {
+      const formData = transformDomainFormData(
+        data,
+        DomainFormType.DOMAIN
+      ) as CreateDomain;
+      setIsLoading(true);
+      try {
+        await createEntityWithCoverImage({
+          formData,
+          entityType: EntityType.DOMAIN,
+          entityLabel: t('label.domain'),
+          entityPluralLabel: 'domains',
+          createEntity: addDomains,
+          patchEntity: patchDomains,
+          onSuccess: () => {
+            form.reset();
+          },
+          enqueueSnackbar,
+          closeSnackbar,
+          t,
+        });
+      } finally {
+        setIsLoading(false);
+      }
     },
-    form: (
-      <AddDomainForm
-        isFormInDialog
-        formRef={form}
-        loading={isLoading}
-        type={DomainFormType.DOMAIN}
-        onCancel={() => {}}
-        onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
-          setIsLoading(true);
-          try {
-            await createEntityWithCoverImage({
-              formData: formData as CreateDomain,
-              entityType: EntityType.DOMAIN,
-              entityLabel: t('label.domain'),
-              entityPluralLabel: 'domains',
-              createEntity: addDomains,
-              patchEntity: patchDomains,
-              onSuccess: () => {
-                closeDrawer();
-                refreshAllDomains();
-              },
-              enqueueSnackbar,
-              closeSnackbar,
-              t,
-            });
-          } finally {
-            setIsLoading(false);
+
+    [form, enqueueSnackbar, closeSnackbar, t]
+  );
+
+  const { refetch: refetchDomainListing } = domainListing;
+
+  const refreshAllDomains = useCallback(() => {
+    refetchDomainListing();
+    setTreeRefreshToken((prev) => prev + 1);
+  }, [refetchDomainListing]);
+
+  const { formDrawer, openDrawer, closeDrawer } =
+    useFormDrawerWithHook<DomainFormValues>({
+      title: t('label.add-entity', { entity: t('label.domain') }),
+      width: 670,
+      closeOnEscape: false,
+      className: 'tw:z-[20]',
+      hookForm: form,
+      form: (
+        <AddDomainForm
+          isFormInDialog
+          form={form}
+          loading={isLoading}
+          type={DomainFormType.DOMAIN}
+          onCancel={() => {}}
+          onSubmit={(data: DomainFormValues): Promise<void> =>
+            submitAndClose(
+              data,
+              handleDomainSubmit,
+              closeDrawer,
+              refreshAllDomains
+            )
           }
-        }}
-      />
-    ),
-    formRef: form,
-    onSubmit: () => {},
-    loading: isLoading,
-  });
+        />
+      ),
+      onSubmit: (data: DomainFormValues): Promise<void> =>
+        submitAndClose(
+          data,
+          handleDomainSubmit,
+          closeDrawer,
+          refreshAllDomains
+        ),
+      loading: isLoading,
+    });
 
   const { breadcrumbs } = useBreadcrumbs({
     items: [
@@ -175,13 +208,6 @@ const DomainListPage = () => {
     onPageChange: domainListing.handlePageChange,
     loading: domainListing.loading,
   });
-
-  const { refetch: refetchDomainListing } = domainListing;
-
-  const refreshAllDomains = useCallback(() => {
-    refetchDomainListing();
-    setTreeRefreshToken((prev) => prev + 1);
-  }, [refetchDomainListing]);
 
   const selectedDomainEntities = useMemo(
     () =>
