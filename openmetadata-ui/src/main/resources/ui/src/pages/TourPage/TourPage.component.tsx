@@ -22,6 +22,33 @@ import ExplorePageV1Component from '../ExplorePage/ExplorePageV1.component';
 import MyDataPage from '../MyDataPage/MyDataPage.component';
 import TableDetailsPageV1 from '../TableDetailsPageV1/TableDetailsPageV1';
 
+const isTourFeedWidgetReady = () => {
+  const feedWidget = document.querySelector('#feedWidgetData');
+  const feedWidgetRect = feedWidget?.getBoundingClientRect();
+
+  return Boolean(feedWidgetRect?.width && feedWidgetRect.height);
+};
+
+const waitForTourFeedWidget = (onReady: () => void) => {
+  let animationFrameId = 0;
+
+  const waitForFeedWidget = () => {
+    if (isTourFeedWidgetReady()) {
+      onReady();
+
+      return;
+    }
+
+    animationFrameId = window.requestAnimationFrame(waitForFeedWidget);
+  };
+
+  waitForFeedWidget();
+
+  return () => {
+    window.cancelAnimationFrame(animationFrameId);
+  };
+};
+
 const TourPage = () => {
   const {
     updateIsTourOpen,
@@ -40,30 +67,7 @@ const TourPage = () => {
   useEffect(() => {
     updateIsTourOpen(true);
 
-    const isFeedWidgetReady = () => {
-      const feedWidget = document.querySelector('#feedWidgetData');
-      const feedWidgetRect = feedWidget?.getBoundingClientRect();
-
-      return Boolean(feedWidgetRect?.width && feedWidgetRect.height);
-    };
-
-    let animationFrameId = 0;
-
-    const waitForFeedWidget = () => {
-      if (isFeedWidgetReady()) {
-        setIsTourReady(true);
-
-        return;
-      }
-
-      animationFrameId = window.requestAnimationFrame(waitForFeedWidget);
-    };
-
-    waitForFeedWidget();
-
-    return () => {
-      window.cancelAnimationFrame(animationFrameId);
-    };
+    return waitForTourFeedWidget(() => setIsTourReady(true));
   }, []);
 
   const currentPageComponent = useMemo(() => {
