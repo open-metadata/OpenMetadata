@@ -12,7 +12,10 @@
  */
 
 import { Button, Input } from '@openmetadata/ui-core-components';
-import { ADDITIONAL_PROPERTY_FLAG, WrapIfAdditionalTemplateProps } from '@rjsf/utils';
+import {
+  ADDITIONAL_PROPERTY_FLAG,
+  WrapIfAdditionalTemplateProps,
+} from '@rjsf/utils';
 import { Trash01 } from '@untitledui/icons';
 import { FunctionComponent, useState } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -44,13 +44,13 @@ import { DatabaseServiceSearchSource } from '../../../interface/search.interface
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
 import { getServiceLogo } from '../../../utils/CommonUtils';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import {
   getColumnSorter,
   getEntityName,
   highlightSearchText,
 } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
-import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import { getServiceDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import {

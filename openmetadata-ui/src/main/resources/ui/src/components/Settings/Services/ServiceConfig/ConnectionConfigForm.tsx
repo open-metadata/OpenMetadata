@@ -30,6 +30,7 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
+import connectionsRouterClassBase from '../../../../utils/ConnectionsRouterClassBase';
 import i18n, { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
@@ -37,7 +38,6 @@ import {
   getFilteredSchema,
   getUISchemaWithNestedDefaultFilterFieldsHidden,
 } from '../../../../utils/ServiceConnectionUtils';
-import connectionsRouterClassBase from '../../../../utils/ConnectionsRouterClassBase';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
 import WorkflowArrayFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';

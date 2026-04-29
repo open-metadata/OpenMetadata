@@ -53,6 +53,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('@untitledui/icons', () => ({
+  ChevronDown: () => <span aria-hidden="true">chevron-down-icon</span>,
   Plus: () => <span>plus-icon</span>,
   Trash01: () => <span>trash-icon</span>,
 }));
@@ -169,8 +170,7 @@ describe('FormBuilderV1 templates', () => {
       </CoreFieldTemplate>
     );
 
-    expect(container.firstChild).toHaveClass('field-wrapper');
-    expect(container.firstChild).toHaveStyle({ marginTop: '8px' });
+    expect(container.firstChild).not.toHaveClass('field-wrapper');
     expect(screen.getByText('content')).toBeVisible();
 
     rerender(
@@ -217,21 +217,21 @@ describe('FormBuilderV1 templates', () => {
 
     expect(onAddClick).toHaveBeenCalledWith({ additionalProperties: true });
 
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'label.show-entity:label.advanced-config',
-      })
-    );
+    const advancedConfigToggle = screen.getByRole('button', {
+      name: 'label.advanced-config',
+    });
+
+    expect(advancedConfigToggle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(advancedConfigToggle);
 
     expect(screen.getByText('advanced property')).toBeInTheDocument();
+    expect(advancedConfigToggle).toHaveAttribute('aria-expanded', 'true');
 
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'label.hide-entity:label.advanced-config',
-      })
-    );
+    fireEvent.click(advancedConfigToggle);
 
     expect(screen.queryByText('advanced property')).not.toBeInTheDocument();
+    expect(advancedConfigToggle).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('renders de-duplicated field errors only when errors exist', () => {
