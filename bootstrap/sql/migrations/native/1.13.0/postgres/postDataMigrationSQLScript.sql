@@ -82,6 +82,9 @@ UPDATE glossary_term_entity
 SET json = (json::jsonb - 'relatedTerms')::json
 WHERE jsonb_exists(json::jsonb, 'relatedTerms');
 
+-- entity_extension version snapshots: handled by Java migration
+-- migrateGlossaryTermVersionRelatedTermsToTermRelation (transforms in place to preserve history).
+
 -- Backfill conceptMappings for existing glossary terms
 UPDATE glossary_term_entity
 SET json = jsonb_set(COALESCE(json::jsonb, '{}'::jsonb), '{conceptMappings}', '[]'::jsonb)
