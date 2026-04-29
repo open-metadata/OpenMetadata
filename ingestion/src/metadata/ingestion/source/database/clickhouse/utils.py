@@ -15,7 +15,7 @@ Utils module to define overrided sqlalchamy methods
 
 
 import re
-from typing import Optional, Tuple
+from typing import Optional
 
 from clickhouse_sqlalchemy.drivers.base import ischema_names
 from clickhouse_sqlalchemy.types import Date
@@ -60,7 +60,7 @@ def _strip_quotes(identifier: str) -> str:
     return ".".join(part.strip('`"') for part in identifier.split("."))
 
 
-def get_mv_to_target_table(query: str) -> Optional[Tuple[str, str]]:
+def get_mv_to_target_table(query: str) -> Optional[tuple[str, str]]:
     """Return (mv_name, target_table) for CREATE MATERIALIZED VIEW ... TO <target>.
 
     Covers both the simple `TO <target>` form and the `REFRESH EVERY ... TO <target>`
