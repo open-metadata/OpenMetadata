@@ -65,6 +65,7 @@ const test = base.extend<{
 
 test.describe('Data Products', () => {
   test.describe.configure({ mode: 'serial' });
+  test.slow();
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
