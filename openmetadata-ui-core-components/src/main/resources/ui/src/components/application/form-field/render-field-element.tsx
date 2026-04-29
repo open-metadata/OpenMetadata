@@ -12,15 +12,10 @@
  */
 
 import type { ReactNode } from 'react';
-import { isValidElement } from 'react';
 import type { Key } from 'react-aria-components';
 import type { UseControllerReturn } from 'react-hook-form';
 import { Autocomplete } from '@/components/base/autocomplete/autocomplete';
-import { Box } from '@/components/base/box/box';
-import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
-import { FileTrigger } from '@/components/base/file-upload-trigger/file-upload-trigger';
-import { HintText } from '@/components/base/input/hint-text';
 import { Input } from '@/components/base/input/input';
 import { NativeSelect } from '@/components/base/select/select-native';
 import { Select } from '@/components/base/select/select';
@@ -34,6 +29,10 @@ import {
   FieldTypes,
 } from './form-field.types';
 import { ColorPickerField } from './fields/color-picker-field';
+import {
+  CoverImageUploadField,
+  type CoverImageUploadValue,
+} from './fields/cover-image-upload-field';
 import { IconPickerField } from './fields/icon-picker-field';
 
 const AUTOCOMPLETE_FIELD_TYPES = new Set<FieldTypes>([
@@ -91,32 +90,6 @@ const getDefaultAutocompleteItems = (items: FormSelectItem[]) =>
     />
   ));
 
-const getFileFieldHint = (
-  value: File | { file: File } | File[] | null
-): string | null => {
-  if (!value) {
-    return null;
-  }
-
-  if (value instanceof File) {
-    return value.name;
-  }
-
-  if ('file' in value && value.file instanceof File) {
-    return value.file.name;
-  }
-
-  if (
-    Array.isArray(value) &&
-    value.length > 0 &&
-    value.every((item) => item instanceof File)
-  ) {
-    return value.map((item) => item.name).join(', ');
-  }
-
-  return null;
-};
-
 export const renderFieldElement = (
   controller: UseControllerReturn,
   fieldConfig: FieldProp
@@ -133,7 +106,7 @@ export const renderFieldElement = (
     onItemInserted,
     onItemCleared,
     onSearchChange,
-    onSelect,
+    onSelect: _onSelect,
     size: _size,
     selectedItems: _selectedItems,
     options: _options,
@@ -480,40 +453,33 @@ export const renderFieldElement = (
         />
       );
 
-    case FieldTypes.COVER_IMAGE_UPLOAD: {
-      const allowsMultiple = props.allowsMultiple ?? false;
-      const fileHint = getFileFieldHint(field.value);
-
+    case FieldTypes.COVER_IMAGE_UPLOAD:
       return (
-        <Box direction="col" gap={2}>
-          <FileTrigger
-            acceptDirectory={Boolean(props.acceptDirectory)}
-            acceptedFileTypes={props.acceptedFileTypes}
-            allowsMultiple={allowsMultiple}
-            defaultCamera={props.defaultCamera}
-            onSelect={(files) => {
-              const nextValue = allowsMultiple
-                ? Array.from(files ?? [])
-                : files?.[0]
-                ? { file: files[0] }
-                : null;
-
-              field.onChange(nextValue);
-              onSelect?.(files);
-            }}>
-            {isValidElement(children) ? (
-              children
-            ) : (
-              <Button color="secondary" type="button">
-                {placeholder}
-              </Button>
-            )}
-          </FileTrigger>
-
-          {fileHint && <HintText>{fileHint}</HintText>}
-        </Box>
+        <CoverImageUploadField
+          acceptedFileTypes={props.acceptedFileTypes}
+          ariaLabel={ariaLabel}
+          data-testid={props['data-testid']}
+          isInvalid={isInvalid}
+          labels={props.coverImageLabels}
+          maxDimensions={props.maxDimensions}
+          maxSizeMB={props.maxSizeMB}
+          placeholder={placeholder}
+          previewClassName={props.previewClassName}
+          previewHeight={props.previewHeight}
+          renderPreview={props.renderPreview}
+          repositionable={props.repositionable}
+          validationMessages={props.validationMessages}
+          value={field.value as CoverImageUploadValue}
+          onBlur={() => {
+            field.onBlur();
+            onBlur?.();
+          }}
+          onChange={(next) => {
+            field.onChange(next);
+          }}
+          onValidationError={props.onValidationError}
+        />
       );
-    }
 
     case FieldTypes.COMPONENT:
       return children;
