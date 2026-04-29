@@ -112,8 +112,9 @@ const bfsFromNode = (
   const depth = new Map<string, number>();
   depth.set(startId, 0);
   const queue = [startId];
-  while (queue.length > 0) {
-    const cur = queue.shift()!;
+  let qi = 0;
+  while (qi < queue.length) {
+    const cur = queue[qi++];
     const d = depth.get(cur)!;
     for (const nbr of adj.get(cur) ?? []) {
       if (!depth.has(nbr)) {
@@ -277,11 +278,9 @@ export const computeRadialPositions = (
   const depth = new Map<string, number>();
   depth.set(focusId, 0);
   const queue = [focusId];
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (current === undefined) {
-      continue;
-    }
+  let qi = 0;
+  while (qi < queue.length) {
+    const current = queue[qi++];
     const currentDepth = depth.get(current) ?? 0;
     adj.get(current)?.forEach((neighbor) => {
       if (!depth.has(neighbor)) {
@@ -368,11 +367,9 @@ export const computeELKRadialPositions = async (
   const bfsDepth = new Map<string, number>();
   bfsDepth.set(focusId, 0);
   const bfsQueue = [focusId];
-  while (bfsQueue.length > 0) {
-    const curr = bfsQueue.shift();
-    if (curr === undefined) {
-      continue;
-    }
+  let bfsQi = 0;
+  while (bfsQi < bfsQueue.length) {
+    const curr = bfsQueue[bfsQi++];
     const d = bfsDepth.get(curr) ?? 0;
     for (const neighbor of adj.get(curr) ?? []) {
       if (!bfsDepth.has(neighbor)) {
@@ -558,13 +555,11 @@ const shortestForwardPath = (
   const parent = new Map<string, { nodeId: string; edgeId: string }>();
   const visited = new Set<string>([fromId]);
   const queue: string[] = [fromId];
+  let qi = 0;
   let found = false;
 
-  while (queue.length > 0 && !found) {
-    const cur = queue.shift();
-    if (!cur) {
-      continue;
-    }
+  while (qi < queue.length && !found) {
+    const cur = queue[qi++];
     for (const { target, edgeId } of fwdAdj.get(cur) ?? []) {
       if (!visited.has(target)) {
         visited.add(target);
