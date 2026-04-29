@@ -616,6 +616,7 @@ export const selectTagInTagSuggestion = async (
   }
 ) => {
   const tagInput = page.getByRole('combobox', { name: 'Tags' });
+  const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
 
   const tagSearchResponse = page.waitForResponse((response) => {
     const url = response.url();
@@ -630,19 +631,7 @@ export const selectTagInTagSuggestion = async (
   await tagInput.fill(searchTerm);
   await tagSearchResponse;
 
-  const listboxId = await tagInput.getAttribute('aria-controls');
-  const listbox = listboxId
-    ? page.locator(`[id="${listboxId}"]`)
-    : page
-        .locator('[role="listbox"]')
-        .filter({ has: page.getByTestId(`tag-option-${tagFqn}`) })
-        .first();
-  await listbox.waitFor({ state: 'visible' });
-
-  const tagOption = listbox.getByTestId(`tag-option-${tagFqn}`);
-  await tagOption.waitFor({ state: 'visible' });
-  await tagOption.scrollIntoViewIfNeeded();
   await tagOption.click();
   await page.keyboard.press('Escape');
-  await listbox.waitFor({ state: 'hidden' });
+  await tagOption.waitFor({ state: 'hidden' });
 };
