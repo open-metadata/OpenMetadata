@@ -616,6 +616,7 @@ export const selectTagInTagSuggestion = async (
   }
 ) => {
   const tagInput = page.getByRole('combobox', { name: 'Tags' });
+  const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
 
   const tagSearchResponse = page.waitForResponse((response) => {
     const url = response.url();
@@ -626,13 +627,11 @@ export const selectTagInTagSuggestion = async (
     );
   });
 
+  await tagInput.click();
   await tagInput.fill(searchTerm);
   await tagSearchResponse;
 
-  await page.locator('[role="listbox"]').first().waitFor({ state: 'visible' });
-  const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
-  await tagOption.waitFor({ state: 'visible' });
   await tagOption.click();
   await page.keyboard.press('Escape');
-  await page.locator('[role="listbox"]').first().waitFor({ state: 'hidden' });
+  await tagOption.waitFor({ state: 'hidden' });
 };
