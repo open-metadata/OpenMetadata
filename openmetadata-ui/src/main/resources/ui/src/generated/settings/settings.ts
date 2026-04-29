@@ -2314,6 +2314,10 @@ export interface Openai {
      * https://your-resource.openai.azure.com). Leave empty for standard OpenAI API.
      */
     endpoint?: string;
+    /**
+     * OpenAI model identifier to use for query transformation (chat completions).
+     */
+    modelId?: string;
 }
 
 /**
