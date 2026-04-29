@@ -33,7 +33,6 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext, performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -475,16 +474,12 @@ test.describe('User with Data Steward Roles', () => {
     await settingPageOperationPermissionCheck(dataStewardPage);
   });
 
-  test('Check permissions for Data Steward', async ({
-    adminPage,
-    dataStewardPage,
-  }) => {
+  test('Check permissions for Data Steward', async ({ dataStewardPage }) => {
     test.slow();
-    await redirectToHomePage(adminPage);
 
     await checkStewardServicesPermissions(dataStewardPage);
 
-    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const { apiContext, afterAction } = await createAdminApiContext();
     try {
       const tableResponse = await apiContext.get(
         `/api/v1/tables/${tableEntity2.entityResponseData.id}`
