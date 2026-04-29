@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import { EntityGraphExportFormat } from '../../rest/rdfAPI.interface';
+import { ExportFormat } from '../OntologyExplorer/ExportGraphPanel.interface';
+
 export const GRAPH_NODE_COLORS = {
   table: {
     background: '#52c41a',
@@ -126,4 +129,42 @@ export const GRAPH_INTERACTION_OPTIONS = {
 export const GRAPH_ANIMATION_OPTIONS = {
   animationDuration: 1000,
   easingFunction: 'easeInOutQuad',
+};
+
+export const ENTITY_UUID_REGEX = /\/([a-f0-9-]{36})$/;
+export const PANEL_WIDTH = 576;
+export const FIT_SCALE_FACTOR = 0.9;
+export const ZOOM_IN_FACTOR = 1.2;
+export const ZOOM_OUT_FACTOR = 0.8;
+export const ZOOM_DURATION_MS = 300;
+export const ZOOM_EASING = 'easeCubic';
+
+export const EXPORT_FORMAT_MAP: Partial<
+  Record<ExportFormat, EntityGraphExportFormat>
+> = {
+  [ExportFormat.JSONLD]: 'jsonld',
+  [ExportFormat.TURTLE]: 'turtle',
+};
+
+export const EDGE_STYLE_RESET = {
+  stroke: '#d9d9d9',
+  lineWidth: 1.5,
+  opacity: 1,
+  zIndex: 0,
+  labelFontWeight: 400,
+  labelBackgroundLineWidth: 1,
+};
+
+export const EXPORT_FORMAT_TO_ACCEPT_HEADER: Record<string, string> = {
+  jsonld: 'application/ld+json',
+  turtle: 'text/turtle',
+  rdfxml: 'application/rdf+xml',
+  ntriples: 'application/n-triples',
+};
+
+export const EXPORT_FORMAT_TO_FILE_EXTENSION: Record<string, string> = {
+  jsonld: 'jsonld',
+  turtle: 'ttl',
+  rdfxml: 'rdf',
+  ntriples: 'nt',
 };

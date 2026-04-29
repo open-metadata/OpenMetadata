@@ -10,6 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  EdgeData as G6EdgeData,
+  NodeData as G6NodeData,
+  Graph,
+} from '@antv/g6';
+import { BrandColors } from '../../context/UntitledUIThemeProvider/theme-provider.interface';
 import { EntityReference } from '../../generated/entity/type';
 import {
   GraphEdge,
@@ -44,3 +50,17 @@ export interface GraphData {
   source?: string;
   error?: string;
 }
+
+export type GraphInteractionCtx = {
+  graph: Graph;
+  g6Nodes: G6NodeData[];
+  g6Edges: G6EdgeData[];
+  focusNodeId: string;
+  graphDataNodes: GraphNode[];
+  brandColors?: BrandColors;
+  pendingHighlightRef: React.MutableRefObject<string | null>;
+  selectedNodeIdRef: React.MutableRefObject<string | null>;
+  setSelectedNode: (node: GraphNode | null) => void;
+};
+
+export type KnowledgeGraphLayout = 'dagre' | 'radial';

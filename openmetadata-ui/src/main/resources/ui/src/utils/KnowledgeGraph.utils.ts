@@ -15,10 +15,23 @@ import {
   EdgeData as G6EdgeData,
   GraphData as G6GraphData,
   NodeData as G6NodeData,
+  Graph,
+  IElementEvent,
+  NodePortStyleProps,
 } from '@antv/g6';
-import { GraphData } from '../components/KnowledgeGraph/KnowledgeGraph.interface';
+import { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
+import { EDGE_STYLE_RESET } from '../components/KnowledgeGraph/KnowledgeGraph.constants';
+import {
+  GraphData,
+  GraphInteractionCtx,
+} from '../components/KnowledgeGraph/KnowledgeGraph.interface';
+import { PRIMARY_COLOR } from '../constants/Color.constants';
+import { EntityType } from '../enums/entity.enum';
+import { getEntityLinkFromType } from './EntityUtils';
+import ELKLayout from './Lineage/Layout/ELKUtil/ELKUtil';
 
-export const NODE_WIDTH = 280;
+const NODE_WIDTH = 280;
+
 export const NODE_HEIGHT = 36;
 export const MAX_NODE_WIDTH = 280;
 const MIN_NODE_WIDTH = 120;
@@ -63,11 +76,63 @@ export const getColorSetForType = (
   return COLOR_SETS[hash % COLOR_SETS.length];
 };
 
+const ELK_KG_LAYOUT_OPTIONS = {
+  'elk.algorithm': 'layered',
+  'elk.direction': 'LEFT',
+  'elk.spacing.nodeNode': '60',
+  'elk.layered.spacing.nodeNodeBetweenLayers': '20',
+  'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+  'elk.spacing.edgeNode': '10',
+  'elk.spacing.edgeEdge': '10',
+};
+
+export const computeELKPositions = async (
+  nodes: G6NodeData[],
+  edges: G6EdgeData[]
+): Promise<Map<string, { x: number; y: number }>> => {
+  const elkNodes: ElkNode[] = nodes.map((node) => {
+    const size = node.style?.size as [number, number] | undefined;
+
+    return {
+      id: node.id,
+      width: size?.[0] ?? NODE_WIDTH,
+      height: size?.[1] ?? NODE_HEIGHT,
+    };
+  });
+
+  const elkEdges: ElkExtendedEdge[] = edges.map((edge, i) => {
+    const rawLabel = edge.data?.['label'];
+    const labelText = typeof rawLabel === 'string' ? rawLabel : '';
+    // Estimate label bounding box so ELK auto-expands the corridor to fit it.
+    // 6.5px/char; labelPadding(6×2) + bgPadding(6×2) + border(1×2) = 26px h.
+    const labelWidth = Math.ceil(labelText.length * 6.5 + 26);
+    const labelHeight = 26;
+
+    return {
+      id: String(edge.id ?? `elk-edge-${i}`),
+      sources: [String(edge.source)],
+      targets: [String(edge.target)],
+      labels: [{ text: labelText, width: labelWidth, height: labelHeight }],
+    };
+  });
+
+  const result = await ELKLayout.getElk().layout({
+    id: 'root',
+    layoutOptions: ELK_KG_LAYOUT_OPTIONS,
+    children: elkNodes,
+    edges: elkEdges,
+  });
+
+  return new Map(
+    (result.children ?? []).map((n) => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }])
+  );
+};
+
 // Border-to-border gap (px) between every pair of adjacent rings in the radial
 // layout. All rings are spaced at the same interval: ring-d radius = d × step,
 // where step = VISUAL_GAP + 2 × rectExtent(θ). Increase to spread rings out,
 // decrease to pack them tighter.
-const VISUAL_GAP = 100;
+const VISUAL_GAP = 60;
 
 /**
  * Returns the distance from the center of a NODE_WIDTH×NODE_HEIGHT rectangle
@@ -162,6 +227,219 @@ export const computeRadialPositions = (
   });
 
   return positions;
+};
+
+// Border-to-border gap between adjacent nodes within the same ring (px).
+const INTRA_RING_GAP = 20;
+// Center node is always MAX_NODE_WIDTH=280 (half=140). Ring-1 nodes extend up to
+// 140 px toward center. 360 px leaves ≥80 px of visible edge for the widest nodes.
+const MIN_FIRST_RING_RADIUS = 360;
+// Minimum center-to-center gap added for every additional ring.
+// Prevents over-expansion caused by a single large ring forcing all others wide.
+const MIN_INTER_RING_GAP = 120;
+
+const ELK_KG_RADIAL_LAYOUT_OPTIONS = {
+  'elk.algorithm': 'radial',
+  'elk.spacing.nodeNode': '50',
+};
+
+export const computeELKRadialPositions = async (
+  nodes: G6NodeData[],
+  edges: G6EdgeData[],
+  focusId: string,
+  cx: number,
+  cy: number
+): Promise<Map<string, { x: number; y: number }>> => {
+  // BFS depth from focusId — needed for adaptive ring radii.
+  const adj = new Map<string, string[]>();
+  nodes.forEach((n) => adj.set(n.id, []));
+  edges.forEach((e) => {
+    adj.get(e.source)?.push(e.target);
+    adj.get(e.target)?.push(e.source);
+  });
+
+  const bfsDepth = new Map<string, number>();
+  bfsDepth.set(focusId, 0);
+  const bfsQueue = [focusId];
+  while (bfsQueue.length > 0) {
+    const curr = bfsQueue.shift();
+    if (curr === undefined) {
+      continue;
+    }
+    const d = bfsDepth.get(curr) ?? 0;
+    for (const neighbor of adj.get(curr) ?? []) {
+      if (!bfsDepth.has(neighbor)) {
+        bfsDepth.set(neighbor, d + 1);
+        bfsQueue.push(neighbor);
+      }
+    }
+  }
+
+  const byDepth = new Map<number, string[]>();
+  bfsDepth.forEach((d, id) => {
+    if (!byDepth.has(d)) {
+      byDepth.set(d, []);
+    }
+    byDepth.get(d)?.push(id);
+  });
+
+  // Compute target radius per ring: only expand as much as each ring's own
+  // nodes require, never by the global maximum across all rings.
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  const sortedDepths = [...byDepth.keys()]
+    .filter((d) => d > 0)
+    .sort((a, b) => a - b);
+  const ringRadii = new Map<number, number>();
+  let prevRadius = 0;
+
+  for (const d of sortedDepths) {
+    const nodeIds = byDepth.get(d) ?? [];
+    const totalWidth = nodeIds.reduce((sum, id) => {
+      const size = nodeMap.get(id)?.style?.size as [number, number] | undefined;
+
+      return sum + (size?.[0] ?? NODE_WIDTH);
+    }, 0);
+    const minCircRadius =
+      (totalWidth + nodeIds.length * INTRA_RING_GAP) / (2 * Math.PI);
+    const minComfort = d === 1 ? MIN_FIRST_RING_RADIUS : 0;
+    const minFromPrev = prevRadius + MIN_INTER_RING_GAP;
+    const radius = Math.max(minCircRadius, minComfort, minFromPrev);
+    ringRadii.set(d, radius);
+    prevRadius = radius;
+  }
+
+  // Use ELK radial for angular placement (smarter than uniform: distributes
+  // nodes proportionally by subtree size). Override the radii with ours.
+  try {
+    const elkNodes = nodes.map((node) => {
+      const size = node.style?.size as [number, number] | undefined;
+
+      return {
+        id: node.id,
+        width: size?.[0] ?? NODE_WIDTH,
+        height: size?.[1] ?? NODE_HEIGHT,
+      };
+    });
+
+    const elkEdges: ElkExtendedEdge[] = edges.map((edge, i) => ({
+      id: String(edge.id ?? `elk-radial-edge-${i}`),
+      sources: [String(edge.source)],
+      targets: [String(edge.target)],
+    }));
+
+    const result = await ELKLayout.getElk().layout({
+      id: 'root',
+      layoutOptions: ELK_KG_RADIAL_LAYOUT_OPTIONS,
+      children: elkNodes,
+      edges: elkEdges,
+    });
+
+    const elkRawPos = new Map(
+      (result.children ?? []).map((n) => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }])
+    );
+    const elkFocusPos = elkRawPos.get(focusId) ?? { x: 0, y: 0 };
+
+    const finalPositions = new Map<string, { x: number; y: number }>();
+    finalPositions.set(focusId, { x: cx, y: cy });
+
+    for (const [id, elkPos] of elkRawPos) {
+      if (id === focusId) {
+        continue;
+      }
+      const dx = elkPos.x - elkFocusPos.x;
+      const dy = elkPos.y - elkFocusPos.y;
+      const angle = Math.atan2(dy, dx);
+      const depth = bfsDepth.get(id) ?? 1;
+      const radius = ringRadii.get(depth) ?? MIN_FIRST_RING_RADIUS;
+      finalPositions.set(id, {
+        x: cx + radius * Math.cos(angle),
+        y: cy + radius * Math.sin(angle),
+      });
+    }
+
+    return finalPositions;
+  } catch {
+    // Fallback: uniform angular distribution with our adaptive radii.
+    const fallback = new Map<string, { x: number; y: number }>();
+    fallback.set(focusId, { x: cx, y: cy });
+
+    byDepth.forEach((nodeIds, d) => {
+      if (d === 0) {
+        return;
+      }
+      const radius = ringRadii.get(d) ?? MIN_FIRST_RING_RADIUS;
+      nodeIds.forEach((id, i) => {
+        const angle = (2 * Math.PI * i) / nodeIds.length - Math.PI / 2;
+        fallback.set(id, {
+          x: cx + radius * Math.cos(angle),
+          y: cy + radius * Math.sin(angle),
+        });
+      });
+    });
+
+    return fallback;
+  }
+};
+
+const buildNodePorts = (
+  nodeId: string,
+  myX: number,
+  edges: G6EdgeData[],
+  posMap: Map<string, number>,
+  centerX: number,
+  leftPort: NodePortStyleProps,
+  rightPort: NodePortStyleProps
+): NodePortStyleProps[] => {
+  let needsLeft = false;
+  let needsRight = false;
+  for (const edge of edges) {
+    let otherId: string | null = null;
+    if (edge.source === nodeId) {
+      otherId = edge.target;
+    } else if (edge.target === nodeId) {
+      otherId = edge.source;
+    }
+    if (otherId !== null) {
+      const otherX = posMap.get(String(otherId)) ?? centerX;
+      if (otherX < myX) {
+        needsLeft = true;
+      } else {
+        needsRight = true;
+      }
+    }
+  }
+
+  return [...(needsLeft ? [leftPort] : []), ...(needsRight ? [rightPort] : [])];
+};
+
+export const assignRadialPorts = (
+  nodes: G6NodeData[],
+  edges: G6EdgeData[],
+  focusNodeId: string,
+  centerX: number,
+  leftPort: NodePortStyleProps,
+  rightPort: NodePortStyleProps
+): G6NodeData[] => {
+  const posMap = new Map<string, number>();
+  nodes.forEach((n) => posMap.set(n.id, (n.style?.x as number) ?? centerX));
+
+  return nodes.map((node) => {
+    if (node.id === focusNodeId) {
+      return node;
+    }
+    const myX = posMap.get(node.id) ?? centerX;
+    const ports = buildNodePorts(
+      node.id,
+      myX,
+      edges,
+      posMap,
+      centerX,
+      leftPort,
+      rightPort
+    );
+
+    return { ...node, style: { ...node.style, ports } };
+  });
 };
 
 const traceBackPath = (
@@ -313,12 +591,11 @@ export const transformToG6Format = (data: GraphData | null): G6GraphData => {
     // the reversed travel direction automatically curves them to opposite
     // visual sides. A larger offset (60) ensures paths are visually distinct.
     const curveOffset: number | undefined = isBidirectional ? 60 : undefined;
-    // For bidirectional edges, anchor the label near the source node (0.35)
-    // so each label sits at a physically different location (one near node A,
-    // the other near node B) instead of both crowding the centre.
-    const labelPlacement: number | undefined = isBidirectional
-      ? 0.35
-      : undefined;
+    // Bidirectional edges anchor near source (0.35) so each direction's label
+    // sits at a distinct position rather than both crowding the centre.
+    // Unidirectional edges shift to 0.4 to avoid the geometrically crowded
+    // midpoint of the layer-to-layer corridor.
+    const labelPlacement: number = isBidirectional ? 0.35 : 0.4;
 
     const sourceColor = nodeColorMap.get(edge.to) ?? {
       main: '#595959',
@@ -334,6 +611,8 @@ export const transformToG6Format = (data: GraphData | null): G6GraphData => {
         ...(edge.mergedLabels ? { mergedLabels: edge.mergedLabels } : {}),
       } as Record<string, unknown>,
       style: {
+        stroke: '#d9d9d9',
+        lineWidth: 1.5,
         labelText: edge.label,
         labelFontSize: 11,
         labelFill: sourceColor.main,
@@ -345,11 +624,189 @@ export const transformToG6Format = (data: GraphData | null): G6GraphData => {
         labelBackgroundRadius: 4,
         labelPadding: [3, 6],
         labelZIndex: 100,
+        labelPlacement,
         ...(curveOffset === undefined ? {} : { curveOffset }),
-        ...(labelPlacement === undefined ? {} : { labelPlacement }),
       },
     };
   });
 
   return { nodes, edges };
+};
+
+export const buildEdgeHighlightStyle = (primaryColor: string) => ({
+  stroke: primaryColor,
+  lineWidth: 2,
+  opacity: 1,
+  zIndex: 100,
+  labelFontWeight: 500,
+  labelBackgroundLineWidth: 2,
+});
+
+export const buildNodeUpdateData = (
+  id: string,
+  nodes: G6NodeData[],
+  highlighted: boolean
+) => {
+  const n = nodes.find((node) => node.id === id);
+
+  return {
+    id,
+    // Intentionally omit positional style (x, y) so drag-moved nodes stay
+    // at their new position when highlight updates fire.
+    style: { zIndex: highlighted ? 100 : 0 },
+    data: { ...n?.data, highlighted },
+  };
+};
+
+export const applyInitialFocus = async (
+  graph: Graph,
+  nodes: G6NodeData[],
+  focusNodeId: string
+): Promise<void> => {
+  if (!focusNodeId) {
+    return;
+  }
+  await graph.focusElement(focusNodeId);
+  graph.updateNodeData(
+    nodes.map((n) => ({
+      id: n.id,
+      data: { ...n.data, highlighted: n.id === focusNodeId, dimmed: false },
+    }))
+  );
+  await graph.draw();
+};
+
+export const setupGraphEventHandlers = (ctx: GraphInteractionCtx): void => {
+  const { graph, graphDataNodes, selectedNodeIdRef, setSelectedNode } = ctx;
+  const activeHighlightEdges = new Set<string>();
+  const activeHighlightNodes = new Set<string>();
+
+  const applyPathHighlight = (nodeId: string): void => {
+    ctx.pendingHighlightRef.current = nodeId;
+    const { nodeIds: pathNodes, edgeIds: pathEdges } = findHighlightPath(
+      ctx.focusNodeId,
+      nodeId,
+      ctx.g6Nodes,
+      ctx.g6Edges
+    );
+
+    const edgesToReset = [...activeHighlightEdges].filter(
+      (id) => !pathEdges.has(id)
+    );
+    if (edgesToReset.length > 0) {
+      graph.updateEdgeData(
+        edgesToReset.map((id) => ({ id, style: EDGE_STYLE_RESET }))
+      );
+      edgesToReset.forEach((id) => activeHighlightEdges.delete(id));
+    }
+
+    const nodesToReset = [...activeHighlightNodes].filter(
+      (id) => !pathNodes.has(id)
+    );
+    if (nodesToReset.length > 0) {
+      graph.updateNodeData(
+        nodesToReset.map((id) => buildNodeUpdateData(id, ctx.g6Nodes, false))
+      );
+      nodesToReset.forEach((id) => activeHighlightNodes.delete(id));
+    }
+
+    const newPathEdges = [...pathEdges].filter(
+      (id) => !activeHighlightEdges.has(id)
+    );
+    if (newPathEdges.length > 0) {
+      const highlightStyle = buildEdgeHighlightStyle(
+        ctx.brandColors?.primaryColor ?? PRIMARY_COLOR
+      );
+      graph.updateEdgeData(
+        newPathEdges.map((id) => ({ id, style: highlightStyle }))
+      );
+      newPathEdges.forEach((id) => activeHighlightEdges.add(id));
+    }
+
+    const newPathNodes = [...pathNodes].filter(
+      (id) => !activeHighlightNodes.has(id)
+    );
+    if (newPathNodes.length > 0) {
+      graph.updateNodeData(
+        newPathNodes.map((id) => buildNodeUpdateData(id, ctx.g6Nodes, true))
+      );
+      newPathNodes.forEach((id) => activeHighlightNodes.add(id));
+    }
+
+    if (ctx.pendingHighlightRef.current !== nodeId) {
+      return;
+    }
+    void graph.draw();
+  };
+
+  const clearAllHighlights = (): void => {
+    ctx.pendingHighlightRef.current = null;
+    if (activeHighlightEdges.size > 0) {
+      graph.updateEdgeData(
+        [...activeHighlightEdges].map((id) => ({ id, style: EDGE_STYLE_RESET }))
+      );
+      activeHighlightEdges.clear();
+    }
+    if (activeHighlightNodes.size > 0) {
+      graph.updateNodeData(
+        [...activeHighlightNodes].map((id) =>
+          buildNodeUpdateData(id, ctx.g6Nodes, false)
+        )
+      );
+      activeHighlightNodes.clear();
+    }
+    void graph.draw();
+  };
+
+  graph.on('node:click', (evt: IElementEvent) => {
+    const nodeId = evt.target.id;
+    if (!nodeId) {
+      return;
+    }
+    const node = graphDataNodes.find((n) => n.id === nodeId);
+    setSelectedNode(node ?? null);
+    selectedNodeIdRef.current = nodeId;
+    applyPathHighlight(nodeId);
+  });
+
+  graph.on('node:dblclick', (evt: IElementEvent) => {
+    const nodeId = evt.target.id;
+    if (!nodeId) {
+      return;
+    }
+    const node = graphDataNodes.find((n) => n.id === nodeId);
+    if (node?.type && node?.fullyQualifiedName) {
+      window.open(
+        getEntityLinkFromType(node.fullyQualifiedName, node.type as EntityType),
+        '_blank',
+        'noopener,noreferrer'
+      );
+    }
+  });
+
+  graph.on('node:pointerover', (evt: IElementEvent) => {
+    const nodeId = evt.target.id;
+    if (nodeId) {
+      applyPathHighlight(nodeId);
+    }
+  });
+
+  graph.on('node:pointerleave', (evt: IElementEvent) => {
+    const nodeId = evt.target.id;
+    if (!nodeId) {
+      return;
+    }
+    const highlightTarget = selectedNodeIdRef.current;
+    if (highlightTarget) {
+      applyPathHighlight(highlightTarget);
+    } else {
+      clearAllHighlights();
+    }
+  });
+
+  graph.on('canvas:click', () => {
+    setSelectedNode(null);
+    selectedNodeIdRef.current = null;
+    clearAllHighlights();
+  });
 };
