@@ -46,9 +46,9 @@ const createReadyFeedWidget = () => {
   return feedWidget;
 };
 
-const waitForTourReadyCheck = async () => {
+const waitForTourReadyCheck = async (time = 16) => {
   await act(async () => {
-    jest.advanceTimersByTime(16);
+    jest.advanceTimersByTime(time);
   });
 };
 
@@ -84,6 +84,8 @@ jest.mock('../../utils/TourUtils', () => ({
 
 describe('TourPage component', () => {
   beforeEach(() => {
+    jest.useFakeTimers();
+
     const feedWidget = createReadyFeedWidget();
     mockQuerySelector.mockImplementation((selector) => {
       if (selector === '#feedWidgetData') {
@@ -96,6 +98,7 @@ describe('TourPage component', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    jest.useRealTimers();
   });
 
   it('should render correctly', async () => {
@@ -133,11 +136,56 @@ describe('TourPage component', () => {
     await act(async () => {
       document.body.appendChild(feedWidget);
     });
-    await waitForTourReadyCheck();
+    await waitForTourReadyCheck(116);
 
     expect(screen.getByText('Tour.component')).toBeInTheDocument();
 
     feedWidget.remove();
+  });
+
+  it('should render tour when existing feed widget becomes layout ready', async () => {
+    const feedWidget = document.createElement('div');
+    const getBoundingClientRect = jest
+      .spyOn(feedWidget, 'getBoundingClientRect')
+      .mockReturnValueOnce({
+        bottom: 0,
+        height: 0,
+        left: 0,
+        right: 0,
+        top: 0,
+        width: 0,
+        x: 0,
+        y: 0,
+        toJSON: jest.fn(),
+      })
+      .mockReturnValue({
+        bottom: 100,
+        height: 100,
+        left: 0,
+        right: 100,
+        top: 0,
+        width: 100,
+        x: 0,
+        y: 0,
+        toJSON: jest.fn(),
+      });
+
+    mockQuerySelector.mockImplementation((selector) => {
+      if (selector === '#feedWidgetData') {
+        return feedWidget;
+      }
+
+      return null;
+    });
+
+    render(<TourPage />);
+
+    expect(screen.queryByText('Tour.component')).not.toBeInTheDocument();
+
+    await waitForTourReadyCheck();
+
+    expect(screen.getByText('Tour.component')).toBeInTheDocument();
+    expect(getBoundingClientRect).toHaveBeenCalledTimes(2);
   });
 
   it('MyDataPage Component should be visible, if currentTourPage is myDataPage', async () => {

@@ -40,40 +40,29 @@ const TourPage = () => {
   useEffect(() => {
     updateIsTourOpen(true);
 
-    const markTourReady = () => {
+    const isFeedWidgetReady = () => {
       const feedWidget = document.querySelector('#feedWidgetData');
       const feedWidgetRect = feedWidget?.getBoundingClientRect();
 
-      if (feedWidgetRect?.width && feedWidgetRect.height) {
-        setIsTourReady(true);
-
-        return true;
-      }
-
-      return false;
+      return Boolean(feedWidgetRect?.width && feedWidgetRect.height);
     };
 
-    function scheduleTourReadyCheck() {
-      window.cancelAnimationFrame(animationFrameId);
-      animationFrameId = window.requestAnimationFrame(() => {
-        if (markTourReady()) {
-          observer.disconnect();
-        }
-      });
-    }
     let animationFrameId = 0;
-    const observer = new MutationObserver(() => scheduleTourReadyCheck());
 
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
+    const waitForFeedWidget = () => {
+      if (isFeedWidgetReady()) {
+        setIsTourReady(true);
 
-    scheduleTourReadyCheck();
+        return;
+      }
+
+      animationFrameId = window.requestAnimationFrame(waitForFeedWidget);
+    };
+
+    waitForFeedWidget();
 
     return () => {
       window.cancelAnimationFrame(animationFrameId);
-      observer.disconnect();
     };
   }, []);
 
