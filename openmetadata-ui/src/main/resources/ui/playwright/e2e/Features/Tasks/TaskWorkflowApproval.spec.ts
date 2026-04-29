@@ -19,6 +19,7 @@ import {
 import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { AdminClass } from '../../../support/user/AdminClass';
+import { DOMAIN_TAGS } from '../../../constant/config';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, toastNotification, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -260,7 +261,7 @@ const test = base.extend<{
 
 test.describe(
   'Task Workflow Approval',
-  { tag: ['@Features', '@Governance'] },
+  { tag: [DOMAIN_TAGS.GOVERNANCE] },
   () => {
     const workflowName = `pw_task_approval_workflow_${uuid()}`;
 
@@ -306,6 +307,8 @@ test.describe(
       reviewer1Page,
       reviewer2Page,
     }) => {
+      // 6 minutes: workflow deployment poll (up to 2 min) + task creation poll
+      // (up to 2 min) + two reviewer approval flows with page loads = ~5 min total.
       test.setTimeout(360_000);
 
       const { apiContext, afterAction } = await getApiContext(page);
