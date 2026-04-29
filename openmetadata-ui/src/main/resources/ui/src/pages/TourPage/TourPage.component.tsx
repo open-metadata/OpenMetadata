@@ -40,20 +40,41 @@ const TourPage = () => {
   useEffect(() => {
     updateIsTourOpen(true);
 
-    let attempts = 0;
-    const maxAttempts = 60;
+    const markTourReady = () => {
+      const feedWidget = document.querySelector('#feedWidgetData');
+      const feedWidgetRect = feedWidget?.getBoundingClientRect();
 
-    const waitForElement = () => {
-      const el = document.querySelector('#feedWidgetData');
-      if (el) {
+      if (feedWidgetRect?.width && feedWidgetRect.height) {
         setIsTourReady(true);
-      } else if (attempts < maxAttempts) {
-        attempts++;
-        setTimeout(waitForElement, 100);
+
+        return true;
       }
+
+      return false;
     };
 
-    waitForElement();
+    function scheduleTourReadyCheck() {
+      window.cancelAnimationFrame(animationFrameId);
+      animationFrameId = window.requestAnimationFrame(() => {
+        if (markTourReady()) {
+          observer.disconnect();
+        }
+      });
+    }
+    let animationFrameId = 0;
+    const observer = new MutationObserver(() => scheduleTourReadyCheck());
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    scheduleTourReadyCheck();
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      observer.disconnect();
+    };
   }, []);
 
   const currentPageComponent = useMemo(() => {
