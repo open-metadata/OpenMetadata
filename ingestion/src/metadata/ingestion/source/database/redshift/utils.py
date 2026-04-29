@@ -66,7 +66,7 @@ def _redshift_initialize(self, connection):
     self._has_native_hstore = False
 
 
-def _load_domains(self, connection, **kw):
+def _load_domains(self, connection, schema=None, **kw):
     """
     Override to return empty dict since Redshift does not support user-created
     domains and pg_catalog.pg_collation does not exist in Redshift, causing a
@@ -85,7 +85,7 @@ def get_temp_table_names(self, connection, schema=None, **kw):
     return []
 
 
-def get_multi_columns(self, connection, **kw):
+def get_multi_columns(self, connection, schema=None, filter_names=None, scope=None, kind=None, **kw):
     """
     Override PGDialect's get_multi_columns to avoid querying
     pg_attribute.attcollation which does not exist in Redshift.

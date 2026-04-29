@@ -472,7 +472,7 @@ class GenericDataFrameColumnParser:
         return cls.construct_json_column_children(json_structure)
 
     @classmethod
-    def _get_array_struct_children(cls, array_column) -> List[Dict]:  # noqa: UP006
+    def _get_array_struct_children(cls, array_column: List[Any]) -> List[Dict]:  # noqa: UP006
         """For an ARRAY column whose elements are dicts, infer the merged struct shape and
         return it as children. Returns an empty list when elements are not dicts.
         """
