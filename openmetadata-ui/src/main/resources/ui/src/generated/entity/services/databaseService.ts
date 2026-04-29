@@ -494,10 +494,6 @@ export interface Connection {
      *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
-     *
-     * Optional display name for the QuestDB database in OpenMetadata. QuestDB exposes a single
-     * physical database (qdb); this value is used only for display and FQN building. Defaults
-     * to qdb.
      */
     databaseName?: string;
     /**
@@ -771,9 +767,6 @@ export interface Connection {
      * IOMETE database to restrict metadata ingestion to (e.g. default, finance_db). This is an
      * optional parameter; if left blank, OpenMetadata attempts to scan all databases in the
      * catalog.
-     *
-     * Database schema of the data source (defaults to public). Optional; if set, restricts the
-     * test-connection step and metadata reading to a single schema.
      */
     databaseSchema?: string;
     /**

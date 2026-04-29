@@ -46,6 +46,12 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+QUESTDB_TABLE_TYPE_TABLE = "T"
+QUESTDB_TABLE_TYPE_VIEW = "V"
+QUESTDB_TABLE_TYPE_MATERIALIZED_VIEW = "M"
+QUESTDB_PARTITION_NONE = "NONE"
+QUESTDB_PARTITION_NA = "N/A"
+
 
 class QuestDBSource(CommonDbSourceService):
     """
@@ -74,7 +80,7 @@ class QuestDBSource(CommonDbSourceService):
             self._tables_cache = {}
 
     def get_database_names(self) -> Iterable[str]:
-        yield self.service_connection.databaseName or QUESTDB_DEFAULT_DATABASE
+        yield QUESTDB_DEFAULT_DATABASE
 
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
@@ -84,11 +90,13 @@ class QuestDBSource(CommonDbSourceService):
         ``TableType.Partitioned``; all others are ``TableType.Regular``.
         """
         for row in self._tables_cache.values():
-            if row.table_type != "T":
+            if row.table_type != QUESTDB_TABLE_TYPE_TABLE:
                 continue
             try:
                 table_type = (
-                    TableType.Partitioned if row.partition_by and row.partition_by != "NONE" else TableType.Regular
+                    TableType.Partitioned
+                    if row.partition_by and row.partition_by != QUESTDB_PARTITION_NONE
+                    else TableType.Regular
                 )
                 yield TableNameAndType(name=row.name, type_=table_type)
             except Exception as exc:
@@ -103,10 +111,10 @@ class QuestDBSource(CommonDbSourceService):
         ``table_type == "M"`` are typed ``TableType.MaterializedView``.
         """
         for row in self._tables_cache.values():
-            if row.table_type not in ("V", "M"):
+            if row.table_type not in (QUESTDB_TABLE_TYPE_VIEW, QUESTDB_TABLE_TYPE_MATERIALIZED_VIEW):
                 continue
             try:
-                table_type = TableType.View if row.table_type == "V" else TableType.MaterializedView
+                table_type = TableType.View if row.table_type == QUESTDB_TABLE_TYPE_VIEW else TableType.MaterializedView
                 yield TableNameAndType(name=row.name, type_=table_type)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
@@ -142,7 +150,11 @@ class QuestDBSource(CommonDbSourceService):
                 return False, None
             partition_by = row.partition_by
             designated_timestamp = row.designated_timestamp
-            if not partition_by or partition_by in ("NONE", "N/A") or not designated_timestamp:
+            if (
+                not partition_by
+                or partition_by in (QUESTDB_PARTITION_NONE, QUESTDB_PARTITION_NA)
+                or not designated_timestamp
+            ):
                 return False, None
             logger.debug("Table %s partitioned by %s on column %s", table_name, partition_by, designated_timestamp)
             return True, TablePartition(

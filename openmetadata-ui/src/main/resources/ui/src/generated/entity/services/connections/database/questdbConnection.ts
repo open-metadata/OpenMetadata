@@ -25,17 +25,6 @@ export interface QuestdbConnection {
      */
     databaseFilterPattern?: FilterPattern;
     /**
-     * Optional display name for the QuestDB database in OpenMetadata. QuestDB exposes a single
-     * physical database (qdb); this value is used only for display and FQN building. Defaults
-     * to qdb.
-     */
-    databaseName?: string;
-    /**
-     * Database schema of the data source (defaults to public). Optional; if set, restricts the
-     * test-connection step and metadata reading to a single schema.
-     */
-    databaseSchema?: string;
-    /**
      * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
      */
     hostPort: string;
@@ -47,7 +36,6 @@ export interface QuestdbConnection {
      * SQLAlchemy driver scheme options.
      */
     scheme?:                        QuestDBScheme;
-    supportsDBTExtraction?:         boolean;
     supportsMetadataExtraction?:    boolean;
     supportsViewLineageExtraction?: boolean;
     /**

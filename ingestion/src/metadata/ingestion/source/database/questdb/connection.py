@@ -47,8 +47,7 @@ QUESTDB_DEFAULT_DATABASE = "qdb"
 def get_connection_url(connection: QuestDBConnectionConfig) -> str:
     """
     QuestDB exposes a single database named ``qdb`` over the PostgreSQL wire
-    protocol. psycopg2 requires a dbname on the URL, so we always target
-    ``qdb`` regardless of the logical ``databaseName`` stored in OpenMetadata.
+    protocol. psycopg2 requires a dbname on the URL, so we always target ``qdb``.
     """
     url = f"{connection.scheme.value}://"
     if connection.username:
