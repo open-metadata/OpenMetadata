@@ -258,115 +258,38 @@ const test = base.extend<{
   },
 });
 
-test.describe('Task Workflow Approval', { tag: ['@Features', '@Governance'] }, () => {
-  const workflowName = `pw_task_approval_workflow_${uuid()}`;
+test.describe(
+  'Task Workflow Approval',
+  { tag: ['@Features', '@Governance'] },
+  () => {
+    const workflowName = `pw_task_approval_workflow_${uuid()}`;
 
-  test.beforeAll(async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    test.beforeAll(async ({ browser }) => {
+      const { afterAction, apiContext } = await performAdminLogin(browser);
 
-    classification = new ClassificationClass({
-      name: `pw_task_approval_classification-${uuid()}`,
-      displayName: `PW Task Approval Classification ${uuid()}`,
-    });
-    reviewer1User = new AdminClass();
-    reviewer2User = new AdminClass();
-    adminUser = new AdminClass();
+      classification = new ClassificationClass({
+        name: `pw_task_approval_classification-${uuid()}`,
+        displayName: `PW Task Approval Classification ${uuid()}`,
+      });
+      reviewer1User = new AdminClass();
+      reviewer2User = new AdminClass();
+      adminUser = new AdminClass();
 
-    await adminUser.create(apiContext, false);
-    await reviewer1User.create(apiContext);
-    await reviewer2User.create(apiContext);
-    await classification.create(apiContext);
+      await adminUser.create(apiContext, false);
+      await reviewer1User.create(apiContext);
+      await reviewer2User.create(apiContext);
+      await classification.create(apiContext);
 
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-
-    await adminUser.delete(apiContext);
-    await reviewer1User.delete(apiContext);
-    await reviewer2User.delete(apiContext);
-    await classification.delete(apiContext);
-    await apiContext
-      .delete(
-        `/api/v1/governance/workflowDefinitions/name/${encodeURIComponent(
-          workflowName
-        )}?hardDelete=true`
-      )
-      .catch(() => {});
-
-    await afterAction();
-  });
-
-  test('keeps task open until both reviewers have approved', async ({
-    page,
-    reviewer1Page,
-    reviewer2Page,
-  }) => {
-    test.setTimeout(360_000);
-
-    const { apiContext, afterAction } = await getApiContext(page);
-    const tag = new TagClass({
-      name: `pw_task_approval_tag_${uuid()}`,
-      classification: classification.data.name,
+      await afterAction();
     });
 
-    try {
-      await test.step('Create workflow and wait for deployment', async () => {
-        await apiContext.post('/api/v1/governance/workflowDefinitions', {
-          data: buildWorkflowDefinition(
-            workflowName,
-            getReviewerRef(reviewer1User.responseData),
-            getReviewerRef(reviewer2User.responseData)
-          ),
-        });
-        await waitForWorkflowDeployment(apiContext, workflowName);
-      });
+    test.afterAll(async ({ browser }) => {
+      const { afterAction, apiContext } = await performAdminLogin(browser);
 
-      await test.step('Create tag to trigger workflow', async () => {
-        await tag.create(apiContext);
-      });
-
-      const task = await test.step(
-        'Wait for approval task to be created',
-        async () => waitForTaskCreated(apiContext, tag.responseData.fullyQualifiedName)
-      );
-
-      await test.step('Reviewer 1 casts first approval vote', async () => {
-        await approveTaskFromEntityPage(reviewer1Page, task);
-        await toastNotification(reviewer1Page, /Vote recorded/i, 10_000);
-      });
-
-      await test.step('Task stays open after first vote (threshold not met)', async () => {
-        await expect
-          .poll(() => fetchTaskStatus(apiContext, task.id), {
-            timeout: 60_000,
-            intervals: [2000, 5000],
-            message: 'Task should remain Open after first vote',
-          })
-          .toBe('Open');
-      });
-
-      await test.step('Reviewer 2 casts second approval vote', async () => {
-        await approveTaskFromEntityPage(reviewer2Page, task);
-        await toastNotification(
-          reviewer2Page,
-          /Task resolved successfully/i,
-          10_000
-        );
-      });
-
-      await test.step('Task is resolved after both votes (threshold met)', async () => {
-        await expect
-          .poll(() => fetchTaskStatus(apiContext, task.id), {
-            timeout: 60_000,
-            intervals: [2000, 5000],
-            message: 'Task should be Approved after second vote',
-          })
-          .toBe('Approved');
-      });
-    } finally {
-      await tag.delete(apiContext).catch(() => {});
+      await adminUser.delete(apiContext);
+      await reviewer1User.delete(apiContext);
+      await reviewer2User.delete(apiContext);
+      await classification.delete(apiContext);
       await apiContext
         .delete(
           `/api/v1/governance/workflowDefinitions/name/${encodeURIComponent(
@@ -374,7 +297,90 @@ test.describe('Task Workflow Approval', { tag: ['@Features', '@Governance'] }, (
           )}?hardDelete=true`
         )
         .catch(() => {});
+
       await afterAction();
-    }
-  });
-});
+    });
+
+    test('keeps task open until both reviewers have approved', async ({
+      page,
+      reviewer1Page,
+      reviewer2Page,
+    }) => {
+      test.setTimeout(360_000);
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      const tag = new TagClass({
+        name: `pw_task_approval_tag_${uuid()}`,
+        classification: classification.data.name,
+      });
+
+      try {
+        await test.step('Create workflow and wait for deployment', async () => {
+          await apiContext.post('/api/v1/governance/workflowDefinitions', {
+            data: buildWorkflowDefinition(
+              workflowName,
+              getReviewerRef(reviewer1User.responseData),
+              getReviewerRef(reviewer2User.responseData)
+            ),
+          });
+          await waitForWorkflowDeployment(apiContext, workflowName);
+        });
+
+        await test.step('Create tag to trigger workflow', async () => {
+          await tag.create(apiContext);
+        });
+
+        const task =
+          await test.step('Wait for approval task to be created', async () =>
+            waitForTaskCreated(
+              apiContext,
+              tag.responseData.fullyQualifiedName
+            ));
+
+        await test.step('Reviewer 1 casts first approval vote', async () => {
+          await approveTaskFromEntityPage(reviewer1Page, task);
+          await toastNotification(reviewer1Page, /Vote recorded/i, 10_000);
+        });
+
+        await test.step('Task stays open after first vote (threshold not met)', async () => {
+          await expect
+            .poll(() => fetchTaskStatus(apiContext, task.id), {
+              timeout: 60_000,
+              intervals: [2000, 5000],
+              message: 'Task should remain Open after first vote',
+            })
+            .toBe('Open');
+        });
+
+        await test.step('Reviewer 2 casts second approval vote', async () => {
+          await approveTaskFromEntityPage(reviewer2Page, task);
+          await toastNotification(
+            reviewer2Page,
+            /Task resolved successfully/i,
+            10_000
+          );
+        });
+
+        await test.step('Task is resolved after both votes (threshold met)', async () => {
+          await expect
+            .poll(() => fetchTaskStatus(apiContext, task.id), {
+              timeout: 60_000,
+              intervals: [2000, 5000],
+              message: 'Task should be Approved after second vote',
+            })
+            .toBe('Approved');
+        });
+      } finally {
+        await tag.delete(apiContext).catch(() => {});
+        await apiContext
+          .delete(
+            `/api/v1/governance/workflowDefinitions/name/${encodeURIComponent(
+              workflowName
+            )}?hardDelete=true`
+          )
+          .catch(() => {});
+        await afterAction();
+      }
+    });
+  }
+);
