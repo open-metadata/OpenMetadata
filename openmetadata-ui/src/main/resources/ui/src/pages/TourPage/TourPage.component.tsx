@@ -51,6 +51,7 @@ const waitForTourFeedWidget = (onReady: () => void) => {
 
 const TourPage = () => {
   const {
+    isTourOpen,
     updateIsTourOpen,
     currentTourPage,
     updateActiveTab,
@@ -66,9 +67,15 @@ const TourPage = () => {
 
   useEffect(() => {
     updateIsTourOpen(true);
-
-    return waitForTourFeedWidget(() => setIsTourReady(true));
   }, []);
+
+  useEffect(() => {
+    if (isTourOpen) {
+      return waitForTourFeedWidget(() => setIsTourReady(true));
+    }
+
+    return;
+  }, [isTourOpen]);
 
   const currentPageComponent = useMemo(() => {
     switch (currentTourPage) {

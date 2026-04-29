@@ -16,6 +16,7 @@ import { CurrentTourPageType } from '../../enums/tour.enum';
 import TourPage from './TourPage.component';
 
 const mockUseTourProvider = {
+  isTourOpen: true,
   updateIsTourOpen: jest.fn(),
   currentTourPage: CurrentTourPageType.MY_DATA_PAGE,
   updateActiveTab: jest.fn(),
