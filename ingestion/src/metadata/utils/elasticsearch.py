@@ -12,7 +12,7 @@
 Helper methods for ES
 """
 
-from typing import List, Optional, TypeVar
+from typing import List, Optional, TypeVar  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -79,9 +79,7 @@ ES_INDEX_MAP = {
 }
 
 
-def get_entity_from_es_result(
-    entity_list: Optional[List[T]], fetch_multiple_entities: bool = False
-) -> Optional[T]:
+def get_entity_from_es_result(entity_list: Optional[List[T]], fetch_multiple_entities: bool = False) -> Optional[T]:  # noqa: UP006, UP045
     """
     Return a single element from an entity list obtained
     from an ES query
@@ -91,7 +89,7 @@ def get_entity_from_es_result(
     if entity_list is None:
         return None
     entity_list = [e for e in entity_list if e is not None]
-    if entity_list and len(entity_list):
+    if entity_list and len(entity_list):  # noqa: PLC1802
         if fetch_multiple_entities:
             return entity_list
         return entity_list[0]

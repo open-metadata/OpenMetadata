@@ -11,15 +11,16 @@
 """
 Generic source to build SQL connectors.
 """
+
 import copy
 import traceback
 from abc import ABC
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
+from typing import Any, Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Connection
-from sqlalchemy.engine.base import Engine
+from sqlalchemy.engine.base import Engine  # noqa: TC002
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 
@@ -45,7 +46,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+    DatabaseServiceMetadataPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -83,8 +84,8 @@ logger = ingestion_logger()
 class ColumnAndReferredColumn(BaseModel):
     table_name: str
     schema_name: str
-    db_name: Optional[str]
-    column: Dict
+    db_name: Optional[str]  # noqa: UP045
+    column: Dict  # noqa: UP006
 
 
 class TableNameAndType(BaseModel):
@@ -98,9 +99,7 @@ class TableNameAndType(BaseModel):
 
 
 # pylint: disable=too-many-public-methods
-class CommonDbSourceService(
-    DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlchemySource, ABC
-):
+class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlchemySource, ABC):
     """
     - fetch_column_tags implemented at SqlColumnHandler. Sources should override this when needed
     """
@@ -112,9 +111,7 @@ class CommonDbSourceService(
         metadata: OpenMetadata,
     ):
         self.config = config
-        self.source_config: DatabaseServiceMetadataPipeline = (
-            self.config.sourceConfig.config
-        )
+        self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
 
         self.metadata = metadata
 
@@ -124,9 +121,7 @@ class CommonDbSourceService(
         self.ssl_manager = None
         self.ssl_manager: SSLManager = check_ssl_and_init(self.service_connection)
         if self.ssl_manager:
-            self.service_connection = self.ssl_manager.setup_ssl(
-                self.service_connection
-            )
+            self.service_connection = self.ssl_manager.setup_ssl(self.service_connection)
 
         self.engine: Engine = get_connection(self.service_connection)
         self.session = create_and_bind_thread_safe_session(self.engine)
@@ -184,7 +179,7 @@ class CommonDbSourceService(
         try:
             self.engine.dispose()
         except Exception as exc:  # pylint: disable=broad-except
-            logger.warning(f"Failed to dispose engine: {exc}")
+            logger.error(f"Failed to dispose engine: {exc}")
         self.engine = None
         self.connection_obj = None
 
@@ -199,49 +194,39 @@ class CommonDbSourceService(
         """
         custom_database_name = self.service_connection.__dict__.get("databaseName")
 
-        database_name = self.service_connection.__dict__.get(
-            "database", custom_database_name or "default"
-        )
+        database_name = self.service_connection.__dict__.get("database", custom_database_name or "default")
 
         yield database_name
 
-    def get_database_description(self, database_name: str) -> Optional[str]:
+    def get_database_description(self, database_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the database description
         by default there will be no database description
         """
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:
+    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the schema description
         by default there will be no schema description
         """
 
-    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:
+    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the stored procedure description
         by default there will be no stored procedure description
         """
 
     @calculate_execution_time_generator()
-    def yield_database(
-        self, database_name: str
-    ) -> Iterable[Either[CreateDatabaseRequest]]:
+    def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink
         """
 
         description = (
-            Markdown(db_description)
-            if (db_description := self.get_database_description(database_name))
-            else None
+            Markdown(db_description) if (db_description := self.get_database_description(database_name)) else None
         )
-        source_url = (
-            SourceUrl(source_url)
-            if (source_url := self.get_source_url(database_name=database_name))
-            else None
-        )
+        source_url = SourceUrl(source_url) if (source_url := self.get_source_url(database_name=database_name)) else None
 
         # Store database owner in context BEFORE yielding (for multi-threading)
         # This ensures worker threads get the correct parent_owner when they copy context
@@ -250,11 +235,7 @@ class CommonDbSourceService(
             # Store ALL owner names (support multiple owners for inheritance)
             database_owner_names = [owner.name for owner in database_owner_ref.root]
             # If only one owner, store as string; otherwise store as list
-            database_owner = (
-                database_owner_names[0]
-                if len(database_owner_names) == 1
-                else database_owner_names
-            )
+            database_owner = database_owner_names[0] if len(database_owner_names) == 1 else database_owner_names
             self.context.get().upsert("database_owner", database_owner)
         else:
             # Clear context to avoid residual owner from previous database
@@ -276,7 +257,7 @@ class CommonDbSourceService(
         if self.service_connection.__dict__.get("databaseSchema"):
             yield self.service_connection.databaseSchema
         else:
-            for schema_name in self.inspector.get_schema_names():
+            for schema_name in self.inspector.get_schema_names():  # noqa: UP028
                 yield schema_name
 
     def get_database_schema_names(self) -> Iterable[str]:
@@ -286,26 +267,16 @@ class CommonDbSourceService(
         yield from self._get_filtered_schema_names()
 
     @calculate_execution_time_generator()
-    def yield_database_schema(
-        self, schema_name: str
-    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
+    def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
         Prepare a database schema request and pass it to the sink
         """
 
-        description = (
-            Markdown(db_description)
-            if (db_description := self.get_schema_description(schema_name))
-            else None
-        )
+        description = Markdown(db_description) if (db_description := self.get_schema_description(schema_name)) else None
         source_url = (
             SourceUrl(source_url)
-            if (
-                source_url := self.get_source_url(
-                    database_name=self.context.get().database, schema_name=schema_name
-                )
-            )
+            if (source_url := self.get_source_url(database_name=self.context.get().database, schema_name=schema_name))
             else None
         )
 
@@ -316,11 +287,7 @@ class CommonDbSourceService(
             # Store ALL owner names (support multiple owners for inheritance)
             schema_owner_names = [owner.name for owner in schema_owner_ref.root]
             # If only one owner, store as string; otherwise store as list
-            schema_owner = (
-                schema_owner_names[0]
-                if len(schema_owner_names) == 1
-                else schema_owner_names
-            )
+            schema_owner = schema_owner_names[0] if len(schema_owner_names) == 1 else schema_owner_names
             self.context.get().upsert("schema_owner", schema_owner)
         else:
             # Clear schema_owner if not present, tables will inherit from database_owner
@@ -347,25 +314,19 @@ class CommonDbSourceService(
 
     @staticmethod
     @calculate_execution_time()
-    def get_table_description(
-        schema_name: str, table_name: str, inspector: Inspector
-    ) -> str:
+    def get_table_description(schema_name: str, table_name: str, inspector: Inspector) -> str:
         description = None
         try:
             table_info: dict = inspector.get_table_comment(table_name, schema_name)
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Table description error for table [{schema_name}.{table_name}]: {exc}"
-            )
+            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
         else:
             description = table_info.get("text")
         return description
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Connect to the source database to get the table
         name and type. By default, use the inspector method
@@ -375,14 +336,9 @@ class CommonDbSourceService(
         logic on how to handle table types, e.g., external, foreign,...
         """
 
-        return [
-            TableNameAndType(name=table_name)
-            for table_name in self.inspector.get_table_names(schema_name) or []
-        ]
+        return [TableNameAndType(name=table_name) for table_name in self.inspector.get_table_names(schema_name) or []]
 
-    def query_view_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Connect to the source database to get the view
         name and type. By default, use the inspector method
@@ -397,7 +353,7 @@ class CommonDbSourceService(
             for table_name in self.inspector.get_view_names(schema_name) or []
         ]
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
         """
         Handle table and views.
 
@@ -410,9 +366,7 @@ class CommonDbSourceService(
         try:
             if self.source_config.includeTables:
                 for table_and_type in self.query_table_names_and_types(schema_name):
-                    table_name = self.standardize_table_name(
-                        schema_name, table_and_type.name
-                    )
+                    table_name = self.standardize_table_name(schema_name, table_and_type.name)
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
@@ -424,11 +378,7 @@ class CommonDbSourceService(
                     )
                     if filter_by_table(
                         self.source_config.tableFilterPattern,
-                        (
-                            table_fqn
-                            if self.source_config.useFqnForFiltering
-                            else table_name
-                        ),
+                        (table_fqn if self.source_config.useFqnForFiltering else table_name),
                     ):
                         self.status.filter(
                             table_fqn,
@@ -439,9 +389,7 @@ class CommonDbSourceService(
 
             if self.source_config.includeViews:
                 for view_and_type in self.query_view_names_and_types(schema_name):
-                    view_name = self.standardize_table_name(
-                        schema_name, view_and_type.name
-                    )
+                    view_name = self.standardize_table_name(schema_name, view_and_type.name)
                     view_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
@@ -453,11 +401,7 @@ class CommonDbSourceService(
 
                     if filter_by_table(
                         self.source_config.tableFilterPattern,
-                        (
-                            view_fqn
-                            if self.source_config.useFqnForFiltering
-                            else view_name
-                        ),
+                        (view_fqn if self.source_config.useFqnForFiltering else view_name),
                     ):
                         self.status.filter(
                             view_fqn,
@@ -466,9 +410,7 @@ class CommonDbSourceService(
                         continue
                     yield view_name, view_and_type.type_
         except Exception as err:
-            logger.warning(
-                f"Fetching tables names failed for schema {schema_name} due to - {err}"
-            )
+            logger.warning(f"Fetching tables names failed for schema {schema_name} due to - {err}")
             logger.debug(traceback.format_exc())
 
     @calculate_execution_time()
@@ -478,7 +420,7 @@ class CommonDbSourceService(
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Optional[str]:
+    ) -> Optional[str]:  # noqa: UP045
         """
         Get the DDL statement or View Definition for a table
         """
@@ -492,19 +434,11 @@ class CommonDbSourceService(
                 TableType.Dynamic,
                 TableType.Stream,
             ):
-                schema_definition = inspector.get_view_definition(
-                    table_name, schema_name
-                )
+                schema_definition = inspector.get_view_definition(table_name, schema_name)
             elif hasattr(inspector, "get_table_ddl") and self.source_config.includeDDL:
-                schema_definition = inspector.get_table_ddl(
-                    self.connection, table_name, schema_name
-                )
-            schema_definition = (
-                str(schema_definition).strip()
-                if schema_definition is not None
-                else None
-            )
-            return schema_definition
+                schema_definition = inspector.get_table_ddl(self.connection, table_name, schema_name)
+            schema_definition = str(schema_definition).strip() if schema_definition is not None else None
+            return schema_definition  # noqa: RET504, TRY300
 
         except NotImplementedError:
             logger.debug("Schema definition not implemented")
@@ -527,15 +461,13 @@ class CommonDbSourceService(
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Tuple[bool, Optional[TablePartition]]:
+    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
         """
         check if the table is partitioned table and return the partition details
         """
         return False, None  # By default the table will be a Regular Table
 
-    def yield_tag(
-        self, schema_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         We don't have a generic source implementation for handling tags.
 
@@ -545,29 +477,29 @@ class CommonDbSourceService(
     def get_stored_procedures(self) -> Iterable[Any]:
         """Not implemented"""
 
-    def yield_stored_procedure(
-        self, stored_procedure: Any
-    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+    def yield_stored_procedure(self, stored_procedure: Any) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Not implemented"""
 
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:
+    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the location path of the table
         by default there will be no location path
         """
 
-    def get_table_extensions(self, table_name: str):
+    def get_table_extensions(
+        self,
+        table_name: str,  # pyright: ignore[reportUnusedParameter]
+        table_type: TableType | None = None,  # pyright: ignore[reportUnusedParameter]
+    ):
         """
         Method to fetch the extensions of the table
         """
 
     @calculate_execution_time_generator()
-    def yield_table(
-        self, table_name_and_type: Tuple[str, TableType]
-    ) -> Iterable[Either[CreateTableRequest]]:
+    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -602,9 +534,7 @@ class CommonDbSourceService(
                 foreign_columns=foreign_columns,
                 columns=columns,
             )
-            table_constraints = self.normalize_table_constraints(
-                table_constraints, columns
-            )
+            table_constraints = self.normalize_table_constraints(table_constraints, columns)
 
             description = (
                 Markdown(db_description)
@@ -634,9 +564,7 @@ class CommonDbSourceService(
                         schema_name=schema_name,
                     )
                 ),
-                tags=self.get_tag_labels(
-                    table_name=table_name
-                ),  # Pick tags from context info, if any
+                tags=self.get_tag_labels(table_name=table_name),  # Pick tags from context info, if any
                 sourceUrl=self.get_source_url(
                     table_name=table_name,
                     schema_name=schema_name,
@@ -644,10 +572,8 @@ class CommonDbSourceService(
                     table_type=table_type,
                 ),
                 owners=self.get_owner_ref(table_name=table_name),
-                locationPath=self.get_location_path(
-                    table_name=table_name, schema_name=schema_name
-                ),
-                extension=self.get_table_extensions(table_name=table_name),
+                locationPath=self.get_location_path(table_name=table_name, schema_name=schema_name),
+                extension=self.get_table_extensions(table_name=table_name, table_type=table_type),
             )
 
             is_partitioned, partition_details = self.get_table_partition_details(
@@ -667,20 +593,16 @@ class CommonDbSourceService(
                 f"Unexpected exception to yield table "
                 f"(database=[{self.context.get().database}], schema=[{schema_name}], table=[{table_name}]): {exc}"
             )
-            yield Either(
-                left=StackTraceError(
-                    name=table_name, error=error, stackTrace=traceback.format_exc()
-                )
-            )
+            yield Either(left=StackTraceError(name=table_name, error=error, stackTrace=traceback.format_exc()))
 
     def _prepare_foreign_constraints(  # pylint: disable=too-many-arguments, too-many-locals
         self,
         supports_database: bool,
-        column: Dict,
+        column: Dict,  # noqa: UP006
         table_name: str,
         schema_name: str,
         db_name: str,
-        columns: List[Column],
+        columns: List[Column],  # noqa: UP006
         add_to_global: bool = True,
     ):
         """
@@ -694,9 +616,7 @@ class CommonDbSourceService(
 
         referred_schema = column.get("referred_schema") or schema_name
         referred_table_fqn = (
-            f"{self.context.get().database_service}."
-            f"{database_name}.{referred_schema}."
-            f"{column.get('referred_table')}"
+            f"{self.context.get().database_service}.{database_name}.{referred_schema}.{column.get('referred_table')}"
         )
         referred_table = self.metadata.get_by_name(entity=Table, fqn=referred_table_fqn)
         if referred_table:
@@ -714,9 +634,7 @@ class CommonDbSourceService(
                     db_name=db_name,
                     column=column,
                 )
-                self.context.get_global().foreign_tables.append(
-                    column_and_referred_columns
-                )
+                self.context.get_global().foreign_tables.append(column_and_referred_columns)
             return None
         relationship_type = None
         if referred_table:
@@ -737,9 +655,9 @@ class CommonDbSourceService(
         table_name,
         schema_name,
         db_name,
-        foreign_columns: List[Dict],
-        columns: List[Column],
-    ) -> List[TableConstraint]:
+        foreign_columns: List[Dict],  # noqa: UP006
+        columns: List[Column],  # noqa: UP006
+    ) -> List[TableConstraint]:  # noqa: UP006
         """
         Search the referred table for foreign constraints
         and get referred column fqn
@@ -765,7 +683,7 @@ class CommonDbSourceService(
         table_constraints,
         foreign_columns,
         columns,
-    ) -> List[TableConstraint]:
+    ) -> List[TableConstraint]:  # noqa: UP006
         """
         From topology.
         process the table constraints of all tables
@@ -808,7 +726,7 @@ class CommonDbSourceService(
     def close(self):
         self._release_engine()
         if hasattr(self, "ssl_manager") and self.ssl_manager:
-            self.ssl_manager = cast(SSLManager, self.ssl_manager)
+            self.ssl_manager = cast(SSLManager, self.ssl_manager)  # noqa: TC006
             self.ssl_manager.cleanup_temp_files()
 
     def fetch_table_tags(
@@ -833,11 +751,11 @@ class CommonDbSourceService(
 
     def get_source_url(
         self,
-        database_name: Optional[str] = None,
-        schema_name: Optional[str] = None,
-        table_name: Optional[str] = None,
-        table_type: Optional[TableType] = None,
-    ) -> Optional[str]:
+        database_name: Optional[str] = None,  # noqa: UP045
+        schema_name: Optional[str] = None,  # noqa: UP045
+        table_name: Optional[str] = None,  # noqa: UP045
+        table_type: Optional[TableType] = None,  # noqa: UP045
+    ) -> Optional[str]:  # noqa: UP045
         """
         By default the source url is not supported for
         """
@@ -876,9 +794,7 @@ class CommonDbSourceService(
                 # send the patch request
                 if foreign_constraints:
                     new_entity = copy.deepcopy(table)
-                    new_entity.tableConstraints = (
-                        new_entity.tableConstraints or []
-                    ) + foreign_constraints
+                    new_entity.tableConstraints = (new_entity.tableConstraints or []) + foreign_constraints
                     patch_request = PatchRequest(
                         original_entity=table,
                         new_entity=new_entity,
@@ -889,7 +805,7 @@ class CommonDbSourceService(
                 yield Either(
                     left=StackTraceError(
                         name=str(foreign_table.table_name),
-                        error=f"Error to yield tableConstraints for {str(foreign_table.table_name)}: {exc}",
+                        error=f"Error to yield tableConstraints for {str(foreign_table.table_name)}: {exc}",  # noqa: RUF010
                         stackTrace=traceback.format_exc(),
                     )
                 )
