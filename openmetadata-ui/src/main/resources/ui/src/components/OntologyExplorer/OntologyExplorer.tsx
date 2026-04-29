@@ -103,7 +103,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     expandedTermIds,
     rdfEnabled,
     graphDataToShow,
-    combinedGraphData,
+    filteredGraphData,
     hierarchyGraphData,
     hierarchyBakedPositions,
     glossaryColorMap,
@@ -490,9 +490,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                   ontologyExplorerRelationsSlot={
                     isDataAssetLikeNode(selectedNode) ? undefined : (
                       <OntologyNodeRelationsContent
-                        edges={combinedGraphData?.edges ?? []}
+                        edges={filteredGraphData?.edges ?? []}
                         node={selectedNode}
-                        nodes={combinedGraphData?.nodes ?? []}
+                        nodes={filteredGraphData?.nodes ?? []}
                         relationTypes={relationTypes}
                       />
                     )
