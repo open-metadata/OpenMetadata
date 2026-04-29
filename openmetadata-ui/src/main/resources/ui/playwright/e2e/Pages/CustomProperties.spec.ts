@@ -3382,7 +3382,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         test.afterAll(async ({ browser }) => {
           const { apiContext, afterAction } = await createNewPage(browser);
 
-          await testData.cleanupUser(apiContext);
+          await testData.cleanupUser?.(apiContext);
           await afterAction();
         });
 
