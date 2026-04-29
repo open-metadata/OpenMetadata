@@ -479,6 +479,11 @@ test.describe('Data Products', () => {
       const domainOption = page.getByText(domain.data.displayName);
       await domainOption.waitFor({ state: 'visible' });
       await domainOption.click();
+      await page.keyboard.press('Escape');
+      await page
+        .locator('[role="listbox"]')
+        .first()
+        .waitFor({ state: 'hidden' });
     });
 
     await test.step('Search and select tag via TagSuggestion', async () => {
@@ -488,7 +493,10 @@ test.describe('Data Products', () => {
       });
 
       await expect(
-        page.getByTestId('add-domain-form').getByText(tag.data.displayName)
+        page
+          .getByTestId('add-domain-form')
+          .getByTestId('tags-container')
+          .getByText(tag.data.displayName)
       ).toBeVisible();
     });
 
