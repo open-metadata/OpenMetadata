@@ -121,10 +121,10 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
                 raise ValueError("Invalid walletContent. Wallet zip contains unsafe file paths.")
 
             if member.is_dir():
-                member_path.mkdir(parents=True, exist_ok=True)
+                OracleConnection._mkdir_secure_within(member_path, target_root)
                 continue
 
-            member_path.parent.mkdir(parents=True, exist_ok=True)
+            OracleConnection._mkdir_secure_within(member_path.parent, target_root)
             with (
                 zip_ref.open(member, "r") as source_file,
                 open(
@@ -134,6 +134,18 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
                 ) as target_file,
             ):
                 shutil.copyfileobj(source_file, target_file)
+
+    @staticmethod
+    def _mkdir_secure_within(path: Path, root: Path) -> None:
+        """Create path and any intermediate dirs with 0o700, only within root."""
+        if path == root:
+            return
+        OracleConnection._mkdir_secure_within(path.parent, root)
+        try:
+            path.mkdir(mode=0o700, exist_ok=False)
+        except FileExistsError:
+            return
+        path.chmod(0o700)
 
     def _extract_wallet_content(self, wallet_content: SecretStr) -> str:
         try:
