@@ -36,18 +36,20 @@ export interface SearchRequest {
      */
     explain?: boolean;
     /**
-     * If true, expand the requested index to also include the actual indexes of its child
-     * aliases declared in indexMapping.json (entities that list this alias in their
-     * parentAliases). Defaults to true to preserve legacy ES alias-expansion behavior; pass
-     * false to scope the response to the requested index only.
+     * Selective expansion of the requested index toward its child aliases (entities that list
+     * this alias in their parentAliases). Pass `*` (or `all`) for every child, `none` (or
+     * empty) for none, or a comma-separated list of specific entity types (e.g. `tableColumn`)
+     * to include only those. Defaults to `none` so a query for `index=table` is scoped to table
+     * documents and does not bleed in column documents from indexes that share the alias.
      */
-    fetchChildAliases?: boolean;
+    fetchChildAliases?: string;
     /**
-     * If true, expand the requested index to also include the actual indexes of its parent
-     * aliases declared in indexMapping.json (entities listed in this index's parentAliases).
-     * Defaults to false.
+     * Selective expansion of the requested index toward its parent aliases declared in
+     * indexMapping.json. Pass `*` (or `all`) to include every parent, `none` (or empty) to
+     * include none, or a comma-separated list of specific entity types (e.g.
+     * `database,databaseSchema`) to include only those. Defaults to `none`.
      */
-    fetchParentsAliases?: boolean;
+    fetchParentsAliases?: string;
     /**
      * Get document body for each hit
      */

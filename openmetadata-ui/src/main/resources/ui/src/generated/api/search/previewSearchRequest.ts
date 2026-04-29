@@ -16,16 +16,15 @@
 export interface PreviewSearchRequest {
     explain?: boolean;
     /**
-     * If true, expand the requested index to also include the actual indexes of its child
-     * aliases declared in indexMapping.json. Defaults to true to preserve legacy ES
-     * alias-expansion behavior.
+     * Selective expansion toward child aliases. Pass `*`/`all` for every child, `none` (or
+     * empty) for none, or a comma-separated list of entity types. Defaults to `none`.
      */
-    fetchChildAliases?: boolean;
+    fetchChildAliases?: string;
     /**
-     * If true, expand the requested index to also include the actual indexes of its parent
-     * aliases declared in indexMapping.json. Defaults to false.
+     * Selective expansion toward parent aliases. Pass `*`/`all` for every parent, `none` (or
+     * empty) for none, or a comma-separated list of entity types. Defaults to `none`.
      */
-    fetchParentsAliases?: boolean;
+    fetchParentsAliases?: string;
     fetchSource?:         boolean;
     /**
      * Pagination start index.
