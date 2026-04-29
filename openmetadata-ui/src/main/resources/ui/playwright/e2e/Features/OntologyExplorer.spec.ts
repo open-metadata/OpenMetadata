@@ -197,7 +197,9 @@ test.describe('Ontology Explorer', () => {
       await waitForGraphLoaded(page);
       await applyRelationTypeFilter(page, 'Synonym');
 
-      await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
+      await expect(
+        page.getByTestId('ontology-graph-no-relations')
+      ).toBeVisible();
     });
   });
 
@@ -523,6 +525,7 @@ test.describe('Ontology Explorer', () => {
         .getByTestId('ontology-graph-search')
         .locator('input');
       await searchInput.fill(term1.data.name);
+      // Search does not re-run layout, so read existing positions without clearing.
       const filteredCount = Object.keys(await readNodePositions(page)).length;
 
       await searchInput.clear();
