@@ -63,9 +63,7 @@ def get_connection(connection: TableauConnection) -> TableauClient:
         )
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise SourceConnectionException(
-            f"Unknown error connecting with {connection}: {exc}."
-        ) from exc
+        raise SourceConnectionException(f"Unknown error connecting with {connection}: {exc}.") from exc
 
 
 def set_verify_ssl(
