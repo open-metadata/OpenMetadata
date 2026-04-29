@@ -192,33 +192,30 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
         FROM (
             SELECT
                 {col},
-                ROW_NUMBER() OVER () AS row_num
-            FROM
-                `{table}` AS median_inner,
-                (SELECT @counter := COUNT(*)
-                 FROM `{table}` AS median_count
-                 WHERE median_count.{dimension_col} = `{table}`.{dimension_col}) t_count
+                ROW_NUMBER() OVER (ORDER BY {col}) AS row_num,
+                COUNT(*) OVER () AS total_count
+            FROM `{table}` AS median_inner
             WHERE median_inner.{dimension_col} = `{table}`.{dimension_col}
-            ORDER BY {col}
             ) temp
-        WHERE temp.row_num = ROUND({percentile} * @counter)
+        WHERE temp.row_num = ROUND({percentile} * temp.total_count)
         )
         """.format(col=col, table=table, percentile=percentile, dimension_col=dimension_col)  # noqa: UP032
     else:  # noqa: RET505
-        # NON-CORRELATED MODE: Original behavior (profiler)
+        # NON-CORRELATED MODE: window-function-based count to avoid
+        # user-variable side-effect ordering (MySQL doesn't guarantee
+        # when `SELECT @v := COUNT(*)` inside a derived table is
+        # evaluated relative to the outer WHERE).
         return """
         (SELECT
             {col}
         FROM (
             SELECT
                 {col},
-                ROW_NUMBER() OVER () AS row_num
-            FROM
-                `{table}`,
-                (SELECT @counter := COUNT(*) FROM `{table}`) t_count
-            ORDER BY {col}
+                ROW_NUMBER() OVER (ORDER BY {col}) AS row_num,
+                COUNT(*) OVER () AS total_count
+            FROM `{table}`
             ) temp
-        WHERE temp.row_num = ROUND({percentile} * @counter)
+        WHERE temp.row_num = ROUND({percentile} * temp.total_count)
         )
         """.format(col=col, table=table, percentile=percentile)  # noqa: UP032
 
