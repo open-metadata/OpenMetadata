@@ -154,17 +154,12 @@ class RedpandaSourceSSLTest(TestCase):
     def test_init_without_ssl_does_not_instantiate_ssl_manager(self, test_connection):
         test_connection.return_value = True
         config = WorkflowSource(
-            **{
-                "type": "redpanda",
-                "serviceName": "local_redpanda",
-                "serviceConnection": {
+            type="redpanda", serviceName="local_redpanda", serviceConnection={
                     "config": {
                         "type": "Redpanda",
                         "bootstrapServers": "localhost:9092",
                     }
-                },
-                "sourceConfig": {"config": {"type": "MessagingMetadata"}},
-            }
+                }, sourceConfig={"config": {"type": "MessagingMetadata"}}
         )
         metadata = OpenMetadata(
             OpenMetadataConnection(
@@ -184,10 +179,7 @@ class RedpandaSourceSSLTest(TestCase):
     def test_init_with_ssl_configures_schema_registry(self, test_connection):
         test_connection.return_value = True
         config_with_ssl = WorkflowSource(
-            **{
-                "type": "redpanda",
-                "serviceName": "local_redpanda",
-                "serviceConnection": {
+            type="redpanda", serviceName="local_redpanda", serviceConnection={
                     "config": {
                         "type": "Redpanda",
                         "bootstrapServers": "localhost:9092",
@@ -197,9 +189,7 @@ class RedpandaSourceSSLTest(TestCase):
                             "sslCertificate": "sslCertificateData",
                         },
                     },
-                },
-                "sourceConfig": {"config": {"type": "MessagingMetadata"}},
-            }
+                }, sourceConfig={"config": {"type": "MessagingMetadata"}}
         )
         metadata = OpenMetadata(
             OpenMetadataConnection(
@@ -246,10 +236,7 @@ class RedpandaSourceSSLTest(TestCase):
     def test_init_with_admin_api_ssl_wires_client(self, test_connection):
         test_connection.return_value = True
         config_with_admin_ssl = WorkflowSource(
-            **{
-                "type": "redpanda",
-                "serviceName": "local_redpanda",
-                "serviceConnection": {
+            type="redpanda", serviceName="local_redpanda", serviceConnection={
                     "config": {
                         "type": "Redpanda",
                         "bootstrapServers": "localhost:9092",
@@ -260,9 +247,7 @@ class RedpandaSourceSSLTest(TestCase):
                             "sslCertificate": "sslCertificateData",
                         },
                     },
-                },
-                "sourceConfig": {"config": {"type": "MessagingMetadata"}},
-            }
+                }, sourceConfig={"config": {"type": "MessagingMetadata"}}
         )
         metadata = OpenMetadata(
             OpenMetadataConnection(

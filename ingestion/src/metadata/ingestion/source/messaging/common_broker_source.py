@@ -36,9 +36,9 @@ from metadata.generated.schema.entity.data.topic import (
     ConsumerGroup,
     ConsumerGroupMember,
     ConsumerGroupPartitionOffset,
+    TopicSampleData,
 )
 from metadata.generated.schema.entity.data.topic import Topic as TopicEntity
-from metadata.generated.schema.entity.data.topic import TopicSampleData
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -156,7 +156,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 if not load_parser_fn:
                     raise InvalidSchemaTypeException(
                         f"Cannot find {schema_type} in parser providers registry."
-                    )  # noqa: TRY301
+                    )
                 schema_text = topic_schema.schema_str
 
                 # In protobuf schema, we need to merge all the schema text with references
@@ -566,7 +566,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     end_offsets.setdefault((topic, partition), -1)
         return end_offsets
 
-    def _get_consumer_groups_for_topic(self, topic_name: str) -> Optional[list]:
+    def _get_consumer_groups_for_topic(self, topic_name: str) -> list | None:
         """
         Get consumer group details for a specific topic.
         Lazily builds the mapping on first call.

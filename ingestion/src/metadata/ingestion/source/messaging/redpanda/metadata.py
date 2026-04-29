@@ -13,7 +13,8 @@ RedPanda source ingestion
 """
 
 import traceback
-from typing import Iterable, Optional, cast
+from collections.abc import Iterable
+from typing import cast
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.topic import Topic as TopicEntity
@@ -46,11 +47,11 @@ class RedpandaSource(CommonBrokerSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         self.ssl_manager = None
         self.service_connection = cast(
-            RedpandaConnection,
+            "RedpandaConnection",
             config.serviceConnection.root.config,  # pyright: ignore[reportOptionalMemberAccess]
         )
-        self.ssl_manager: Optional[SSLManager] = cast(
-            Optional[SSLManager], check_ssl_and_init(self.service_connection)
+        self.ssl_manager: SSLManager | None = cast(
+            "SSLManager | None", check_ssl_and_init(self.service_connection)
         )
         if self.ssl_manager:
             self.service_connection = self.ssl_manager.setup_ssl(
@@ -71,8 +72,8 @@ class RedpandaSource(CommonBrokerSource):
 
     @classmethod
     def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):  # noqa: UP045
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None
+    ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: RedpandaConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedpandaConnection):

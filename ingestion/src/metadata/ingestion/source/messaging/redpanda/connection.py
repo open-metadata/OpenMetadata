@@ -99,7 +99,7 @@ def test_connection(
         )
         from metadata.utils.ssl_manager import check_ssl_and_init
 
-        ssl_manager = cast(Optional[SSLManager], check_ssl_and_init(service_connection))
+        ssl_manager = cast("SSLManager | None", check_ssl_and_init(service_connection))
         client_kwargs = ssl_manager.admin_api_http_kwargs() if ssl_manager else {}
         try:
             admin_client = RedpandaAdminClient(

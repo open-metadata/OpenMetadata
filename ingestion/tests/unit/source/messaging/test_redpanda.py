@@ -721,7 +721,7 @@ class TestBatchEndOffsets:
         mock_end_future.result.return_value = mock_end_offset
 
         def mock_list_offsets(tp_spec):
-            return {tp: mock_end_future for tp in tp_spec}
+            return dict.fromkeys(tp_spec, mock_end_future)
 
         source.admin_client.list_offsets.side_effect = mock_list_offsets
 
@@ -749,7 +749,7 @@ class TestBatchEndOffsets:
         mock_end_future.result.return_value = mock_end_offset
 
         def mock_list_offsets(tp_spec):
-            return {tp: mock_end_future for tp in tp_spec}
+            return dict.fromkeys(tp_spec, mock_end_future)
 
         source.admin_client = MagicMock()
         source.admin_client.list_offsets.side_effect = mock_list_offsets
@@ -781,7 +781,7 @@ class TestBatchEndOffsets:
         mock_end_future.result.side_effect = Exception("broker timeout")
 
         def mock_list_offsets(tp_spec):
-            return {tp: mock_end_future for tp in tp_spec}
+            return dict.fromkeys(tp_spec, mock_end_future)
 
         source.admin_client = MagicMock()
         source.admin_client.list_offsets.side_effect = mock_list_offsets

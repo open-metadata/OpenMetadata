@@ -12,7 +12,6 @@
 Redpanda Admin API client for data transforms
 """
 import traceback
-from typing import List, Optional, Tuple, Union
 
 import requests
 from pydantic import BaseModel
@@ -28,9 +27,9 @@ API_TIMEOUT = 30
 class RedpandaTransform(BaseModel):
     name: str
     input_topic: str
-    output_topics: List[str]
-    status: Optional[str] = None
-    environment: Optional[dict] = None
+    output_topics: list[str]
+    status: str | None = None
+    environment: dict | None = None
 
 
 class RedpandaAdminClient:
@@ -45,8 +44,8 @@ class RedpandaAdminClient:
     def __init__(
         self,
         admin_api_url: str,
-        verify: Union[str, bool] = True,
-        client_cert: Optional[Tuple[str, str]] = None,
+        verify: str | bool = True,
+        client_cert: tuple[str, str] | None = None,
     ):
         self.base_url = admin_api_url.rstrip("/")
         self.session = requests.Session()
@@ -54,7 +53,7 @@ class RedpandaAdminClient:
         if client_cert:
             self.session.cert = client_cert
 
-    def list_transforms(self) -> List[RedpandaTransform]:
+    def list_transforms(self) -> list[RedpandaTransform]:
         """
         Fetch all data transforms from Redpanda Admin API.
         Endpoint: GET /v1/transform
