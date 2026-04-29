@@ -42,17 +42,12 @@ export interface SecurityValidationResponse {
  * @returns Promise with validation result
  */
 export const validateSecurityConfiguration = async (
-  data: SecurityConfiguration,
-  context?: string
+  data: SecurityConfiguration
 ): Promise<AxiosResponse<SecurityValidationResponse>> => {
-  const url = context
-    ? `/system/security/validate?context=${context}`
-    : '/system/security/validate';
-
   return APIClient.post<
     SecurityConfiguration,
     AxiosResponse<SecurityValidationResponse>
-  >(url, data);
+  >('/system/security/validate', data);
 };
 
 /**
