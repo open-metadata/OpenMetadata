@@ -16,10 +16,10 @@ import {
   Page,
   test as base,
 } from '@playwright/test';
+import { DOMAIN_TAGS } from '../../../constant/config';
 import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { AdminClass } from '../../../support/user/AdminClass';
-import { DOMAIN_TAGS } from '../../../constant/config';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, toastNotification, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
