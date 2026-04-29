@@ -118,7 +118,7 @@ class DefaultSourceLoader(SourceLoader):
         )
 
 
-def import_source_class(service_type: ServiceType, source_type: str, from_: str = "ingestion") -> Type[Source]:
+def import_source_class(service_type: ServiceType, source_type: str, from_: str = "ingestion") -> type[Source]:
     """
     Import the source class for a given service type and source type.
 
@@ -142,21 +142,14 @@ def import_source_class(service_type: ServiceType, source_type: str, from_: str 
             raise DynamicImportException(
                 module=source_type,
                 cause=ValueError(
-                    "Invalid policy source type '{}'. Expected format '<connector>{}policy'.".format(  # pylint: disable=C0209
-                        source_type,
-                        TYPE_SEPARATOR,
-                    )
+                    f"Invalid policy source type '{source_type}'. Expected format '<connector>{TYPE_SEPARATOR}policy'."
                 ),
             )
 
-        policy_class_path = "metadata.{}.source.{}.{}.policy.PolicyAgentSource".format(  # pylint: disable=C0209
-            from_,
-            service_type.name.lower(),
-            get_module_dir(base_source_type),
-        )
+        policy_class_path = f"metadata.{from_}.source.{service_type.name.lower()}.{get_module_dir(base_source_type)}.policy.PolicyAgentSource"
         try:
             return cast(
-                Type[Source],
+                "type[Source]",
                 import_from_module(policy_class_path),
             )
         except DynamicImportException as exc:
