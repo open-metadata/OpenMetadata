@@ -308,6 +308,9 @@ public final class JsonUtils {
     JsonStructure targetJson = JsonUtils.getJsonStructure(original);
     JsonStructure currentJson = targetJson;
 
+    // Ensure extension object exists if any operation targets /extension
+    currentJson = ensureExtensionObjectExists(currentJson, patch);
+
     // ---------------------------------------------------------------------
     // JSON patch modification - Ignore operations related to read-only fields
     // ---------------------------------------------------------------------
@@ -352,6 +355,42 @@ public final class JsonUtils {
       JsonPatch singlePatch = Json.createPatch(singleOp.build());
       currentJson = singlePatch.apply(currentJson);
     }
+    return currentJson;
+  }
+
+  private static JsonStructure ensureExtensionObjectExists(JsonStructure currentJson, JsonPatch patch) {
+    JsonArray patchArray = patch.toJsonArray();
+    boolean needsExtension = false;
+
+    for (JsonValue entry : patchArray) {
+      if (entry.getValueType() == JsonValue.ValueType.OBJECT) {
+        JsonObject op = entry.asJsonObject();
+        String path = op.getString("path", null);
+        if (path != null && path.startsWith("/extension")) {
+          needsExtension = true;
+          break;
+        }
+      }
+    }
+
+    if (!needsExtension) {
+      return currentJson;
+    }
+
+    if (currentJson.getValueType() != JsonValue.ValueType.OBJECT) {
+      return currentJson;
+    }
+
+    JsonObject jsonObj = (JsonObject) currentJson;
+    if (!jsonObj.containsKey("extension") || jsonObj.isNull("extension")) {
+      JsonObjectBuilder builder = Json.createObjectBuilder();
+      for (String key : jsonObj.keySet()) {
+        builder.add(key, jsonObj.get(key));
+      }
+      builder.add("extension", Json.createObjectBuilder().build());
+      return builder.build();
+    }
+
     return currentJson;
   }
 
