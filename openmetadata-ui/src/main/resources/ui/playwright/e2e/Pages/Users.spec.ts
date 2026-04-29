@@ -163,8 +163,9 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await user3.create(apiContext);
   await user3.setAdminRole(apiContext);
   await tableEntity.create(apiContext);
-  const { entity: dataStewardPermissionTable } =
-    await tableEntity2.create(apiContext);
+  const { entity: dataStewardPermissionTable } = await tableEntity2.create(
+    apiContext
+  );
   await tableEntity2.setOwner(apiContext, {
     id: user3.responseData.id,
     type: 'user',
