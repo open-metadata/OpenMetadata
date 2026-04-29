@@ -24,9 +24,13 @@ import {
 } from './rdfAPI.interface';
 
 export const checkRdfEnabled = async (): Promise<boolean> => {
-  const response = await APIClient.get('/rdf/status');
+  try {
+    const response = await APIClient.get('/rdf/status');
 
-  return response.data?.enabled ?? false;
+    return response.data?.enabled ?? false;
+  } catch (error) {
+    return false;
+  }
 };
 
 export const fetchRdfConfig = async (): Promise<{ enabled: boolean }> => {
