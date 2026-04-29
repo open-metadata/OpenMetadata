@@ -14,6 +14,7 @@ $$section
 Source Python Class Name to instantiated by the ingestion workflow.
 
 Note that it should implement the `next_record` method so that the Workflow can keep reading and sending records to the OpenMetadata API.
+$$
 
 $$section
 ### Connection Options $(id="connectionOptions")
