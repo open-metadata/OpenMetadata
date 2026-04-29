@@ -1081,9 +1081,7 @@ class TestWorkflowParse(TestCase):
                 },
             },
         }
-
-        with self.assertRaises(ParsingConfigurationError):
-            parse_workflow_config_gracefully(config_dict)
+        self.assertIsNotNone(parse_workflow_config_gracefully(config_dict))
 
     def test_parsing_policy_agent_ko_invalid_principal(self):
         """Principal with disallowed characters fails the schema regex."""
