@@ -150,7 +150,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         except zipfile.BadZipFile as exc:
             self._cleanup_wallet_temp_dir()
             raise ValueError("Invalid walletContent. Expected a valid zip archive.") from exc
-        except ValueError:
+        except Exception:
             self._cleanup_wallet_temp_dir()
             raise
 
