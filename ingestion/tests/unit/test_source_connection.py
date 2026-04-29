@@ -11,6 +11,7 @@
 
 import base64
 import io
+import tempfile
 import zipfile
 from pathlib import Path
 from unittest import TestCase
@@ -1351,6 +1352,24 @@ class SourceConnectionTest(TestCase):
 
         assert "base64-encoded wallet zip" in str(error.exception)
         assert oracle_connection._wallet_temp_dir is None
+
+    def test_oracle_mkdir_secure_within_rejects_path_outside_root(self):
+        # _safe_extract_wallet_archive validates containment before calling
+        # _mkdir_secure_within, but the helper must also be defensive on its own
+        # so a future caller cannot accidentally trigger an unbounded recursion
+        # (or worse, write outside the wallet temp dir).
+        root = Path(tempfile.mkdtemp(prefix="oracle_wallet_root_"))
+        outside = Path(tempfile.mkdtemp(prefix="oracle_wallet_outside_")) / "evil"
+        try:
+            with self.assertRaises(ValueError) as error:
+                OracleConnection._mkdir_secure_within(outside, root)
+            assert "outside wallet root" in str(error.exception)
+            assert not outside.exists()
+        finally:
+            import shutil
+
+            shutil.rmtree(root, ignore_errors=True)
+            shutil.rmtree(outside.parent, ignore_errors=True)
 
     @patch("metadata.ingestion.source.database.oracle.connection.create_generic_db_connection")
     def test_oracle_autonomous_wallet_content_accepts_wrapped_base64(self, mock_create_generic_db_connection):

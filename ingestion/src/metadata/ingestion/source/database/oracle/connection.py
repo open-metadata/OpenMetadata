@@ -140,6 +140,8 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         """Create path and any intermediate dirs with 0o700, only within root."""
         if path == root:
             return
+        if root not in path.parents:
+            raise ValueError(f"Refusing to create {path}: outside wallet root {root}.")
         OracleConnection._mkdir_secure_within(path.parent, root)
         try:
             path.mkdir(mode=0o700, exist_ok=False)
