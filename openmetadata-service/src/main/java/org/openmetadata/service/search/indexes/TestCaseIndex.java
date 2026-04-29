@@ -23,6 +23,14 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     return testCase;
   }
 
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(SearchIndex.super.getRequiredReindexFields());
+    fields.add("testSuite");
+    fields.add("testSuites");
+    fields.add("testDefinition");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
   @Override
   public void removeNonIndexableFields(Map<String, Object> esDoc) {
     SearchIndex.super.removeNonIndexableFields(esDoc);

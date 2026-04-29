@@ -28,6 +28,14 @@ public class SpreadsheetIndex implements SearchIndex {
     return excludeSpreadsheetFields;
   }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(SearchIndex.super.getRequiredReindexFields());
+    fields.add("worksheets");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.SPREADSHEET, spreadsheet));
     List<TagLabel> tags = new ArrayList<>();

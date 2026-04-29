@@ -22,6 +22,13 @@ public class GlossaryTermIndex implements SearchIndex {
     return Set.of("children");
   }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(SearchIndex.super.getRequiredReindexFields());
+    fields.add("relatedTerms");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(glossaryTerm, Entity.GLOSSARY_TERM);

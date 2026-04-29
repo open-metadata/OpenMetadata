@@ -104,6 +104,28 @@ import org.openmetadata.service.search.indexes.WorksheetIndex;
 @Slf4j
 public class SearchIndexFactory {
 
+  /**
+   * Returns the minimal set of fields the reindex path must request from
+   * {@code EntityRepository.setFields} for the given entity type. Probes the corresponding
+   * index class via {@link #buildIndex(String, Object)} with a {@code null} entity and calls
+   * {@link SearchIndex#getRequiredReindexFields()}. Index constructors must be safe with a null
+   * entity for this probe to work — they are today because field declarations are static.
+   */
+  public java.util.Set<String> getReindexFieldsFor(String entityType) {
+    try {
+      SearchIndex probe = buildIndex(entityType, null);
+      if (probe != null) {
+        return probe.getRequiredReindexFields();
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to probe reindex fields for entity type {}; falling back to common set: {}",
+          entityType,
+          e.getMessage());
+    }
+    return SearchIndex.COMMON_REINDEX_FIELDS;
+  }
+
   public SearchIndex buildIndex(String entityType, Object entity) {
     return switch (entityType) {
       case Entity.TABLE -> new TableIndex((Table) entity);
@@ -171,7 +193,9 @@ public class SearchIndexFactory {
       case Entity.PIPELINE_EXECUTION -> {
         PipelineExecutionIndex.PipelineExecutionData data =
             (PipelineExecutionIndex.PipelineExecutionData) entity;
-        yield new PipelineExecutionIndex(data.getPipeline(), data.getPipelineStatus());
+        yield data == null
+            ? new PipelineExecutionIndex(null, null)
+            : new PipelineExecutionIndex(data.getPipeline(), data.getPipelineStatus());
       }
       default -> buildExternalIndexes(entityType, entity);
     };

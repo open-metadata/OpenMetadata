@@ -15,7 +15,7 @@ import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenColumn;
 
-public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
+public record TableIndex(Table table) implements ColumnIndex {
   private static final Set<String> excludeFields =
       Set.of(
           "sampleData",
@@ -38,6 +38,16 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
   public Set<String> getExcludedFields() {
     return excludeFields;
   }
+
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(ColumnIndex.super.getRequiredReindexFields());
+    // "columns" is fields-gated in TableRepository; without it column-level tags are not
+    // hydrated, breaking tag merge in the search doc.
+    fields.add("columns");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();

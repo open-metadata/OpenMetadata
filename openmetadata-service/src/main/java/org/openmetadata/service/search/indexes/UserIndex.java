@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.entity.teams.User;
@@ -11,6 +12,15 @@ public class UserIndex implements SearchIndex {
 
   public UserIndex(User user) {
     this.user = user;
+  }
+
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(SearchIndex.super.getRequiredReindexFields());
+    fields.add("teams");
+    fields.add("roles");
+    fields.add("inheritedRoles");
+    return java.util.Collections.unmodifiableSet(fields);
   }
 
   @Override

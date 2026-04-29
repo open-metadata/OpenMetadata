@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
@@ -16,6 +17,14 @@ public class PipelineIndex implements SearchIndex {
   public Object getEntity() {
     return pipeline;
   }
+
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(SearchIndex.super.getRequiredReindexFields());
+    fields.add("tasks");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.PIPELINE, pipeline));

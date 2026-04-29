@@ -23,6 +23,13 @@ public class DashboardIndex implements SearchIndex {
     return Set.of("dataModels");
   }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(SearchIndex.super.getRequiredReindexFields());
+    fields.add("charts");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.DASHBOARD, dashboard));
     Map<String, Object> commonAttributes = getCommonAttributesMap(dashboard, Entity.DASHBOARD);

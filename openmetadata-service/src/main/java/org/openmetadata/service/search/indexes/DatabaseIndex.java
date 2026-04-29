@@ -17,6 +17,13 @@ public record DatabaseIndex(Database database) implements SearchIndex {
     return Set.of("databaseSchemas");
   }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(SearchIndex.super.getRequiredReindexFields());
+    fields.add("usageSummary");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes = getCommonAttributesMap(database, Entity.DATABASE);
     doc.putAll(commonAttributes);
