@@ -1167,7 +1167,10 @@ test.describe('Domains', () => {
         });
 
         await expect(
-          page.getByTestId('add-domain-form').getByText(tag.data.displayName)
+          page
+            .getByTestId('add-domain-form')
+            .getByTestId('tags-container')
+            .getByText(tag.data.displayName)
         ).toBeVisible();
       });
 
@@ -1219,7 +1222,10 @@ test.describe('Domains', () => {
         });
 
         await expect(
-          page.getByTestId('add-domain-form').getByText(tag.data.displayName)
+          page
+            .getByTestId('add-domain-form')
+            .getByTestId('tags-container')
+            .getByText(tag.data.displayName)
         ).toBeVisible();
       });
 
