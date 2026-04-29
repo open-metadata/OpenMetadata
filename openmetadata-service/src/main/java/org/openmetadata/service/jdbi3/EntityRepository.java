@@ -1228,7 +1228,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final void initSeedDataFromResources() throws IOException {
     List<T> entities = getEntitiesFromSeedData();
     for (T entity : entities) {
-      initializeEntity(entity);
+      try {
+        initializeEntity(entity);
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to initialize {} '{}': {}",
+            entityType,
+            entity.getFullyQualifiedName(),
+            e.getMessage(),
+            e);
+      }
     }
   }
 
