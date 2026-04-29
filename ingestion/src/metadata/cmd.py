@@ -20,7 +20,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 # pyright: reportUnusedCallResult=false
-from typing import List, Optional, Union
+from typing import List, Optional, Union  # noqa: UP035
 
 from metadata.__version__ import get_metadata_version
 from metadata.cli.app import run_app
@@ -91,7 +91,7 @@ def create_dbt_parser_args(parser: argparse.ArgumentParser):
         "--dbt-project-path",
         help="path to the dbt project directory (default: current directory)",
         type=Path,
-        default=Path("."),
+        default=Path("."),  # noqa: PTH201
         required=False,
     )
 
@@ -118,7 +118,7 @@ def add_metadata_args(parser: argparse.ArgumentParser):
     )
 
 
-def get_parser(args: Optional[List[str]] = None):
+def get_parser(args: Optional[List[str]] = None):  # noqa: UP006, UP045
     """
     Parser method that returns parsed_args
     """
@@ -221,14 +221,14 @@ def get_parser(args: Optional[List[str]] = None):
     return parser.parse_args(args)
 
 
-def metadata(args: Optional[List[str]] = None):
+def metadata(args: Optional[List[str]] = None):  # noqa: UP006, UP045
     """
     This method implements parsing of the arguments passed from CLI
     """
     contains_args = vars(get_parser(args))
     metadata_workflow = contains_args.get("command")
-    config_file: Optional[Path] = contains_args.get("config")
-    dbt_project_path: Optional[Path] = contains_args.get("dbt_project_path")
+    config_file: Optional[Path] = contains_args.get("config")  # noqa: UP045
+    dbt_project_path: Optional[Path] = contains_args.get("dbt_project_path")  # noqa: UP045
 
     path = None
     if config_file:
@@ -239,7 +239,7 @@ def metadata(args: Optional[List[str]] = None):
     if contains_args.get("debug"):
         set_loggers_level(logging.DEBUG)
     else:
-        log_level: Union[str, int] = contains_args.get("log_level") or logging.INFO
+        log_level: Union[str, int] = contains_args.get("log_level") or logging.INFO  # noqa: UP007
         set_loggers_level(log_level)
 
     if path and metadata_workflow and metadata_workflow in RUN_PATH_METHODS:

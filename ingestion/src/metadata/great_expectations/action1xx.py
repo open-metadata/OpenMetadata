@@ -19,7 +19,7 @@ checkpoints actions.
 import logging
 import traceback
 from datetime import datetime
-from typing import Dict, List, Literal, Optional, Union, cast
+from typing import Dict, List, Literal, Optional, Union, cast  # noqa: UP035
 
 from great_expectations.checkpoint import (
     ActionContext,
@@ -85,15 +85,15 @@ class OpenMetadataValidationAction1xx(ValidationAction):
 
     type: Literal["open_metadata_validation_action"] = "open_metadata_validation_action"
     name: str = "OpenMetadataValidationAction"
-    config_file_path: Optional[str] = None
-    database_service_name: Optional[str] = None
-    schema_name: Optional[str] = "default"
+    config_file_path: Optional[str] = None  # noqa: UP045
+    database_service_name: Optional[str] = None  # noqa: UP045
+    schema_name: Optional[str] = "default"  # noqa: UP045
     database_name: str
-    table_name: Optional[str] = None
-    expectation_suite_table_config_map: Optional[Dict[str, Dict[str, str]]] = None
+    table_name: Optional[str] = None  # noqa: UP045
+    expectation_suite_table_config_map: Optional[Dict[str, Dict[str, str]]] = None  # noqa: UP006, UP045
     # Using Optional to make this field not part of the serialized model
     # This will be initialized in the run method
-    ometa_conn: Optional[OpenMetadata] = None
+    ometa_conn: Optional[OpenMetadata] = None  # noqa: UP045
 
     # The parent ValidationAction.run signature differs between
     # great_expectations 0.18.x (7 args + variadics) and 1.x (3 args).
@@ -104,7 +104,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
     def run(
         self,
         checkpoint_result: CheckpointResult,
-        action_context: Union[ActionContext, None],
+        action_context: Union[ActionContext, None],  # noqa: UP007
     ):
         """main function to implement great expectation hook
 
@@ -123,7 +123,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
             default_table_name=self.table_name,
             expectation_suite_table_config_map=TableConfigMap.parse(self.expectation_suite_table_config_map or {}),
         )
-        for _, v in checkpoint_result.run_results.items():
+        for _, v in checkpoint_result.run_results.items():  # noqa: PERF102
             meta = v.meta
 
             expectation_suite_name = getattr(v, "suite_name", None)  # works in GE 1.x
@@ -156,7 +156,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
                     self._handle_test_case(result, table_entity)
 
     @staticmethod
-    def _get_checkpoint_batch_spec(meta: Union[ExpectationSuiteValidationResultMeta, dict]):
+    def _get_checkpoint_batch_spec(meta: Union[ExpectationSuiteValidationResultMeta, dict]):  # noqa: UP007
         """Return run meta and check instance of data_asset
 
         Args:
@@ -170,10 +170,10 @@ class OpenMetadataValidationAction1xx(ValidationAction):
 
     def _get_table_entity(
         self,
-        database: Optional[str],
-        schema_name: Optional[str],
-        table_name: Optional[str],
-    ) -> Optional[Table]:
+        database: Optional[str],  # noqa: UP045
+        schema_name: Optional[str],  # noqa: UP045
+        table_name: Optional[str],  # noqa: UP045
+    ) -> Optional[Table]:  # noqa: UP045
         """Return the table entity for the test. If service name is defined
         in GE checkpoint entity will be fetch using the FQN. If not provided
         iterative search will be perform among all the entities. If 2 entities
@@ -232,18 +232,18 @@ class OpenMetadataValidationAction1xx(ValidationAction):
 
         if table_entity.testSuite:
             test_suite = self.ometa_conn.get_by_name(TestSuite, table_entity.testSuite.fullyQualifiedName)
-            test_suite = cast(TestSuite, test_suite)
-            return test_suite
+            test_suite = cast(TestSuite, test_suite)  # noqa: TC006
+            return test_suite  # noqa: RET504
 
         create_test_suite = CreateTestSuiteRequest(
             name=f"{table_entity.fullyQualifiedName.root}.TestSuite",
             basicEntityReference=table_entity.fullyQualifiedName.root,
         )  # type: ignore
         test_suite = self.ometa_conn.create_or_update_executable_test_suite(create_test_suite)
-        return test_suite
+        return test_suite  # noqa: RET504
 
     @staticmethod
-    def _get_execution_engine_url(data_asset: Union[Validator, DataAsset, Batch]) -> URL:
+    def _get_execution_engine_url(data_asset: Union[Validator, DataAsset, Batch]) -> URL:  # noqa: UP007
         """Get execution engine used to run the expectation
 
         Args:
@@ -266,7 +266,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
 
         return OpenMetadata(create_ometa_connection_obj(rendered_config))
 
-    def _build_test_case_fqn(self, table_fqn: str, result: Dict) -> str:
+    def _build_test_case_fqn(self, table_fqn: str, result: Dict) -> str:  # noqa: UP006
         """build test case fqn from table entity and GE test results
 
         Args:
@@ -284,10 +284,10 @@ class OpenMetadataValidationAction1xx(ValidationAction):
             column_name=result["expectation_config"]["kwargs"].get("column"),
             test_case_name=result["expectation_config"]["type"],
         )
-        fqn_ = cast(str, fqn_)
-        return fqn_
+        fqn_ = cast(str, fqn_)  # noqa: TC006
+        return fqn_  # noqa: RET504
 
-    def _get_test_case_params_value(self, result: dict) -> List[TestCaseParameterValue]:
+    def _get_test_case_params_value(self, result: dict) -> List[TestCaseParameterValue]:  # noqa: UP006
         """Build test case parameter value from GE test result"""
         if "observed_value" not in result["result"]:
             return [
@@ -306,7 +306,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
             if key not in {"column", "batch_id"}
         ]
 
-    def _get_test_case_params_definition(self, result: dict) -> List[TestCaseParameterDefinition]:
+    def _get_test_case_params_definition(self, result: dict) -> List[TestCaseParameterDefinition]:  # noqa: UP006
         """Build test case parameter definition from GE test result"""
         if "observed_value" not in result["result"]:
             return [
@@ -323,7 +323,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
             if key not in {"column", "batch_id"}
         ]
 
-    def _get_test_result_value(self, result: dict) -> List[TestResultValue]:
+    def _get_test_result_value(self, result: dict) -> List[TestResultValue]:  # noqa: UP006
         """Get test result value from GE test result
 
         Args:
@@ -363,7 +363,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
 
         return test_result_values
 
-    def _extract_complex_value_from_observed_value(self, observed_value) -> List[TestResultValue]:
+    def _extract_complex_value_from_observed_value(self, observed_value) -> List[TestResultValue]:  # noqa: UP006
         """Extract complex value from observed value
 
         Args:
@@ -385,10 +385,10 @@ class OpenMetadataValidationAction1xx(ValidationAction):
                 result_values = []
                 quantiles = observed_value["quantiles"]
                 values = observed_value["values"]
-                for quantile, value in zip(quantiles, values):
+                for quantile, value in zip(quantiles, values):  # noqa: B905
                     result_values.append(
                         TestResultValue(
-                            name=f"quantile_{str(quantile)}",
+                            name=f"quantile_{str(quantile)}",  # noqa: RUF010
                             value=str(value),
                             predictedValue=None,
                         )
@@ -417,7 +417,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
 
         return []
 
-    def _handle_test_case(self, result: Dict, table_entity: Table):
+    def _handle_test_case(self, result: Dict, table_entity: Table):  # noqa: UP006
         """Handle adding test to table entity based on the test case.
         Test Definitions will be created on the fly from the results of the
         great expectations run. We will then write the test case results to the

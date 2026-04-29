@@ -27,7 +27,7 @@ from metadata.utils.secrets.secrets_manager import SecretsManager
 SECRET_MANAGER_AIRFLOW_CONF = "openmetadata_secrets_manager"
 
 
-class SecretsManagerConfigException(Exception):
+class SecretsManagerConfigException(Exception):  # noqa: N818
     """
     Invalid config that does not allow us to create
     the SecretsManagerFactory

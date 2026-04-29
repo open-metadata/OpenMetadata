@@ -126,7 +126,7 @@ def test_init_interface(sqa_profiler_interface):
 
 @pytest.fixture(scope="class")
 def db_path():
-    return os.path.join(os.path.dirname(__file__), "test.db")
+    return os.path.join(os.path.dirname(__file__), "test.db")  # noqa: PTH118, PTH120
 
 
 @pytest.fixture(scope="class")
@@ -169,7 +169,7 @@ def class_sqa_profiler_interface(class_sqlite_conn, class_table_entity):
         5,
         43200,
     )
-    return interface
+    return interface  # noqa: RET504
 
 
 @pytest.fixture(scope="class", autouse=True)
@@ -181,8 +181,8 @@ def setup_database(class_sqa_profiler_interface):
         # Create the table
         User.__table__.create(bind=class_sqa_profiler_interface.session.get_bind())
     except Exception as e:
-        print(f"Error during table setup: {str(e)}")
-        raise e
+        print(f"Error during table setup: {str(e)}")  # noqa: RUF010, T201
+        raise e  # noqa: TRY201
 
     data = [
         User(name="John", fullname="John Doe", nickname="johnny b goode", age=30),
@@ -198,8 +198,8 @@ def setup_database(class_sqa_profiler_interface):
         User.__table__.drop(bind=class_sqa_profiler_interface.session.get_bind(), checkfirst=True)
         class_sqa_profiler_interface.session.close()
     except Exception as e:
-        print(f"Error during cleanup: {str(e)}")
-        raise e
+        print(f"Error during cleanup: {str(e)}")  # noqa: RUF010, T201
+        raise e  # noqa: TRY201
 
 
 @pytest.fixture(scope="class")
@@ -245,7 +245,7 @@ def test_get_all_metrics(class_sqa_profiler_interface, metrics):
             )
         )
         for query_metric in metrics["query"]:
-            query_metrics.append(
+            query_metrics.append(  # noqa: PERF401
                 ThreadPoolMetrics(
                     metrics=query_metric,
                     metric_type=MetricTypes.Query,
@@ -284,8 +284,8 @@ def test_get_all_metrics(class_sqa_profiler_interface, metrics):
 
     assert profile_request.tableProfile.columnCount == 6
     assert profile_request.tableProfile.rowCount == 2
-    name_column_profile = [profile for profile in profile_request.columnProfile if profile.name == "name"][0]
-    id_column_profile = [profile for profile in profile_request.columnProfile if profile.name == "id"][0]
+    name_column_profile = [profile for profile in profile_request.columnProfile if profile.name == "name"][0]  # noqa: RUF015
+    id_column_profile = [profile for profile in profile_request.columnProfile if profile.name == "id"][0]  # noqa: RUF015
     assert name_column_profile.nullCount == 0
     assert id_column_profile.median == 1.0
 
@@ -403,7 +403,7 @@ def test_compute_query_metrics_mixed_case_column(sqa_profiler_interface):
     """When ORM columns have a lowercase .key differing from their original-case
     .name (as produced by build_orm_col for Snowflake/BigQuery), _compute_query_metrics
     must look up columns via .key — since SQLAlchemy's .c[] is keyed by .key, not .name."""
-    column = list(MixedCaseTable.__table__.c)[0]
+    column = list(MixedCaseTable.__table__.c)[0]  # noqa: RUF015
     assert column.name != column.key  # precondition: mixed case
 
     mock_instance = Mock()

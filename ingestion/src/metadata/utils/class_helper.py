@@ -14,7 +14,7 @@ Helper module to process the service type from the config
 """
 
 from pydoc import locate
-from typing import Type
+from typing import Type  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -132,7 +132,7 @@ def get_pipeline_type_from_source_config(source_config: SourceConfig) -> Pipelin
     return pipeline_type
 
 
-def _get_service_type_from(  # pylint: disable=inconsistent-return-statements
+def _get_service_type_from(  # pylint: disable=inconsistent-return-statements  # noqa: RET503
     service_subtype: str,
 ) -> ServiceType:
     if service_subtype.lower() == "testsuite":
@@ -164,7 +164,7 @@ def get_reference_type_from_service_type(service_type: ServiceType) -> str:
     return service_reference
 
 
-def get_service_class_from_service_type(service_type: ServiceType) -> Type[BaseModel]:
+def get_service_class_from_service_type(service_type: ServiceType) -> Type[BaseModel]:  # noqa: UP006
     """
     Method to get service class from service type
     """

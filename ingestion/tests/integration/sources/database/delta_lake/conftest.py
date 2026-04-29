@@ -14,7 +14,7 @@ Environment fixtures to be able to test the DeltaLake Ingestion Pipeline.
 
 import pytest
 
-from ....containers import MinioContainerConfigs, get_minio_container
+from ....containers import MinioContainerConfigs, get_minio_container  # noqa: TID252
 
 
 class DeltaLakeStorageTestConfig:

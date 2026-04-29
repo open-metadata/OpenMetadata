@@ -36,7 +36,7 @@ from metadata.ingestion.source.database.common_nosql_source import TableNameAndT
 from metadata.ingestion.source.database.mongodb.metadata import MongodbSource
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
-with open(mock_file_path) as file:
+with open(mock_file_path) as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 mock_mongo_config = {
@@ -183,7 +183,7 @@ def custom_column_compare(self, other):
 
 class MongoDBUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.mongodb.metadata.MongodbSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_mongo_config)
@@ -196,7 +196,7 @@ class MongoDBUnitTest(TestCase):
         self.mongo_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_database_names(self):
-        assert EXPECTED_DATABASE_NAMES == list(self.mongo_source.get_database_names())
+        assert EXPECTED_DATABASE_NAMES == list(self.mongo_source.get_database_names())  # noqa: SIM300
 
     def test_database_schema_names(self):
         with patch.object(
@@ -204,13 +204,13 @@ class MongoDBUnitTest(TestCase):
             "get_schema_name_list",
             return_value=MOCK_DATABASE_SCHEMA_NAMES,
         ):
-            assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.mongo_source.get_database_schema_names())
+            assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.mongo_source.get_database_schema_names())  # noqa: SIM300
 
     def test_table_names(self):
         with patch.object(MongodbSource, "query_table_names_and_types", return_value=MOCK_TABLE_NAMES):
-            assert EXPECTED_TABLE_NAMES == list(self.mongo_source.get_tables_name_and_type())
+            assert EXPECTED_TABLE_NAMES == list(self.mongo_source.get_tables_name_and_type())  # noqa: SIM300
 
     def test_yield_tables(self):
         Column.__eq__ = custom_column_compare
         with patch.object(MongodbSource, "get_table_columns_dict", return_value=MOCK_JSON_TABLE_DATA):
-            assert MOCK_CREATE_TABLE == next(self.mongo_source.yield_table(EXPECTED_TABLE_NAMES[0])).right
+            assert MOCK_CREATE_TABLE == next(self.mongo_source.yield_table(EXPECTED_TABLE_NAMES[0])).right  # noqa: SIM300

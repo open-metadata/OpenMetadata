@@ -45,8 +45,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: GrafanaApiClient,
     service_connection: GrafanaConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection to Grafana instance
@@ -54,7 +54,7 @@ def test_connection(
 
     def custom_executor():
         if not client.test_connection():
-            raise Exception("Failed to connect to Grafana")
+            raise Exception("Failed to connect to Grafana")  # noqa: TRY002
 
     test_fn = {"GetDashboards": custom_executor}
 
