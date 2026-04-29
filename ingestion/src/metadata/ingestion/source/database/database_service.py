@@ -219,6 +219,19 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
     # mark_deleted_tables must skip these to avoid wiping tables that exist
     # but were simply unreachable due to a transient connectivity failure.
     schemas_with_table_listing_errors: Set = set()  # noqa: RUF012, UP006
+
+    def _record_schema_listing_error(self, schema_name: str) -> None:
+        """Record a schema whose table listing failed so mark_tables_as_deleted can skip it."""
+        schema_fqn = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=schema_name,
+        )
+        if schema_fqn:
+            self.schemas_with_table_listing_errors.add(schema_fqn)
+
     # Big union of types we want to fetch dynamically
     service_connection: DatabaseConnection.model_fields["config"].annotation  # noqa: F821
 

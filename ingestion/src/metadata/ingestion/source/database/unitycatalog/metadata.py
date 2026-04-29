@@ -291,10 +291,17 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         """
         schema_name = self.context.get().database_schema
         catalog_name = self.context.get().database
-        for table in self.client.tables.list(
-            catalog_name=catalog_name,
-            schema_name=schema_name,
-        ):
+        try:
+            tables_iter = self.client.tables.list(
+                catalog_name=catalog_name,
+                schema_name=schema_name,
+            )
+        except Exception as err:
+            logger.warning(f"Fetching tables names failed for schema {schema_name} due to - {err}")
+            logger.debug(traceback.format_exc())
+            self._record_schema_listing_error(schema_name)
+            return
+        for table in tables_iter:
             try:
                 table_name = table.name
                 table_fqn = fqn.build(

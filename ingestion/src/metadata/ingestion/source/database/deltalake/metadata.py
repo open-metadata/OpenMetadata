@@ -165,7 +165,14 @@ class DeltalakeSource(DatabaseServiceSource):
         :return: tables or views, depending on config
         """
         schema_name = self.context.get().database_schema
-        for table_info in self.client.get_table_info(self.service_connection, schema_name=schema_name):
+        try:
+            tables_iter = self.client.get_table_info(self.service_connection, schema_name=schema_name)
+        except Exception as err:
+            logger.warning(f"Fetching tables names failed for schema {schema_name} due to - {err}")
+            logger.debug(traceback.format_exc())
+            self._record_schema_listing_error(schema_name)
+            return
+        for table_info in tables_iter:
             try:
                 table_fqn = fqn.build(
                     self.metadata,

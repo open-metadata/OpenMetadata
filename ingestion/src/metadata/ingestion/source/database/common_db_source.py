@@ -134,6 +134,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         self._inspector_map = {}
         self.table_constraints = None
         self.database_source_state = set()
+        self.schemas_with_table_listing_errors = set()
         self.context.get_global().table_constrains = []
         self.context.get_global().foreign_tables = []
         self.context.set_threads(self.source_config.threads)
@@ -412,15 +413,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         except Exception as err:
             logger.warning(f"Fetching tables names failed for schema {schema_name} due to - {err}")
             logger.debug(traceback.format_exc())
-            schema_fqn = fqn.build(
-                self.metadata,
-                entity_type=DatabaseSchema,
-                service_name=self.context.get().database_service,
-                database_name=self.context.get().database,
-                schema_name=schema_name,
-            )
-            if schema_fqn:
-                self.schemas_with_table_listing_errors.add(schema_fqn)
+            self._record_schema_listing_error(schema_name)
 
     @calculate_execution_time()
     def get_schema_definition(
