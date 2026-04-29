@@ -28,9 +28,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -465,11 +465,10 @@ public class GlossaryCsvRelationTypesIT {
         imported.getRelatedTerms().size(),
         "Expected exactly 3 relations. Got: " + imported.getRelatedTerms());
 
-    Map<String, String> typeByTermId =
-        imported.getRelatedTerms().stream()
-            .collect(
-                Collectors.toMap(
-                    r -> r.getTerm().getId().toString(), TermRelation::getRelationType));
+    Map<String, String> typeByTermId = new HashMap<>();
+    for (TermRelation r : imported.getRelatedTerms()) {
+      typeByTermId.put(r.getTerm().getId().toString(), r.getRelationType());
+    }
     assertEquals("synonym", typeByTermId.get(t1.getId().toString()), "t1 should be synonym");
     assertEquals("relatedTo", typeByTermId.get(t2.getId().toString()), "t2 should be relatedTo");
     assertEquals("narrower", typeByTermId.get(t3.getId().toString()), "t3 should be narrower");
@@ -540,11 +539,10 @@ public class GlossaryCsvRelationTypesIT {
         clone.getRelatedTerms().size(),
         "Cloned term should have 3 relations. Got: " + clone.getRelatedTerms());
 
-    Map<String, String> typeByTermId =
-        clone.getRelatedTerms().stream()
-            .collect(
-                Collectors.toMap(
-                    r -> r.getTerm().getId().toString(), TermRelation::getRelationType));
+    Map<String, String> typeByTermId = new HashMap<>();
+    for (TermRelation r : clone.getRelatedTerms()) {
+      typeByTermId.put(r.getTerm().getId().toString(), r.getRelationType());
+    }
     assertEquals(
         "synonym", typeByTermId.get(t1.getId().toString()), "synonym relation should round-trip");
     assertEquals(
@@ -603,17 +601,16 @@ public class GlossaryCsvRelationTypesIT {
 
   /**
    * Locate a CSV row by its glossary-term name. Uses Apache Commons CSV so quoted/escaped fields
-   * (e.g. a deeply nested parent FQN containing a comma) don't shift column indices and break the
-   * lookup. Returns the original line text so callers can run substring assertions against it.
+   * (commas, embedded newlines, etc.) don't shift column indices and break the lookup. Returns a
+   * normalized CSV row reconstructed from the parsed record so callers can run substring
+   * assertions without relying on physical line numbers.
    */
   private String findRowByTerm(String csvContent, String termName) throws Exception {
-    String[] lines = csvContent.split("\\R");
     try (CSVParser parser =
         CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(new StringReader(csvContent))) {
       for (CSVRecord record : parser) {
         if (termName.equals(record.get("name*"))) {
-          int lineIndex = Math.toIntExact(record.getRecordNumber());
-          return lineIndex < lines.length ? lines[lineIndex] : null;
+          return CSVFormat.DEFAULT.format((Object[]) record.values());
         }
       }
     }

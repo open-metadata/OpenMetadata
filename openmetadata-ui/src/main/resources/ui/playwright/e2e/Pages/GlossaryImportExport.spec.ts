@@ -758,6 +758,8 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
       await test.step('Import CSV with synonym/relatedTo/narrower mix', async () => {
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page, relGlossary.data.displayName);
+        // Safety check: parallel test runs can surface a "glossary not found" popup.
+        await closeFirstPopupAlert(page);
 
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
@@ -829,6 +831,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
       await test.step('Export and verify CSV emits relation type prefixes', async () => {
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page, relGlossary.data.displayName);
+        await closeFirstPopupAlert(page);
 
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="export-button-description"]');
@@ -891,6 +894,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
       await test.step('Import CSV with invalid relation type and assert failure', async () => {
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page, relGlossary.data.displayName);
+        await closeFirstPopupAlert(page);
 
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
