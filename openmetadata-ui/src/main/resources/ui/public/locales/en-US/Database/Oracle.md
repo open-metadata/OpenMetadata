@@ -130,7 +130,7 @@ base64 -w 0 Wallet_mydb.zip
 
 macOS:
 ```bash
-base64 -i Wallet_mydb.zip
+base64 -i Wallet_mydb.zip | tr -d '\n'
 ```
 
 Copy the output and paste it into this field. OpenMetadata stores it as a secret, then decodes and extracts it at runtime inside the pod — no volume mounts or pre-provisioning needed.
