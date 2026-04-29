@@ -209,7 +209,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^((?!::)[^><\"|\\x00-\\x1f])*$"
+            "pattern": "^[^><\":|\\x00-\\x1f]*$"
           }
         },
         "referredColumns": {
@@ -236,7 +236,7 @@
       "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.",
       "type": "string",
       "minLength": 1,
-      "pattern": "^((?!::)[^><\"|\\x00-\\x1f])*$"
+      "pattern": "^[^><\":|\\x00-\\x1f]*$"
     },
     "partitionIntervalTypes": {
       "javaType": "org.openmetadata.schema.type.PartitionIntervalTypes",
@@ -275,7 +275,7 @@
         "columnName": {
           "description": "List of column names corresponding to the partition.",
           "type": "string",
-          "pattern": "^((?!::)[^><\"|\\x00-\\x1f])*$"
+          "pattern": "^[^><\":|\\x00-\\x1f]*$"
         },
         "intervalType": {
           "$ref": "#/definitions/partitionIntervalTypes"

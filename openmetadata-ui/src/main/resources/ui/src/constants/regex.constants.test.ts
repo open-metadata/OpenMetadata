@@ -162,6 +162,8 @@ describe('Test Regex', () => {
   it('EntityName regex should fail for the invalid entity name', () => {
     // conatines :: in the name should fail
     expect(ENTITY_NAME_REGEX.test('Hello::World')).toEqual(false);
+    // single colon also blocked as FQN separator
+    expect(ENTITY_NAME_REGEX.test('name:bad')).toEqual(false);
     expect(ENTITY_NAME_REGEX.test('name>bad')).toEqual(false);
     expect(ENTITY_NAME_REGEX.test('name<bad')).toEqual(false);
     expect(ENTITY_NAME_REGEX.test('name"bad')).toEqual(false);

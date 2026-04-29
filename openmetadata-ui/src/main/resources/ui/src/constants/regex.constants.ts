@@ -21,7 +21,7 @@ export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;
  * and ASCII control characters. Supports Unicode characters.
  */
 // eslint-disable-next-line no-control-regex
-export const ENTITY_NAME_REGEX = /^((?!::)[^><"|\u0000-\u001f])*$/;
+export const ENTITY_NAME_REGEX = /^[^><"|:\u0000-\u001f]*$/;
 
 /**
  * Matches any string that does NOT contain the following:
