@@ -1085,40 +1085,43 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
   @Test
   void patch_addDeleteReferences(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Glossary glossary = getOrCreateGlossary(ns);
 
-    // Create term without references
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
             .withName(ns.prefix("term_references"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term for reference patch test");
     GlossaryTerm term = createEntity(request);
+    String termId = term.getId().toString();
 
-    // Add reference
+    // Refresh local state before each patch so the JSON diff does not accidentally include an
+    // entityStatus transition driven by the async GlossaryTermApprovalWorkflow (which can move
+    // the server-side status to IN_REVIEW between calls and would otherwise trip the reviewer
+    // check in EntityRepository.checkUpdatedByReviewer).
     org.openmetadata.schema.api.data.TermReference ref1 =
         new org.openmetadata.schema.api.data.TermReference()
             .withName("reference1")
             .withEndpoint(java.net.URI.create("http://reference1.example.com"));
+    term = getEntity(termId);
     term.setReferences(List.of(ref1));
-    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
+    GlossaryTerm updated = patchEntity(termId, term);
     assertNotNull(updated.getReferences());
     assertEquals(1, updated.getReferences().size());
 
-    // Add another reference
     org.openmetadata.schema.api.data.TermReference ref2 =
         new org.openmetadata.schema.api.data.TermReference()
             .withName("reference2")
             .withEndpoint(java.net.URI.create("http://reference2.example.com"));
+    updated = getEntity(termId);
     updated.setReferences(List.of(ref1, ref2));
-    GlossaryTerm updated2 = patchEntity(updated.getId().toString(), updated);
+    GlossaryTerm updated2 = patchEntity(termId, updated);
     assertNotNull(updated2.getReferences());
     assertEquals(2, updated2.getReferences().size());
 
-    // Remove a reference
+    updated2 = getEntity(termId);
     updated2.setReferences(List.of(ref2));
-    GlossaryTerm updated3 = patchEntity(updated2.getId().toString(), updated2);
+    GlossaryTerm updated3 = patchEntity(termId, updated2);
     assertNotNull(updated3.getReferences());
     assertEquals(1, updated3.getReferences().size());
   }
