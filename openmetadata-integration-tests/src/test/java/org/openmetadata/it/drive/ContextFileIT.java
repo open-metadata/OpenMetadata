@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.ws.rs.core.Response;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
@@ -376,27 +374,34 @@ class ContextFileIT {
                 .withFileType(ContextFileType.PDF)
                 .withProcessingStatus(ProcessingStatus.Processed));
 
-    // ES indexing is async. Poll instead of a fixed sleep — on a fresh cluster the
-    // context_file_search_index may also take a moment to be created on first write,
-    // which returns 500 until the index exists. We assert both the success status
-    // AND that the newly-created file ID appears in the response so a passing assert
-    // actually proves the file is searchable.
-    String encodedQuery = URLEncoder.encode(uniqueName, StandardCharsets.UTF_8);
+    // ES indexing is async. Poll the direct get-by-id endpoint, which performs a real-time
+    // ES GET (no query_string parsing, no analyzer involvement) and is the most reliable
+    // signal that the document was indexed. The previous version of this test issued a
+    // free-text q= search using the namespaced unique name, but the prefix contains '-'
+    // which the query_string parser treats as a NOT operator and can produce a 500 on
+    // ES 9.x — yielding a flaky 30s-timeout failure even when the document is indexed.
     await()
         .pollDelay(Duration.ZERO)
         .pollInterval(Duration.ofMillis(200))
-        .atMost(Duration.ofSeconds(30))
+        .atMost(Duration.ofSeconds(60))
         .untilAsserted(
             () -> {
-              try (Response searchResp =
-                  rest.rawGet(
-                      "v1/search/query?q="
-                          + encodedQuery
-                          + "&index=context_file_search_index&from=0&size=10")) {
-                assertEquals(200, searchResp.getStatus());
+              try (Response getResp =
+                  rest.rawGet("v1/search/get/context_file_search_index/doc/" + file.getId())) {
+                int status = getResp.getStatus();
+                String body = getResp.readEntity(String.class);
+                if (status != 200) {
+                  throw new AssertionError(
+                      "Expected 200 from search-by-id for file "
+                          + file.getId()
+                          + " but got "
+                          + status
+                          + " body="
+                          + body);
+                }
                 assertTrue(
-                    searchResp.readEntity(String.class).contains(file.getId().toString()),
-                    "Expected newly-created file " + file.getId() + " in search results");
+                    body.contains(file.getId().toString()),
+                    "Expected file " + file.getId() + " in search-by-id response: " + body);
               }
             });
   }
