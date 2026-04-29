@@ -161,14 +161,17 @@ def test_profiler_metrics(
     om_client.table(all_types_fqn).profile.eventually().row_count().equals(3)
 
     # Numeric column — credit_score sorted: [600, 650, 680, 720, 750].
-    # min=600, max=750, mean=680, sum=3400, distinct=5, unique=5, null=0.
+    # min=600, max=750, mean=680, sum=3400, distinct=5, unique=5, null=0,
+    # median=680 (textbook middle of 5-element sample).
     #
-    # median=650, NOT the textbook 680. OM's MySQL profiler computes the
-    # 50th percentile via a quantile-discrete (lower-median) function —
-    # for a 5-element sample it returns the 2nd-smallest value, not the
-    # middle one. Pinned here intentionally so a future change to OM's
-    # median definition (e.g. switch to quantile-continuous, swap to a
-    # different SQL function) surfaces as a test failure to be triaged.
+    # OM's MySQL median impl was previously non-deterministic (its
+    # `ROW_NUMBER() OVER ()` lacked a window ORDER BY, so the row picked
+    # at `ROUND(0.5 * COUNT)` was whichever physical-storage row landed
+    # there). Patched in `metadata/profiler/orm/functions/median.py` to
+    # `ROW_NUMBER() OVER (ORDER BY {col})`. With that, median = 3rd
+    # sorted value = 680. If this assertion flips back to 650 / 720 the
+    # patch likely got reverted upstream — see
+    # `project-om-mysql-median-non-deterministic.md` for context.
     om_client.table(customers_fqn).profile.eventually().column("credit_score").has_metrics(
         valuesCount=5,
         nullCount=0,
@@ -178,7 +181,7 @@ def test_profiler_metrics(
         max=750,
         mean=680,
         sum=3400,
-        median=650,
+        median=680,
     )
 
     # String column — first_name: Alice(5), Bob(3), Charlie(7), Diana(5), Eve(3).
