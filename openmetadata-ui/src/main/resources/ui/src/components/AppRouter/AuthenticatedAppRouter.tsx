@@ -118,6 +118,15 @@ const DataMarketplacePage = withSuspenseFallback(
   )
 );
 
+const DataAccessRequestPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "DataAccessRequestPage" */ '../../pages/DataAccessRequestPage/DataAccessRequestPage.component'
+      )
+  )
+);
+
 const BotDetailsPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/BotDetailsPage/BotDetailsPage'))
 );
@@ -488,6 +497,14 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.MARKETPLACE_APP_INSTALL}
       />
       <Route element={<DataMarketplacePage />} path={ROUTES.DATA_MARKETPLACE} />
+      <Route
+        element={<DataAccessRequestPage />}
+        path={ROUTES.DATA_ACCESS_REQUESTS_WITH_TAB}
+      />
+      <Route
+        element={<DataAccessRequestPage />}
+        path={ROUTES.DATA_ACCESS_REQUESTS}
+      />
       <Route element={<SwaggerPage />} path={ROUTES.SWAGGER} />
       <Route element={<DomainVersionPage />} path={ROUTES.DOMAIN_VERSION} />
       <Route element={<UserPage />} path={ROUTES.USER_PROFILE_WITH_SUB_TAB} />

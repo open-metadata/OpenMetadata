@@ -2,7 +2,7 @@
   "name": "DataAccessRequestTaskWorkflow",
   "fullyQualifiedName": "DataAccessRequestTaskWorkflow",
   "displayName": "Data Access Request Task Workflow",
-  "description": "Default workflow-driven lifecycle for data access request tasks.",
+  "description": "Default workflow-driven lifecycle for data access request tasks. After approval, access can be revoked by the approver, owner, or domain owner.",
   "config": {
     "storeStageStatus": true
   },
@@ -40,8 +40,7 @@
             "id": "approve",
             "label": "Approve",
             "targetStageId": "approved",
-            "targetTaskStatus": "Approved",
-            "resolutionType": "Approved",
+            "targetTaskStatus": "InProgress",
             "formRef": "approve",
             "requiresComment": false
           },
@@ -61,16 +60,49 @@
       }
     },
     {
-      "type": "endEvent",
-      "subType": "endEvent",
-      "name": "ApprovedEnd",
-      "displayName": "Approved"
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "ApprovedAccess",
+      "displayName": "Active Access",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": true,
+          "candidates": []
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "approved",
+        "stageDisplayName": "Approved",
+        "taskStatus": "InProgress",
+        "assigneeStrategy": "owners-and-reviewers",
+        "transitionMetadata": [
+          {
+            "id": "revoke",
+            "label": "Revoke Access",
+            "targetStageId": "revoked",
+            "targetTaskStatus": "Revoked",
+            "resolutionType": "Revoked",
+            "formRef": "revoke",
+            "requiresComment": true
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
     },
     {
       "type": "endEvent",
       "subType": "endEvent",
       "name": "RejectedEnd",
       "displayName": "Rejected"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "RevokedEnd",
+      "displayName": "Revoked"
     }
   ],
   "edges": [
@@ -80,13 +112,18 @@
     },
     {
       "from": "TaskReview",
-      "to": "ApprovedEnd",
+      "to": "ApprovedAccess",
       "condition": "approve"
     },
     {
       "from": "TaskReview",
       "to": "RejectedEnd",
       "condition": "reject"
+    },
+    {
+      "from": "ApprovedAccess",
+      "to": "RevokedEnd",
+      "condition": "revoke"
     }
   ]
 }

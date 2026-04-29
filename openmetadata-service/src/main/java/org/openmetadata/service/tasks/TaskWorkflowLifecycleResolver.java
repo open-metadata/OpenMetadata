@@ -412,6 +412,7 @@ public final class TaskWorkflowLifecycleResolver {
       case Rejected, AutoRejected -> "reject";
       case Completed -> "complete";
       case Cancelled -> "cancel";
+      case Revoked -> "revoke";
       case TimedOut -> "timeout";
     };
   }

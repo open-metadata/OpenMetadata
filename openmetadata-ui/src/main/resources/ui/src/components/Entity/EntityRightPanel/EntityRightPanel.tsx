@@ -27,6 +27,7 @@ import type {
   ExtentionEntitiesKeys,
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import DataAccessRequestWidget from '../../DataAccessRequest/DataAccessRequestWidget/DataAccessRequestWidget.component';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
@@ -45,6 +46,7 @@ interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   customProperties?: ExtentionEntities[T];
   editCustomAttributePermission?: boolean;
   editDataProductPermission?: boolean;
+  editAllPermission?: boolean;
   onDataProductUpdate?: (dataProducts: DataProduct[]) => Promise<void>;
 }
 
@@ -61,6 +63,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   customProperties,
   editCustomAttributePermission,
   editDataProductPermission,
+  editAllPermission,
   onDataProductUpdate,
   viewCustomPropertiesPermission,
 }: EntityRightPanelProps<T>) => {
@@ -72,14 +75,47 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
     domains: EntityReference[];
     dataProducts: EntityReference[];
     id: string;
+    name?: string;
+    displayName?: string;
+    columns?: Array<{ fullyQualifiedName?: string; name?: string }>;
+    reviewers?: EntityReference[];
   }>();
 
-  const { domains, dataProducts, id: entityId } = data ?? {};
+  const {
+    domains,
+    dataProducts,
+    id: entityId,
+    name,
+    displayName,
+    columns,
+    reviewers,
+  } = data ?? {};
+
+  const showDataAccessRequest =
+    entityType === EntityType.TABLE || entityType === EntityType.DATA_PRODUCT;
+
+  const availableColumns = (columns ?? [])
+    .map((c) => c.fullyQualifiedName ?? c.name)
+    .filter((c): c is string => Boolean(c));
+
+  const reviewerFqns = (reviewers ?? [])
+    .map((r) => r.fullyQualifiedName)
+    .filter((r): r is string => Boolean(r));
 
   return (
     <>
       {beforeSlot}
       <Space className="w-full" direction="vertical" size="large">
+        {showDataAccessRequest && entityFQN && (
+          <DataAccessRequestWidget
+            availableColumns={availableColumns}
+            canRequestAccess={!editAllPermission}
+            entityDisplayName={displayName ?? name ?? entityFQN}
+            entityFqn={entityFQN}
+            entityType={entityType}
+            reviewers={reviewerFqns}
+          />
+        )}
         {showDataProductContainer && (
           <div data-testid="KnowledgePanel.DataProducts">
             <DataProductsContainer

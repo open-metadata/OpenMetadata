@@ -271,6 +271,7 @@ export enum ResolutionType {
     Cancelled = "Cancelled",
     Completed = "Completed",
     Rejected = "Rejected",
+    Revoked = "Revoked",
     TimedOut = "TimedOut",
 }
 
@@ -288,6 +289,7 @@ export enum TaskStatus {
     Open = "Open",
     Pending = "Pending",
     Rejected = "Rejected",
+    Revoked = "Revoked",
 }
 
 /**

@@ -57,6 +57,7 @@ export enum DetailPageWidgetKeys {
   MARKETPLACE_DATA_PRODUCTS = 'KnowledgePanel.MarketplaceDataProducts',
   MARKETPLACE_DOMAINS = 'KnowledgePanel.MarketplaceDomains',
   MARKETPLACE_ANNOUNCEMENTS = 'KnowledgePanel.MarketplaceAnnouncements',
+  MARKETPLACE_DATA_ACCESS_REQUESTS = 'KnowledgePanel.MarketplaceDataAccessRequests',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {

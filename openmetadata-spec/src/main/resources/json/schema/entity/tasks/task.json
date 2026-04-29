@@ -77,7 +77,8 @@
         "Rejected",
         "Completed",
         "Cancelled",
-        "Failed"
+        "Failed",
+        "Revoked"
       ],
       "javaEnums": [
         {"name": "Open"},
@@ -87,7 +88,8 @@
         {"name": "Rejected"},
         {"name": "Completed"},
         {"name": "Cancelled"},
-        {"name": "Failed"}
+        {"name": "Failed"},
+        {"name": "Revoked"}
       ],
       "default": "Open"
     },
@@ -115,7 +117,8 @@
         "Cancelled",
         "TimedOut",
         "AutoApproved",
-        "AutoRejected"
+        "AutoRejected",
+        "Revoked"
       ],
       "javaEnums": [
         {"name": "Approved"},
@@ -124,7 +127,8 @@
         {"name": "Cancelled"},
         {"name": "TimedOut"},
         {"name": "AutoApproved"},
-        {"name": "AutoRejected"}
+        {"name": "AutoRejected"},
+        {"name": "Revoked"}
       ]
     },
     "taskResolution": {
