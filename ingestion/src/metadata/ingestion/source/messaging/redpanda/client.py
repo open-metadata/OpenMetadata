@@ -54,6 +54,10 @@ class RedpandaAdminClient:
         if client_cert:
             self.session.cert = client_cert
 
+    def close(self) -> None:
+        """Close the underlying HTTP session and release pooled connections."""
+        self.session.close()
+
     def list_transforms(self) -> list[RedpandaTransform]:
         """
         Fetch all data transforms from Redpanda Admin API.

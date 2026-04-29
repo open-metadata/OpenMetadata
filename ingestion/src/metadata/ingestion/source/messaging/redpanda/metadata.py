@@ -147,3 +147,8 @@ class RedpandaSource(CommonBrokerSource):
                             stackTrace=traceback.format_exc(),
                         )
                     )
+
+    def close(self):
+        if self.admin_client_rp:
+            self.admin_client_rp.close()
+        super().close()

@@ -141,6 +141,15 @@ class TestRedpandaAdminClient:
         )
         assert mock_session.cert == ("/tmp/client.crt", "/tmp/client.key")
 
+    @patch("metadata.ingestion.source.messaging.redpanda.client.requests.Session")
+    def test_close_releases_session(self, mock_session_cls):
+        """close() releases pooled connections by closing the underlying session."""
+        mock_session = MagicMock()
+        mock_session_cls.return_value = mock_session
+        client = RedpandaAdminClient("http://localhost:9644")
+        client.close()
+        mock_session.close.assert_called_once()
+
 
 class TestRedpandaTopicLineage:
     """Test Redpanda data transform lineage"""
@@ -717,7 +726,10 @@ class TestBatchEndOffsets:
         source.admin_client.list_offsets.assert_not_called()
 
     def test_end_offset_failure_returns_negative(self):
-        """Partitions with failed end-offset lookup should get lag=None."""
+        """A failed per-partition end-offset lookup is recorded as the sentinel
+        ``-1`` in the end_offsets map. Downstream, ``_fetch_consumer_group_offsets``
+        translates that sentinel into ``endOffset=None`` and ``lag=None`` on the
+        emitted ConsumerGroupPartitionOffset."""
         source = self._make_source()
 
         committed = {"group-1": {("topic-a", 0): 50}}
@@ -780,6 +792,37 @@ class TestCloseCleanup:
         source.generate_sample_data = False
         source.consumer_client = None
         source.ssl_manager = None
+
+        # Should not raise
+        source.close()
+
+    def test_redpanda_close_closes_admin_client(self):
+        """RedpandaSource.close() closes admin_client_rp and forwards to super().close()."""
+        from metadata.ingestion.source.messaging.redpanda.metadata import RedpandaSource
+
+        source = MagicMock(spec=RedpandaSource)
+        source.close = RedpandaSource.close.__get__(source, RedpandaSource)
+        # Attributes touched by the inherited CommonBrokerSource.close() body.
+        source.generate_sample_data = False
+        source.consumer_client = None
+        source.ssl_manager = None
+        mock_admin = MagicMock()
+        source.admin_client_rp = mock_admin
+
+        source.close()
+
+        mock_admin.close.assert_called_once()
+
+    def test_redpanda_close_without_admin_client(self):
+        """close() is safe to call when admin_client_rp was never created."""
+        from metadata.ingestion.source.messaging.redpanda.metadata import RedpandaSource
+
+        source = MagicMock(spec=RedpandaSource)
+        source.close = RedpandaSource.close.__get__(source, RedpandaSource)
+        source.generate_sample_data = False
+        source.consumer_client = None
+        source.ssl_manager = None
+        source.admin_client_rp = None
 
         # Should not raise
         source.close()
