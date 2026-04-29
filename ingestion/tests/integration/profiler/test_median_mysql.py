@@ -194,7 +194,6 @@ class TestMySQLMedianFn:
         """Same query 10x must return the same value — pre-fix this flipped."""
         compiled = _compile_median_fn(session, "value", "test_data", 0.50)
         results = {
-            session.execute(text(f"SELECT {compiled} AS median_val FROM test_data LIMIT 1")).scalar()
-            for _ in range(10)
+            session.execute(text(f"SELECT {compiled} AS median_val FROM test_data LIMIT 1")).scalar() for _ in range(10)
         }
         assert len(results) == 1, f"non-deterministic: got {results}"
