@@ -176,10 +176,7 @@ export const setupCsvImportListener = async (
       const data =
         typeof message === 'string' ? message : message.toString('utf-8');
 
-      if (
-        data.includes('csvImportChannel') &&
-        data.includes('"status":"COMPLETED"')
-      ) {
+      if (data.includes('csvImportChannel') && data.includes('COMPLETED')) {
         pendingResolvers.shift()?.();
       }
     });
