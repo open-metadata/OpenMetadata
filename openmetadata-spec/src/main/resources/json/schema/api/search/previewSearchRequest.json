@@ -60,14 +60,14 @@
       "default": false
     },
     "fetchParentsAliases": {
-      "description": "If true, expand the requested index to also include the actual indexes of its parent aliases declared in indexMapping.json. Defaults to false.",
-      "type": "boolean",
-      "default": false
+      "description": "Selective expansion toward parent aliases. Pass `*`/`all` for every parent, `none` (or empty) for none, or a comma-separated list of entity types. Defaults to `none`. Legacy `true` / `false` are aliased to `*` / `none`.",
+      "type": "string",
+      "default": "none"
     },
     "fetchChildAliases": {
-      "description": "If true, expand the requested index to also include the actual indexes of its child aliases declared in indexMapping.json. Defaults to true to preserve legacy ES alias-expansion behavior.",
-      "type": "boolean",
-      "default": true
+      "description": "Selective expansion toward child aliases. Pass `*`/`all` for every child, `none` (or empty) for none, or a comma-separated list of entity types. Defaults to `none`. Legacy `true` / `false` are aliased to `*` / `none`.",
+      "type": "string",
+      "default": "none"
     }
   }
 }

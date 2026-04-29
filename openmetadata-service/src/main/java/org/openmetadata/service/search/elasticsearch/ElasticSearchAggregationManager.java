@@ -92,9 +92,8 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
           Entity.getSearchRepository()
               .getIndexOrAliasName(
                   request.getIndex(),
-                  Boolean.TRUE.equals(request.getFetchParentsAliases()),
-                  request.getFetchChildAliases() == null
-                      || Boolean.TRUE.equals(request.getFetchChildAliases()));
+                  request.getFetchParentsAliases(),
+                  request.getFetchChildAliases() == null ? "none" : request.getFetchChildAliases());
       searchRequestBuilder.index(indexName);
 
       Query query = null;
@@ -622,15 +621,14 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       requestBuilder.size(0);
       requestBuilder.trackTotalHits(true);
 
-      // Resolve the index alias properly — honor flags from the request when present so the
+      // Resolve the index alias properly — honor filters from the request when present so the
       // resource layer doesn't need to pre-resolve (which would double-prefix the cluster alias).
       String resolvedIndex =
           Entity.getSearchRepository()
               .getIndexOrAliasName(
                   index != null ? index : "all",
-                  Boolean.TRUE.equals(request.getFetchParentsAliases()),
-                  request.getFetchChildAliases() == null
-                      || Boolean.TRUE.equals(request.getFetchChildAliases()));
+                  request.getFetchParentsAliases(),
+                  request.getFetchChildAliases() == null ? "none" : request.getFetchChildAliases());
 
       // Build and execute search
       SearchRequest searchRequest = requestBuilder.build(resolvedIndex);

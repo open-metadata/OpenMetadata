@@ -698,19 +698,73 @@ public class SearchRepository {
    *
    * <ul>
    *   <li>If the token matches an entity type in {@code entityIndexMap}, its actual indexName is
-   *       always included. When {@code fetchParents} is true, the indexNames of every entity
-   *       listed in this entity's {@code parentAliases} are also included. When
-   *       {@code fetchChildren} is true, the indexNames of every entity that lists this alias in
-   *       its own {@code parentAliases} (i.e. logical children) are also included.
+   *       always included. The {@code fetchParents} / {@code fetchChildren} filters control which
+   *       parent / child entity indexes are also included — see {@link #aliasFilter(String)} for
+   *       the accepted syntax ({@code *}, {@code none}, comma-separated entity types).
    *   <li>If the token is a compound alias (e.g. {@code "all"}, {@code "dataAsset"}) — not a key
-   *       in {@code entityIndexMap} — and {@code fetchChildren} is true, all entities that list
-   *       this alias as a parent are expanded. Otherwise the token is passed through with the
-   *       cluster prefix applied, preserving the legacy behavior.
+   *       in {@code entityIndexMap} — and the children filter is non-empty, all entities that
+   *       list this alias as a parent (and pass the filter) are expanded. Otherwise the token is
+   *       passed through with the cluster prefix applied, preserving the legacy behavior.
    * </ul>
    */
-  public String getIndexOrAliasName(String name, boolean fetchParents, boolean fetchChildren) {
+  public String getIndexOrAliasName(String name, String fetchParents, String fetchChildren) {
     return resolveIndexes(
         name, fetchParents, fetchChildren, entityIndexMap, aliasToChildEntityTypes, clusterAlias);
+  }
+
+  /**
+   * Parsed alias-filter expression for the {@code fetchParentsAliases} / {@code fetchChildAliases}
+   * inputs. The accepted syntax is documented on the schema fields:
+   *
+   * <ul>
+   *   <li>{@code null}, empty / whitespace, {@code "none"}, or the legacy {@code "false"} —
+   *       reject every candidate (no expansion).
+   *   <li>{@code "*"}, {@code "all"}, or the legacy {@code "true"} — accept every candidate.
+   *   <li>{@code "table,topic"} — accept only the listed entity types.
+   * </ul>
+   */
+  static final class AliasFilter {
+    static final AliasFilter NONE = new AliasFilter(false, Set.of());
+    static final AliasFilter ALL = new AliasFilter(true, Set.of());
+
+    private final boolean matchAll;
+    private final Set<String> allowed;
+
+    private AliasFilter(boolean matchAll, Set<String> allowed) {
+      this.matchAll = matchAll;
+      this.allowed = allowed;
+    }
+
+    static AliasFilter parse(String raw) {
+      if (raw == null) {
+        return NONE;
+      }
+      String trimmed = raw.trim();
+      if (trimmed.isEmpty()
+          || "none".equalsIgnoreCase(trimmed)
+          || "false".equalsIgnoreCase(trimmed)) {
+        return NONE;
+      }
+      if ("*".equals(trimmed)
+          || "all".equalsIgnoreCase(trimmed)
+          || "true".equalsIgnoreCase(trimmed)) {
+        return ALL;
+      }
+      Set<String> allowed =
+          Arrays.stream(trimmed.split(","))
+              .map(String::trim)
+              .filter(t -> !t.isEmpty())
+              .collect(Collectors.toUnmodifiableSet());
+      return allowed.isEmpty() ? NONE : new AliasFilter(false, allowed);
+    }
+
+    boolean accepts(String candidate) {
+      return matchAll || allowed.contains(candidate);
+    }
+
+    boolean isNoExpansion() {
+      return !matchAll && allowed.isEmpty();
+    }
   }
 
   /**
@@ -719,14 +773,16 @@ public class SearchRepository {
    */
   static String resolveIndexes(
       String name,
-      boolean fetchParents,
-      boolean fetchChildren,
+      String fetchParents,
+      String fetchChildren,
       Map<String, IndexMapping> entityIndexMap,
       Map<String, List<String>> aliasToChildEntityTypes,
       String clusterAlias) {
     if (nullOrEmpty(name)) {
       return name;
     }
+    AliasFilter parentFilter = AliasFilter.parse(fetchParents);
+    AliasFilter childFilter = AliasFilter.parse(fetchChildren);
     java.util.LinkedHashSet<String> resolved = new java.util.LinkedHashSet<>();
     for (String rawToken : name.split(",")) {
       String token = rawToken.trim();
@@ -735,8 +791,8 @@ public class SearchRepository {
       }
       expandSingleAlias(
           token,
-          fetchParents,
-          fetchChildren,
+          parentFilter,
+          childFilter,
           entityIndexMap,
           aliasToChildEntityTypes,
           clusterAlias,
@@ -750,28 +806,32 @@ public class SearchRepository {
 
   private static void expandSingleAlias(
       String token,
-      boolean fetchParents,
-      boolean fetchChildren,
+      AliasFilter parentFilter,
+      AliasFilter childFilter,
       Map<String, IndexMapping> entityIndexMap,
       Map<String, List<String>> aliasToChildEntityTypes,
       String clusterAlias,
       java.util.Set<String> resolved) {
     IndexMapping mapping = entityIndexMap == null ? null : entityIndexMap.get(token);
+    boolean expandChildren = !childFilter.isNoExpansion();
+    boolean expandParents = !parentFilter.isNoExpansion();
     if (mapping != null) {
       resolved.add(mapping.getIndexName(clusterAlias));
-      if (fetchParents) {
-        addParentIndexes(mapping, entityIndexMap, clusterAlias, resolved);
+      if (expandParents) {
+        addParentIndexes(mapping, parentFilter, entityIndexMap, clusterAlias, resolved);
       }
-      if (fetchChildren) {
-        addChildIndexes(token, entityIndexMap, aliasToChildEntityTypes, clusterAlias, resolved);
+      if (expandChildren) {
+        addChildIndexes(
+            token, childFilter, entityIndexMap, aliasToChildEntityTypes, clusterAlias, resolved);
       }
       return;
     }
-    if (fetchChildren) {
-      addChildIndexes(token, entityIndexMap, aliasToChildEntityTypes, clusterAlias, resolved);
+    if (expandChildren) {
+      addChildIndexes(
+          token, childFilter, entityIndexMap, aliasToChildEntityTypes, clusterAlias, resolved);
     }
     boolean alreadyExpanded =
-        fetchChildren
+        expandChildren
             && aliasToChildEntityTypes != null
             && aliasToChildEntityTypes.containsKey(token);
     if (!alreadyExpanded) {
@@ -781,6 +841,7 @@ public class SearchRepository {
 
   private static void addParentIndexes(
       IndexMapping mapping,
+      AliasFilter parentFilter,
       Map<String, IndexMapping> entityIndexMap,
       String clusterAlias,
       java.util.Set<String> resolved) {
@@ -789,6 +850,9 @@ public class SearchRepository {
       return;
     }
     for (String parentAlias : parents) {
+      if (!parentFilter.accepts(parentAlias)) {
+        continue;
+      }
       IndexMapping parentMapping = entityIndexMap.get(parentAlias);
       if (parentMapping != null) {
         resolved.add(parentMapping.getIndexName(clusterAlias));
@@ -798,6 +862,7 @@ public class SearchRepository {
 
   private static void addChildIndexes(
       String alias,
+      AliasFilter childFilter,
       Map<String, IndexMapping> entityIndexMap,
       Map<String, List<String>> aliasToChildEntityTypes,
       String clusterAlias,
@@ -810,6 +875,9 @@ public class SearchRepository {
       return;
     }
     for (String childType : childTypes) {
+      if (!childFilter.accepts(childType)) {
+        continue;
+      }
       IndexMapping childMapping = entityIndexMap.get(childType);
       if (childMapping != null) {
         resolved.add(childMapping.getIndexName(clusterAlias));
@@ -3124,17 +3192,18 @@ public class SearchRepository {
   }
 
   /**
-   * Variant that honors the alias-expansion flags. Forwards them to the SearchClient so the
+   * Variant that honors the alias-expansion filters. Forwards them to the SearchClient so the
    * manager can resolve the alias graph exactly once — no resource-side pre-resolution, so the
-   * cluster prefix isn't double-applied.
+   * cluster prefix isn't double-applied. See {@link AliasFilter#parse(String)} for the accepted
+   * syntax.
    */
   public Response searchByField(
       String fieldName,
       String fieldValue,
       String index,
       Boolean deleted,
-      boolean fetchParentsAliases,
-      boolean fetchChildAliases)
+      String fetchParentsAliases,
+      String fetchChildAliases)
       throws IOException {
     return searchClient.searchByField(
         fieldName, fieldValue, index, deleted, fetchParentsAliases, fetchChildAliases);
@@ -3149,11 +3218,11 @@ public class SearchRepository {
   }
 
   /**
-   * Variant that honors the alias-expansion flags. Sets them on the request so the manager
-   * resolves the alias once with the same flag-aware logic used by /search/query.
+   * Variant that honors the alias-expansion filters. Sets them on the request so the manager
+   * resolves the alias once with the same logic used by /search/query.
    */
   public Response getEntityTypeCounts(
-      SearchRequest request, String index, boolean fetchParentsAliases, boolean fetchChildAliases)
+      SearchRequest request, String index, String fetchParentsAliases, String fetchChildAliases)
       throws IOException {
     request.setFetchParentsAliases(fetchParentsAliases);
     request.setFetchChildAliases(fetchChildAliases);

@@ -191,7 +191,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   @Override
   public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
       throws IOException {
-    return searchByField(fieldName, fieldValue, index, deleted, false, true);
+    return searchByField(fieldName, fieldValue, index, deleted, "none", "none");
   }
 
   @Override
@@ -200,8 +200,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       String fieldValue,
       String index,
       Boolean deleted,
-      boolean fetchParentsAliases,
-      boolean fetchChildAliases)
+      String fetchParentsAliases,
+      String fetchChildAliases)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("OpenSearch client is not available");

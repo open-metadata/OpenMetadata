@@ -1985,7 +1985,7 @@ public class SearchResourceIT {
    * response.
    */
   @Test
-  void testFetchChildAliasesFalseExcludesColumns(TestNamespace ns) throws Exception {
+  void testDefaultChildScopeExcludesColumns(TestNamespace ns) throws Exception {
     String unique = "fetchchild_excl_" + ns.shortPrefix();
     Column uniqueColumn =
         new Column()
@@ -1996,61 +1996,72 @@ public class SearchResourceIT {
 
     awaitColumnIndexed(unique);
 
-    // Default flags (fetchChildAliases=true) — bug must reproduce so the rest of the assertion
-    // isn't vacuous: column docs MUST appear when the legacy alias expansion is in effect.
+    // Opt-in legacy expansion (fetchChildAliases=*): tableColumn hits MUST appear so the rest
+    // of the assertion isn't vacuous.
     HttpResponse<String> withChildren =
-        httpGetJson("/v1/search/query?q=" + unique + "&index=table&size=20");
+        httpGetJson("/v1/search/query?q=" + unique + "&index=table&fetchChildAliases=*&size=20");
     assertEquals(200, withChildren.statusCode());
     JsonNode withChildrenHits =
         OBJECT_MAPPER.readTree(withChildren.body()).path("hits").path("hits");
     assertTrue(
         anyHitOfType(withChildrenHits, "tableColumn"),
-        "Default flags on index=table must still surface tableColumn hits — otherwise the test "
+        "fetchChildAliases=* on index=table must surface tableColumn hits — otherwise the "
             + "fixture is broken and the no-columns assertion would pass vacuously. body="
             + withChildren.body());
 
-    // Fix path: explicit fetchChildAliases=false drops the tableColumn hits.
+    // Default flags (fetchChildAliases=none) — the bug fix path. tableColumn hits must NOT leak.
     HttpResponse<String> withoutChildren =
-        httpGetJson(
-            "/v1/search/query?q=" + unique + "&index=table&fetchChildAliases=false&size=20");
+        httpGetJson("/v1/search/query?q=" + unique + "&index=table&size=20");
     assertEquals(200, withoutChildren.statusCode());
     JsonNode withoutChildrenHits =
         OBJECT_MAPPER.readTree(withoutChildren.body()).path("hits").path("hits");
     assertFalse(
         anyHitOfType(withoutChildrenHits, "tableColumn"),
-        "fetchChildAliases=false on index=table must drop tableColumn hits, got: "
-            + withoutChildren.body());
+        "Default flags on index=table must drop tableColumn hits, got: " + withoutChildren.body());
   }
 
   /**
-   * Confirms the legacy alias-expansion behavior is preserved end-to-end under the default
-   * flags (fetchChildAliases=true). Pinning the legacy contract here so a future regression to
-   * "always exclude children" is caught.
+   * Confirms the named-filter syntax: passing only a specific child entity type expands that one
+   * but no others. Uses {@code fetchChildAliases=tableColumn} so the response includes
+   * {@code tableColumn} hits but not, say, {@code testCase} hits (testCase isn't a child of
+   * 'table' in indexMapping.json so it's already implicitly excluded — this test pins the
+   * positive direction).
    */
   @Test
-  void testFetchChildAliasesDefaultIncludesColumns(TestNamespace ns) throws Exception {
-    String unique = "fetchchild_def_" + ns.shortPrefix();
+  void testFetchChildAliasesNamedFilterIncludesOnlySpecified(TestNamespace ns) throws Exception {
+    String unique = "fetchchild_named_" + ns.shortPrefix();
     Column uniqueColumn =
         new Column()
             .withName(unique + "_col")
             .withDataType(ColumnDataType.VARCHAR)
             .withDataLength(64);
-    createTestTableWithColumns(ns, ns.prefix("fetchchild_def_t"), List.of(uniqueColumn));
+    createTestTableWithColumns(ns, ns.prefix("fetchchild_named_t"), List.of(uniqueColumn));
 
     awaitColumnIndexed(unique);
 
     HttpResponse<String> response =
-        httpGetJson("/v1/search/query?q=" + unique + "&index=table&size=20");
+        httpGetJson(
+            "/v1/search/query?q=" + unique + "&index=table&fetchChildAliases=tableColumn&size=20");
     assertEquals(200, response.statusCode());
     JsonNode hits = OBJECT_MAPPER.readTree(response.body()).path("hits").path("hits");
     assertTrue(
         anyHitOfType(hits, "tableColumn"),
-        "Default flags must still expand the alias so tableColumn docs appear (legacy contract): "
-            + response.body());
+        "fetchChildAliases=tableColumn must include tableColumn docs: " + response.body());
+
+    // A filter that names a non-child must not introduce that index — passing 'topic' (not a
+    // child of 'table') should yield zero tableColumn hits.
+    HttpResponse<String> nonChild =
+        httpGetJson(
+            "/v1/search/query?q=" + unique + "&index=table&fetchChildAliases=topic&size=20");
+    assertEquals(200, nonChild.statusCode());
+    JsonNode nonChildHits = OBJECT_MAPPER.readTree(nonChild.body()).path("hits").path("hits");
+    assertFalse(
+        anyHitOfType(nonChildHits, "tableColumn"),
+        "fetchChildAliases=topic must not introduce tableColumn hits: " + nonChild.body());
   }
 
   @Test
-  void testFetchParentsAliasesTrueIncludesParents(TestNamespace ns) throws Exception {
+  void testFetchParentsAliasesWildcardIncludesParents(TestNamespace ns) throws Exception {
     String unique = "fetchparents_" + ns.shortPrefix();
     Column uniqueColumn =
         new Column()
@@ -2072,7 +2083,7 @@ public class SearchResourceIT {
                   httpGetJson(
                       "/v1/search/query?q="
                           + tableName
-                          + "&index=tableColumn&fetchParentsAliases=true&fetchChildAliases=false&size=20");
+                          + "&index=tableColumn&fetchParentsAliases=*&fetchChildAliases=none&size=20");
               return r.statusCode() == 200
                   && anyHitOfType(
                       OBJECT_MAPPER.readTree(r.body()).path("hits").path("hits"), "table");
@@ -2084,7 +2095,7 @@ public class SearchResourceIT {
    * export carries column rows; explicit fetchChildAliases=false drops them.
    */
   @Test
-  void testFetchChildAliasesFalseOnExportEndpoint(TestNamespace ns) throws Exception {
+  void testDefaultChildScopeOnExportEndpoint(TestNamespace ns) throws Exception {
     String unique = "fetchchild_exp_" + ns.shortPrefix();
     Column uniqueColumn =
         new Column()
@@ -2095,29 +2106,28 @@ public class SearchResourceIT {
 
     awaitColumnIndexed(unique);
 
+    HttpResponse<String> wildcardExport =
+        httpGetExport("/v1/search/export?q=" + unique + "&index=table&fetchChildAliases=*&size=50");
+    assertEquals(200, wildcardExport.statusCode());
+    String wildcardBody = wildcardExport.body();
+    boolean wildcardHasColumn =
+        java.util.Arrays.stream(wildcardBody.split("\n"))
+            .skip(1)
+            .anyMatch(row -> row.toLowerCase().startsWith("tablecolumn,"));
+    assertTrue(
+        wildcardHasColumn,
+        "fetchChildAliases=* export on index=table must include tableColumn rows; "
+            + "otherwise the no-columns assertion below is vacuous. body="
+            + wildcardBody);
+
     HttpResponse<String> defaultExport =
         httpGetExport("/v1/search/export?q=" + unique + "&index=table&size=50");
     assertEquals(200, defaultExport.statusCode());
     String defaultBody = defaultExport.body();
-    boolean defaultHasColumn =
-        java.util.Arrays.stream(defaultBody.split("\n"))
-            .skip(1)
-            .anyMatch(row -> row.toLowerCase().startsWith("tablecolumn,"));
-    assertTrue(
-        defaultHasColumn,
-        "Default export on index=table must include tableColumn rows under the legacy alias "
-            + "expansion; otherwise the no-columns assertion below is vacuous. body="
-            + defaultBody);
-
-    HttpResponse<String> filteredExport =
-        httpGetExport(
-            "/v1/search/export?q=" + unique + "&index=table&fetchChildAliases=false&size=50");
-    assertEquals(200, filteredExport.statusCode());
-    String filteredBody = filteredExport.body();
-    for (String row : filteredBody.split("\n")) {
+    for (String row : defaultBody.split("\n")) {
       assertFalse(
           row.toLowerCase().startsWith("tablecolumn,"),
-          "fetchChildAliases=false on /export must drop tableColumn rows, got: " + row);
+          "Default export on /export must drop tableColumn rows, got: " + row);
     }
   }
 
@@ -2126,7 +2136,7 @@ public class SearchResourceIT {
    * bucket; explicit fetchChildAliases=false drops it.
    */
   @Test
-  void testFetchChildAliasesFalseOnAggregate(TestNamespace ns) throws Exception {
+  void testDefaultChildScopeOnAggregate(TestNamespace ns) throws Exception {
     String unique = "fetchchild_agg_" + ns.shortPrefix();
     Column uniqueColumn =
         new Column()
@@ -2140,6 +2150,26 @@ public class SearchResourceIT {
     // value=.* — the aggregate endpoint always wraps the terms agg in
     // .include(regexp(fieldValue.toLowerCase())), so an empty fieldValue compiles to an empty
     // regex that matches no bucket keys. ".*" sidesteps that filter.
+    HttpResponse<String> wildcardAggregate =
+        httpGetJson(
+            "/v1/search/aggregate?index=table&field=entityType.keyword&value=.*&q="
+                + unique
+                + "&fetchChildAliases=*&size=20");
+    assertEquals(200, wildcardAggregate.statusCode());
+    JsonNode wildcardBuckets = OBJECT_MAPPER.readTree(wildcardAggregate.body()).findPath("buckets");
+    boolean wildcardHasColumn = false;
+    for (JsonNode bucket : wildcardBuckets) {
+      if ("tablecolumn".equalsIgnoreCase(bucket.path("key").asText())) {
+        wildcardHasColumn = true;
+        break;
+      }
+    }
+    assertTrue(
+        wildcardHasColumn,
+        "fetchChildAliases=* aggregate on index=table must include a 'tablecolumn' bucket; "
+            + "otherwise the no-columns assertion below is vacuous. body="
+            + wildcardAggregate.body());
+
     HttpResponse<String> defaultAggregate =
         httpGetJson(
             "/v1/search/aggregate?index=table&field=entityType.keyword&value=.*&q="
@@ -2147,30 +2177,10 @@ public class SearchResourceIT {
                 + "&size=20");
     assertEquals(200, defaultAggregate.statusCode());
     JsonNode defaultBuckets = OBJECT_MAPPER.readTree(defaultAggregate.body()).findPath("buckets");
-    boolean defaultHasColumn = false;
     for (JsonNode bucket : defaultBuckets) {
-      if ("tablecolumn".equalsIgnoreCase(bucket.path("key").asText())) {
-        defaultHasColumn = true;
-        break;
-      }
-    }
-    assertTrue(
-        defaultHasColumn,
-        "Default aggregate on index=table must include a 'tablecolumn' bucket under the legacy "
-            + "alias expansion; otherwise the no-columns assertion below is vacuous. body="
-            + defaultAggregate.body());
-
-    HttpResponse<String> filteredAggregate =
-        httpGetJson(
-            "/v1/search/aggregate?index=table&field=entityType.keyword&value=.*&q="
-                + unique
-                + "&fetchChildAliases=false&size=20");
-    assertEquals(200, filteredAggregate.statusCode());
-    JsonNode filteredBuckets = OBJECT_MAPPER.readTree(filteredAggregate.body()).findPath("buckets");
-    for (JsonNode bucket : filteredBuckets) {
       assertFalse(
           "tablecolumn".equalsIgnoreCase(bucket.path("key").asText()),
-          "fetchChildAliases=false on /aggregate must drop 'tablecolumn' bucket: " + bucket);
+          "Default aggregate on /aggregate must drop 'tablecolumn' bucket: " + bucket);
     }
   }
 }

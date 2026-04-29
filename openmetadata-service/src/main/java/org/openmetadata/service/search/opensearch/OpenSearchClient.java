@@ -458,8 +458,8 @@ public class OpenSearchClient implements SearchClient {
       String fieldValue,
       String index,
       Boolean deleted,
-      boolean fetchParentsAliases,
-      boolean fetchChildAliases)
+      String fetchParentsAliases,
+      String fetchChildAliases)
       throws IOException {
     return searchManager.searchByField(
         fieldName, fieldValue, index, deleted, fetchParentsAliases, fetchChildAliases);

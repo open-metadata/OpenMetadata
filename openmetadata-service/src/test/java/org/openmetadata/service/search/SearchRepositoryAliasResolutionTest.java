@@ -38,18 +38,18 @@ class SearchRepositoryAliasResolutionTest {
   }
 
   @Test
-  void bothFlagsFalseReturnsOnlyOwnIndex() {
+  void bothFiltersNoneReturnsOnlyOwnIndex() {
     String resolved =
         SearchRepository.resolveIndexes(
-            "table", false, false, entityIndexMap, aliasToChildEntityTypes, "");
+            "table", "none", "none", entityIndexMap, aliasToChildEntityTypes, "");
     assertEquals("table_search_index", resolved);
   }
 
   @Test
-  void fetchChildrenIncludesIndexesOfEntitiesThatListAliasAsParent() {
+  void wildcardChildrenIncludesEveryReverseMapEntry() {
     String resolved =
         SearchRepository.resolveIndexes(
-            "table", false, true, entityIndexMap, aliasToChildEntityTypes, "");
+            "table", "none", "*", entityIndexMap, aliasToChildEntityTypes, "");
     List<String> indexes = Arrays.asList(resolved.split(","));
     assertTrue(
         indexes.contains("table_search_index"), "Own index must always be present: " + resolved);
@@ -62,10 +62,41 @@ class SearchRepositoryAliasResolutionTest {
   }
 
   @Test
-  void fetchParentsIncludesIndexesOfDeclaredParentEntities() {
+  void namedChildrenIncludesOnlyTheListedEntityTypes() {
     String resolved =
         SearchRepository.resolveIndexes(
-            "tableColumn", true, false, entityIndexMap, aliasToChildEntityTypes, "");
+            "table", "none", "tableColumn", entityIndexMap, aliasToChildEntityTypes, "");
+    List<String> indexes = Arrays.asList(resolved.split(","));
+    assertTrue(indexes.contains("table_search_index"));
+    assertTrue(
+        indexes.contains("column_search_index"), "tableColumn explicitly listed: " + resolved);
+    // No other reverse-map child should leak through.
+    for (String idx : indexes) {
+      assertTrue(
+          idx.equals("table_search_index") || idx.equals("column_search_index"),
+          "Unexpected index in named-filter result: " + idx + "; full=" + resolved);
+    }
+  }
+
+  @Test
+  void namedFilterIgnoresEntriesNotInTheGraph() {
+    // 'topic' is not a child of 'table' (its parentAliases don't list 'table'). Including it in
+    // the filter must not magically introduce topic_search_index.
+    String resolved =
+        SearchRepository.resolveIndexes(
+            "table", "none", "tableColumn,topic", entityIndexMap, aliasToChildEntityTypes, "");
+    List<String> indexes = Arrays.asList(resolved.split(","));
+    assertTrue(indexes.contains("column_search_index"));
+    assertFalse(
+        indexes.contains("topic_search_index"),
+        "Filter accepts 'topic', but topic isn't a child of 'table': " + resolved);
+  }
+
+  @Test
+  void wildcardParentsIncludesDeclaredParentEntities() {
+    String resolved =
+        SearchRepository.resolveIndexes(
+            "tableColumn", "*", "none", entityIndexMap, aliasToChildEntityTypes, "");
     List<String> indexes = Arrays.asList(resolved.split(","));
     assertTrue(indexes.contains("column_search_index"), "Own index must be present: " + resolved);
     assertTrue(
@@ -78,10 +109,22 @@ class SearchRepositoryAliasResolutionTest {
   }
 
   @Test
-  void compoundAliasExpandsToAllDeclaredChildrenWhenFetchChildrenIsTrue() {
+  void namedParentsIncludesOnlyListedEntities() {
     String resolved =
         SearchRepository.resolveIndexes(
-            "dataAsset", false, true, entityIndexMap, aliasToChildEntityTypes, "");
+            "tableColumn", "table", "none", entityIndexMap, aliasToChildEntityTypes, "");
+    List<String> indexes = Arrays.asList(resolved.split(","));
+    assertTrue(indexes.contains("column_search_index"));
+    assertTrue(indexes.contains("table_search_index"));
+    // 'database' is not a parent of tableColumn, only of table — must not be picked up.
+    assertFalse(indexes.contains("database_search_index"));
+  }
+
+  @Test
+  void compoundAliasExpandsToAllDeclaredChildrenWhenChildrenIsWildcard() {
+    String resolved =
+        SearchRepository.resolveIndexes(
+            "dataAsset", "none", "*", entityIndexMap, aliasToChildEntityTypes, "");
     List<String> indexes = Arrays.asList(resolved.split(","));
     assertTrue(
         indexes.contains("table_search_index"),
@@ -98,7 +141,7 @@ class SearchRepositoryAliasResolutionTest {
   void unknownTokenWithoutExpansionFallsBackToOriginalToken() {
     String resolved =
         SearchRepository.resolveIndexes(
-            "definitely_not_an_alias", false, true, entityIndexMap, aliasToChildEntityTypes, "");
+            "definitely_not_an_alias", "none", "*", entityIndexMap, aliasToChildEntityTypes, "");
     assertEquals("definitely_not_an_alias", resolved);
   }
 
@@ -106,7 +149,7 @@ class SearchRepositoryAliasResolutionTest {
   void clusterAliasIsAppliedUniformlyToAllResolvedIndexes() {
     String resolved =
         SearchRepository.resolveIndexes(
-            "table", false, true, entityIndexMap, aliasToChildEntityTypes, "tenant42");
+            "table", "none", "*", entityIndexMap, aliasToChildEntityTypes, "tenant42");
     for (String token : resolved.split(",")) {
       assertTrue(
           token.startsWith("tenant42_"),
@@ -118,7 +161,7 @@ class SearchRepositoryAliasResolutionTest {
   void commaSeparatedInputResolvesEachTokenIndependentlyAndDeduplicates() {
     String resolved =
         SearchRepository.resolveIndexes(
-            "table,topic", false, false, entityIndexMap, aliasToChildEntityTypes, "");
+            "table,topic", "none", "none", entityIndexMap, aliasToChildEntityTypes, "");
     List<String> indexes = Arrays.asList(resolved.split(","));
     assertTrue(indexes.contains("table_search_index"));
     assertTrue(indexes.contains("topic_search_index"));
@@ -126,6 +169,23 @@ class SearchRepositoryAliasResolutionTest {
         indexes.size(),
         indexes.stream().distinct().count(),
         "Comma-separated tokens must be deduplicated: " + resolved);
+  }
+
+  /**
+   * Legacy boolean tokens kept working so that any existing client that still sends
+   * {@code fetchChildAliases=true} doesn't regress.
+   */
+  @Test
+  void legacyBooleanTokensAreAcceptedAsAliases() {
+    String trueChildren =
+        SearchRepository.resolveIndexes(
+            "table", "none", "true", entityIndexMap, aliasToChildEntityTypes, "");
+    assertTrue(Arrays.asList(trueChildren.split(",")).contains("column_search_index"));
+
+    String falseChildren =
+        SearchRepository.resolveIndexes(
+            "table", "false", "false", entityIndexMap, aliasToChildEntityTypes, "");
+    assertEquals("table_search_index", falseChildren);
   }
 
   /**
@@ -140,8 +200,8 @@ class SearchRepositoryAliasResolutionTest {
     String alreadyPrefixed =
         SearchRepository.resolveIndexes(
             "tenant42_some_search_index",
-            false,
-            false,
+            "none",
+            "none",
             entityIndexMap,
             aliasToChildEntityTypes,
             "tenant42");
@@ -150,8 +210,8 @@ class SearchRepositoryAliasResolutionTest {
     String mixed =
         SearchRepository.resolveIndexes(
             "tenant42_some_search_index,topic_search_index",
-            false,
-            false,
+            "none",
+            "none",
             entityIndexMap,
             aliasToChildEntityTypes,
             "tenant42");
@@ -173,12 +233,12 @@ class SearchRepositoryAliasResolutionTest {
   void resolveIndexesDropsEmptyTokensFromStrayCommas() {
     String trailing =
         SearchRepository.resolveIndexes(
-            "table,", false, false, entityIndexMap, aliasToChildEntityTypes, "tenant42");
+            "table,", "none", "none", entityIndexMap, aliasToChildEntityTypes, "tenant42");
     assertEquals("tenant42_table_search_index", trailing);
 
     String embedded =
         SearchRepository.resolveIndexes(
-            "table, ,topic", false, false, entityIndexMap, aliasToChildEntityTypes, "tenant42");
+            "table, ,topic", "none", "none", entityIndexMap, aliasToChildEntityTypes, "tenant42");
     List<String> tokens = Arrays.asList(embedded.split(","));
     assertTrue(tokens.contains("tenant42_table_search_index"));
     assertTrue(tokens.contains("tenant42_topic_search_index"));
@@ -186,12 +246,9 @@ class SearchRepositoryAliasResolutionTest {
         tokens.contains("tenant42_"),
         "Bare cluster prefix must not be emitted from empty tokens: " + embedded);
 
-    // All-empty input (only commas / whitespace) — return the original string unchanged rather
-    // than an empty index list. The downstream ES request will surface a normal "unknown index"
-    // error on the original token instead of a confusing empty-target error.
     String allEmpty =
         SearchRepository.resolveIndexes(
-            ", ,", false, false, entityIndexMap, aliasToChildEntityTypes, "tenant42");
+            ", ,", "none", "none", entityIndexMap, aliasToChildEntityTypes, "tenant42");
     assertEquals(", ,", allEmpty);
     assertFalse(
         allEmpty.isEmpty(), "All-empty input must not collapse to an empty string: " + allEmpty);
