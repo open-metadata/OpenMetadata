@@ -13,6 +13,7 @@ Redshift SQLAlchemy util methods
 """
 import re
 from collections import defaultdict
+from typing import Any
 
 import sqlalchemy as sa
 from packaging.version import Version
@@ -64,7 +65,7 @@ def _redshift_initialize(self, connection):
     self._has_native_hstore = False
 
 
-def _load_domains(self, connection, **kw):
+def _load_domains(self, connection, schema: str | None = None, **kw: Any) -> dict:
     """
     Override to return empty dict since Redshift does not support user-created
     domains and pg_catalog.pg_collation does not exist in Redshift, causing a
@@ -83,7 +84,15 @@ def get_temp_table_names(self, connection, schema=None, **kw):
     return []
 
 
-def get_multi_columns(self, connection, **kw):
+def get_multi_columns(
+    self,
+    connection,
+    schema: str | None = None,
+    filter_names: Any | None = None,
+    scope: Any | None = None,
+    kind: Any | None = None,
+    **kw: Any,
+):
     """
     Override PGDialect's get_multi_columns to avoid querying
     pg_attribute.attcollation which does not exist in Redshift.
