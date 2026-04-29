@@ -49,7 +49,7 @@
   },
   "properties": {
     "name": {
-      "description": "Name of the entity property. Must be unique for an entity. Allowed characters: alphanumeric, _ - . / & % # @ ! , ; = | ' space ( ) < > [ ] { }. Must start with an alphanumeric character. Disallowed: \" : ^ $.",
+      "description": "Name of the entity property. Must be unique for an entity. Allowed characters: alphanumeric, _ - . / & % # @ ! , ; = | ' + ? * ~ ` space ( ) < > [ ] { }. Must start with an alphanumeric character. Disallowed: \" : ^ $ \\.",
       "$ref": "../type/basic.json#/definitions/customPropertyName"
     },
     "displayName": {

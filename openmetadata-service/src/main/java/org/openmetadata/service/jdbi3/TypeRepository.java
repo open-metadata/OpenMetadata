@@ -72,7 +72,7 @@ public class TypeRepository extends EntityRepository<Type> {
   // openmetadata-spec/src/main/resources/json/schema/type/basic.json
   // Enforced by TypeRepositoryTest.customPropertyNamePatternMatchesSchema.
   static final Pattern CUSTOM_PROPERTY_NAME_PATTERN =
-      Pattern.compile("^[A-Za-z0-9][A-Za-z0-9 _\\-.,;/&%#@!'(){}\\[\\]<>|=]*$");
+      Pattern.compile("^[A-Za-z0-9][A-Za-z0-9 _\\-.,;/&%#@!'(){}\\[\\]<>|=+?*~`]*$");
   static final int CUSTOM_PROPERTY_NAME_MAX_LENGTH = 256;
 
   public TypeRepository() {
@@ -251,8 +251,9 @@ public class TypeRepository extends EntityRepository<Type> {
       throw new IllegalArgumentException(
           String.format(
               "Invalid custom property name '%s'. Name must start with an alphanumeric character "
-                  + "and may contain only: alphanumeric, _ - . / & %% # @ ! , ; = | ' space ( ) < > [ ] { }. "
-                  + "The following characters are not allowed: \" : ^ $",
+                  + "and may contain only: alphanumeric, _ - . / & %% # @ ! , ; = | ' + ? * ~ ` "
+                  + "space ( ) < > [ ] { }. "
+                  + "The following characters are not allowed: \" : ^ $ \\",
               name));
     }
   }

@@ -355,6 +355,11 @@ public class TypeResourceIT {
       prefix + "with]rbrack",
       prefix + "with{lbrace",
       prefix + "with}rbrace",
+      prefix + "with+plus",
+      prefix + "with?question",
+      prefix + "with*asterisk",
+      prefix + "with~tilde",
+      prefix + "with`backtick",
       prefix + "withMatched(pair)And<more>",
       prefix + "withDigits123",
     };
@@ -381,7 +386,11 @@ public class TypeResourceIT {
     String prefix = ns.prefix("bad");
 
     String[] disallowedNames = {
-      prefix + "with\"dquote", prefix + "with:colon", prefix + "with^caret", prefix + "with$dollar",
+      prefix + "with\"dquote",
+      prefix + "with:colon",
+      prefix + "with^caret",
+      prefix + "with$dollar",
+      prefix + "with\\backslash",
     };
 
     for (String name : disallowedNames) {
