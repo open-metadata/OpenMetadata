@@ -19,25 +19,17 @@ import org.openmetadata.service.util.EntityUtil;
 class MigrationSqlStatementHashTest {
 
   @Test
-  void mysql1127MigrationStatementsHaveUniqueHashesWithinEachFile() {
+  void mysql200EntityExtensionVersionSchemaHasUniqueStatementHashes() {
     assertUniqueStatementHashes(
         resolveRepoRoot()
-            .resolve("bootstrap/sql/migrations/native/1.12.7/mysql/schemaChanges.sql"));
-    assertUniqueStatementHashes(
-        resolveRepoRoot()
-            .resolve(
-                "bootstrap/sql/migrations/native/1.12.7/mysql/postDataMigrationSQLScript.sql"));
+            .resolve("bootstrap/sql/migrations/native/2.0.0/mysql/schemaChanges.sql"));
   }
 
   @Test
-  void mysql1127MigrationFilesDoNotQueryInformationSchema() throws Exception {
+  void mysql200EntityExtensionVersionSchemaDoesNotQueryInformationSchema() throws Exception {
     assertDoesNotReferenceInformationSchema(
         resolveRepoRoot()
-            .resolve("bootstrap/sql/migrations/native/1.12.7/mysql/schemaChanges.sql"));
-    assertDoesNotReferenceInformationSchema(
-        resolveRepoRoot()
-            .resolve(
-                "bootstrap/sql/migrations/native/1.12.7/mysql/postDataMigrationSQLScript.sql"));
+            .resolve("bootstrap/sql/migrations/native/2.0.0/mysql/schemaChanges.sql"));
   }
 
   private void assertUniqueStatementHashes(Path sqlFile) {

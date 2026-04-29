@@ -135,3 +135,10 @@ CREATE TABLE IF NOT EXISTS task_form_schema_entity (
     KEY idx_task_form_schema_task_type (taskType),
     KEY idx_task_form_schema_deleted (deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+ALTER TABLE entity_extension
+  ADD COLUMN versionNum DOUBLE NULL,
+  ADD COLUMN changedFieldKeys JSON NULL;
+
+CREATE INDEX idx_entity_extension_version_order
+  ON entity_extension (id, versionNum);

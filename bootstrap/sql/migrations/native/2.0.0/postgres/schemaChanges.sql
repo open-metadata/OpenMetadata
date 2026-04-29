@@ -140,3 +140,15 @@ CREATE TABLE IF NOT EXISTS task_form_schema_entity (
 CREATE INDEX IF NOT EXISTS idx_task_form_schema_name ON task_form_schema_entity (name);
 CREATE INDEX IF NOT EXISTS idx_task_form_schema_tasktype ON task_form_schema_entity (tasktype);
 CREATE INDEX IF NOT EXISTS idx_task_form_schema_deleted ON task_form_schema_entity (deleted);
+
+ALTER TABLE entity_extension
+  ADD COLUMN IF NOT EXISTS versionNum DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS changedFieldKeys JSONB;
+
+CREATE INDEX IF NOT EXISTS idx_entity_extension_version_order
+  ON entity_extension (id, versionNum DESC)
+  WHERE versionNum IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_entity_extension_changed_field_keys
+  ON entity_extension USING GIN (changedFieldKeys)
+  WHERE changedFieldKeys IS NOT NULL;

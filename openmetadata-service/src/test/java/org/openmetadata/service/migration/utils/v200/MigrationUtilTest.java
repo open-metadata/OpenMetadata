@@ -15,15 +15,21 @@ package org.openmetadata.service.migration.utils.v200;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
@@ -33,10 +39,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.lang.reflect.Method;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.statement.Update;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -429,6 +440,344 @@ class MigrationUtilTest {
                 JsonUtilsHolder.readTree("{}"));
 
     assertNull(event);
+  }
+
+  // ── extractVersionNum ──────────────────────────────────────────────────────
+  //
+  // Mirrors SQL: CAST(SUBSTRING_INDEX(extension, '.version.', -1) AS DOUBLE)
+  // SUBSTRING_INDEX with count=-1 returns everything after the LAST delimiter.
+
+  @Test
+  void extractVersionNumFromStandardMinorVersion() {
+    assertEquals(0.1, MigrationUtil.extractVersionNum("uuid.version.0.1"), 1e-9);
+  }
+
+  @Test
+  void extractVersionNumFromHigherVersion() {
+    assertEquals(1.5, MigrationUtil.extractVersionNum("uuid.version.1.5"), 1e-9);
+  }
+
+  @Test
+  void extractVersionNumFromLargeVersion() {
+    assertEquals(10.0, MigrationUtil.extractVersionNum("uuid.version.10.0"), 1e-9);
+  }
+
+  @Test
+  void extractVersionNumFromWholeNumberVersion() {
+    assertEquals(1.0, MigrationUtil.extractVersionNum("uuid.version.1"), 1e-9);
+  }
+
+  @Test
+  void extractVersionNumReturnsZeroWhenNoVersionSegment() {
+    assertEquals(0.0, MigrationUtil.extractVersionNum("uuid.notype.something"), 1e-9);
+  }
+
+  @Test
+  void extractVersionNumReturnsZeroForEmptyString() {
+    assertEquals(0.0, MigrationUtil.extractVersionNum(""), 1e-9);
+  }
+
+  @Test
+  void extractVersionNumReturnsZeroWhenSuffixNotParseable() {
+    assertEquals(0.0, MigrationUtil.extractVersionNum("uuid.version.notanumber"), 1e-9);
+  }
+
+  @Test
+  void extractVersionNumUsesLastOccurrenceMatchingSqlSubstringIndex() {
+    // SQL SUBSTRING_INDEX(str, '.version.', -1) takes after the LAST occurrence.
+    // "a.version.x.version.2.0" → SQL gives "2.0" → 2.0
+    assertEquals(2.0, MigrationUtil.extractVersionNum("a.version.x.version.2.0"), 1e-9);
+  }
+
+  @Test
+  void extractVersionNumFromRealWorldExtensionFormat() {
+    String uuid = UUID.randomUUID().toString();
+    assertEquals(0.2, MigrationUtil.extractVersionNum(uuid + ".version.0.2"), 1e-9);
+  }
+
+  // ── extractChangedFieldKeys ────────────────────────────────────────────────
+  //
+  // Mirrors SQL UNION ALL + DISTINCT across fieldsAdded/Updated/Deleted .name,
+  // with NULL and empty-string filtering. Java additionally sorts alphabetically.
+
+  @Test
+  void extractChangedFieldKeysFromAllThreeArrays() {
+    String json =
+        """
+        {
+          "changeDescription": {
+            "fieldsAdded":   [{"name": "tags"}],
+            "fieldsUpdated": [{"name": "description"}],
+            "fieldsDeleted": [{"name": "owner"}]
+          }
+        }
+        """;
+    assertEquals(
+        "[\"description\",\"owner\",\"tags\"]", MigrationUtil.extractChangedFieldKeys(json));
+  }
+
+  @Test
+  void extractChangedFieldKeysSortsAlphabetically() {
+    String json =
+        """
+        {
+          "changeDescription": {
+            "fieldsAdded": [{"name": "z_col"}, {"name": "a_col"}, {"name": "m_col"}],
+            "fieldsUpdated": [],
+            "fieldsDeleted": []
+          }
+        }
+        """;
+    assertEquals("[\"a_col\",\"m_col\",\"z_col\"]", MigrationUtil.extractChangedFieldKeys(json));
+  }
+
+  @Test
+  void extractChangedFieldKeysDeduplicatesSameNameAcrossAddedAndUpdated() {
+    String json =
+        """
+        {
+          "changeDescription": {
+            "fieldsAdded":   [{"name": "tags"}],
+            "fieldsUpdated": [{"name": "tags"}],
+            "fieldsDeleted": []
+          }
+        }
+        """;
+    assertEquals("[\"tags\"]", MigrationUtil.extractChangedFieldKeys(json));
+  }
+
+  @Test
+  void extractChangedFieldKeysDeduplicatesAcrossAllThreeArrays() {
+    String json =
+        """
+        {
+          "changeDescription": {
+            "fieldsAdded":   [{"name": "b"}, {"name": "a"}, {"name": "c"}],
+            "fieldsUpdated": [{"name": "a"}, {"name": "d"}],
+            "fieldsDeleted": [{"name": "e"}, {"name": "b"}]
+          }
+        }
+        """;
+    assertEquals("[\"a\",\"b\",\"c\",\"d\",\"e\"]", MigrationUtil.extractChangedFieldKeys(json));
+  }
+
+  @Test
+  void extractChangedFieldKeysReturnsEmptyArrayWhenChangeDescriptionAbsent() {
+    assertEquals(
+        "[]", MigrationUtil.extractChangedFieldKeys("{\"name\": \"some_entity\"}"));
+  }
+
+  @Test
+  void extractChangedFieldKeysReturnsEmptyArrayWhenChangeDescriptionIsNull() {
+    assertEquals(
+        "[]", MigrationUtil.extractChangedFieldKeys("{\"changeDescription\": null}"));
+  }
+
+  @Test
+  void extractChangedFieldKeysReturnsEmptyArrayWhenAllArraysEmpty() {
+    String json =
+        """
+        {
+          "changeDescription": {
+            "fieldsAdded": [],
+            "fieldsUpdated": [],
+            "fieldsDeleted": []
+          }
+        }
+        """;
+    assertEquals("[]", MigrationUtil.extractChangedFieldKeys(json));
+  }
+
+  @Test
+  void extractChangedFieldKeysFiltersOutNullNameEntries() {
+    String json =
+        """
+        {
+          "changeDescription": {
+            "fieldsAdded": [{"name": null}, {"name": "description"}],
+            "fieldsUpdated": [],
+            "fieldsDeleted": []
+          }
+        }
+        """;
+    assertEquals("[\"description\"]", MigrationUtil.extractChangedFieldKeys(json));
+  }
+
+  @Test
+  void extractChangedFieldKeysFiltersOutEmptyStringNames() {
+    String json =
+        """
+        {
+          "changeDescription": {
+            "fieldsAdded": [{"name": ""}, {"name": "tags"}],
+            "fieldsUpdated": [],
+            "fieldsDeleted": []
+          }
+        }
+        """;
+    assertEquals("[\"tags\"]", MigrationUtil.extractChangedFieldKeys(json));
+  }
+
+  @Test
+  void extractChangedFieldKeysWithOnlyFieldsAddedOthersAbsent() {
+    String json =
+        """
+        {
+          "changeDescription": {
+            "fieldsAdded": [{"name": "owner"}]
+          }
+        }
+        """;
+    assertDoesNotThrow(
+        () -> assertEquals("[\"owner\"]", MigrationUtil.extractChangedFieldKeys(json)));
+  }
+
+  @Test
+  void extractChangedFieldKeysWithFieldEntryMissingNameKey() {
+    String json =
+        """
+        {
+          "changeDescription": {
+            "fieldsAdded": [{"oldValue": "x", "newValue": "y"}],
+            "fieldsUpdated": [{"name": "tags"}],
+            "fieldsDeleted": []
+          }
+        }
+        """;
+    assertDoesNotThrow(
+        () -> assertEquals("[\"tags\"]", MigrationUtil.extractChangedFieldKeys(json)));
+  }
+
+  // ── backfillVersionMetadata ────────────────────────────────────────────────
+
+  @Test
+  void backfillIsNoOpWhenQueryReturnsEmptyBatch() {
+    Handle bHandle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    when(bHandle.createQuery(any(String.class)).bind(anyString(), anyInt()).mapToMap().list())
+        .thenReturn(List.of());
+
+    assertDoesNotThrow(() -> MigrationUtil.backfillVersionMetadata(bHandle));
+    verify(bHandle, never()).createUpdate(any(String.class));
+  }
+
+  @Test
+  void backfillSelectsMysqlSqlWhenDatasourceIsMySQL() {
+    Handle bHandle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    when(bHandle.createQuery(any(String.class)).bind(anyString(), anyInt()).mapToMap().list())
+        .thenReturn(List.of(versionRow("uuid.version.0.1", emptyChangeDescriptionJson())));
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig cfg = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(cfg);
+      when(cfg.isMySQL()).thenReturn(true);
+
+      assertDoesNotThrow(() -> MigrationUtil.backfillVersionMetadata(bHandle));
+
+      ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+      verify(bHandle).createUpdate(sqlCaptor.capture());
+      String sql = sqlCaptor.getValue();
+      assertTrue(sql.contains("changedFieldKeys = :changedFieldKeys"));
+      assertFalse(sql.contains("::jsonb"));
+    }
+  }
+
+  @Test
+  void backfillSelectsPostgresSqlWhenDatasourceIsPostgres() {
+    Handle bHandle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    when(bHandle.createQuery(any(String.class)).bind(anyString(), anyInt()).mapToMap().list())
+        .thenReturn(List.of(versionRow("uuid.version.1.0", emptyChangeDescriptionJson())));
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig cfg = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(cfg);
+      when(cfg.isMySQL()).thenReturn(false);
+
+      assertDoesNotThrow(() -> MigrationUtil.backfillVersionMetadata(bHandle));
+
+      ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+      verify(bHandle).createUpdate(sqlCaptor.capture());
+      assertTrue(sqlCaptor.getValue().contains("::jsonb"));
+    }
+  }
+
+  @Test
+  void backfillFallsBackToVersionNumOnlyUpdateWhenFullUpdateFails() {
+    Handle bHandle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    when(bHandle.createQuery(any(String.class)).bind(anyString(), anyInt()).mapToMap().list())
+        .thenReturn(List.of(versionRow("uuid.version.0.1", emptyChangeDescriptionJson())));
+
+    when(bHandle.createUpdate(argThat(s -> s != null && s.contains("changedFieldKeys"))))
+        .thenThrow(new RuntimeException("Simulated column-too-wide error"));
+    Update fallbackUpdate = mock(Update.class, RETURNS_DEEP_STUBS);
+    when(bHandle.createUpdate(argThat(s -> s != null && !s.contains("changedFieldKeys"))))
+        .thenReturn(fallbackUpdate);
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig cfg = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(cfg);
+      when(cfg.isMySQL()).thenReturn(true);
+
+      assertDoesNotThrow(() -> MigrationUtil.backfillVersionMetadata(bHandle));
+
+      verify(bHandle, times(1))
+          .createUpdate(argThat(s -> s != null && s.contains("changedFieldKeys")));
+      verify(bHandle, times(1))
+          .createUpdate(argThat(s -> s != null && !s.contains("changedFieldKeys")));
+    }
+  }
+
+  @Test
+  void backfillHandlesNullJsonColumnWithoutException() {
+    Handle bHandle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    Map<String, Object> row = new HashMap<>();
+    row.put("id", UUID.randomUUID().toString());
+    row.put("extension", "uuid.version.0.1");
+    row.put("json", null);
+    when(bHandle.createQuery(any(String.class)).bind(anyString(), anyInt()).mapToMap().list())
+        .thenReturn(List.of(row));
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig cfg = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(cfg);
+      when(cfg.isMySQL()).thenReturn(true);
+
+      assertDoesNotThrow(() -> MigrationUtil.backfillVersionMetadata(bHandle));
+      verify(bHandle).createUpdate(any(String.class));
+    }
+  }
+
+  @Test
+  void backfillProcessesMultipleRowsInOneBatch() {
+    Handle bHandle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    List<Map<String, Object>> batch =
+        List.of(
+            versionRow("uuid1.version.0.1", emptyChangeDescriptionJson()),
+            versionRow("uuid2.version.1.0", emptyChangeDescriptionJson()),
+            versionRow("uuid3.version.2.0", emptyChangeDescriptionJson()));
+    when(bHandle.createQuery(any(String.class)).bind(anyString(), anyInt()).mapToMap().list())
+        .thenReturn(batch);
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig cfg = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(cfg);
+      when(cfg.isMySQL()).thenReturn(true);
+
+      assertDoesNotThrow(() -> MigrationUtil.backfillVersionMetadata(bHandle));
+      verify(bHandle, times(3)).createUpdate(any(String.class));
+    }
+  }
+
+  private static Map<String, Object> versionRow(String extension, String json) {
+    Map<String, Object> row = new HashMap<>();
+    row.put("id", UUID.randomUUID().toString());
+    row.put("extension", extension);
+    row.put("json", json);
+    return row;
+  }
+
+  private static String emptyChangeDescriptionJson() {
+    return
+        "{\"changeDescription\":{\"fieldsAdded\":[],\"fieldsUpdated\":[],\"fieldsDeleted\":[]}}";
   }
 
   private Object invokePrivateStatic(String methodName, Class<?>[] parameterTypes, Object... args)

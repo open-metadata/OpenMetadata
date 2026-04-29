@@ -5,8 +5,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -25,6 +27,7 @@ import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -33,6 +36,20 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class MigrationUtil {
 
   private static final String TABLE_COLUMN_ASSET_TYPE = "tableColumn";
+
+  private static final int BATCH_SIZE = 1000;
+
+  private static final String UPDATE_MYSQL =
+      "UPDATE entity_extension SET versionNum = :versionNum, changedFieldKeys = :changedFieldKeys "
+          + "WHERE id = :id AND extension = :extension";
+
+  private static final String UPDATE_POSTGRES =
+      "UPDATE entity_extension SET versionNum = :versionNum, changedFieldKeys = :changedFieldKeys::jsonb "
+          + "WHERE id = :id AND extension = :extension";
+
+  private static final String UPDATE_VERSION_NUM_ONLY =
+      "UPDATE entity_extension SET versionNum = :versionNum "
+          + "WHERE id = :id AND extension = :extension";
 
   private MigrationUtil() {}
 
@@ -1338,6 +1355,126 @@ public class MigrationUtil {
             taskId,
             domain.getId(),
             e.getMessage());
+      }
+    }
+  }
+
+  public static void backfillVersionMetadata(Handle handle) {
+    String updateSql =
+        Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+            ? UPDATE_MYSQL
+            : UPDATE_POSTGRES;
+
+    LOG.info("Starting backfill of versionNum and changedFieldKeys in entity_extension");
+    int totalProcessed = 0;
+    List<Map<String, Object>> batch;
+
+    do {
+      batch =
+          handle
+              .createQuery(
+                  "SELECT id, extension, json FROM entity_extension "
+                      + "WHERE extension LIKE '%.version.%' "
+                      + "AND versionNum IS NULL "
+                      + "LIMIT :limit")
+              .bind("limit", BATCH_SIZE)
+              .mapToMap()
+              .list();
+
+      for (Map<String, Object> row : batch) {
+        String extension = row.get("extension").toString();
+        String id = row.get("id").toString();
+        Object jsonObj = row.get("json");
+        double versionNum = extractVersionNum(extension);
+        String changedFieldKeys = "[]";
+
+        if (jsonObj != null) {
+          try {
+            changedFieldKeys = extractChangedFieldKeys(jsonObj.toString());
+          } catch (Exception e) {
+            LOG.warn(
+                "Failed to extract changedFieldKeys for extension {}, using empty array",
+                extension,
+                e);
+          }
+        }
+
+        try {
+          handle
+              .createUpdate(updateSql)
+              .bind("versionNum", versionNum)
+              .bind("changedFieldKeys", changedFieldKeys)
+              .bind("id", id)
+              .bind("extension", extension)
+              .execute();
+        } catch (Exception e) {
+          LOG.warn(
+              "Full update failed for extension {}, falling back to versionNum-only update",
+              extension,
+              e);
+          // Guarantee versionNum is set so this row is not retried in the next batch.
+          // If this also fails we have a real DB issue — let the exception propagate to stop
+          // the loop rather than hammering a broken database indefinitely.
+          handle
+              .createUpdate(UPDATE_VERSION_NUM_ONLY)
+              .bind("versionNum", versionNum)
+              .bind("id", id)
+              .bind("extension", extension)
+              .execute();
+        }
+      }
+
+      totalProcessed += batch.size();
+      if (!batch.isEmpty()) {
+        LOG.info("Backfilled {} entity_extension rows so far", totalProcessed);
+      }
+    } while (batch.size() == BATCH_SIZE);
+
+    LOG.info(
+        "Backfill of versionNum and changedFieldKeys complete: {} total rows processed",
+        totalProcessed);
+  }
+
+  static double extractVersionNum(String extension) {
+    int idx = extension.lastIndexOf(".version.");
+    if (idx < 0) {
+      return 0.0;
+    }
+    try {
+      return Double.parseDouble(extension.substring(idx + ".version.".length()));
+    } catch (NumberFormatException e) {
+      return 0.0;
+    }
+  }
+
+  static String extractChangedFieldKeys(String json) {
+    JsonNode root = JsonUtils.readTree(json);
+    JsonNode changeDescription = root.get("changeDescription");
+    if (changeDescription == null || changeDescription.isNull()) {
+      return "[]";
+    }
+
+    Set<String> fieldNames = new LinkedHashSet<>();
+    collectFieldNames(fieldNames, changeDescription.get("fieldsAdded"));
+    collectFieldNames(fieldNames, changeDescription.get("fieldsUpdated"));
+    collectFieldNames(fieldNames, changeDescription.get("fieldsDeleted"));
+
+    List<String> sorted = new ArrayList<>(fieldNames);
+    sorted.sort(String::compareTo);
+    return JsonUtils.pojoToJson(sorted);
+  }
+
+  private static void collectFieldNames(Set<String> fieldNames, JsonNode fieldChanges) {
+    if (fieldChanges == null || !fieldChanges.isArray()) {
+      return;
+    }
+    for (JsonNode fieldChange : fieldChanges) {
+      JsonNode nameNode = fieldChange.get("name");
+      if (nameNode != null && !nameNode.isNull()) {
+        String name = nameNode.asText();
+        if (!name.isEmpty()) {
+          fieldNames.add(name);
+        }
       }
     }
   }
