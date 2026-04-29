@@ -11,20 +11,22 @@
  *  limitations under the License.
  */
 
-import { WidgetProps } from '@rjsf/utils';
+import { Toggle } from '@openmetadata/ui-core-components';
+import { FieldProps } from '@rjsf/utils';
 import { startCase } from 'lodash';
 
-export const getWidgetHint = ({
-  rawErrors,
-  schema,
-  options,
-}: Pick<WidgetProps, 'rawErrors' | 'schema' | 'options'>) => {
-  return rawErrors?.[0] ?? options.help ?? schema.description;
+const CoreBooleanField = (props: FieldProps) => {
+  return (
+    <Toggle
+      isDisabled={props.disabled || props.readonly}
+      isSelected={props.formData ?? false}
+      label={props.schema.title ?? startCase(props.name)}
+      onChange={(value) => {
+        props.formContext?.handleFocus?.(props.idSchema.$id);
+        props.onChange(value);
+      }}
+    />
+  );
 };
 
-export const getWidgetLabel = ({
-  hideLabel,
-  label,
-}: Pick<WidgetProps, 'hideLabel' | 'label'>) => {
-  return hideLabel ? undefined : startCase(label);
-};
+export default CoreBooleanField;

@@ -16,7 +16,7 @@ import { FieldTemplateProps } from '@rjsf/utils';
 export const CoreFieldTemplate = ({
   children,
   classNames,
-  hidden,
+  hidden = false,
   style,
 }: FieldTemplateProps) => {
   if (hidden) {

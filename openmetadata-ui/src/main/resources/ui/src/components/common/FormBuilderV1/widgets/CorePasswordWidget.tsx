@@ -12,19 +12,15 @@
  */
 
 import { WidgetProps } from '@rjsf/utils';
-import { startCase } from 'lodash';
+import CoreInputWidget from './CoreInputWidget';
 
-export const getWidgetHint = ({
-  rawErrors,
-  schema,
-  options,
-}: Pick<WidgetProps, 'rawErrors' | 'schema' | 'options'>) => {
-  return rawErrors?.[0] ?? options.help ?? schema.description;
+const CorePasswordWidget = (props: WidgetProps) => {
+  return (
+    <CoreInputWidget
+      {...props}
+      options={{ ...props.options, inputType: 'password' }}
+    />
+  );
 };
 
-export const getWidgetLabel = ({
-  hideLabel,
-  label,
-}: Pick<WidgetProps, 'hideLabel' | 'label'>) => {
-  return hideLabel ? undefined : startCase(label);
-};
+export default CorePasswordWidget;

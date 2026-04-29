@@ -50,10 +50,8 @@ import {
   highlightSearchText,
 } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
-import {
-  getAddServicePath,
-  getServiceDetailsPath,
-} from '../../../utils/RouterUtils';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
+import { getServiceDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import {
   getOptionalFields,
@@ -85,7 +83,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const navigate = useNavigate();
   const handleAddServiceClick = () => {
-    navigate(getAddServicePath(serviceName));
+    navigate(connectionsRouterClassBase.getAddServicePath(serviceName));
   };
 
   const [isLoading, setIsLoading] = useState(true);

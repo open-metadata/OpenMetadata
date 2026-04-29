@@ -27,6 +27,7 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../../../enums/ElasticSearch.enum';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { useAuth } from '../../../hooks/authHooks';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import globalSettingsClassBase from '../../../utils/GlobalSettingsClassBase';
 import {
   getSettingPageEntityBreadCrumb,
@@ -96,7 +97,14 @@ const GlobalSettingCategoryPage = () => {
 
         break;
       default:
-        navigate(getSettingPath(category, option));
+        if (
+          connectionsRouterClassBase.isEmbeddedMode() &&
+          category === GlobalSettingsMenuCategory.SERVICES
+        ) {
+          navigate(connectionsRouterClassBase.getSettingsServicesPath(option));
+        } else {
+          navigate(getSettingPath(category, option));
+        }
 
         break;
     }

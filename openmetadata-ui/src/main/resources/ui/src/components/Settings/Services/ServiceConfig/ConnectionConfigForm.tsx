@@ -37,10 +37,12 @@ import {
   getFilteredSchema,
   getUISchemaWithNestedDefaultFilterFieldsHidden,
 } from '../../../../utils/ServiceConnectionUtils';
+import connectionsRouterClassBase from '../../../../utils/ConnectionsRouterClassBase';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
 import WorkflowArrayFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
+import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import TestConnection from '../../../common/TestConnection/TestConnection';
 import { ConnectionConfigFormProps } from './ConnectionConfigForm.interface';
@@ -65,6 +67,8 @@ const ConnectionConfigForm = ({
 
   const { isAirflowAvailable, platform } = useAirflowStatus();
   const [hostIp, setHostIp] = useState<string>();
+
+  const isEmbeddedMode = connectionsRouterClassBase.isEmbeddedMode();
 
   const fetchHostIp = async () => {
     try {
@@ -96,7 +100,7 @@ const ConnectionConfigForm = ({
   };
 
   const customFields: RegistryFieldsType = {
-    BooleanField: BooleanFieldTemplate,
+    ...(isEmbeddedMode ? {} : { BooleanField: BooleanFieldTemplate }),
     ArrayField: WorkflowArrayFieldTemplate,
   };
 
@@ -153,61 +157,85 @@ const ConnectionConfigForm = ({
     }
   }, [formRef.current?.state?.formData]);
 
+  const formChildren = (
+    <>
+      {isEmpty(connSch.schema) && (
+        <div
+          className="text-grey-muted text-center"
+          data-testid="no-config-available">
+          {t('message.no-config-available')}
+        </div>
+      )}
+      {shouldShowIPAlert && (
+        <Alert
+          data-testid="ip-address"
+          description={
+            <Transi18next
+              i18nKey="message.airflow-host-ip-address"
+              renderElement={<strong />}
+              values={{ hostIp, brandName: brandClassBase.getPageTitle() }}
+            />
+          }
+          type="info"
+        />
+      )}
+      {!isEmpty(connSch.schema) &&
+        isAirflowAvailable &&
+        formRef.current?.state?.formData && (
+          <TestConnection
+            connectionType={serviceType}
+            getData={() => formRef.current?.state?.formData}
+            hostIp={hostIp}
+            isTestingDisabled={disableTestConnection}
+            serviceCategory={serviceCategory}
+            serviceName={data?.name}
+            onValidateFormRequiredFields={handleRequiredFieldsValidation}
+          />
+        )}
+      {!isUndefined(inlineAlertDetails) && (
+        <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
+      )}
+    </>
+  );
+
   return (
     <Fragment>
       <AirflowMessageBanner />
-      <FormBuilder
-        useSelectWidget
-        cancelText={cancelText ?? ''}
-        fields={customFields}
-        formData={validConfig}
-        okText={okText ?? ''}
-        ref={formRef}
-        schema={schemaWithoutDefaultFilterPatternFields}
-        serviceCategory={serviceCategory}
-        status={status}
-        uiSchema={uiSchema}
-        validator={validator}
-        onCancel={onCancel}
-        onFocus={onFocus}
-        onSubmit={handleSave}>
-        {isEmpty(connSch.schema) && (
-          <div
-            className="text-grey-muted text-center"
-            data-testid="no-config-available">
-            {t('message.no-config-available')}
-          </div>
-        )}
-        {shouldShowIPAlert && (
-          <Alert
-            data-testid="ip-address"
-            description={
-              <Transi18next
-                i18nKey="message.airflow-host-ip-address"
-                renderElement={<strong />}
-                values={{ hostIp, brandName: brandClassBase.getPageTitle() }}
-              />
-            }
-            type="info"
-          />
-        )}
-        {!isEmpty(connSch.schema) &&
-          isAirflowAvailable &&
-          formRef.current?.state?.formData && (
-            <TestConnection
-              connectionType={serviceType}
-              getData={() => formRef.current?.state?.formData}
-              hostIp={hostIp}
-              isTestingDisabled={disableTestConnection}
-              serviceCategory={serviceCategory}
-              serviceName={data?.name}
-              onValidateFormRequiredFields={handleRequiredFieldsValidation}
-            />
-          )}
-        {!isUndefined(inlineAlertDetails) && (
-          <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
-        )}
-      </FormBuilder>
+      {isEmbeddedMode ? (
+        <FormBuilderV1
+          cancelText={cancelText ?? ''}
+          fields={customFields}
+          formContext={{ handleFocus: onFocus }}
+          formData={validConfig}
+          okText={okText ?? ''}
+          ref={formRef}
+          schema={schemaWithoutDefaultFilterPatternFields}
+          status={status}
+          uiSchema={uiSchema}
+          onCancel={onCancel}
+          onFocus={onFocus}
+          onSubmit={handleSave}>
+          {formChildren}
+        </FormBuilderV1>
+      ) : (
+        <FormBuilder
+          useSelectWidget
+          cancelText={cancelText ?? ''}
+          fields={customFields}
+          formData={validConfig}
+          okText={okText ?? ''}
+          ref={formRef}
+          schema={schemaWithoutDefaultFilterPatternFields}
+          serviceCategory={serviceCategory}
+          status={status}
+          uiSchema={uiSchema}
+          validator={validator}
+          onCancel={onCancel}
+          onFocus={onFocus}
+          onSubmit={handleSave}>
+          {formChildren}
+        </FormBuilder>
+      )}
     </Fragment>
   );
 };
