@@ -336,7 +336,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     BASIC_PROPERTIES.forEach((property) => {
       test(property, async ({ page }) => {
         test.slow();
-        const propertyName = `cp-${uuid()}-${entity.name}`;
+        const propertyName = `cp${uuid()}${entity.name}`;
 
         await settingClick(
           page,
