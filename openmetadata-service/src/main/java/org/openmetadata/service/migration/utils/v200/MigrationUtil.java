@@ -1382,8 +1382,14 @@ public class MigrationUtil {
               .list();
 
       for (Map<String, Object> row : batch) {
-        String extension = row.get("extension").toString();
-        String id = row.get("id").toString();
+        Object extObj = row.get("extension");
+        Object idObj = row.get("id");
+        if (extObj == null || idObj == null) {
+          LOG.warn("Skipping entity_extension row with null id or extension");
+          continue;
+        }
+        String extension = extObj.toString();
+        String id = idObj.toString();
         Object jsonObj = row.get("json");
         double versionNum = extractVersionNum(extension);
         String changedFieldKeys = "[]";

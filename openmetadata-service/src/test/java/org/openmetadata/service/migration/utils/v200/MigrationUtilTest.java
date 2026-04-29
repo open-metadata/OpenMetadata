@@ -45,17 +45,16 @@ import java.util.Map;
 import java.util.UUID;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.Update;
-import org.mockito.ArgumentCaptor;
-import org.mockito.MockedStatic;
-import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 class MigrationUtilTest {
@@ -563,14 +562,12 @@ class MigrationUtilTest {
 
   @Test
   void extractChangedFieldKeysReturnsEmptyArrayWhenChangeDescriptionAbsent() {
-    assertEquals(
-        "[]", MigrationUtil.extractChangedFieldKeys("{\"name\": \"some_entity\"}"));
+    assertEquals("[]", MigrationUtil.extractChangedFieldKeys("{\"name\": \"some_entity\"}"));
   }
 
   @Test
   void extractChangedFieldKeysReturnsEmptyArrayWhenChangeDescriptionIsNull() {
-    assertEquals(
-        "[]", MigrationUtil.extractChangedFieldKeys("{\"changeDescription\": null}"));
+    assertEquals("[]", MigrationUtil.extractChangedFieldKeys("{\"changeDescription\": null}"));
   }
 
   @Test
@@ -776,8 +773,7 @@ class MigrationUtilTest {
   }
 
   private static String emptyChangeDescriptionJson() {
-    return
-        "{\"changeDescription\":{\"fieldsAdded\":[],\"fieldsUpdated\":[],\"fieldsDeleted\":[]}}";
+    return "{\"changeDescription\":{\"fieldsAdded\":[],\"fieldsUpdated\":[],\"fieldsDeleted\":[]}}";
   }
 
   private Object invokePrivateStatic(String methodName, Class<?>[] parameterTypes, Object... args)

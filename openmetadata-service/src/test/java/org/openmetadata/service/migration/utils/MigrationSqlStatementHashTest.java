@@ -21,15 +21,13 @@ class MigrationSqlStatementHashTest {
   @Test
   void mysql200EntityExtensionVersionSchemaHasUniqueStatementHashes() {
     assertUniqueStatementHashes(
-        resolveRepoRoot()
-            .resolve("bootstrap/sql/migrations/native/2.0.0/mysql/schemaChanges.sql"));
+        resolveRepoRoot().resolve("bootstrap/sql/migrations/native/2.0.0/mysql/schemaChanges.sql"));
   }
 
   @Test
   void mysql200EntityExtensionVersionSchemaDoesNotQueryInformationSchema() throws Exception {
     assertDoesNotReferenceInformationSchema(
-        resolveRepoRoot()
-            .resolve("bootstrap/sql/migrations/native/2.0.0/mysql/schemaChanges.sql"));
+        resolveRepoRoot().resolve("bootstrap/sql/migrations/native/2.0.0/mysql/schemaChanges.sql"));
   }
 
   private void assertUniqueStatementHashes(Path sqlFile) {
