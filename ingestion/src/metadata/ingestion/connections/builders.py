@@ -12,8 +12,9 @@
 """
 Get and test connection utilities
 """
+
 from functools import partial
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional  # noqa: UP035
 from urllib.parse import quote_plus
 
 from pydantic import SecretStr
@@ -40,7 +41,7 @@ logger = cli_logger()
 
 
 @connection_with_options_secrets
-def get_connection_args_common(connection) -> Dict[str, Any]:
+def get_connection_args_common(connection) -> Dict[str, Any]:  # noqa: UP006
     """
     Read the connection arguments of a connection.
 
@@ -94,7 +95,7 @@ def create_generic_db_connection(
     return engine
 
 
-def get_connection_options_dict(connection) -> Optional[Dict[str, Any]]:
+def get_connection_options_dict(connection) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
     """
     Given a connection object, returns the connection options
     dictionary if exists
@@ -144,14 +145,10 @@ def get_password_secret(connection) -> SecretStr:
 
         # Check if IamAuth exists - specific to Mysql and Postgres connection.
         if hasattr(connection, "authType"):
-            password = getattr(
-                connection.authType, BUILDER_PASSWORD_ATTR, SecretStr("")
-            )
+            password = getattr(connection.authType, BUILDER_PASSWORD_ATTR, SecretStr(""))
             if isinstance(connection.authType, IamAuthConfigurationSource):
                 # if IAM based, fetch rds client and generate db auth token.
-                aws_client = AWSClient(
-                    config=connection.authType.awsConfig
-                ).get_rds_client()
+                aws_client = AWSClient(config=connection.authType.awsConfig).get_rds_client()
                 host, port = connection.hostPort.split(":")
                 password = SecretStr(
                     aws_client.generate_db_auth_token(
@@ -201,8 +198,6 @@ def get_connection_url_common(connection) -> str:
             hasattr(connection, "databaseSchema") and not connection.databaseSchema
         ):
             url += "/"
-        params = "&".join(
-            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
-        )
+        params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
         url = f"{url}?{params}"
     return url

@@ -1073,6 +1073,17 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().policies().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().policies().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Policy getVersion(UUID id, Double version) {
     return SdkClients.adminClient().policies().getVersion(id.toString(), version);
   }

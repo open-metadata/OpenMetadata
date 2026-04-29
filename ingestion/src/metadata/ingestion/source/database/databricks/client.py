@@ -11,12 +11,13 @@
 """
 Client to interact with databricks apis
 """
+
 import base64
 import json
 import traceback
 from collections import defaultdict
 from datetime import timedelta
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import Iterable, List, Optional, Tuple, Union  # noqa: UP035
 
 import requests
 from sqlalchemy import text
@@ -45,7 +46,7 @@ API_VERSION = "/api/2.0"
 JOB_API_VERSION = "/api/2.1"
 
 
-class DatabricksClientException(Exception):
+class DatabricksClientException(Exception):  # noqa: N818
     """
     Class to throw auth and other databricks api exceptions.
     """
@@ -58,8 +59,8 @@ class DatabricksClient:
 
     def __init__(
         self,
-        config: Union[DatabricksConnection, DatabricksPipelineConnection],
-        engine: Optional[Engine] = None,
+        config: Union[DatabricksConnection, DatabricksPipelineConnection],  # noqa: UP007
+        engine: Optional[Engine] = None,  # noqa: UP045
     ):
         self.config = config
         base_url, *_ = self.config.hostPort.split(":")
@@ -76,9 +77,9 @@ class DatabricksClient:
         self._entity_table_lineage_executed: bool = False
         self.entity_table_lineage: dict[str, list[dict[str, str]]] = defaultdict(list)
         self._entity_column_lineage_executed: bool = False
-        self.entity_column_lineage: dict[
-            str, dict[Tuple[str, str], list[Tuple[str, str]]]
-        ] = defaultdict(lambda: defaultdict(list))
+        self.entity_column_lineage: dict[str, dict[Tuple[str, str], list[Tuple[str, str]]]] = defaultdict(  # noqa: UP006
+            lambda: defaultdict(list)
+        )
         self.engine = engine
         self.client = requests
 
@@ -89,9 +90,7 @@ class DatabricksClient:
         return {"Authorization": f"Bearer {self.config.token.get_secret_value()}"}
 
     def test_query_api_access(self) -> None:
-        res = self.client.get(
-            self.base_query_url, headers=self.headers, timeout=self.api_timeout
-        )
+        res = self.client.get(self.base_query_url, headers=self.headers, timeout=self.api_timeout)
         if res.status_code != 200:
             raise APIError(res.json)
 
@@ -100,26 +99,18 @@ class DatabricksClient:
             lookback_days = getattr(self.config, "lineageLookBackDays", 90)
             with self.engine.connect() as connection:
                 test_table_lineage = connection.execute(
-                    text(
-                        DATABRICKS_GET_TABLE_LINEAGE.format(lookback_days=lookback_days)
-                        + " LIMIT 1"
-                    )
+                    text(DATABRICKS_GET_TABLE_LINEAGE.format(lookback_days=lookback_days) + " LIMIT 1")
                 )
                 test_column_lineage = connection.execute(
-                    text(
-                        DATABRICKS_GET_COLUMN_LINEAGE.format(
-                            lookback_days=lookback_days
-                        )
-                        + " LIMIT 1"
-                    )
+                    text(DATABRICKS_GET_COLUMN_LINEAGE.format(lookback_days=lookback_days) + " LIMIT 1")
                 )
                 # Check if queries executed successfully by fetching results
-                table_result = test_table_lineage.fetchone()
-                column_result = test_column_lineage.fetchone()
+                table_result = test_table_lineage.fetchone()  # noqa: F841
+                column_result = test_column_lineage.fetchone()  # noqa: F841
                 logger.info("Lineage queries executed successfully")
         except Exception as exc:
             logger.debug(f"Error testing lineage queries: {traceback.format_exc()}")
-            raise DatabricksClientException(
+            raise DatabricksClientException(  # noqa: B904
                 f"Failed to test lineage queries. Make sure you have access "
                 f"to the tables table_lineage and column_lineage: {exc}"
             )
@@ -146,7 +137,7 @@ class DatabricksClient:
                 ).json()
                 yield from response.get("res") or []
 
-    def list_query_history(self, start_date=None, end_date=None) -> List[dict]:
+    def list_query_history(self, start_date=None, end_date=None) -> List[dict]:  # noqa: UP006
         """
         Method returns List the history of queries through SQL warehouses
         """
@@ -181,9 +172,9 @@ class DatabricksClient:
                     data = {}
 
                 yield from result
-                yield from self._run_query_paginator(
-                    data=data, result=result, end_time=end_time, response=response
-                ) or []
+                yield from (
+                    self._run_query_paginator(data=data, result=result, end_time=end_time, response=response) or []
+                )
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -191,10 +182,7 @@ class DatabricksClient:
 
     def is_query_valid(self, row) -> bool:
         query_text = row.get("query_text")
-        return not (
-            query_text.startswith(QUERY_WITH_DBT)
-            or query_text.startswith(QUERY_WITH_OM_VERSION)
-        )
+        return not (query_text.startswith(QUERY_WITH_DBT) or query_text.startswith(QUERY_WITH_OM_VERSION))  # noqa: PIE810
 
     def list_jobs_test_connection(self) -> None:
         data = {"limit": 1, "expand_tasks": True, "offset": 0}
@@ -240,7 +228,7 @@ class DatabricksClient:
             logger.debug(traceback.format_exc())
             logger.error(exc)
 
-    def get_job_runs(self, job_id) -> List[dict]:
+    def get_job_runs(self, job_id) -> List[dict]:  # noqa: UP006
         """
         Method returns List of all runs for a job by the specified job_id
         """
@@ -278,57 +266,47 @@ class DatabricksClient:
             logger.debug(traceback.format_exc())
             logger.error(exc)
 
-    def get_table_lineage(self, entity_id: str) -> List[dict[str, str]]:
+    def get_table_lineage(self, entity_id: str) -> List[dict[str, str]]:  # noqa: UP006
         """
         Method returns table lineage for a job or pipeline by the specified entity_id.
         On first call, eagerly fetches ALL lineage in bulk for optimal performance.
         """
         try:
             if not self._entity_table_lineage_executed:
-                logger.info(
-                    "First lineage request detected - performing bulk lineage fetch for all entities"
-                )
+                logger.info("First lineage request detected - performing bulk lineage fetch for all entities")
                 self.cache_lineage()
 
             return self.entity_table_lineage.get(str(entity_id), [])
 
         except Exception as exc:
-            logger.debug(
-                f"Error getting table lineage for {entity_id} due to {traceback.format_exc()}"
-            )
+            logger.debug(f"Error getting table lineage for {entity_id} due to {traceback.format_exc()}")
             logger.error(exc)
         return []
 
-    def get_column_lineage(
-        self, entity_id: str, TableKey: Tuple[str, str]
-    ) -> List[Tuple[str, str]]:
+    def get_column_lineage(self, entity_id: str, TableKey: Tuple[str, str]) -> List[Tuple[str, str]]:  # noqa: N803, UP006
         """
         Method returns column lineage for a job or pipeline by the specified entity_id and table key
         """
         try:
             if not self._entity_column_lineage_executed:
-                logger.debug(
-                    "Entity column lineage not found. Executing cache_lineage..."
-                )
+                logger.debug("Entity column lineage not found. Executing cache_lineage...")
                 self.cache_lineage()
 
             return self.entity_column_lineage.get(str(entity_id), {}).get(TableKey, [])
 
         except Exception as exc:
-            logger.debug(
-                f"Error getting column lineage for table {TableKey} due to {traceback.format_exc()}"
-            )
+            logger.debug(f"Error getting column lineage for table {TableKey} due to {traceback.format_exc()}")
             logger.error(exc)
         return []
 
-    def run_lineage_query(self, query: str) -> List[dict]:
+    def run_lineage_query(self, query: str) -> List[dict]:  # noqa: UP006
         """
         Method runs a lineage query and returns the result
         """
         try:
             with self.engine.connect() as connection:
                 result = connection.execute(text(query))
-                return result
+                return result  # noqa: RET504
 
         except Exception as exc:
             logger.debug(f"Error caching table lineage due to {traceback.format_exc()}")
@@ -341,9 +319,7 @@ class DatabricksClient:
         """
         lookback_days = getattr(self.config, "lineageLookBackDays", 90)
         logger.info(f"Caching table lineage (lookback: {lookback_days} days)")
-        table_lineage = self.run_lineage_query(
-            DATABRICKS_GET_TABLE_LINEAGE.format(lookback_days=lookback_days)
-        )
+        table_lineage = self.run_lineage_query(DATABRICKS_GET_TABLE_LINEAGE.format(lookback_days=lookback_days))
         for row in table_lineage or []:
             try:
                 self.entity_table_lineage[row.entity_id].append(
@@ -352,17 +328,13 @@ class DatabricksClient:
                         "target_table_full_name": row.target_table_full_name,
                     }
                 )
-            except Exception as exc:
-                logger.debug(
-                    f"Error parsing row: {row} due to {traceback.format_exc()}"
-                )
+            except Exception as exc:  # noqa: F841
+                logger.debug(f"Error parsing row: {row} due to {traceback.format_exc()}")
                 continue
         self._entity_table_lineage_executed = True
 
         logger.info(f"Caching column lineage (lookback: {lookback_days} days)")
-        column_lineage = self.run_lineage_query(
-            DATABRICKS_GET_COLUMN_LINEAGE.format(lookback_days=lookback_days)
-        )
+        column_lineage = self.run_lineage_query(DATABRICKS_GET_COLUMN_LINEAGE.format(lookback_days=lookback_days))
         for row in column_lineage or []:
             try:
                 table_key = (
@@ -376,15 +348,13 @@ class DatabricksClient:
 
                 self.entity_column_lineage[row.entity_id][table_key].append(column_pair)
 
-            except Exception as exc:
-                logger.debug(
-                    f"Error parsing row: {row} due to {traceback.format_exc()}"
-                )
+            except Exception as exc:  # noqa: F841
+                logger.debug(f"Error parsing row: {row} due to {traceback.format_exc()}")
                 continue
         self._entity_column_lineage_executed = True
         logger.debug("Table and column lineage caching completed.")
 
-    def get_pipeline_details(self, pipeline_id: str) -> Optional[dict]:
+    def get_pipeline_details(self, pipeline_id: str) -> Optional[dict]:  # noqa: UP045
         """
         Get DLT pipeline configuration including libraries and notebooks
         """
@@ -397,9 +367,7 @@ class DatabricksClient:
             )
             if response.status_code == 200:
                 return response.json()
-            logger.warning(
-                f"Failed to get pipeline details for {pipeline_id}: {response.status_code}"
-            )
+            logger.warning(f"Failed to get pipeline details for {pipeline_id}: {response.status_code}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error getting pipeline details for {pipeline_id}: {exc}")
@@ -442,14 +410,12 @@ class DatabricksClient:
                     else:
                         break
             else:
-                logger.warning(
-                    f"Failed to list pipelines: {response.status_code} - {response.text}"
-                )
+                logger.warning(f"Failed to list pipelines: {response.status_code} - {response.text}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error listing DLT pipelines: {exc}")
 
-    def list_workspace_objects(self, path: str) -> List[dict]:
+    def list_workspace_objects(self, path: str) -> List[dict]:  # noqa: UP006
         """
         List objects in a Databricks workspace directory
         """
@@ -466,17 +432,15 @@ class DatabricksClient:
 
             if response.status_code == 200:
                 return response.json().get("objects", [])
-            else:
-                logger.warning(
-                    f"Failed to list workspace directory {path}: {response.text}"
-                )
+            else:  # noqa: RET505
+                logger.warning(f"Failed to list workspace directory {path}: {response.text}")
                 return []
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error listing workspace directory {path}: {exc}")
             return []
 
-    def export_notebook_source(self, notebook_path: str) -> Optional[str]:
+    def export_notebook_source(self, notebook_path: str) -> Optional[str]:  # noqa: UP045
         """
         Export notebook source code from Databricks workspace
         """
@@ -495,9 +459,7 @@ class DatabricksClient:
                 content = response.json().get("content")
                 if content:
                     return base64.b64decode(content).decode("utf-8")
-            logger.warning(
-                f"Failed to export notebook {notebook_path}: {response.status_code}"
-            )
+            logger.warning(f"Failed to export notebook {notebook_path}: {response.status_code}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error exporting notebook {notebook_path}: {exc}")

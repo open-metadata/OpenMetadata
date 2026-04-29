@@ -1,0 +1,93 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/activity/activityEvent.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ActivityEvent",
+  "description": "A lightweight activity notification for user dashboards and feeds. NOT for compliance, audit trails, or workflows - use entity version history and Task entity for those purposes.",
+  "javaType": "org.openmetadata.schema.entity.activity.ActivityEvent",
+  "type": "object",
+  "definitions": {
+    "activityEventType": {
+      "javaType": "org.openmetadata.schema.type.ActivityEventType",
+      "description": "Type of activity event.",
+      "type": "string",
+      "enum": [
+        "EntityCreated",
+        "EntityUpdated",
+        "EntityDeleted",
+        "EntitySoftDeleted",
+        "EntityRestored",
+        "DescriptionUpdated",
+        "TagsUpdated",
+        "OwnerUpdated",
+        "DomainUpdated",
+        "TierUpdated",
+        "CustomPropertyUpdated",
+        "ColumnDescriptionUpdated",
+        "ColumnTagsUpdated",
+        "TestCaseStatusChanged",
+        "PipelineStatusChanged"
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier for this activity event.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "eventType": {
+      "description": "Type of activity that occurred.",
+      "$ref": "#/definitions/activityEventType"
+    },
+    "entity": {
+      "description": "Reference to the entity that changed.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "about": {
+      "description": "EntityLink string identifying the specific entity/field/column the activity is about. Format: <#E::entityType::fqn::fieldName::arrayFieldName::arrayFieldValue>",
+      "type": "string",
+      "maxLength": 2048
+    },
+    "domains": {
+      "description": "Domains this activity belongs to, inherited from the source entity for domain-scoped visibility.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "actor": {
+      "description": "User or bot who performed the action.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "timestamp": {
+      "description": "Timestamp when the activity occurred in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "summary": {
+      "description": "Human-readable summary of the activity for display.",
+      "type": "string",
+      "maxLength": 500
+    },
+    "fieldName": {
+      "description": "Name of the field that was changed, if applicable.",
+      "type": "string",
+      "maxLength": 256
+    },
+    "oldValue": {
+      "description": "Previous value (truncated for display, not for audit).",
+      "type": "string",
+      "maxLength": 1000
+    },
+    "newValue": {
+      "description": "New value (truncated for display, not for audit).",
+      "type": "string",
+      "maxLength": 1000
+    },
+    "changeDescription": {
+      "description": "Optional structured change description with field-level details.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "reactions": {
+      "description": "Reactions for this activity event.",
+      "$ref": "../../type/reaction.json#/definitions/reactionList"
+    }
+  },
+  "required": ["id", "eventType", "entity", "actor", "timestamp"],
+  "additionalProperties": false
+}

@@ -20,8 +20,7 @@ import {
 } from '@testing-library/react';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { MOCK_USER_ROLE } from '../../../../../mocks/User.mock';
-import { getRoles } from '../../../../../rest/rolesAPIV1';
-import { mockUserRole } from '../../mocks/User.mocks';
+import { searchRoles } from '../../../../../rest/rolesAPIV1';
 import UserProfileRoles from './UserProfileRoles.component';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
@@ -63,7 +62,7 @@ jest.mock('../../../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../../../rest/rolesAPIV1', () => ({
-  getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
+  searchRoles: jest.fn().mockResolvedValue([]),
 }));
 
 describe('Test User Profile Roles Component', () => {
@@ -164,7 +163,7 @@ describe('Test User Profile Roles Component', () => {
 
     fireEvent.click(editButton);
 
-    expect(getRoles).toHaveBeenCalledWith('', undefined, undefined, false, 50);
+    expect(searchRoles).toHaveBeenCalledWith('');
 
     expect(screen.getByTestId('user-profile-edit-popover')).toBeInTheDocument();
   });

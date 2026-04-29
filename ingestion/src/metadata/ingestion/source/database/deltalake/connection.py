@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from dataclasses import dataclass
 from functools import singledispatch
 from typing import Optional
@@ -57,16 +58,16 @@ def get_deltalake_client(connection, config):
 
 @get_deltalake_client.register
 def _(connection: MetastoreConfig, config: DeltaLakeConnection):
-    from metadata.ingestion.source.database.deltalake.clients.pyspark import (
+    from metadata.ingestion.source.database.deltalake.clients.pyspark import (  # noqa: PLC0415
         DeltalakePySparkClient,
     )
 
     return DeltalakePySparkClient.from_config(config)
 
 
-@get_deltalake_client.register
+@get_deltalake_client.register  # noqa: RET503
 def _(connection: StorageConfig, config: DeltaLakeConnection):
-    from metadata.ingestion.source.database.deltalake.clients.s3 import (
+    from metadata.ingestion.source.database.deltalake.clients.s3 import (  # noqa: PLC0415
         DeltalakeS3Client,
     )
 
@@ -86,20 +87,16 @@ def test_connection(
     metadata: OpenMetadata,
     connection: DeltalakeClient,
     service_connection: DeltaLakeConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
     test_fn = {
-        "GetDatabases": connection.client.get_test_get_databases_fn(
-            service_connection.configSource
-        ),
-        "GetTables": connection.client.get_test_get_tables_fn(
-            service_connection.configSource
-        ),
+        "GetDatabases": connection.client.get_test_get_databases_fn(service_connection.configSource),
+        "GetTables": connection.client.get_test_get_tables_fn(service_connection.configSource),
     }
 
     return test_connection_steps(
