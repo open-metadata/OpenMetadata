@@ -1430,8 +1430,11 @@ class AdvancedSearchClassBase {
           return [];
         }
 
+        const tableKeywordSuffix =
+          searchOutputType === SearchOutputType.ElasticSearch ? '.keyword' : '';
+
         return columns.map((columnName) => ({
-          subfieldsKey: `${field.name}.rows.${columnName}.keyword`,
+          subfieldsKey: `${field.name}.rows.${columnName}${tableKeywordSuffix}`,
           dataObject: {
             type: 'text',
             label: `${label} - ${columnName}`,
