@@ -34,6 +34,16 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 
+class _ArrayOfStruct:
+    """Marker for a JSON value observed as a list of dicts. Carries the merged struct shape
+    so downstream column construction can render it as ARRAY<STRUCT<...>>."""
+
+    __slots__ = ("struct",)
+
+    def __init__(self, struct: Dict):  # noqa: UP006
+        self.struct = struct
+
+
 def fetch_dataframe_generator(
     config_source,
     client,
@@ -317,6 +327,10 @@ class GenericDataFrameColumnParser:
                     }
                     if data_type == DataType.ARRAY:
                         parsed_string["arrayDataType"] = DataType.UNKNOWN
+                        struct_children = cls._get_array_struct_children(data_frame[column].dropna()[:100])
+                        if struct_children:
+                            parsed_string["arrayDataType"] = DataType.STRUCT
+                            parsed_string["children"] = struct_children
 
                     if data_type == DataType.JSON:
                         parsed_string["children"] = cls.get_children(data_frame[column].dropna()[:100])
@@ -418,6 +432,11 @@ class GenericDataFrameColumnParser:
                     result[key] = cls.unique_json_structure(
                         [nested_json if isinstance(nested_json, dict) else {}, value]
                     )
+                elif isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
+                    merged_struct = cls.unique_json_structure(value)
+                    existing = result.get(key)
+                    existing_struct = existing.struct if isinstance(existing, _ArrayOfStruct) else {}
+                    result[key] = _ArrayOfStruct(cls.unique_json_structure([existing_struct, merged_struct]))
                 else:
                     result[key] = value
         return result
@@ -432,13 +451,19 @@ class GenericDataFrameColumnParser:
         children = []
         for key, value in json_column.items():
             column = {}
-            type_ = type(value).__name__.lower()
-            column["dataTypeDisplay"] = cls._data_formats.get(type_, DataType.UNKNOWN).value
-            column["dataType"] = cls._data_formats.get(type_, DataType.UNKNOWN).value
             column["name"] = truncate_column_name(key)
             column["displayName"] = key
-            if isinstance(value, dict):
-                column["children"] = cls.construct_json_column_children(value)
+            if isinstance(value, _ArrayOfStruct):
+                column["dataType"] = DataType.ARRAY.value
+                column["dataTypeDisplay"] = DataType.ARRAY.value
+                column["arrayDataType"] = DataType.STRUCT
+                column["children"] = cls.construct_json_column_children(value.struct)
+            else:
+                type_ = type(value).__name__.lower()
+                column["dataTypeDisplay"] = cls._data_formats.get(type_, DataType.UNKNOWN).value
+                column["dataType"] = cls._data_formats.get(type_, DataType.UNKNOWN).value
+                if isinstance(value, dict):
+                    column["children"] = cls.construct_json_column_children(value)
             children.append(column)
 
         return children
@@ -465,6 +490,27 @@ class GenericDataFrameColumnParser:
         json_structure = cls.unique_json_structure(json_column.values.tolist())
 
         return cls.construct_json_column_children(json_structure)
+
+    @classmethod
+    def _get_array_struct_children(cls, array_column: Any) -> List[Dict]:  # noqa: UP006
+        """For an ARRAY column whose elements are dicts, infer the merged struct shape and
+        return it as children. Returns an empty list when elements are not dicts.
+        """
+        flattened = []
+        for value in array_column.values.tolist():
+            if isinstance(value, str):
+                try:
+                    value = json.loads(value)  # noqa: PLW2901
+                except (TypeError, ValueError):
+                    continue
+            if isinstance(value, dict):
+                flattened.append(value)
+            elif isinstance(value, list):
+                flattened.extend(item for item in value if isinstance(item, dict))
+        if not flattened:
+            return []
+        merged_struct = cls.unique_json_structure(flattened)
+        return cls.construct_json_column_children(merged_struct)
 
 
 # pylint: disable=import-outside-toplevel
