@@ -48,7 +48,7 @@ import org.openmetadata.service.search.SearchRepository;
 @TestMethodOrder(OrderAnnotation.class)
 public class OrphanedIndexCleanerScopedCleanupIT {
 
-  private static final String CLUSTER_ALIAS = "openmetadata";
+  private static final String CLUSTER_ALIAS = TestSuiteBootstrap.getClusterAlias();
   private static final String FOREIGN_PREFIX = "foreigntenant_it_orphans";
   private static final String OUR_PREFIX = CLUSTER_ALIAS + "_it_orphans";
 

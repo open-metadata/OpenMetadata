@@ -124,12 +124,25 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
    */
   private static final String ELASTIC_SEARCH_CLUSTER_ALIAS = resolveClusterAlias();
 
+  private static final java.util.regex.Pattern CLUSTER_ALIAS_PATTERN =
+      java.util.regex.Pattern.compile("[a-z0-9][a-z0-9_\\-]{0,62}");
+
   private static String resolveClusterAlias() {
     String override = System.getProperty("clusterAlias");
-    if (override != null && !override.isBlank()) {
-      return override.trim().toLowerCase(java.util.Locale.ROOT);
+    if (override == null || override.isBlank()) {
+      return "omtest_" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 8);
     }
-    return "omtest_" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+    String normalized = override.trim().toLowerCase(java.util.Locale.ROOT);
+    if (!CLUSTER_ALIAS_PATTERN.matcher(normalized).matches()) {
+      throw new IllegalArgumentException(
+          "Invalid -DclusterAlias='"
+              + override
+              + "'. Must match "
+              + CLUSTER_ALIAS_PATTERN.pattern()
+              + " (lowercase alphanumeric, underscore, or hyphen; must start with a letter or"
+              + " digit; max 63 chars) so it forms a valid OpenSearch/Elasticsearch index prefix.");
+    }
+    return normalized;
   }
 
   public static String getClusterAlias() {

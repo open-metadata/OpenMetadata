@@ -31,7 +31,7 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 public class IndexTemplateIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  private static final String CLUSTER_ALIAS = "openmetadata";
+  private static final String CLUSTER_ALIAS = TestSuiteBootstrap.getClusterAlias();
 
   @Test
   void testIndexTemplatesExist(TestNamespace ns) throws Exception {

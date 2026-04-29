@@ -4586,8 +4586,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   // ===================================================================
 
   /**
-   * Get the full Elasticsearch index name with cluster alias prefix. The alias is randomized
-   * per JUnit session by {@link org.openmetadata.it.bootstrap.TestSuiteBootstrap}.
+   * Get the full Elasticsearch index name with cluster alias prefix. The alias is randomized per
+   * JUnit session by default in {@link org.openmetadata.it.bootstrap.TestSuiteBootstrap}; it can
+   * be pinned via {@code -DclusterAlias=...} for reproducible debugging.
    */
   private String getTableSearchIndexName() {
     return org.openmetadata.it.bootstrap.TestSuiteBootstrap.getClusterAlias()
