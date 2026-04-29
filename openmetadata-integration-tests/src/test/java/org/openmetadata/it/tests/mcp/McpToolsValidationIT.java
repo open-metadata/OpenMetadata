@@ -125,7 +125,34 @@ public class McpToolsValidationIT extends McpTestBase {
     Map<String, Object> toolCall =
         McpTestUtils.createSearchMetadataToolCall("mcp_val_table", 5, Entity.TABLE);
     JsonNode result = executeToolCall(toolCall);
-    validateSearchMetadataResponse(result, "mcp_val_table");
+    validateSearchMetadataResponse(result, "mcp_val_table", Entity.TABLE);
+  }
+
+  @Test
+  @Order(1)
+  void testSearchMetadataEntityTypeFilterIsHonored() throws Exception {
+    // Regression test for https://github.com/open-metadata/OpenMetadata/issues/27796
+    // Searching with a specific entityType must only return results of that type, not leak
+    // other types from the default dataAsset alias.
+    Map<String, Object> tableSearch =
+        McpTestUtils.createSearchMetadataToolCall("test", 10, Entity.TABLE);
+    JsonNode tableResult = executeToolCall(tableSearch);
+    validateSearchMetadataResponse(tableResult, "test", Entity.TABLE);
+
+    Map<String, Object> dashboardSearch =
+        McpTestUtils.createSearchMetadataToolCall("test", 10, Entity.DASHBOARD);
+    JsonNode dashboardResult = executeToolCall(dashboardSearch);
+    JsonNode dashboardResponse =
+        OBJECT_MAPPER.readTree(dashboardResult.get("content").get(0).get("text").asText());
+    dashboardResponse
+        .get("results")
+        .forEach(
+            r ->
+                assertThat(r.get("entityType").asText())
+                    .withFailMessage(
+                        "Expected only %s results but got %s for entity %s",
+                        Entity.DASHBOARD, r.get("entityType").asText(), r.get("name").asText())
+                    .isEqualTo(Entity.DASHBOARD));
   }
 
   @Test
@@ -444,6 +471,11 @@ public class McpToolsValidationIT extends McpTestBase {
 
   private void validateSearchMetadataResponse(JsonNode result, String expectedQuery)
       throws Exception {
+    validateSearchMetadataResponse(result, expectedQuery, null);
+  }
+
+  private void validateSearchMetadataResponse(
+      JsonNode result, String expectedQuery, String expectedEntityType) throws Exception {
     assertThat(result.has("content")).isTrue();
     JsonNode content = result.get("content");
     assertThat(content.isArray()).isTrue();
@@ -468,6 +500,13 @@ public class McpToolsValidationIT extends McpTestBase {
                     .withFailMessage(
                         "Missing 'deleted' field in search result for: " + r.get("name"))
                     .isTrue();
+                if (expectedEntityType != null) {
+                  assertThat(r.get("entityType").asText())
+                      .withFailMessage(
+                          "Expected entityType '%s' but got '%s' for result '%s'",
+                          expectedEntityType, r.get("entityType").asText(), r.get("name").asText())
+                      .isEqualTo(expectedEntityType);
+                }
                 matchingEntities.add(r.get("name").asText());
               });
 

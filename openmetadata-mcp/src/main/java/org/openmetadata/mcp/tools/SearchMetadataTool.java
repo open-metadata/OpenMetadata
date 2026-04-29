@@ -5,6 +5,7 @@ import static org.openmetadata.service.search.SearchUtils.mapEntityTypesToIndexN
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.Response;
@@ -192,6 +193,8 @@ public class SearchMetadataTool implements McpTool {
       LOG.debug("Applied query filter to query: {}", queryFilter);
     }
 
+    queryFilter = addEntityTypeFilter(queryFilter, entityType);
+
     LOG.info(
         "Search query: {}, index: {}, limit: {}, includeDeleted: {}",
         queryFilter,
@@ -199,37 +202,26 @@ public class SearchMetadataTool implements McpTool {
         size,
         includeDeleted);
 
-    SearchRequest searchRequest;
+    boolean userProvidedQueryFilter = params.containsKey("queryFilter");
+    SearchRequest searchRequest =
+        new SearchRequest()
+            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+            .withSize(size)
+            .withFrom(from)
+            .withFetchSource(true)
+            .withDeleted(includeDeleted);
     if (!nullOrEmpty(queryFilter)) {
-      // When queryFilter is provided, use it directly as it's already a transformed OpenSearch
-      // query
-      searchRequest =
-          new SearchRequest()
-              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
-              .withQueryFilter(queryFilter)
-              .withSize(size)
-              .withFrom(from)
-              .withFetchSource(true)
-              .withDeleted(includeDeleted);
-    } else {
-      // Fallback to basic query when no queryFilter is provided
-      searchRequest =
-          new SearchRequest()
-              .withQuery(query)
-              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
-              .withSize(size)
-              .withFrom(from)
-              .withFetchSource(true)
-              .withDeleted(includeDeleted);
+      searchRequest.withQueryFilter(queryFilter);
+    }
+    if (!userProvidedQueryFilter) {
+      searchRequest.withQuery(query);
     }
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
     Response response;
-    if (!nullOrEmpty(queryFilter)) {
-      // Use direct query method when queryFilter is provided since it's already a transformed query
+    if (userProvidedQueryFilter) {
       response = Entity.getSearchRepository().searchWithDirectQuery(searchRequest, subjectContext);
     } else {
-      // Use regular search for basic queries
       response = Entity.getSearchRepository().search(searchRequest, subjectContext);
     }
 
@@ -381,6 +373,66 @@ public class SearchMetadataTool implements McpTool {
   public static Map<String, Object> cleanSearchResponseObject(Map<String, Object> object) {
     DETAILED_EXCLUDE_KEYS.forEach(object::remove);
     return object;
+  }
+
+  /**
+   * Ensures results are constrained to the requested entityType by injecting an explicit
+   * {@code term} filter on the {@code entityType} field. Targeting an alias by itself is not
+   * always sufficient — for example, when the alias resolves to a multi-entity index or fans
+   * out to {@code dataAsset} — so the request can leak documents of other types. Adding the
+   * term filter guarantees correctness regardless of how the index alias resolves.
+   *
+   * @param existingFilter user-provided OpenSearch query JSON, already wrapped under "query", or
+   *     {@code null}
+   * @param entityType requested entity type, or {@code null}/blank to leave the filter untouched
+   * @return a JSON string containing the merged query filter, or {@code existingFilter} if no
+   *     entityType was provided
+   */
+  @VisibleForTesting
+  static String addEntityTypeFilter(String existingFilter, String entityType) {
+    if (entityType == null || entityType.isBlank()) {
+      return existingFilter;
+    }
+    ObjectNode termFilter = JsonUtils.getObjectMapper().createObjectNode();
+    termFilter.putObject("term").put("entityType", entityType);
+    if (nullOrEmpty(existingFilter)) {
+      ObjectNode bool = JsonUtils.getObjectMapper().createObjectNode();
+      ArrayNode filterArray = bool.putObject("bool").putArray("filter");
+      filterArray.add(termFilter);
+      ObjectNode wrapper = JsonUtils.getObjectMapper().createObjectNode();
+      wrapper.set("query", bool);
+      return JsonUtils.pojoToJson(wrapper);
+    }
+    try {
+      JsonNode root = JsonUtils.getObjectMapper().readTree(existingFilter);
+      JsonNode queryNode = root.get("query");
+      if (queryNode == null || !queryNode.isObject()) {
+        return existingFilter;
+      }
+      ObjectNode queryObject = (ObjectNode) queryNode;
+      ObjectNode boolNode;
+      if (queryObject.has("bool") && queryObject.get("bool").isObject()) {
+        boolNode = (ObjectNode) queryObject.get("bool");
+      } else {
+        ObjectNode originalCopy = queryObject.deepCopy();
+        queryObject.removeAll();
+        boolNode = queryObject.putObject("bool");
+        boolNode.putArray("must").add(originalCopy);
+      }
+      ArrayNode filterArray;
+      if (boolNode.has("filter") && boolNode.get("filter").isArray()) {
+        filterArray = (ArrayNode) boolNode.get("filter");
+      } else {
+        filterArray = boolNode.putArray("filter");
+      }
+      filterArray.add(termFilter);
+      return JsonUtils.pojoToJson(root);
+    } catch (IOException e) {
+      LOG.warn(
+          "Unable to merge entityType filter into provided queryFilter, leaving it unchanged: {}",
+          e.getMessage());
+      return existingFilter;
+    }
   }
 
   /**
