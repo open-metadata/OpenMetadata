@@ -68,9 +68,12 @@ public class TypeRepository extends EntityRepository<Type> {
   private static final String PATCH_FIELDS = "customProperties";
   private static final Striped<Lock> TYPE_PROPERTY_LOCKS = Striped.lock(4096);
 
-  private static final Pattern CUSTOM_PROPERTY_NAME_PATTERN =
+  // Must stay in sync with definitions.customPropertyName.pattern in
+  // openmetadata-spec/src/main/resources/json/schema/type/basic.json
+  // Enforced by TypeRepositoryTest.customPropertyNamePatternMatchesSchema.
+  static final Pattern CUSTOM_PROPERTY_NAME_PATTERN =
       Pattern.compile("^[A-Za-z0-9][A-Za-z0-9 _\\-.,;/&%#@!'(){}\\[\\]<>|=]*$");
-  private static final int CUSTOM_PROPERTY_NAME_MAX_LENGTH = 256;
+  static final int CUSTOM_PROPERTY_NAME_MAX_LENGTH = 256;
 
   public TypeRepository() {
     super(
