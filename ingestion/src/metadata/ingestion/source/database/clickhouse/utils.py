@@ -35,7 +35,7 @@ from metadata.utils.sqlalchemy_utils import (
 )
 
 _IDENT = r"(?:`[^`]+`|\"[^\"]+\"|[A-Za-z_][\w$]*)"
-_QUALIFIED_IDENT = rf"{_IDENT}(?:\.{_IDENT})?"
+_QUALIFIED_IDENT = rf"{_IDENT}(?:\.{_IDENT})?(?:\.{_IDENT})?"
 
 MATERIALIZED_VIEW_TO_PATTERN = re.compile(
     rf"""
@@ -45,10 +45,12 @@ MATERIALIZED_VIEW_TO_PATTERN = re.compile(
     (?:IF\s+NOT\s+EXISTS\s+)?
     (?P<mv>{_QUALIFIED_IDENT})
     (?:\s+ON\s+CLUSTER\s+\S+)?
+    (?:\s+UUID\s+\S+)?
     (?:\s+REFRESH\s+.+?)?
+    (?:\s+POPULATE)?
     \s+TO\s+
     (?P<target>{_QUALIFIED_IDENT})
-    \s+(?:\(|AS\b)
+    \s+(?:\(|AS\b|FROM\b)
     """,
     re.IGNORECASE | re.VERBOSE | re.DOTALL,
 )

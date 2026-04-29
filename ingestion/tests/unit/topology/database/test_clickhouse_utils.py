@@ -222,3 +222,32 @@ class TestGetMvToTargetTable:
     def test_empty_query_returns_none(self):
         assert get_mv_to_target_table("") is None
         assert get_mv_to_target_table(None) is None
+
+    def test_populate_keyword_before_to(self):
+        query = "CREATE MATERIALIZED VIEW mv POPULATE TO target AS SELECT * FROM source"
+        assert get_mv_to_target_table(query) == ("mv", "target")
+
+    def test_on_cluster_and_populate_before_to(self):
+        query = (
+            "CREATE MATERIALIZED VIEW mv ON CLUSTER my_cluster POPULATE TO target "
+            "AS SELECT * FROM source"
+        )
+        assert get_mv_to_target_table(query) == ("mv", "target")
+
+    def test_uuid_clause(self):
+        """system.tables DDL output includes UUID — must still match."""
+        query = (
+            "CREATE MATERIALIZED VIEW db.mv UUID '550e8400-e29b-41d4-a716-446655440000' "
+            "TO db.target AS SELECT * FROM db.source"
+        )
+        assert get_mv_to_target_table(query) == ("db.mv", "db.target")
+
+    def test_three_part_qualified_names(self):
+        query = (
+            "CREATE MATERIALIZED VIEW catalog.schema.mv TO catalog2.schema2.target "
+            "AS SELECT * FROM catalog.schema.source"
+        )
+        assert get_mv_to_target_table(query) == (
+            "catalog.schema.mv",
+            "catalog2.schema2.target",
+        )
