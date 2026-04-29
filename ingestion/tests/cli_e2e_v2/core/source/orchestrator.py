@@ -17,9 +17,12 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from ..runner.errors import SourceBaselineDrift
-from .types import BaselineSpec, Diff, SourceBaselineEnforcer
+
+if TYPE_CHECKING:
+    from .types import BaselineSpec, Diff, SourceBaselineEnforcer
 
 logger = logging.getLogger(__name__)
 

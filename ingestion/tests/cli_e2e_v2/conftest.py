@@ -26,8 +26,7 @@ from __future__ import annotations
 import logging
 import os
 import uuid
-from pathlib import Path
-from typing import Iterator
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -45,6 +44,10 @@ from .core.config.server import ServerConfig
 from .core.expected.differ import StructuralMismatch
 from .core.fluent.om_client import OmClient
 from .core.runner.cli_runner import CliRunner
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 

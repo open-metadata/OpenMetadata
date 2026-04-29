@@ -19,12 +19,14 @@ stay on the subclass.
 
 from __future__ import annotations
 
-from typing import Generic, TypeVar
+from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
 
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 
 from .eventually import EventuallyRunner
+
+if TYPE_CHECKING:
+    from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 T = TypeVar("T")
 
@@ -33,7 +35,7 @@ class EntityAssert(Generic[T]):
     """Base class carrying fluent terminals shared by every entity-assert."""
 
     _entity_cls: type[T]
-    _default_fields: list[str] = []
+    _default_fields: ClassVar[list[str]] = []
 
     def __init__(self, om: OpenMetadata, fqn: str) -> None:
         self._om = om

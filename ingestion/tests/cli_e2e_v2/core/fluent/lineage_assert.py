@@ -5,12 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from metadata.generated.schema.entity.data.table import Table
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 from .eventually import EventuallyRunner
+
+if TYPE_CHECKING:
+    from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 _Direction = Literal["upstream", "downstream"]
 
@@ -27,7 +29,7 @@ class LineageAssert:
         self._fqn = table_fqn
         self._eventually = EventuallyRunner()
 
-    def eventually(self, timeout: int = 60) -> "LineageAssert":
+    def eventually(self, timeout: int = 60) -> LineageAssert:
         self._eventually.arm(timeout)
         return self
 
@@ -60,21 +62,21 @@ class LineageAssert:
             f"{direction}Edges resolved to FQNs={sorted(matched)} nodes={nodes_fqns}"
         )
 
-    def has_upstream(self, fqn: str) -> "LineageAssert":
+    def has_upstream(self, fqn: str) -> LineageAssert:
         self._eventually.run(
             lambda: self._check_edge("upstream", fqn),
             name=f"has_upstream({fqn})",
         )
         return self
 
-    def has_downstream(self, fqn: str) -> "LineageAssert":
+    def has_downstream(self, fqn: str) -> LineageAssert:
         self._eventually.run(
             lambda: self._check_edge("downstream", fqn),
             name=f"has_downstream({fqn})",
         )
         return self
 
-    def has_column_lineage(self, source: str, target: str) -> "LineageAssert":
+    def has_column_lineage(self, source: str, target: str) -> LineageAssert:
         def _check() -> None:
             data = self._lineage()
             edges = (data.get("upstreamEdges") or []) + (data.get("downstreamEdges") or [])

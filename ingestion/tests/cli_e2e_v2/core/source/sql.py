@@ -14,11 +14,12 @@ baseline).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
-
-from sqlalchemy import MetaData
+from typing import TYPE_CHECKING, Any
 
 from .types import BaselineSpec
+
+if TYPE_CHECKING:
+    from sqlalchemy import MetaData
 
 
 @dataclass(frozen=True)

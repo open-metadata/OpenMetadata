@@ -22,15 +22,19 @@ Design:
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING
 
-import pytest
-
-from .config.builder import WorkflowConfig
-from .config.pipelines import PipelineOptions
 from .runner.cli_runner import CliRunner
 from .source.orchestrator import EnforcementPolicy, ensure_baseline
-from .source.types import BaselineSpec
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    import pytest
+
+    from .config.builder import WorkflowConfig
+    from .config.pipelines import PipelineOptions
+    from .source.types import BaselineSpec
 
 
 def run_source_baseline(

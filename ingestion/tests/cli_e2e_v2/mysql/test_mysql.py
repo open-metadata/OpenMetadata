@@ -27,33 +27,38 @@ don't perturb the shared fixture.
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 
-from ..core.config.builder import WorkflowConfig
 from ..core.config.pipelines import (
     AutoClassificationPipeline,
     LineagePipeline,
     MetadataPipeline,
     ProfilerPipeline,
 )
-from ..core.config.server import ServerConfig
 from ..core.expected.differ import MatchMode, assert_service_matches
-from ..core.expected.types import ExpectedService
 from ..core.filter_scenarios import (
     COMMON_FILTER_SCENARIOS,
     FilterScenario,
     expected_tables_for,
 )
-from ..core.fluent.om_client import OmClient
-from ..core.runner.cli_runner import CliRunner
 from .connector import build_mysql_config, mysql_service_name
 from .expected import mysql_expected
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from sqlalchemy.engine import Engine
+
+    from ..core.config.builder import WorkflowConfig
+    from ..core.config.server import ServerConfig
+    from ..core.expected.types import ExpectedService
+    from ..core.fluent.om_client import OmClient
+    from ..core.runner.cli_runner import CliRunner
 
 # ---------------------------------------------------------------------------
 # Structural (metadata pipeline) — full Expected* tree walk
@@ -457,7 +462,7 @@ def test_error_containment_one_broken_view(
             status = cli_runner.run(
                 cfg.pipeline(MetadataPipeline(includeStoredProcedures=False)).with_filter(schemas_include=["e2e"])
             )
-        except Exception:  # noqa: BLE001 — partial-failure path may exit non-zero
+        except Exception:
             status = None
 
         # Phase 3: regardless of overall status, the unaffected baseline

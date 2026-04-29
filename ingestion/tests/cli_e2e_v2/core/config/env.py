@@ -47,7 +47,7 @@ class Env(Generic[_Req]):
         default: str | None = None,
         *,
         required: Literal[True] = True,
-    ) -> "Env[Literal[True]]": ...
+    ) -> Env[Literal[True]]: ...
 
     @overload
     def __new__(
@@ -56,7 +56,7 @@ class Env(Generic[_Req]):
         default: str | None = None,
         *,
         required: Literal[False],
-    ) -> "Env[Literal[False]]": ...
+    ) -> Env[Literal[False]]: ...
 
     def __new__(
         cls,
@@ -64,7 +64,7 @@ class Env(Generic[_Req]):
         default: str | None = None,
         *,
         required: bool = True,
-    ) -> "Env":
+    ) -> Env:
         return object.__new__(cls)
 
     def __init__(
@@ -94,10 +94,10 @@ class Env(Generic[_Req]):
     #   Env[Literal[True]].get()  -> str          (construction validated)
     #   Env[Literal[False]].get() -> str | None   (caller must handle None)
     @overload
-    def get(self: "Env[Literal[True]]") -> str: ...
+    def get(self: Env[Literal[True]]) -> str: ...
 
     @overload
-    def get(self: "Env[Literal[False]]") -> str | None: ...
+    def get(self: Env[Literal[False]]) -> str | None: ...
 
     def get(self) -> str | None:
         return os.environ.get(self.key)

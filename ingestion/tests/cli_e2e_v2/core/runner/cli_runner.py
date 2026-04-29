@@ -14,11 +14,15 @@ from __future__ import annotations
 import json
 import logging
 import subprocess
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from ..config.builder import WorkflowConfig
 from .errors import CliExecutionError
 from .status import Status
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ..config.builder import WorkflowConfig
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +105,7 @@ class CliRunner:
                 command,
                 capture_output=True,
                 text=True,
+                check=False,
                 timeout=timeout,
             )
         except subprocess.TimeoutExpired as exc:

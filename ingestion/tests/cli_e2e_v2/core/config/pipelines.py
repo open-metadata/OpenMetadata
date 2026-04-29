@@ -20,7 +20,6 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Union
 
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
     DatabaseServiceAutoClassificationPipeline as AutoClassificationPipeline,
@@ -41,14 +40,9 @@ from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline as TestPipeline,
 )
 
-PipelineOptions = Union[
-    MetadataPipeline,
-    ProfilerPipeline,
-    LineagePipeline,
-    UsagePipeline,
-    TestPipeline,
-    AutoClassificationPipeline,
-]
+PipelineOptions = (
+    MetadataPipeline | ProfilerPipeline | LineagePipeline | UsagePipeline | TestPipeline | AutoClassificationPipeline
+)
 
 
 @dataclass(frozen=True)

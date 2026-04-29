@@ -32,8 +32,10 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -47,7 +49,7 @@ class StepStatus:
     failures: list[dict] = field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, step: dict[str, Any]) -> "StepStatus":
+    def from_dict(cls, step: dict[str, Any]) -> StepStatus:
         return cls(
             name=str(step["name"]),
             records=int(step["records"] or 0),
@@ -67,7 +69,7 @@ class Status:
     steps: list[StepStatus]
 
     @classmethod
-    def from_json(cls, path: Path) -> "Status":
+    def from_json(cls, path: Path) -> Status:
         data: dict[str, Any] = json.loads(path.read_text())
         return cls(
             pipeline_type=str(data["pipeline_type"]),

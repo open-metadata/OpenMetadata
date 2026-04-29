@@ -292,7 +292,7 @@ def create_dbt_workflow_config(dbt_project_path: Path, om_config: OpenMetadataDB
     return config  # noqa: RET504
 
 
-def run_ingest_dbt(dbt_project_path: Path, status_file: Optional[Path] = None) -> None:
+def run_ingest_dbt(dbt_project_path: Path, status_file: Path | None = None) -> None:
     """
     Run the dbt artifacts ingestion workflow from a dbt project path
 

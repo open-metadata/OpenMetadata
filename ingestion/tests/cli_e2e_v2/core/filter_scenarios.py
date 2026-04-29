@@ -43,7 +43,7 @@ class FilterScenario:
 
 
 def expected_tables_for(
-    scenario: "FilterScenario",
+    scenario: FilterScenario,
     mapping: dict[str, list[str] | None],
     *,
     connector: str,

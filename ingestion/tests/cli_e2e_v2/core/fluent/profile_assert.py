@@ -17,14 +17,16 @@ names; an unknown kwarg raises so a typo doesn't silently pass.
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from metadata.generated.schema.entity.data.table import Column, Table
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 
 from .._om_compat import unwrap_root_list
 from .eventually import EventuallyRunner
+
+if TYPE_CHECKING:
+    from metadata.generated.schema.entity.data.table import Column, Table
+    from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 class NumericAssert:
@@ -70,7 +72,7 @@ class ColumnProfileAssert:
         self._column_name = column_name
         self._eventually = runner
 
-    def has_metrics(self, **expected: Any) -> "ColumnProfileAssert":
+    def has_metrics(self, **expected: Any) -> ColumnProfileAssert:
         """Assert each given metric matches the column's actual profile.
 
         Unknown kwargs (typos / fields the OM Pydantic model doesn't
@@ -125,7 +127,7 @@ class ProfileAssert:
         self._fqn = table_fqn
         self._eventually = EventuallyRunner()
 
-    def eventually(self, timeout: int = 60) -> "ProfileAssert":
+    def eventually(self, timeout: int = 60) -> ProfileAssert:
         self._eventually.arm(timeout)
         return self
 

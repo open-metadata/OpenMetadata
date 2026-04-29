@@ -16,9 +16,13 @@ references at subprocess load time via os.path.expandvars.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..core.config.builder import WorkflowConfig
 from ..core.config.env import Env
-from ..core.config.server import ServerConfig
+
+if TYPE_CHECKING:
+    from ..core.config.server import ServerConfig
 
 
 def mysql_service_name(session_uuid: str, variant: str = "") -> str:

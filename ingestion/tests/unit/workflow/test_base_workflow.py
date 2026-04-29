@@ -138,7 +138,7 @@ class OkWorkflow(IngestionWorkflow):
 
     def set_steps(self):
         self.source = SimpleSource()
-        self.steps: Tuple[Step] = (OkSink(),)
+        self.steps: tuple[Step] = (OkSink(),)
 
 
 class BrokenWorkflow(IngestionWorkflow):

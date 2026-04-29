@@ -15,11 +15,14 @@ underlying client directly.
 
 from __future__ import annotations
 
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from typing import TYPE_CHECKING
 
 from .service_assert import ServiceAssert
 from .stored_procedure_assert import StoredProcedureAssert
 from .table_assert import TableAssert
+
+if TYPE_CHECKING:
+    from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 class OmClient:

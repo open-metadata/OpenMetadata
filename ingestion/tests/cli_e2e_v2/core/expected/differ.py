@@ -21,7 +21,8 @@ column[qux].dataType`) for readability in pytest failure output.
 from __future__ import annotations
 
 import re
-from typing import Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -32,7 +33,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 
 from .._om_compat import unwrap_root_list
-from ..fluent.om_client import OmClient
 from ..source.types import Diff, DiffKind
 from .types import (
     ExpectedColumn,
@@ -44,8 +44,11 @@ from .types import (
     MatchMode,
 )
 
+if TYPE_CHECKING:
+    from ..fluent.om_client import OmClient
 
-class StructuralMismatch(AssertionError):
+
+class StructuralMismatch(AssertionError):  # noqa: N818  (intentional API surface — public exception name)
     """Aggregate assertion error carrying all collected diffs.
 
     Renders with a summary header (counts by category) and path-sorted body

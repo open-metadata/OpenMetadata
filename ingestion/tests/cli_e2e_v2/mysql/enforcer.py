@@ -13,12 +13,16 @@ only what Core doesn't model:
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import URL, Connection
 
-from ..core.source.sql import SqlSourceBaseline, StoredProcedureDefinition
 from ..core.source.sql_enforcer import SqlBaselineEnforcer
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import URL, Connection
+
+    from ..core.source.sql import SqlSourceBaseline, StoredProcedureDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +35,7 @@ class MySqlEnforcer(SqlBaselineEnforcer):
     )
 
     @classmethod
-    def from_url(cls, url: str | URL, baseline: SqlSourceBaseline) -> "MySqlEnforcer":
+    def from_url(cls, url: str | URL, baseline: SqlSourceBaseline) -> MySqlEnforcer:
         """Construct with a SQLAlchemy engine built from a connection URL."""
         return cls(create_engine(url), baseline)
 

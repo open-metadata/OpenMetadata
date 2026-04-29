@@ -14,6 +14,8 @@ in practice; polling chains off TableAssert.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, ClassVar
+
 from metadata.generated.schema.entity.data.table import (
     Column,
     ConstraintType,
@@ -21,13 +23,15 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableConstraint,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 
 from .._om_compat import unwrap_root_list
 from .entity_assert import EntityAssert
 from .lineage_assert import LineageAssert
 from .profile_assert import ProfileAssert
+
+if TYPE_CHECKING:
+    from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def _fk_matches(
@@ -61,11 +65,11 @@ class TableAssert(EntityAssert[Table]):
     """Fluent assertions on a single Table identified by FQN."""
 
     _entity_cls = Table
-    _default_fields = ["tags", "owners", "columns"]
+    _default_fields: ClassVar[list[str]] = ["tags", "owners", "columns"]
 
     # --- terminals ----------------------------------------------------
 
-    def has_tag(self, fqn: str) -> "TableAssert":
+    def has_tag(self, fqn: str) -> TableAssert:
         def _check() -> None:
             table = self._fetch()
             actual = {model_str(t.tagFQN) for t in unwrap_root_list(table.tags)}
@@ -75,7 +79,7 @@ class TableAssert(EntityAssert[Table]):
         self._eventually.run(_check, name=f"has_tag({fqn})")
         return self
 
-    def has_owner(self, name: str) -> "TableAssert":
+    def has_owner(self, name: str) -> TableAssert:
         def _check() -> None:
             table = self._fetch()
             actual = {o.name for o in unwrap_root_list(table.owners)}
@@ -90,7 +94,7 @@ class TableAssert(EntityAssert[Table]):
         column: str,
         referenced_table: str,
         referenced_column: str,
-    ) -> "TableAssert":
+    ) -> TableAssert:
         """Assert the table carries a FOREIGN_KEY TableConstraint on `column`
         pointing at `referenced_table.referenced_column`.
 
@@ -114,7 +118,7 @@ class TableAssert(EntityAssert[Table]):
         )
         return self
 
-    def has_schema_definition_containing(self, text: str) -> "TableAssert":
+    def has_schema_definition_containing(self, text: str) -> TableAssert:
         """Assert `schemaDefinition` (raw DDL stored on the entity) contains
         `text` — case-insensitive substring match.
 
@@ -143,7 +147,7 @@ class TableAssert(EntityAssert[Table]):
         self._eventually.run(_check, name=f"has_schema_definition_containing({text!r})")
         return self
 
-    def is_soft_deleted(self) -> "TableAssert":
+    def is_soft_deleted(self) -> TableAssert:
         """Assert the table exists in OM but is marked `deleted=True`.
 
         Soft-deleted entities are filtered out of `get_by_name` by default.
@@ -159,7 +163,7 @@ class TableAssert(EntityAssert[Table]):
         self._eventually.run(_check, name="is_soft_deleted")
         return self
 
-    def is_not_deleted(self) -> "TableAssert":
+    def is_not_deleted(self) -> TableAssert:
         """Assert the table exists in OM with `deleted=False`."""
 
         def _check() -> None:
@@ -185,7 +189,7 @@ class TableAssert(EntityAssert[Table]):
 
     # --- descent into column / namespaces -----------------------------
 
-    def column(self, name: str) -> "ColumnAssert":
+    def column(self, name: str) -> ColumnAssert:
         return ColumnAssert(self._om, self._fqn, name)
 
     @property
@@ -218,7 +222,7 @@ class ColumnAssert:
                 return c
         raise AssertionError(f"Column {self._column_name!r} not found on table {self._table_fqn}")
 
-    def has_tag(self, fqn: str) -> "ColumnAssert":
+    def has_tag(self, fqn: str) -> ColumnAssert:
         column = self._fetch_column()
         actual = {model_str(t.tagFQN) for t in unwrap_root_list(column.tags)}
         if fqn not in actual:
@@ -227,7 +231,7 @@ class ColumnAssert:
             )
         return self
 
-    def has_no_tag(self, fqn: str) -> "ColumnAssert":
+    def has_no_tag(self, fqn: str) -> ColumnAssert:
         """Assert the column does NOT carry the given tag.
 
         Used as the negative complement to `has_tag` — guards against
@@ -244,7 +248,7 @@ class ColumnAssert:
             )
         return self
 
-    def has_type(self, data_type: DataType) -> "ColumnAssert":
+    def has_type(self, data_type: DataType) -> ColumnAssert:
         column = self._fetch_column()
         if column.dataType != data_type:
             raise AssertionError(
@@ -252,7 +256,7 @@ class ColumnAssert:
             )
         return self
 
-    def has_description_containing(self, text: str) -> "ColumnAssert":
+    def has_description_containing(self, text: str) -> ColumnAssert:
         column = self._fetch_column()
         desc = model_str(column.description) if column.description else ""
         if text not in desc:

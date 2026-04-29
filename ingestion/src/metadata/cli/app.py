@@ -16,7 +16,6 @@ Profiler utility for the metadata CLI
 import sys
 import traceback
 from pathlib import Path
-from typing import Optional
 
 from metadata.cli.common import execute_workflow
 from metadata.config.common import load_config_file
@@ -26,7 +25,7 @@ from metadata.workflow.application import ApplicationWorkflow
 logger = cli_logger()
 
 
-def run_app(config_path: Path, status_file: Optional[Path] = None) -> None:
+def run_app(config_path: Path, status_file: Path | None = None) -> None:
     """
     Run the application workflow from a config path
     to a JSON or YAML file

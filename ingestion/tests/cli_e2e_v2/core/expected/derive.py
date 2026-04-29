@@ -15,13 +15,9 @@ own hand-authored list into `derive_expected_service`.
 
 from __future__ import annotations
 
-from sqlalchemy import MetaData
-from sqlalchemy.schema import Column as SqlColumn
+from typing import TYPE_CHECKING
 
 from metadata.generated.schema.entity.data.table import Constraint
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 
 from .type_map import TypeMap, resolve_om_type
 from .types import (
@@ -32,6 +28,14 @@ from .types import (
     ExpectedStoredProcedure,
     ExpectedTable,
 )
+
+if TYPE_CHECKING:
+    from sqlalchemy import MetaData
+    from sqlalchemy.schema import Column as SqlColumn
+
+    from metadata.generated.schema.entity.services.databaseService import (
+        DatabaseServiceType,
+    )
 
 
 def derive_expected_tables(metadata: MetaData, type_map: TypeMap) -> list[ExpectedTable]:

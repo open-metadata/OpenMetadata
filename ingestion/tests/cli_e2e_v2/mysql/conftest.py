@@ -22,19 +22,24 @@ from the top-level conftest.py. The heavy lifting lives in
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING
 
 import pytest
-from sqlalchemy.engine import Engine
 
-from ..core.config.builder import WorkflowConfig
 from ..core.config.pipelines import MetadataPipeline
-from ..core.config.server import ServerConfig
-from ..core.expected.types import ExpectedService
 from ..core.fixtures import metadata_ingest_once, run_source_baseline
 from .baseline import MYSQL_BASELINE, get_admin_engine, get_policy
 from .connector import build_mysql_config, mysql_service_name
 from .expected import mysql_expected
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from sqlalchemy.engine import Engine
+
+    from ..core.config.builder import WorkflowConfig
+    from ..core.config.server import ServerConfig
+    from ..core.expected.types import ExpectedService
 
 
 @pytest.fixture(scope="session")

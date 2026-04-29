@@ -106,7 +106,7 @@ class ServerConfig:
     token_source: TokenSource
 
     @classmethod
-    def from_env(cls) -> "ServerConfig":
+    def from_env(cls) -> ServerConfig:
         """Resolve server URL + JWT for the session — PURE: no side effects.
 
         OM_JWT_TOKEN, if exported, wins (escape hatch for hermetic CI or

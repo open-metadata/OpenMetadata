@@ -19,7 +19,7 @@ class StoredProcedureAssert(EntityAssert[StoredProcedure]):
 
     _entity_cls = StoredProcedure
 
-    def has_code_containing(self, text: str) -> "StoredProcedureAssert":
+    def has_code_containing(self, text: str) -> StoredProcedureAssert:
         """Assert the stored procedure's SQL body contains the given substring."""
 
         def _check() -> None:

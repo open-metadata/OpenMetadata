@@ -14,8 +14,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
@@ -27,7 +26,11 @@ from .pipelines import (
     pipeline_identifier,
     source_type_suffix_for,
 )
-from .server import ServerConfig
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from .server import ServerConfig
 
 _FILTER_KEYS: tuple[str, ...] = (
     "databaseFilterPattern",
@@ -74,7 +77,7 @@ class WorkflowConfig:
         service_name: str,
         service_connection: dict[str, Any],
         server: ServerConfig,
-    ) -> "WorkflowConfig":
+    ) -> WorkflowConfig:
         """Build a base config without any pipeline selected.
 
         Callers pass `service_connection` as a plain dict (either model_dump'd
@@ -93,7 +96,7 @@ class WorkflowConfig:
         return cls(_doc=doc, _options=None)
 
     # --- pipeline transition --------------------------------------------
-    def pipeline(self, options: PipelineOptions) -> "WorkflowConfig":
+    def pipeline(self, options: PipelineOptions) -> WorkflowConfig:
         """Transition to a concrete pipeline.
 
         `options` is one of the OM-generated Pydantic pipeline models
@@ -139,7 +142,7 @@ class WorkflowConfig:
         schemas_exclude: list[str] | None = None,
         tables_include: list[str] | None = None,
         tables_exclude: list[str] | None = None,
-    ) -> "WorkflowConfig":
+    ) -> WorkflowConfig:
         """Append include/exclude patterns at database, schema, or table level.
 
         Multiple calls MERGE (append), not replace. Include AND exclude at the

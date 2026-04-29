@@ -22,11 +22,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import TYPE_CHECKING
 
-from metadata.generated.schema.entity.data.table import Constraint, DataType
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
+if TYPE_CHECKING:
+    from metadata.generated.schema.entity.data.table import Constraint, DataType
+    from metadata.generated.schema.entity.services.databaseService import (
+        DatabaseServiceType,
+    )
 
 
 class MatchMode(Enum):

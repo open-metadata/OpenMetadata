@@ -15,11 +15,9 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from sqlalchemy import bindparam, inspect, text
-from sqlalchemy.engine import Connection, Engine
-from sqlalchemy.schema import Table
 
 from .sql import (
     SqlSourceBaseline,
@@ -28,6 +26,10 @@ from .sql import (
     ViewDefinition,
 )
 from .types import BaselineSpec, Diff, DiffKind
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import Connection, Engine
+    from sqlalchemy.schema import Table
 
 logger = logging.getLogger(__name__)
 

@@ -16,7 +16,6 @@ Data quality utility for the metadata CLI
 import sys
 import traceback
 from pathlib import Path
-from typing import Optional
 
 from metadata.cli.common import execute_workflow
 from metadata.config.common import load_config_file
@@ -29,7 +28,7 @@ from metadata.workflow.workflow_init_error_handler import WorkflowInitErrorHandl
 logger = cli_logger()
 
 
-def run_test(config_path: Path, status_file: Optional[Path] = None) -> None:
+def run_test(config_path: Path, status_file: Path | None = None) -> None:
     """
     Run the Data Quality Test Suites workflow from a config path
     to a JSON or YAML file
