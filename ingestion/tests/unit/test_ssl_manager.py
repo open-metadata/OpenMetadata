@@ -90,9 +90,7 @@ class KafkaSourceSSLTest(TestCase):
             self.assertIsNone(kafka_source.ssl_manager)
             ssl_manager_cls.assert_not_called()
 
-    @patch(
-        "metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection")
     def test_init_with_ssl_configures_schema_registry(self, test_connection):
         test_connection.return_value = True
         config_with_ssl = WorkflowSource(
@@ -148,18 +146,19 @@ class KafkaSourceSSLTest(TestCase):
 
 
 class RedpandaSourceSSLTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection")
     def test_init_without_ssl_does_not_instantiate_ssl_manager(self, test_connection):
         test_connection.return_value = True
         config = WorkflowSource(
-            type="redpanda", serviceName="local_redpanda", serviceConnection={
-                    "config": {
-                        "type": "Redpanda",
-                        "bootstrapServers": "localhost:9092",
-                    }
-                }, sourceConfig={"config": {"type": "MessagingMetadata"}}
+            type="redpanda",
+            serviceName="local_redpanda",
+            serviceConnection={
+                "config": {
+                    "type": "Redpanda",
+                    "bootstrapServers": "localhost:9092",
+                }
+            },
+            sourceConfig={"config": {"type": "MessagingMetadata"}},
         )
         metadata = OpenMetadata(
             OpenMetadataConnection(
@@ -173,23 +172,24 @@ class RedpandaSourceSSLTest(TestCase):
             self.assertIsNone(redpanda_source.ssl_manager)
             ssl_manager_cls.assert_not_called()
 
-    @patch(
-        "metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection")
     def test_init_with_ssl_configures_schema_registry(self, test_connection):
         test_connection.return_value = True
         config_with_ssl = WorkflowSource(
-            type="redpanda", serviceName="local_redpanda", serviceConnection={
-                    "config": {
-                        "type": "Redpanda",
-                        "bootstrapServers": "localhost:9092",
-                        "schemaRegistrySSL": {
-                            "caCertificate": "caCertificateData",
-                            "sslKey": "sslKeyData",
-                            "sslCertificate": "sslCertificateData",
-                        },
+            type="redpanda",
+            serviceName="local_redpanda",
+            serviceConnection={
+                "config": {
+                    "type": "Redpanda",
+                    "bootstrapServers": "localhost:9092",
+                    "schemaRegistrySSL": {
+                        "caCertificate": "caCertificateData",
+                        "sslKey": "sslKeyData",
+                        "sslCertificate": "sslCertificateData",
                     },
-                }, sourceConfig={"config": {"type": "MessagingMetadata"}}
+                },
+            },
+            sourceConfig={"config": {"type": "MessagingMetadata"}},
         )
         metadata = OpenMetadata(
             OpenMetadataConnection(
@@ -214,40 +214,35 @@ class RedpandaSourceSSLTest(TestCase):
             "sslCertificateData",
         )
         self.assertIsNotNone(
-            redpanda_source_with_ssl.service_connection.schemaRegistryConfig.get(
-                "ssl.ca.location"
-            ),
+            redpanda_source_with_ssl.service_connection.schemaRegistryConfig.get("ssl.ca.location"),
         )
         self.assertIsNotNone(
-            redpanda_source_with_ssl.service_connection.schemaRegistryConfig.get(
-                "ssl.key.location"
-            ),
+            redpanda_source_with_ssl.service_connection.schemaRegistryConfig.get("ssl.key.location"),
         )
         self.assertIsNotNone(
-            redpanda_source_with_ssl.service_connection.schemaRegistryConfig.get(
-                "ssl.certificate.location"
-            ),
+            redpanda_source_with_ssl.service_connection.schemaRegistryConfig.get("ssl.certificate.location"),
         )
         redpanda_source_with_ssl.ssl_manager.cleanup_temp_files()
 
-    @patch(
-        "metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection")
     def test_init_with_admin_api_ssl_wires_client(self, test_connection):
         test_connection.return_value = True
         config_with_admin_ssl = WorkflowSource(
-            type="redpanda", serviceName="local_redpanda", serviceConnection={
-                    "config": {
-                        "type": "Redpanda",
-                        "bootstrapServers": "localhost:9092",
-                        "redpandaAdminApiUrl": "https://admin.example:9644",
-                        "adminApiSSL": {
-                            "caCertificate": "caCertificateData",
-                            "sslKey": "sslKeyData",
-                            "sslCertificate": "sslCertificateData",
-                        },
+            type="redpanda",
+            serviceName="local_redpanda",
+            serviceConnection={
+                "config": {
+                    "type": "Redpanda",
+                    "bootstrapServers": "localhost:9092",
+                    "redpandaAdminApiUrl": "https://admin.example:9644",
+                    "adminApiSSL": {
+                        "caCertificate": "caCertificateData",
+                        "sslKey": "sslKeyData",
+                        "sslCertificate": "sslCertificateData",
                     },
-                }, sourceConfig={"config": {"type": "MessagingMetadata"}}
+                },
+            },
+            sourceConfig={"config": {"type": "MessagingMetadata"}},
         )
         metadata = OpenMetadata(
             OpenMetadataConnection(
