@@ -17,6 +17,8 @@ import {
   AccordionHeader,
   AccordionItem,
   AccordionPanel,
+  Button,
+  FileTrigger,
 } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import {
@@ -28,9 +30,15 @@ import {
 } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Check, Copy01, UploadCloud02, X } from '@untitledui/icons';
-import { Button, Card, Typography, Upload } from 'antd';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  DragEvent as ReactDragEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 
 import classNames from 'classnames';
@@ -110,6 +118,11 @@ import {
 import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
 import SsoRolesSelectField from './SsoRolesSelectField';
 
+const preventDefaultDrag = (event: ReactDragEvent<HTMLElement>) => {
+  event.preventDefault();
+  event.stopPropagation();
+};
+
 interface MetadataUploadStatusCardProps {
   status: 'success' | 'error';
   fileName: string;
@@ -141,20 +154,20 @@ const MetadataUploadStatusCard = ({
             <X className="text-white" size={16} />
           )}
         </div>
-        <Typography.Text className="text-grey-body text-sm font-medium">
+        <span className="text-grey-body text-sm font-medium">
           {t(
             isSuccess
               ? 'message.metadata-xml-file-parsed-success'
               : 'message.metadata-xml-file-parsed-error',
             { fileName }
           )}
-        </Typography.Text>
+        </span>
       </div>
       <Button
+        color="link-color"
         data-testid="change-metadata-xml-btn"
-        size="small"
-        type="link"
-        onClick={onChangeFile}>
+        size="sm"
+        onPress={onChangeFile}>
         {t('label.change-entity', { entity: t('label.file') })}
       </Button>
     </div>
@@ -197,23 +210,17 @@ const CopyableUrlField = ({ label, value, testId }: CopyableUrlFieldProps) => {
 
   return (
     <div className="copyable-url-field" data-testid={testId}>
-      {label && (
-        <Typography.Text className="copyable-url-label text-xs">
-          {label}
-        </Typography.Text>
-      )}
+      {label && <span className="copyable-url-label text-xs">{label}</span>}
       <div className="copyable-url-value-wrapper">
-        <Typography.Text
-          className="copyable-url-value"
-          data-testid={`${testId}-value`}>
+        <span className="copyable-url-value" data-testid={`${testId}-value`}>
           {value}
-        </Typography.Text>
+        </span>
         <Button
+          color="tertiary"
           data-testid={`${testId}-copy`}
-          icon={<Copy01 size={14} />}
-          size="small"
-          type="text"
-          onClick={handleCopy}>
+          iconLeading={Copy01}
+          size="sm"
+          onPress={handleCopy}>
           {t('label.copy')}
         </Button>
       </div>
@@ -1125,14 +1132,14 @@ const SSOConfigurationFormRJSF = ({
   // The parent component (SettingsSso) will handle provider selection
   if (showProviderSelector && !onChangeProvider) {
     return (
-      <Card
+      <div
         className="sso-provider-selection flex-col"
         data-testid="sso-configuration-form-card">
         <ProviderSelector
           selectedProvider={currentProvider as AuthProvider}
           onProviderSelect={handleProviderSelect}
         />
-      </Card>
+      </div>
     );
   }
 
@@ -1149,12 +1156,12 @@ const SSOConfigurationFormRJSF = ({
         <div
           className="saml-idp-info-banner m-b-md"
           data-testid="saml-acs-info-banner">
-          <Typography.Text className="font-medium">
+          <span className="font-medium">
             {t('label.register-with-identity-provider')}
-          </Typography.Text>
-          <Typography.Text className="text-grey-muted text-xs d-block m-b-sm">
+          </span>
+          <span className="text-grey-muted text-xs d-block m-b-sm">
             {t('message.register-with-idp-info')}
-          </Typography.Text>
+          </span>
           <CopyableUrlField
             label={t('label.acs-url')}
             testId="saml-acs-url"
@@ -1170,46 +1177,52 @@ const SSOConfigurationFormRJSF = ({
       {isEditMode && showForm && isSamlProvider && (
         <div className="m-b-md">
           {metadataUploadStatus === null && (
-            <Upload.Dragger
-              accept=".xml,application/xml,text/xml"
-              beforeUpload={(file) => {
-                const dataTransfer = new DataTransfer();
-                dataTransfer.items.add(file);
-                handleMetadataFileUpload(dataTransfer.files);
-
-                return false;
-              }}
-              className="saml-metadata-upload-drop-zone"
-              data-testid="file-uploader"
-              multiple={false}
-              showUploadList={false}>
+            <FileTrigger
+              acceptedFileTypes={['.xml', 'application/xml', 'text/xml']}
+              onSelect={(files) => {
+                if (files) {
+                  handleMetadataFileUpload(files);
+                }
+              }}>
               <div
-                className="flex flex-center flex-column gap-1"
-                data-testid="file-upload-drop-zone">
+                className="saml-metadata-upload-drop-zone"
+                data-testid="file-uploader"
+                role="button"
+                tabIndex={0}
+                onDragEnter={preventDefaultDrag}
+                onDragLeave={preventDefaultDrag}
+                onDragOver={preventDefaultDrag}
+                onDrop={(event) => {
+                  preventDefaultDrag(event);
+                  if (event.dataTransfer.files?.length) {
+                    handleMetadataFileUpload(event.dataTransfer.files);
+                  }
+                }}>
                 <div
-                  className="flex flex-shrink items-center justify-center bg-white border border-radius-xs"
-                  style={{ width: '40px', height: '40px' }}>
-                  <UploadCloud02 className="text-grey-600" size={20} />
+                  className="flex flex-center flex-column gap-1"
+                  data-testid="file-upload-drop-zone">
+                  <div
+                    className="flex flex-shrink items-center justify-center bg-white border border-radius-xs"
+                    style={{ width: '40px', height: '40px' }}>
+                    <UploadCloud02 className="text-grey-600" size={20} />
+                  </div>
+                  <div
+                    className="flex align-center flex-wrap gap-4 justify-center"
+                    style={{ maxWidth: '220px' }}>
+                    <span className="font-medium">
+                      {t('label.click-to')}{' '}
+                      <span className="font-semibold sso-upload-link">
+                        {t('label.upload-lowercase')}
+                      </span>{' '}
+                      {t('label.or-drag-and-drop-an-xml-file-here')}
+                    </span>
+                  </div>
+                  <span className="text-grey-muted text-xs">
+                    {t('message.upload-saml-metadata-xml-description')}
+                  </span>
                 </div>
-                <div
-                  className="flex align-center flex-wrap gap-4 justify-center"
-                  style={{ maxWidth: '220px' }}>
-                  <Typography.Text className="font-medium">
-                    {t('label.click-to')}{' '}
-                    <Button
-                      className="h-auto p-0 font-semibold"
-                      size="small"
-                      type="link">
-                      {t('label.upload-lowercase')}
-                    </Button>{' '}
-                    {t('label.or-drag-and-drop-an-xml-file-here')}
-                  </Typography.Text>
-                </div>
-                <Typography.Text className="text-grey-muted text-xs">
-                  {t('message.upload-saml-metadata-xml-description')}
-                </Typography.Text>
               </div>
-            </Upload.Dragger>
+            </FileTrigger>
           )}
           {metadataUploadStatus !== null && (
             <MetadataUploadStatusCard
@@ -1274,23 +1287,21 @@ const SSOConfigurationFormRJSF = ({
         <div
           className="oidc-callback-display m-t-md"
           data-testid="oidc-callback-url-display">
-          <Typography.Text className="font-medium">
-            {t('label.callback-url')}
-          </Typography.Text>
+          <span className="font-medium">{t('label.callback-url')}</span>
           <CopyableUrlField
             label=""
             testId="oidc-callback-url"
             value={callbackUrl}
           />
-          <Typography.Text className="text-grey-muted text-xs d-block">
+          <span className="text-grey-muted text-xs d-block">
             {t('message.oidc-callback-info')}
-          </Typography.Text>
+          </span>
         </div>
       )}
     </>
   );
 
-  // If hideBorder is true, render form with ResizablePanels but without Card wrapper and header
+  // If hideBorder is true, render form with ResizablePanels but without container wrapper and header
   if (hideBorder) {
     return (
       <>
@@ -1315,30 +1326,33 @@ const SSOConfigurationFormRJSF = ({
                 {isEditMode && (
                   <div className="form-actions-bottom">
                     <Button
-                      className="cancel-sso-configuration text-md"
+                      className="cancel-sso-configuration"
+                      color="link-color"
                       data-testid="cancel-sso-configuration"
-                      type="link"
-                      onClick={handleCancelClick}>
+                      size="md"
+                      onPress={handleCancelClick}>
                       {t('label.cancel')}
                     </Button>
                     {currentProvider && (
                       <Button
-                        className="test-login-sso-configuration text-md"
+                        className="test-login-sso-configuration"
+                        color="secondary"
                         data-testid="test-login-button"
-                        disabled={isLoading || isTestingLogin}
-                        loading={isTestingLogin}
-                        type="default"
-                        onClick={handleTestLogin}>
+                        isDisabled={isLoading || isTestingLogin}
+                        isLoading={isTestingLogin}
+                        size="md"
+                        onPress={handleTestLogin}>
                         {t('label.test-login')}
                       </Button>
                     )}
                     <Button
-                      className="save-sso-configuration text-md"
+                      className="save-sso-configuration"
+                      color="primary"
                       data-testid="save-sso-configuration"
-                      disabled={isLoading || isTestingLogin}
-                      loading={isLoading}
-                      type="primary"
-                      onClick={handleSave}>
+                      isDisabled={isLoading || isTestingLogin}
+                      isLoading={isLoading}
+                      size="md"
+                      onPress={handleSave}>
                       {t('label.save')}
                     </Button>
                   </div>
@@ -1367,10 +1381,9 @@ const SSOConfigurationFormRJSF = ({
   }
 
   const wrappedFormContent = (
-    <Card
+    <div
       className="sso-configuration-form-card flex-col p-0"
       data-testid="sso-configuration-form-card">
-      {/* SSO Provider Header */}
       {currentProvider && (
         <div className="sso-provider-form-header flex items-center justify-between">
           <div className="flex align-items-center gap-2 flex items-center">
@@ -1384,22 +1397,23 @@ const SSOConfigurationFormRJSF = ({
                 />
               )}
             </div>
-            <Typography.Title className="m-0 text-md">
+            <h3 className="sso-provider-form-title m-0 text-md">
               {getProviderDisplayName(currentProvider)} {t('label.set-up')}
-            </Typography.Title>
+            </h3>
           </div>
           {hasExistingConfig && onChangeProvider && (
             <Button
+              color="link-color"
               data-testid="change-provider-button"
-              type="link"
-              onClick={onChangeProvider}>
+              size="md"
+              onPress={onChangeProvider}>
               {t('label.change-provider')}
             </Button>
           )}
         </div>
       )}
       {formContent}
-    </Card>
+    </div>
   );
 
   return (
@@ -1426,30 +1440,33 @@ const SSOConfigurationFormRJSF = ({
               {isEditMode && (
                 <div className="form-actions-bottom">
                   <Button
-                    className="cancel-sso-configuration text-md"
+                    className="cancel-sso-configuration"
+                    color="link-color"
                     data-testid="cancel-sso-configuration"
-                    type="link"
-                    onClick={handleCancelClick}>
+                    size="md"
+                    onPress={handleCancelClick}>
                     {t('label.cancel')}
                   </Button>
                   {currentProvider && (
                     <Button
-                      className="test-login-sso-configuration text-md"
+                      className="test-login-sso-configuration"
+                      color="secondary"
                       data-testid="test-login-button"
-                      disabled={isLoading || isTestingLogin}
-                      loading={isTestingLogin}
-                      type="default"
-                      onClick={handleTestLogin}>
+                      isDisabled={isLoading || isTestingLogin}
+                      isLoading={isTestingLogin}
+                      size="md"
+                      onPress={handleTestLogin}>
                       {t('label.test-login')}
                     </Button>
                   )}
                   <Button
-                    className="save-sso-configuration text-md"
+                    className="save-sso-configuration"
+                    color="primary"
                     data-testid="save-sso-configuration"
-                    disabled={isLoading || isTestingLogin}
-                    loading={isLoading}
-                    type="primary"
-                    onClick={handleSave}>
+                    isDisabled={isLoading || isTestingLogin}
+                    isLoading={isLoading}
+                    size="md"
+                    onPress={handleSave}>
                     {t('label.save')}
                   </Button>
                 </div>

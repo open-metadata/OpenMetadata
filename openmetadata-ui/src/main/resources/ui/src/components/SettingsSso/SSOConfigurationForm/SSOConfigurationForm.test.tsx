@@ -80,6 +80,33 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </div>
   ),
+  Button: ({
+    children,
+    onPress,
+    isDisabled,
+    isLoading,
+    iconLeading: _iconLeading,
+    color: _color,
+    size: _size,
+    ...rest
+  }: React.PropsWithChildren<{
+    onPress?: () => void;
+    isDisabled?: boolean;
+    isLoading?: boolean;
+    iconLeading?: unknown;
+    color?: string;
+    size?: string;
+  }> &
+    Record<string, unknown>) => (
+    <button
+      disabled={isDisabled || isLoading}
+      type="button"
+      {...rest}
+      onClick={onPress}>
+      {children}
+    </button>
+  ),
+  FileTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 // Mock SSOUtils - use actual implementations where needed
@@ -2080,9 +2107,9 @@ describe('SSOConfigurationForm', () => {
         ).toBeInTheDocument();
       });
 
-      expect(
-        screen.getAllByTestId('sso-advanced-fields-toggle')
-      ).toHaveLength(1);
+      expect(screen.getAllByTestId('sso-advanced-fields-toggle')).toHaveLength(
+        1
+      );
       expect(
         screen.getByTestId('sso-advanced-fields-panel')
       ).toBeInTheDocument();
