@@ -25,6 +25,7 @@ import org.openmetadata.service.security.CspNonceHandler;
 public class IndexResource {
   private static final String RAW_INDEX_HTML;
   private static volatile String configProcessedHtml;
+  private static volatile String configuredBasePath = "/";
 
   static {
     try (InputStream inputStream = IndexResource.class.getResourceAsStream("/assets/index.html")) {
@@ -41,6 +42,8 @@ public class IndexResource {
   }
 
   public static void initialize(OpenMetadataApplicationConfig catalogConfig) {
+    String basePath = catalogConfig.getBasePath();
+    configuredBasePath = (basePath != null && !basePath.isEmpty()) ? basePath : "/";
     SentryConfiguration sentryConfig = catalogConfig.getSentryConfiguration();
     String clusterName = catalogConfig.getClusterName();
     configProcessedHtml =
@@ -64,9 +67,13 @@ public class IndexResource {
   }
 
   public static String getIndexFile(String basePath) {
-    LOG.debug("IndexResource.getIndexFile called with basePath: [{}]", basePath);
+    String html = configProcessedHtml;
+    if (html == null) {
+      throw new IllegalStateException("IndexResource not initialized. Call initialize() first.");
+    }
 
-    return configProcessedHtml.replace("${basePath}", basePath);
+    LOG.debug("IndexResource.getIndexFile called with basePath: [{}]", basePath);
+    return html.replace("${basePath}", basePath);
   }
 
   public static String getIndexFile(String basePath, String cspNonce) {
@@ -81,6 +88,6 @@ public class IndexResource {
   @Produces(MediaType.TEXT_HTML)
   public Response getIndex(@Context HttpServletRequest request) {
     final String cspNonce = (String) request.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE);
-    return Response.ok(getIndexFile("/", cspNonce)).build();
+    return Response.ok(getIndexFile(configuredBasePath, cspNonce)).build();
   }
 }
