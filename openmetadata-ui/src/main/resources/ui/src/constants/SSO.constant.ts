@@ -63,6 +63,9 @@ export const OIDC_SPECIFIC_FIELDS = [
   'clientId',
   'authority',
   'publicKeyUrls',
+  'discoveryUri',
+  'emailClaim',
+  'oidcConfiguration',
 ];
 
 export const NON_OIDC_SPECIFIC_FIELDS = [
@@ -81,6 +84,8 @@ export const COMMON_UI_FIELDS = {
     'ui:title': 'Client Secret',
     'ui:widget': 'password',
     'ui:placeholder': 'Enter your client secret',
+    'ui:description':
+      'Recommended for more secure login. Leaving this blank configures a public client.',
   },
   oidcClientId: {
     'ui:title': 'OIDC Client ID',
@@ -90,6 +95,8 @@ export const COMMON_UI_FIELDS = {
     'ui:title': 'OIDC Client Secret',
     'ui:widget': 'password',
     'ui:placeholder': 'Enter your OIDC client secret',
+    'ui:description':
+      'Recommended for more secure login. Leaving this blank configures a public client.',
   },
   oidcScope: {
     'ui:title': 'OIDC Request Scopes',
@@ -367,21 +374,16 @@ export const OIDC_UI_SCHEMA = {
     scope: COMMON_UI_FIELDS.oidcScope,
     discoveryUri: COMMON_UI_FIELDS.oidcDiscoveryUri,
     useNonce: COMMON_UI_FIELDS.oidcUseNonce,
-    preferredJwsAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    preferredJwsAlgorithm: { 'ui:title': 'Preferred JWS Algorithm' },
     responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
     disablePkce: COMMON_UI_FIELDS.oidcDisablePkce,
     maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
     clientAuthenticationMethod: COMMON_UI_FIELDS.oidcClientAuthenticationMethod,
     tokenValidity: COMMON_UI_FIELDS.oidcTokenValidity,
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
-    tenant: COMMON_UI_FIELDS.oidcTenant,
+    tenant: { 'ui:widget': 'hidden', 'ui:hideError': true },
     serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
-    callbackUrl: {
-      'ui:title': 'OIDC Callback URL',
-      'ui:readonly': true,
-      'ui:help':
-        'Auto-generated callback URL. Copy this and register it as Redirect URI in your OIDC provider configuration.',
-    },
+    callbackUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
@@ -406,7 +408,7 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
     scope: COMMON_UI_FIELDS.oidcScope,
     discoveryUri: COMMON_UI_FIELDS.oidcDiscoveryUri,
     useNonce: COMMON_UI_FIELDS.oidcUseNonce,
-    preferredJwsAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    preferredJwsAlgorithm: { 'ui:title': 'Preferred JWS Algorithm' },
     responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
     disablePkce: COMMON_UI_FIELDS.oidcDisablePkce,
     maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
@@ -415,12 +417,7 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
     tenant: { 'ui:widget': 'hidden', 'ui:hideError': true },
     serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
-    callbackUrl: {
-      'ui:title': 'OIDC Callback URL',
-      'ui:readonly': true,
-      'ui:help':
-        'Auto-generated callback URL. Copy this and register it as Redirect URI in your OIDC provider configuration.',
-    },
+    callbackUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
@@ -443,21 +440,16 @@ export const AZURE_OAUTH_UI_SCHEMA = {
     scope: COMMON_UI_FIELDS.oidcScope,
     discoveryUri: COMMON_UI_FIELDS.oidcDiscoveryUri,
     useNonce: COMMON_UI_FIELDS.oidcUseNonce,
-    preferredJwsAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    preferredJwsAlgorithm: { 'ui:title': 'Preferred JWS Algorithm' },
     responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
     disablePkce: COMMON_UI_FIELDS.oidcDisablePkce,
     maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
     clientAuthenticationMethod: { 'ui:widget': 'hidden', 'ui:hideError': true },
     tokenValidity: COMMON_UI_FIELDS.oidcTokenValidity,
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
-    tenant: COMMON_UI_FIELDS.oidcTenant,
+    tenant: { 'ui:widget': 'hidden', 'ui:hideError': true },
     serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
-    callbackUrl: {
-      'ui:title': 'OIDC Callback URL',
-      'ui:readonly': true,
-      'ui:help':
-        'Auto-generated callback URL. Copy this and register it as Redirect URI in your OIDC provider configuration.',
-    },
+    callbackUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
@@ -480,7 +472,7 @@ export const OKTA_OAUTH_UI_SCHEMA = {
     scope: COMMON_UI_FIELDS.oidcScope,
     discoveryUri: COMMON_UI_FIELDS.oidcDiscoveryUri,
     useNonce: COMMON_UI_FIELDS.oidcUseNonce,
-    preferredJwsAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    preferredJwsAlgorithm: { 'ui:title': 'Preferred JWS Algorithm' },
     responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
     disablePkce: COMMON_UI_FIELDS.oidcDisablePkce,
     maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
@@ -489,12 +481,7 @@ export const OKTA_OAUTH_UI_SCHEMA = {
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
     tenant: { 'ui:widget': 'hidden', 'ui:hideError': true },
     serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
-    callbackUrl: {
-      'ui:title': 'OIDC Callback URL',
-      'ui:readonly': true,
-      'ui:help':
-        'Auto-generated callback URL. Copy this and register it as Redirect URI in your OIDC provider configuration.',
-    },
+    callbackUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
@@ -520,7 +507,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
       'ui:placeholder': GOOGLE_SSO_DEFAULTS.discoveryUri,
     },
     useNonce: COMMON_UI_FIELDS.oidcUseNonce,
-    preferredJwsAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    preferredJwsAlgorithm: { 'ui:title': 'Preferred JWS Algorithm' },
     responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
     disablePkce: COMMON_UI_FIELDS.oidcDisablePkce,
     maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
@@ -532,12 +519,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
     tenant: { 'ui:widget': 'hidden', 'ui:hideError': true },
     serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
-    callbackUrl: {
-      'ui:title': 'OIDC Callback URL',
-      'ui:readonly': true,
-      'ui:help':
-        'Auto-generated callback URL. Copy this and register it as Redirect URI in your OIDC provider configuration.',
-    },
+    callbackUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: {
@@ -868,6 +850,7 @@ const OIDC_CONFIDENTIAL_AUTH_ROOT: SSOSectionLayout = {
   jwtPrincipalClaims: 'advanced',
   jwtPrincipalClaimsMapping: 'advanced',
   jwtTeamClaimMapping: 'advanced',
+  emailClaim: 'advanced',
   enableAutoRedirect: 'advanced',
 };
 

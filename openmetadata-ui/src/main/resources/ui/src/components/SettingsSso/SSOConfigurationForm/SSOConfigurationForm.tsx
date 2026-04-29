@@ -48,7 +48,6 @@ import {
   AuthorizerConfiguration,
   getProviderFieldLayout,
   getSSOUISchema,
-  GOOGLE_SSO_DEFAULTS,
   hasAnyAdvancedFields,
   MAX_XML_SIZE,
   NON_OIDC_SPECIFIC_FIELDS,
@@ -66,7 +65,6 @@ import {
   patchSecurityConfiguration,
   SecurityConfiguration,
   SecurityValidationResponse,
-  testSecurityConfiguration,
   validateSecurityConfiguration,
 } from '../../../rest/securityConfigAPI';
 import {
@@ -85,7 +83,6 @@ import {
   findChangedFields,
   getProviderDisplayName,
   getProviderIcon,
-  handleClientTypeChange,
   hasFieldValidationErrors,
   isValidNonBasicProvider,
   parseSamlMetadataXml,
@@ -109,6 +106,9 @@ import { UnsavedChangesModal } from '../../Modals/UnsavedChangesModal/UnsavedCha
 import ProviderSelector from '../ProviderSelector/ProviderSelector';
 import SSODocPanel from '../SSODocPanel/SSODocPanel';
 import { SSOGroupedFieldTemplate } from '../SSOGroupedFieldTemplate/SSOGroupedFieldTemplate';
+import ClaimSelector from '../TestLogin/ClaimSelector.component';
+import { TestLoginResult } from '../TestLogin/TestLogin.interface';
+import TestLoginButton from '../TestLogin/TestLoginButton.component';
 import './sso-configuration-form.less';
 import {
   FormData,
@@ -237,8 +237,7 @@ const SSOConfigurationFormRJSF = ({
   securityConfig,
 }: SSOConfigurationFormProps) => {
   const { t } = useTranslation();
-  const { setIsAuthenticated, setCurrentUser, currentUser } =
-    useApplicationStore();
+  const { setIsAuthenticated, setCurrentUser } = useApplicationStore();
 
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -260,9 +259,11 @@ const SSOConfigurationFormRJSF = ({
   >(null);
   const [metadataUploadFileName, setMetadataUploadFileName] =
     useState<string>('');
-  const [isTestingLogin, setIsTestingLogin] = useState<boolean>(false);
   const [advancedFieldsContainer, setAdvancedFieldsContainer] =
     useState<HTMLDivElement | null>(null);
+  const [testLoginResult, setTestLoginResult] =
+    useState<TestLoginResult | null>(null);
+  const [claimSelectorOpen, setClaimSelectorOpen] = useState<boolean>(false);
   const fieldErrorsRef = useRef<ErrorSchema>({});
 
   // Helper function to setup configuration state - extracted to avoid redundancy
@@ -625,75 +626,47 @@ const SSOConfigurationFormRJSF = ({
     }
     const baseSchema = getSSOUISchema(currentProvider, hasExistingConfig);
 
-    const currentClientType =
-      internalData?.authenticationConfiguration?.clientType;
-
     const authConfig = baseSchema.authenticationConfiguration as UISchemaObject;
+    const authorizerConfig =
+      (baseSchema.authorizerConfiguration as UISchemaObject) ?? {};
 
-    // Always hide provider field since we have separate provider selection screen
     authConfig.provider = {
       'ui:widget': 'hidden',
       'ui:hideError': true,
     };
 
-    // Make clientType non-editable for existing SSO configurations
-    // Hide clientType for SAML/LDAP since they're always public
-    if (
-      (hasExistingConfig && savedData) ||
-      currentProvider === AuthProvider.Saml ||
-      currentProvider === AuthProvider.LDAP
-    ) {
-      authConfig.clientType = {
-        'ui:widget': 'hidden',
-        'ui:hideError': true,
-      };
-    }
+    authConfig.clientType = {
+      'ui:widget': 'hidden',
+      'ui:hideError': true,
+    };
 
-    // Show oidcConfiguration for confidential clients, hide for public clients
-    if (currentClientType === ClientType.Public) {
-      authConfig.oidcConfiguration = {
-        'ui:widget': 'hidden',
-        'ui:hideError': true,
-      };
-      // Ensure callback URL is visible for public clients
-      authConfig.callbackUrl = {
-        'ui:title': 'Callback URL',
-        'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
-      } as UISchemaObject;
-      // Ensure publicKeyUrls is visible for public clients (not auto-populated)
-      authConfig.publicKeyUrls = {
-        'ui:title': 'Public Key URLs',
-        'ui:placeholder':
-          'Enter value (e.g. https://www.googleapis.com/oauth2/v3/certs) and press ENTER',
-      } as UISchemaObject;
-      // Ensure authority is visible for public clients
-      authConfig.authority = {
-        'ui:title': 'Authority',
-        'ui:placeholder': 'e.g. https://accounts.google.com',
-      } as UISchemaObject;
-    } else if (currentClientType === ClientType.Confidential) {
-      // The schema will be shown with OIDC prefixed labels from the constants
+    const isOidcProvider =
+      currentProvider !== AuthProvider.Saml &&
+      currentProvider !== AuthProvider.LDAP;
+
+    if (isOidcProvider) {
       authConfig['oidcConfiguration'] ??= {
         'ui:title': 'OIDC Configuration',
       };
-      // Hide root-level clientId and callbackUrl for confidential clients since we have OIDC equivalents
-      authConfig.clientId = {
-        'ui:widget': 'hidden',
-        'ui:hideError': true,
-      };
-      authConfig.callbackUrl = {
-        'ui:widget': 'hidden',
-        'ui:hideError': true,
-      };
+      const hidden = { 'ui:widget': 'hidden', 'ui:hideError': true } as const;
+      authConfig.clientId = { ...hidden };
+      authConfig.callbackUrl = { ...hidden };
+      authConfig.authority = { ...hidden };
+      authConfig.discoveryUri = { ...hidden };
+      authConfig.publicKeyUrls = { ...hidden };
+      authConfig.forceSecureSessionCookie = { ...hidden };
+      authConfig.tokenValidationAlgorithm = { ...hidden };
+    }
 
-      // For Google, show authority even in Confidential mode
-      const isGoogle = currentProvider === AuthProvider.Google;
-      if (isGoogle) {
-        authConfig.authority = {
-          'ui:title': 'Authority',
-          'ui:placeholder': GOOGLE_SSO_DEFAULTS.authority,
-        } as UISchemaObject;
-      }
+    if (!hasExistingConfig) {
+      authorizerConfig.adminPrincipals = {
+        'ui:widget': 'hidden',
+        'ui:hideError': true,
+      };
+      authorizerConfig.principalDomain = {
+        'ui:widget': 'hidden',
+        'ui:hideError': true,
+      };
     }
 
     const finalSchema = {
@@ -705,18 +678,13 @@ const SSOConfigurationFormRJSF = ({
       },
       authorizerConfiguration: {
         ...baseSchema.authorizerConfiguration,
+        ...authorizerConfig,
         'ui:classNames': 'hide-section-title',
       },
     };
 
     return finalSchema;
-  }, [
-    currentProvider,
-    internalData?.authenticationConfiguration?.clientType,
-    hasExistingConfig,
-    savedData,
-    hideBorder,
-  ]);
+  }, [currentProvider, hasExistingConfig, hideBorder]);
 
   const fieldLayout = useMemo(
     () =>
@@ -768,11 +736,19 @@ const SSOConfigurationFormRJSF = ({
 
     clearErrorsForChangedFields(newFormData);
 
-    handleClientTypeChange(
-      authConfig,
-      internalData?.authenticationConfiguration?.clientType,
-      authConfig?.clientType
-    );
+    if (authConfig) {
+      const provider = authConfig.provider;
+      const isOidcProvider =
+        provider !== AuthProvider.Saml && provider !== AuthProvider.LDAP;
+
+      if (isOidcProvider) {
+        const secret = authConfig.oidcConfiguration?.secret;
+        authConfig.clientType =
+          secret && String(secret).trim().length > 0
+            ? ClientType.Confidential
+            : ClientType.Public;
+      }
+    }
 
     setInternalData(newFormData);
     handleProviderChange(newFormData);
@@ -928,65 +904,100 @@ const SSOConfigurationFormRJSF = ({
     [hasExistingConfig, isModalSave, t, setIsAuthenticated, setCurrentUser]
   );
 
-  const handleTestLogin = useCallback(async () => {
-    if (!internalData) {
-      return;
-    }
+  const applyAuthorizerSuggestion = useCallback(
+    (admin: string | null, domain: string | null) => {
+      const trimmedAdmin = admin?.trim() ?? '';
+      const trimmedDomain = domain?.trim() ?? '';
+      if (!trimmedAdmin && !trimmedDomain) {
+        return;
+      }
 
-    const cleanedFormData = cleanupProviderSpecificFields(
-      internalData,
-      internalData?.authenticationConfiguration?.provider as string
-    );
+      setInternalData((prev) => {
+        if (!prev) {
+          return prev;
+        }
 
-    if (!cleanedFormData) {
-      return;
-    }
-
-    setIsTestingLogin(true);
-
-    try {
-      const payload: SecurityConfiguration = {
-        authenticationConfiguration:
-          cleanedFormData.authenticationConfiguration,
-        authorizerConfiguration: cleanedFormData.authorizerConfiguration,
-      };
-
-      await testSecurityConfiguration(payload);
-
-      const adminEmail = currentUser?.email;
-      if (adminEmail) {
-        const principalDomain = adminEmail.includes('@')
-          ? adminEmail.split('@')[1]
-          : '';
         const existingAdmins =
-          internalData.authorizerConfiguration?.adminPrincipals ?? [];
-        const adminPrincipals = existingAdmins.includes(adminEmail)
-          ? existingAdmins
-          : [...existingAdmins, adminEmail];
+          prev.authorizerConfiguration?.adminPrincipals ?? [];
+        const adminPrincipals =
+          trimmedAdmin && !existingAdmins.includes(trimmedAdmin)
+            ? [...existingAdmins, trimmedAdmin]
+            : existingAdmins;
+        const principalDomain =
+          prev.authorizerConfiguration?.principalDomain || trimmedDomain;
 
-        setInternalData({
-          ...internalData,
+        return {
+          ...prev,
           authorizerConfiguration: {
-            ...internalData.authorizerConfiguration,
+            ...prev.authorizerConfiguration,
             adminPrincipals,
-            principalDomain:
-              internalData.authorizerConfiguration?.principalDomain ||
-              principalDomain,
+            principalDomain,
           },
+        };
+      });
+    },
+    []
+  );
+
+  const handleTestLoginSuccess = useCallback(
+    (result: TestLoginResult) => {
+      setTestLoginResult(result);
+
+      const hasClaims = Object.keys(result.claims).length > 0;
+      if (hasClaims) {
+        setClaimSelectorOpen(true);
+
+        return;
+      }
+
+      applyAuthorizerSuggestion(
+        result.suggestedAdminPrincipal,
+        result.derivedPrincipalDomain
+      );
+      showSuccessToast(t('message.test-login-success'));
+    },
+    [applyAuthorizerSuggestion, t]
+  );
+
+  const handleClaimSelectorConfirm = useCallback(
+    ({
+      adminPrincipal,
+      principalDomain,
+      emailClaim,
+    }: {
+      adminPrincipal: string;
+      principalDomain: string;
+      emailClaim: string;
+    }) => {
+      applyAuthorizerSuggestion(adminPrincipal, principalDomain);
+
+      if (emailClaim) {
+        setInternalData((prev) => {
+          if (!prev) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            authenticationConfiguration: {
+              ...prev.authenticationConfiguration,
+              emailClaim,
+            },
+          };
         });
       }
 
+      setClaimSelectorOpen(false);
+      setTestLoginResult(null);
       showSuccessToast(t('message.test-login-success'));
-    } catch (error) {
-      if (hasFieldValidationErrors(error)) {
-        handleValidationErrors(error.response.data);
-      } else {
-        showErrorToast(error as AxiosError, t('message.test-login-failed'));
-      }
-    } finally {
-      setIsTestingLogin(false);
-    }
-  }, [internalData, currentUser?.email, t, handleValidationErrors]);
+    },
+    [applyAuthorizerSuggestion, t]
+  );
+
+  const handleClaimSelectorCancel = useCallback(() => {
+    setClaimSelectorOpen(false);
+    setTestLoginResult(null);
+  }, []);
 
   const handleSave = async () => {
     updateLoadingState(isModalSave, setIsLoading, true);
@@ -1334,22 +1345,18 @@ const SSOConfigurationFormRJSF = ({
                       {t('label.cancel')}
                     </Button>
                     {currentProvider && (
-                      <Button
-                        className="test-login-sso-configuration"
-                        color="secondary"
-                        data-testid="test-login-button"
-                        isDisabled={isLoading || isTestingLogin}
-                        isLoading={isTestingLogin}
-                        size="md"
-                        onPress={handleTestLogin}>
-                        {t('label.test-login')}
-                      </Button>
+                      <TestLoginButton
+                        formData={internalData as never}
+                        isDisabled={isLoading}
+                        securityConfig={internalData as never}
+                        onSuccess={handleTestLoginSuccess}
+                      />
                     )}
                     <Button
                       className="save-sso-configuration"
                       color="primary"
                       data-testid="save-sso-configuration"
-                      isDisabled={isLoading || isTestingLogin}
+                      isDisabled={isLoading}
                       isLoading={isLoading}
                       size="md"
                       onPress={handleSave}>
@@ -1375,6 +1382,12 @@ const SSOConfigurationFormRJSF = ({
             className:
               'service-doc-panel content-resizable-panel-container m-t-xs',
           }}
+        />
+        <ClaimSelector
+          open={claimSelectorOpen}
+          result={testLoginResult}
+          onCancel={handleClaimSelectorCancel}
+          onConfirm={handleClaimSelectorConfirm}
         />
       </>
     );
@@ -1448,22 +1461,20 @@ const SSOConfigurationFormRJSF = ({
                     {t('label.cancel')}
                   </Button>
                   {currentProvider && (
-                    <Button
-                      className="test-login-sso-configuration"
-                      color="secondary"
-                      data-testid="test-login-button"
-                      isDisabled={isLoading || isTestingLogin}
-                      isLoading={isTestingLogin}
-                      size="md"
-                      onPress={handleTestLogin}>
-                      {t('label.test-login')}
-                    </Button>
+                    <TestLoginButton
+                      formData={
+                        internalData?.authenticationConfiguration as never
+                      }
+                      isDisabled={isLoading}
+                      securityConfig={internalData as never}
+                      onSuccess={handleTestLoginSuccess}
+                    />
                   )}
                   <Button
                     className="save-sso-configuration"
                     color="primary"
                     data-testid="save-sso-configuration"
-                    isDisabled={isLoading || isTestingLogin}
+                    isDisabled={isLoading}
                     isLoading={isLoading}
                     size="md"
                     onPress={handleSave}>
@@ -1487,6 +1498,12 @@ const SSOConfigurationFormRJSF = ({
           minWidth: 400,
           className: 'service-doc-panel content-resizable-panel-container',
         }}
+      />
+      <ClaimSelector
+        open={claimSelectorOpen}
+        result={testLoginResult}
+        onCancel={handleClaimSelectorCancel}
+        onConfirm={handleClaimSelectorConfirm}
       />
     </>
   );

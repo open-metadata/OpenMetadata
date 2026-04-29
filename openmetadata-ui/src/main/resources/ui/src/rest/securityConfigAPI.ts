@@ -39,15 +39,21 @@ export interface SecurityValidationResponse {
 /**
  * Validate security configuration
  * @param data - Security configuration data
+ * @param context - Optional validation context (e.g. "testLogin") forwarded to backend
  * @returns Promise with validation result
  */
 export const validateSecurityConfiguration = async (
-  data: SecurityConfiguration
+  data: SecurityConfiguration,
+  context?: string
 ): Promise<AxiosResponse<SecurityValidationResponse>> => {
+  const url = context
+    ? `/system/security/validate?context=${encodeURIComponent(context)}`
+    : '/system/security/validate';
+
   return APIClient.post<
     SecurityConfiguration,
     AxiosResponse<SecurityValidationResponse>
-  >('/system/security/validate', data);
+  >(url, data);
 };
 
 /**

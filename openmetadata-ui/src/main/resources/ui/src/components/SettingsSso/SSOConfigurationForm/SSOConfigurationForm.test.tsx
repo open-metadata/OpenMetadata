@@ -34,7 +34,6 @@ import {
   patchSecurityConfiguration,
   SecurityConfiguration,
   SecurityValidationResponse,
-  testSecurityConfiguration,
   validateSecurityConfiguration,
 } from '../../../rest/securityConfigAPI';
 import { getAuthConfig } from '../../../utils/AuthProvider.util';
@@ -107,6 +106,52 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     </button>
   ),
   FileTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Input: ({
+    label,
+    value,
+    onChange,
+    ...rest
+  }: {
+    label?: string;
+    value?: string;
+    onChange?: (value: string) => void;
+  } & Record<string, unknown>) => (
+    <label>
+      {label}
+      <input
+        value={value ?? ''}
+        {...rest}
+        onChange={(event) => onChange?.(event.target.value)}
+      />
+    </label>
+  ),
+  ModalOverlay: ({
+    children,
+    isOpen,
+  }: {
+    children: React.ReactNode;
+    isOpen?: boolean;
+  }) => (isOpen ? <div data-testid="modal-overlay">{children}</div> : null),
+  Modal: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Dialog: Object.assign(
+    ({
+      children,
+      title,
+      ...rest
+    }: React.PropsWithChildren<Record<string, unknown>> & {
+      title?: string;
+    }) => (
+      <div role="dialog" {...rest}>
+        {title && <h3>{title}</h3>}
+        {children}
+      </div>
+    ),
+    {
+      Header: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+      Content: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+      Footer: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    }
+  ),
 }));
 
 // Mock SSOUtils - use actual implementations where needed
@@ -266,11 +311,6 @@ const mockGetSecurityConfiguration =
   getSecurityConfiguration as jest.MockedFunction<
     typeof getSecurityConfiguration
   >;
-const mockTestSecurityConfiguration =
-  testSecurityConfiguration as jest.MockedFunction<
-    typeof testSecurityConfiguration
-  >;
-
 const mockFetchAuthenticationConfig =
   fetchAuthenticationConfig as jest.MockedFunction<
     typeof fetchAuthenticationConfig
@@ -2158,14 +2198,7 @@ describe('SSOConfigurationForm', () => {
       });
     });
 
-    it('should auto-fill adminPrincipals and principalDomain on success', async () => {
-      mockTestSecurityConfiguration.mockResolvedValue(
-        createAxiosResponse({
-          component: 'authentication',
-          status: VALIDATION_STATUS.SUCCESS,
-        })
-      );
-
+    it('should show error toast when required OIDC fields are missing', async () => {
       renderComponent({ selectedProvider: AuthProvider.Google });
 
       await waitFor(() => {
@@ -2175,26 +2208,6 @@ describe('SSOConfigurationForm', () => {
       fireEvent.click(screen.getByTestId('test-login-button'));
 
       await waitFor(() => {
-        expect(mockTestSecurityConfiguration).toHaveBeenCalled();
-      });
-    });
-
-    it('should show error toast when test login fails', async () => {
-      const axiosError = {
-        response: { data: { errors: [] } },
-      } as unknown as AxiosError;
-      mockTestSecurityConfiguration.mockRejectedValue(axiosError);
-
-      renderComponent({ selectedProvider: AuthProvider.Google });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('test-login-button')).toBeInTheDocument();
-      });
-
-      fireEvent.click(screen.getByTestId('test-login-button'));
-
-      await waitFor(() => {
-        expect(mockTestSecurityConfiguration).toHaveBeenCalled();
         expect(mockShowErrorToast).toHaveBeenCalled();
       });
     });
