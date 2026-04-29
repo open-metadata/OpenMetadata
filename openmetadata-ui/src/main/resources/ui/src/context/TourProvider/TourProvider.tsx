@@ -43,18 +43,17 @@ export const TourContext = createContext({} as TourProviderContextProps);
 
 const TourProvider: FC<Props> = ({ children }) => {
   const location = useCustomLocation();
-  const [isTourOpen, setIsTourOpen] = useState<boolean>(false);
+  const isTourPage = useMemo(
+    () => location.pathname.includes(ROUTES.TOUR),
+    [location.pathname]
+  );
+  const [isTourOpen, setIsTourOpen] = useState<boolean>(isTourPage);
   const [currentTourPage, setCurrentTourPage] = useState<CurrentTourPageType>(
     CurrentTourPageType.MY_DATA_PAGE
   );
   const [activeTabForTourDatasetPage, setActiveTabForTourDatasetPage] =
     useState<EntityTabs>(EntityTabs.SCHEMA);
   const [searchValue, setSearchValue] = useState('');
-
-  const isTourPage = useMemo(
-    () => location.pathname.includes(ROUTES.TOUR),
-    [location.pathname]
-  );
 
   const handleIsTourOpen = (value: boolean) => {
     setIsTourOpen(value);
