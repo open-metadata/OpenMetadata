@@ -990,6 +990,12 @@ export interface Pipeline {
      */
     extractJsonSchema?: boolean;
     /**
+     * Optional configuration to toggle the ingestion of source-specific custom properties (e.g.
+     * Iceberg table properties) onto the entity extension. When disabled, no custom property
+     * definitions are registered and no extension values are set.
+     */
+    includeCustomProperties?: boolean;
+    /**
      * Optional configuration to toggle the DDL Statements ingestion.
      */
     includeDDL?: boolean;
