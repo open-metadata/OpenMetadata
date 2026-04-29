@@ -35,22 +35,29 @@ class LineageAssert:
         return self._om.get_lineage_by_name(entity=Table, fqn=self._fqn) or {}
 
     def _check_edge(self, direction: _Direction, fqn: str) -> None:
-        """Pin assertion to direction-typed edges only.
-
-        OM's lineage payload returns both `upstreamEdges` / `downstreamEdges`
-        (direction-typed) and `nodes` (full graph participants, both
-        directions mixed). Accepting `nodes` as a fallback would let an
-        upstream-only relationship satisfy a `has_downstream` check —
-        silent direction inversion. The full `nodes` list is still in the
-        failure message for triage.
-        """
+        """Match direction-typed edges; resolve UUID-only Edge endpoints via nodes/entity FQN map."""
         data = self._lineage()
-        edges = {n.get("fullyQualifiedName") for n in (data.get(f"{direction}Edges") or [])}
-        if fqn in edges:
+        nodes = data.get("nodes") or []
+        central = data.get("entity") or {}
+        uuid_to_fqn: dict[str, str] = {}
+        for n in [*nodes, central]:
+            uid, ref_fqn = n.get("id"), n.get("fullyQualifiedName")
+            if uid and ref_fqn:
+                uuid_to_fqn[uid] = ref_fqn
+        counterpart_field = "fromEntity" if direction == "upstream" else "toEntity"
+        self_field = "toEntity" if direction == "upstream" else "fromEntity"
+        matched: set[str] = set()
+        for e in data.get(f"{direction}Edges") or []:
+            if uuid_to_fqn.get(e.get(self_field)) == self._fqn:
+                cp = uuid_to_fqn.get(e.get(counterpart_field))
+                if cp:
+                    matched.add(cp)
+        if fqn in matched:
             return
-        nodes = {n.get("fullyQualifiedName") for n in (data.get("nodes") or [])}
+        nodes_fqns = sorted(uuid_to_fqn.values())
         raise AssertionError(
-            f"Table {self._fqn} has no {direction} {fqn!r}. {direction}Edges={sorted(edges)} nodes={sorted(nodes)}"
+            f"Table {self._fqn} has no {direction} {fqn!r}. "
+            f"{direction}Edges resolved to FQNs={sorted(matched)} nodes={nodes_fqns}"
         )
 
     def has_upstream(self, fqn: str) -> "LineageAssert":
