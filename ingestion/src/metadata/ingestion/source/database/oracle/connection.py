@@ -148,8 +148,11 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         path.chmod(0o700)
 
     def _extract_wallet_content(self, wallet_content: SecretStr) -> str:
+        # Strip whitespace/newlines so wrapped base64 (e.g. from `base64 -i` on macOS,
+        # which inserts line breaks every 76 chars) decodes the same as a single line.
+        sanitized = "".join(wallet_content.get_secret_value().split())
         try:
-            decoded_wallet = base64.b64decode(wallet_content.get_secret_value(), validate=True)
+            decoded_wallet = base64.b64decode(sanitized, validate=True)
         except (binascii.Error, TypeError) as exc:
             raise ValueError("Invalid walletContent. Expected a base64-encoded wallet zip.") from exc
 

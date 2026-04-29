@@ -119,7 +119,7 @@ $$
 $$section
 ### Wallet Content $(id="walletContent")
 
-Base64-encoded wallet zip content. Recommended for Docker/Kubernetes deployments where you cannot mount wallet files onto the ingestion pod.
+Base64-encoded wallet zip content as a single unwrapped line. Recommended for Docker/Kubernetes deployments where you cannot mount wallet files onto the ingestion pod.
 
 **How to generate:**
 
@@ -128,7 +128,7 @@ Linux:
 base64 -w 0 Wallet_mydb.zip
 ```
 
-macOS:
+macOS (the default `base64` wraps lines every 76 characters; pipe through `tr` to strip them):
 ```bash
 base64 -i Wallet_mydb.zip | tr -d '\n'
 ```

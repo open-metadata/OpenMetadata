@@ -7592,10 +7592,11 @@ export interface OracleConnectionType {
      */
     tnsAlias?: string;
     /**
-     * Base64-encoded Oracle wallet zip content. Recommended for Docker/Kubernetes: download the
-     * wallet zip from Oracle Cloud Console, encode it with 'base64 -w 0 Wallet_mydb.zip'
-     * (Linux) or 'base64 -i Wallet_mydb.zip' (macOS), and paste the result here. OpenMetadata
-     * extracts it at runtime — no volume mounts needed.
+     * Base64-encoded Oracle wallet zip content as a single unwrapped line. Recommended for
+     * Docker/Kubernetes: download the wallet zip from Oracle Cloud Console and encode it
+     * without line wrapping — `base64 -w 0 Wallet_mydb.zip` on Linux or `base64 -i
+     * Wallet_mydb.zip | tr -d '\n'` on macOS — then paste the result here. OpenMetadata
+     * extracts it at runtime; no volume mounts needed.
      */
     walletContent?: string;
     /**

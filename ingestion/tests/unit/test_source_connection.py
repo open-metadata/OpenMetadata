@@ -1352,6 +1352,35 @@ class SourceConnectionTest(TestCase):
         assert "base64-encoded wallet zip" in str(error.exception)
         assert oracle_connection._wallet_temp_dir is None
 
+    @patch("metadata.ingestion.source.database.oracle.connection.create_generic_db_connection")
+    def test_oracle_autonomous_wallet_content_accepts_wrapped_base64(self, mock_create_generic_db_connection):
+        # macOS `base64 -i` wraps lines every 76 chars; ensure ingestion strips
+        # whitespace before decoding so users do not have to.
+        wallet_bytes = io.BytesIO()
+        with zipfile.ZipFile(wallet_bytes, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.writestr("tnsnames.ora", "MYADB_HIGH=(DESCRIPTION=...)")
+
+        raw = base64.b64encode(wallet_bytes.getvalue()).decode("utf-8")
+        wrapped = "\n".join(raw[i : i + 76] for i in range(0, len(raw), 76)) + "\n"
+
+        connection = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            oracleConnectionType=OracleAutonomousConnection(
+                tnsAlias="myadb_high",
+                walletContent=wrapped,
+            ),
+        )
+        oracle_connection = OracleConnection(connection)
+        mock_create_generic_db_connection.return_value = "dummy_engine"
+
+        oracle_connection._get_client()
+
+        wallet_dir = Path(oracle_connection.service_connection.connectionArguments.root["config_dir"])
+        assert (wallet_dir / "tnsnames.ora").exists()
+
+        oracle_connection._cleanup_wallet_temp_dir()
+
     def test_exasol_url(self):
         from metadata.ingestion.source.database.exasol.connection import (
             get_connection_url,
