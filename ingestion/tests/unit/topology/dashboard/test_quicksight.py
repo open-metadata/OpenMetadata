@@ -399,28 +399,24 @@ class QuickSightUnitTest(TestCase):
         mock_from_entity.name.root = "relation_table"
         mock_data_model = MagicMock()
 
-        with patch(
-            "metadata.ingestion.source.dashboard.quicksight.metadata.get_column_fqn",
-            return_value=src_fqn,
-        ) as mock_get_col_fqn:
-            with patch.object(
+        with (
+            patch(
+                "metadata.ingestion.source.dashboard.quicksight.metadata.get_column_fqn",
+                return_value=src_fqn,
+            ) as mock_get_col_fqn,
+            patch.object(
                 self.quicksight,
                 "_get_data_model_column_fqn",
                 return_value=alias_fqn,
-            ) as mock_get_dm_col_fqn:
-                result = self.quicksight._build_column_lineage_from_parser(
-                    mock_parser, mock_from_entity, mock_data_model
-                )
+            ) as mock_get_dm_col_fqn,
+        ):
+            result = self.quicksight._build_column_lineage_from_parser(mock_parser, mock_from_entity, mock_data_model)
 
-        mock_get_col_fqn.assert_called_once_with(
-            table_entity=mock_from_entity, column="id"
-        )
-        mock_get_dm_col_fqn.assert_called_once_with(
-            data_model_entity=mock_data_model, column="relation_id"
-        )
+        mock_get_col_fqn.assert_called_once_with(table_entity=mock_from_entity, column="id")
+        mock_get_dm_col_fqn.assert_called_once_with(data_model_entity=mock_data_model, column="relation_id")
         assert len(result) == 1
-        assert result[0].fromColumns == [src_fqn]
-        assert result[0].toColumn == alias_fqn
+        assert result[0].fromColumns[0].root == src_fqn
+        assert result[0].toColumn.root == alias_fqn
 
     @pytest.mark.order(11)
     def test_build_column_lineage_from_parser_multi_table_filters_correctly(self):
@@ -434,10 +430,7 @@ class QuickSightUnitTest(TestCase):
         # Column from the correct upstream table
         src_col_correct = MagicMock()
         src_col_correct.raw_name = "id"
-        src_col_correct._parent = MagicMock()
-        src_col_correct._parent.__str__ = MagicMock(
-            return_value="relation_table"
-        )
+        src_col_correct._parent = type("_FakeTable", (), {"__str__": lambda self: "relation_table"})()
 
         tgt_col_correct = MagicMock()
         tgt_col_correct.raw_name = "relation_id"
@@ -445,8 +438,7 @@ class QuickSightUnitTest(TestCase):
         # Column from a DIFFERENT table with same name 'id'
         src_col_wrong = MagicMock()
         src_col_wrong.raw_name = "id"
-        src_col_wrong._parent = MagicMock()
-        src_col_wrong._parent.__str__ = MagicMock(return_value="other_table")
+        src_col_wrong._parent = type("_FakeTable", (), {"__str__": lambda self: "other_table"})()
 
         tgt_col_wrong = MagicMock()
         tgt_col_wrong.raw_name = "other_relation_id"
@@ -464,66 +456,23 @@ class QuickSightUnitTest(TestCase):
         mock_from_entity.name.root = "relation_table"
         mock_data_model = MagicMock()
 
-        with patch(
-            "metadata.ingestion.source.dashboard.quicksight.metadata.get_column_fqn",
-            return_value=src_fqn,
-        ):
-            with patch.object(
+        with (
+            patch(
+                "metadata.ingestion.source.dashboard.quicksight.metadata.get_column_fqn",
+                return_value=src_fqn,
+            ),
+            patch.object(
                 self.quicksight,
                 "_get_data_model_column_fqn",
                 return_value=alias_fqn,
-            ):
-                result = self.quicksight._build_column_lineage_from_parser(
-                    mock_parser, mock_from_entity, mock_data_model
-                )
+            ),
+        ):
+            result = self.quicksight._build_column_lineage_from_parser(mock_parser, mock_from_entity, mock_data_model)
 
         # Only 1 result — the wrong table's column must be filtered out
         assert len(result) == 1
-        assert result[0].fromColumns == [src_fqn]
-        assert result[0].toColumn == alias_fqn
-
-    @pytest.mark.order(11)
-    def test_build_column_lineage_no_fallback_when_parser_has_global_lineage(self):
-        """
-        Regression test for the multi-table fallback bug (Issue #26670).
-
-        When lineage_parser.column_lineage is non-empty (parser succeeded)
-        but none of the pairs match from_entity (because they belong to a
-        different upstream table in a multi-table JOIN), the method must
-        return an empty list and must NOT call _get_column_lineage (the
-        name-based fallback). Calling the fallback here would manufacture
-        incorrect cross-table column lineage.
-        """
-        # Parser found lineage for a DIFFERENT table, not our from_entity
-        other_src_col = MagicMock()
-        other_src_col.raw_name = "user_id"
-        other_src_col._parent = MagicMock()
-        other_src_col._parent.__str__ = MagicMock(return_value="users_table")
-
-        other_tgt_col = MagicMock()
-        other_tgt_col.raw_name = "uid"
-
-        mock_parser = MagicMock()
-        # Parser globally found lineage — but only for 'users_table'
-        mock_parser.column_lineage = [(other_src_col, other_tgt_col)]
-
-        mock_from_entity = MagicMock()
-        # Our from_entity is 'orders_table' — no parser pairs match it
-        mock_from_entity.name.root = "orders_table"
-        mock_data_model = MagicMock()
-
-        with patch.object(
-            self.quicksight,
-            "_get_column_lineage",
-        ) as mock_fallback:
-            result = self.quicksight._build_column_lineage_from_parser(
-                mock_parser, mock_from_entity, mock_data_model
-            )
-
-        # Must NOT have called the name-based fallback
-        mock_fallback.assert_not_called()
-        # Must return an empty list — no manufactured lineage
-        assert result == []
+        assert result[0].fromColumns[0].root == src_fqn
+        assert result[0].toColumn.root == alias_fqn
 
     @pytest.mark.order(12)
     def test_build_column_lineage_no_fallback_when_parser_has_global_lineage(self):
@@ -559,9 +508,7 @@ class QuickSightUnitTest(TestCase):
             self.quicksight,
             "_get_column_lineage",
         ) as mock_fallback:
-            result = self.quicksight._build_column_lineage_from_parser(
-                mock_parser, mock_from_entity, mock_data_model
-            )
+            result = self.quicksight._build_column_lineage_from_parser(mock_parser, mock_from_entity, mock_data_model)
 
         # Must NOT have called the name-based fallback
         mock_fallback.assert_not_called()
@@ -578,9 +525,7 @@ class QuickSightUnitTest(TestCase):
         """
         # Parent is an iterable (list) of Table objects
         parent_table_mock = MagicMock()
-        parent_table_mock.__str__ = MagicMock(
-            return_value="relation_table"
-        )
+        parent_table_mock.__str__ = MagicMock(return_value="relation_table")
 
         src_col = MagicMock()
         src_col.raw_name = "id"
@@ -600,26 +545,26 @@ class QuickSightUnitTest(TestCase):
         mock_from_entity.name.root = "relation_table"
         mock_data_model = MagicMock()
 
-        with patch(
-            "metadata.ingestion.source.dashboard.quicksight.metadata.get_column_fqn",
-            return_value=src_fqn,
-        ):
-            with patch.object(
+        with (
+            patch(
+                "metadata.ingestion.source.dashboard.quicksight.metadata.get_column_fqn",
+                return_value=src_fqn,
+            ),
+            patch.object(
                 self.quicksight,
                 "_get_data_model_column_fqn",
                 return_value=alias_fqn,
-            ):
-                result = (
-                    self.quicksight._build_column_lineage_from_parser(
-                        mock_parser,
-                        mock_from_entity,
-                        mock_data_model,
-                    )
-                )
+            ),
+        ):
+            result = self.quicksight._build_column_lineage_from_parser(
+                mock_parser,
+                mock_from_entity,
+                mock_data_model,
+            )
 
         assert len(result) == 1
-        assert result[0].fromColumns == [src_fqn]
-        assert result[0].toColumn == alias_fqn
+        assert result[0].fromColumns[0].root == src_fqn
+        assert result[0].toColumn.root == alias_fqn
 
     @pytest.mark.order(14)
     def test_build_column_lineage_from_parser_falls_back_when_empty(self):
@@ -649,12 +594,8 @@ class QuickSightUnitTest(TestCase):
             "_get_column_lineage",
             return_value=fallback_lineage,
         ) as mock_get_col_lineage:
-            result = self.quicksight._build_column_lineage_from_parser(
-                mock_parser, mock_from_entity, mock_data_model
-            )
+            result = self.quicksight._build_column_lineage_from_parser(mock_parser, mock_from_entity, mock_data_model)
 
         # Verify fallback was called with correct column names
-        mock_get_col_lineage.assert_called_once_with(
-            mock_from_entity, mock_data_model, ["col_a"]
-        )
+        mock_get_col_lineage.assert_called_once_with(mock_from_entity, mock_data_model, ["col_a"])
         assert result is fallback_lineage

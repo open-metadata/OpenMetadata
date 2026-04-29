@@ -243,7 +243,7 @@ class QuicksightSource(DashboardServiceSource):
         lineage_parser: LineageParser,
         from_entity: Table,
         data_model_entity: DashboardDataModel,
-    ) -> List[ColumnLineage]:
+    ) -> list[ColumnLineage]:
         """
         Build column-level lineage using SQL parser alias mappings.
 
@@ -263,7 +263,7 @@ class QuicksightSource(DashboardServiceSource):
 
         Issue #26670.
         """
-        column_lineage: List[ColumnLineage] = []
+        column_lineage: list[ColumnLineage] = []
 
         for col_pair in lineage_parser.column_lineage or []:
             # Guard: parser may return single-element tuples in edge cases
@@ -277,23 +277,11 @@ class QuicksightSource(DashboardServiceSource):
             if parent is not None:
                 # _parent may be a single Table or an iterable of Tables.
                 # Normalise to a list so we handle both cases uniformly.
-                parents = (
-                    list(parent)
-                    if hasattr(parent, "__iter__")
-                    and not isinstance(parent, str)
-                    else [parent]
-                )
+                parents = list(parent) if hasattr(parent, "__iter__") and not isinstance(parent, str) else [parent]
                 entity_table = from_entity.name.root.lower()
                 # Accept the pair only when at least one parent table
                 # matches the current upstream entity being processed.
-                if not any(
-                    str(p)
-                    .replace("<default>.", "")
-                    .split(".")[-1]
-                    .lower()
-                    == entity_table
-                    for p in parents
-                ):
+                if not any(str(p).replace("<default>.", "").split(".")[-1].lower() == entity_table for p in parents):
                     continue
             else:
                 # _parent is None — parser could not determine source
@@ -301,8 +289,7 @@ class QuicksightSource(DashboardServiceSource):
                 # get_column_fqn provides a secondary guard (column must
                 # exist in entity).
                 logger.debug(
-                    "No parent table info for column %s; "
-                    "skipping parent-table filter",
+                    "No parent table info for column %s; skipping parent-table filter",
                     src_col.raw_name,
                 )
 
@@ -312,9 +299,7 @@ class QuicksightSource(DashboardServiceSource):
             tgt_col_name = tgt_col.raw_name.split(".")[-1]
 
             try:
-                from_col_fqn = get_column_fqn(
-                    table_entity=from_entity, column=src_col_name
-                )
+                from_col_fqn = get_column_fqn(table_entity=from_entity, column=src_col_name)
                 to_col_fqn = self._get_data_model_column_fqn(
                     data_model_entity=data_model_entity,
                     column=tgt_col_name,
@@ -327,10 +312,7 @@ class QuicksightSource(DashboardServiceSource):
                         )
                     )
             except Exception as exc:  # pylint: disable=broad-except
-                logger.debug(
-                    f"Failed to build column lineage "
-                    f"for {src_col_name} -> {tgt_col_name}: {exc}"
-                )
+                logger.debug(f"Failed to build column lineage for {src_col_name} -> {tgt_col_name}: {exc}")
                 logger.debug(traceback.format_exc())
 
         # Only fall back to name-based matching when the parser found
@@ -340,9 +322,7 @@ class QuicksightSource(DashboardServiceSource):
         # manufacturing incorrect cross-table lineage.
         if not column_lineage and not lineage_parser.column_lineage:
             columns = [col.name.root for col in data_model_entity.columns]
-            return self._get_column_lineage(
-                from_entity, data_model_entity, columns
-            )
+            return self._get_column_lineage(from_entity, data_model_entity, columns)
 
         return column_lineage
 
