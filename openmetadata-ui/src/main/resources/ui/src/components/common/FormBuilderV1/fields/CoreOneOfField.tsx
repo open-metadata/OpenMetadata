@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { RadioButton, RadioGroup } from '@openmetadata/ui-core-components';
+import {
+  RadioButton,
+  RadioGroup,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { FieldProps, RJSFSchema } from '@rjsf/utils';
 import { startCase } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -33,6 +37,7 @@ const CoreOneOfField = (props: FieldProps) => {
     onBlur,
     onFocus,
     name,
+    label,
     hideLabel,
     hideError,
     autofocus,
@@ -91,8 +96,27 @@ const CoreOneOfField = (props: FieldProps) => {
     );
   };
 
+  const fieldLabel = label ?? schema.title ?? startCase(name);
+
   return (
     <div className="tw:flex tw:flex-col tw:gap-4">
+      {!hideLabel && fieldLabel && (
+        <div className="tw:flex tw:items-center tw:gap-0.5">
+          <Typography
+            as="label"
+            className="tw:text-primary"
+            id={`${idSchema.$id}__title`}
+            size="text-sm"
+            weight="semibold">
+            {fieldLabel}
+          </Typography>
+          {required && (
+            <span className="tw:text-[var(--color-error-primary)] tw:text-sm">
+              *
+            </span>
+          )}
+        </div>
+      )}
       <RadioGroup
         className="tw:flex tw:flex-row tw:flex-wrap tw:gap-3"
         isDisabled={disabled || readonly}

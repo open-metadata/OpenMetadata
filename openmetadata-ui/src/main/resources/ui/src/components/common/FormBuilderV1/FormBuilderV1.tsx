@@ -27,6 +27,7 @@ import { CoreArrayFieldTemplate } from './templates/CoreArrayFieldTemplate';
 import { CoreFieldErrorTemplate } from './templates/CoreFieldErrorTemplate';
 import { CoreFieldTemplate } from './templates/CoreFieldTemplate';
 import { CoreObjectFieldTemplate } from './templates/CoreObjectFieldTemplate';
+import { CoreWrapIfAdditionalTemplate } from './templates/CoreWrapIfAdditionalTemplate';
 import CoreCheckboxWidget from './widgets/CoreCheckboxWidget';
 import CoreInputWidget from './widgets/CoreInputWidget';
 import CorePasswordWidget from './widgets/CorePasswordWidget';
@@ -118,6 +119,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
           FieldTemplate: CoreFieldTemplate,
           ObjectFieldTemplate: CoreObjectFieldTemplate,
           FieldErrorTemplate: CoreFieldErrorTemplate,
+          WrapIfAdditionalTemplate: CoreWrapIfAdditionalTemplate,
         }}
         transformErrors={transformErrors}
         uiSchema={uiSchema}

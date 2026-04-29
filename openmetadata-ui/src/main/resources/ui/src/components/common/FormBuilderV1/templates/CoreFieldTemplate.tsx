@@ -15,17 +15,11 @@ import { FieldTemplateProps } from '@rjsf/utils';
 
 export const CoreFieldTemplate = ({
   children,
-  classNames,
   hidden = false,
-  style,
 }: FieldTemplateProps) => {
   if (hidden) {
     return <div className="tw:hidden">{children}</div>;
   }
 
-  return (
-    <div className={classNames} style={style}>
-      {children}
-    </div>
-  );
+  return <>{children}</>;
 };

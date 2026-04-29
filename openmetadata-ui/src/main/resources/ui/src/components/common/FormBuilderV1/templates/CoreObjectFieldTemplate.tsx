@@ -13,7 +13,7 @@
 
 import { Button, Typography } from '@openmetadata/ui-core-components';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
-import { Plus } from '@untitledui/icons';
+import { ChevronDown, Plus } from '@untitledui/icons';
 import { Fragment, FunctionComponent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -32,6 +32,9 @@ export const CoreObjectFieldTemplate: FunctionComponent<
 
   const { normalProperties, advancedProperties } = properties.reduce(
     (acc, prop) => {
+      if (prop.hidden) {
+        return acc;
+      }
       if (ADVANCED_PROPERTIES.has(prop.name)) {
         acc.advancedProperties.push(prop);
       } else {
@@ -56,25 +59,27 @@ export const CoreObjectFieldTemplate: FunctionComponent<
 
       {advancedProperties.length > 0 && (
         <div className="tw:mt-3">
-          <Button
-            aria-label={
-              advancedOpen
-                ? t('label.hide-entity', {
-                    entity: t('label.advanced-config'),
-                  })
-                : t('label.show-entity', {
-                    entity: t('label.advanced-config'),
-                  })
-            }
-            className="tw:flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium tw:text-brand-primary hover:tw:underline"
-            color="link-color"
+          <button
+            aria-expanded={advancedOpen}
+            className="tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:rounded-lg tw:border tw:border-primary tw:bg-primary
+            tw:px-4 tw:py-3 tw:text-left tw:transition-colors hover:tw:bg-secondary"
+            type="button"
             onClick={() => setAdvancedOpen((v) => !v)}>
-            {advancedOpen
-              ? t('label.hide-entity', { entity: t('label.advanced-config') })
-              : t('label.show-entity', {
-                  entity: t('label.advanced-config'),
-                })}
-          </Button>
+            <Typography
+              as="span"
+              className="tw:text-primary"
+              size="text-sm"
+              weight="medium">
+              {t('label.advanced-config')}
+            </Typography>
+            <ChevronDown
+              data-icon
+              className={`tw:transition-transform tw:duration-200 ${
+                advancedOpen ? 'tw:rotate-180' : ''
+              }`}
+              size={16}
+            />
+          </button>
           {advancedOpen && (
             <div className="tw:mt-2 tw:flex tw:flex-col tw:gap-4 tw:rounded-lg tw:border tw:border-primary tw:p-3">
               {advancedProperties.map((element) => (
