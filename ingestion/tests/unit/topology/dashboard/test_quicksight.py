@@ -489,8 +489,7 @@ class QuickSightUnitTest(TestCase):
         # Parser found lineage for a DIFFERENT table, not our from_entity
         other_src_col = MagicMock()
         other_src_col.raw_name = "user_id"
-        other_src_col._parent = MagicMock()
-        other_src_col._parent.__str__ = MagicMock(return_value="users_table")
+        other_src_col._parent = type("_FakeTable", (), {"__str__": lambda self: "users_table"})()
 
         other_tgt_col = MagicMock()
         other_tgt_col.raw_name = "uid"

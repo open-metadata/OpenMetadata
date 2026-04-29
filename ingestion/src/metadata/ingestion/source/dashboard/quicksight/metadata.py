@@ -274,18 +274,23 @@ class QuicksightSource(DashboardServiceSource):
             tgt_col = col_pair[-1]
 
             parent = getattr(src_col, "_parent", None)
-            if parent is not None:
-                # _parent may be a single Table or an iterable of Tables.
-                # Normalise to a list so we handle both cases uniformly.
+            # _parent may be a single Table, an iterable of Tables, or an
+            # empty iterable when the parser could not infer the source table.
+            # Treat empty iterables the same as missing parent info.
+            if parent:
                 parents = list(parent) if hasattr(parent, "__iter__") and not isinstance(parent, str) else [parent]
+            else:
+                parents = []
+
+            if parents:
                 entity_table = from_entity.name.root.lower()
                 # Accept the pair only when at least one parent table
                 # matches the current upstream entity being processed.
                 if not any(str(p).replace("<default>.", "").split(".")[-1].lower() == entity_table for p in parents):
                     continue
             else:
-                # _parent is None — parser could not determine source
-                # table.  Log for visibility but allow the pair through;
+                # _parent is missing or empty — parser could not determine source
+                # table. Log for visibility but allow the pair through;
                 # get_column_fqn provides a secondary guard (column must
                 # exist in entity).
                 logger.debug(
