@@ -67,10 +67,13 @@ public interface SearchManagementClient {
    * @param fieldValue the value to match (supports wildcards)
    * @param index the index to search in
    * @param deleted whether to include deleted entities
+   * @param from starting position for pagination
+   * @param size maximum number of results to return
    * @return response containing matching entities
    * @throws IOException if search execution fails
    */
-  Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+  Response searchByField(
+      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException;
 
   /**
@@ -78,19 +81,23 @@ public interface SearchManagementClient {
    * the supplied {@code index} alias. Lets the alias-graph traversal happen exactly once, at
    * the manager boundary, instead of the resource pre-resolving and the manager re-prefixing.
    * Filter syntax: {@code "*"} (or {@code "all"}) for every alias, {@code "none"} (or empty) for
-   * none, or a comma-separated list of specific entity types. Default implementation delegates
-   * to the legacy 4-arg signature so existing implementations pick up the conservative behavior
-   * (no expansion) until they implement the filter-aware path.
+   * none, or a comma-separated list of specific entity types. Null inputs are treated as
+   * {@code "none"}. Default implementation forwards to the legacy paging-only signature, which
+   * means SearchClient implementations that haven't opted into the filter-aware path get the
+   * same scoping behavior they get when callers pass {@code "none"} / {@code "none"} — the
+   * requested index only, no parent or child expansion.
    */
   default Response searchByField(
       String fieldName,
       String fieldValue,
       String index,
       Boolean deleted,
+      int from,
+      int size,
       String fetchParentsAliases,
       String fetchChildAliases)
       throws IOException {
-    return searchByField(fieldName, fieldValue, index, deleted);
+    return searchByField(fieldName, fieldValue, index, deleted, from, size);
   }
 
   /**

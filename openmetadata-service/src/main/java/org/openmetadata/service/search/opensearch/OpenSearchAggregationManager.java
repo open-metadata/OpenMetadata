@@ -92,7 +92,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
               .getIndexOrAliasName(
                   request.getIndex(),
                   request.getFetchParentsAliases(),
-                  request.getFetchChildAliases() == null ? "none" : request.getFetchChildAliases());
+                  request.getFetchChildAliases());
       searchRequestBuilder.index(indexName);
 
       Query query = null;
@@ -517,7 +517,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
               .getIndexOrAliasName(
                   index != null ? index : "all",
                   request.getFetchParentsAliases(),
-                  request.getFetchChildAliases() == null ? "none" : request.getFetchChildAliases());
+                  request.getFetchChildAliases());
 
       // Build and execute search
       SearchRequest searchRequest = requestBuilder.build(resolvedIndex);

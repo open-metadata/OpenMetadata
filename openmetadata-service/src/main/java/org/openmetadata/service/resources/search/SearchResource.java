@@ -446,9 +446,7 @@ public class SearchResource {
                     .getIndexOrAliasName(
                         previewRequest.getIndex(),
                         previewRequest.getFetchParentsAliases(),
-                        previewRequest.getFetchChildAliases() == null
-                            ? "none"
-                            : previewRequest.getFetchChildAliases()))
+                        previewRequest.getFetchChildAliases()))
             .withFrom(previewRequest.getFrom())
             .withQueryFilter(previewRequest.getQueryFilter())
             .withPostFilter(previewRequest.getPostFilter())
@@ -638,6 +636,14 @@ public class SearchResource {
           @DefaultValue("false")
           @QueryParam("deleted")
           boolean deleted,
+      @Parameter(description = "From field to paginate the results, defaults to 0")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
+          @DefaultValue("10")
+          @QueryParam("size")
+          int size,
       @Parameter(
               description =
                   "Selective expansion toward parent aliases declared in indexMapping.json. Pass `*` (or `all`) for every parent, `none` (or empty) for none, or a comma-separated list of entity types (e.g. `database,databaseSchema`). Defaults to `none`.")
@@ -653,7 +659,7 @@ public class SearchResource {
       throws IOException {
 
     return searchRepository.searchByField(
-        fieldName, fieldValue, index, deleted, fetchParentsAliases, fetchChildAliases);
+        fieldName, fieldValue, index, deleted, from, size, fetchParentsAliases, fetchChildAliases);
   }
 
   @GET

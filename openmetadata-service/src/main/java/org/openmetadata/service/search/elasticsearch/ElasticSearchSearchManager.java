@@ -169,9 +169,10 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   @Override
-  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+  public Response searchByField(
+      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException {
-    return searchByField(fieldName, fieldValue, index, deleted, "none", "none");
+    return searchByField(fieldName, fieldValue, index, deleted, from, size, "none", "none");
   }
 
   @Override
@@ -180,6 +181,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       String fieldValue,
       String index,
       Boolean deleted,
+      int from,
+      int size,
       String fetchParentsAliases,
       String fetchChildAliases)
       throws IOException {
@@ -195,6 +198,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         SearchRequest.of(
             s ->
                 s.index(resolvedIndex)
+                    .from(from)
+                    .size(size)
                     .query(
                         q ->
                             q.bool(

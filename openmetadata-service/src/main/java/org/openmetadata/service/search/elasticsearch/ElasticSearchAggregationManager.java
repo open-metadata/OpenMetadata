@@ -93,7 +93,7 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
               .getIndexOrAliasName(
                   request.getIndex(),
                   request.getFetchParentsAliases(),
-                  request.getFetchChildAliases() == null ? "none" : request.getFetchChildAliases());
+                  request.getFetchChildAliases());
       searchRequestBuilder.index(indexName);
 
       Query query = null;
@@ -628,7 +628,7 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
               .getIndexOrAliasName(
                   index != null ? index : "all",
                   request.getFetchParentsAliases(),
-                  request.getFetchChildAliases() == null ? "none" : request.getFetchChildAliases());
+                  request.getFetchChildAliases());
 
       // Build and execute search
       SearchRequest searchRequest = requestBuilder.build(resolvedIndex);

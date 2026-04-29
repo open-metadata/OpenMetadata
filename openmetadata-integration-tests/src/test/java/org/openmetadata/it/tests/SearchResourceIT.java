@@ -1979,10 +1979,10 @@ public class SearchResourceIT {
   /**
    * Bug regression: the UI now passes the alias {@code "table"} (instead of the legacy
    * {@code table_search_index}). ES alias expansion bleeds {@code column_search_index} into the
-   * results because tableColumn declares {@code "table"} as a parent alias. Asserts the bug
-   * reproduces under the legacy default (children expanded) and disappears under the explicit
-   * opt-out — a comparison test, not a vacuous "no columns" check that would pass on an empty
-   * response.
+   * results because tableColumn declares {@code "table"} as a parent alias. Asserts the bleed
+   * reproduces when child expansion is explicitly enabled via {@code fetchChildAliases=*} and
+   * disappears under the new default ({@code fetchChildAliases=none}) — a comparison test, not
+   * a vacuous "no columns" check that would pass on an empty response.
    */
   @Test
   void testDefaultChildScopeExcludesColumns(TestNamespace ns) throws Exception {

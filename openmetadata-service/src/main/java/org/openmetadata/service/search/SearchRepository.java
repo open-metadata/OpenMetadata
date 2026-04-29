@@ -158,7 +158,7 @@ public class SearchRepository {
   /**
    * Reverse map: alias name -> entity types whose IndexMapping declares this alias as a parent.
    * Lets us answer "what are the children of alias X?" in O(1). Built from indexMapping.json on
-   * load and used by {@link #getIndexOrAliasName(String, boolean, boolean)}.
+   * load and used by {@link #getIndexOrAliasName(String, String, String)}.
    */
   private Map<String, List<String>> aliasToChildEntityTypes = Map.of();
 
@@ -699,8 +699,9 @@ public class SearchRepository {
    * <ul>
    *   <li>If the token matches an entity type in {@code entityIndexMap}, its actual indexName is
    *       always included. The {@code fetchParents} / {@code fetchChildren} filters control which
-   *       parent / child entity indexes are also included — see {@link #aliasFilter(String)} for
-   *       the accepted syntax ({@code *}, {@code none}, comma-separated entity types).
+   *       parent / child entity indexes are also included — see {@link AliasFilter#parse(String)}
+   *       for the accepted syntax ({@code *}, {@code none}, comma-separated entity types). Null
+   *       and empty inputs are treated as {@code none}.
    *   <li>If the token is a compound alias (e.g. {@code "all"}, {@code "dataAsset"}) — not a key
    *       in {@code entityIndexMap} — and the children filter is non-empty, all entities that
    *       list this alias as a parent (and pass the filter) are expanded. Otherwise the token is
@@ -3182,9 +3183,10 @@ public class SearchRepository {
             .withIsConnectedVia(isConnectedVia(entityType)));
   }
 
-  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+  public Response searchByField(
+      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException {
-    return searchClient.searchByField(fieldName, fieldValue, index, deleted);
+    return searchClient.searchByField(fieldName, fieldValue, index, deleted, from, size);
   }
 
   /**
@@ -3198,11 +3200,13 @@ public class SearchRepository {
       String fieldValue,
       String index,
       Boolean deleted,
+      int from,
+      int size,
       String fetchParentsAliases,
       String fetchChildAliases)
       throws IOException {
     return searchClient.searchByField(
-        fieldName, fieldValue, index, deleted, fetchParentsAliases, fetchChildAliases);
+        fieldName, fieldValue, index, deleted, from, size, fetchParentsAliases, fetchChildAliases);
   }
 
   public Response aggregate(AggregationRequest request) throws IOException {
