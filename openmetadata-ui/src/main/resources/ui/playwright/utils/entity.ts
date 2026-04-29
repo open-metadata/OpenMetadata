@@ -158,7 +158,7 @@ export const addOwner = async ({
           const searchRetry = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/search/query') &&
-              response.url().includes('user_search_index')
+              response.url().includes(encodeURIComponent(owner))
           );
           await ownerSearchInput.fill('');
           await ownerSearchInput.fill(owner);
