@@ -1745,6 +1745,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                             new V1PodSpec()
                                 .serviceAccountName(k8sConfig.getServiceAccountName())
                                 .restartPolicy(RESTART_POLICY_NEVER)
+                                .securityContext(buildPodSecurityContext())
                                 .imagePullSecrets(
                                     k8sConfig.getImagePullSecrets().isEmpty()
                                         ? null
@@ -1755,6 +1756,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                                             .name(CONTAINER_NAME_AUTOMATION)
                                             .image(k8sConfig.getIngestionImage())
                                             .imagePullPolicy(k8sConfig.getImagePullPolicy())
+                                            .securityContext(buildContainerSecurityContext())
                                             .command(List.of(PYTHON_MAIN_PY, RUN_AUTOMATION_PY))
                                             .env(envVars)
                                             .resources(
@@ -1783,6 +1785,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                             new V1PodSpec()
                                 .serviceAccountName(k8sConfig.getServiceAccountName())
                                 .restartPolicy(RESTART_POLICY_NEVER)
+                                .securityContext(buildPodSecurityContext())
                                 .imagePullSecrets(
                                     k8sConfig.getImagePullSecrets().isEmpty()
                                         ? null
@@ -1793,6 +1796,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                                             .name(CONTAINER_NAME_APPLICATION)
                                             .image(k8sConfig.getIngestionImage())
                                             .imagePullPolicy(k8sConfig.getImagePullPolicy())
+                                            .securityContext(buildContainerSecurityContext())
                                             .command(
                                                 List.of(
                                                     PYTHON_MAIN_PY,
