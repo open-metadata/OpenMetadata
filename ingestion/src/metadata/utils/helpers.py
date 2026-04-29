@@ -24,21 +24,21 @@ import sys
 from datetime import datetime, timedelta, timezone
 from math import floor, log
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
 
 import sqlparse
-from pydantic_core import Url
-from sqlparse.sql import Statement
+from pydantic_core import Url  # noqa: TC002
+from sqlparse.sql import Statement  # noqa: TC002
 
 from metadata.generated.schema.entity.data.chart import ChartType
-from metadata.generated.schema.entity.data.table import Column, Table
-from metadata.generated.schema.entity.feed.suggestion import Suggestion, SuggestionType
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.data.table import Column, Table  # noqa: TC001
+from metadata.generated.schema.entity.feed.suggestion import Suggestion, SuggestionType  # noqa: TC001
+from metadata.generated.schema.entity.services.databaseService import DatabaseService  # noqa: TC001
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityLink
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.generated.schema.type.basic import EntityLink  # noqa: TC001
+from metadata.generated.schema.type.tagLabel import TagLabel  # noqa: TC001
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.logger import utils_logger
 
@@ -53,9 +53,9 @@ class BackupRestoreArgs:
         password: str,
         database: str,
         port: str,
-        options: List[str],
-        arguments: List[str],
-        schema: Optional[str] = None,
+        options: List[str],  # noqa: UP006
+        arguments: List[str],  # noqa: UP006
+        schema: Optional[str] = None,  # noqa: UP045
     ):
         self.host = host
         self.user = user
@@ -113,7 +113,7 @@ om_chart_type_dict = {
 }
 
 
-def pretty_print_time_duration(duration: Union[int, float]) -> str:
+def pretty_print_time_duration(duration: Union[int, float]) -> str:  # noqa: UP007
     """
     Method to format and display the time
     """
@@ -140,15 +140,13 @@ def pretty_print_time_duration(duration: Union[int, float]) -> str:
     return f"{milliseconds:.3f}ms"
 
 
-def get_start_and_end(duration: int = 0) -> Tuple[datetime, datetime]:
+def get_start_and_end(duration: int = 0) -> Tuple[datetime, datetime]:  # noqa: UP006
     """
     Method to return start and end time based on duration
     """
 
     today = datetime.now(timezone.utc).replace(tzinfo=None)
-    start = (today + timedelta(0 - duration)).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+    start = (today + timedelta(0 - duration)).replace(hour=0, minute=0, second=0, microsecond=0)
     # Add one day to make sure we are handling today's queries
     end = (today + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     return start, end
@@ -165,23 +163,19 @@ def snake_to_camel(snake_str):
     return "".join(split_str)
 
 
-def datetime_to_ts(date: Optional[datetime]) -> Optional[int]:
+def datetime_to_ts(date: Optional[datetime]) -> Optional[int]:  # noqa: UP045
     """
     Convert a given date to a timestamp as an Int in milliseconds
     """
     return int(date.timestamp() * 1_000) if date else None
 
 
-def get_formatted_entity_name(name: str) -> Optional[str]:
+def get_formatted_entity_name(name: str) -> Optional[str]:  # noqa: UP045
     """
     Method to get formatted entity name
     """
 
-    return (
-        name.replace("[", "").replace("]", "").replace("<default>.", "")
-        if name
-        else None
-    )
+    return name.replace("[", "").replace("]", "").replace("<default>.", "") if name else None
 
 
 def replace_special_with(raw: str, replacement: str) -> str:
@@ -205,7 +199,7 @@ def get_standard_chart_type(raw_chart_type: str) -> ChartType:
     return ChartType.Other
 
 
-def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:
+def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:  # noqa: UP045
     """
     If the element is in the container, return it.
     Otherwise, return None
@@ -217,9 +211,7 @@ def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:
     return next((elem for elem in container if elem == element), None)
 
 
-def find_column_in_table(
-    column_name: str, table: Table, case_sensitive: bool = True
-) -> Optional[Column]:
+def find_column_in_table(column_name: str, table: Table, case_sensitive: bool = True) -> Optional[Column]:  # noqa: UP045
     """
     If the column exists in the table, return it
     """
@@ -229,32 +221,24 @@ def find_column_in_table(
             return first == second
         return first.lower() == second.lower()
 
-    return next(
-        (col for col in table.columns if equals(col.name.root, column_name)), None
-    )
+    return next((col for col in table.columns if equals(col.name.root, column_name)), None)
 
 
 def find_suggestion(
-    suggestions: List[Suggestion],
+    suggestions: List[Suggestion],  # noqa: UP006
     suggestion_type: SuggestionType,
     entity_link: EntityLink,
-) -> Optional[Suggestion]:
+) -> Optional[Suggestion]:  # noqa: UP045
     """Given a list of suggestions, a suggestion type and an entity link, find
     one suggestion in the list that matches the criteria
     """
     return next(
-        (
-            sugg
-            for sugg in suggestions
-            if sugg.root.type == suggestion_type and sugg.root.entityLink == entity_link
-        ),
+        (sugg for sugg in suggestions if sugg.root.type == suggestion_type and sugg.root.entityLink == entity_link),
         None,
     )
 
 
-def find_column_in_table_with_index(
-    column_name: str, table: Table
-) -> Optional[Tuple[int, Column]]:
+def find_column_in_table_with_index(column_name: str, table: Table) -> Optional[Tuple[int, Column]]:  # noqa: UP006, UP045
     """Return a column and its index in a Table Entity
 
     Args:
@@ -276,7 +260,7 @@ def find_column_in_table_with_index(
     return col_index, col
 
 
-def list_to_dict(original: Optional[List[str]], sep: str = "=") -> Dict[str, str]:
+def list_to_dict(original: Optional[List[str]], sep: str = "=") -> Dict[str, str]:  # noqa: UP006, UP045
     """
     Given a list with strings that have a separator,
     convert that to a dictionary of key-value pairs
@@ -284,9 +268,7 @@ def list_to_dict(original: Optional[List[str]], sep: str = "=") -> Dict[str, str
     if not original:
         return {}
 
-    split_original = [
-        (elem.split(sep)[0], elem.split(sep)[1]) for elem in original if sep in elem
-    ]
+    split_original = [(elem.split(sep)[0], elem.split(sep)[1]) for elem in original if sep in elem]
     return dict(split_original)
 
 
@@ -337,7 +319,7 @@ def insensitive_match(raw_str: str, to_match: str) -> bool:
     return re.match(to_match, raw_str, flags=re.IGNORECASE | re.DOTALL) is not None
 
 
-def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
+def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:  # noqa: UP045
     """_summary_
 
     Args:
@@ -354,7 +336,7 @@ def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
     )
 
 
-def format_large_string_numbers(number: Union[float, int]) -> str:
+def format_large_string_numbers(number: Union[float, int]) -> str:  # noqa: UP007
     """Format large string number to a human readable format.
     (e.g. 1,000,000 -> 1M, 1,000,000,000 -> 1B, etc)
 
@@ -365,13 +347,13 @@ def format_large_string_numbers(number: Union[float, int]) -> str:
         return "0"
     units = ["", "K", "M", "B", "T"]
     constant_k = 1000.0
-    magnitude = int(floor(log(abs(number), constant_k)))
+    magnitude = int(floor(log(abs(number), constant_k)))  # noqa: RUF046
     if magnitude >= len(units):
-        return f"{int(number / constant_k**magnitude)}e{magnitude*3}"
+        return f"{int(number / constant_k**magnitude)}e{magnitude * 3}"
     return f"{number / constant_k**magnitude:.3f}{units[magnitude]}"
 
 
-def clean_uri(uri: Union[str, Url]) -> str:
+def clean_uri(uri: Union[str, Url]) -> str:  # noqa: UP007
     """
     if uri is like http://localhost:9000/
     then remove the end / and
@@ -391,7 +373,7 @@ def deep_size_of_dict(obj: dict) -> int:
         int: size of dict data structure
     """
     # pylint: disable=unnecessary-lambda-assignment
-    dict_handler = lambda elmt: itertools.chain.from_iterable(elmt.items())
+    dict_handler = lambda elmt: itertools.chain.from_iterable(elmt.items())  # noqa: E731
     handlers = {
         dict: dict_handler,
         list: iter,
@@ -468,35 +450,25 @@ def is_safe_sql_query(sql_query: str) -> bool:
     if sql_query is None:
         return True
 
-    parsed_queries: Tuple[Statement] = sqlparse.parse(sql_query)
+    parsed_queries: Tuple[Statement] = sqlparse.parse(sql_query)  # noqa: UP006
     # We split the tokens by "(" to capture cases like "INSERT(...)", "UPDATE(...), etc."
     for parsed_query in parsed_queries:
-        if any(
-            token.normalized.upper().split("(")[0] in forbiden_token
-            for token in parsed_query.tokens
-        ):
+        if any(token.normalized.upper().split("(")[0] in forbiden_token for token in parsed_query.tokens):
             return False
     return True
 
 
-def get_database_name_for_lineage(
-    db_service_entity: DatabaseService, default_db_name: Optional[str]
-) -> Optional[str]:
+def get_database_name_for_lineage(db_service_entity: DatabaseService, default_db_name: Optional[str]) -> Optional[str]:  # noqa: UP045
     # If the database service supports multiple db or
     # database service connection details are not available
     # then pick the database name available from api response
-    if db_service_entity.connection is None or hasattr(
-        db_service_entity.connection.config, "supportsDatabase"
-    ):
+    if db_service_entity.connection is None or hasattr(db_service_entity.connection.config, "supportsDatabase"):
         return default_db_name
 
     # otherwise if it is an single db source then use "databaseName"
     # and if databaseName field is not available or is empty then use
     # "default" as database name
-    return (
-        db_service_entity.connection.config.__dict__.get("databaseName")
-        or DEFAULT_DATABASE
-    )
+    return db_service_entity.connection.config.__dict__.get("databaseName") or DEFAULT_DATABASE
 
 
 def delete_dir_content(directory: str) -> None:
@@ -516,7 +488,7 @@ def init_staging_dir(directory: str) -> None:
     location.mkdir(parents=True, exist_ok=True)
 
 
-def retry_with_docker_host(config: Optional[WorkflowSource] = None):
+def retry_with_docker_host(config: Optional[WorkflowSource] = None):  # noqa: UP045
     """
     Retries the function on exception, replacing "localhost" with "host.docker.internal"
     in the `hostPort` config if applicable. Raises the original exception if no `config` is found.
@@ -535,22 +507,15 @@ def retry_with_docker_host(config: Optional[WorkflowSource] = None):
                             config = argument
                             break
                     else:
-                        raise error
+                        raise error  # noqa: TRY201
 
-                host_port_str = str(
-                    getattr(config.serviceConnection.root.config, "hostPort", None)
-                    or ""
-                )
+                host_port_str = str(getattr(config.serviceConnection.root.config, "hostPort", None) or "")
                 if "localhost" not in host_port_str:
-                    raise error
+                    raise error  # noqa: TRY201
 
                 host_port_type = type(config.serviceConnection.root.config.hostPort)
-                docker_host_port_str = host_port_str.replace(
-                    "localhost", "host.docker.internal"
-                )
-                config.serviceConnection.root.config.hostPort = host_port_type(
-                    docker_host_port_str
-                )
+                docker_host_port_str = host_port_str.replace("localhost", "host.docker.internal")
+                config.serviceConnection.root.config.hostPort = host_port_type(docker_host_port_str)
                 func(*args, **kwargs)
 
         return wrapper
@@ -575,7 +540,7 @@ def evaluate_threshold(threshold: int, operator: str, result: int) -> bool:
         If no comparison operator is provided, it defaults to less than or equal to comparison.
         Returns False for invalid threshold formats.
     """
-    import operator as op  # pylint: disable=import-outside-toplevel
+    import operator as op  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
     operators = {
         "<": op.lt,
@@ -593,14 +558,8 @@ def evaluate_threshold(threshold: int, operator: str, result: int) -> bool:
         return False
 
     # Fallback:
-    logger.error(
-        f"Invalid threshold: {threshold}, "
-        "Allowed format: <, >, <=, >=, ==, !=. Example: >5"
-    )
-    raise ValueError(
-        f"Invalid threshold: {threshold}, "
-        "Allowed format: <, >, <=, >=, ==, !=. Example: >5"
-    )
+    logger.error(f"Invalid threshold: {threshold}, Allowed format: <, >, <=, >=, ==, !=. Example: >5")
+    raise ValueError(f"Invalid threshold: {threshold}, Allowed format: <, >, <=, >=, ==, !=. Example: >5")
 
 
 def pprint_format_object(data: Any) -> str:
@@ -615,7 +574,7 @@ def can_spawn_child_process() -> bool:
     Check if the current process can spawn a child process
     """
     # pylint: disable=import-outside-toplevel
-    from multiprocessing import Process
+    from multiprocessing import Process  # noqa: PLC0415
 
     process = Process(target=lambda: None)
     return not process.daemon

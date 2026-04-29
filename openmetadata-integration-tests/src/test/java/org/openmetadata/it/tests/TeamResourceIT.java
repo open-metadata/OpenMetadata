@@ -49,7 +49,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.exceptions.ApiException;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -1028,9 +1028,9 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     BulkAssets addRequest = new BulkAssets().withAssets(List.of(user1.getEntityReference()));
 
     // testUserClient has no admin/special roles - should get 403 for EDIT_ALL operation
-    ApiException exception =
+    ForbiddenException exception =
         assertThrows(
-            ApiException.class,
+            ForbiddenException.class,
             () -> bulkAddAssetsWithResult(SdkClients.testUserClient(), team.getName(), addRequest),
             "Non-admin user should not be able to bulk add assets");
     assertEquals(403, exception.getStatusCode(), "Should return 403 Forbidden");
@@ -1141,6 +1141,17 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().teams().getVersionList(id);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().teams().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().teams().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

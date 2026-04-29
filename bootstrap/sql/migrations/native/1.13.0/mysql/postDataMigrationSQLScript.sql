@@ -80,8 +80,26 @@ UPDATE glossary_term_entity
 SET json = JSON_REMOVE(json, '$.relatedTerms')
 WHERE JSON_EXTRACT(json, '$.relatedTerms') IS NOT NULL;
 
+-- entity_extension version snapshots: handled by Java migration
+-- migrateGlossaryTermVersionRelatedTermsToTermRelation (transforms in place to preserve history).
+
 -- Backfill conceptMappings for existing glossary terms
 UPDATE glossary_term_entity
 SET json = JSON_SET(COALESCE(json, '{}'), '$.conceptMappings', JSON_ARRAY())
 WHERE JSON_EXTRACT(json, '$.conceptMappings') IS NULL;
 
+-- Add Container permissions to AutoClassificationBotPolicy for storage auto-classification support
+UPDATE policy_entity
+SET json = JSON_ARRAY_INSERT(
+    json,
+    '$.rules[1]',
+    JSON_OBJECT(
+        'name', 'AutoClassificationBotRule-Allow-Container',
+        'description', 'Allow adding tags and sample data to the containers',
+        'resources', JSON_ARRAY('Container'),
+        'operations', JSON_ARRAY('EditAll', 'ViewAll'),
+        'effect', 'allow'
+    )
+)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'AutoClassificationBotPolicy'
+  AND JSON_EXTRACT(json, '$.rules[1].name') != 'AutoClassificationBotRule-Allow-Container';

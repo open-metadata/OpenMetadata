@@ -66,9 +66,6 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
     </>
   ))
 );
-jest.mock('../../../utils/CommonUtils', () => ({
-  getIsErrorMatch: jest.fn(),
-}));
 
 jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
   __esModule: true,

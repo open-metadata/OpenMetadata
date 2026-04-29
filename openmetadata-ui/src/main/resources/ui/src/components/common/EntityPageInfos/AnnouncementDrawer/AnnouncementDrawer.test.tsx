@@ -18,9 +18,9 @@ jest.mock('../../../../utils/EntityUtils', () => ({
   getEntityFeedLink: jest.fn(),
 }));
 
-jest.mock('../../../../utils/FeedUtils', () => ({
-  deletePost: jest.fn(),
-  updateThreadData: jest.fn(),
+jest.mock('../../../../rest/announcementsAPI', () => ({
+  deleteAnnouncement: jest.fn(),
+  patchAnnouncement: jest.fn(),
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({

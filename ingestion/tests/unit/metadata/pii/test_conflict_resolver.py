@@ -38,9 +38,7 @@ class TestConflictResolver:
     def test_resolve_conflicts_empty_list(self, pii_classification: Classification):
         """Test resolving conflicts with empty list."""
         resolver = ConflictResolver()
-        resolved = resolver.resolve_conflicts(
-            scored_tags=[], enabled_classifications=[pii_classification]
-        )
+        resolved = resolver.resolve_conflicts(scored_tags=[], enabled_classifications=[pii_classification])
 
         assert resolved == []
 
@@ -77,11 +75,9 @@ class TestConflictResolver:
         """Test conflict resolution with highest_priority strategy."""
 
         classification = pii_classification.model_copy()
-        classification.autoClassificationConfig = (
-            AutoClassificationConfigFactory.create(
-                conflictResolution=ConflictResolution.highest_priority,
-                minimumConfidence=0.7,
-            )
+        classification.autoClassificationConfig = AutoClassificationConfigFactory.create(
+            conflictResolution=ConflictResolution.highest_priority,
+            minimumConfidence=0.7,
         )
 
         # Email has lower score but higher priority
@@ -129,11 +125,9 @@ class TestConflictResolver:
         )
 
         classification = pii_classification.model_copy()
-        classification.autoClassificationConfig = (
-            AutoClassificationConfigFactory.create(
-                conflictResolution=ConflictResolution.most_specific,
-                minimumConfidence=0.7,
-            )
+        classification.autoClassificationConfig = AutoClassificationConfigFactory.create(
+            conflictResolution=ConflictResolution.most_specific,
+            minimumConfidence=0.7,
         )
 
         tag1 = ScoredTagFactory.create(
@@ -271,9 +265,7 @@ class TestConflictResolver:
         )
 
         resolver = ConflictResolver()
-        winner = resolver._select_winner(
-            [tag1, tag2], ConflictResolution.highest_confidence
-        )
+        winner = resolver._select_winner([tag1, tag2], ConflictResolution.highest_confidence)
 
         # With highest_confidence, should use priority as tie-breaker
         assert winner.tag.name.root == "Email"
