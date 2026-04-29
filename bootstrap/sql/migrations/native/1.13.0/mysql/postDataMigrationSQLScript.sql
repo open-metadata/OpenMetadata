@@ -80,6 +80,9 @@ UPDATE glossary_term_entity
 SET json = JSON_REMOVE(json, '$.relatedTerms')
 WHERE JSON_EXTRACT(json, '$.relatedTerms') IS NOT NULL;
 
+-- entity_extension version snapshots: handled by Java migration
+-- migrateGlossaryTermVersionRelatedTermsToTermRelation (transforms in place to preserve history).
+
 -- Backfill conceptMappings for existing glossary terms
 UPDATE glossary_term_entity
 SET json = JSON_SET(COALESCE(json, '{}'), '$.conceptMappings', JSON_ARRAY())
