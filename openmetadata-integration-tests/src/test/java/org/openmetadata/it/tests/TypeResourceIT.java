@@ -325,6 +325,155 @@ public class TypeResourceIT {
   }
 
   @Test
+  void test_customPropertyNameAllowedCharacters_succeeds(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID tableTypeId = TABLE_ENTITY_TYPE.getId();
+    String prefix = ns.prefix("safe");
+
+    String[] allowedNames = {
+      prefix + "Plain",
+      prefix + "_underscore",
+      prefix + "-hyphen",
+      prefix + ".dot",
+      prefix + "with space",
+      prefix + "with/slash",
+      prefix + "with&amp",
+      prefix + "with%percent",
+      prefix + "with#hash",
+      prefix + "with@at",
+      prefix + "with!bang",
+      prefix + "with,comma",
+      prefix + "with;semi",
+      prefix + "with=eq",
+      prefix + "with|pipe",
+      prefix + "with'quote",
+      prefix + "with(lparen",
+      prefix + "with)rparen",
+      prefix + "with<lt",
+      prefix + "with>gt",
+      prefix + "with[lbrack",
+      prefix + "with]rbrack",
+      prefix + "with{lbrace",
+      prefix + "with}rbrace",
+      prefix + "withMatched(pair)And<more>",
+      prefix + "withDigits123",
+    };
+
+    for (String name : allowedNames) {
+      CustomProperty property = new CustomProperty();
+      property.setName(name);
+      property.setDescription("Allowed-charset test for custom property name");
+      property.setPropertyType(STRING_TYPE.getEntityReference());
+
+      Type updatedType = addCustomProperty(client, tableTypeId, property);
+      assertNotNull(updatedType, "Allowed name '" + name + "' must be accepted");
+
+      boolean present =
+          updatedType.getCustomProperties().stream().anyMatch(cp -> name.equals(cp.getName()));
+      assertTrue(present, "Custom property '" + name + "' should be saved on the type");
+    }
+  }
+
+  @Test
+  void test_customPropertyNameDisallowedCharacters_fails(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID tableTypeId = TABLE_ENTITY_TYPE.getId();
+    String prefix = ns.prefix("bad");
+
+    String[] disallowedNames = {
+      prefix + "with\"dquote", prefix + "with:colon", prefix + "with^caret", prefix + "with$dollar",
+    };
+
+    for (String name : disallowedNames) {
+      CustomProperty property = new CustomProperty();
+      property.setName(name);
+      property.setDescription("Disallowed-charset test for custom property name");
+      property.setPropertyType(STRING_TYPE.getEntityReference());
+
+      assertThrows(
+          Exception.class,
+          () -> addCustomProperty(client, tableTypeId, property),
+          "Custom property name '" + name + "' should be rejected");
+    }
+  }
+
+  @Test
+  void test_customPropertyNameMustStartWithAlphanumeric_fails(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID tableTypeId = TABLE_ENTITY_TYPE.getId();
+    String prefix = ns.prefix("lead");
+
+    String[] invalidLeads = {
+      "_" + prefix, "-" + prefix, "." + prefix, " " + prefix, "(" + prefix, "<" + prefix,
+    };
+
+    for (String name : invalidLeads) {
+      CustomProperty property = new CustomProperty();
+      property.setName(name);
+      property.setDescription("Leading-character validation");
+      property.setPropertyType(STRING_TYPE.getEntityReference());
+
+      assertThrows(
+          Exception.class,
+          () -> addCustomProperty(client, tableTypeId, property),
+          "Custom property name '" + name + "' must start with alphanumeric");
+    }
+  }
+
+  @Test
+  void test_customPropertyNameTooLong_fails(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID tableTypeId = TABLE_ENTITY_TYPE.getId();
+
+    StringBuilder longName = new StringBuilder(ns.prefix("long"));
+    while (longName.length() <= 256) {
+      longName.append('a');
+    }
+
+    CustomProperty property = new CustomProperty();
+    property.setName(longName.toString());
+    property.setDescription("Length validation");
+    property.setPropertyType(STRING_TYPE.getEntityReference());
+
+    assertThrows(
+        Exception.class,
+        () -> addCustomProperty(client, tableTypeId, property),
+        "Custom property name longer than 256 characters should be rejected");
+  }
+
+  @Test
+  void test_customPropertyNameUnbalancedBrackets_succeeds(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID tableTypeId = TABLE_ENTITY_TYPE.getId();
+    String prefix = ns.prefix("bracket");
+
+    String[] unbalancedNames = {
+      prefix + "openParen(",
+      prefix + "closeParen)",
+      prefix + "openLt<",
+      prefix + "closeGt>",
+      prefix + "openLbrack[",
+      prefix + "closeRbrack]",
+      prefix + "openLbrace{",
+      prefix + "closeRbrace}",
+    };
+
+    for (String name : unbalancedNames) {
+      CustomProperty property = new CustomProperty();
+      property.setName(name);
+      property.setDescription("Unbalanced-bracket validation");
+      property.setPropertyType(STRING_TYPE.getEntityReference());
+
+      Type updatedType = addCustomProperty(client, tableTypeId, property);
+      assertNotNull(updatedType);
+
+      boolean present =
+          updatedType.getCustomProperties().stream().anyMatch(cp -> name.equals(cp.getName()));
+      assertTrue(present, "Unbalanced bracket name '" + name + "' should be saved");
+    }
+  }
+
+  @Test
   void test_getEntityTypeFields() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 

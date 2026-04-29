@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.Lock;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
@@ -66,6 +67,10 @@ public class TypeRepository extends EntityRepository<Type> {
   private static final String UPDATE_FIELDS = "customProperties";
   private static final String PATCH_FIELDS = "customProperties";
   private static final Striped<Lock> TYPE_PROPERTY_LOCKS = Striped.lock(4096);
+
+  private static final Pattern CUSTOM_PROPERTY_NAME_PATTERN =
+      Pattern.compile("^[A-Za-z0-9][A-Za-z0-9 _\\-.,;/&%#@!'(){}\\[\\]<>|=]*$");
+  private static final int CUSTOM_PROPERTY_NAME_MAX_LENGTH = 256;
 
   public TypeRepository() {
     super(
@@ -213,6 +218,7 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   private void validateProperty(CustomProperty customProperty) {
+    validateCustomPropertyName(customProperty.getName());
     switch (customProperty.getPropertyType().getName()) {
       case "enum" -> validateEnumConfig(customProperty.getCustomPropertyConfig());
       case "table-cp" -> validateTableTypeConfig(customProperty.getCustomPropertyConfig());
@@ -225,6 +231,26 @@ public class TypeRepository extends EntityRepository<Type> {
         // hyperlink-cp requires no special config validation - URL protocol validation
         // (http/https only) is enforced in EntityRepository.validateHyperlinkUrl
       case "int", "string", "hyperlink-cp" -> {}
+    }
+  }
+
+  private static void validateCustomPropertyName(String name) {
+    if (name == null || name.isEmpty()) {
+      throw new IllegalArgumentException("Custom property name must not be empty");
+    }
+    if (name.length() > CUSTOM_PROPERTY_NAME_MAX_LENGTH) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Custom property name '%s' exceeds maximum length of %d characters",
+              name, CUSTOM_PROPERTY_NAME_MAX_LENGTH));
+    }
+    if (!CUSTOM_PROPERTY_NAME_PATTERN.matcher(name).matches()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Invalid custom property name '%s'. Name must start with an alphanumeric character "
+                  + "and may contain only: alphanumeric, _ - . / & %% # @ ! , ; = | ' space ( ) < > [ ] { }. "
+                  + "The following characters are not allowed: \" : ^ $",
+              name));
     }
   }
 

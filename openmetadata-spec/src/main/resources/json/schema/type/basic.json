@@ -126,6 +126,13 @@
       "maxLength": 256,
       "pattern": "^((?!::).)*$"
     },
+    "customPropertyName": {
+      "description": "Name of a custom property. Allowed characters: alphanumeric, _ - . / & % # @ ! , ; = | ' space ( ) < > [ ] { }. Must start with an alphanumeric character. Disallowed characters: \" : ^ $",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9 _\\-.,;/&%#@!'(){}\\[\\]<>|=]*$"
+    },
     "testCaseEntityName": {
       "description": "Name that identifies a test definition and test case.",
       "type": "string",
