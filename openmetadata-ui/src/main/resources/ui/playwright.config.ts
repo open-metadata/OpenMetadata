@@ -90,7 +90,6 @@ export default defineConfig({
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
-        '**/SSORenewal.spec.ts',
       ],
     },
     {

@@ -39,15 +39,15 @@ const password = process.env[SSO_ENV.PASSWORD] ?? '';
 // shared security config and is too aggressive to point at the Okta tenant.
 const SUPPORTED_PROVIDER = 'keycloak-azure-saml';
 
+test.describe.configure({ mode: 'serial' });
+
 test.describe('SSO Session Renewal', { tag: ['@sso', '@Platform'] }, () => {
   test.slow();
-  // eslint-disable-next-line playwright/no-skipped-test -- conditional skip on required env vars + provider; runs only when the nightly workflow wires keycloak-azure-saml credentials
+  // eslint-disable-next-line playwright/no-skipped-test -- TTL override is unsafe against any provider other than the local Keycloak fixture
   test.skip(
     providerType !== SUPPORTED_PROVIDER || !username || !password,
     `${SSO_ENV.PROVIDER_TYPE}=${SUPPORTED_PROVIDER} + ${SSO_ENV.USERNAME} + ${SSO_ENV.PASSWORD} must be set`
   );
-
-  test.describe.configure({ mode: 'serial' });
 
   let helper: ProviderHelper;
   let adminJwt: string | undefined;
