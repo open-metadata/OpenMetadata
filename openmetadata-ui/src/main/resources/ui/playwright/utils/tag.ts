@@ -626,13 +626,23 @@ export const selectTagInTagSuggestion = async (
     );
   });
 
+  await tagInput.click();
   await tagInput.fill(searchTerm);
   await tagSearchResponse;
 
-  await page.locator('[role="listbox"]').first().waitFor({ state: 'visible' });
-  const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
+  const listboxId = await tagInput.getAttribute('aria-controls');
+  const listbox = listboxId
+    ? page.locator(`[id="${listboxId}"]`)
+    : page
+        .locator('[role="listbox"]')
+        .filter({ has: page.getByTestId(`tag-option-${tagFqn}`) })
+        .first();
+  await listbox.waitFor({ state: 'visible' });
+
+  const tagOption = listbox.getByTestId(`tag-option-${tagFqn}`);
   await tagOption.waitFor({ state: 'visible' });
+  await tagOption.scrollIntoViewIfNeeded();
   await tagOption.click();
   await page.keyboard.press('Escape');
-  await page.locator('[role="listbox"]').first().waitFor({ state: 'hidden' });
+  await listbox.waitFor({ state: 'hidden' });
 };
