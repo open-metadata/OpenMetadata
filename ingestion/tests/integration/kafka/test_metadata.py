@@ -35,14 +35,10 @@ def test_ingest_with_consumer_groups(
         nullable=False,
     )
     assert topic is not None
-    assert (
-        topic.consumerGroups is not None
-    ), "consumerGroups must be populated when extractConsumerGroups=True"
+    assert topic.consumerGroups is not None, "consumerGroups must be populated when extractConsumerGroups=True"
     group_ids = [cg.groupId for cg in topic.consumerGroups]
     assert "om-integration-test-group" in group_ids
-    test_group = next(
-        cg for cg in topic.consumerGroups if cg.groupId == "om-integration-test-group"
-    )
+    test_group = next(cg for cg in topic.consumerGroups if cg.groupId == "om-integration-test-group")
     assert test_group.state is not None
     assert test_group.memberCount >= 1
     assert test_group.members is not None
@@ -83,9 +79,7 @@ def test_ingest_with_sample_data(
     if sample_data is None:
         pytest.skip("OM server did not return sampleData for this topic")
     messages = sample_data.get("messages", [])
-    assert (
-        len(messages) > 0
-    ), "Sample data should contain at least one message from the test topic"
+    assert len(messages) > 0, "Sample data should contain at least one message from the test topic"
 
 
 @pytest.fixture(
@@ -138,9 +132,7 @@ def kafka_consumer_group(kafka_container):
 
 
 @pytest.fixture(scope="module")
-def kafka_consumer_group_service(
-    kafka_container, schema_registry_container, metadata, workflow_config, sink_config
-):
+def kafka_consumer_group_service(kafka_container, schema_registry_container, metadata, workflow_config, sink_config):
     """Create a dedicated service for consumer group testing."""
     import uuid
 
@@ -194,9 +186,7 @@ def kafka_consumer_group_service(
 
 
 @pytest.fixture(scope="module")
-def kafka_sample_data_service(
-    kafka_container, schema_registry_container, metadata, workflow_config, sink_config
-):
+def kafka_sample_data_service(kafka_container, schema_registry_container, metadata, workflow_config, sink_config):
     """Create a dedicated service for sample data testing."""
     import uuid
 
@@ -250,9 +240,7 @@ def kafka_sample_data_service(
 
 
 @pytest.fixture(scope="module")
-def ingestion_config_with_consumer_groups(
-    db_service, metadata, workflow_config, sink_config
-):
+def ingestion_config_with_consumer_groups(db_service, metadata, workflow_config, sink_config):
     return {
         "source": {
             "type": db_service.connection.config.type.value.lower(),
@@ -271,9 +259,7 @@ def ingestion_config_with_consumer_groups(
 
 
 @pytest.fixture(scope="module")
-def ingestion_config_with_sample_data(
-    db_service, metadata, workflow_config, sink_config
-):
+def ingestion_config_with_sample_data(db_service, metadata, workflow_config, sink_config):
     return {
         "source": {
             "type": db_service.connection.config.type.value.lower(),

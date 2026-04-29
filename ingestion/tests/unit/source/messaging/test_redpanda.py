@@ -11,6 +11,7 @@
 """
 Unit tests for Redpanda connector — lineage, client, and consumer groups
 """
+
 import uuid
 from unittest.mock import MagicMock, patch
 
@@ -152,17 +153,13 @@ class TestRedpandaTopicLineage:
         source.metadata = MagicMock()
         source.context = MagicMock()
         source.context.get.return_value.messaging_service = "test-redpanda-service"
-        source.yield_topic_lineage = RedpandaSource.yield_topic_lineage.__get__(
-            source, RedpandaSource
-        )
+        source.yield_topic_lineage = RedpandaSource.yield_topic_lineage.__get__(source, RedpandaSource)
         return source
 
     def test_no_admin_client(self, mock_redpanda_source):
         """No lineage when admin client is not configured"""
         mock_redpanda_source.admin_client_rp = None
-        topic_details = BrokerTopicDetails(
-            topic_name="test-topic", topic_metadata=MagicMock()
-        )
+        topic_details = BrokerTopicDetails(topic_name="test-topic", topic_metadata=MagicMock())
         result = list(mock_redpanda_source.yield_topic_lineage(topic_details))
         assert len(result) == 0
 
@@ -173,9 +170,7 @@ class TestRedpandaTopicLineage:
         mock_redpanda_source.admin_client_rp = mock_admin
         mock_redpanda_source._transforms_cache = None
 
-        topic_details = BrokerTopicDetails(
-            topic_name="test-topic", topic_metadata=MagicMock()
-        )
+        topic_details = BrokerTopicDetails(topic_name="test-topic", topic_metadata=MagicMock())
         result = list(mock_redpanda_source.yield_topic_lineage(topic_details))
         assert len(result) == 0
 
@@ -192,9 +187,7 @@ class TestRedpandaTopicLineage:
             ]
         }
 
-        topic_details = BrokerTopicDetails(
-            topic_name="test-topic", topic_metadata=MagicMock()
-        )
+        topic_details = BrokerTopicDetails(topic_name="test-topic", topic_metadata=MagicMock())
         result = list(mock_redpanda_source.yield_topic_lineage(topic_details))
         assert len(result) == 0
 
@@ -228,16 +221,10 @@ class TestRedpandaTopicLineage:
             ]
         }
 
-        topic_details = BrokerTopicDetails(
-            topic_name="input-topic", topic_metadata=MagicMock()
-        )
+        topic_details = BrokerTopicDetails(topic_name="input-topic", topic_metadata=MagicMock())
 
-        with patch(
-            "metadata.ingestion.source.messaging.redpanda.metadata.fqn.build"
-        ) as mock_fqn:
-            mock_fqn.side_effect = lambda **kwargs: (
-                f"{kwargs['service_name']}.{kwargs['topic_name']}"
-            )
+        with patch("metadata.ingestion.source.messaging.redpanda.metadata.fqn.build") as mock_fqn:
+            mock_fqn.side_effect = lambda **kwargs: f"{kwargs['service_name']}.{kwargs['topic_name']}"
             result = list(mock_redpanda_source.yield_topic_lineage(topic_details))
 
         assert len(result) == 1
@@ -279,14 +266,10 @@ class TestRedpandaTopicLineage:
             ]
         }
 
-        topic_details = BrokerTopicDetails(
-            topic_name="input", topic_metadata=MagicMock()
-        )
+        topic_details = BrokerTopicDetails(topic_name="input", topic_metadata=MagicMock())
 
-        with patch(
-            "metadata.ingestion.source.messaging.redpanda.metadata.fqn.build"
-        ) as mock_fqn:
-            mock_fqn.side_effect = lambda **kwargs: (f"svc.{kwargs['topic_name']}")
+        with patch("metadata.ingestion.source.messaging.redpanda.metadata.fqn.build") as mock_fqn:
+            mock_fqn.side_effect = lambda **kwargs: f"svc.{kwargs['topic_name']}"
             result = list(mock_redpanda_source.yield_topic_lineage(topic_details))
 
         assert len(result) == 2
@@ -315,14 +298,10 @@ class TestRedpandaTopicLineage:
             ]
         }
 
-        topic_details = BrokerTopicDetails(
-            topic_name="input", topic_metadata=MagicMock()
-        )
+        topic_details = BrokerTopicDetails(topic_name="input", topic_metadata=MagicMock())
 
-        with patch(
-            "metadata.ingestion.source.messaging.redpanda.metadata.fqn.build"
-        ) as mock_fqn:
-            mock_fqn.side_effect = lambda **kwargs: (f"svc.{kwargs['topic_name']}")
+        with patch("metadata.ingestion.source.messaging.redpanda.metadata.fqn.build") as mock_fqn:
+            mock_fqn.side_effect = lambda **kwargs: f"svc.{kwargs['topic_name']}"
             result = list(mock_redpanda_source.yield_topic_lineage(topic_details))
 
         assert len(result) == 0
@@ -385,14 +364,10 @@ class TestConsumerGroupExtraction:
         )
 
         source = MagicMock(spec=CommonBrokerSource)
-        source._build_topic_consumer_groups_map = (
-            CommonBrokerSource._build_topic_consumer_groups_map.__get__(
-                source, CommonBrokerSource
-            )
-        )
-        source._index_group_by_topic = CommonBrokerSource._index_group_by_topic.__get__(
+        source._build_topic_consumer_groups_map = CommonBrokerSource._build_topic_consumer_groups_map.__get__(
             source, CommonBrokerSource
         )
+        source._index_group_by_topic = CommonBrokerSource._index_group_by_topic.__get__(source, CommonBrokerSource)
         source._map_consumer_group_state = CommonBrokerSource._map_consumer_group_state
 
         mock_group_listing = MagicMock()
@@ -429,9 +404,7 @@ class TestConsumerGroupExtraction:
         mock_future = MagicMock()
         mock_future.result.return_value = mock_group_desc
 
-        source.admin_client.describe_consumer_groups.return_value = {
-            "test-group": mock_future
-        }
+        source.admin_client.describe_consumer_groups.return_value = {"test-group": mock_future}
 
         result = source._build_topic_consumer_groups_map()
 
@@ -447,10 +420,8 @@ class TestConsumerGroupExtraction:
         )
 
         source = MagicMock(spec=CommonBrokerSource)
-        source._build_topic_consumer_groups_map = (
-            CommonBrokerSource._build_topic_consumer_groups_map.__get__(
-                source, CommonBrokerSource
-            )
+        source._build_topic_consumer_groups_map = CommonBrokerSource._build_topic_consumer_groups_map.__get__(
+            source, CommonBrokerSource
         )
 
         mock_list_result = MagicMock()
@@ -470,14 +441,10 @@ class TestConsumerGroupExtraction:
         )
 
         source = MagicMock(spec=CommonBrokerSource)
-        source._build_topic_consumer_groups_map = (
-            CommonBrokerSource._build_topic_consumer_groups_map.__get__(
-                source, CommonBrokerSource
-            )
-        )
-        source._index_group_by_topic = CommonBrokerSource._index_group_by_topic.__get__(
+        source._build_topic_consumer_groups_map = CommonBrokerSource._build_topic_consumer_groups_map.__get__(
             source, CommonBrokerSource
         )
+        source._index_group_by_topic = CommonBrokerSource._index_group_by_topic.__get__(source, CommonBrokerSource)
         source._map_consumer_group_state = CommonBrokerSource._map_consumer_group_state
 
         mock_list_result = MagicMock()
@@ -503,9 +470,7 @@ class TestConsumerGroupExtraction:
 
         mock_future = MagicMock()
         mock_future.result.return_value = mock_group_desc
-        source.admin_client.describe_consumer_groups.return_value = {
-            "empty-group": mock_future
-        }
+        source.admin_client.describe_consumer_groups.return_value = {"empty-group": mock_future}
 
         result = source._build_topic_consumer_groups_map()
         assert result == {}
@@ -516,10 +481,8 @@ class TestConsumerGroupExtraction:
         )
 
         source = MagicMock(spec=CommonBrokerSource)
-        source._get_consumer_groups_for_topic = (
-            CommonBrokerSource._get_consumer_groups_for_topic.__get__(
-                source, CommonBrokerSource
-            )
+        source._get_consumer_groups_for_topic = CommonBrokerSource._get_consumer_groups_for_topic.__get__(
+            source, CommonBrokerSource
         )
         source._topic_consumer_groups = {
             "my-topic": {
@@ -565,10 +528,8 @@ class TestConsumerGroupExtraction:
         )
 
         source = MagicMock(spec=CommonBrokerSource)
-        source._get_consumer_groups_for_topic = (
-            CommonBrokerSource._get_consumer_groups_for_topic.__get__(
-                source, CommonBrokerSource
-            )
+        source._get_consumer_groups_for_topic = CommonBrokerSource._get_consumer_groups_for_topic.__get__(
+            source, CommonBrokerSource
         )
         source._topic_consumer_groups = {}
 
@@ -582,10 +543,8 @@ class TestConsumerGroupExtraction:
         )
 
         source = MagicMock(spec=CommonBrokerSource)
-        source._get_consumer_groups_for_topic = (
-            CommonBrokerSource._get_consumer_groups_for_topic.__get__(
-                source, CommonBrokerSource
-            )
+        source._get_consumer_groups_for_topic = CommonBrokerSource._get_consumer_groups_for_topic.__get__(
+            source, CommonBrokerSource
         )
         source._topic_consumer_groups = {
             "my-topic": {
@@ -616,10 +575,8 @@ class TestConsumerGroupExtraction:
         )
 
         source = MagicMock(spec=CommonBrokerSource)
-        source._get_consumer_groups_for_topic = (
-            CommonBrokerSource._get_consumer_groups_for_topic.__get__(
-                source, CommonBrokerSource
-            )
+        source._get_consumer_groups_for_topic = CommonBrokerSource._get_consumer_groups_for_topic.__get__(
+            source, CommonBrokerSource
         )
 
         def _entry(state="Stable"):
@@ -656,26 +613,16 @@ class TestBatchEndOffsets:
         )
 
         source = MagicMock(spec=CommonBrokerSource)
-        source._fetch_consumer_group_offsets = (
-            CommonBrokerSource._fetch_consumer_group_offsets.__get__(
-                source, CommonBrokerSource
-            )
+        source._fetch_consumer_group_offsets = CommonBrokerSource._fetch_consumer_group_offsets.__get__(
+            source, CommonBrokerSource
         )
-        source._collect_committed_offsets = (
-            CommonBrokerSource._collect_committed_offsets.__get__(
-                source, CommonBrokerSource
-            )
+        source._collect_committed_offsets = CommonBrokerSource._collect_committed_offsets.__get__(
+            source, CommonBrokerSource
         )
-        source._fetch_group_committed_offsets = (
-            CommonBrokerSource._fetch_group_committed_offsets.__get__(
-                source, CommonBrokerSource
-            )
+        source._fetch_group_committed_offsets = CommonBrokerSource._fetch_group_committed_offsets.__get__(
+            source, CommonBrokerSource
         )
-        source._batch_get_end_offsets = (
-            CommonBrokerSource._batch_get_end_offsets.__get__(
-                source, CommonBrokerSource
-            )
-        )
+        source._batch_get_end_offsets = CommonBrokerSource._batch_get_end_offsets.__get__(source, CommonBrokerSource)
         return source
 
     def test_deduplicates_partitions_across_groups(self):
@@ -694,9 +641,7 @@ class TestBatchEndOffsets:
         mock_future.result.return_value = mock_offset_result
 
         source.admin_client = MagicMock()
-        source.admin_client.list_consumer_group_offsets.return_value = {
-            "key": mock_future
-        }
+        source.admin_client.list_consumer_group_offsets.return_value = {"key": mock_future}
 
         topic_cg_map = {
             "shared-topic": {

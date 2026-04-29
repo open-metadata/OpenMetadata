@@ -9,6 +9,7 @@ Uses a real Redpanda broker via testcontainers to validate:
 - Connection test validation
 - Admin API connectivity
 """
+
 import time
 
 import pytest
@@ -85,14 +86,10 @@ def test_consumer_group_extraction(
         nullable=False,
     )
     assert topic is not None
-    assert (
-        topic.consumerGroups is not None
-    ), "consumerGroups must be populated when extractConsumerGroups=True"
+    assert topic.consumerGroups is not None, "consumerGroups must be populated when extractConsumerGroups=True"
     group_ids = [cg.groupId for cg in topic.consumerGroups]
     assert "om-redpanda-test-group" in group_ids
-    test_group = next(
-        cg for cg in topic.consumerGroups if cg.groupId == "om-redpanda-test-group"
-    )
+    test_group = next(cg for cg in topic.consumerGroups if cg.groupId == "om-redpanda-test-group")
     assert test_group.state is not None
     assert test_group.memberCount >= 1
     assert test_group.members is not None
@@ -132,9 +129,7 @@ def test_sample_data_ingestion(
     if sample_data is None:
         pytest.skip("OM server did not return sampleData for this topic")
     messages = sample_data.get("messages", [])
-    assert (
-        len(messages) > 0
-    ), "Sample data should contain at least one message from the test topic"
+    assert len(messages) > 0, "Sample data should contain at least one message from the test topic"
 
 
 class TestRedpandaConnectionTest:

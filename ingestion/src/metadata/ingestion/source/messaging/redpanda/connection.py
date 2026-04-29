@@ -13,7 +13,7 @@
 Source connection handler
 """
 
-from typing import Optional, cast
+from typing import TYPE_CHECKING, Optional, cast
 
 from confluent_kafka.admin import KafkaException
 
@@ -37,9 +37,13 @@ from metadata.ingestion.source.messaging.kafka.connection import (
 from metadata.ingestion.source.messaging.kafka.connection import (
     get_connection as get_kafka_connection,
 )
+from metadata.ingestion.source.messaging.redpanda.client import RedpandaAdminClient
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.ssl_manager import SSLManager
+from metadata.utils.ssl_manager import check_ssl_and_init
+
+if TYPE_CHECKING:
+    from metadata.utils.ssl_manager import SSLManager
 
 logger = ingestion_logger()
 
@@ -65,12 +69,12 @@ def test_connection(
 
     def custom_executor():
         try:
-            client.admin_client.list_topics(timeout=TIMEOUT_SECONDS).topics
+            _ = client.admin_client.list_topics(timeout=TIMEOUT_SECONDS).topics
         except KafkaException as err:
             raise InvalidKafkaCreds(
                 f"Failed to fetch topics due to: {err}. "
                 "Please validate credentials and check if you are using correct security protocol"
-            )
+            ) from err
 
     def schema_registry_test():
         if client.schema_registry_client:
@@ -89,22 +93,12 @@ def test_connection(
 
     def admin_api_test():
         if not service_connection.redpandaAdminApiUrl:
-            logger.info(
-                "Redpanda Admin API URL not configured. "
-                "Skipping Admin API connectivity check."
-            )
+            logger.info("Redpanda Admin API URL not configured. Skipping Admin API connectivity check.")
             return
-        from metadata.ingestion.source.messaging.redpanda.client import (
-            RedpandaAdminClient,
-        )
-        from metadata.utils.ssl_manager import check_ssl_and_init
-
         ssl_manager = cast("SSLManager | None", check_ssl_and_init(service_connection))
         client_kwargs = ssl_manager.admin_api_http_kwargs() if ssl_manager else {}
         try:
-            admin_client = RedpandaAdminClient(
-                str(service_connection.redpandaAdminApiUrl), **client_kwargs
-            )
+            admin_client = RedpandaAdminClient(str(service_connection.redpandaAdminApiUrl), **client_kwargs)
             admin_client.check_connectivity()
         finally:
             if ssl_manager:
@@ -120,9 +114,7 @@ def test_connection(
     return test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
-        service_type=service_connection.type.value
-        if service_connection.type
-        else "Redpanda",
+        service_type=service_connection.type.value if service_connection.type else "Redpanda",
         automation_workflow=automation_workflow,
         timeout_seconds=timeout_seconds,
     )

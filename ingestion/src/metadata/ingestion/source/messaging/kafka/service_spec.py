@@ -11,6 +11,7 @@
 """
 Kafka service specification.
 """
+
 from metadata.ingestion.source.messaging.kafka.metadata import KafkaSource
 from metadata.utils.service_spec import BaseSpec
 

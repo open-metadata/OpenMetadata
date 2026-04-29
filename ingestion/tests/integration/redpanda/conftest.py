@@ -1,5 +1,5 @@
-import os.path
 import uuid
+from pathlib import Path
 
 import pytest
 import testcontainers.core.network
@@ -24,9 +24,7 @@ from metadata.generated.schema.metadataIngestion.messagingServiceMetadataPipelin
 )
 
 
-def _connect_to_network(
-    ctr: DockerContainer, network: testcontainers.core.network, alias: str
-):
+def _connect_to_network(ctr: DockerContainer, network: testcontainers.core.network, alias: str):
     ctr.with_kwargs(
         network=network.name,
         networking_config={network.name: EndpointConfig("1.33", aliases=[alias])},
@@ -51,9 +49,7 @@ class RedpandaContainer(DockerContainer):
         **kwargs,
     ):
         super().__init__(image, **kwargs)
-        self.with_exposed_ports(
-            self.EXTERNAL_PORT, self.ADMIN_API_PORT, self.SCHEMA_REGISTRY_PORT
-        )
+        self.with_exposed_ports(self.EXTERNAL_PORT, self.ADMIN_API_PORT, self.SCHEMA_REGISTRY_PORT)
         self.with_command(
             "redpanda start"
             " --smp 1"
@@ -75,9 +71,7 @@ class RedpandaContainer(DockerContainer):
     def start(self, timeout=90) -> "RedpandaContainer":
         super().start()
         # Redpanda prints the Admin API listener message once fully started
-        wait_for_logs(
-            self, r".*admin_api_server.*Insecure Admin API listener.*", timeout=timeout
-        )
+        wait_for_logs(self, r".*admin_api_server.*Insecure Admin API listener.*", timeout=timeout)
         return self
 
     def get_bootstrap_server(self) -> str:
@@ -111,7 +105,7 @@ def redpanda_container(docker_network):
         load_csv_data.main(
             kafka_broker=container.get_bootstrap_server(),
             schema_registry_url=container.get_schema_registry_url(),
-            csv_directory=os.path.dirname(__file__) + "/data",
+            csv_directory=str(Path(__file__).parent / "data"),
         )
         yield container
 
@@ -169,9 +163,7 @@ def ingestion_config(db_service, workflow_config, sink_config):
         "source": {
             "type": db_service.connection.config.type.value.lower(),
             "serviceName": db_service.fullyQualifiedName.root,
-            "sourceConfig": {
-                "config": {"type": MessagingMetadataConfigType.MessagingMetadata.value}
-            },
+            "sourceConfig": {"config": {"type": MessagingMetadataConfigType.MessagingMetadata.value}},
             "serviceConnection": db_service.connection.model_dump(),
         },
         "sink": sink_config,
@@ -218,9 +210,7 @@ def ingestion_config_with_sample_data(db_service, workflow_config, sink_config):
 
 
 @pytest.fixture(scope="module")
-def redpanda_consumer_group_service(
-    redpanda_container, metadata, workflow_config, sink_config
-):
+def redpanda_consumer_group_service(redpanda_container, metadata, workflow_config, sink_config):
     """Dedicated service for consumer group testing."""
     svc_request = CreateMessagingServiceRequest(
         name=f"rp_cg_test_{uuid.uuid4().hex[:8]}",

@@ -50,41 +50,29 @@ class RedpandaSource(CommonBrokerSource):
             "RedpandaConnection",
             config.serviceConnection.root.config,  # pyright: ignore[reportOptionalMemberAccess]
         )
-        self.ssl_manager: SSLManager | None = cast(
-            "SSLManager | None", check_ssl_and_init(self.service_connection)
-        )
+        self.ssl_manager: SSLManager | None = cast("SSLManager | None", check_ssl_and_init(self.service_connection))
         if self.ssl_manager:
-            self.service_connection = self.ssl_manager.setup_ssl(
-                self.service_connection
-            )
+            self.service_connection = self.ssl_manager.setup_ssl(self.service_connection)
         super().__init__(config, metadata)
 
         self.admin_client_rp = None
         self._transforms_cache = None
         if self.service_connection.redpandaAdminApiUrl:
-            client_kwargs = (
-                self.ssl_manager.admin_api_http_kwargs() if self.ssl_manager else {}
-            )
+            client_kwargs = self.ssl_manager.admin_api_http_kwargs() if self.ssl_manager else {}
             self.admin_client_rp = RedpandaAdminClient(
                 str(self.service_connection.redpandaAdminApiUrl),
                 **client_kwargs,
             )
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: RedpandaConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedpandaConnection):
-            raise InvalidSourceException(
-                f"Expected RedpandaConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected RedpandaConnection, but got {connection}")
         return cls(config, metadata)
 
-    def yield_topic_lineage(
-        self, topic_details: BrokerTopicDetails
-    ) -> Iterable[Either[AddLineageRequest]]:
+    def yield_topic_lineage(self, topic_details: BrokerTopicDetails) -> Iterable[Either[AddLineageRequest]]:
         """
         Yield topic-to-topic lineage from Redpanda data transforms.
         Each transform has one input_topic and one or more output_topics.
@@ -102,7 +90,6 @@ class RedpandaSource(CommonBrokerSource):
 
         service_name = getattr(self.context.get(), "messaging_service", "") or ""
         for transform in self._transforms_cache.get(current_topic, []):
-
             source_topic_fqn = (
                 fqn.build(
                     metadata=self.metadata,
@@ -112,9 +99,7 @@ class RedpandaSource(CommonBrokerSource):
                 )
                 or ""
             )
-            source_topic = self.metadata.get_by_name(
-                entity=TopicEntity, fqn=source_topic_fqn
-            )
+            source_topic = self.metadata.get_by_name(entity=TopicEntity, fqn=source_topic_fqn)
             if not source_topic:
                 continue
 
@@ -129,13 +114,10 @@ class RedpandaSource(CommonBrokerSource):
                         )
                         or ""
                     )
-                    target_topic = self.metadata.get_by_name(
-                        entity=TopicEntity, fqn=target_topic_fqn
-                    )
+                    target_topic = self.metadata.get_by_name(entity=TopicEntity, fqn=target_topic_fqn)
                     if not target_topic:
                         logger.debug(
-                            f"Target topic {output_topic_name} not found for "
-                            f"transform '{transform.name}' lineage"
+                            f"Target topic {output_topic_name} not found for transform '{transform.name}' lineage"
                         )
                         continue
 
@@ -152,9 +134,7 @@ class RedpandaSource(CommonBrokerSource):
                                 ),
                                 lineageDetails=LineageDetails(  # pyright: ignore[reportCallIssue]
                                     source=LineageSource.PipelineLineage,
-                                    description=(
-                                        f"Redpanda data transform '{transform.name}'"
-                                    ),
+                                    description=(f"Redpanda data transform '{transform.name}'"),
                                 ),
                             )
                         )
@@ -163,9 +143,7 @@ class RedpandaSource(CommonBrokerSource):
                     yield Either(  # pyright: ignore[reportCallIssue]
                         left=StackTraceError(
                             name=topic_details.topic_name,
-                            error=(
-                                f"Failed to create lineage for transform '{transform.name}': {exc}"
-                            ),
+                            error=(f"Failed to create lineage for transform '{transform.name}': {exc}"),
                             stackTrace=traceback.format_exc(),
                         )
                     )

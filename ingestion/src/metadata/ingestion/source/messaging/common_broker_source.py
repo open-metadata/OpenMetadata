@@ -22,7 +22,7 @@ from typing import Any, Iterable, Optional  # noqa: UP035
 
 import confluent_kafka
 from confluent_kafka import ConsumerGroupTopicPartitions, KafkaError, KafkaException
-from confluent_kafka.admin import ConfigResource
+from confluent_kafka.admin import ConfigResource, OffsetSpec
 from confluent_kafka.error import (
     ConsumeError,
     KeyDeserializationError,
@@ -73,9 +73,7 @@ def on_partitions_assignment_to_consumer(consumer, partitions) -> None:
     for partition in partitions:
         last_offset = consumer.get_watermark_offsets(partition)
         partition.offset = (
-            last_offset[1] - SAMPLE_DATA_MESSAGE_LOOKBACK
-            if last_offset[1] > SAMPLE_DATA_MESSAGE_LOOKBACK
-            else 0
+            last_offset[1] - SAMPLE_DATA_MESSAGE_LOOKBACK if last_offset[1] > SAMPLE_DATA_MESSAGE_LOOKBACK else 0
         )
     consumer.assign(partitions)
 
@@ -93,18 +91,13 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
     ):
         super().__init__(config, metadata)
         self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
-        if (
-            self.generate_sample_data
-            and self._is_sample_data_storing_globally_disabled()
-        ):
+        if self.generate_sample_data and self._is_sample_data_storing_globally_disabled():
             self.generate_sample_data = False
         self.service_connection = self.config.serviceConnection.root.config
         self.admin_client = self.connection.admin_client
         self.schema_registry_client = self.connection.schema_registry_client
         self.context.processed_schemas = {}
-        self.extract_consumer_groups = getattr(
-            self.config.sourceConfig.config, "extractConsumerGroups", False
-        )
+        self.extract_consumer_groups = getattr(self.config.sourceConfig.config, "extractConsumerGroups", False)
         self._topic_consumer_groups = None
         if self.generate_sample_data:
             self.consumer_client = self.connection.consumer_client
@@ -112,9 +105,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
     def get_topic_list(self) -> Iterable[BrokerTopicDetails]:
         topics_dict = self.admin_client.list_topics().topics
         for topic_name, topic_metadata in topics_dict.items():
-            yield BrokerTopicDetails(
-                topic_name=topic_name, topic_metadata=topic_metadata
-            )
+            yield BrokerTopicDetails(topic_name=topic_name, topic_metadata=topic_metadata)
 
     def get_topic_name(self, topic_details: BrokerTopicDetails) -> str:
         """
@@ -122,14 +113,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         """
         return topic_details.topic_name
 
-    def yield_topic(
-        self, topic_details: BrokerTopicDetails
-    ) -> Iterable[Either[CreateTopicRequest]]:
+    def yield_topic(self, topic_details: BrokerTopicDetails) -> Iterable[Either[CreateTopicRequest]]:
         try:
-            schema_type_map = {
-                key.lower(): value.value
-                for key, value in SchemaType.__members__.items()
-            }
+            schema_type_map = {key.lower(): value.value for key, value in SchemaType.__members__.items()}
             logger.info(f"Fetching topic schema {topic_details.topic_name}")
             topic_schema = self._parse_topic_metadata(topic_details.topic_name)
             logger.info(f"Fetching topic config {topic_details.topic_name}")
@@ -137,9 +123,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 name=EntityName(topic_details.topic_name),
                 service=FullyQualifiedEntityName(self.context.get().messaging_service),
                 partitions=len(topic_details.topic_metadata.partitions),
-                replicationFactor=len(
-                    topic_details.topic_metadata.partitions.get(0).replicas
-                ),
+                replicationFactor=len(topic_details.topic_metadata.partitions.get(0).replicas),
             )
             topic_config_resource = self.admin_client.describe_configs(
                 [
@@ -154,7 +138,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 schema_type = topic_schema.schema_type.lower()
                 load_parser_fn = schema_parser_config_registry.registry.get(schema_type)
                 if not load_parser_fn:
-                    raise InvalidSchemaTypeException(
+                    raise InvalidSchemaTypeException(  # noqa: TRY301
                         f"Cannot find {schema_type} in parser providers registry."
                     )
                 schema_text = topic_schema.schema_str
@@ -174,13 +158,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     schemaFields=schema_fields if schema_fields is not None else [],
                 )
             else:
-                topic.messageSchema = Topic(
-                    schemaText="", schemaType=SchemaType.Other, schemaFields=[]
-                )
+                topic.messageSchema = Topic(schemaText="", schemaType=SchemaType.Other, schemaFields=[])
             if self.extract_consumer_groups:
-                topic.consumerGroups = self._get_consumer_groups_for_topic(
-                    topic_details.topic_name
-                )
+                topic.consumerGroups = self._get_consumer_groups_for_topic(topic_details.topic_name)
             yield Either(right=topic)
             self.register_record(topic_request=topic)
 
@@ -194,28 +174,18 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             )
 
     @staticmethod
-    def add_properties_to_topic_from_resource(
-        topic: CreateTopicRequest, topic_config_resource: dict
-    ) -> None:
+    def add_properties_to_topic_from_resource(topic: CreateTopicRequest, topic_config_resource: dict) -> None:
         """
         Stateful operation that adds new properties to a given Topic
         """
         try:
-            for resource_value in concurrent.futures.as_completed(
-                iter(topic_config_resource.values())
-            ):
-                config_response = resource_value.result(
-                    timeout=ADMIN_CLIENT_TIMEOUT_SECONDS
-                )
+            for resource_value in concurrent.futures.as_completed(iter(topic_config_resource.values())):
+                config_response = resource_value.result(timeout=ADMIN_CLIENT_TIMEOUT_SECONDS)
                 if "max.message.bytes" in config_response:
-                    topic.maximumMessageSize = config_response.get(
-                        "max.message.bytes", {}
-                    ).value
+                    topic.maximumMessageSize = config_response.get("max.message.bytes", {}).value
 
                 if "min.insync.replicas" in config_response:
-                    topic.minimumInSyncReplicas = config_response.get(
-                        "min.insync.replicas"
-                    ).value
+                    topic.minimumInSyncReplicas = config_response.get("min.insync.replicas").value
 
                 if "retention.ms" in config_response:
                     topic.retentionTime = config_response.get("retention.ms").value
@@ -234,9 +204,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
         except (KafkaException, KafkaError) as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Exception adding properties to topic [{topic.name}]: {exc}"
-            )
+            logger.warning(f"Exception adding properties to topic [{topic.name}]: {exc}")
 
     def _get_schema_text_with_references(self, schema) -> Optional[str]:  # noqa: UP045
         """
@@ -248,22 +216,11 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 for reference in schema.references or []:
                     if not self.context.processed_schemas.get(reference.name):
                         self.context.processed_schemas[reference.name] = True
-                        reference_schema = (
-                            self.schema_registry_client.get_latest_version(
-                                reference.name
-                            )
-                        )
+                        reference_schema = self.schema_registry_client.get_latest_version(reference.name)
                         if reference_schema.schema.references:
-                            schema_text = (
-                                schema_text
-                                + self._get_schema_text_with_references(
-                                    reference_schema.schema
-                                )
-                            )
+                            schema_text = schema_text + self._get_schema_text_with_references(reference_schema.schema)
                         else:
-                            schema_text = (
-                                schema_text + reference_schema.schema.schema_str
-                            )
+                            schema_text = schema_text + reference_schema.schema.schema_str
                 return schema_text
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -274,15 +231,11 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
         # To find topic in artifact registry, dafault is "<topic_name>-value"
         # But suffix can be overridden using schemaRegistryTopicSuffixName
-        topic_schema_registry_name = (
-            topic_name + self.service_connection.schemaRegistryTopicSuffixName
-        )
+        topic_schema_registry_name = topic_name + self.service_connection.schemaRegistryTopicSuffixName
 
         try:
             if self.schema_registry_client:
-                registered_schema = self.schema_registry_client.get_latest_version(
-                    topic_schema_registry_name
-                )
+                registered_schema = self.schema_registry_client.get_latest_version(topic_schema_registry_name)
                 return registered_schema.schema
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -292,14 +245,10 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     f"(looking for {topic_schema_registry_name}) in registry: {exc}"
                 )
             )
-            self.status.warning(
-                topic_name, f"failed to get schema: {exc} for topic {topic_name}"
-            )
+            self.status.warning(topic_name, f"failed to get schema: {exc} for topic {topic_name}")
         return None
 
-    def yield_topic_sample_data(
-        self, topic_details: BrokerTopicDetails
-    ) -> Iterable[Either[TopicSampleData]]:
+    def yield_topic_sample_data(self, topic_details: BrokerTopicDetails) -> Iterable[Either[TopicSampleData]]:
         """
         Method to Get Sample Data of Messaging Entity
         """
@@ -316,12 +265,8 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             messages = None
             try:
                 if self.consumer_client:
-                    self.consumer_client.subscribe(
-                        [topic_name], on_assign=on_partitions_assignment_to_consumer
-                    )
-                    logger.info(
-                        f"Broker consumer polling for sample messages in topic {topic_name}"
-                    )
+                    self.consumer_client.subscribe([topic_name], on_assign=on_partitions_assignment_to_consumer)
+                    logger.info(f"Broker consumer polling for sample messages in topic {topic_name}")
                     # DeserializingConsumer does not implement consume(), use poll() in a loop instead.
                     messages = []
                     n_poll = 10
@@ -335,17 +280,13 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                                 break
                             msg = self.consumer_client.poll(timeout=remaining)
                         except ConsumeError as exc:
-                            logger.warning(
-                                f"Consumer error polling topic {topic_name}: {exc}"
-                            )
+                            logger.warning(f"Consumer error polling topic {topic_name}: {exc}")
                             continue
                         except (
                             KeyDeserializationError,
                             ValueDeserializationError,
                         ) as exc:
-                            logger.warning(
-                                f"Failed to deserialize message from topic {topic_name}: {exc}"
-                            )
+                            logger.warning(f"Failed to deserialize message from topic {topic_name}: {exc}")
                             continue
                         if msg is None:
                             break
@@ -371,9 +312,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                                 )
                             )
                         except Exception as exc:
-                            logger.warning(
-                                f"Failed to decode sample data from topic {topic_name}: {exc}"
-                            )
+                            logger.warning(f"Failed to decode sample data from topic {topic_name}: {exc}")
             if self.consumer_client:
                 self.consumer_client.unsubscribe()
             yield Either(
@@ -385,9 +324,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
     def decode_message(self, record: bytes, schema: str, schema_type: SchemaType):
         if schema_type == SchemaType.Avro:
-            deserializer = AvroDeserializer(
-                schema_str=schema, schema_registry_client=self.schema_registry_client
-            )
+            deserializer = AvroDeserializer(schema_str=schema, schema_registry_client=self.schema_registry_client)
             return str(deserializer(record, None))
         if schema_type == SchemaType.Protobuf:
             logger.debug("Protobuf deserializing sample data is not supported")
@@ -444,9 +381,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.warning(f"Failed to extract consumer groups: {exc}")
         return topic_cg_map
 
-    def _index_group_by_topic(
-        self, group_id: str, group_desc: Any, topic_cg_map: dict
-    ) -> None:
+    def _index_group_by_topic(self, group_id: str, group_desc: Any, topic_cg_map: dict) -> None:
         """Index a described consumer group into topic_cg_map by topic."""
         state = self._map_consumer_group_state(group_desc.state)
         assignor = group_desc.partition_assignor
@@ -472,9 +407,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     "partitions": partitions,
                 }
 
-    def _fetch_consumer_group_offsets(
-        self, group_ids: list, topic_cg_map: dict
-    ) -> None:
+    def _fetch_consumer_group_offsets(self, group_ids: list, topic_cg_map: dict) -> None:
         """Fetch committed offsets and compute lag for each consumer group."""
         committed = self._collect_committed_offsets(group_ids, topic_cg_map)
         end_offsets = self._batch_get_end_offsets(committed)
@@ -499,9 +432,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             try:
                 offsets = self._fetch_group_committed_offsets(group_id, topic_cg_map)
             except Exception as exc:
-                logger.debug(
-                    f"Failed to fetch offsets for consumer group {group_id}: {exc}"
-                )
+                logger.debug(f"Failed to fetch offsets for consumer group {group_id}: {exc}")
                 continue
             if offsets:
                 committed[group_id] = offsets
@@ -529,12 +460,8 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             group_offsets[(tp.topic, tp.partition)] = tp.offset
         return group_offsets
 
-    def _batch_get_end_offsets(
-        self, committed: dict, batch_size: int = END_OFFSET_BATCH_SIZE
-    ) -> dict:
+    def _batch_get_end_offsets(self, committed: dict, batch_size: int = END_OFFSET_BATCH_SIZE) -> dict:
         """Fetch end offsets for all unique topic-partitions in batched RPCs."""
-        from confluent_kafka.admin import OffsetSpec
-
         unique_tps = set()
         for partitions in committed.values():
             unique_tps.update(partitions.keys())
@@ -547,16 +474,13 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         for i in range(0, len(tp_list), batch_size):
             chunk = tp_list[i : i + batch_size]
             tp_spec = {
-                confluent_kafka.TopicPartition(topic, partition): OffsetSpec.latest()
-                for topic, partition in chunk
+                confluent_kafka.TopicPartition(topic, partition): OffsetSpec.latest() for topic, partition in chunk
             }
             try:
                 result = self.admin_client.list_offsets(tp_spec)
                 for tp, future in result.items():
                     try:
-                        offset_info = future.result(
-                            timeout=ADMIN_CLIENT_TIMEOUT_SECONDS
-                        )
+                        offset_info = future.result(timeout=ADMIN_CLIENT_TIMEOUT_SECONDS)
                         end_offsets[(tp.topic, tp.partition)] = offset_info.offset
                     except Exception:
                         end_offsets[(tp.topic, tp.partition)] = -1

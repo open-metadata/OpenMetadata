@@ -11,6 +11,7 @@
 """
 Redpanda Admin API client for data transforms
 """
+
 import traceback
 
 import requests
@@ -58,23 +59,23 @@ class RedpandaAdminClient:
         Fetch all data transforms from Redpanda Admin API.
         Endpoint: GET /v1/transform
         """
-        transforms = []
+        transforms: list[RedpandaTransform] = []
         try:
             response = self.session.get(
                 f"{self.base_url}/v1/transform",
                 timeout=API_TIMEOUT,
             )
             response.raise_for_status()
-            for item in response.json():
-                transforms.append(
-                    RedpandaTransform(
-                        name=item.get("name", ""),
-                        input_topic=item.get("input_topic", ""),
-                        output_topics=item.get("output_topics", []),
-                        status=str(item.get("status")) if item.get("status") else None,
-                        environment=item.get("environment"),
-                    )
+            transforms.extend(
+                RedpandaTransform(
+                    name=item.get("name", ""),
+                    input_topic=item.get("input_topic", ""),
+                    output_topics=item.get("output_topics", []),
+                    status=str(item.get("status")) if item.get("status") else None,
+                    environment=item.get("environment"),
                 )
+                for item in response.json()
+            )
         except RequestException as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch Redpanda transforms: {exc}")
