@@ -356,7 +356,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
-        # sqlalchemy-redshift is pre-installed with --no-deps (SA<2 metadata conflict)
+        "sqlalchemy-redshift~=1.0.0",
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },
