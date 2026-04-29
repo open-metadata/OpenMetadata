@@ -276,11 +276,15 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       createdCPData: [],
     };
     const propertyNames: Record<string, string> = {};
-    const dashboardSearchPropertyName = `cp-${uuid()}-${entity.name}${NAME_SUFFIX}`;
+    const dashboardSearchPropertyName = `cp-${uuid()}-${
+      entity.name
+    }${NAME_SUFFIX}`;
     const dashboardPropertyValue = `EXECUTIVE_DASHBOARD_${uuid()}`;
 
     // Pipeline-specific state
-    const pipelineSearchPropertyName = `cp-${uuid()}-${entity.name}${NAME_SUFFIX}`;
+    const pipelineSearchPropertyName = `cp-${uuid()}-${
+      entity.name
+    }${NAME_SUFFIX}`;
     const pipelinePropertyValue = `ETL_PRODUCTION_${uuid()}`;
 
     test.beforeAll(async ({ browser }) => {
