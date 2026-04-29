@@ -171,23 +171,16 @@ export const verifyBotSearch = async (page: Page) => {
     `bot-link-${BOT_DETAILS.updatedBotName}`
   );
 
-  await searchFromSearchInput(page, searchInput, BOT_DETAILS.updatedBotName, {
-    waitForSearchApi: true,
-  });
+  await searchFromSearchInput(page, searchInput, BOT_DETAILS.updatedBotName);
   await expect(createdBotLink).toBeVisible();
 
-  await searchFromSearchInput(page, searchInput, BOT_DETAILS.botEmail, {
-    waitForSearchApi: true,
-  });
+  await searchFromSearchInput(page, searchInput, BOT_DETAILS.botEmail);
   await expect(createdBotLink).toBeVisible();
 
   await searchFromSearchInput(
     page,
     searchInput,
-    `${BOT_DETAILS.updatedBotName}-no-match`,
-    {
-      waitForSearchApi: true,
-    }
+    `${BOT_DETAILS.updatedBotName}-no-match`
   );
   await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
 
