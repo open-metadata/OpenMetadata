@@ -175,9 +175,9 @@ export interface CustomProperty {
      */
     displayName?: string;
     /**
-     * Name of the entity property. Note a property name must be unique for an entity. Property
-     * name must follow camelCase naming adopted by openMetadata - must start with lower case
-     * with no space, underscore, or dots.
+     * Name of the entity property. Must be unique for an entity. Allowed characters:
+     * alphanumeric, _ - . / & % # @ ! , ; = | ' space ( ) < > [ ] { }. Must start with an
+     * alphanumeric character. Disallowed: " : ^ $.
      */
     name:         string;
     propertyType: EntityReference;
