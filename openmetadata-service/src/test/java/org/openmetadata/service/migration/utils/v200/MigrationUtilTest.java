@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -44,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.statement.PreparedBatch;
 import org.jdbi.v3.core.statement.Update;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -657,11 +659,26 @@ class MigrationUtilTest {
     verify(bHandle, never()).createUpdate(any(String.class));
   }
 
+  private static PreparedBatch batchWithSelfReturningBinds() {
+    PreparedBatch pb = mock(PreparedBatch.class, RETURNS_DEEP_STUBS);
+    when(pb.bind(anyString(), anyString())).thenReturn(pb);
+    when(pb.bind(anyString(), anyDouble())).thenReturn(pb);
+    return pb;
+  }
+
   @Test
   void backfillSelectsMysqlSqlWhenDatasourceIsMySQL() {
     Handle bHandle = mock(Handle.class, RETURNS_DEEP_STUBS);
-    when(bHandle.createQuery(any(String.class)).bind(anyString(), anyInt()).mapToMap().list())
+    PreparedBatch preparedBatch = batchWithSelfReturningBinds();
+    when(bHandle
+            .createQuery(any(String.class))
+            .bind(anyString(), anyString())
+            .bind(anyString(), anyString())
+            .bind(anyString(), anyInt())
+            .mapToMap()
+            .list())
         .thenReturn(List.of(versionRow("uuid.version.0.1", emptyChangeDescriptionJson())));
+    when(bHandle.prepareBatch(any(String.class))).thenReturn(preparedBatch);
 
     try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
       DatasourceConfig cfg = mock(DatasourceConfig.class);
@@ -671,7 +688,7 @@ class MigrationUtilTest {
       assertDoesNotThrow(() -> MigrationUtil.backfillVersionMetadata(bHandle));
 
       ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
-      verify(bHandle).createUpdate(sqlCaptor.capture());
+      verify(bHandle).prepareBatch(sqlCaptor.capture());
       String sql = sqlCaptor.getValue();
       assertTrue(sql.contains("changedFieldKeys = :changedFieldKeys"));
       assertFalse(sql.contains("::jsonb"));
@@ -681,8 +698,16 @@ class MigrationUtilTest {
   @Test
   void backfillSelectsPostgresSqlWhenDatasourceIsPostgres() {
     Handle bHandle = mock(Handle.class, RETURNS_DEEP_STUBS);
-    when(bHandle.createQuery(any(String.class)).bind(anyString(), anyInt()).mapToMap().list())
+    PreparedBatch preparedBatch = batchWithSelfReturningBinds();
+    when(bHandle
+            .createQuery(any(String.class))
+            .bind(anyString(), anyString())
+            .bind(anyString(), anyString())
+            .bind(anyString(), anyInt())
+            .mapToMap()
+            .list())
         .thenReturn(List.of(versionRow("uuid.version.1.0", emptyChangeDescriptionJson())));
+    when(bHandle.prepareBatch(any(String.class))).thenReturn(preparedBatch);
 
     try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
       DatasourceConfig cfg = mock(DatasourceConfig.class);
@@ -692,7 +717,7 @@ class MigrationUtilTest {
       assertDoesNotThrow(() -> MigrationUtil.backfillVersionMetadata(bHandle));
 
       ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
-      verify(bHandle).createUpdate(sqlCaptor.capture());
+      verify(bHandle).prepareBatch(sqlCaptor.capture());
       assertTrue(sqlCaptor.getValue().contains("::jsonb"));
     }
   }
@@ -700,14 +725,27 @@ class MigrationUtilTest {
   @Test
   void backfillFallsBackToVersionNumOnlyUpdateWhenFullUpdateFails() {
     Handle bHandle = mock(Handle.class, RETURNS_DEEP_STUBS);
-    when(bHandle.createQuery(any(String.class)).bind(anyString(), anyInt()).mapToMap().list())
+    PreparedBatch preparedBatch = batchWithSelfReturningBinds();
+    when(bHandle
+            .createQuery(any(String.class))
+            .bind(anyString(), anyString())
+            .bind(anyString(), anyString())
+            .bind(anyString(), anyInt())
+            .mapToMap()
+            .list())
         .thenReturn(List.of(versionRow("uuid.version.0.1", emptyChangeDescriptionJson())));
-
+    when(bHandle.prepareBatch(any(String.class))).thenReturn(preparedBatch);
+    when(preparedBatch.execute()).thenThrow(new RuntimeException("Simulated batch failure"));
+    Update failingUpdate = mock(Update.class, RETURNS_DEEP_STUBS);
+    when(failingUpdate.bind(anyString(), anyString())).thenReturn(failingUpdate);
+    when(failingUpdate.bind(anyString(), anyDouble())).thenReturn(failingUpdate);
+    when(failingUpdate.execute())
+        .thenThrow(new RuntimeException("Per-row full update also failed"));
+    Update versionNumOnlyUpdate = mock(Update.class, RETURNS_DEEP_STUBS);
     when(bHandle.createUpdate(argThat(s -> s != null && s.contains("changedFieldKeys"))))
-        .thenThrow(new RuntimeException("Simulated column-too-wide error"));
-    Update fallbackUpdate = mock(Update.class, RETURNS_DEEP_STUBS);
+        .thenReturn(failingUpdate);
     when(bHandle.createUpdate(argThat(s -> s != null && !s.contains("changedFieldKeys"))))
-        .thenReturn(fallbackUpdate);
+        .thenReturn(versionNumOnlyUpdate);
 
     try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
       DatasourceConfig cfg = mock(DatasourceConfig.class);
@@ -726,12 +764,20 @@ class MigrationUtilTest {
   @Test
   void backfillHandlesNullJsonColumnWithoutException() {
     Handle bHandle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    PreparedBatch preparedBatch = batchWithSelfReturningBinds();
     Map<String, Object> row = new HashMap<>();
     row.put("id", UUID.randomUUID().toString());
     row.put("extension", "uuid.version.0.1");
     row.put("json", null);
-    when(bHandle.createQuery(any(String.class)).bind(anyString(), anyInt()).mapToMap().list())
+    when(bHandle
+            .createQuery(any(String.class))
+            .bind(anyString(), anyString())
+            .bind(anyString(), anyString())
+            .bind(anyString(), anyInt())
+            .mapToMap()
+            .list())
         .thenReturn(List.of(row));
+    when(bHandle.prepareBatch(any(String.class))).thenReturn(preparedBatch);
 
     try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
       DatasourceConfig cfg = mock(DatasourceConfig.class);
@@ -739,20 +785,28 @@ class MigrationUtilTest {
       when(cfg.isMySQL()).thenReturn(true);
 
       assertDoesNotThrow(() -> MigrationUtil.backfillVersionMetadata(bHandle));
-      verify(bHandle).createUpdate(any(String.class));
+      verify(preparedBatch).execute();
     }
   }
 
   @Test
   void backfillProcessesMultipleRowsInOneBatch() {
     Handle bHandle = mock(Handle.class, RETURNS_DEEP_STUBS);
-    List<Map<String, Object>> batch =
+    PreparedBatch preparedBatch = batchWithSelfReturningBinds();
+    List<Map<String, Object>> rows =
         List.of(
             versionRow("uuid1.version.0.1", emptyChangeDescriptionJson()),
             versionRow("uuid2.version.1.0", emptyChangeDescriptionJson()),
             versionRow("uuid3.version.2.0", emptyChangeDescriptionJson()));
-    when(bHandle.createQuery(any(String.class)).bind(anyString(), anyInt()).mapToMap().list())
-        .thenReturn(batch);
+    when(bHandle
+            .createQuery(any(String.class))
+            .bind(anyString(), anyString())
+            .bind(anyString(), anyString())
+            .bind(anyString(), anyInt())
+            .mapToMap()
+            .list())
+        .thenReturn(rows);
+    when(bHandle.prepareBatch(any(String.class))).thenReturn(preparedBatch);
 
     try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
       DatasourceConfig cfg = mock(DatasourceConfig.class);
@@ -760,7 +814,8 @@ class MigrationUtilTest {
       when(cfg.isMySQL()).thenReturn(true);
 
       assertDoesNotThrow(() -> MigrationUtil.backfillVersionMetadata(bHandle));
-      verify(bHandle, times(3)).createUpdate(any(String.class));
+      verify(preparedBatch, times(1)).execute();
+      verify(preparedBatch, times(3)).add();
     }
   }
 
