@@ -39,7 +39,7 @@ def run_test(config_path: Path, status_file: Optional[Path] = None) -> None:
     workflow_config_dict = None
     try:
         # pylint: disable=import-outside-toplevel
-        from metadata.workflow.data_quality import TestSuiteWorkflow
+        from metadata.workflow.data_quality import TestSuiteWorkflow  # noqa: PLC0415
 
         workflow_config_dict = load_config_file(config_path)
         logger.debug("Using workflow config:\n%s", redacted_config(workflow_config_dict))

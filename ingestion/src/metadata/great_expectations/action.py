@@ -19,7 +19,7 @@ checkpoints actions.
 import logging
 import traceback
 from datetime import datetime
-from typing import Dict, List, Optional, Union, cast
+from typing import Dict, List, Optional, Union, cast  # noqa: UP035
 
 from great_expectations.checkpoint.actions import ValidationAction
 from great_expectations.core import ExpectationConfiguration
@@ -108,12 +108,12 @@ class OpenMetadataValidationAction(ValidationAction):
         data_context: DataContext,  # type: ignore
         name: str = "OpenMetadataValidationAction",
         *,
-        config_file_path: Optional[str] = None,
-        database_service_name: Optional[str] = None,
-        schema_name: Optional[str] = "default",
-        database_name: Optional[str] = None,
-        table_name: Optional[str] = None,
-        expectation_suite_table_config_map: Optional[Dict[str, Dict[str, str]]] = None,
+        config_file_path: Optional[str] = None,  # noqa: UP045
+        database_service_name: Optional[str] = None,  # noqa: UP045
+        schema_name: Optional[str] = "default",  # noqa: UP045
+        database_name: Optional[str] = None,  # noqa: UP045
+        table_name: Optional[str] = None,  # noqa: UP045
+        expectation_suite_table_config_map: Optional[Dict[str, Dict[str, str]]] = None,  # noqa: UP006, UP045
     ):
         super().__init__(data_context, name=name)
         self.database_service_name = database_service_name
@@ -134,10 +134,10 @@ class OpenMetadataValidationAction(ValidationAction):
     def _run(  # pylint: disable=unused-argument
         self,
         validation_result_suite: ExpectationSuiteValidationResult,
-        validation_result_suite_identifier: Union[ValidationResultIdentifier, GeCloudIdentifier],
-        data_asset: Union[Validator, DataAsset, Batch],
+        validation_result_suite_identifier: Union[ValidationResultIdentifier, GeCloudIdentifier],  # noqa: UP007
+        data_asset: Union[Validator, DataAsset, Batch],  # noqa: UP007
         payload=None,
-        expectation_suite_identifier: Optional[ExpectationSuiteIdentifier] = None,
+        expectation_suite_identifier: Optional[ExpectationSuiteIdentifier] = None,  # noqa: UP045
         checkpoint_identifier=None,
     ):
         """main function to implement great expectation hook
@@ -173,7 +173,7 @@ class OpenMetadataValidationAction(ValidationAction):
                 ),
             )
 
-        elif isinstance(check_point_spec, RuntimeDataBatchSpec) or isinstance(check_point_spec, RuntimeQueryBatchSpec):
+        elif isinstance(check_point_spec, RuntimeDataBatchSpec) or isinstance(check_point_spec, RuntimeQueryBatchSpec):  # noqa: SIM101
             table_entity = self._get_table_entity(
                 self.table_mapper.get_part_name(TablePart.DATABASE, expectation_suite_name),
                 self.table_mapper.get_part_name(TablePart.SCHEMA, expectation_suite_name),
@@ -186,8 +186,8 @@ class OpenMetadataValidationAction(ValidationAction):
 
     @staticmethod
     def _get_checkpoint_batch_spec(
-        data_asset: Union[Validator, DataAsset, Batch],
-    ) -> Union[SqlAlchemyDatasourceBatchSpec, RuntimeDataBatchSpec, RuntimeQueryBatchSpec]:
+        data_asset: Union[Validator, DataAsset, Batch],  # noqa: UP007
+    ) -> Union[SqlAlchemyDatasourceBatchSpec, RuntimeDataBatchSpec, RuntimeQueryBatchSpec]:  # noqa: UP007
         """Return run meta and check instance of data_asset
 
         Args:
@@ -211,10 +211,10 @@ class OpenMetadataValidationAction(ValidationAction):
 
     def _get_table_entity(
         self,
-        database: Optional[str],
-        schema_name: Optional[str],
-        table_name: Optional[str],
-    ) -> Optional[Table]:
+        database: Optional[str],  # noqa: UP045
+        schema_name: Optional[str],  # noqa: UP045
+        table_name: Optional[str],  # noqa: UP045
+    ) -> Optional[Table]:  # noqa: UP045
         """Return the table entity for the test. If service name is defined
         in GE checkpoint entity will be fetch using the FQN. If not provided
         iterative search will be perform among all the entities. If 2 entities
@@ -273,18 +273,18 @@ class OpenMetadataValidationAction(ValidationAction):
 
         if table_entity.testSuite:
             test_suite = self.ometa_conn.get_by_name(TestSuite, table_entity.testSuite.fullyQualifiedName)
-            test_suite = cast(TestSuite, test_suite)
-            return test_suite
+            test_suite = cast(TestSuite, test_suite)  # noqa: TC006
+            return test_suite  # noqa: RET504
 
         create_test_suite = CreateTestSuiteRequest(
             name=f"{table_entity.fullyQualifiedName.root}.TestSuite",
             basicEntityReference=table_entity.fullyQualifiedName.root,
         )  # type: ignore
         test_suite = self.ometa_conn.create_or_update_executable_test_suite(create_test_suite)
-        return test_suite
+        return test_suite  # noqa: RET504
 
     @staticmethod
-    def _get_execution_engine_url(data_asset: Union[Validator, DataAsset, Batch]) -> URL:
+    def _get_execution_engine_url(data_asset: Union[Validator, DataAsset, Batch]) -> URL:  # noqa: UP007
         """Get execution engine used to run the expectation
 
         Args:
@@ -307,7 +307,7 @@ class OpenMetadataValidationAction(ValidationAction):
 
         return OpenMetadata(create_ometa_connection_obj(rendered_config))
 
-    def _build_test_case_fqn(self, table_fqn: str, result: Dict) -> str:
+    def _build_test_case_fqn(self, table_fqn: str, result: Dict) -> str:  # noqa: UP006
         """build test case fqn from table entity and GE test results
 
         Args:
@@ -325,20 +325,20 @@ class OpenMetadataValidationAction(ValidationAction):
             column_name=result["expectation_config"]["kwargs"].get("column"),
             test_case_name=result["expectation_config"]["expectation_type"],
         )
-        fqn_ = cast(str, fqn_)
-        return fqn_
+        fqn_ = cast(str, fqn_)  # noqa: TC006
+        return fqn_  # noqa: RET504
 
     def _get_test_case_description(self, result: dict) -> str:
         """Get test case description from GE test result"""
         if self.expectation_suite:
             expectation = self._get_expectation_config(result)
             if expectation:
-                meta: Optional[Dict] = expectation.get("meta")
+                meta: Optional[Dict] = expectation.get("meta")  # noqa: UP006, UP045
                 if meta:
                     return meta.get("description", "")
         return ""
 
-    def _get_test_case_params_value(self, result: dict) -> List[TestCaseParameterValue]:
+    def _get_test_case_params_value(self, result: dict) -> List[TestCaseParameterValue]:  # noqa: UP006
         """Build test case parameter value from GE test result"""
         if self.expectation_suite:
             expectation = self._get_expectation_config(result)
@@ -369,7 +369,7 @@ class OpenMetadataValidationAction(ValidationAction):
             if key not in {"column", "batch_id"}
         ]
 
-    def _get_test_case_params_definition(self, result: dict) -> List[TestCaseParameterDefinition]:
+    def _get_test_case_params_definition(self, result: dict) -> List[TestCaseParameterDefinition]:  # noqa: UP006
         """Build test case parameter definition from GE test result"""
         if self.expectation_suite:
             expectation = self._get_expectation_config(result)
@@ -397,7 +397,7 @@ class OpenMetadataValidationAction(ValidationAction):
             if key not in {"column", "batch_id"}
         ]
 
-    def _get_test_result_value(self, result: dict) -> List[TestResultValue]:
+    def _get_test_result_value(self, result: dict) -> List[TestResultValue]:  # noqa: UP006
         """Get test result value from GE test result
 
         Args:
@@ -437,7 +437,7 @@ class OpenMetadataValidationAction(ValidationAction):
 
         return test_result_values
 
-    def _extract_complex_value_from_observed_value(self, observed_value) -> List[TestResultValue]:
+    def _extract_complex_value_from_observed_value(self, observed_value) -> List[TestResultValue]:  # noqa: UP006
         """Extract complex value from observed value
 
         Args:
@@ -459,10 +459,10 @@ class OpenMetadataValidationAction(ValidationAction):
                 result_values = []
                 quantiles = observed_value["quantiles"]
                 values = observed_value["values"]
-                for quantile, value in zip(quantiles, values):
+                for quantile, value in zip(quantiles, values):  # noqa: B905
                     result_values.append(
                         TestResultValue(
-                            name=f"quantile_{str(quantile)}",
+                            name=f"quantile_{str(quantile)}",  # noqa: RUF010
                             value=str(value),
                             predictedValue=None,
                         )
@@ -491,7 +491,7 @@ class OpenMetadataValidationAction(ValidationAction):
 
         return []
 
-    def _get_expectation_config(self, result: dict) -> Optional[ExpectationConfiguration]:
+    def _get_expectation_config(self, result: dict) -> Optional[ExpectationConfiguration]:  # noqa: UP045
         """Get expectation config from GE test result
 
         Args:
@@ -510,10 +510,10 @@ class OpenMetadataValidationAction(ValidationAction):
                 None,
             )
 
-            return expectation
+            return expectation  # noqa: RET504
         return None
 
-    def _handle_test_case(self, result: Dict, table_entity: Table):
+    def _handle_test_case(self, result: Dict, table_entity: Table):  # noqa: UP006
         """Handle adding test to table entity based on the test case.
         Test Definitions will be created on the fly from the results of the
         great expectations run. We will then write the test case results to the

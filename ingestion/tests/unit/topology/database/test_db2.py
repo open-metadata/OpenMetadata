@@ -206,7 +206,7 @@ class Db2UnitTest(TestCase):
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def __init__(
         self,
-        methodName,
+        methodName,  # noqa: N803
         test_connection,
         get_connection,
     ) -> None:
@@ -233,11 +233,11 @@ class Db2UnitTest(TestCase):
         self.db2._inspector_map[self.thread_id].get_table_comment = lambda table_name, schema_name: {"text": None}
 
     def test_yield_database(self):
-        assert EXPECTED_DATABASE == [either.right for either in self.db2.yield_database(MOCK_DATABASE.name.root)]
+        assert EXPECTED_DATABASE == [either.right for either in self.db2.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
         self.db2.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     def test_yield_schema(self):
-        assert EXPECTED_DATABASE_SCHEMA == [
+        assert EXPECTED_DATABASE_SCHEMA == [  # noqa: SIM300
             either.right for either in self.db2.yield_database_schema(MOCK_DATABASE_SCHEMA.name.root)
         ]
         self.db2.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
@@ -249,7 +249,7 @@ class Db2ColumnTypeParserTest(TestCase):
     in ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE
     """
 
-    DB2_TYPE_MAPPINGS = {
+    DB2_TYPE_MAPPINGS = {  # noqa: RUF012
         # DB2 XML Extender types
         "XMLVARCHAR": "XML",
         "XMLCLOB": "XML",
@@ -266,7 +266,7 @@ class Db2ColumnTypeParserTest(TestCase):
     }
 
     def test_db2_type_mappings_exist(self):
-        for db2_type, expected_om_type in self.DB2_TYPE_MAPPINGS.items():
+        for db2_type, expected_om_type in self.DB2_TYPE_MAPPINGS.items():  # noqa: B007, PERF102
             self.assertIn(
                 db2_type,
                 ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE,
@@ -336,7 +336,7 @@ class Db2GetColumnsOS390Test(TestCase):
     empty and unrecognized column types from DB2 z/OS.
     """
 
-    ISCHEMA_NAMES = {
+    ISCHEMA_NAMES = {  # noqa: RUF012
         "CHAR": sa_types.CHAR,
         "VARCHAR": sa_types.VARCHAR,
         "INTEGER": sa_types.INTEGER,

@@ -39,7 +39,7 @@ class SupersetSource:
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         config = WorkflowSource.model_validate(config_dict)
         connection: SupersetConnection = config.serviceConnection.root.config

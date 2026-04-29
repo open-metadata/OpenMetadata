@@ -47,8 +47,8 @@ from metadata.ingestion.ometa.task_models import (
     TaskResolutionType,
 )
 
-from ..integration_base import generate_name, get_create_entity, get_create_service
-from .conftest import _safe_delete
+from ..integration_base import generate_name, get_create_entity, get_create_service  # noqa: TID252
+from .conftest import _safe_delete  # noqa: TID252
 
 
 def _create_bot(metadata: OpenMetadata) -> tuple[User, Bot]:

@@ -13,7 +13,7 @@
 Validator for table column name to match set test case
 """
 
-from typing import List
+from typing import List  # noqa: UP035
 
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
@@ -29,7 +29,7 @@ logger = test_suite_logger()
 class TableColumnToMatchSetValidator(BaseTableColumnToMatchSetValidator, PandasValidatorMixin):
     """Validator table column name to match set test case"""
 
-    def _run_results(self) -> List[str]:
+    def _run_results(self) -> List[str]:  # noqa: UP006
         """compute result of the test case"""
         names = list(next(self.runner()).columns)
         if not names:

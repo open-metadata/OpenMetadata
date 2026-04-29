@@ -554,7 +554,7 @@ class TestCsvExtraction(TestCase):
 
     def test_extract_csv_schema_error(self):
         """Test CSV extraction handles errors gracefully"""
-        self.mock_sftp.open.side_effect = IOError("File not found")
+        self.mock_sftp.open.side_effect = IOError("File not found")  # noqa: UP024
 
         columns, sample_data = self.sftp_source._extract_csv_schema("/data/missing.csv", "missing.csv")
 

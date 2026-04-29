@@ -16,7 +16,7 @@ Source connection handler
 import importlib
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional  # noqa: UP035
 from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
@@ -74,7 +74,7 @@ def _get_ibmi_connection_url(connection: Db2Connection) -> str:
     return url
 
 
-def _get_ibmi_connection_args(connection: Db2Connection) -> Dict[str, Any]:
+def _get_ibmi_connection_args(connection: Db2Connection) -> Dict[str, Any]:  # noqa: UP006
     """
     Build connection args for ibmi scheme.
 
@@ -88,7 +88,7 @@ def _get_ibmi_connection_args(connection: Db2Connection) -> Dict[str, Any]:
         try:
             args["port"] = int(port_str)
         except ValueError:
-            raise ValueError(f"Invalid port in hostPort '{host_port}'. Expected format: 'hostname:port'")
+            raise ValueError(f"Invalid port in hostPort '{host_port}'. Expected format: 'hostname:port'")  # noqa: B904
     return args
 
 
@@ -110,7 +110,7 @@ def get_connection(connection: Db2Connection) -> Engine:
     # prepare license
     # pylint: disable=import-outside-toplevel
     if connection.license and connection.licenseFileName:
-        import clidriver
+        import clidriver  # noqa: PLC0415
 
         if clidriver_version:
             importlib.reload(clidriver)
@@ -118,7 +118,7 @@ def get_connection(connection: Db2Connection) -> Engine:
         license_dir = Path(clidriver.__path__[0], "license")
         license_dir.mkdir(parents=True, exist_ok=True)
 
-        with open(
+        with open(  # noqa: PTH123
             license_dir / connection.licenseFileName,
             "w",
             encoding=UTF_8,
@@ -152,8 +152,8 @@ def test_connection(
     metadata: OpenMetadata,
     engine: Engine,
     service_connection: Db2Connection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part

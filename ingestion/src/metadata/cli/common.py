@@ -14,14 +14,14 @@ Handle workflow execution
 """
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional  # noqa: UP035
 
 from metadata.workflow.base import BaseWorkflow
 
 
 def execute_workflow(
     workflow: BaseWorkflow,
-    config_dict: Dict[str, Any],
+    config_dict: Dict[str, Any],  # noqa: UP006
     status_file: Optional[Path] = None,
 ) -> None:
     """Execute the workflow, write status file if requested, raise on failure if configured."""
