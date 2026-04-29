@@ -161,3 +161,33 @@ export const cleanupWebSocketMock = () => {
     defaultMock = null;
   }
 };
+
+export const setupCsvImportListener = async (
+  page: Page,
+  urlPattern = /push\/feed/
+): Promise<() => Promise<void>> => {
+  const pendingResolvers: Array<() => void> = [];
+
+  await page.routeWebSocket(urlPattern, (ws) => {
+    const server = ws.connectToServer();
+
+    server.onMessage((message) => {
+      ws.send(message);
+      const data =
+        typeof message === 'string' ? message : message.toString('utf-8');
+
+      if (
+        data.includes('csvImportChannel') &&
+        data.includes('"status":"COMPLETED"')
+      ) {
+        pendingResolvers.shift()?.();
+      }
+    });
+
+    ws.onMessage((message) => {
+      server.send(message);
+    });
+  });
+
+  return () => new Promise<void>((resolve) => pendingResolvers.push(resolve));
+};
