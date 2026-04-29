@@ -108,6 +108,18 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       IndexMappingLanguage.EN;
 
   /**
+   * Pattern allowed for {@code -DclusterAlias} overrides — must be a valid OpenSearch /
+   * Elasticsearch index name prefix (lowercase alphanumeric, underscore, or hyphen; must start
+   * with a letter or digit; max 63 chars).
+   *
+   * <p>Declared <em>before</em> {@link #ELASTIC_SEARCH_CLUSTER_ALIAS} on purpose: static fields
+   * initialize in declaration order, and {@link #resolveClusterAlias()} reads this pattern. If
+   * this declaration moved below, override validation would NPE on the only path that uses it.
+   */
+  private static final java.util.regex.Pattern CLUSTER_ALIAS_PATTERN =
+      java.util.regex.Pattern.compile("[a-z0-9][a-z0-9_\\-]{0,62}");
+
+  /**
    * Cluster alias used as the prefix for all search indices in this test session.
    *
    * <p>The OpenSearch / Elasticsearch testcontainer is shared across the entire JUnit launcher
@@ -118,14 +130,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
    * FQNs in the database — it does not isolate documents in the search index.
    *
    * <p>To prevent cross-test pollution between concurrent CI runs that share the cluster, the alias
-   * is randomized per session so each session writes to its own {@code <alias>_*} indices. Set
-   * {@code -DclusterAlias=openmetadata} (or any fixed value) to pin the alias for reproducible
-   * debugging.
+   * is randomized per session by default so each session writes to its own {@code <alias>_*}
+   * indices. Set {@code -DclusterAlias=openmetadata} (or any fixed value matching {@link
+   * #CLUSTER_ALIAS_PATTERN}) to pin the alias for reproducible debugging.
    */
   private static final String ELASTIC_SEARCH_CLUSTER_ALIAS = resolveClusterAlias();
-
-  private static final java.util.regex.Pattern CLUSTER_ALIAS_PATTERN =
-      java.util.regex.Pattern.compile("[a-z0-9][a-z0-9_\\-]{0,62}");
 
   private static String resolveClusterAlias() {
     String override = System.getProperty("clusterAlias");
