@@ -2206,7 +2206,8 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
     double medianMiss = median(cacheMissTimes);
     double medianHit = median(cacheHitTimes);
-    double avgCacheHitTime = cacheHitTimes.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+    double avgCacheHitTime =
+        cacheHitTimes.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
 
     // Sanity: cache hit median should be at least as fast as cache miss median. We don't assert
     // a percentage improvement — at sub-millisecond scale it's not statistically meaningful and
@@ -2294,9 +2295,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     List<Double> sorted = values.stream().sorted().toList();
     int n = sorted.size();
     if (n == 0) return 0.0;
-    return n % 2 == 1
-        ? sorted.get(n / 2)
-        : (sorted.get(n / 2 - 1) + sorted.get(n / 2)) / 2.0;
+    return n % 2 == 1 ? sorted.get(n / 2) : (sorted.get(n / 2 - 1) + sorted.get(n / 2)) / 2.0;
   }
 
   // ===================================================================
