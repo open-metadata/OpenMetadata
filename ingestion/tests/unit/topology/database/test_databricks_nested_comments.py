@@ -388,3 +388,90 @@ class TestDescribeJsonLazyFetch:
         self._run(connection)
 
         assert mock_fetch_json.call_count == 1
+
+    def test_array_of_struct_triggers_lazy_fetch(self, mock_rows, mock_fetch_json):
+        """``array<struct<...>>`` columns must trigger the AS JSON fetch — the
+        regex gate (``^array\\s*<\\s*struct\\b``) is what protects this path."""
+        mock_rows.return_value = [
+            ("orders", "array<struct<id:int,total:double>>", None),
+        ]
+        mock_fetch_json.return_value = {}
+        connection = self._connection_with_describe_rows()
+
+        self._run(connection)
+
+        mock_fetch_json.assert_called_once_with(connection, "db", "schema", "tbl")
+
+    def test_array_of_primitive_does_not_trigger_lazy_fetch(self, mock_rows, mock_fetch_json):
+        """``array<primitive>`` carries no nested struct fields, so the regex
+        gate must skip the AS JSON round-trip."""
+        mock_rows.return_value = [
+            ("tags", "array<string>", None),
+        ]
+        connection = self._connection_with_describe_rows()
+
+        self._run(connection)
+
+        mock_fetch_json.assert_not_called()
+
+    def test_map_does_not_trigger_lazy_fetch(self, mock_rows, mock_fetch_json):
+        """``map<...>`` exposes no named children in OM, so the regex gate
+        must skip the AS JSON round-trip even though map is in the
+        outer ``if col_type in {"array", "struct", "map"}`` branch."""
+        mock_rows.return_value = [
+            ("attrs", "map<string,string>", None),
+        ]
+        connection = self._connection_with_describe_rows()
+
+        self._run(connection)
+
+        mock_fetch_json.assert_not_called()
+
+
+class _SqlAlchemy2Row(tuple):
+    """Simulates a SQLAlchemy 2.x ``Row``: tuple-iterable, but ``.values()``
+    raises (it was removed in SA 2.x and attribute access falls back to column
+    lookup, which is the bug this PR fixes)."""
+
+    def values(self):
+        raise AttributeError("Row.values() removed in SQLAlchemy 2.x")
+
+
+class TestSqlAlchemy2RowCompat:
+    """``get_table_comment`` / ``get_schema_description`` / ``get_table_description``
+    use ``data = tuple(result)`` instead of ``result.values()`` so they work
+    on both SA 1.x and SA 2.x. These tests guard against any future revert
+    that would silently drop schema/table descriptions on SA 2.x."""
+
+    def test_get_table_comment_handles_sa2_row(self):
+        from metadata.ingestion.source.database.databricks.metadata import (
+            get_table_comment,
+        )
+
+        mock_self = MagicMock()
+        mock_self.context.get().database = "db"
+        mock_self.get_table_comment_result.return_value = [
+            _SqlAlchemy2Row(("Comment", "Customer table description")),
+        ]
+
+        result = get_table_comment(mock_self, MagicMock(), "customers", "sales")
+
+        assert result == {"text": "Customer table description"}
+
+    def test_get_table_comment_returns_none_text_when_no_comment_row(self):
+        """A SA 2.x cursor with rows that aren't ``Comment`` rows must still
+        return ``{"text": None}`` and never crash on ``.values()``."""
+        from metadata.ingestion.source.database.databricks.metadata import (
+            get_table_comment,
+        )
+
+        mock_self = MagicMock()
+        mock_self.context.get().database = "db"
+        mock_self.get_table_comment_result.return_value = [
+            _SqlAlchemy2Row(("Location", "/some/path")),
+            _SqlAlchemy2Row(("Provider", "delta")),
+        ]
+
+        result = get_table_comment(mock_self, MagicMock(), "customers", "sales")
+
+        assert result == {"text": None}
