@@ -33,6 +33,19 @@ class OpenAPIParseError(Exception):
     """
 
 
+def _ensure_mapping(parsed: Any, source: str) -> Dict[str, Any]:  # noqa: UP006
+    """
+    Reject parser output that isn't an object/mapping.
+
+    json.loads accepts arrays and scalars; yaml.safe_load returns a bare string
+    for non-YAML input (e.g. an HTML error page) and None for empty input. An
+    OpenAPI schema must be an object, so anything else is a parse error.
+    """
+    if not isinstance(parsed, dict):
+        raise OpenAPIParseError(f"{source} parsing produced {type(parsed).__name__}, expected an object/mapping")
+    return parsed
+
+
 def parse_openapi_schema(response: Response) -> Dict[str, Any]:  # noqa: UP006
     """
     Parse OpenAPI schema from HTTP response.
@@ -53,12 +66,12 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:  # noqa: UP006
     # Try to determine format from content-type header
     if "json" in content_type:
         try:
-            return json.loads(content)
+            return _ensure_mapping(json.loads(content), "JSON")
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse as JSON despite content-type: {e}")
     elif "yaml" in content_type or "yml" in content_type:
         try:
-            return yaml.safe_load(content)
+            return _ensure_mapping(yaml.safe_load(content), "YAML")
         except yaml.YAMLError as e:
             logger.error(f"Failed to parse as YAML despite content-type: {e}")
 
@@ -66,7 +79,7 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:  # noqa: UP006
 
     # First try JSON (backward compatibility)
     try:
-        parsed = json.loads(content)
+        parsed = _ensure_mapping(json.loads(content), "JSON")
         logger.debug("Successfully parsed OpenAPI schema as JSON")
         return parsed  # noqa: TRY300
     except json.JSONDecodeError:
@@ -74,9 +87,7 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:  # noqa: UP006
 
     # Then try YAML
     try:
-        parsed = yaml.safe_load(content)
-        if parsed is None:
-            raise OpenAPIParseError("YAML parsing returned None")
+        parsed = _ensure_mapping(yaml.safe_load(content), "YAML")
         logger.debug("Successfully parsed OpenAPI schema as YAML")
         return parsed  # noqa: TRY300
     except yaml.YAMLError as e:
@@ -121,32 +132,26 @@ def parse_openapi_schema_from_file(file_path: Union[str, Path]) -> Dict[str, Any
     content = path.read_text(encoding="utf-8")
     suffix = path.suffix.lower()
 
-    if suffix in (".json",):
+    if suffix == ".json":
         try:
-            return json.loads(content)
+            return _ensure_mapping(json.loads(content), "JSON")
         except json.JSONDecodeError as e:
             raise OpenAPIParseError(f"Failed to parse JSON file: {e}") from e
 
     if suffix in (".yaml", ".yml"):
         try:
-            parsed = yaml.safe_load(content)
-            if parsed is None:
-                raise OpenAPIParseError("YAML parsing returned None")
-            return parsed  # noqa: TRY300
+            return _ensure_mapping(yaml.safe_load(content), "YAML")
         except yaml.YAMLError as e:
             raise OpenAPIParseError(f"Failed to parse YAML file: {e}") from e
 
     # Unknown extension — try JSON first, then YAML
     try:
-        return json.loads(content)
+        return _ensure_mapping(json.loads(content), "JSON")
     except json.JSONDecodeError:
         pass
 
     try:
-        parsed = yaml.safe_load(content)
-        if parsed is None:
-            raise OpenAPIParseError("YAML parsing returned None")
-        return parsed  # noqa: TRY300
+        return _ensure_mapping(yaml.safe_load(content), "YAML")
     except yaml.YAMLError:
         pass
 
@@ -216,32 +221,26 @@ def parse_openapi_schema_from_s3(
 
     suffix = Path(key).suffix.lower()
 
-    if suffix in (".json",):
+    if suffix == ".json":
         try:
-            return json.loads(content)
+            return _ensure_mapping(json.loads(content), "JSON")
         except json.JSONDecodeError as e:
             raise OpenAPIParseError(f"Failed to parse S3 JSON file: {e}") from e
 
     if suffix in (".yaml", ".yml"):
         try:
-            parsed = yaml.safe_load(content)
-            if parsed is None:
-                raise OpenAPIParseError("YAML parsing returned None")
-            return parsed  # noqa: TRY300
+            return _ensure_mapping(yaml.safe_load(content), "YAML")
         except yaml.YAMLError as e:
             raise OpenAPIParseError(f"Failed to parse S3 YAML file: {e}") from e
 
     # Unknown extension — try JSON first, then YAML
     try:
-        return json.loads(content)
+        return _ensure_mapping(json.loads(content), "JSON")
     except json.JSONDecodeError:
         pass
 
     try:
-        parsed = yaml.safe_load(content)
-        if parsed is None:
-            raise OpenAPIParseError("YAML parsing returned None")
-        return parsed  # noqa: TRY300
+        return _ensure_mapping(yaml.safe_load(content), "YAML")
     except yaml.YAMLError:
         pass
 

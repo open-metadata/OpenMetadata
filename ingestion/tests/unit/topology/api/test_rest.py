@@ -152,6 +152,7 @@ MOCK_JSON_RESPONSE = {
             "description": "Everything about your Pets",
         },
         {"name": "store", "description": "Access to Petstore orders"},
+        {"name": "user", "description": "Operations about user"},
     ],
 }
 
@@ -425,8 +426,12 @@ MOCK_RESPONSE_NO_SCHEMA = {"responses": {"200": {"description": "successful oper
 
 
 class RESTTest(TestCase):
+    @patch(
+        "metadata.ingestion.source.api.api_service.get_connection",
+        return_value=MOCK_JSON_RESPONSE,
+    )
     @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
+    def __init__(self, methodName, test_connection, get_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_rest_config)
@@ -455,10 +460,8 @@ class RESTTest(TestCase):
         assert collection_request == EXPECTED_COLLECTION_REQUEST
 
     def test_all_collections(self):
-        with patch.object(self.rest_source.connection, "json", return_value=MOCK_JSON_RESPONSE):
-            collections = list(self.rest_source.get_api_collections())
+        collections = list(self.rest_source.get_api_collections())
         MOCK_COLLECTIONS_COPY = deepcopy(MOCK_COLLECTIONS)  # noqa: N806
-        MOCK_COLLECTIONS_COPY[2].description = Markdown(root="Operations about user")
         MOCK_COLLECTIONS_COPY.append(
             RESTCollection(
                 name=EntityName(root="default"),
@@ -479,8 +482,12 @@ class RESTTest(TestCase):
         endpoint_url = self.rest_source._generate_endpoint_url(MOCK_SINGLE_COLLECTION, MOCK_SINGLE_ENDPOINT)
         assert endpoint_url == MOCK_STORE_ORDER_URL
 
+    @patch(
+        "metadata.ingestion.source.api.api_service.get_connection",
+        return_value=MOCK_JSON_RESPONSE,
+    )
     @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
-    def test_collection_filter_pattern(self, test_connection):
+    def test_collection_filter_pattern(self, test_connection, get_connection):
         """test collection filter pattern"""
         test_connection.return_value = False
         # Test with include pattern
