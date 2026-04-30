@@ -356,7 +356,7 @@ const KnowledgePagesHierarchy = forwardRef<
           activeKey === deletedPageData.fullyQualifiedName ||
           isActivePageParent
         ) {
-          navigate(ROUTES.CONTEXT_CENTER);
+          navigate(ROUTES.KNOWLEDGE_CENTER);
         }
       },
       [knowledgePageHierarchy, onPageDelete, activeKey, activePage]

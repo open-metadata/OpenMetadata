@@ -203,9 +203,9 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     ],
   },
   {
-    key: ROUTES.CONTEXT_CENTER,
-    title: 'label.context-center',
-    redirect_url: ROUTES.CONTEXT_CENTER,
+    key: ROUTES.KNOWLEDGE_CENTER,
+    title: 'label.knowledge-center',
+    redirect_url: ROUTES.KNOWLEDGE_CENTER,
     icon: KnowledgeCenterIcon,
     dataTestId: `app-bar-item-${SidebarItem.KNOWLEDGE_CENTER}`,
   },

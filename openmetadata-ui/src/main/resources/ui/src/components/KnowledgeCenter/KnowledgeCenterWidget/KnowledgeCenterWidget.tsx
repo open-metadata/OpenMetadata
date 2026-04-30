@@ -86,7 +86,7 @@ const KnowledgeCenterWidget = ({
   const emptyState = useMemo(() => {
     return (
       <WidgetEmptyState
-        actionButtonLink={ROUTES.CONTEXT_CENTER}
+        actionButtonLink={ROUTES.KNOWLEDGE_CENTER}
         actionButtonText={t('label.create-articles')}
         description={t('message.no-article-data')}
         icon={
@@ -171,7 +171,7 @@ const KnowledgeCenterWidget = ({
   const footer = useMemo(() => {
     return (
       <WidgetFooter
-        moreButtonLink={ROUTES.CONTEXT_CENTER}
+        moreButtonLink={ROUTES.KNOWLEDGE_CENTER}
         moreButtonText={t('label.view-more')}
         showMoreButton={showWidgetFooterMoreButton}
       />
@@ -187,9 +187,9 @@ const KnowledgeCenterWidget = ({
         handleRemoveWidget={handleRemoveWidget}
         icon={<KnowledgeCenterWidgetIcon height={22} width={22} />}
         isEditView={isEditView}
-        title={t('label.context-center')}
+        title={t('label.knowledge-center')}
         widgetKey={widgetKey}
-        onTitleClick={() => navigate(ROUTES.CONTEXT_CENTER)}
+        onTitleClick={() => navigate(ROUTES.KNOWLEDGE_CENTER)}
       />
     );
   }, [

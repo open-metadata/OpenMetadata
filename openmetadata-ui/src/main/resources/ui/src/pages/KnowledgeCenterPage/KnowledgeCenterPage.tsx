@@ -232,7 +232,7 @@ const KnowledgeCenterPage = () => {
         {t('label.article-plural')}
         <LearningIcon
           pageId={LEARNING_PAGE_IDS.KNOWLEDGE_CENTER}
-          title={t('label.context-center')}
+          title={t('label.knowledge-center')}
         />
       </Space>
     ),
@@ -259,7 +259,7 @@ const KnowledgeCenterPage = () => {
   }, []);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.context-center')}>
+    <PageLayoutV1 pageTitle={t('label.knowledge-center')}>
       {page.header}
       <KnowledgeCenterLayout
         className={classNames({ 'knowledge-details-page': fqn })}

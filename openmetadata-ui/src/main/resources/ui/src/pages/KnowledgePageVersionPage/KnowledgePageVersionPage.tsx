@@ -107,8 +107,8 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
         url: ROUTES.HOME,
       },
       {
-        name: t('label.context-center'),
-        url: ROUTES.CONTEXT_CENTER,
+        name: t('label.knowledge-center'),
+        url: ROUTES.KNOWLEDGE_CENTER,
       },
       {
         name: (knowledgePage?.displayName ?? '') || t('label.untitled'),

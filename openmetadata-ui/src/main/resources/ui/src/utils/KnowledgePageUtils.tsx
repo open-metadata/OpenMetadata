@@ -122,10 +122,10 @@ export const getKnowledgePagePath = (
   tab?: string,
   subTab = 'all'
 ) => {
-  let path = tab ? ROUTES.CONTEXT_PAGE_WITH_TAB : ROUTES.CONTEXT_PAGE;
+  let path = tab ? ROUTES.KNOWLEDGE_PAGE_WITH_TAB : ROUTES.KNOWLEDGE_PAGE;
 
   if (tab === EntityTabs.ACTIVITY_FEED) {
-    path = ROUTES.CONTEXT_PAGE_WITH_SUB_TAB;
+    path = ROUTES.KNOWLEDGE_PAGE_WITH_SUB_TAB;
     path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
   }
 
@@ -142,7 +142,7 @@ export const getKnowledgeVersionsPath = (
   knowledgePageName: string,
   version: string
 ) => {
-  let path = ROUTES.CONTEXT_PAGE_VERSION;
+  let path = ROUTES.KNOWLEDGE_PAGE_VERSION;
   path = path
     .replace(PLACEHOLDER_ROUTE_FQN, knowledgePageName)
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
