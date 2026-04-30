@@ -83,6 +83,11 @@ class DatalakeS3Client(DatalakeBaseClient):
             key_name = key["Key"]
             size = key.get("Size")
             if skip_cold_storage and self._should_skip_s3_cold_storage(key):
+                logger.debug(
+                    f"Skipping cold storage object: {key_name} "
+                    f"(StorageClass: {key.get('StorageClass', 'STANDARD')}, "
+                    f"ArchiveStatus: {key.get('ArchiveStatus', '')})"
+                )
                 match = self._ICEBERG_METADATA_RE.match(key_name)
                 if match:
                     cold_iceberg_dirs.add(match.group(1))

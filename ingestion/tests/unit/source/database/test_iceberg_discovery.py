@@ -76,22 +76,6 @@ class TestGcsIcebergDiscovery:
         assert name == "warehouse/orders/metadata/v2.metadata.json"
         assert size == 600
 
-    def test_gcs_iceberg_yields_one_table_per_directory(self):
-        blobs = [
-            _make_blob("warehouse/orders/metadata/v1.metadata.json", size=500),
-            _make_blob("warehouse/orders/metadata/v2.metadata.json", size=600),
-            _make_blob("warehouse/orders/data/00000-0-abc.parquet", size=8192),
-            _make_blob("warehouse/orders/data/00001-0-def.parquet", size=9216),
-        ]
-        client = _make_gcs_client(blobs)
-
-        results = list(client.get_table_names("my-bucket", prefix="warehouse"))
-
-        assert len(results) == 1
-        name, size = results[0]
-        assert name == "warehouse/orders/metadata/v2.metadata.json"
-        assert size == 600
-
     def test_gcs_multiple_iceberg_tables(self):
         blobs = [
             _make_blob("warehouse/orders/metadata/v1.metadata.json", size=400),
@@ -174,28 +158,6 @@ class TestS3IcebergDiscovery:
 
     def test_s3_iceberg_table_detected(self):
         """Latest version of Iceberg metadata is yielded; data/ blobs are suppressed."""
-        keys = [
-            "warehouse/orders/metadata/v1.metadata.json",
-            "warehouse/orders/metadata/v2.metadata.json",
-            "warehouse/orders/data/00000-0-abc.parquet",
-        ]
-        client = self._make_s3_client(
-            keys,
-            sizes={"warehouse/orders/metadata/v2.metadata.json": 600},
-        )
-
-        with patch(
-            "metadata.ingestion.source.database.datalake.clients.s3.list_s3_objects",
-            return_value=self._s3_objects,
-        ):
-            results = list(client.get_table_names("my-bucket", prefix="warehouse"))
-
-        assert len(results) == 1
-        name, size = results[0]
-        assert name == "warehouse/orders/metadata/v2.metadata.json"
-        assert size == 600
-
-    def test_s3_iceberg_yields_one_table_per_directory(self):
         keys = [
             "warehouse/orders/metadata/v1.metadata.json",
             "warehouse/orders/metadata/v2.metadata.json",

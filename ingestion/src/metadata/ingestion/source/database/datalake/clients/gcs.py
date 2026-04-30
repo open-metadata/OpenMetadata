@@ -124,6 +124,9 @@ class DatalakeGcsClient(DatalakeBaseClient):
 
         for blob in bucket.list_blobs(prefix=prefix):
             if skip_cold_storage and self._should_skip_gcs_cold_storage(blob):
+                logger.debug(
+                    f"Skipping cold storage object: {blob.name} (storage_class: {getattr(blob, 'storage_class', None)})"
+                )
                 match = self._ICEBERG_METADATA_RE.match(blob.name)
                 if match:
                     cold_iceberg_dirs.add(match.group(1))
