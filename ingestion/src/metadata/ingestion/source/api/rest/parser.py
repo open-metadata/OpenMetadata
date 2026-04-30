@@ -244,4 +244,4 @@ def parse_openapi_schema_from_s3(
     except (yaml.YAMLError, OpenAPIParseError):
         pass
 
-    raise OpenAPIParseError(f"Failed to parse S3 file '{key}' as either JSON or YAML.")
+    raise OpenAPIParseError(f"Failed to parse S3 file 's3://{bucket}/{key}' as either JSON or YAML.")

@@ -1323,6 +1323,39 @@ class TestParseOpenAPISchemaFromS3:
         with pytest.raises(OpenAPIParseError, match="Failed to parse S3 JSON file"):
             parse_openapi_schema_from_s3("https://bucket.s3.us-east-1.amazonaws.com/schema.json", creds)
 
+    @patch("metadata.clients.aws_client.AWSClient")
+    def test_json_array_includes_s3_url_in_error(self, mock_aws_client_cls):
+        """A .json S3 object containing an array reports s3://bucket/key in the error."""
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {"Body": BytesIO(b"[1, 2, 3]")}
+        mock_aws_client_cls.return_value.get_s3_client.return_value = mock_s3
+
+        creds = AWSCredentials(awsRegion="us-east-1")
+        with pytest.raises(OpenAPIParseError, match=r"s3://bucket/schema\.json"):
+            parse_openapi_schema_from_s3("https://bucket.s3.us-east-1.amazonaws.com/schema.json", creds)
+
+    @patch("metadata.clients.aws_client.AWSClient")
+    def test_yaml_scalar_includes_s3_url_in_error(self, mock_aws_client_cls):
+        """A .yaml S3 object with a bare scalar reports s3://bucket/key in the error."""
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {"Body": BytesIO(b"just a string")}
+        mock_aws_client_cls.return_value.get_s3_client.return_value = mock_s3
+
+        creds = AWSCredentials(awsRegion="us-east-1")
+        with pytest.raises(OpenAPIParseError, match=r"s3://bucket/schema\.yaml"):
+            parse_openapi_schema_from_s3("https://bucket.s3.us-east-1.amazonaws.com/schema.yaml", creds)
+
+    @patch("metadata.clients.aws_client.AWSClient")
+    def test_unknown_extension_includes_s3_url_in_error(self, mock_aws_client_cls):
+        """An unknown-extension S3 object that fails both JSON and YAML reports s3://bucket/key."""
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {"Body": BytesIO(b"[1, 2, 3]")}
+        mock_aws_client_cls.return_value.get_s3_client.return_value = mock_s3
+
+        creds = AWSCredentials(awsRegion="us-east-1")
+        with pytest.raises(OpenAPIParseError, match=r"s3://bucket/schema\.txt"):
+            parse_openapi_schema_from_s3("https://bucket.s3.us-east-1.amazonaws.com/schema.txt", creds)
+
 
 class TestGetConnectionS3:
     @patch("metadata.ingestion.source.api.rest.connection.parse_openapi_schema_from_s3")
