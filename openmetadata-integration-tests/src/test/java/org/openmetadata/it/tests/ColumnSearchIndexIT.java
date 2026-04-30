@@ -42,6 +42,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -584,6 +585,81 @@ public class ColumnSearchIndexIT {
               + " must be reachable via index=dataAsset (fallback clause for unconfigured types)");
     }
 
+    /**
+     * Pins parity for a non-column entity type at both the count and the FQN-set level. Topic is
+     * chosen to exercise a different per-type clause than {@code table}, which already has its own
+     * test. The {@code dataAsset} alias must return the same set of topic FQNs that {@code
+     * index=topic} returns for the same query, with matching counts — otherwise the explore tab's
+     * topic count and the topic-tab results would disagree.
+     */
+    @Test
+    @DisplayName("Topic bucket and topic FQN set must match index=topic for same query")
+    void testTopicBucketAndResultSetMatchIndexTopic(TestNamespace ns) throws Exception {
+      OpenMetadataClient client = SdkClients.adminClient();
+      String tag = ns.shortPrefix();
+      Topic topic = createUniqueTopic(ns, "topicparity_" + tag, tag);
+      assertNotNull(topic);
+
+      Awaitility.await()
+          .atMost(90, TimeUnit.SECONDS)
+          .pollInterval(500, TimeUnit.MILLISECONDS)
+          .until(() -> totalHitsForIndex(client, tag, "topic") >= 1);
+
+      long topicTotal = totalHitsForIndex(client, tag, "topic");
+      long aggTopicBucket = bucketCountFromDataAsset(client, tag, Entity.TOPIC);
+      assertEquals(
+          topicTotal,
+          aggTopicBucket,
+          "dataAsset topic bucket must equal index=topic total for query " + tag);
+
+      Set<String> topicFqns = fqnsForIndex(client, tag, "topic");
+      Set<String> dataAssetTopicFqns = fqnsFromDataAssetForType(client, tag, Entity.TOPIC);
+      assertEquals(
+          topicFqns,
+          dataAssetTopicFqns,
+          "Topic FQNs returned by index=topic must equal topic-typed FQNs returned by "
+              + "index=dataAsset for the same query");
+    }
+
+    /**
+     * Complex syntax queries (quoted phrases, AND/OR operators) flow through {@code
+     * buildBaseQueryV2 -> buildComplexSyntaxQueryV2} for non-column types and through the column
+     * builder for {@code tableColumn}. Both paths run against both endpoints — the parity
+     * guarantee from the per-type-union refactor must hold here too. This test exercises three
+     * representative shapes and asserts count parity for the {@code tableColumn} bucket.
+     */
+    @Test
+    @DisplayName("Complex-syntax queries keep dataAsset/tableColumn parity")
+    void testComplexSyntaxQueriesKeepParity(TestNamespace ns) throws Exception {
+      OpenMetadataClient client = SdkClients.adminClient();
+      String tag = ns.shortPrefix();
+      Table table = createTableWithMultiTokenColumns(ns, "complex_" + tag, tag);
+      assertNotNull(table);
+
+      Awaitility.await()
+          .atMost(90, TimeUnit.SECONDS)
+          .pollInterval(500, TimeUnit.MILLISECONDS)
+          .until(() -> totalHitsForIndex(client, tag, "tableColumn") >= 5);
+
+      List<String> queries =
+          List.of(
+              "\"" + tag + " alpha\"",
+              tag + " AND alpha",
+              tag + " OR alpha",
+              "(" + tag + " AND alpha) OR (" + tag + " AND bravo)");
+
+      for (String complexQuery : queries) {
+        long columnTotal = totalHitsForIndex(client, complexQuery, "tableColumn");
+        long aggBucket = bucketCountFromDataAsset(client, complexQuery, Entity.TABLE_COLUMN);
+        assertEquals(
+            columnTotal,
+            aggBucket,
+            "dataAsset tableColumn bucket must equal index=tableColumn total for complex "
+                + "query "
+                + complexQuery);
+      }
+    }
+
     private Set<String> hitsForColumnQuery(OpenMetadataClient client, String query)
         throws Exception {
       String response =
@@ -594,6 +670,56 @@ public class ColumnSearchIndexIT {
         names.add(hit.path("_source").path("name").asText());
       }
       return names;
+    }
+
+    private Set<String> fqnsForIndex(OpenMetadataClient client, String query, String index)
+        throws Exception {
+      String response =
+          client.search().query(query).index(index).size(200).deleted(false).execute();
+      JsonNode hits = OBJECT_MAPPER.readTree(response).path("hits").path("hits");
+      Set<String> fqns = new HashSet<>();
+      for (JsonNode hit : hits) {
+        fqns.add(hit.path("_source").path("fullyQualifiedName").asText());
+      }
+      return fqns;
+    }
+
+    private Set<String> fqnsFromDataAssetForType(
+        OpenMetadataClient client, String query, String entityType) throws Exception {
+      String response =
+          client.search().query(query).index("dataAsset").size(200).deleted(false).execute();
+      JsonNode hits = OBJECT_MAPPER.readTree(response).path("hits").path("hits");
+      Set<String> fqns = new HashSet<>();
+      for (JsonNode hit : hits) {
+        if (entityType.equals(hit.path("_source").path("entityType").asText())) {
+          fqns.add(hit.path("_source").path("fullyQualifiedName").asText());
+        }
+      }
+      return fqns;
+    }
+
+    private Topic createUniqueTopic(TestNamespace ns, String baseName, String tag) {
+      String shortId = ns.shortPrefix();
+      org.openmetadata.schema.services.connections.messaging.KafkaConnection kafkaConn =
+          new org.openmetadata.schema.services.connections.messaging.KafkaConnection()
+              .withBootstrapServers("localhost:9092");
+      org.openmetadata.schema.api.services.CreateMessagingService msgSvcReq =
+          new org.openmetadata.schema.api.services.CreateMessagingService()
+              .withName("topic_parity_svc_" + shortId + "_" + baseName)
+              .withServiceType(
+                  org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType
+                      .Kafka)
+              .withConnection(
+                  new org.openmetadata.schema.type.MessagingConnection().withConfig(kafkaConn));
+      org.openmetadata.schema.entity.services.MessagingService msgService =
+          SdkClients.adminClient().messagingServices().create(msgSvcReq);
+
+      org.openmetadata.schema.api.data.CreateTopic topicRequest =
+          new org.openmetadata.schema.api.data.CreateTopic()
+              .withName(ns.prefix(tag + "_topic_" + baseName))
+              .withService(msgService.getFullyQualifiedName())
+              .withPartitions(1);
+      return SdkClients.adminClient().topics().create(topicRequest);
     }
 
     private long totalHitsForIndex(OpenMetadataClient client, String query, String index)
