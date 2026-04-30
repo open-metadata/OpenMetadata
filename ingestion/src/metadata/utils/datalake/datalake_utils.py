@@ -341,7 +341,7 @@ class GenericDataFrameColumnParser:
         """
         cols = []
         if hasattr(data_frame, "columns"):
-            for column in list(data_frame.columns):
+            for column in data_frame.columns:
                 parsed_col = cls._parse_column(data_frame, column)
                 if parsed_col:
                     cols.append(parsed_col)
