@@ -559,12 +559,23 @@ public class ContainerRepository extends EntityRepository<Container> {
       }
 
       List<EntityReference> refs = getEntityReferences(relationshipRecords);
-      List<Container> children = new ArrayList<>();
-
+      // Hydrate the page in a single DB call instead of one Entity.getEntity per child.
+      // findEntitiesByIds chunks internally at 30k IDs, so it is safe even if a caller
+      // requests the maximum page size.
+      List<UUID> ids = refs.stream().map(EntityReference::getId).toList();
+      Map<UUID, Container> byId = new HashMap<>();
+      for (Container c : dao.findEntitiesByIds(ids, Include.ALL)) {
+        byId.put(c.getId(), c);
+      }
+      // Preserve relationship-offset ordering returned by findToWithOffset; drop
+      // any refs that no longer resolve (deleted between the relationship lookup and
+      // the bulk fetch) rather than failing the whole page.
+      List<Container> children = new ArrayList<>(refs.size());
       for (EntityReference ref : refs) {
-        Container container =
-            Entity.getEntity(ref, EntityUtil.Fields.EMPTY_FIELDS.toString(), Include.ALL);
-        children.add(container);
+        Container container = byId.get(ref.getId());
+        if (container != null) {
+          children.add(container);
+        }
       }
 
       return new ResultList<>(children, null, null, total);
