@@ -477,6 +477,11 @@ public class SearchRepository {
     if (!isVectorEmbeddingEnabled() || !vectorServiceInitialized) {
       return;
     }
+    // Hybrid search pipeline is an OpenSearch-specific feature (RRF via _search/pipeline).
+    // Skip silently for Elasticsearch instead of logging a misleading warning every restart.
+    if (!(vectorIndexService instanceof OpenSearchVectorService)) {
+      return;
+    }
 
     ElasticSearchConfiguration cfg = getSearchConfiguration();
     NaturalLanguageSearchConfiguration nlConfig = cfg.getNaturalLanguageSearch();
