@@ -603,11 +603,17 @@ public class ContainerRepository extends EntityRepository<Container> {
       return Collections.emptyList();
     }
 
+    // FullyQualifiedName.split returns unquoted parts. We have to round-trip
+    // each segment back through FullyQualifiedName.add (which calls quoteName)
+    // so that segments containing the FQN separator are re-quoted, matching
+    // the canonical FQN stored in the DB. Concatenating raw parts with '.'
+    // would produce a different string and break the IN-by-fqnHash lookup
+    // for any container whose name (or whose ancestor's name) contains a dot.
     List<String> ancestorFqns = new ArrayList<>(parts.length - 2);
-    StringBuilder current = new StringBuilder(parts[0]);
+    String current = FullyQualifiedName.quoteName(parts[0]);
     for (int i = 1; i < parts.length - 1; i++) {
-      current.append('.').append(parts[i]);
-      ancestorFqns.add(current.toString());
+      current = FullyQualifiedName.add(current, parts[i]);
+      ancestorFqns.add(current);
     }
 
     // Single batched IN-by-fqnHash query (chunked at 30k inside the DAO).

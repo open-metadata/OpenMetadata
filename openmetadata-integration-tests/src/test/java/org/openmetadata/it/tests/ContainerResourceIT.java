@@ -1147,6 +1147,52 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     return createEntity(request);
   }
 
+  @Test
+  void test_listAncestors_handlesQuotedNamePartsInChain(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    // Build a chain whose intermediate ancestors contain '.' in their names.
+    // OpenMetadata quotes such segments in the canonical FQN ("2025.Q1"),
+    // so getAncestors must round-trip parts through FullyQualifiedName.add to
+    // re-quote them; otherwise the rebuilt ancestor FQN won't match the
+    // stored FQN and the IN-by-fqnHash lookup returns nothing.
+    CreateContainer rootRequest = new CreateContainer();
+    rootRequest.setName(ns.prefix("ancestors_quoted_root"));
+    rootRequest.setService(service.getFullyQualifiedName());
+    Container root = createEntity(rootRequest);
+
+    // Quoted middle: a name with a literal dot — exercises the fragile path.
+    Container quotedMid = createChild(ns, service, root, "ancestors_quoted_mid_with.dot.in.name");
+    Container leaf = createChild(ns, service, quotedMid, "ancestors_quoted_leaf");
+
+    EntityReferenceList ancestors =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + leaf.getFullyQualifiedName() + "/ancestors",
+                null,
+                EntityReferenceList.class);
+
+    assertNotNull(ancestors);
+    assertEquals(
+        2,
+        ancestors.size(),
+        "ancestors must resolve both root and the quoted-name middle even though"
+            + " the middle's name contains the FQN separator");
+    assertEquals(root.getId(), ancestors.get(0).getId());
+    assertEquals(
+        quotedMid.getId(),
+        ancestors.get(1).getId(),
+        "the dotted-name container must be looked up via its quoted FQN, not via"
+            + " a raw '.' join that would split it into two phantom segments");
+    assertEquals(
+        quotedMid.getFullyQualifiedName(),
+        ancestors.get(1).getFullyQualifiedName(),
+        "returned FQN must equal the canonical (quoted) form stored in the DB");
+  }
+
   private static class EntityReferenceList extends ArrayList<EntityReference> {}
 
   @Test
