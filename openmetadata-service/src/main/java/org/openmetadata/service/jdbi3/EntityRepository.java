@@ -134,6 +134,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -2166,7 +2167,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * really need a fresh count); falls back to the DAO when the cache loader throws.
    */
   protected int cachedListCount(ListFilter filter) {
-    String cacheKey = entityType + "|" + filter.getCondition() + "|" + filter.getQueryParams();
+    String cacheKey = buildListCountCacheKey(filter);
     Integer cached = LIST_COUNT_CACHE.getIfPresent(cacheKey);
     if (cached != null) {
       return cached;
@@ -2174,6 +2175,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     int count = dao.listCount(filter);
     LIST_COUNT_CACHE.put(cacheKey, count);
     return count;
+  }
+
+  private String buildListCountCacheKey(ListFilter filter) {
+    // queryParams is a HashMap, so its iteration order is unspecified; toString()ing it
+    // would produce different strings for the same logical filter and split the cache.
+    // Sort by key to get a stable canonical form.
+    StringBuilder params = new StringBuilder();
+    new TreeMap<>(filter.getQueryParams())
+        .forEach(
+            (k, v) -> {
+              if (params.length() > 0) params.append('&');
+              params.append(k).append('=').append(v);
+            });
+    return entityType + "|" + filter.getCondition() + "|" + params;
   }
 
   public ResultList<T> listAfter(

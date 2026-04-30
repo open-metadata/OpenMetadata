@@ -35,7 +35,7 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>Scrape the {@code /prometheus} (or admin metrics) endpoint for HikariCP pool
  *       statistics ({@code hikaricp_active_connections},
  *       {@code hikaricp_pending_threads}, etc.) and alert on those.
- *   <li>Run the existing {@code DatabseAndSearchServiceStatusJob} background reporter,
+ *   <li>Run the existing {@code DatabaseAndSearchServiceStatusJob} background reporter,
  *       which surfaces DB/search status without affecting liveness.
  * </ul>
  *

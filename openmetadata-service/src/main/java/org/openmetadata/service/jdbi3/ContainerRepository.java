@@ -639,12 +639,14 @@ public class ContainerRepository extends EntityRepository<Container> {
       return Collections.emptyList();
     }
 
-    // FullyQualifiedName.split returns unquoted parts. We have to round-trip
-    // each segment back through FullyQualifiedName.add (which calls quoteName)
-    // so that segments containing the FQN separator are re-quoted, matching
-    // the canonical FQN stored in the DB. Concatenating raw parts with '.'
-    // would produce a different string and break the IN-by-fqnHash lookup
-    // for any container whose name (or whose ancestor's name) contains a dot.
+    // FullyQualifiedName.split preserves each segment as it appears in the source
+    // FQN (quoted segments stay quoted, unquoted stay unquoted). We still round-trip
+    // every segment through FullyQualifiedName.add — its quoteName step is idempotent,
+    // and it reapplies quotes to any unquoted segment that needs them so the
+    // reconstructed prefix matches the canonical FQN stored in the DB. Naively
+    // concatenating raw parts with '.' would skip that re-quoting step and break the
+    // IN-by-fqnHash lookup for any container whose name (or ancestor's name) contains
+    // an FQN-separator character.
     List<String> ancestorFqns = new ArrayList<>(parts.length - 2);
     String current = FullyQualifiedName.quoteName(parts[0]);
     for (int i = 1; i < parts.length - 1; i++) {

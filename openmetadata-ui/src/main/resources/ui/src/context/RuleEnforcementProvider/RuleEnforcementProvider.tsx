@@ -55,6 +55,12 @@ export const RuleEnforcementProvider: React.FC<
   // useEntityRules('container')).
   const loadedEntityTypes = useRef<Set<string>>(new Set());
   const inFlight = useRef<Map<string, Promise<void>>>(new Map());
+  // Counter of *currently* in-flight fetches. Tracked separately from
+  // `inFlight.size` because two concurrent fetches for different entity types
+  // both call setIsLoading; if we only watch the boolean, the first to settle
+  // flips it to false while the second is still running. The counter ensures
+  // `isLoading` stays true until the last fetch resolves.
+  const activeFetchCount = useRef(0);
 
   const fetchRulesForEntity = useCallback(async (entityType: EntityType) => {
     if (loadedEntityTypes.current.has(entityType)) {
@@ -65,6 +71,7 @@ export const RuleEnforcementProvider: React.FC<
       return existing;
     }
 
+    activeFetchCount.current += 1;
     setIsLoading(true);
     const promise = (async () => {
       try {
@@ -81,7 +88,10 @@ export const RuleEnforcementProvider: React.FC<
         showErrorToast(err as AxiosError);
       } finally {
         inFlight.current.delete(entityType);
-        setIsLoading(false);
+        activeFetchCount.current -= 1;
+        if (activeFetchCount.current === 0) {
+          setIsLoading(false);
+        }
       }
     })();
     inFlight.current.set(entityType, promise);

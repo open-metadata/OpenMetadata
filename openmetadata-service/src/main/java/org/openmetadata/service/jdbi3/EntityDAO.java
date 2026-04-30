@@ -231,6 +231,37 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("cond") String cond);
 
   /**
+   * Variant of {@link #findReferencesByNameHashes} for tables that don't carry a
+   * {@code deleted} column (entities that override {@link #supportsSoftDelete()} to return
+   * {@code false}). Selecting {@code deleted} on those tables would throw
+   * {@code SQLSyntaxErrorException}; the row mapper substitutes {@code FALSE} for the absent
+   * column so the call site can treat both cases uniformly.
+   */
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) AS name, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
+              + "FALSE AS deleted "
+              + "FROM <table> WHERE <nameHashColumn> IN (<names>)",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, "
+              + "json->>'name' AS name, "
+              + "json->>'displayName' AS displayName, "
+              + "json->>'fullyQualifiedName' AS fqn, "
+              + "FALSE AS deleted "
+              + "FROM <table> WHERE <nameHashColumn> IN (<names>)",
+      connectionType = POSTGRES)
+  @RegisterRowMapper(EntityReferenceRowMapper.class)
+  List<EntityReferenceRow> findReferencesByNameHashesNoDeleted(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @BindList("names") List<String> nameHashes);
+
+  /**
    * Resolve a list of FQNs to {@link EntityReference}s in a single batched query without
    * deserializing the full entity JSON. Returns refs in arbitrary order — callers that need
    * ordering should reorder by FQN.
@@ -243,39 +274,29 @@ public interface EntityDAO<T extends EntityInterface> {
         entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
     int maxChunkSize = 30000;
     if (nameHashes.size() <= maxChunkSize) {
-      return findReferencesByNameHashes(
-              getTableName(), getNameHashColumn(), nameHashes, getCondition(include))
-          .stream()
+      return findReferenceRows(nameHashes, include).stream()
           .map(row -> row.toEntityReference(Entity.getEntityTypeFromClass(getEntityClass())))
           .toList();
     }
     List<EntityReference> all = new ArrayList<>(nameHashes.size());
     for (int i = 0; i < nameHashes.size(); i += maxChunkSize) {
       List<String> chunk = nameHashes.subList(i, Math.min(i + maxChunkSize, nameHashes.size()));
-      findReferencesByNameHashes(getTableName(), getNameHashColumn(), chunk, getCondition(include))
-          .stream()
+      findReferenceRows(chunk, include).stream()
           .map(row -> row.toEntityReference(Entity.getEntityTypeFromClass(getEntityClass())))
           .forEach(all::add);
     }
     return all;
   }
 
-  final class EntityReferenceRow {
-    public final UUID id;
-    public final String name;
-    public final String displayName;
-    public final String fqn;
-    public final boolean deleted;
-
-    public EntityReferenceRow(
-        UUID id, String name, String displayName, String fqn, boolean deleted) {
-      this.id = id;
-      this.name = name;
-      this.displayName = displayName;
-      this.fqn = fqn;
-      this.deleted = deleted;
+  private List<EntityReferenceRow> findReferenceRows(List<String> nameHashes, Include include) {
+    if (!supportsSoftDelete()) {
+      return findReferencesByNameHashesNoDeleted(getTableName(), getNameHashColumn(), nameHashes);
     }
+    return findReferencesByNameHashes(
+        getTableName(), getNameHashColumn(), nameHashes, getCondition(include));
+  }
 
+  record EntityReferenceRow(UUID id, String name, String displayName, String fqn, boolean deleted) {
     public EntityReference toEntityReference(String entityType) {
       return new EntityReference()
           .withId(id)

@@ -237,6 +237,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     OpenMetadataApplicationConfigHolder.initialize(catalogConfig);
 
+    routeSlowRequestLogToServerLog();
+
     // Configure URI compliance to LEGACY mode by default for Jetty 12
     // This allows special characters in entity names that were permitted in Jetty 11
     configureUriCompliance(catalogConfig);
@@ -533,6 +535,31 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       return connector instanceof HttpsConnectorFactory;
     }
     return false;
+  }
+
+  /**
+   * Make slow-request log lines visible in the main server.log without requiring an
+   * operator to edit YAML. The shipped logback config sets the {@code org.openmetadata.slowrequest}
+   * logger to {@code OFF} with {@code additive: false}, which routes records to a separate
+   * {@code logs/slow-requests.log} file (and silently drops them in containers where that path
+   * isn't writable). For diagnosing prod latency we want the same lines surfacing in the main
+   * application log, so flip additivity on and lift the level off OFF if it's still the default.
+   * Operators can still override via {@code SLOW_REQUEST_LOG_LEVEL} env or by setting a non-OFF
+   * level in YAML — we only adjust when the logger is at OFF.
+   */
+  private void routeSlowRequestLogToServerLog() {
+    org.slf4j.Logger raw = org.slf4j.LoggerFactory.getLogger("org.openmetadata.slowrequest");
+    if (!(raw instanceof ch.qos.logback.classic.Logger slowRequestLogger)) {
+      return;
+    }
+    slowRequestLogger.setAdditive(true);
+    if (slowRequestLogger.getLevel() == null
+        || ch.qos.logback.classic.Level.OFF.equals(slowRequestLogger.getLevel())) {
+      slowRequestLogger.setLevel(ch.qos.logback.classic.Level.WARN);
+    }
+    LOG.info(
+        "Routed slow-request logger to server.log (additive=true, level={})",
+        slowRequestLogger.getEffectiveLevel());
   }
 
   /**
