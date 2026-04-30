@@ -146,20 +146,24 @@ async function runSearchValidation(page: Page): Promise<void> {
   });
 }
 
-test.describe('Explore Aggregation Counts Matching', () => {
-  test.use({
-    storageState: 'playwright/.auth/admin.json',
-  });
+test.describe(
+  'Explore Aggregation Counts Matching',
+  { tag: ['@Discovery'] },
+  () => {
+    test.use({
+      storageState: 'playwright/.auth/admin.json',
+    });
 
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+    });
 
-  test('should verify left panel counts and tab search results for normal search', async ({
-    page,
-  }) => {
-    test.slow();
+    test('should verify left panel counts and tab search results for normal search', async ({
+      page,
+    }) => {
+      test.slow();
 
-    await runSearchValidation(page);
-  });
-});
+      await runSearchValidation(page);
+    });
+  }
+);
