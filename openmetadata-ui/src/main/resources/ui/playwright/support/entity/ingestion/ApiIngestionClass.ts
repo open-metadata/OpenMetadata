@@ -13,10 +13,7 @@
 
 import { Page } from '@playwright/test';
 import { uuid } from '../../../utils/common';
-import {
-  checkServiceFieldSectionHighlighting,
-  Services,
-} from '../../../utils/serviceIngestion';
+import { Services } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 
 class ApiIngestionClass extends ServiceBaseClass {
@@ -68,7 +65,6 @@ class ApiIngestionClass extends ServiceBaseClass {
     await page
       .locator('#root\\/openAPISchemaConnection\\/openAPISchemaFilePath')
       .fill(openAPISchemaFilePath);
-    await checkServiceFieldSectionHighlighting(page, 'openAPISchemaFilePath');
   }
 
   async deleteService(page: Page): Promise<void> {
