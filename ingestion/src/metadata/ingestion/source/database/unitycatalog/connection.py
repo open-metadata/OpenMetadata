@@ -99,6 +99,9 @@ def get_sqlalchemy_connection(connection: UnityCatalogConnection) -> Engine:
 
     auth_args = get_auth_config(connection)
 
+    if not connection.connectionArguments:
+        connection.connectionArguments = init_empty_connection_arguments()
+
     original_connection_arguments = connection.connectionArguments
     connection.connectionArguments = deepcopy(original_connection_arguments)
     connection.connectionArguments.root.update(auth_args)
