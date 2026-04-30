@@ -135,13 +135,10 @@ export const updateSearchIndexVotes = async (id: string, data: QueryVote) => {
   return response.data;
 };
 
-export const getSearchIndexVersions = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getSearchIndexVersions = async (id: string) => {
   const url = `/searchIndexes/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };
