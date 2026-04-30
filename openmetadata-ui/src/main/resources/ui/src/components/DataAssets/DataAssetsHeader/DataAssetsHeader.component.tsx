@@ -43,11 +43,7 @@ import {
 } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import {
