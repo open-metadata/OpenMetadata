@@ -109,7 +109,7 @@
           "description": "Name that identifies this task instance uniquely.",
           "type": "string",
           "minLength": 1,
-          "pattern": "^[^><\"|\\x00-\\x1f]*$"
+          "pattern": "^((?!::)[^><\"|\\x00-\\x1f])*$"
         },
         "displayName": {
           "description": "Display Name that identifies this Task. It could be title or label from the pipeline services.",
