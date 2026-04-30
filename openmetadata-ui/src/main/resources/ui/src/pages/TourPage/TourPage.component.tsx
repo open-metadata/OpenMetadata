@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Tour from '../../components/AppTour/Tour';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
@@ -22,18 +22,61 @@ import ExplorePageV1Component from '../ExplorePage/ExplorePageV1.component';
 import MyDataPage from '../MyDataPage/MyDataPage.component';
 import TableDetailsPageV1 from '../TableDetailsPageV1/TableDetailsPageV1';
 
-const isTourFeedWidgetReady = () => {
-  const feedWidget = document.querySelector('#feedWidgetData');
+const TOUR_FEED_WIDGET_SELECTOR = '#feedWidgetData';
+const REQUIRED_STABLE_LAYOUT_FRAMES = 3;
+
+type TourTargetRect = {
+  height: number;
+  left: number;
+  top: number;
+  width: number;
+};
+
+const getTourFeedWidgetRect = (): TourTargetRect | undefined => {
+  const feedWidget = document.querySelector(TOUR_FEED_WIDGET_SELECTOR);
   const feedWidgetRect = feedWidget?.getBoundingClientRect();
 
-  return Boolean(feedWidgetRect?.width && feedWidgetRect.height);
+  if (!feedWidgetRect?.width || !feedWidgetRect.height) {
+    return;
+  }
+
+  return {
+    height: feedWidgetRect.height,
+    left: feedWidgetRect.left,
+    top: feedWidgetRect.top,
+    width: feedWidgetRect.width,
+  };
+};
+
+const isSameWidgetRect = (
+  currentRect?: TourTargetRect,
+  previousRect?: TourTargetRect
+) => {
+  return (
+    currentRect?.height === previousRect?.height &&
+    currentRect?.left === previousRect?.left &&
+    currentRect?.top === previousRect?.top &&
+    currentRect?.width === previousRect?.width
+  );
 };
 
 const waitForTourFeedWidget = (onReady: () => void) => {
   let animationFrameId = 0;
+  let stableLayoutFrames = 0;
+  let previousRect: TourTargetRect | undefined;
 
   const waitForFeedWidget = () => {
-    if (isTourFeedWidgetReady()) {
+    const currentRect = getTourFeedWidgetRect();
+
+    if (currentRect && isSameWidgetRect(currentRect, previousRect)) {
+      stableLayoutFrames += 1;
+    } else {
+      stableLayoutFrames = 0;
+    }
+
+    previousRect = currentRect;
+
+    if (stableLayoutFrames >= REQUIRED_STABLE_LAYOUT_FRAMES) {
       onReady();
 
       return;
@@ -60,16 +103,24 @@ const TourPage = () => {
   const { t } = useTranslation();
   const [isTourReady, setIsTourReady] = useState(false);
 
-  const clearSearchTerm = () => {
+  const clearSearchTerm = useCallback(() => {
     updateTourSearch('');
-  };
+  }, [updateTourSearch]);
 
   useEffect(() => {
-    return waitForTourFeedWidget(() => {
+    let tourMountFrameId = 0;
+    const cancelFeedWidgetWait = waitForTourFeedWidget(() => {
       updateIsTourOpen(true);
-      setIsTourReady(true);
+      tourMountFrameId = window.requestAnimationFrame(() => {
+        setIsTourReady(true);
+      });
     });
-  }, []);
+
+    return () => {
+      cancelFeedWidgetWait();
+      window.cancelAnimationFrame(tourMountFrameId);
+    };
+  }, [updateIsTourOpen]);
 
   const currentPageComponent = useMemo(() => {
     switch (currentTourPage) {
@@ -87,19 +138,21 @@ const TourPage = () => {
     }
   }, [currentTourPage]);
 
+  const tourSteps = useMemo(
+    () =>
+      getTourSteps({
+        searchTerm: TOUR_SEARCH_TERM,
+        clearSearchTerm,
+        updateActiveTab,
+        updateTourPage,
+      }),
+    [clearSearchTerm, updateActiveTab, updateTourPage]
+  );
+
   return (
     <>
       {currentPageComponent}
-      {isTourReady && (
-        <Tour
-          steps={getTourSteps({
-            searchTerm: TOUR_SEARCH_TERM,
-            clearSearchTerm,
-            updateActiveTab,
-            updateTourPage,
-          })}
-        />
-      )}
+      {isTourReady && <Tour steps={tourSteps} />}
     </>
   );
 };

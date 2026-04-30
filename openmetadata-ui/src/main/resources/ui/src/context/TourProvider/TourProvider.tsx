@@ -14,7 +14,9 @@ import {
   createContext,
   FC,
   ReactNode,
+  useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -55,17 +57,30 @@ const TourProvider: FC<Props> = ({ children }) => {
     useState<EntityTabs>(EntityTabs.SCHEMA);
   const [searchValue, setSearchValue] = useState('');
 
-  const handleIsTourOpen = (value: boolean) => {
+  useEffect(() => {
+    if (isTourPage) {
+      setIsTourOpen(true);
+    }
+  }, [isTourPage]);
+
+  const handleIsTourOpen = useCallback((value: boolean) => {
     setIsTourOpen(value);
-  };
+  }, []);
 
-  const handleTourPageChange = (value: CurrentTourPageType) =>
-    setCurrentTourPage(value);
+  const handleTourPageChange = useCallback(
+    (value: CurrentTourPageType) => setCurrentTourPage(value),
+    []
+  );
 
-  const handleActiveTabChange = (value: EntityTabs) =>
-    setActiveTabForTourDatasetPage(value);
+  const handleActiveTabChange = useCallback(
+    (value: EntityTabs) => setActiveTabForTourDatasetPage(value),
+    []
+  );
 
-  const handleUpdateTourSearch = (value: string) => setSearchValue(value);
+  const handleUpdateTourSearch = useCallback(
+    (value: string) => setSearchValue(value),
+    []
+  );
 
   return (
     <TourContext.Provider

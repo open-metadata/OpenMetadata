@@ -47,7 +47,7 @@ const createReadyFeedWidget = () => {
   return feedWidget;
 };
 
-const waitForTourReadyCheck = async (time = 16) => {
+const waitForTourReadyCheck = async (time = 80) => {
   await act(async () => {
     jest.advanceTimersByTime(time);
   });
@@ -184,9 +184,10 @@ describe('TourPage component', () => {
     expect(screen.queryByText('Tour.component')).not.toBeInTheDocument();
 
     await waitForTourReadyCheck();
+    await waitForTourReadyCheck();
 
     expect(screen.getByText('Tour.component')).toBeInTheDocument();
-    expect(getBoundingClientRect).toHaveBeenCalledTimes(2);
+    expect(getBoundingClientRect).toHaveBeenCalled();
   });
 
   it('MyDataPage Component should be visible, if currentTourPage is myDataPage', async () => {
