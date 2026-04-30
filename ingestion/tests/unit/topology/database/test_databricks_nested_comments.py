@@ -216,46 +216,27 @@ class TestFetchNestedDescriptionsViaDescribeJson:
         connection = MagicMock()
         connection.execute.side_effect = Exception("syntax error: AS JSON unsupported")
 
-        assert (
-            _fetch_nested_descriptions_via_describe_json(
-                connection, "db", "schema", "table"
-            )
-            == {}
-        )
+        assert _fetch_nested_descriptions_via_describe_json(connection, "db", "schema", "table") == {}
 
     def test_empty_result_returns_empty(self):
         connection = MagicMock()
         connection.execute.return_value.fetchone.return_value = None
 
-        assert (
-            _fetch_nested_descriptions_via_describe_json(
-                connection, "db", "schema", "table"
-            )
-            == {}
-        )
+        assert _fetch_nested_descriptions_via_describe_json(connection, "db", "schema", "table") == {}
 
     def test_invalid_json_returns_empty(self):
         connection = MagicMock()
         connection.execute.return_value.fetchone.return_value = ("not valid json {",)
 
-        assert (
-            _fetch_nested_descriptions_via_describe_json(
-                connection, "db", "schema", "table"
-            )
-            == {}
-        )
+        assert _fetch_nested_descriptions_via_describe_json(connection, "db", "schema", "table") == {}
 
     def test_valid_json_extracts_descriptions(self):
         import json as _json
 
         connection = MagicMock()
-        connection.execute.return_value.fetchone.return_value = (
-            _json.dumps(_CUSTOMER_PROFILES_JSON),
-        )
+        connection.execute.return_value.fetchone.return_value = (_json.dumps(_CUSTOMER_PROFILES_JSON),)
 
-        result = _fetch_nested_descriptions_via_describe_json(
-            connection, "db", "schema", "customer_profiles"
-        )
+        result = _fetch_nested_descriptions_via_describe_json(connection, "db", "schema", "customer_profiles")
         assert ("first_name",) in result["personal_info"]
         assert result["personal_info"][("first_name",)] == "Customer first name"
 
@@ -278,9 +259,7 @@ class TestApplyNestedDescriptions:
         _apply_nested_descriptions(col, descs, ())
 
         children_by_name = {c.name.root: c for c in col.children}
-        assert children_by_name["first_name"].description == Markdown(
-            root="Customer first name"
-        )
+        assert children_by_name["first_name"].description == Markdown(root="Customer first name")
         assert children_by_name["dob"].description == Markdown(root="Date of birth")
 
     def test_nested_struct_descriptions(self):
@@ -326,10 +305,7 @@ class TestApplyNestedDescriptions:
         assert col.description is None
 
 
-@patch(
-    "metadata.ingestion.source.database.databricks.metadata"
-    "._fetch_nested_descriptions_via_describe_json"
-)
+@patch("metadata.ingestion.source.database.databricks.metadata._fetch_nested_descriptions_via_describe_json")
 @patch("metadata.ingestion.source.database.databricks.metadata._get_column_rows")
 class TestDescribeJsonLazyFetch:
     """The ``DESCRIBE TABLE EXTENDED ... AS JSON`` round-trip is fired only
@@ -346,9 +322,7 @@ class TestDescribeJsonLazyFetch:
             db_name="db",
         )
 
-    def test_skipped_when_table_has_no_complex_columns(
-        self, mock_rows, mock_fetch_json
-    ):
+    def test_skipped_when_table_has_no_complex_columns(self, mock_rows, mock_fetch_json):
         """Primitive-only table → AS JSON query never runs."""
         mock_rows.return_value = [
             ("id", "bigint", None),
@@ -372,9 +346,7 @@ class TestDescribeJsonLazyFetch:
         ]
         return connection
 
-    def test_called_once_for_table_with_one_complex_column(
-        self, mock_rows, mock_fetch_json
-    ):
+    def test_called_once_for_table_with_one_complex_column(self, mock_rows, mock_fetch_json):
         mock_rows.return_value = [
             ("id", "bigint", None),
             ("info", "struct<a:int>", None),
@@ -387,9 +359,7 @@ class TestDescribeJsonLazyFetch:
 
         mock_fetch_json.assert_called_once_with(connection, "db", "schema", "tbl")
 
-    def test_called_once_for_table_with_multiple_complex_columns(
-        self, mock_rows, mock_fetch_json
-    ):
+    def test_called_once_for_table_with_multiple_complex_columns(self, mock_rows, mock_fetch_json):
         """Cached after first complex column — second/third columns reuse
         the result instead of triggering another round-trip."""
         mock_rows.return_value = [

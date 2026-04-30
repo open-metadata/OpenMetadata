@@ -14,7 +14,7 @@ import json
 import re
 import traceback
 from copy import deepcopy
-from typing import Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
+from typing import Any, Iterable, Optional, Tuple, Union  # noqa: UP035
 
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
@@ -123,10 +123,10 @@ _type_map.update(
 
 def _fetch_nested_descriptions_via_describe_json(
     connection,
-    db_name: str,
-    schema: str,
+    db_name: str | None,
+    schema: str | None,
     table_name: str,
-) -> Dict[str, Dict[Tuple[str, ...], str]]:
+) -> dict[str, dict[tuple[str, ...], str]]:
     """Run ``DESCRIBE TABLE EXTENDED <fqn> AS JSON`` and return a per-column
     map of ``{field_path_tuple: comment}``.
 
@@ -136,44 +136,40 @@ def _fetch_nested_descriptions_via_describe_json(
     (Spark's regular ``simpleString`` output strips them).
 
     Returns an empty dict on any failure (older runtime, JSON parse error,
-    schema variation) so the caller cleanly degrades to top-level-only
-    descriptions.
+    schema variation, or missing db/schema) so the caller cleanly degrades
+    to top-level-only descriptions.
     """
+    if not db_name or not schema:
+        return {}
     try:
         result = connection.execute(
-            text(
-                f"DESCRIBE TABLE EXTENDED `{db_name}`.`{schema}`.`{table_name}`"
-                f" AS JSON"
-            )
+            text(f"DESCRIBE TABLE EXTENDED `{db_name}`.`{schema}`.`{table_name}` AS JSON")
         ).fetchone()
         if not result or not result[0]:
             return {}
         payload = json.loads(result[0])
     except Exception as err:  # pylint: disable=broad-except
-        logger.debug(
-            f"DESCRIBE AS JSON unavailable or unparseable for "
-            f"{db_name}.{schema}.{table_name}: {err}"
-        )
+        logger.debug(f"DESCRIBE AS JSON unavailable or unparseable for {db_name}.{schema}.{table_name}: {err}")
         return {}
 
     return _build_column_descriptions_map(payload)
 
 
 def _build_column_descriptions_map(
-    payload: dict,
-) -> Dict[str, Dict[Tuple[str, ...], str]]:
+    payload: Any,
+) -> dict[str, dict[tuple[str, ...], str]]:
     """From a DESCRIBE-AS-JSON payload, return ``{column_name: {path: comment}}``
     for every top-level column whose type contains commented nested fields."""
     if not isinstance(payload, dict):
         return {}
-    result: Dict[str, Dict[Tuple[str, ...], str]] = {}
+    result: dict[str, dict[tuple[str, ...], str]] = {}
     for col in payload.get("columns") or []:
         if not isinstance(col, dict):
             continue
         col_name = col.get("name")
         if not col_name:
             continue
-        descriptions: Dict[Tuple[str, ...], str] = {}
+        descriptions: dict[tuple[str, ...], str] = {}
         _collect_nested_descriptions(col.get("type"), [], descriptions)
         if descriptions:
             result[col_name] = descriptions
@@ -182,8 +178,8 @@ def _build_column_descriptions_map(
 
 def _collect_nested_descriptions(
     type_node,
-    path: List[str],
-    descriptions: Dict[Tuple[str, ...], str],
+    path: list[str],
+    descriptions: dict[tuple[str, ...], str],
 ) -> None:
     """Walk a JSON ``type`` node, collecting comments from struct fields.
 
@@ -210,8 +206,8 @@ def _collect_nested_descriptions(
 
 def _apply_nested_descriptions(
     column: "Column",
-    descriptions: Dict[Tuple[str, ...], str],
-    path: Tuple[str, ...],
+    descriptions: dict[tuple[str, ...], str],
+    path: tuple[str, ...],
 ) -> None:
     """Walk a parsed Column tree and assign descriptions from a path-keyed
     map. Path matches struct-field-name nesting; arrays do not add a level
@@ -284,11 +280,10 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     """
 
     rows = _get_column_rows(self, connection, table_name, schema, kw.get("db_name"))
-    # Lazily populated on the first complex column we encounter — most tables
-    # are primitives-only and shouldn't pay the AS JSON round-trip.
-    nested_descriptions_by_column: Optional[
-        Dict[str, Dict[Tuple[str, ...], str]]
-    ] = None
+    # Lazily populated on the first struct / array<struct> column — most tables
+    # are primitives-only and shouldn't pay the AS JSON round-trip, and map
+    # values aren't surfaced as named children so they don't need it either.
+    nested_descriptions_by_column: dict[str, dict[tuple[str, ...], str]] | None = None
     result = []
     for col_name, col_type, _comment in rows:
         # DESCRIBE TABLE EXTENDED emits real columns first, then '#'-prefixed
@@ -297,7 +292,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         # DescribeTableExec can emit markers not in any hardcoded whitelist, so
         # treat any '#'-prefixed row or row with empty col_type as end-of-columns.
         # ('# col_name' sub-header is filtered upstream in _get_column_rows.)
-        if col_name.startswith("#") or not col_type:
+        if not isinstance(col_name, str) or col_name.startswith("#") or not col_type:
             logger.debug(
                 f"End of columns for {schema}.{table_name}. Found end-of-columns marker: {col_name}. Stopping column extraction."
             )
@@ -339,15 +334,22 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     }
                     col_info["system_data_type"] = sub_rows["data_type"]
                     col_info["is_complex"] = True
-                    if nested_descriptions_by_column is None:
-                        nested_descriptions_by_column = (
-                            _fetch_nested_descriptions_via_describe_json(
+                    # Map values aren't surfaced as named children, so map
+                    # columns can't carry nested descriptions even if the
+                    # AS JSON payload had them — gate the fetch to types
+                    # whose children we actually expose.
+                    supports_nested_descriptions = col_type == "struct" or (
+                        col_type == "array"
+                        and re.match(r"^array\s*<\s*struct\b", raw_col_type, re.IGNORECASE) is not None
+                    )
+                    if supports_nested_descriptions:
+                        if nested_descriptions_by_column is None:
+                            nested_descriptions_by_column = _fetch_nested_descriptions_via_describe_json(
                                 connection, kw.get("db_name"), schema, table_name
                             )
-                        )
-                    nested_descriptions = nested_descriptions_by_column.get(col_name)
-                    if nested_descriptions:
-                        col_info["nested_descriptions"] = nested_descriptions
+                        nested_descriptions = nested_descriptions_by_column.get(col_name)
+                        if nested_descriptions:
+                            col_info["nested_descriptions"] = nested_descriptions
                 except (DatabaseError, KeyError) as err:
                     logger.error(
                         f"Failed to fetch complex-type details for column {col_name} in table {table_name}: {err}"
