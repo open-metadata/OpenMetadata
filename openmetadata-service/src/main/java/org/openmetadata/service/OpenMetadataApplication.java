@@ -632,9 +632,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerHealthCheck(Environment environment) {
+    // Pass the CollectionDAO so the probe actually pings the database. The previous
+    // no-op check meant k8s liveness probes always passed even when the connection
+    // pool was starved or the DB was unreachable, which masked the real failure
+    // mode. Falls back to the no-arg constructor (always-healthy) if the DAO is not
+    // ready yet — early in startup or in tests.
     environment
         .healthChecks()
-        .register("OpenMetadataServerHealthCheck", new OpenMetadataServerHealthCheck());
+        .register(
+            "OpenMetadataServerHealthCheck",
+            new OpenMetadataServerHealthCheck(Entity.getCollectionDAO()));
   }
 
   private void registerExceptionMappers(Environment environment) {
