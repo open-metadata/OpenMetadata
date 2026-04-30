@@ -38,6 +38,11 @@ public abstract class ExternalSecretsManager extends SecretsManager {
       if (store) {
         upsertSecret(fieldSecretId, value);
       }
+      // Issue #21259: a null/empty value means "no credential" — return null so the
+      // entity does not carry a stale secret:/ reference to a deleted secret.
+      if (Objects.isNull(value) || value.isEmpty()) {
+        return null;
+      }
       return SECRET_FIELD_PREFIX + fieldSecretId;
     } else {
       return value;
@@ -45,12 +50,22 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   }
 
   public void upsertSecret(String secretName, String secretValue) {
-    String sanitizedValue = cleanNullOrEmpty(secretValue);
+    // Issue #21259: when the value is null/empty, the user's intent is "remove this
+    // credential" — delete the backing secret instead of storing the literal string
+    // "null". This also satisfies the GCP/Kubernetes empty-string rejection constraint
+    // (PR #25224) by simply not calling upsert with an empty value.
+    if (Objects.isNull(secretValue) || secretValue.isEmpty()) {
+      if (existSecret(secretName)) {
+        deleteSecretInternal(secretName);
+        sleep();
+      }
+      return;
+    }
     if (existSecret(secretName)) {
-      updateSecret(secretName, sanitizedValue);
+      updateSecret(secretName, secretValue);
       sleep();
     } else {
-      storeSecret(secretName, sanitizedValue);
+      storeSecret(secretName, secretValue);
       sleep();
     }
   }

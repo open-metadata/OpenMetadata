@@ -1,9 +1,9 @@
 package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
 
 import java.util.Map;
@@ -236,10 +236,35 @@ public abstract class ExternalSecretsManagerTest {
                 mysqlConnection, Mysql.value(), "test-empty-password", ServiceType.DATABASE);
 
     assertNotNull(actualConnection, "Encryption should succeed even with empty password");
-    assertFalse(
-        JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class)
-            .getPassword()
-            .isEmpty(),
-        "Empty password should be converted to non-empty encrypted value");
+    assertNull(
+        JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword(),
+        "Issue #21259: Empty password should resolve to null on the entity, "
+            + "not a Fernet-wrapped reference to a 'null' string in the secrets manager");
+  }
+
+  @Test
+  void testIssue21259ClearingPasswordDoesNotStoreNullString() {
+    String serviceName = "bug21259-clear-password";
+
+    Map<String, Map<String, String>> withPassword =
+        Map.of("authType", Map.of("password", "initial-password"));
+    secretsManager.encryptServiceConnectionConfig(
+        withPassword, Mysql.value(), serviceName, ServiceType.DATABASE);
+
+    Map<String, Map<String, String>> clearedPassword =
+        Map.of("authType", Map.of("password", StringUtils.EMPTY));
+    MysqlConnection cleared =
+        (MysqlConnection)
+            secretsManager.encryptServiceConnectionConfig(
+                clearedPassword, Mysql.value(), serviceName, ServiceType.DATABASE);
+
+    String storedPassword =
+        JsonUtils.convertValue(cleared.getAuthType(), basicAuth.class).getPassword();
+    assertNull(
+        storedPassword,
+        "Issue #21259: When a user clears a password field, the entity should "
+            + "carry null, not a stale secret:/ reference to a 'null'-valued secret. "
+            + "The downstream consumer (e.g. Snowflake driver) reads the password "
+            + "verbatim and breaks auth when it gets the literal string 'null'.");
   }
 }

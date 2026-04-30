@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -261,27 +262,18 @@ class KubernetesSecretsManagerTest {
   }
 
   @Test
-  void testEmptySecretValueShouldBeStoredAsNullString() throws ApiException {
-    ArgumentCaptor<V1Secret> secretCaptor = ArgumentCaptor.forClass(V1Secret.class);
+  void testEmptySecretValueShouldNotBeStored() throws ApiException {
     when(mockApiClient.readNamespacedSecret(anyString(), eq(NAMESPACE))).thenReturn(readRequest);
     when(readRequest.execute()).thenThrow(new ApiException(404, "Not Found"));
 
-    when(mockApiClient.createNamespacedSecret(eq(NAMESPACE), any(V1Secret.class)))
-        .thenReturn(createRequest);
-    when(createRequest.execute()).thenReturn(new V1Secret());
+    String returned = secretsManager.storeValue("field", "", SECRET_ID, true);
 
-    secretsManager.storeValue("field", "", SECRET_ID, true);
-
-    verify(mockApiClient).createNamespacedSecret(eq(NAMESPACE), secretCaptor.capture());
-    verify(createRequest).execute();
-
-    V1Secret createdSecret = secretCaptor.getValue();
-    Map<String, byte[]> data = createdSecret.getData();
-    assert data != null;
-    assertEquals(
-        ExternalSecretsManager.NULL_SECRET_STRING,
-        new String(data.get("value"), StandardCharsets.UTF_8),
-        "Empty string should be stored as 'null' to prevent secrets manager rejection");
+    // Issue #21259: empty value means "no credential" — storeValue must NOT call create,
+    // and must return null so the entity does not carry a stale secret:/ reference.
+    // This also satisfies the original GCP/Kubernetes empty-string rejection constraint
+    // (PR #25224) by simply not upserting an empty value at all.
+    verify(mockApiClient, never()).createNamespacedSecret(eq(NAMESPACE), any(V1Secret.class));
+    assertNull(returned, "storeValue with empty value should return null, not a secret reference");
   }
 
   @Test
