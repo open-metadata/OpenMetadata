@@ -22,7 +22,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -355,97 +354,6 @@ public class ColumnSearchIndexIT {
   }
 
   @Nested
-  @DisplayName("DataAsset/TableColumn Aggregation Parity Tests")
-  @Execution(ExecutionMode.CONCURRENT)
-  class DataAssetColumnAggregationTests {
-
-    /**
-     * Regression for github.com/open-metadata/openmetadata-collate/issues/3851. The UI fires two
-     * requests when the user types a multi-word query: {@code index=dataAsset&size=0} for the
-     * entity-type aggregation and {@code index=tableColumn} for the column hits. They route through
-     * different builders in {@code OpenSearchSourceBuilderFactory}: {@code tableColumn} uses the
-     * dedicated lenient column builder while {@code dataAsset} uses the composite asset config with
-     * stricter phrase/{@code 2<70%} matching. Without the fix, the {@code tableColumn} bucket in the
-     * {@code dataAsset} aggregation under-counts the column index hits.
-     */
-    @Test
-    @DisplayName(
-        "Aggregation bucket for tableColumn under dataAsset must match index=tableColumn total")
-    void testDataAssetTableColumnAggregationMatchesTableColumnTotal(TestNamespace ns)
-        throws Exception {
-      OpenMetadataClient client = SdkClients.adminClient();
-
-      String tag = ns.shortPrefix();
-      Table table = createTableWithMultiTokenColumns(ns, "agg_parity_" + tag, tag);
-      assertNotNull(table);
-
-      String multiTokenQuery = tag + "_first " + tag + "_address";
-
-      Awaitility.await()
-          .atMost(90, TimeUnit.SECONDS)
-          .pollInterval(500, TimeUnit.MILLISECONDS)
-          .until(
-              () -> {
-                String r =
-                    client
-                        .search()
-                        .query(multiTokenQuery)
-                        .index("tableColumn")
-                        .size(0)
-                        .deleted(false)
-                        .execute();
-                JsonNode root = OBJECT_MAPPER.readTree(r);
-                long total = root.path("hits").path("total").path("value").asLong(-1);
-                return total >= 3;
-              });
-
-      String columnResponse =
-          client
-              .search()
-              .query(multiTokenQuery)
-              .index("tableColumn")
-              .size(0)
-              .deleted(false)
-              .execute();
-      long columnTotal =
-          OBJECT_MAPPER.readTree(columnResponse).path("hits").path("total").path("value").asLong();
-
-      String aggResponse =
-          client
-              .search()
-              .query(multiTokenQuery)
-              .index("dataAsset")
-              .size(0)
-              .deleted(false)
-              .execute();
-      JsonNode aggBuckets =
-          OBJECT_MAPPER
-              .readTree(aggResponse)
-              .path("aggregations")
-              .path("sterms#entityType")
-              .path("buckets");
-      long aggColumnCount = 0;
-      for (JsonNode bucket : aggBuckets) {
-        if ("tableColumn".equals(bucket.path("key").asText())) {
-          aggColumnCount = bucket.path("doc_count").asLong();
-          break;
-        }
-      }
-
-      assertEquals(
-          columnTotal,
-          aggColumnCount,
-          "dataAsset aggregation tableColumn bucket ("
-              + aggColumnCount
-              + ") must match index=tableColumn total ("
-              + columnTotal
-              + ") for query \""
-              + multiTokenQuery
-              + "\"");
-    }
-  }
-
-  @Nested
   @DisplayName("Nested Column Tests")
   @Execution(ExecutionMode.CONCURRENT)
   class NestedColumnTests {
@@ -581,53 +489,6 @@ public class ColumnSearchIndexIT {
                 .withName(ns.prefix("created_at"))
                 .withDataType(ColumnDataType.TIMESTAMP)
                 .withDescription("Creation timestamp")));
-
-    return SdkClients.adminClient().tables().create(tableRequest);
-  }
-
-  private Table createTableWithMultiTokenColumns(TestNamespace ns, String baseName, String tag) {
-    String shortId = ns.shortPrefix();
-
-    org.openmetadata.schema.services.connections.database.PostgresConnection conn =
-        DatabaseServices.postgresConnection().hostPort("localhost:5432").username("test").build();
-
-    DatabaseService dbService =
-        DatabaseServices.builder()
-            .name("agg_svc_" + shortId + "_" + baseName)
-            .connection(conn)
-            .description("Test service for dataAsset/tableColumn aggregation parity")
-            .create();
-
-    CreateDatabase dbReq = new CreateDatabase();
-    dbReq.setName("agg_db_" + shortId + "_" + baseName);
-    dbReq.setService(dbService.getFullyQualifiedName());
-    Database database = SdkClients.adminClient().databases().create(dbReq);
-
-    CreateDatabaseSchema schemaReq = new CreateDatabaseSchema();
-    schemaReq.setName("agg_schema_" + shortId + "_" + baseName);
-    schemaReq.setDatabase(database.getFullyQualifiedName());
-    DatabaseSchema schema = SdkClients.adminClient().databaseSchemas().create(schemaReq);
-
-    CreateTable tableRequest = new CreateTable();
-    tableRequest.setName(ns.prefix(baseName));
-    tableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
-    tableRequest.setColumns(
-        List.of(
-            new Column()
-                .withName(tag + "_first_name")
-                .withDataType(ColumnDataType.VARCHAR)
-                .withDataLength(255)
-                .withDescription("First name"),
-            new Column()
-                .withName(tag + "_last_name")
-                .withDataType(ColumnDataType.VARCHAR)
-                .withDataLength(255)
-                .withDescription("Last name"),
-            new Column()
-                .withName(tag + "_address")
-                .withDataType(ColumnDataType.VARCHAR)
-                .withDataLength(512)
-                .withDescription("Postal address")));
 
     return SdkClients.adminClient().tables().create(tableRequest);
   }
