@@ -255,7 +255,8 @@ public class ElasticSearchBulkSink implements BulkSink {
 
         Map<String, String> existingFingerprints = Collections.emptyMap();
         if (embeddingsEnabled && !recreateIndex) {
-          existingFingerprints = fetchExistingFingerprints(entityInterfaces, indexName);
+          existingFingerprints =
+              fetchExistingFingerprints(entityInterfaces, indexName, reindexContext);
         }
 
         Map<String, String> finalFingerprints = existingFingerprints;
@@ -786,7 +787,8 @@ public class ElasticSearchBulkSink implements BulkSink {
   boolean isVectorEmbeddingEnabledForEntity(String entityType) {
     return searchRepository.isVectorEmbeddingEnabled()
         && ElasticSearchVectorService.getInstance() != null
-        && AvailableEntityTypes.isVectorIndexable(entityType);
+        && AvailableEntityTypes.isVectorIndexable(entityType)
+        && searchRepository.getIndexMapping(entityType) != null;
   }
 
   @SuppressWarnings("unchecked")
@@ -835,17 +837,27 @@ public class ElasticSearchBulkSink implements BulkSink {
   }
 
   private Map<String, String> fetchExistingFingerprints(
-      List<EntityInterface> entities, String indexName) {
+      List<EntityInterface> entities, String indexName, ReindexContext reindexContext) {
     try {
       ElasticSearchVectorService vectorService = ElasticSearchVectorService.getInstance();
       if (vectorService == null) {
         return Collections.emptyMap();
       }
+
+      String entityType = entities.getFirst().getEntityReference().getType();
+      String targetIndex = indexName;
+      if (reindexContext != null) {
+        String stagedIndex = reindexContext.getStagedIndex(entityType).orElse(null);
+        if (stagedIndex != null) {
+          targetIndex = stagedIndex;
+        }
+      }
+
       List<String> entityIds = new ArrayList<>(entities.size());
       for (EntityInterface entity : entities) {
         entityIds.add(entity.getId().toString());
       }
-      return vectorService.getExistingFingerprintsBatch(indexName, entityIds);
+      return vectorService.getExistingFingerprintsBatch(targetIndex, entityIds);
     } catch (Exception e) {
       LOG.warn("Failed to fetch existing fingerprints: {}", e.getMessage());
       return Collections.emptyMap();

@@ -163,15 +163,27 @@ class SystemRepositoryEmbeddingsValidationTest {
   }
 
   @Test
-  void testElasticsearchNotSupported() {
+  void testElasticsearchEmbeddingsValidatedSameAsOpenSearch() {
+    // ES is now a first-class supported backend; the validator should run the
+    // same checks (embedding generation + hybrid pipeline) instead of short-circuiting.
     when(searchRepository.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
 
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+    when(searchRepository.getEmbeddingClient()).thenReturn(embeddingClient);
+    when(embeddingClient.embed("OpenMetadata embedding validation test"))
+        .thenReturn(new float[] {0.1f, 0.2f});
+    when(embeddingClient.getDimension()).thenReturn(2);
+    // ES has no hybrid pipeline concept; checkHybridSearchPipeline returns empty for non-OS.
+    when(searchRepository.checkHybridSearchPipeline()).thenReturn(Optional.empty());
+
     StepValidation result = systemRepository.getEmbeddingsValidation(appConfig);
 
-    assertFalse(result.getPassed());
-    assertEquals(
-        "Elasticsearch is not supported for Semantic Search embeddings. Please use OpenSearch.",
-        result.getMessage());
+    assertTrue(
+        result.getPassed(),
+        "ES embeddings validation should pass when client + pipeline checks pass");
+    assertTrue(result.getMessage().contains("working correctly"));
   }
 }

@@ -559,6 +559,18 @@ public class EsUtils {
 
     int dimension = searchRepository.getEmbeddingClient().getDimension();
 
+    JsonNode existingMeta = rootNode.path("mappings").path("_meta");
+    if (!existingMeta.isMissingNode() && existingMeta.has("embedding_dimension")) {
+      int metaDimension = existingMeta.get("embedding_dimension").asInt();
+      if (metaDimension != dimension) {
+        LOG.warn(
+            "Embedding dimension mismatch: _meta says {} but embedding client reports {}. "
+                + "Using embedding client dimension. A reindex may be required.",
+            metaDimension,
+            dimension);
+      }
+    }
+
     com.fasterxml.jackson.databind.node.ObjectNode embeddingNode = mapper.createObjectNode();
     embeddingNode.put("type", "dense_vector");
     embeddingNode.put("dims", dimension);
@@ -568,9 +580,10 @@ public class EsUtils {
 
     JsonNode mappings = rootNode.path("mappings");
     if (!mappings.isMissingNode()) {
-      com.fasterxml.jackson.databind.node.ObjectNode meta =
+      com.fasterxml.jackson.databind.node.ObjectNode metaNode =
           ((com.fasterxml.jackson.databind.node.ObjectNode) mappings).putObject("_meta");
-      meta.put("embedding_model", searchRepository.getEmbeddingClient().getModelId())
+      metaNode
+          .put("embedding_model", searchRepository.getEmbeddingClient().getModelId())
           .put("embedding_dimension", dimension);
     }
   }

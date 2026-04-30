@@ -568,14 +568,6 @@ public class SystemRepository {
     String description = "Embeddings are used to allow Semantic Search";
     SearchRepository searchRepository = Entity.getSearchRepository();
 
-    if (searchRepository.getSearchType() == ElasticSearchConfiguration.SearchType.ELASTICSEARCH) {
-      return embeddingsValidation
-          .withDescription(description)
-          .withMessage(
-              "Elasticsearch is not supported for Semantic Search embeddings. Please use OpenSearch.")
-          .withPassed(false);
-    }
-
     String configMessage = getEmbeddingConfigurationMessage(applicationConfig);
 
     if (searchRepository.getVectorIndexService() == null) {
