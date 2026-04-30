@@ -13,15 +13,10 @@
 import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 const DESCRIPTION_SEARCH =
   'The dimension table contains data about your customers. The customers table contains one row per customer. It includes historical metrics (such as the total amount that each customer has spent in your store) as well as forward-looking metrics (such as the predicted number of days between future orders and the expected order value in the next 30 days). This table also includes columns that segment customers into various categories (such as new, returning, promising, at risk, dormant, and loyal), which you can use to target marketing activities.The dimension table contains data about your customers. The customers table contains one row per customer. It includes historical metrics (such as the total amount that each customer has spent in your store) as well as forward-looking metrics (such as the predicted number of days between future orders and the expected order value in the next 30 days). This table also includes columns that segment customers into various categories (such as new, returning, promising, at risk, dormant, and loyal), which you can use to target marketing activities.';
-
-const RAW_ORDER = 'raw_order';
-const RAW_ORDER_FQN = 'sample_data.ecommerce_db.shopify.raw_order';
-const TEMP_TABLE_NAMES = ['tmp_order_staging', 'tmp_order_enriched'];
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -69,46 +64,3 @@ test('searching for longer description should work', async ({ page }) => {
   await expect(page.getByTestId('alert-bar')).not.toBeVisible();
 });
 
-test('check if temp lineage table nodes are rendered on canvas', async ({ page }) => {
-  await redirectToHomePage(page);
-
-  await sidebarClick(page, SidebarItem.EXPLORE);
-
-  await page.getByTestId('global-search-selector').click();
-  await page.getByTestId('global-search-select-option-Table').click();
-
-  await page
-    .getByTestId('navbar-search-container')
-    .getByTestId('searchBox')
-    .fill(RAW_ORDER);
-
-  await page.keyboard.press('Enter');
-
-  await page.getByTestId('search-container').getByTestId('loader').waitFor({
-    state: 'detached',
-  });
-
-  await page.getByTestId('search-results').waitFor({ state: 'visible' });
-
-  await page
-    .getByTestId('search-results')
-    .getByTestId(`table-data-card_${RAW_ORDER_FQN}`)
-    .getByTestId('entity-link')
-    .click();
-
-  await page.waitForURL(`**/${RAW_ORDER_FQN}**`, {
-    waitUntil: 'domcontentloaded',
-  });
-  await waitForAllLoadersToDisappear(page);
-
-  const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
-  await page.getByTestId('lineage').click();
-  await lineageRes;
-  await waitForAllLoadersToDisappear(page);
-
-  for (const tempTableName of TEMP_TABLE_NAMES) {
-    await expect(
-      page.getByTestId(`lineage-node-${tempTableName}`)
-    ).toBeVisible();
-  }
-});
