@@ -10,6 +10,8 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
@@ -19,10 +21,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -256,16 +260,45 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (flattenedColumns.isEmpty()) {
       return;
     }
-    List<String> targetHashes =
+    Map<String, Column> hashToColumn =
         flattenedColumns.stream()
-            .map(c -> FullyQualifiedName.buildHash(c.getFullyQualifiedName()))
-            .toList();
+            .collect(
+                Collectors.toMap(
+                    c -> FullyQualifiedName.buildHash(c.getFullyQualifiedName()),
+                    c -> c,
+                    (a, b) -> a,
+                    LinkedHashMap::new));
     Map<String, List<TagLabel>> tagsByHash =
-        daoCollection.tagUsageDAO().getTagsByTargetFQNHashes(targetHashes);
-    for (Column column : flattenedColumns) {
-      List<TagLabel> columnTags =
-          tagsByHash.get(FullyQualifiedName.buildHash(column.getFullyQualifiedName()));
-      column.setTags(columnTags == null ? new ArrayList<>() : addDerivedTagsGracefully(columnTags));
+        daoCollection
+            .tagUsageDAO()
+            .getTagsByTargetFQNHashes(new ArrayList<>(hashToColumn.keySet()));
+
+    // Batch-fetch derived tags for every glossary tag across all columns in a single query.
+    // Falls back to per-column gracefully on failure to avoid changing existing semantics.
+    Map<String, List<TagLabel>> derivedTagsMap;
+    try {
+      List<TagLabel> allTags =
+          tagsByHash.values().stream()
+              .filter(tags -> tags != null)
+              .flatMap(List::stream)
+              .collect(Collectors.toList());
+      derivedTagsMap = batchFetchDerivedTags(allTags);
+    } catch (Exception ex) {
+      LOG.warn(
+          "Failed to batch fetch derived tags for container columns. Falling back to per-column: {}",
+          ex.getMessage());
+      derivedTagsMap = null;
+    }
+
+    for (Map.Entry<String, Column> entry : hashToColumn.entrySet()) {
+      List<TagLabel> columnTags = tagsByHash.get(entry.getKey());
+      if (columnTags == null) {
+        entry.getValue().setTags(new ArrayList<>());
+      } else if (derivedTagsMap != null) {
+        entry.getValue().setTags(addDerivedTagsWithPreFetched(columnTags, derivedTagsMap));
+      } else {
+        entry.getValue().setTags(addDerivedTagsGracefully(columnTags));
+      }
     }
   }
 
