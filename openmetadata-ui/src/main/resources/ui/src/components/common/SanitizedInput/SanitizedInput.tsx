@@ -14,10 +14,17 @@ import { Input, InputProps } from 'antd';
 import { ChangeEvent, FC, memo, useCallback } from 'react';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
 
-const SanitizedInput: FC<InputProps> = ({ value, onChange, ...props }) => {
+const SanitizedInput: FC<InputProps & { shouldSanitize?: boolean }> = ({
+  value,
+  onChange,
+  shouldSanitize = true,
+  ...props
+}) => {
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
-      const sanitizedValue = getSanitizeContent(e.target.value);
+      const sanitizedValue = shouldSanitize
+        ? getSanitizeContent(e.target.value)
+        : e.target.value;
       if (onChange) {
         onChange({ ...e, target: { ...e.target, value: sanitizedValue } });
       }

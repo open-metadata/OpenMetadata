@@ -84,6 +84,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
       type: FieldTypes.TEXT,
       props: {
         'data-testid': 'display-name',
+        shouldSanitize: false,
       },
     },
     {

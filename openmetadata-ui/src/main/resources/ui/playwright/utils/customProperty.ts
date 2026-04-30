@@ -19,8 +19,8 @@ import {
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
-  EntityTypeEndpoint,
   ENTITY_PATH,
+  EntityTypeEndpoint,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
@@ -773,12 +773,7 @@ export const addCustomPropertiesForEntity = async ({
 
   expect(response.status()).toBe(200);
   await expect(
-    page.getByRole('row', {
-      name: new RegExp(
-        propertyName.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-        'i'
-      ),
-    })
+    page.locator('tr').filter({ hasText: propertyName })
   ).toBeVisible();
 };
 

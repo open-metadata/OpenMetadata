@@ -17,6 +17,7 @@ import { getSanitizeContent } from '../../../utils/sanitize.utils';
 interface MUITextFieldProps extends Omit<TextFieldProps, 'variant' | 'size'> {
   variant?: 'outlined' | 'filled' | 'standard';
   size?: 'small' | 'medium';
+  shouldSanitize?: boolean;
 }
 
 const MUITextField: FC<MUITextFieldProps> = ({
@@ -24,16 +25,19 @@ const MUITextField: FC<MUITextFieldProps> = ({
   onChange,
   variant,
   size = 'small',
+  shouldSanitize = true,
   ...props
 }) => {
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
-      const sanitizedValue = getSanitizeContent(e.target.value);
+      const sanitizedValue = shouldSanitize
+        ? getSanitizeContent(e.target.value)
+        : e.target.value;
       if (onChange) {
         onChange({ ...e, target: { ...e.target, value: sanitizedValue } });
       }
     },
-    [onChange]
+    [onChange, shouldSanitize]
   );
 
   return (

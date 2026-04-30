@@ -266,6 +266,7 @@ const AddCustomProperty = ({
         props: {
           'data-testid': 'name',
           autoComplete: 'off',
+          shouldSanitize: false,
         },
         placeholder: t('label.name'),
         rules: [
@@ -292,6 +293,7 @@ const AddCustomProperty = ({
         type: FieldTypes.TEXT_MUI,
         props: {
           'data-testid': 'display-name',
+          shouldSanitize: false,
         },
       },
       {
