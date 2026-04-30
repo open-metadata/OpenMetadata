@@ -68,6 +68,7 @@ export enum PipelineType {
     Lineage = "lineage",
     Metadata = "metadata",
     Profiler = "profiler",
+    ReverseMetadata = "reverseMetadata",
     TestSuite = "TestSuite",
     Usage = "usage",
 }

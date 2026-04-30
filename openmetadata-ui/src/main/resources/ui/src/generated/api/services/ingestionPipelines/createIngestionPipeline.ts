@@ -154,6 +154,8 @@ export enum LogLevels {
  * Link to the service for which ingestion pipeline is ingesting the metadata.
  *
  * Service to be modified
+ *
+ * Service to apply reverse metadata operations on.
  */
 export interface EntityReference {
     /**
@@ -210,6 +212,7 @@ export enum PipelineType {
     Lineage = "lineage",
     Metadata = "metadata",
     Profiler = "profiler",
+    ReverseMetadata = "reverseMetadata",
     TestSuite = "TestSuite",
     Usage = "usage",
 }
@@ -273,12 +276,17 @@ export interface SourceConfig {
  * Apply a set of operations on a service
  *
  * McpService Metadata Pipeline Configuration.
+ *
+ * Reverse Metadata Agent Pipeline Configuration. Controls which metadata changes
+ * (descriptions, tags, owners) are propagated back to source systems.
  */
 export interface Pipeline {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      *
      * Regex to only fetch databases that matches the pattern.
+     *
+     * Regex to only include/exclude databases that match the pattern.
      */
     databaseFilterPattern?: FilterPattern;
     /**
@@ -394,6 +402,8 @@ export interface Pipeline {
      * Regex to only include/exclude schemas that matches the pattern.
      *
      * Regex to only fetch tables or databases that matches the pattern.
+     *
+     * Regex to only include/exclude schemas that match the pattern.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -406,6 +416,8 @@ export interface Pipeline {
      * Regex to only include/exclude tables that matches the pattern.
      *
      * Regex exclude tables or databases that matches the pattern.
+     *
+     * Regex to only include/exclude tables that match the pattern.
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -429,6 +441,9 @@ export interface Pipeline {
      *
      * Regex will be applied on fully qualified name (e.g service_name.directory_name.file_name)
      * instead of raw name (e.g. file_name)
+     *
+     * Regex will be applied on fully qualified name (e.g
+     * service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name).
      */
     useFqnForFiltering?: boolean;
     /**
@@ -888,16 +903,32 @@ export interface Pipeline {
     ingestionRunner?: string;
     /**
      * List of operations to be performed on the service
+     *
+     * List of operations to be performed on the service. Populated at runtime by the handler.
      */
     operations?: Operation[];
     /**
      * Service to be modified
+     *
+     * Service to apply reverse metadata operations on.
      */
     service?: EntityReference;
     /**
      * Regex to only fetch MCP servers with names matching the pattern.
      */
     serverFilterPattern?: FilterPattern;
+    /**
+     * Enable syncing description changes back to the source system.
+     */
+    syncDescriptions?: boolean;
+    /**
+     * Enable syncing owner changes back to the source system.
+     */
+    syncOwners?: boolean;
+    /**
+     * Enable syncing tag changes back to the source system.
+     */
+    syncTags?: boolean;
 }
 
 /**
@@ -996,6 +1027,10 @@ export interface Pipeline {
  * Regex to only fetch tags that matches the pattern.
  *
  * Regex to only fetch MCP servers with names matching the pattern.
+ *
+ * Regex to only include/exclude databases that match the pattern.
+ *
+ * Regex to only include/exclude schemas that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -1518,6 +1553,8 @@ export enum MetadataAttribute {
  * Link to the service for which ingestion pipeline is ingesting the metadata.
  *
  * Service to be modified
+ *
+ * Service to apply reverse metadata operations on.
  */
 export interface TagLabel {
     /**
@@ -7737,6 +7774,8 @@ export interface StorageMetadataBucketDetails {
  * Reverse Ingestion Config Pipeline type
  *
  * MCP Source Config Metadata Pipeline type
+ *
+ * Reverse Metadata Pipeline type
  */
 export enum FluffyType {
     APIMetadata = "ApiMetadata",
@@ -7756,6 +7795,7 @@ export enum FluffyType {
     PipelineMetadata = "PipelineMetadata",
     Profiler = "Profiler",
     ReverseIngestion = "ReverseIngestion",
+    ReverseMetadata = "ReverseMetadata",
     SearchMetadata = "SearchMetadata",
     StorageMetadata = "StorageMetadata",
     TestSuite = "TestSuite",
