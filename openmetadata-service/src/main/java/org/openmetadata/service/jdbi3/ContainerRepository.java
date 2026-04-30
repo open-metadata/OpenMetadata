@@ -600,7 +600,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     // parts[0] is the storage service; parts[parts.length - 1] is the container itself.
     // Ancestors live at indices 1 .. parts.length - 2.
     if (parts.length < 3) {
-      return new ArrayList<>();
+      return Collections.emptyList();
     }
 
     List<String> ancestorFqns = new ArrayList<>(parts.length - 2);
@@ -625,7 +625,7 @@ public class ContainerRepository extends EntityRepository<Container> {
         ordered.add(ancestor.getEntityReference());
       }
     }
-    return ordered;
+    return Collections.unmodifiableList(ordered);
   }
 
   private TableData getSampleDataInternal(UUID containerId) {

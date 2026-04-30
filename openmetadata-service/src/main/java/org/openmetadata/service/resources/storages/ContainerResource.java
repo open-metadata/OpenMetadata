@@ -782,6 +782,10 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Context SecurityContext securityContext,
       @Parameter(description = "Fully qualified name of the container") @PathParam("fqn")
           String fqn) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    ResourceContext<Container> resourceContext = getResourceContextByName(fqn);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return repository.getAncestors(fqn);
   }
 }
