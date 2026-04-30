@@ -1148,6 +1148,55 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   }
 
   @Test
+  void test_listAncestors_handlesQuotedServiceName(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    // Storage service whose own name contains a literal dot. The first segment of every
+    // descendant's FQN is therefore the quoted service name. This is the regression test
+    // for the quoteName(parts[0]) seed in getAncestors — concatenating the raw service
+    // name with '.' would split it back into multiple phantom segments and break the
+    // IN-by-fqnHash lookup for every ancestor under the service.
+    String dottedName =
+        ns.prefix("ancestors_dotted.svc." + UUID.randomUUID().toString().substring(0, 8));
+    org.openmetadata.schema.services.connections.storage.S3Connection s3Conn =
+        new org.openmetadata.schema.services.connections.storage.S3Connection();
+    org.openmetadata.schema.api.services.CreateStorageService createService =
+        new org.openmetadata.schema.api.services.CreateStorageService()
+            .withName(dottedName)
+            .withServiceType(
+                org.openmetadata.schema.api.services.CreateStorageService.StorageServiceType.S3)
+            .withConnection(new org.openmetadata.schema.type.StorageConnection().withConfig(s3Conn))
+            .withDescription("Dotted-name regression service");
+    StorageService service = client.storageServices().create(createService);
+
+    CreateContainer rootRequest = new CreateContainer();
+    rootRequest.setName(ns.prefix("ancestors_dotted_service_root"));
+    rootRequest.setService(service.getFullyQualifiedName());
+    Container root = createEntity(rootRequest);
+
+    Container leaf = createChild(ns, service, root, "ancestors_dotted_service_leaf");
+
+    EntityReferenceList ancestors =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + leaf.getFullyQualifiedName() + "/ancestors",
+                null,
+                EntityReferenceList.class);
+
+    assertNotNull(ancestors);
+    assertEquals(1, ancestors.size(), "leaf has exactly one container ancestor: root");
+    assertEquals(
+        root.getId(),
+        ancestors.get(0).getId(),
+        "root must resolve even though it lives under a service with a dotted name");
+    assertEquals(
+        root.getFullyQualifiedName(),
+        ancestors.get(0).getFullyQualifiedName(),
+        "returned FQN must match the canonical (quoted) service segment");
+  }
+
+  @Test
   void test_listAncestors_handlesQuotedNamePartsInChain(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     StorageService service = StorageServiceTestFactory.createS3(ns);

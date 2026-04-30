@@ -616,19 +616,22 @@ public class ContainerRepository extends EntityRepository<Container> {
       ancestorFqns.add(current);
     }
 
-    // Single batched IN-by-fqnHash query (chunked at 30k inside the DAO).
-    List<Container> ancestors = dao.findEntityByNames(ancestorFqns, NON_DELETED);
+    // Projection-only batched IN query: pulls just the columns needed to build
+    // an EntityReference (id, name, displayName, fqn, deleted) instead of the
+    // full Container JSON. For a 10-level chain this avoids deserializing
+    // ~10 × 5–50 KB of unused container payload per breadcrumb request.
+    List<EntityReference> ancestors = dao.findReferencesByFqns(ancestorFqns, NON_DELETED);
 
     // Preserve the root → immediate-parent ordering even if the DAO returns rows out of order.
-    Map<String, Container> byFqn = new HashMap<>();
-    for (Container ancestor : ancestors) {
+    Map<String, EntityReference> byFqn = new HashMap<>();
+    for (EntityReference ancestor : ancestors) {
       byFqn.put(ancestor.getFullyQualifiedName(), ancestor);
     }
     List<EntityReference> ordered = new ArrayList<>(ancestorFqns.size());
     for (String ancestorFqn : ancestorFqns) {
-      Container ancestor = byFqn.get(ancestorFqn);
+      EntityReference ancestor = byFqn.get(ancestorFqn);
       if (ancestor != null) {
-        ordered.add(ancestor.getEntityReference());
+        ordered.add(ancestor);
       }
     }
     return Collections.unmodifiableList(ordered);

@@ -39,6 +39,7 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -195,6 +196,106 @@ public interface EntityDAO<T extends EntityInterface> {
     @Override
     public EntityIdFqnPair map(ResultSet rs, StatementContext ctx) throws SQLException {
       return new EntityIdFqnPair(UUID.fromString(rs.getString("id")), rs.getString("fqn"));
+    }
+  }
+
+  /**
+   * Lightweight projection of just the fields {@link EntityReference} needs (id, name,
+   * displayName, fullyQualifiedName, deleted). Used by paths that only need to render a
+   * reference — e.g. breadcrumbs — and want to avoid deserializing the full entity JSON for
+   * every row.
+   */
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) AS name, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
+              + "deleted "
+              + "FROM <table> WHERE <nameHashColumn> IN (<names>) <cond>",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, "
+              + "json->>'name' AS name, "
+              + "json->>'displayName' AS displayName, "
+              + "json->>'fullyQualifiedName' AS fqn, "
+              + "deleted "
+              + "FROM <table> WHERE <nameHashColumn> IN (<names>) <cond>",
+      connectionType = POSTGRES)
+  @RegisterRowMapper(EntityReferenceRowMapper.class)
+  List<EntityReferenceRow> findReferencesByNameHashes(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @BindList("names") List<String> nameHashes,
+      @Define("cond") String cond);
+
+  /**
+   * Resolve a list of FQNs to {@link EntityReference}s in a single batched query without
+   * deserializing the full entity JSON. Returns refs in arbitrary order — callers that need
+   * ordering should reorder by FQN.
+   */
+  default List<EntityReference> findReferencesByFqns(List<String> entityFQNs, Include include) {
+    if (CollectionUtils.isEmpty(entityFQNs)) {
+      return List.of();
+    }
+    List<String> nameHashes =
+        entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
+    int maxChunkSize = 30000;
+    if (nameHashes.size() <= maxChunkSize) {
+      return findReferencesByNameHashes(
+              getTableName(), getNameHashColumn(), nameHashes, getCondition(include))
+          .stream()
+          .map(row -> row.toEntityReference(Entity.getEntityTypeFromClass(getEntityClass())))
+          .toList();
+    }
+    List<EntityReference> all = new ArrayList<>(nameHashes.size());
+    for (int i = 0; i < nameHashes.size(); i += maxChunkSize) {
+      List<String> chunk = nameHashes.subList(i, Math.min(i + maxChunkSize, nameHashes.size()));
+      findReferencesByNameHashes(getTableName(), getNameHashColumn(), chunk, getCondition(include))
+          .stream()
+          .map(row -> row.toEntityReference(Entity.getEntityTypeFromClass(getEntityClass())))
+          .forEach(all::add);
+    }
+    return all;
+  }
+
+  final class EntityReferenceRow {
+    public final UUID id;
+    public final String name;
+    public final String displayName;
+    public final String fqn;
+    public final boolean deleted;
+
+    public EntityReferenceRow(
+        UUID id, String name, String displayName, String fqn, boolean deleted) {
+      this.id = id;
+      this.name = name;
+      this.displayName = displayName;
+      this.fqn = fqn;
+      this.deleted = deleted;
+    }
+
+    public EntityReference toEntityReference(String entityType) {
+      return new EntityReference()
+          .withId(id)
+          .withType(entityType)
+          .withName(name)
+          .withDisplayName(displayName)
+          .withFullyQualifiedName(fqn)
+          .withDeleted(deleted);
+    }
+  }
+
+  class EntityReferenceRowMapper implements RowMapper<EntityReferenceRow> {
+    @Override
+    public EntityReferenceRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new EntityReferenceRow(
+          UUID.fromString(rs.getString("id")),
+          rs.getString("name"),
+          rs.getString("displayName"),
+          rs.getString("fqn"),
+          rs.getBoolean("deleted"));
     }
   }
 
