@@ -6545,6 +6545,37 @@ public interface CollectionDAO {
                 parts = {":targetFQNHashPrefix", ":postfix"})
             String... targetFQNHash);
 
+    @SqlQuery(
+        "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, tu.appliedAt, tu.appliedBy, tu.metadata, "
+            + "CASE "
+            + "  WHEN tu.source = 1 THEN gterm.json "
+            + "  WHEN tu.source = 0 THEN ta.json "
+            + "END as json "
+            + "FROM tag_usage tu "
+            + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
+            + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
+            + "WHERE tu.targetFQNHash IN (<targetFQNHashes>)")
+    @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
+    List<Pair<String, TagLabel>> getTagsInternalByTargetHashes(
+        @BindList("targetFQNHashes") List<String> targetFQNHashes);
+
+    int TAG_BATCH_CHUNK_SIZE = 1000;
+
+    default Map<String, List<TagLabel>> getTagsByTargetFQNHashes(List<String> targetFQNHashes) {
+      Map<String, List<TagLabel>> resultSet = new LinkedHashMap<>();
+      if (targetFQNHashes == null || targetFQNHashes.isEmpty()) {
+        return resultSet;
+      }
+      for (int i = 0; i < targetFQNHashes.size(); i += TAG_BATCH_CHUNK_SIZE) {
+        List<String> chunk =
+            targetFQNHashes.subList(i, Math.min(i + TAG_BATCH_CHUNK_SIZE, targetFQNHashes.size()));
+        for (Pair<String, TagLabel> pair : getTagsInternalByTargetHashes(chunk)) {
+          resultSet.computeIfAbsent(pair.getLeft(), k -> new ArrayList<>()).add(pair.getRight());
+        }
+      }
+      return resultSet;
+    }
+
     @SqlQuery("SELECT * FROM tag_usage")
     @Deprecated(since = "Release 1.1")
     @RegisterRowMapper(TagLabelMapperMigration.class)

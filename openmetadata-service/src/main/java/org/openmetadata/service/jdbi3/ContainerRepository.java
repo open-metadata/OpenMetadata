@@ -9,9 +9,9 @@ import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
-import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
+import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -87,9 +87,7 @@ public class ContainerRepository extends EntityRepository<Container> {
         fields.contains("children") ? getChildren(container) : container.getChildren());
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(
-          fields.contains(FIELD_TAGS),
-          container.getFullyQualifiedName(),
-          container.getDataModel().getColumns());
+          fields.contains(FIELD_TAGS), container.getDataModel().getColumns());
     }
   }
 
@@ -249,9 +247,26 @@ public class ContainerRepository extends EntityRepository<Container> {
     container.withDataModel(fields.contains("dataModel") ? container.getDataModel() : null);
   }
 
-  private void populateDataModelColumnTags(
-      boolean setTags, String fqnPrefix, List<Column> columns) {
-    populateEntityFieldTags(entityType, columns, fqnPrefix, setTags);
+  private void populateDataModelColumnTags(boolean setTags, List<Column> columns) {
+    List<Column> flattenedColumns = getFlattenedEntityField(columns);
+    if (!setTags) {
+      flattenedColumns.forEach(c -> c.setTags(c.getTags()));
+      return;
+    }
+    if (flattenedColumns.isEmpty()) {
+      return;
+    }
+    List<String> targetHashes =
+        flattenedColumns.stream()
+            .map(c -> FullyQualifiedName.buildHash(c.getFullyQualifiedName()))
+            .toList();
+    Map<String, List<TagLabel>> tagsByHash =
+        daoCollection.tagUsageDAO().getTagsByTargetFQNHashes(targetHashes);
+    for (Column column : flattenedColumns) {
+      List<TagLabel> columnTags =
+          tagsByHash.get(FullyQualifiedName.buildHash(column.getFullyQualifiedName()));
+      column.setTags(columnTags == null ? new ArrayList<>() : addDerivedTagsGracefully(columnTags));
+    }
   }
 
   private void setDefaultFields(Container container) {
@@ -558,11 +573,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     setFieldsInternal(container, Fields.EMPTY_FIELDS);
 
     if (!authorizePII && container.getDataModel() != null) {
-      populateEntityFieldTags(
-          entityType,
-          container.getDataModel().getColumns(),
-          container.getFullyQualifiedName(),
-          true);
+      populateDataModelColumnTags(true, container.getDataModel().getColumns());
       container.setTags(getTags(container));
       return PIIMasker.getSampleData(container);
     }

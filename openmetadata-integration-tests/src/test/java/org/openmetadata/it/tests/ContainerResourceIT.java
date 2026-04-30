@@ -1284,6 +1284,121 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     assertEquals("Transaction ID", verified.getDataModel().getColumns().get(0).getDisplayName());
   }
 
+  @Test
+  void get_parentDataModelTags_doesNotLeakChildContainerTags(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    SharedEntities shared = shared();
+
+    ContainerDataModel parentModel =
+        new ContainerDataModel()
+            .withIsPartitioned(false)
+            .withColumns(
+                Arrays.asList(
+                    new Column().withName("parent_col_a").withDataType(ColumnDataType.STRING),
+                    new Column().withName("parent_col_b").withDataType(ColumnDataType.STRING)));
+
+    CreateContainer parentRequest = new CreateContainer();
+    parentRequest.setName(ns.prefix("parent_subtree"));
+    parentRequest.setService(service.getFullyQualifiedName());
+    parentRequest.setDataModel(parentModel);
+    Container parent = createEntity(parentRequest);
+
+    Container parentFetched = getEntityWithFields(parent.getId().toString(), "tags,dataModel");
+    parentFetched
+        .getDataModel()
+        .getColumns()
+        .get(0)
+        .setTags(new ArrayList<>(List.of(shared.PII_SENSITIVE_TAG_LABEL)));
+    patchEntity(parentFetched.getId().toString(), parentFetched);
+
+    ContainerDataModel childModel =
+        new ContainerDataModel()
+            .withIsPartitioned(false)
+            .withColumns(
+                List.of(new Column().withName("child_col").withDataType(ColumnDataType.STRING)));
+
+    CreateContainer childRequest = new CreateContainer();
+    childRequest.setName(ns.prefix("child_subtree"));
+    childRequest.setService(service.getFullyQualifiedName());
+    childRequest.setParent(
+        new EntityReference()
+            .withId(parent.getId())
+            .withType("container")
+            .withFullyQualifiedName(parent.getFullyQualifiedName()));
+    childRequest.setDataModel(childModel);
+    Container child = createEntity(childRequest);
+
+    Container childFetched = getEntityWithFields(child.getId().toString(), "tags,dataModel");
+    childFetched
+        .getDataModel()
+        .getColumns()
+        .get(0)
+        .setTags(new ArrayList<>(List.of(shared.PERSONAL_DATA_TAG_LABEL)));
+    patchEntity(childFetched.getId().toString(), childFetched);
+
+    Container parentVerified = getEntityWithFields(parent.getId().toString(), "tags,dataModel");
+    List<Column> parentColumns = parentVerified.getDataModel().getColumns();
+
+    assertEquals(2, parentColumns.size());
+    List<TagLabel> colATags = parentColumns.get(0).getTags();
+    assertNotNull(colATags);
+    assertTrue(
+        colATags.stream()
+            .anyMatch(t -> t.getTagFQN().equals(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN())),
+        "Parent col_a should retain its PII tag");
+
+    List<TagLabel> colBTags = parentColumns.get(1).getTags();
+    assertTrue(colBTags == null || colBTags.isEmpty(), "Parent col_b should have no tags");
+
+    boolean leaked =
+        parentColumns.stream()
+            .flatMap(
+                c -> c.getTags() == null ? java.util.stream.Stream.empty() : c.getTags().stream())
+            .anyMatch(t -> t.getTagFQN().equals(shared.PERSONAL_DATA_TAG_LABEL.getTagFQN()));
+    assertFalse(leaked, "Child container's column tag must not appear on parent's columns");
+  }
+
+  @Test
+  void get_dataModelStructColumnTags_areReturned(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    SharedEntities shared = shared();
+
+    Column nestedChild = new Column().withName("nested_child").withDataType(ColumnDataType.STRING);
+    Column structColumn =
+        new Column()
+            .withName("struct_col")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(List.of(nestedChild));
+
+    ContainerDataModel dataModel =
+        new ContainerDataModel().withIsPartitioned(false).withColumns(List.of(structColumn));
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("container_struct_tags"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDataModel(dataModel);
+    Container container = createEntity(request);
+
+    Container fetched = getEntityWithFields(container.getId().toString(), "tags,dataModel");
+    fetched
+        .getDataModel()
+        .getColumns()
+        .get(0)
+        .getChildren()
+        .get(0)
+        .setTags(new ArrayList<>(List.of(shared.PII_SENSITIVE_TAG_LABEL)));
+    patchEntity(fetched.getId().toString(), fetched);
+
+    Container verified = getEntityWithFields(container.getId().toString(), "tags,dataModel");
+    Column nestedVerified = verified.getDataModel().getColumns().get(0).getChildren().get(0);
+    List<TagLabel> nestedTags = nestedVerified.getTags();
+    assertNotNull(nestedTags);
+    assertTrue(
+        nestedTags.stream()
+            .anyMatch(t -> t.getTagFQN().equals(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN())),
+        "Nested struct child column should have its tag retrieved via batched fetch");
+  }
+
   // ===================================================================
   // SAMPLE DATA AND PII MASKING TESTS
   // ===================================================================
