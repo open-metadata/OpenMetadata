@@ -40,7 +40,7 @@ class OpenMetadataServerHealthCheckTest {
   void check_isFastAndDoesNotPerformIo() {
     // The probe must not hit the DB or any other downstream system. We can't introspect
     // that directly in a unit test, but we can pin a tight latency budget — anything
-    // doing I/O would blow this. The bound is intentionally low (1 ms) so any future
+    // doing I/O would blow this. The bound is intentionally low (50 ms) so any future
     // regression that adds a DB borrow shows up immediately even on slow CI.
     OpenMetadataServerHealthCheck check = new OpenMetadataServerHealthCheck();
     long start = System.nanoTime();

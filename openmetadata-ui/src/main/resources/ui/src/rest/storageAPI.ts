@@ -64,11 +64,15 @@ export const getContainerByName = async (name: string, params?: ListParams) => {
 };
 
 export const getContainerChildrenByName = async (
-  name: string,
+  fqn: string,
   params?: ListParamsWithOffset
 ) => {
-  const response = await APIClient.get<PagingResponse<Container['children']>>(
-    `${BASE_URL}/name/${getEncodedFqn(name)}/children`,
+  // The /children endpoint returns slim Container summaries
+  // (id, name, displayName, fullyQualifiedName, description, service) — not
+  // EntityReferences. dataModel/tags/owners/extension are intentionally not
+  // populated. Re-fetch via getContainerByName when full details are needed.
+  const response = await APIClient.get<PagingResponse<Container[]>>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}/children`,
     {
       params,
     }

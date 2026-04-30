@@ -160,18 +160,17 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     }
     config.setValidationTimeout(validTimeout != null ? validTimeout : 5000L);
 
-    // Leak detection threshold - default 0 (disabled)
     Long leakThreshold = leakDetectionThreshold;
     if (leakThreshold == null
         && properties != null
         && properties.containsKey("leakDetectionThreshold")) {
       leakThreshold = Long.parseLong(properties.get("leakDetectionThreshold"));
     }
-    // Default leakDetectionThreshold to 60s (was 0/disabled). On a busy server
-    // a leaked connection silently drains the pool until requests start queuing
-    // and k8s liveness probes fail; with this on, HikariCP logs a stack trace
-    // for any borrow that exceeds the threshold so the offending caller is
-    // identifiable. Operators that need a higher threshold can override via
+    // Default leakDetectionThreshold to 60s (HikariCP's own default is 0 = disabled).
+    // On a busy server a leaked connection silently drains the pool until requests
+    // start queuing and k8s liveness probes fail; with this on, HikariCP logs a stack
+    // trace for any borrow that exceeds the threshold so the offending caller is
+    // identifiable. Operators that need a different threshold can override via
     // `leakDetectionThreshold` in openmetadata.yaml.
     config.setLeakDetectionThreshold(leakThreshold != null ? leakThreshold : 60000L);
 

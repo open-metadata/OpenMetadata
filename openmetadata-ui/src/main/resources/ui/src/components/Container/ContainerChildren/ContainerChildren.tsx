@@ -17,7 +17,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
-import { EntityReference } from '../../../generated/type/entityReference';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { getContainerChildrenByName } from '../../../rest/storageAPI';
@@ -48,17 +47,17 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
   const { fqn: decodedContainerName } = useFqn();
   const [isChildrenLoading, setIsChildrenLoading] = useState(false);
   const [containerChildrenData, setContainerChildrenData] = useState<
-    EntityReference[]
+    Container[]
   >([]);
 
-  const columns: ColumnsType<EntityReference> = useMemo(
+  const columns: ColumnsType<Container> = useMemo(
     () => [
       {
         title: t('label.name'),
         dataIndex: 'name',
         width: 400,
         key: 'name',
-        sorter: getColumnSorter<EntityReference, 'name'>('name'),
+        sorter: getColumnSorter<Container, 'name'>('name'),
         render: (_, record) => (
           <div className="d-inline-flex w-max-90">
             <Link
@@ -73,7 +72,7 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
           </div>
         ),
       },
-      ...descriptionTableObject<EntityReference>(),
+      ...descriptionTableObject<Container>(),
     ],
     []
   );
@@ -128,7 +127,11 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
     if (!isReadOnly) {
       return;
     }
-    const children = container?.children ?? [];
+    // Read-only mode is used by the customize-page widget preview, which feeds
+    // synthetic data via the parent Container's `children`. Those rows are
+    // EntityReferences but the columns only render id/name/displayName/fqn —
+    // fields shared with Container — so coerce the shape for the table.
+    const children = (container?.children ?? []) as unknown as Container[];
     setContainerChildrenData(children);
     onChildrenCountChange?.(children.length);
   }, [isReadOnly, container?.children, onChildrenCountChange]);

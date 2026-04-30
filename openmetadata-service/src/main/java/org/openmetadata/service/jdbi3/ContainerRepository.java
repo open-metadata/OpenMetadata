@@ -141,9 +141,9 @@ public class ContainerRepository extends EntityRepository<Container> {
       derivedTagsMap = batchFetchDerivedTags(allContainerTags);
     } catch (Exception ex) {
       LOG.warn(
-          "Failed to batch fetch derived tags for {} containers. Falling back to per-container: {}",
+          "Failed to batch fetch derived tags for {} containers. Falling back to per-container.",
           containers.size(),
-          ex.getMessage());
+          ex);
       derivedTagsMap = null;
     }
 
@@ -318,8 +318,8 @@ public class ContainerRepository extends EntityRepository<Container> {
       derivedTagsMap = batchFetchDerivedTags(allTags);
     } catch (Exception ex) {
       LOG.warn(
-          "Failed to batch fetch derived tags for container columns. Falling back to per-column: {}",
-          ex.getMessage());
+          "Failed to batch fetch derived tags for container columns. Falling back to per-column.",
+          ex);
       derivedTagsMap = null;
     }
 

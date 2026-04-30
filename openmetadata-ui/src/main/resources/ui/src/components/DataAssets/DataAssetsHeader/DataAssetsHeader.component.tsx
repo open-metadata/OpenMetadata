@@ -364,7 +364,7 @@ export const DataAssetsHeader = ({
     if (entityType === EntityType.CONTAINER && !isCustomizedView) {
       fetchContainerAncestors(dataAsset.fullyQualifiedName ?? '');
     }
-  }, [dataAsset.fullyQualifiedName, isTourPage, isCustomizedView]);
+  }, [dataAsset.fullyQualifiedName, entityType, isTourPage, isCustomizedView]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(
     () =>
