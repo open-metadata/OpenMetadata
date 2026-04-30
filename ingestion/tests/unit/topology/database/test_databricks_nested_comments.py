@@ -23,6 +23,8 @@ top-level-only descriptions — covered by the malformed/missing payload cases.
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.type.basic import Markdown
 from metadata.ingestion.source.database.databricks.metadata import (
@@ -239,6 +241,19 @@ class TestFetchNestedDescriptionsViaDescribeJson:
         result = _fetch_nested_descriptions_via_describe_json(connection, "db", "schema", "customer_profiles")
         assert ("first_name",) in result["personal_info"]
         assert result["personal_info"][("first_name",)] == "Customer first name"
+
+    @pytest.mark.parametrize(
+        "db_name,schema",
+        [(None, "schema"), ("", "schema"), ("db", None), ("db", "")],
+    )
+    def test_missing_db_or_schema_returns_empty_without_query(self, db_name, schema):
+        """The early-return guard must short-circuit before ``connection.execute``
+        runs — otherwise we'd build a SQL string with literal ``None``/empty
+        identifiers and rely on the except block to swallow the error."""
+        connection = MagicMock()
+
+        assert _fetch_nested_descriptions_via_describe_json(connection, db_name, schema, "table") == {}
+        connection.execute.assert_not_called()
 
 
 class TestApplyNestedDescriptions:
