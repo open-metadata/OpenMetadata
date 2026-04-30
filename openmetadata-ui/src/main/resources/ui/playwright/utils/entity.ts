@@ -918,6 +918,12 @@ export const removeTag = async (page: Page, tags: string[]) => {
     await page.getByTestId('saveAssociatedTag').click();
     await patchRequest;
 
+    await page
+      .getByTestId('saveAssociatedTag')
+      .locator('[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
+    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+
     await expect(
       page
         .getByTestId('KnowledgePanel.Tags')
@@ -968,6 +974,12 @@ export const removeTagsFromChildren = async ({
     await page.getByTestId('saveAssociatedTag').click();
 
     await patchRequest;
+
+    await page
+      .getByTestId('saveAssociatedTag')
+      .locator('[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
+    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
     await expect(
       page
@@ -1022,9 +1034,11 @@ export const assignGlossaryTerm = async (
     .click();
 
   await patchRequest;
-  await expect(
-    page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
-  ).not.toBeVisible();
+  await page
+    .getByTestId('saveAssociatedTag')
+    .locator('[data-icon="loading"]')
+    .waitFor({ state: 'detached' });
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
   await expect(
     page
@@ -1244,6 +1258,12 @@ export const removeGlossaryTerm = async (
       .click();
     await patchRequest;
 
+    await page
+      .getByTestId('saveAssociatedTag')
+      .locator('[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
+    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+
     await expect(
       page
         .getByTestId('KnowledgePanel.GlossaryTerms')
@@ -1296,6 +1316,12 @@ export const removeGlossaryTermFromChildren = async ({
     await page.getByTestId('saveAssociatedTag').click();
 
     await patchRequest;
+
+    await page
+      .getByTestId('saveAssociatedTag')
+      .locator('[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
+    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
     await expect(
       page
