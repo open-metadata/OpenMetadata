@@ -168,3 +168,9 @@ export const EXPORT_FORMAT_TO_FILE_EXTENSION: Record<string, string> = {
   rdfxml: 'rdf',
   ntriples: 'nt',
 };
+
+export const NODE_WIDTH = 280;
+
+export const NODE_HEIGHT = 36;
+export const MAX_NODE_WIDTH = 280;
+export const MIN_NODE_WIDTH = 120;

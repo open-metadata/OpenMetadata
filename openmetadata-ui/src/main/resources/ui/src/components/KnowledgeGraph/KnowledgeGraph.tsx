@@ -73,8 +73,6 @@ import {
   computeELKPositions,
   computeELKRadialPositions,
   getNodeRenderKey,
-  MAX_NODE_WIDTH,
-  NODE_HEIGHT,
   setupGraphEventHandlers,
   transformToG6Format,
 } from '../../utils/KnowledgeGraph.utils';
@@ -93,6 +91,8 @@ import {
   ENTITY_UUID_REGEX,
   EXPORT_FORMAT_MAP,
   FIT_SCALE_FACTOR,
+  MAX_NODE_WIDTH,
+  NODE_HEIGHT,
   PANEL_WIDTH,
   ZOOM_DURATION_MS,
   ZOOM_EASING,

@@ -18,6 +18,7 @@ jest.mock('./EntityUtils', () => ({
 
 import { Graph, NodePortStyleProps } from '@antv/g6';
 import { ELK } from 'elkjs/lib/elk-api';
+import { MAX_NODE_WIDTH } from '../components/KnowledgeGraph/KnowledgeGraph.constants';
 import {
   applyInitialFocus,
   assignRadialPorts,
@@ -29,7 +30,6 @@ import {
   computeNodeWidth,
   findHighlightPath,
   getColorSetForType,
-  MAX_NODE_WIDTH,
   setupGraphEventHandlers,
   transformToG6Format,
 } from './KnowledgeGraph.utils';
