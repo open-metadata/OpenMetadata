@@ -12,10 +12,10 @@
  */
 
 import {
-  ExtensionCategory,
   EdgeData as G6EdgeData,
-  NodeData as G6NodeData,
+  ExtensionCategory,
   Graph,
+  NodeData as G6NodeData,
   NodePortStyleProps,
   register,
 } from '@antv/g6';
