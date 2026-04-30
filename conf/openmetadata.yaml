@@ -270,12 +270,12 @@ logging:
 
 database:
   # the name of the JDBC driver, mysql in our case
-  driverClass: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
+  driverClass: ${DB_DRIVER_CLASS:-org.postgresql.Driver}
   # the username and password
   user: ${DB_USER:-openmetadata_user}
   password: ${DB_USER_PASSWORD:-openmetadata_password}
   # the JDBC URL; the database is called openmetadata_db
-  url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
+  url: jdbc:${DB_SCHEME:-postgresql}://${DB_HOST:-192.168.29.172}:${DB_PORT:-5432}/${OM_DATABASE:-openmetadata_db}?${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
 
   # HikariCP Connection Pool Settings - Optimized for Performance
   maxSize: ${DB_CONNECTION_POOL_MAX_SIZE:-100}  # Increased from 50 for better concurrency
@@ -474,7 +474,7 @@ jwtTokenConfiguration:
   keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
 
 elasticsearch:
-  searchType: ${SEARCH_TYPE:- "elasticsearch"}
+  searchType: ${SEARCH_TYPE:- "opensearch"}
   # Single host or comma-separated list for multiple hosts
   # Examples: "localhost" or "es-node1:9200,es-node2:9200,es-node3:9200"
   host: ${ELASTICSEARCH_HOST:-localhost}

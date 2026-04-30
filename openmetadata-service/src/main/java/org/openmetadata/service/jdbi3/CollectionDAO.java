@@ -6578,11 +6578,19 @@ public interface CollectionDAO {
     int getTagUsageCountByHashPrefix(
         @Bind("source") int source, @Bind("hashPrefix") String hashPrefix);
 
+    int TAG_COUNT_BATCH_CHUNK_SIZE = 1000;
+
     /**
      * Returns usage count per tagFQN = exact-match rows + descendant rows.
-     * Hashes are pre-computed via FullyQualifiedName.buildHash to match the hierarchical format
-     * stored in tag_usage.tagFQNHash. Exact-match counts use one batched GROUP BY; descendant
-     * counts use one indexed prefix-LIKE per tag.
+     *
+     * <p>Hashes are pre-computed via FullyQualifiedName.buildHash to match the hierarchical
+     * format stored in tag_usage.tagFQNHash. Exact-match counts use a batched GROUP BY chunked
+     * at {@link #TAG_COUNT_BATCH_CHUNK_SIZE} hashes per query to keep IN-list size bounded.
+     *
+     * <p>Descendant counts use one indexed prefix-LIKE per tag. Each LIKE returns a single
+     * integer (COUNT only — no row materialization), and the index range scan is bounded by
+     * the descendant count of that specific tag, not by overall table size. For typical
+     * 1–2 level tag hierarchies (Classification.Tag) the descendant set is small or empty.
      */
     default Map<String, Integer> getTagCountsBulk(int source, List<String> tagFQNs) {
       if (tagFQNs == null || tagFQNs.isEmpty()) {
@@ -6599,11 +6607,15 @@ public interface CollectionDAO {
         result.put(tagFQN, 0);
       }
 
-      for (Map.Entry<String, Integer> row :
-          getTagUsageCountsByExactHashes(source, new ArrayList<>(fqnByHash.keySet()))) {
-        String tagFQN = fqnByHash.get(row.getKey());
-        if (tagFQN != null) {
-          result.merge(tagFQN, row.getValue(), Integer::sum);
+      List<String> allHashes = new ArrayList<>(fqnByHash.keySet());
+      for (int i = 0; i < allHashes.size(); i += TAG_COUNT_BATCH_CHUNK_SIZE) {
+        List<String> chunk =
+            allHashes.subList(i, Math.min(i + TAG_COUNT_BATCH_CHUNK_SIZE, allHashes.size()));
+        for (Map.Entry<String, Integer> row : getTagUsageCountsByExactHashes(source, chunk)) {
+          String tagFQN = fqnByHash.get(row.getKey());
+          if (tagFQN != null) {
+            result.merge(tagFQN, row.getValue(), Integer::sum);
+          }
         }
       }
 
