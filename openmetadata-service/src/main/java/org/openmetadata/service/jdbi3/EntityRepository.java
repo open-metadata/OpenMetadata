@@ -436,7 +436,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final boolean supportsCertification;
   @Getter protected final boolean supportsChildren;
   protected final boolean supportsFollower;
-  protected final boolean supportsExtension;
+  @Getter protected final boolean supportsExtension;
   protected final boolean supportsVotes;
   @Getter protected final boolean supportsDomains;
   protected final boolean supportsDataProducts;
