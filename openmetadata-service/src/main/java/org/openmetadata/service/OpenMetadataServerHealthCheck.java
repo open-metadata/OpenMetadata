@@ -14,102 +14,41 @@
 package org.openmetadata.service;
 
 import com.codahale.metrics.health.HealthCheck;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
- * Health check executed by Dropwizard's {@code /healthcheck} endpoint and consumed by k8s
- * liveness/readiness probes.
+ * Liveness probe target for Dropwizard's admin connector ({@code /healthcheck}).
  *
- * <p>Pre-fix this method was {@code return Result.healthy()} — k8s probes always succeeded
- * even when the database was unreachable or the connection pool was fully starved. As long
- * as Jetty had a free request thread, the pod stayed "alive" while real traffic hung. That
- * masked the exact failure mode operators needed to surface.
+ * <p><b>This is a pure process-aliveness check by design.</b> If the JVM can run this method
+ * and return a value, the pod is alive — that is all kubelet liveness needs to know. We
+ * intentionally do <b>not</b> probe the database, the search backend, the cache provider,
+ * or any other downstream system from here. Coupling the liveness probe to downstream
+ * latency causes counterproductive restart loops: a slow but otherwise functional database
+ * makes liveness fail, kubelet kills the pod, the new pod cold-starts (cold cache, fresh
+ * connection storms, JIT warmup), the restart pressure pushes the database even harder,
+ * and the cycle accelerates. Killing the process never speeds up the database.
  *
- * <p>The check now:
+ * <p>Operators that want database/cache health visibility should:
  * <ul>
- *   <li>Borrows a connection from the main pool and runs {@code SELECT 42} (the same probe
- *       used by the existing background {@code DatabseAndSearchServiceStatusJob}).
- *   <li>Caps the whole operation at {@value #DB_TIMEOUT_MILLIS} ms via a watchdog future,
- *       so the probe never runs longer than k8s tolerates. If the DB borrow + query don't
- *       complete in time, the probe fails and k8s can evict the pod cleanly.
- *   <li>Falls back to {@code Result.healthy()} if no {@link CollectionDAO} has been wired
- *       (early in startup, in tests, or for deployments that don't use the JDBI bundle).
+ *   <li>Use a separate <b>readiness</b> probe (or the application-layer endpoints) that can
+ *       fail without triggering a pod kill — readiness only stops sending traffic.
+ *   <li>Scrape the {@code /prometheus} (or admin metrics) endpoint for HikariCP pool
+ *       statistics ({@code hikaricp_active_connections},
+ *       {@code hikaricp_pending_threads}, etc.) and alert on those.
+ *   <li>Run the existing {@code DatabseAndSearchServiceStatusJob} background reporter,
+ *       which surfaces DB/search status without affecting liveness.
  * </ul>
+ *
+ * <p>For production deployments, prefer this admin-port {@code /healthcheck} over the
+ * application-port {@code /api/v1/system/health} probe target — the admin connector has
+ * its own request thread pool, so a saturated API tier (slow listing queries, hot tag
+ * aggregations) cannot starve the probe even before any timeout fires.
  */
 @Slf4j
 public class OpenMetadataServerHealthCheck extends HealthCheck {
 
-  /**
-   * Hard cap on the health check itself. Must stay well under the typical k8s probe timeout
-   * (3-5 s default for liveness). We use 2 s here so the probe fails fast while leaving
-   * headroom for the rare slow-DB blip.
-   */
-  static final long DB_TIMEOUT_MILLIS = 2_000L;
-
-  private static final ExecutorService HEALTH_EXECUTOR =
-      Executors.newSingleThreadExecutor(
-          new ThreadFactory() {
-            private final AtomicLong threadIndex = new AtomicLong();
-
-            @Override
-            public Thread newThread(Runnable r) {
-              Thread thread = new Thread(r, "om-healthcheck-" + threadIndex.incrementAndGet());
-              thread.setDaemon(true);
-              return thread;
-            }
-          });
-
-  private final CollectionDAO dao;
-
-  public OpenMetadataServerHealthCheck() {
-    this(null);
-  }
-
-  public OpenMetadataServerHealthCheck(CollectionDAO dao) {
-    this.dao = dao;
-  }
-
   @Override
   protected Result check() {
-    if (dao == null) {
-      // No DAO wired yet (cold-start window) — treat as healthy. Once the app finishes
-      // bootstrapping the DAO is non-null and we'll start probing the DB.
-      return Result.healthy();
-    }
-
-    Callable<Result> probe =
-        () -> {
-          try {
-            Integer value = dao.systemDAO().testConnection();
-            return value != null && value == 42
-                ? Result.healthy()
-                : Result.unhealthy("Database probe returned unexpected value: " + value);
-          } catch (Exception e) {
-            return Result.unhealthy("Database probe failed: " + e.getMessage());
-          }
-        };
-
-    Future<Result> future = HEALTH_EXECUTOR.submit(probe);
-    try {
-      return future.get(DB_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
-    } catch (TimeoutException e) {
-      future.cancel(true);
-      LOG.warn(
-          "Health check exceeded {} ms — failing the probe so k8s can recycle the pod",
-          DB_TIMEOUT_MILLIS);
-      return Result.unhealthy("Database probe did not complete in " + DB_TIMEOUT_MILLIS + " ms");
-    } catch (Exception e) {
-      LOG.warn("Health check raised an unexpected error", e);
-      return Result.unhealthy("Health check error: " + e.getMessage());
-    }
+    return Result.healthy();
   }
 }

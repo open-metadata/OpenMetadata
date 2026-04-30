@@ -603,74 +603,22 @@ public class SystemResource {
       operationId = "healthCheck",
       summary = "Health check endpoint",
       description =
-          "Liveness/readiness probe target. Probes the database with a hard 2-second"
-              + " watchdog timeout and returns 503 if the connection cannot be borrowed,"
-              + " the canary query fails, or the probe exceeds its budget. Note: this"
-              + " endpoint lives on the application connector and shares its request"
-              + " thread pool with regular API traffic — under heavy load even this"
-              + " trivial endpoint can stall waiting for a free thread. Production"
-              + " deployments should prefer the admin-port `/healthcheck` (Dropwizard"
-              + " admin connector) which has its own thread pool insulated from API load.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "Service is healthy"),
-        @ApiResponse(responseCode = "503", description = "Database probe failed or timed out")
-      })
+          "Pure process-aliveness probe — returns 200 OK as long as the JVM can run this"
+              + " handler and Jetty can serve a response. Intentionally does NOT probe the"
+              + " database, search backend, cache, or any other downstream system. Coupling"
+              + " the liveness probe to downstream latency creates restart loops: a slow"
+              + " (but otherwise healthy) database trips the probe, kubelet kills the pod,"
+              + " the new pod cold-starts and re-storms the database, and the cycle"
+              + " accelerates. Killing the process never speeds up the database.\n\n"
+              + "If you need DB/cache health visibility for routing decisions, use a"
+              + " separate readiness probe (which doesn't trigger a pod kill) or scrape"
+              + " HikariCP pool stats from the metrics endpoint.\n\n"
+              + "For production, prefer the admin-port `/healthcheck` over this endpoint —"
+              + " admin runs on its own thread pool insulated from API saturation.",
+      responses = {@ApiResponse(responseCode = "200", description = "Service is healthy")})
   public Response healthCheck() {
-    java.util.concurrent.Future<Response> probe =
-        SYSTEM_HEALTH_EXECUTOR.submit(
-            () -> {
-              try {
-                Integer value = systemRepository.testDatabaseConnection();
-                if (value != null && value == 42) {
-                  return Response.ok("OK").build();
-                }
-                return Response.status(Response.Status.SERVICE_UNAVAILABLE)
-                    .entity("Database probe returned unexpected value: " + value)
-                    .build();
-              } catch (Exception e) {
-                LOG.warn("/api/v1/system/health database probe failed: {}", e.getMessage());
-                return Response.status(Response.Status.SERVICE_UNAVAILABLE)
-                    .entity("Database probe failed: " + e.getMessage())
-                    .build();
-              }
-            });
-    try {
-      return probe.get(SYSTEM_HEALTH_TIMEOUT_MILLIS, java.util.concurrent.TimeUnit.MILLISECONDS);
-    } catch (java.util.concurrent.TimeoutException e) {
-      probe.cancel(true);
-      LOG.warn(
-          "/api/v1/system/health exceeded {} ms — DB or pool wedged, returning 503",
-          SYSTEM_HEALTH_TIMEOUT_MILLIS);
-      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
-          .entity("Health probe did not complete in " + SYSTEM_HEALTH_TIMEOUT_MILLIS + " ms")
-          .build();
-    } catch (Exception e) {
-      LOG.warn("/api/v1/system/health raised unexpected error", e);
-      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
-          .entity("Health probe error: " + e.getMessage())
-          .build();
-    }
+    return Response.ok("OK").build();
   }
-
-  /**
-   * Hard cap on the {@code /api/v1/system/health} probe. Stays well under the typical k8s
-   * probe timeout (usually 3–5 s) so we always fail fast before the kubelet times us out.
-   */
-  private static final long SYSTEM_HEALTH_TIMEOUT_MILLIS = 2_000L;
-
-  /**
-   * Dedicated single-thread executor for the health probe. Uses its own thread (not the
-   * Jersey request thread) so the watchdog can cancel a wedged DB borrow without leaking
-   * the request thread. A bigger pool isn't necessary — concurrent probes are rare and
-   * each runs sub-second when the DB is healthy.
-   */
-  private static final java.util.concurrent.ExecutorService SYSTEM_HEALTH_EXECUTOR =
-      java.util.concurrent.Executors.newSingleThreadExecutor(
-          r -> {
-            Thread thread = new Thread(r, "om-system-health");
-            thread.setDaemon(true);
-            return thread;
-          });
 
   @GET
   @Path("/security/config")

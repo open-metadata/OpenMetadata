@@ -13,120 +13,45 @@
 
 package org.openmetadata.service;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import com.codahale.metrics.health.HealthCheck.Result;
-import org.jdbi.v3.core.statement.StatementException;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
- * Unit tests for {@link OpenMetadataServerHealthCheck}. The class is the target k8s probes
- * hit, so each branch matters: a passing probe in front of a failing DB used to leave a
- * starved pod alive, which is exactly what we are trying to surface now.
+ * Unit tests for {@link OpenMetadataServerHealthCheck}.
+ *
+ * <p>The health check is intentionally a pure process-aliveness probe — it must not borrow
+ * a DB connection, run a query, or call any downstream system. These tests pin that
+ * contract: a future refactor that adds a DB ping (or any other I/O) here will break the
+ * "must complete in microseconds without I/O" assertion and force the author to revisit
+ * the design rationale documented on the class.
  */
 class OpenMetadataServerHealthCheckTest {
 
   @Test
-  void check_returnsHealthy_whenDaoIsNull() {
-    // Cold-start window: app bootstrap registers the check before the DAO is wired up.
-    // Returning healthy in that window avoids racing the probe past startup.
-    OpenMetadataServerHealthCheck check = new OpenMetadataServerHealthCheck(null);
+  void check_returnsHealthy() {
+    OpenMetadataServerHealthCheck check = new OpenMetadataServerHealthCheck();
     Result result = check.check();
-    assertTrue(result.isHealthy(), "null DAO must short-circuit to healthy");
+    assertTrue(result.isHealthy(), "process-aliveness probe must always be healthy");
   }
 
   @Test
-  void check_returnsHealthy_whenDbProbeReturns42() {
-    CollectionDAO dao = mock(CollectionDAO.class);
-    CollectionDAO.SystemDAO systemDAO = mock(CollectionDAO.SystemDAO.class);
-    when(dao.systemDAO()).thenReturn(systemDAO);
-    when(systemDAO.testConnection()).thenReturn(42);
-
-    OpenMetadataServerHealthCheck check = new OpenMetadataServerHealthCheck(dao);
-    Result result = check.check();
-
-    assertTrue(result.isHealthy(), "successful DB probe must report healthy");
-  }
-
-  @Test
-  void check_returnsUnhealthy_whenDbProbeThrows() {
-    // Simulates DB connectivity loss / pool exhaustion / driver failure. The probe must
-    // surface unhealthy so k8s evicts the pod instead of leaving traffic stuck.
-    CollectionDAO dao = mock(CollectionDAO.class);
-    CollectionDAO.SystemDAO systemDAO = mock(CollectionDAO.SystemDAO.class);
-    when(dao.systemDAO()).thenReturn(systemDAO);
-    when(systemDAO.testConnection())
-        .thenThrow(new RuntimeException("connection refused — DB is down"));
-
-    OpenMetadataServerHealthCheck check = new OpenMetadataServerHealthCheck(dao);
-    Result result = check.check();
-
-    assertFalse(result.isHealthy(), "DB error must report unhealthy");
-    assertTrue(
-        result.getMessage().contains("Database probe failed"),
-        "error message should be propagated for triage");
-  }
-
-  @Test
-  void check_returnsUnhealthy_whenDbProbeExceedsTimeout() throws Exception {
-    // Simulates a hung DB borrow — the probe must NOT block longer than the configured
-    // timeout, otherwise the k8s liveness probe itself stalls and the symptom looks like
-    // a healthy slow pod when it should be a failing pod.
-    CollectionDAO dao = mock(CollectionDAO.class);
-    CollectionDAO.SystemDAO systemDAO = mock(CollectionDAO.SystemDAO.class);
-    when(dao.systemDAO()).thenReturn(systemDAO);
-    when(systemDAO.testConnection())
-        .thenAnswer(
-            invocation -> {
-              // Sleep well past the 2 s health-check budget to force the timeout path.
-              Thread.sleep(OpenMetadataServerHealthCheck.DB_TIMEOUT_MILLIS + 1_000);
-              return 42;
-            });
-
-    OpenMetadataServerHealthCheck check = new OpenMetadataServerHealthCheck(dao);
+  void check_isFastAndDoesNotPerformIo() {
+    // The probe must not hit the DB or any other downstream system. We can't introspect
+    // that directly in a unit test, but we can pin a tight latency budget — anything
+    // doing I/O would blow this. The bound is intentionally low (1 ms) so any future
+    // regression that adds a DB borrow shows up immediately even on slow CI.
+    OpenMetadataServerHealthCheck check = new OpenMetadataServerHealthCheck();
     long start = System.nanoTime();
     Result result = check.check();
-    long elapsedMillis = (System.nanoTime() - start) / 1_000_000;
+    long elapsedMicros = (System.nanoTime() - start) / 1_000;
 
-    assertFalse(result.isHealthy(), "timed-out probe must report unhealthy");
+    assertTrue(result.isHealthy());
     assertTrue(
-        elapsedMillis < OpenMetadataServerHealthCheck.DB_TIMEOUT_MILLIS + 500,
-        "probe must respect its own timeout; took " + elapsedMillis + " ms");
-  }
-
-  @Test
-  void check_returnsUnhealthy_whenDbProbeReturnsUnexpectedValue() {
-    // Defensive: if the canary query returns something other than 42 (driver bug,
-    // wrong query routed somehow), surface it instead of silently passing.
-    CollectionDAO dao = mock(CollectionDAO.class);
-    CollectionDAO.SystemDAO systemDAO = mock(CollectionDAO.SystemDAO.class);
-    when(dao.systemDAO()).thenReturn(systemDAO);
-    when(systemDAO.testConnection()).thenReturn(0);
-
-    OpenMetadataServerHealthCheck check = new OpenMetadataServerHealthCheck(dao);
-    Result result = check.check();
-
-    assertFalse(result.isHealthy());
-    assertTrue(result.getMessage().contains("unexpected value"));
-  }
-
-  @Test
-  void check_returnsUnhealthy_whenJdbiThrowsCheckedException() {
-    // StatementException is the JDBI-specific failure surface; ensure it lands in the
-    // generic failure branch instead of escaping uncaught.
-    CollectionDAO dao = mock(CollectionDAO.class);
-    CollectionDAO.SystemDAO systemDAO = mock(CollectionDAO.SystemDAO.class);
-    when(dao.systemDAO()).thenReturn(systemDAO);
-    when(systemDAO.testConnection())
-        .thenThrow(new RuntimeException(new StatementException("driver said no") {}));
-
-    OpenMetadataServerHealthCheck check = new OpenMetadataServerHealthCheck(dao);
-    Result result = check.check();
-
-    assertFalse(result.isHealthy());
+        elapsedMicros < 1_000,
+        "health check must complete in microseconds without I/O; took "
+            + elapsedMicros
+            + " µs");
   }
 }
