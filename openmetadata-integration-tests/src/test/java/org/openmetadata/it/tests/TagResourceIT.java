@@ -1637,9 +1637,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
             .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
             .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
     schemaWithRegularTag.setTags(List.of(regularTagLabel));
-    client
-        .databaseSchemas()
-        .update(schemaWithRegularTag.getId().toString(), schemaWithRegularTag);
+    client.databaseSchemas().update(schemaWithRegularTag.getId().toString(), schemaWithRegularTag);
 
     org.openmetadata.sdk.models.ListParams listParams =
         new org.openmetadata.sdk.models.ListParams()

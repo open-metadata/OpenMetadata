@@ -130,7 +130,8 @@ class EntityRepositoryCertificationTest {
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline");
 
-    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString())).thenReturn(List.of());
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
+        .thenReturn(List.of());
 
     AssetCertification cert = repo.getCertification(entity);
 
@@ -227,7 +228,8 @@ class EntityRepositoryCertificationTest {
             .withFullyQualifiedName("service.my-pipeline")
             .withCertification(incoming);
 
-    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString())).thenReturn(List.of());
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
+        .thenReturn(List.of());
 
     assertDoesNotThrow(() -> repo.applyCertification(entity));
 
@@ -282,7 +284,8 @@ class EntityRepositoryCertificationTest {
             .withFullyQualifiedName("service.my-pipeline")
             .withCertification(null);
 
-    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString())).thenReturn(List.of());
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
+        .thenReturn(List.of());
 
     assertDoesNotThrow(() -> repo.storeRelationshipsInternal(List.of(entity)));
   }
@@ -393,7 +396,8 @@ class EntityRepositoryCertificationTest {
             .withFullyQualifiedName("service.my-pipeline")
             .withCertification(null);
 
-    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString())).thenReturn(List.of());
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
+        .thenReturn(List.of());
 
     assertDoesNotThrow(() -> repo.storeRelationshipsInternal(entity));
   }
@@ -568,7 +572,8 @@ class EntityRepositoryCertificationTest {
             .withUpdatedBy("alice")
             .withCertification(new AssetCertification().withTagLabel(tagLabel));
 
-    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString())).thenReturn(List.of());
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
+        .thenReturn(List.of());
 
     assertDoesNotThrow(() -> repo.applyCertification(entity));
 
