@@ -3935,7 +3935,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
               String searchResponse =
                   client
                       .search()
-                      .query("id:" + testCaseId)
+                      .query("id.keyword:" + testCaseId)
                       .index("test_case_search_index")
                       .size(1)
                       .execute();
@@ -3981,7 +3981,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
               String searchResponse =
                   client
                       .search()
-                      .query("id:" + testCaseId)
+                      .query("id.keyword:" + testCaseId)
                       .index("test_case_search_index")
                       .size(1)
                       .execute();
@@ -4034,7 +4034,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
               String searchResponse =
                   client
                       .search()
-                      .query("id:" + testCaseId)
+                      .query("id.keyword:" + testCaseId)
                       .index("test_case_search_index")
                       .size(1)
                       .execute();
@@ -4095,7 +4095,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
               String searchResponse =
                   client
                       .search()
-                      .query("id:" + testCaseId)
+                      .query("id.keyword:" + testCaseId)
                       .index("test_case_search_index")
                       .size(1)
                       .execute();

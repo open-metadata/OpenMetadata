@@ -452,7 +452,12 @@ public class MultiDomainHasDomainIT {
   private void assertSearchReturnsTable(
       OpenMetadataClient client, String tableId, String failureMessage) throws Exception {
     String searchResponse =
-        client.search().query("id:" + tableId).index("table_search_index").size(1).execute();
+        client
+            .search()
+            .query("id.keyword:" + tableId)
+            .index("table_search_index")
+            .size(1)
+            .execute();
     assertTrue(
         searchResponse.contains("\"id\":\"" + tableId + "\""),
         failureMessage + ". Response: " + searchResponse);

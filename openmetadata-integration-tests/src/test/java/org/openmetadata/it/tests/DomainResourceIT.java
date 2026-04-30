@@ -474,7 +474,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
               String searchResponse =
                   client
                       .search()
-                      .query("id:" + domainId)
+                      .query("id.keyword:" + domainId)
                       .index("domain_search_index")
                       .size(1)
                       .execute();
@@ -897,7 +897,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
               String searchResponse =
                   client
                       .search()
-                      .query("id:" + child.getId())
+                      .query("id.keyword:" + child.getId())
                       .index("domain_search_index")
                       .size(1)
                       .execute();
@@ -1090,7 +1090,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
               String searchResponse =
                   client
                       .search()
-                      .query("id:" + child.getId())
+                      .query("id.keyword:" + child.getId())
                       .index("domain_search_index")
                       .size(1)
                       .execute();

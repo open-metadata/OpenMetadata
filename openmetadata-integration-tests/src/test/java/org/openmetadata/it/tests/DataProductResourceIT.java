@@ -853,7 +853,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
   private List<EntityReference> getEntityReferencesFromSearchIndex(
       UUID entityId, String indexName, String fieldName) throws Exception {
-    String query = "id:" + entityId.toString();
+    String query = "id.keyword:" + entityId.toString();
     String searchResponse =
         SdkClients.adminClient().search().query(query).index(indexName).execute();
 

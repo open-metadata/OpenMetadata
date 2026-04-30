@@ -3760,7 +3760,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               String searchResponse =
                   client
                       .search()
-                      .query("id:" + tableWithDesc.getId())
+                      .query("id.keyword:" + tableWithDesc.getId())
                       .index("table_search_index")
                       .size(1)
                       .execute();
@@ -3843,7 +3843,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               String searchResponse =
                   client
                       .search()
-                      .query("id:" + table.getId())
+                      .query("id.keyword:" + table.getId())
                       .index("table_search_index")
                       .size(1)
                       .execute();
@@ -4002,7 +4002,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                 String searchResponse =
                     client
                         .search()
-                        .query("id:" + tableId)
+                        .query("id.keyword:" + tableId)
                         .index("table_search_index")
                         .size(1)
                         .execute();
@@ -5480,7 +5480,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               String response =
                   client
                       .search()
-                      .query("id:" + tableId)
+                      .query("id.keyword:" + tableId)
                       .index("table_search_index")
                       .size(1)
                       .execute();
@@ -5555,7 +5555,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               String response =
                   client
                       .search()
-                      .query("id:" + tableId)
+                      .query("id.keyword:" + tableId)
                       .index("table_search_index")
                       .size(1)
                       .execute();
@@ -5627,7 +5627,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               String response =
                   client
                       .search()
-                      .query("id:" + tableId)
+                      .query("id.keyword:" + tableId)
                       .index("table_search_index")
                       .size(1)
                       .execute();
@@ -5687,7 +5687,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               String response =
                   client
                       .search()
-                      .query("id:" + tableId)
+                      .query("id.keyword:" + tableId)
                       .index("table_search_index")
                       .size(1)
                       .execute();
@@ -5713,7 +5713,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               String response =
                   client
                       .search()
-                      .query("id:" + tableId)
+                      .query("id.keyword:" + tableId)
                       .index("table_search_index")
                       .size(1)
                       .execute();

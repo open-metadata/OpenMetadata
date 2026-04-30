@@ -1403,7 +1403,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
               String response =
                   client
                       .search()
-                      .query("id:" + updated.getId())
+                      .query("id.keyword:" + updated.getId())
                       .index("glossary_term_search_index")
                       .size(5)
                       .execute();
@@ -3106,7 +3106,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
               String response =
                   client
                       .search()
-                      .query("id:" + termId)
+                      .query("id.keyword:" + termId)
                       .index("glossary_term_search_index")
                       .size(1)
                       .execute();
@@ -3161,7 +3161,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
               String response =
                   client
                       .search()
-                      .query("id:" + termId)
+                      .query("id.keyword:" + termId)
                       .index("glossary_term_search_index")
                       .size(1)
                       .execute();

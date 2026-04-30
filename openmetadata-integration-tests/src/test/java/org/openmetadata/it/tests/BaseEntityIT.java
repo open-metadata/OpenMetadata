@@ -5312,12 +5312,20 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   /**
-   * Search for a specific entity by ID.
-   * Subclasses should override to use entity-specific search.
+   * Search for a specific entity by ID. Uses the {@code id.keyword} subfield so the lookup is an
+   * exact-match term query: the {@code id} field is mapped as {@code text} on every entity index
+   * and the analyzer tokenises UUIDs on dashes/digits, which makes a plain {@code id:<uuid>}
+   * query a tokenised match that ranks-and-trims under {@code size=1} and races other docs with
+   * overlapping hex tokens. Subclasses should override to use entity-specific search.
    */
   protected String searchForEntity(String entityId) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    return client.search().query("id:" + entityId).index(getSearchIndexName()).size(1).execute();
+    return client
+        .search()
+        .query("id.keyword:" + entityId)
+        .index(getSearchIndexName())
+        .size(1)
+        .execute();
   }
 
   protected String searchEntities() throws Exception {

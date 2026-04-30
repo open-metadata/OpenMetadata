@@ -1166,7 +1166,12 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         .untilAsserted(
             () -> {
               String response =
-                  client.search().query("id:" + tagId).index("tag_search_index").size(5).execute();
+                  client
+                      .search()
+                      .query("id.keyword:" + tagId)
+                      .index("tag_search_index")
+                      .size(5)
+                      .execute();
               JsonNode root = mapper.readTree(response);
               JsonNode hits = root.path("hits").path("hits");
               assertTrue(
@@ -1781,7 +1786,12 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         .untilAsserted(
             () -> {
               String response =
-                  client.search().query("id:" + tagId).index("tag_search_index").size(1).execute();
+                  client
+                      .search()
+                      .query("id.keyword:" + tagId)
+                      .index("tag_search_index")
+                      .size(1)
+                      .execute();
               JsonNode root = mapper.readTree(response);
               JsonNode hits = root.path("hits").path("hits");
               assertTrue(hits.isArray() && !hits.isEmpty(), "Tag should be in tag_search_index");
