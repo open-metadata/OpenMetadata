@@ -22,9 +22,11 @@ def test_s3_ingestion(metadata, ingest_s3_storage, service_name):
 
     # We should have the bucket and all its structured children
     bucket: Container = metadata.get_by_name(entity=Container, fqn=f"{service_name}.test-bucket", fields=["*"])
-    # The bucket has children and no dataModel
-    assert 7 == len(bucket.children.root)  # noqa: SIM300
+    # The bucket has children (via the dedicated paginated endpoint, not inlined
+    # into the parent payload) and no dataModel
     assert not bucket.dataModel
+    children = metadata.list_container_children(f"{service_name}.test-bucket")
+    assert 7 == len(children.entities)  # noqa: SIM300
 
     # We can validate the children
     cities: Container = metadata.get_by_name(entity=Container, fqn=f"{service_name}.test-bucket.cities", fields=["*"])
