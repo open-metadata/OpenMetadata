@@ -1864,12 +1864,27 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             .relationshipDAO()
             .findFromBatch(entityIds, Relationship.CONTAINS.ordinal(), entityType, entityType);
 
+    // Resolve parent refs in bulk so a missing parent (hard-deleted while the relationship row
+    // is still present, or a stale snapshot row in entity_extension whose parent has since been
+    // removed) doesn't throw EntityNotFoundException and 404 the entire response. The
+    // single-id Entity.getEntityReferenceById throws; getEntityReferencesByIds returns only the
+    // parents that still exist.
+    Set<UUID> parentIds =
+        parentRecords.stream()
+            .map(rec -> UUID.fromString(rec.getFromId()))
+            .collect(Collectors.toSet());
+    Map<String, EntityReference> parentRefById =
+        parentIds.isEmpty()
+            ? Collections.emptyMap()
+            : Entity.getEntityReferencesByIds(GLOSSARY_TERM, new ArrayList<>(parentIds), ALL)
+                .stream()
+                .collect(Collectors.toMap(ref -> ref.getId().toString(), ref -> ref));
     Map<UUID, EntityReference> parentMap = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject rec : parentRecords) {
-      parentMap.put(
-          UUID.fromString(rec.getToId()),
-          Entity.getEntityReferenceById(
-              rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL));
+      EntityReference parentRef = parentRefById.get(rec.getFromId());
+      if (parentRef != null) {
+        parentMap.put(UUID.fromString(rec.getToId()), parentRef);
+      }
     }
 
     // Set parent references on GlossaryTerms
@@ -1914,13 +1929,23 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     allRecords.addAll(hasRecords);
     allRecords.addAll(containsRecords);
 
-    // Map to entity ID -> glossary reference
+    // Same orphan-safe pattern as the parent lookup above: resolve glossary refs via the bulk
+    // helper that returns only existing entities, so a missing glossary doesn't 404 the response.
+    Set<UUID> glossaryIds =
+        allRecords.stream()
+            .map(rec -> UUID.fromString(rec.getFromId()))
+            .collect(Collectors.toSet());
+    Map<String, EntityReference> glossaryRefById =
+        glossaryIds.isEmpty()
+            ? Collections.emptyMap()
+            : Entity.getEntityReferencesByIds(GLOSSARY, new ArrayList<>(glossaryIds), ALL).stream()
+                .collect(Collectors.toMap(ref -> ref.getId().toString(), ref -> ref));
     Map<UUID, EntityReference> glossaryMap = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject rec : allRecords) {
-      glossaryMap.put(
-          UUID.fromString(rec.getToId()),
-          Entity.getEntityReferenceById(
-              rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL));
+      EntityReference glossaryRef = glossaryRefById.get(rec.getFromId());
+      if (glossaryRef != null) {
+        glossaryMap.put(UUID.fromString(rec.getToId()), glossaryRef);
+      }
     }
 
     for (GlossaryTerm term : terms) {

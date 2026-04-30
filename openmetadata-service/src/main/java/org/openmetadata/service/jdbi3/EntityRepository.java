@@ -809,7 +809,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityReference parentRef = getParentReference(entity);
     EntityInterface parent = getCachedInheritanceParent(parentRef, inheritableFields);
     if (parent == null) {
-      parent = getParentEntity(entity, inheritableFields);
+      try {
+        parent = getParentEntity(entity, inheritableFields);
+      } catch (EntityNotFoundException e) {
+        // The bulk inheritance path (Entity.getEntitiesForInheritance → repo.find(ids, include))
+        // is missing-safe and falls back to this single-entity path for entries the bulk lookup
+        // missed. The fallback then calls Entity.getEntity which throws on a missing parent.
+        // That happens legitimately when a parent has been hard-deleted while a child's main
+        // row or version snapshot still references it — e.g. listEntityHistoryByTimestamp
+        // reading from entity_extension snapshots whose embedded parent ref outlives the parent.
+        // Treat it as "no inheritance applies" instead of failing the whole list/history
+        // response — same pattern as Entity.getEntityOrNull and getFromEntityRef which already
+        // swallow this exception elsewhere for the same scenario.
+        LOG.debug(
+            "Parent entity not found for {}:{} during inheritance; skipping inheritance: {}",
+            entityType,
+            entity.getId(),
+            e.getMessage());
+        parent = null;
+      }
       cacheInheritanceParent(parentRef, inheritableFields, parent);
     }
     if (parent != null) {
