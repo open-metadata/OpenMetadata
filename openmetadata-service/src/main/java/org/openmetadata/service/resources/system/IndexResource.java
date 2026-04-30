@@ -23,31 +23,30 @@ import org.openmetadata.service.security.CspNonceHandler;
 @Slf4j
 @Path("/")
 public class IndexResource {
-  private static final String RAW_INDEX_HTML;
   private static volatile String configProcessedHtml;
   private static volatile String configuredBasePath = "/";
 
-  static {
+  public static void initialize(OpenMetadataApplicationConfig catalogConfig) {
+    String rawIndexHtml;
     try (InputStream inputStream = IndexResource.class.getResourceAsStream("/assets/index.html")) {
       if (inputStream == null) {
-        throw new IllegalStateException("Missing required resource: /assets/index.html");
+        LOG.warn("UI assets not found on classpath. Running in no-ui mode.");
+        return;
       }
-      RAW_INDEX_HTML =
+      rawIndexHtml =
           new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))
               .lines()
               .collect(Collectors.joining("\n"));
     } catch (IOException e) {
       throw new IllegalStateException("Failed to load /assets/index.html", e);
     }
-  }
 
-  public static void initialize(OpenMetadataApplicationConfig catalogConfig) {
     String basePath = catalogConfig.getBasePath();
     configuredBasePath = (basePath != null && !basePath.isEmpty()) ? basePath : "/";
     SentryConfiguration sentryConfig = catalogConfig.getSentryConfiguration();
     String clusterName = catalogConfig.getClusterName();
     configProcessedHtml =
-        RAW_INDEX_HTML
+        rawIndexHtml
             .replace("${sentryEnabled}", String.valueOf(sentryConfig.getEnabled()))
             .replace("${sentryDsn}", escapeJs(sentryConfig.getUiDsn()))
             .replace("${sentryEnvironment}", escapeJs(sentryConfig.getEnvironment()))
