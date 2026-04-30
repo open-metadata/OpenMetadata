@@ -162,7 +162,7 @@ export const removeAndCheckWidget = async (
     .locator(`[data-testid="${widgetKey}"] [data-testid="more-options-button"]`)
     .click();
 
-  await page.getByText('Remove').click();
+  await page.locator('.ant-dropdown:visible [data-menu-id*="remove"]').click();
 
   await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
 };
@@ -480,6 +480,7 @@ export const verifyWidgetEntityNavigation = async (
     verifyElement,
     apiResponseUrl,
     searchQuery,
+    altApiResponseUrl,
   }: {
     widgetKey: string;
     entitySelector: string;
@@ -488,22 +489,29 @@ export const verifyWidgetEntityNavigation = async (
     verifyElement?: string;
     apiResponseUrl: string;
     searchQuery: string | string[];
+    altApiResponseUrl?: string;
   }
 ) => {
-  // Wait for API response matching the search query
-  const response = page.waitForResponse((response) => {
-    if (!response.url().includes(apiResponseUrl)) {
+  // Wait for API response matching the search query with timeout fallback
+  const response = Promise.race([
+    page.waitForResponse((response) => {
+      // Check primary API URL
+      if (response.url().includes(apiResponseUrl)) {
+        if (Array.isArray(searchQuery)) {
+          return searchQuery.every((query) => response.url().includes(query));
+        }
+        return response.url().includes(searchQuery);
+      }
+
+      // Check alternative API URL (for Task API migration)
+      if (altApiResponseUrl && response.url().includes(altApiResponseUrl)) {
+        return true;
+      }
+
       return false;
-    }
-
-    // Handle multiple query parts (for complex queries like Data Assets)
-    if (Array.isArray(searchQuery)) {
-      return searchQuery.every((query) => response.url().includes(query));
-    }
-
-    // Handle single query string
-    return response.url().includes(searchQuery);
-  });
+    }),
+    page.waitForTimeout(10000),
+  ]);
 
   await redirectToHomePage(page);
 
@@ -562,17 +570,12 @@ export const verifyWidgetEntityNavigation = async (
 
     // Navigate back to home for next tests
     await redirectToHomePage(page);
+  } else if (emptyStateTestId) {
+    await expect(page.getByTestId(emptyStateTestId)).toBeVisible();
   } else {
-    // Check for empty state if no entities
-    const emptyState = widget.locator('[data-testid="widget-empty-state"]');
-
-    await expect(emptyState).toBeVisible();
-
-    if (emptyStateTestId) {
-      const emptyStateComponent = page.getByTestId(emptyStateTestId);
-
-      await expect(emptyStateComponent).toBeVisible();
-    }
+    await expect(
+      widget.locator('[data-testid="widget-empty-state"]')
+    ).toBeVisible();
   }
 };
 

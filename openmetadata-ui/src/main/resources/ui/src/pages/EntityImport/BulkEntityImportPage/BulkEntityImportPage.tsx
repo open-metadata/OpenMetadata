@@ -57,8 +57,8 @@ import {
   validateCsvString,
 } from '../../../utils/EntityImport/EntityImportUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import {
-  getDataQualityPagePath,
   getEntityDetailsPath,
   getTestSuitePath,
 } from '../../../utils/RouterUtils';
@@ -211,7 +211,9 @@ const BulkEntityImportPage = () => {
       return [
         {
           name: t('label.data-quality'),
-          url: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
+          url: observabilityRouterClassBase.getDataQualityPagePath(
+            DataQualityPageTabs.TEST_CASES
+          ),
         },
       ];
     }
@@ -253,7 +255,9 @@ const BulkEntityImportPage = () => {
       return [
         {
           name: t('label.test-suite-plural'),
-          url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+          url: observabilityRouterClassBase.getDataQualityPagePath(
+            DataQualityPageTabs.TEST_SUITES
+          ),
         },
         {
           name: entity.displayName ?? entity.name ?? '',
@@ -532,9 +536,14 @@ const BulkEntityImportPage = () => {
         if (websocketResponse.status === 'COMPLETED') {
           const importResults = websocketResponse.result;
 
-          // If the job is complete and the status is either failure or aborted
-          // then reset the validation data and active step
-          if (['failure', 'aborted'].includes(importResults?.status ?? '')) {
+          // If the job is aborted, or failed before processing any rows (e.g. malformed CSV),
+          // reset to upload step. If rows were processed but all failed, fall through to
+          // show the validation grid so the user can inspect and fix errors.
+          if (
+            ['aborted'].includes(importResults?.status ?? '') ||
+            (importResults?.status === 'failure' &&
+              (importResults?.numberOfRowsProcessed ?? 0) === 0)
+          ) {
             setValidationData(importResults);
 
             handleActiveStepChange(VALIDATION_STEP.UPLOAD);

@@ -16,7 +16,6 @@ import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
@@ -51,7 +50,6 @@ const tag = new TagClass({ classification: classification.data.name });
 test.describe('Data Product Rename + Field Update Consolidation', () => {
   test.beforeAll('Setup domain and admin user', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-    await EntityDataClass.preRequisitesForTests(apiContext);
     await domain.create(apiContext);
     await classification.create(apiContext);
     await tag.create(apiContext);
@@ -63,7 +61,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     await tag.delete(apiContext);
     await classification.delete(apiContext);
     await domain.delete(apiContext);
-    await EntityDataClass.postRequisitesForTests(apiContext);
     await afterAction();
   });
 

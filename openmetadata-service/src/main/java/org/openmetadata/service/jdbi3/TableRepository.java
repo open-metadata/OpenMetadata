@@ -24,6 +24,7 @@ import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
+import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
@@ -80,7 +81,6 @@ import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
@@ -95,8 +95,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.PipelineObservability;
+import org.openmetadata.schema.type.ProfileSampleConfig;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.SuggestionType;
+import org.openmetadata.schema.type.StaticSamplingConfig;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableData;
@@ -113,7 +114,6 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.EntitySpecViolationException;
-import org.openmetadata.sdk.exception.SuggestionException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -123,6 +123,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
@@ -159,6 +160,7 @@ public class TableRepository extends EntityRepository<Table> {
   private static final String DEFAULT_SCHEMA_FIELDS = "database,service,serviceType";
 
   public static final String COLUMN_FIELD = "columns";
+  public static final String TABLE_CONSTRAINTS_FIELD = "tableConstraints";
   public static final String CUSTOM_METRICS = "customMetrics";
   private static final String RETENTION_PERIOD_FIELD = "retentionPeriod";
   private static final Set<String> CHANGE_SUMMARY_FIELDS =
@@ -194,12 +196,8 @@ public class TableRepository extends EntityRepository<Table> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId())
               : table.getUsageSummary());
     }
-    if (fields.contains(COLUMN_FIELD)) {
-      populateEntityFieldTags(
-          entityType,
-          table.getColumns(),
-          table.getFullyQualifiedName(),
-          fields.contains(FIELD_TAGS));
+    if (fields.contains(COLUMN_FIELD) && fields.contains(FIELD_TAGS)) {
+      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
     }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
     table.setTableProfilerConfig(
@@ -231,18 +229,9 @@ public class TableRepository extends EntityRepository<Table> {
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
 
-    // Handle table-specific fields that aren't in fetchAndSetFields
-    // Only call per-entity populateEntityFieldTags when FIELD_TAGS was NOT requested,
-    // since fetchAndSetColumnTags already handles column tags via bulkPopulateEntityFieldTags
-    var needPerEntityColumnTags = fields.contains(COLUMN_FIELD) && !fields.contains(FIELD_TAGS);
-    entities.forEach(
-        table -> {
-          if (needPerEntityColumnTags) {
-            populateEntityFieldTags(
-                entityType, table.getColumns(), table.getFullyQualifiedName(), false);
-          }
-          clearFieldsInternal(table, fields);
-        });
+    // Column tags come from tag_usage, not table JSON — fetched via fetchAndSetColumnTags when tags
+    // requested
+    entities.forEach(table -> clearFieldsInternal(table, fields));
   }
 
   // Individual field fetchers registered in constructor
@@ -303,8 +292,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     if (fields.contains(COLUMN_FIELD)) {
-      bulkPopulateEntityFieldTags(
-          tables, entityType, Table::getColumns, Table::getFullyQualifiedName);
+      bulkPopulateEntityFieldTags(tables, Table::getColumns);
     }
   }
 
@@ -319,7 +307,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void clearFields(Table table, Fields fields) {
     table.setTableConstraints(
-        fields.contains("tableConstraints") ? table.getTableConstraints() : null);
+        fields.contains(TABLE_CONSTRAINTS_FIELD) ? table.getTableConstraints() : null);
     table.setUsageSummary(fields.contains("usageSummary") ? table.getUsageSummary() : null);
     table.setJoins(fields.contains("joins") ? table.getJoins() : null);
     table.setSchemaDefinition(
@@ -966,11 +954,20 @@ public class TableRepository extends EntityRepository<Table> {
           validateColumn(table, columnProfilerConfig.getColumnName());
         }
       }
-      if (tableProfilerConfig.getProfileSampleType() != null
-          && tableProfilerConfig.getProfileSample() != null) {
-        EntityUtil.validateProfileSample(
-            tableProfilerConfig.getProfileSampleType().toString(),
-            tableProfilerConfig.getProfileSample());
+      ProfileSampleConfig profileSampleConfig = tableProfilerConfig.getProfileSampleConfig();
+      if (!nullOrEmpty(profileSampleConfig) && !nullOrEmpty(profileSampleConfig.getConfig())) {
+        ProfileSampleConfig.SampleConfigType sampleConfigType =
+            profileSampleConfig.getSampleConfigType();
+        if (!nullOrEmpty(sampleConfigType)
+            && sampleConfigType.equals(ProfileSampleConfig.SampleConfigType.STATIC)) {
+          StaticSamplingConfig staticConfig =
+              JsonUtils.convertValue(profileSampleConfig.getConfig(), StaticSamplingConfig.class);
+          if (staticConfig.getProfileSampleType() != null
+              && staticConfig.getProfileSample() != null) {
+            EntityUtil.validateProfileSample(
+                staticConfig.getProfileSampleType().toString(), staticConfig.getProfileSample());
+          }
+        }
       }
     }
 
@@ -1391,7 +1388,7 @@ public class TableRepository extends EntityRepository<Table> {
         get(
             null,
             tableId,
-            getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD)),
+            getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD, TABLE_CONSTRAINTS_FIELD)),
             NON_DELETED,
             false);
 
@@ -1446,6 +1443,10 @@ public class TableRepository extends EntityRepository<Table> {
     }
     applyColumnTags(table.getColumns());
     dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
+    // addDataModel bypasses the EntityRepository.update() path, so invalidateCachesAfterStore
+    // never runs. Drop every cached variant manually so the next GET rebuilds with the freshly
+    // merged tags/dataModel instead of stale pre-merge JSON.
+    invalidateCacheForEntity(entityType, table.getId(), table.getFullyQualifiedName());
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNERS), FIELD_OWNERS));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
@@ -1711,6 +1712,21 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    List<PropagationDescriptor> descriptors =
+        new ArrayList<>(super.getSearchPropagationDescriptors());
+    descriptors.add(
+        new PropagationDescriptor(
+            FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    descriptors.add(
+        new PropagationDescriptor(
+            FIELD_DATA_PRODUCTS,
+            PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST,
+            null));
+    return descriptors;
+  }
+
+  @Override
   protected void applyInheritance(Table entity, Fields fields, EntityInterface parent) {
     inheritOwners(entity, fields, parent);
     inheritDomains(entity, fields, parent);
@@ -1763,49 +1779,6 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
     return super.getTaskWorkflow(threadContext);
-  }
-
-  @Override
-  public String getSuggestionFields(Suggestion suggestion) {
-    return suggestion.getType() == SuggestionType.SuggestTagLabel ? "columns,tags" : "";
-  }
-
-  @Override
-  public Table applySuggestion(EntityInterface entity, String columnFQN, Suggestion suggestion) {
-    Table table = (Table) entity;
-    for (Column col : table.getColumns()) {
-      findAndApplySuggestionToColumn(col, columnFQN, suggestion);
-    }
-    return table;
-  }
-
-  private void findAndApplySuggestionToColumn(
-      Column column, String columnFQN, Suggestion suggestion) {
-    if (column.getFullyQualifiedName().equals(columnFQN)) {
-      applySuggestionToColumn(column, suggestion);
-      return;
-    }
-
-    // If the column FQN is a prefix of the target columnFQN, search recursively in children
-    if (column.getChildren() != null
-        && !column.getChildren().isEmpty()
-        && columnFQN.startsWith(column.getFullyQualifiedName() + ".")) {
-      for (Column child : column.getChildren()) {
-        findAndApplySuggestionToColumn(child, columnFQN, suggestion);
-      }
-    }
-  }
-
-  public void applySuggestionToColumn(Column column, Suggestion suggestion) {
-    if (suggestion.getType().equals(SuggestionType.SuggestTagLabel)) {
-      List<TagLabel> tags = new ArrayList<>(column.getTags());
-      tags.addAll(suggestion.getTagLabels());
-      column.setTags(tags);
-    } else if (suggestion.getType().equals(SuggestionType.SuggestDescription)) {
-      column.setDescription(suggestion.getDescription());
-    } else {
-      throw new SuggestionException("Invalid suggestion Type");
-    }
   }
 
   @Override
@@ -2300,74 +2273,63 @@ public class TableRepository extends EntityRepository<Table> {
           });
       compareAndUpdate(
           "tableType",
-          () -> {
-            recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
-          });
+          () -> recordChange("tableType", origTable.getTableType(), updatedTable.getTableType()));
       compareAndUpdate(
           "dataModel",
-          () -> {
-            recordChange("dataModel", origTable.getDataModel(), updatedTable.getDataModel());
-          });
+          () -> recordChange("dataModel", origTable.getDataModel(), updatedTable.getDataModel()));
       compareAndUpdate(
-          "tableConstraints",
-          () -> {
-            updateTableConstraints(origTable, updatedTable, operation);
-          });
+          TABLE_CONSTRAINTS_FIELD,
+          () -> updateTableConstraints(origTable, updatedTable, operation));
       compareAndUpdate(
           "sourceUrl",
-          () -> {
-            recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-          });
+          () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
       compareAndUpdate(
           "retentionPeriod",
-          () -> {
-            recordChange(
-                "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
-          });
+          () ->
+              recordChange(
+                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
       compareAndUpdate(
           "compressionEnabled",
-          () -> {
-            recordChange(
-                "compressionEnabled",
-                original.getCompressionEnabled(),
-                updated.getCompressionEnabled());
-          });
+          () ->
+              recordChange(
+                  "compressionEnabled",
+                  original.getCompressionEnabled(),
+                  updated.getCompressionEnabled()));
       compareAndUpdate(
           "compressionCodec",
-          () -> {
-            recordChange(
-                "compressionCodec", original.getCompressionCodec(), updated.getCompressionCodec());
-          });
+          () ->
+              recordChange(
+                  "compressionCodec",
+                  original.getCompressionCodec(),
+                  updated.getCompressionCodec()));
       compareAndUpdate(
           "compressionStrategy",
-          () -> {
-            recordChange(
-                "compressionStrategy",
-                original.getCompressionStrategy(),
-                updated.getCompressionStrategy());
-          });
+          () ->
+              recordChange(
+                  "compressionStrategy",
+                  original.getCompressionStrategy(),
+                  updated.getCompressionStrategy()));
       compareAndUpdate(
           "sourceHash",
-          () -> {
-            recordChange(
-                "sourceHash",
-                original.getSourceHash(),
-                updated.getSourceHash(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "sourceHash",
+                  original.getSourceHash(),
+                  updated.getSourceHash(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
       compareAndUpdate(
           "locationPath",
-          () -> {
-            recordChange("locationPath", original.getLocationPath(), updated.getLocationPath());
-          });
+          () ->
+              recordChange("locationPath", original.getLocationPath(), updated.getLocationPath()));
       compareAndUpdate(
           "processedLineage",
-          () -> {
-            recordChange(
-                "processedLineage", original.getProcessedLineage(), updated.getProcessedLineage());
-          });
+          () ->
+              recordChange(
+                  "processedLineage",
+                  original.getProcessedLineage(),
+                  updated.getProcessedLineage()));
     }
 
     private void updateProcessedLineage(Table origTable, Table updatedTable) {
@@ -2426,7 +2388,7 @@ public class TableRepository extends EntityRepository<Table> {
       List<TableConstraint> added = new ArrayList<>();
       List<TableConstraint> deleted = new ArrayList<>();
       recordListChange(
-          "tableConstraints",
+          TABLE_CONSTRAINTS_FIELD,
           origConstraints,
           updatedConstraints,
           added,
@@ -2890,9 +2852,8 @@ public class TableRepository extends EntityRepository<Table> {
       List<EntityReference> piiOwners,
       Authorizer authorizer,
       SecurityContext securityContext) {
-    Table fullTable = table;
 
-    List<Column> allColumns = fullTable.getColumns();
+    List<Column> allColumns = table.getColumns();
     if (allColumns == null || allColumns.isEmpty()) {
       return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
     }

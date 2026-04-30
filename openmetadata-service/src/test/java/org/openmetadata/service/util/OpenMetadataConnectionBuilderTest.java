@@ -74,9 +74,7 @@ class OpenMetadataConnectionBuilderTest {
       assertEquals(SecretsManagerProvider.AWS, connection.getSecretsManagerProvider());
       assertEquals(SecretsManagerClientLoader.AIRFLOW, connection.getSecretsManagerLoader());
       assertInstanceOf(OpenMetadataJWTClientConfig.class, connection.getSecurityConfig());
-      assertEquals(
-          "jwt-token",
-          ((OpenMetadataJWTClientConfig) connection.getSecurityConfig()).getJwtToken());
+      assertEquals("jwt-token", connection.getSecurityConfig().getJwtToken());
       assertInstanceOf(ValidateSSLClientConfig.class, connection.getSslConfig());
       assertEquals(
           "/tmp/ca.pem", ((ValidateSSLClientConfig) connection.getSslConfig()).getCaCertificate());
@@ -113,9 +111,7 @@ class OpenMetadataConnectionBuilderTest {
       OpenMetadataConnection connection =
           new OpenMetadataConnectionBuilder(appConfig, pipeline).build();
 
-      assertEquals(
-          "fallback-token",
-          ((OpenMetadataJWTClientConfig) connection.getSecurityConfig()).getJwtToken());
+      assertEquals("fallback-token", connection.getSecurityConfig().getJwtToken());
       assertNull(connection.getSslConfig());
     }
   }

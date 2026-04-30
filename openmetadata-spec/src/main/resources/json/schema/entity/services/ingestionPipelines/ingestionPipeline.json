@@ -26,7 +26,7 @@
           "description": "Pipeline status denotes if its failed or succeeded.",
           "type": "string",
           "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType",
-          "enum": ["queued","success","failed","running","partialSuccess"]
+          "enum": ["queued","success","failed","running","partialSuccess","stopped"]
         },
         "startDate": {
           "description": "startDate of the pipeline run for this particular execution.",

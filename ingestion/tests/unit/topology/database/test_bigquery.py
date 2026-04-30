@@ -16,7 +16,7 @@ bigquery unit tests
 # pylint: disable=line-too-long
 import types
 from copy import deepcopy
-from typing import Dict
+from typing import Dict  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 
@@ -56,6 +56,10 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.lineage import BigqueryLineageSource
 from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
+from metadata.ingestion.source.database.bigquery.queries import (
+    BIGQUERY_GET_STORED_PROCEDURES,
+    BIGQUERY_GET_STORED_PROCEDURES_BY_REGION,
+)
 
 mock_bq_config = {
     "source": {
@@ -147,9 +151,7 @@ MOCK_TABLE = Table(
         ),
     ],
     tableConstraints=[],
-    databaseSchema=EntityReference(
-        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="databaseSchema"
-    ),
+    databaseSchema=EntityReference(id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="databaseSchema"),
     tags=[],
     sourceUrl=SourceUrl(
         "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
@@ -162,9 +164,7 @@ EXPECTED_DATABASE = [
         tags=[],
         service=FullyQualifiedEntityName("bigquery_source_test"),
         default=False,
-        sourceUrl=SourceUrl(
-            "https://console.cloud.google.com/bigquery?project=random-project-id"
-        ),
+        sourceUrl=SourceUrl("https://console.cloud.google.com/bigquery?project=random-project-id"),
     )
 ]
 EXPTECTED_DATABASE_SCHEMA = [
@@ -268,9 +268,9 @@ MOCK_COLUMN_DATA = [
     ],
 ]
 
-MOCK_PK_CONSTRAINT: Dict[str, Dict] = {
-    "customers": dict({"constrained_columns": ("customer_id",)}),
-    "orders": dict({"constrained_columns": ()}),
+MOCK_PK_CONSTRAINT: Dict[str, Dict] = {  # noqa: UP006
+    "customers": dict({"constrained_columns": ("customer_id",)}),  # noqa: C418
+    "orders": dict({"constrained_columns": ()}),  # noqa: C418
 }
 
 MOCK_FK_CONSTRAINT = {
@@ -318,9 +318,7 @@ EXPECTED_TABLE = [
                 ),
             ],
             tableConstraints=[],
-            databaseSchema=FullyQualifiedEntityName(
-                root="bigquery_source_test.random-project-id.sample_schema"
-            ),
+            databaseSchema=FullyQualifiedEntityName(root="bigquery_source_test.random-project-id.sample_schema"),
             tags=[],
             sourceUrl=SourceUrl(
                 "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
@@ -369,9 +367,7 @@ EXPECTED_TABLE = [
                     ],
                 )
             ],
-            databaseSchema=FullyQualifiedEntityName(
-                root="bigquery_source_test.random-project-id.sample_schema"
-            ),
+            databaseSchema=FullyQualifiedEntityName(root="bigquery_source_test.random-project-id.sample_schema"),
             tags=[],
             sourceUrl=SourceUrl(
                 "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3sorders"
@@ -388,9 +384,7 @@ MOCK_TABLE_CONSTRAINT = [
             constraintType="FOREIGN_KEY",
             columns=["customer_id"],
             referredColumns=[
-                FullyQualifiedEntityName(
-                    "bigquery_source_test.random-project-id.sample_schema.customers.customer_id"
-                )
+                FullyQualifiedEntityName("bigquery_source_test.random-project-id.sample_schema.customers.customer_id")
             ],
         )
     ],
@@ -403,44 +397,26 @@ class BigqueryUnitTest(TestCase):
     Bigquery Unit Test
     """
 
-    @patch(
-        "metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"
-    )
-    @patch(
-        "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"
-    )
+    @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection")
+    @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id")
     @patch("metadata.ingestion.source.database.bigquery.connection.get_connection")
-    def __init__(
-        self, methodName, get_connection, set_project_id, test_connection
-    ) -> None:
+    def __init__(self, methodName, get_connection, set_project_id, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         get_connection.return_value = Mock()
         test_connection.return_value = False
         set_project_id.return_value = "random-project-id"
         self.config = parse_workflow_config_gracefully(mock_bq_config)
         self.metadata = OpenMetadata(
-            OpenMetadataConnection.model_validate(
-                mock_bq_config["workflowConfig"]["openMetadataServerConfig"]
-            )
+            OpenMetadataConnection.model_validate(mock_bq_config["workflowConfig"]["openMetadataServerConfig"])
         )
         self.bq_source = BigquerySource.create(mock_bq_config["source"], self.metadata)
-        self.bq_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.bq_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.thread_id = self.bq_source.context.get_current_thread_id()
         self.bq_source._inspector_map[self.thread_id] = types.SimpleNamespace()
-        self.bq_source._inspector_map[
-            self.thread_id
-        ].get_pk_constraint = lambda table_name, schema: []
-        self.bq_source._inspector_map[
-            self.thread_id
-        ].get_unique_constraints = lambda table_name, schema_name: []
-        self.bq_source._inspector_map[
-            self.thread_id
-        ].get_foreign_keys = lambda table_name, schema: []
-        self.bq_source._inspector_map[
-            self.thread_id
-        ].get_columns = lambda table_name, schema, db_name: []
+        self.bq_source._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema: []
+        self.bq_source._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
+        self.bq_source._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema: []
+        self.bq_source._inspector_map[self.thread_id].get_columns = lambda table_name, schema, db_name: []
         self.bq_source.client = Mock()
 
     def test_source_url(self):
@@ -454,39 +430,22 @@ class BigqueryUnitTest(TestCase):
             EXPECTED_URL,
         )
 
-    @patch(
-        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_database_tag_labels"
-    )
+    @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_database_tag_labels")
     def test_yield_database(self, get_database_tag_labels):
         get_database_tag_labels.return_value = []
-        assert EXPECTED_DATABASE == [
-            either.right for either in self.bq_source.yield_database(MOCK_DB_NAME)
-        ]
+        assert EXPECTED_DATABASE == [either.right for either in self.bq_source.yield_database(MOCK_DB_NAME)]  # noqa: SIM300
 
-    @patch(
-        "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.get_schema_description"
-    )
+    @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.get_schema_description")
     def test_yield_database_schema(self, get_schema_description):
         get_schema_description.return_value = "Some description with it's own\nnew line"
-        assert EXPTECTED_DATABASE_SCHEMA == [
-            either.right
-            for either in self.bq_source.yield_database_schema(
-                schema_name=MOCK_DATABASE_SCHEMA.name.root
-            )
+        assert EXPTECTED_DATABASE_SCHEMA == [  # noqa: SIM300
+            either.right for either in self.bq_source.yield_database_schema(schema_name=MOCK_DATABASE_SCHEMA.name.root)
         ]
 
-    @patch(
-        "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.get_tag_labels"
-    )
-    @patch(
-        "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.get_table_partition_details"
-    )
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService._get_foreign_constraints"
-    )
-    def test_get_columns_with_constraints(
-        self, _get_foreign_constraints, get_table_partition_details, get_tag_labels
-    ):
+    @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.get_tag_labels")
+    @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.get_table_partition_details")
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService._get_foreign_constraints")
+    def test_get_columns_with_constraints(self, _get_foreign_constraints, get_table_partition_details, get_tag_labels):
         """
         Test different constraint type ingested as expected
         """
@@ -494,38 +453,27 @@ class BigqueryUnitTest(TestCase):
         get_tag_labels.return_value = []
         get_table_partition_details.return_value = False, None
         self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
-        self.bq_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.bq_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
         for i, table in enumerate(MOCK_TABLE_NAMES):
             _get_foreign_constraints.return_value = MOCK_TABLE_CONSTRAINT[i]
             self.bq_source.inspector.get_pk_constraint = (
-                lambda table_name, schema: MOCK_PK_CONSTRAINT[
-                    table[0]
-                ]  # pylint: disable=cell-var-from-loop
+                lambda table_name, schema: MOCK_PK_CONSTRAINT[table[0]]  # pylint: disable=cell-var-from-loop  # noqa: B023
             )
             self.bq_source.inspector.get_foreign_keys = (
-                lambda table_name, schema: MOCK_FK_CONSTRAINT[
-                    table[0]
-                ]  # pylint: disable=cell-var-from-loop
+                lambda table_name, schema: MOCK_FK_CONSTRAINT[table[0]]  # pylint: disable=cell-var-from-loop  # noqa: B023
             )
-            self.bq_source._get_columns_internal = lambda schema_name, table_name, db_name, inspector, table_type,: MOCK_COLUMN_DATA[
-                i
-            ]  # pylint: disable=cell-var-from-loop
+            self.bq_source._get_columns_internal = lambda schema_name, table_name, db_name, inspector, table_type,: (
+                MOCK_COLUMN_DATA[i]  # noqa: B023
+            )  # pylint: disable=cell-var-from-loop
 
-            self.bq_source.inspector.get_table_comment = lambda table_name, schema: {
-                "text": table[2]
-            }  # pylint: disable=cell-var-from-loop
+            self.bq_source.inspector.get_table_comment = lambda table_name, schema: {"text": table[2]}  # pylint: disable=cell-var-from-loop  # noqa: B023
 
             # Mock the BigQuery client get_table method for clustering fields
             mock_table = Mock()
             mock_table.clustering_fields = []  # Empty list to avoid constraint creation
-            self.bq_source.client.get_table = lambda fqn: mock_table
-            assert EXPECTED_TABLE[i] == [
-                either.right
-                for either in self.bq_source.yield_table((table[0], table[1]))
-            ]
+            self.bq_source.client.get_table = lambda fqn: mock_table  # noqa: B023
+            assert EXPECTED_TABLE[i] == [either.right for either in self.bq_source.yield_table((table[0], table[1]))]
 
     def test_topology_runner_error_handling(self):
         """
@@ -558,10 +506,7 @@ class BigqueryUnitTest(TestCase):
 
         assert results == []
         assert len(self.bq_source.status.failures) == initial_failures + 1
-        assert (
-            self.bq_source.status.failures[-1].name
-            == "Post Process failing_post_process"
-        )
+        assert self.bq_source.status.failures[-1].name == "Post Process failing_post_process"
 
         # --- post_process: success yields entity normally ---
         sentinel = object()
@@ -577,9 +522,7 @@ class BigqueryUnitTest(TestCase):
         self.bq_source.successful_post_process = successful_post_process
         failures_before = len(self.bq_source.status.failures)
 
-        results = list(
-            TopologyRunnerMixin._run_node_post_process(self.bq_source, success_pp_node)
-        )
+        results = list(TopologyRunnerMixin._run_node_post_process(self.bq_source, success_pp_node))
 
         assert results == [sentinel]
         assert len(self.bq_source.status.failures) == failures_before
@@ -596,9 +539,7 @@ class BigqueryUnitTest(TestCase):
         self.bq_source.failing_producer = failing_producer
         initial_failures = len(self.bq_source.status.failures)
 
-        results = list(
-            TopologyRunnerMixin._run_node_producer(self.bq_source, error_producer_node)
-        )
+        results = list(TopologyRunnerMixin._run_node_producer(self.bq_source, error_producer_node))
 
         assert results == []
         assert len(self.bq_source.status.failures) == initial_failures + 1
@@ -617,11 +558,7 @@ class BigqueryUnitTest(TestCase):
         self.bq_source.successful_producer = successful_producer
         failures_before = len(self.bq_source.status.failures)
 
-        results = list(
-            TopologyRunnerMixin._run_node_producer(
-                self.bq_source, success_producer_node
-            )
-        )
+        results = list(TopologyRunnerMixin._run_node_producer(self.bq_source, success_producer_node))
 
         assert results == [sentinel2]
         assert len(self.bq_source.status.failures) == failures_before
@@ -631,13 +568,9 @@ class BigqueryUnitTest(TestCase):
         Test fetching stored procedures with filter
         """
         self.bq_source.source_config.includeStoredProcedures = True
-        self.bq_source.source_config.storedProcedureFilterPattern = FilterPattern(
-            excludes=["sp_exclude"]
-        )
+        self.bq_source.source_config.storedProcedureFilterPattern = FilterPattern(excludes=["sp_exclude"])
         self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
-        self.bq_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.bq_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
         mock_engine = MagicMock()
         self.bq_source.engine = mock_engine
@@ -664,6 +597,61 @@ class BigqueryUnitTest(TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
 
+    def test_stored_procedures_queries_include_function_routine_type(self):
+        """
+        BigQuery routines include user-defined FUNCTIONs in addition to
+        PROCEDURE and TABLE FUNCTION. Both query constants must filter on
+        all three routine_types so user-defined functions are ingested.
+        """
+        for query in (
+            BIGQUERY_GET_STORED_PROCEDURES,
+            BIGQUERY_GET_STORED_PROCEDURES_BY_REGION,
+        ):
+            assert "'PROCEDURE'" in query
+            assert "'TABLE FUNCTION'" in query
+            assert "'FUNCTION'" in query
+
+    def test_get_stored_procedures_ingests_user_defined_functions(self):
+        """
+        User-defined functions (routine_type = FUNCTION) returned by the
+        INFORMATION_SCHEMA.ROUTINES query are yielded alongside procedures
+        and table functions.
+        """
+        self.bq_source.source_config.includeStoredProcedures = True
+        self.bq_source.source_config.storedProcedureFilterPattern = None
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        self.bq_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+
+        proc_row = {"name": "my_proc", "definition": "BEGIN END", "language": "SQL"}
+        table_fn_row = {
+            "name": "my_table_fn",
+            "definition": "SELECT 1",
+            "language": "SQL",
+        }
+        udf_row = {
+            "name": "my_udf",
+            "definition": "RETURN x + 1",
+            "language": "SQL",
+        }
+
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = [
+            proc_row,
+            table_fn_row,
+            udf_row,
+        ]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.bq_source.engine = mock_engine
+
+        results = list(self.bq_source.get_stored_procedures())
+
+        names = {r.name for r in results}
+        assert names == {"my_proc", "my_table_fn", "my_udf"}
+        query_str = str(mock_conn.execute.call_args[0][0])
+        assert "'FUNCTION'" in query_str
+
     @patch("metadata.utils.credentials.auth.default")
     def test_usage_location_passed_to_client_and_engine(self, mock_auth_default):
         """
@@ -681,31 +669,21 @@ class BigqueryUnitTest(TestCase):
         mock_credentials = Mock(spec=Credentials)
         mock_auth_default.return_value = (mock_credentials, "test-project")
 
-        config_with_location = deepcopy(
-            mock_bq_config["source"]["serviceConnection"]["config"]
-        )
+        config_with_location = deepcopy(mock_bq_config["source"]["serviceConnection"]["config"])
         config_with_location["usageLocation"] = "eu"
 
         service_connection = BigQueryConnection.model_validate(config_with_location)
 
-        result = get_inspector_details(
-            database_name="test-project", service_connection=service_connection
-        )
+        result = get_inspector_details(database_name="test-project", service_connection=service_connection)
         assert "location=eu" in str(result.engine.url)
         assert result.client._location == "eu"
 
-        config_without_location = deepcopy(
-            mock_bq_config["source"]["serviceConnection"]["config"]
-        )
+        config_without_location = deepcopy(mock_bq_config["source"]["serviceConnection"]["config"])
         config_without_location["usageLocation"] = None
 
-        service_connection_null = BigQueryConnection.model_validate(
-            config_without_location
-        )
+        service_connection_null = BigQueryConnection.model_validate(config_without_location)
 
-        result_null = get_inspector_details(
-            database_name="test-project", service_connection=service_connection_null
-        )
+        result_null = get_inspector_details(database_name="test-project", service_connection=service_connection_null)
         assert "location=eu" not in str(result_null.engine.url)
         assert result_null.client._location is None
 
@@ -718,12 +696,10 @@ class BigqueryLineageSourceTest(TestCase):
 
     @patch("metadata.ingestion.source.database.bigquery.connection.get_connection")
     @patch("metadata.ingestion.source.database.bigquery.connection.test_connection")
-    @patch(
-        "metadata.ingestion.source.database.bigquery.query_parser.BigqueryQueryParserSource.set_project_id"
-    )
+    @patch("metadata.ingestion.source.database.bigquery.query_parser.BigqueryQueryParserSource.set_project_id")
     def __init__(
         self,
-        methodName,
+        methodName,  # noqa: N803
         set_project_id_lineage,  # pylint: disable=unused-argument
         test_connection,  # pylint: disable=unused-argument
         get_connection,  # pylint: disable=unused-argument
@@ -731,12 +707,11 @@ class BigqueryLineageSourceTest(TestCase):
         super().__init__(methodName)
 
         mock_credentials_path_bq_config = deepcopy(mock_bq_config)
-        mock_credentials_path_bq_config["source"]["serviceConnection"]["config"][
-            "credentials"
-        ]["gcpConfig"] = {"path": "credentials.json", "projectId": "my-gcp-project"}
-        self.config = OpenMetadataWorkflowConfig.model_validate(
-            mock_credentials_path_bq_config
-        )
+        mock_credentials_path_bq_config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"] = {
+            "path": "credentials.json",
+            "projectId": "my-gcp-project",
+        }
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_credentials_path_bq_config)
         self.bq_query_parser = BigqueryLineageSource(
             self.config.source, self.config.workflowConfig.openMetadataServerConfig
         )
@@ -744,3 +719,221 @@ class BigqueryLineageSourceTest(TestCase):
     def test_get_engine_without_project_id_specified(self):
         for engine in self.bq_query_parser.get_engine():
             assert engine is self.bq_query_parser.engine
+
+
+class TestBigqueryRegionAwareQueries:
+    """
+    Tests for region-aware INFORMATION_SCHEMA queries in the BigQuery connector.
+
+    Covers get_stored_procedures and _prefetch_table_ddls, which must route queries
+    to the correct GCP region when a dataset lives outside the engine's default location.
+    """
+
+    def setup_method(self):
+        patcher_test_conn = patch(
+            "metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"
+        )
+        patcher_set_project = patch(
+            "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"
+        )
+        patcher_get_conn = patch(
+            "metadata.ingestion.source.database.bigquery.connection.get_connection",
+            return_value=Mock(),
+        )
+        self._patchers = [patcher_test_conn, patcher_set_project, patcher_get_conn]
+        for p in self._patchers:
+            p.start()
+
+        metadata = OpenMetadata(
+            OpenMetadataConnection.model_validate(mock_bq_config["workflowConfig"]["openMetadataServerConfig"])
+        )
+        self.bq_source = BigquerySource.create(mock_bq_config["source"], metadata)
+        self.bq_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        self.bq_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        self.bq_source.client = Mock()
+        self.bq_source.source_config.includeStoredProcedures = True
+        self.bq_source.source_config.includeDDL = True
+
+    def teardown_method(self):
+        for p in self._patchers:
+            p.stop()
+
+    def _make_engine_mock(self, rows):
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = rows
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        return mock_engine, mock_conn
+
+    def _set_dataset_location(self, location):
+        mock_dataset = Mock()
+        mock_dataset.location = location
+        self.bq_source.client.get_dataset.return_value = mock_dataset
+        self.bq_source._current_dataset_obj = None
+
+    # --- get_stored_procedures ---
+
+    def test_get_stored_procedures_uses_region_aware_query(self):
+        """Region-aware query is used when the dataset has a location."""
+        self._set_dataset_location("EU")
+        sp_row = {"name": "my_proc", "definition": "BEGIN END", "language": "SQL"}
+        mock_engine, mock_conn = self._make_engine_mock([sp_row])
+        self.bq_source.engine = mock_engine
+
+        results = list(self.bq_source.get_stored_procedures())
+
+        assert len(results) == 1
+        assert results[0].name == "my_proc"
+        query_str = str(mock_conn.execute.call_args[0][0])
+        assert "region-EU" in query_str
+
+    def test_get_stored_procedures_falls_back_without_location(self):
+        """Dataset-scoped query is used when dataset location is None."""
+        self._set_dataset_location(None)
+        sp_row = {"name": "my_proc", "definition": "BEGIN END", "language": "SQL"}
+        mock_engine, mock_conn = self._make_engine_mock([sp_row])
+        self.bq_source.engine = mock_engine
+
+        results = list(self.bq_source.get_stored_procedures())
+
+        assert len(results) == 1
+        query_str = str(mock_conn.execute.call_args[0][0])
+        assert "region-" not in query_str
+        assert MOCK_DATABASE_SCHEMA.name.root in query_str
+
+    def test_get_stored_procedures_falls_back_when_location_unavailable(self):
+        """When client.get_dataset raises, falls back to dataset-scoped query and returns results."""
+        self.bq_source.client.get_dataset.side_effect = Exception("permission denied")
+        self.bq_source._current_dataset_obj = None
+        sp_row = {"name": "my_proc", "definition": "BEGIN END", "language": "SQL"}
+        mock_engine, mock_conn = self._make_engine_mock([sp_row])
+        self.bq_source.engine = mock_engine
+
+        results = list(self.bq_source.get_stored_procedures())
+
+        assert len(results) == 1
+        assert results[0].name == "my_proc"
+        query_str = str(mock_conn.execute.call_args[0][0])
+        assert "region-" not in query_str
+
+    def test_get_stored_procedures_returns_empty_when_dataset_not_found(self):
+        """When both client.get_dataset and SQL execution fail, returns empty without a producer failure."""
+        self.bq_source.client.get_dataset.side_effect = Exception("404 Not found")
+        self.bq_source._current_dataset_obj = None
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.side_effect = Exception("404 Not found in location US")
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.bq_source.engine = mock_engine
+        failures_before = len(self.bq_source.status.failures)
+
+        results = list(self.bq_source.get_stored_procedures())
+
+        assert results == []
+        assert len(self.bq_source.status.failures) == failures_before
+
+    def test_get_stored_procedures_returns_empty_when_query_fails(self):
+        """When SQL execution raises, returns empty without recording a producer failure."""
+        self._set_dataset_location("US")
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.side_effect = Exception("connection error")
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.bq_source.engine = mock_engine
+        failures_before = len(self.bq_source.status.failures)
+
+        results = list(self.bq_source.get_stored_procedures())
+
+        assert results == []
+        assert len(self.bq_source.status.failures) == failures_before
+
+    # --- _prefetch_table_ddls ---
+
+    def test_prefetch_table_ddls_uses_region_aware_query(self):
+        """Region-aware DDL query is used when the dataset has a location."""
+        self._set_dataset_location("EU")
+        ddl_row = Mock()
+        ddl_row.table_name = "my_table"
+        ddl_row.ddl = "CREATE TABLE my_table (id INT64)"
+        mock_engine, mock_conn = self._make_engine_mock([ddl_row])
+        self.bq_source.engine = mock_engine
+
+        self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert self.bq_source._table_ddl_cache["my_table"] == "CREATE TABLE my_table (id INT64)"
+        query_str = str(mock_conn.execute.call_args[0][0])
+        assert "region-EU" in query_str
+
+    def test_prefetch_table_ddls_falls_back_without_location(self):
+        """Dataset-scoped DDL query is used when dataset location is None."""
+        self._set_dataset_location(None)
+        ddl_row = Mock()
+        ddl_row.table_name = "my_table"
+        ddl_row.ddl = "CREATE TABLE my_table (id INT64)"
+        mock_engine, mock_conn = self._make_engine_mock([ddl_row])
+        self.bq_source.engine = mock_engine
+
+        self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert self.bq_source._table_ddl_cache["my_table"] == "CREATE TABLE my_table (id INT64)"
+        query_str = str(mock_conn.execute.call_args[0][0])
+        assert "region-" not in query_str
+        assert MOCK_DATABASE_SCHEMA.name.root in query_str
+
+    def test_prefetch_table_ddls_skipped_when_disabled(self):
+        """When includeDDL is False, the method returns early without any API calls."""
+        self.bq_source.source_config.includeDDL = False
+
+        self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
+
+        self.bq_source.client.get_dataset.assert_not_called()
+        assert self.bq_source._table_ddl_cache == {}
+
+    def test_prefetch_table_ddls_falls_back_when_location_unavailable(self):
+        """When client.get_dataset raises, falls back to dataset-scoped query and populates cache."""
+        self.bq_source.client.get_dataset.side_effect = Exception("permission denied")
+        self.bq_source._current_dataset_obj = None
+        ddl_row = Mock()
+        ddl_row.table_name = "my_table"
+        ddl_row.ddl = "CREATE TABLE my_table (id INT64)"
+        mock_engine, mock_conn = self._make_engine_mock([ddl_row])
+        self.bq_source.engine = mock_engine
+
+        self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert self.bq_source._table_ddl_cache["my_table"] == "CREATE TABLE my_table (id INT64)"
+        query_str = str(mock_conn.execute.call_args[0][0])
+        assert "region-" not in query_str
+
+    def test_prefetch_table_ddls_cache_empty_when_dataset_not_found(self):
+        """When both client.get_dataset and SQL execution fail, cache stays empty and no exception propagates."""
+        self.bq_source.client.get_dataset.side_effect = Exception("404 Not found")
+        self.bq_source._current_dataset_obj = None
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.side_effect = Exception("404 Not found in location US")
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.bq_source.engine = mock_engine
+
+        self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert self.bq_source._table_ddl_cache == {}
+
+    def test_prefetch_table_ddls_cache_empty_when_query_fails(self):
+        """When SQL execution raises, cache stays empty and no exception propagates."""
+        self._set_dataset_location("US")
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.side_effect = Exception("connection error")
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.bq_source.engine = mock_engine
+
+        self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert self.bq_source._table_ddl_cache == {}

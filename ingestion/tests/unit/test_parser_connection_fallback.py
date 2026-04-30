@@ -29,12 +29,12 @@ Case-Sensitivity Issue:
 
 Services Affected:
 ------------------
-Only 3 out of 47 database services were broken on Linux:
+Only 3 out of 46 database services were broken on Linux:
   ❌ SAS     (tried: sASConnection,     actual: sasConnection.py)
   ❌ SQLite  (tried: sQLiteConnection,  actual: sqliteConnection.py)
   ❌ SSAS    (tried: sSASConnection,    actual: ssasConnection.py)
 
-All other 44 services worked correctly because camelCase matched their filenames:
+All other 43 services worked correctly because camelCase matched their filenames:
   ✅ BigQuery (bigQueryConnection.py), AzureSQL (azureSQLConnection.py), etc.
 
 The Solution:
@@ -48,9 +48,10 @@ This test suite validates:
 1. Fallback path works for the 3 affected services
 2. Standard path works for 44 unaffected services
 3. Edge cases (numbers, acronyms, mixed-case)
-4. Comprehensive validation of all 47 services
+4. Comprehensive validation of all 46 services
 5. Performance (fallback has negligible overhead)
 """
+
 import pytest
 
 from metadata.generated.schema.entity.services.databaseService import (
@@ -65,22 +66,21 @@ class TestConnectionFallbackMechanism:
     Test suite for the scalable connection import mechanism.
 
     The get_connection_class() function uses a try-except pattern:
-    1. Try standard camelCase: "BigQuery" -> "bigQueryConnection.py" (44 services)
+    1. Try standard camelCase: "BigQuery" -> "bigQueryConnection.py" (43 services)
     2. Fallback to lowercase: "SAS" -> "sasConnection.py" (3 services)
 
     This automatically handles any naming convention without hardcoded lists.
 
     IMPORTANT: Only 3 services require the fallback path!
-    All other services use standard camelCase and work on first try.
-    """
+    All other 43 services use standard camelCase and work on first try."""
 
     # The ONLY 3 services that require fallback to all-lowercase module name
     # These were broken on Linux (case-sensitive FS) before the fix
     # Old formula produced wrong casing: sASConnection (tried) != sasConnection (actual)
-    FALLBACK_SERVICES = ["SAS", "SQLite", "SSAS"]
+    FALLBACK_SERVICES = ["SAS", "SQLite", "SSAS"]  # noqa: RUF012
 
     # Services with multi-word camelCase names (take standard path)
-    CAMELCASE_SERVICES = [
+    CAMELCASE_SERVICES = [  # noqa: RUF012
         "BigQuery",  # bigQueryConnection.py
         "AzureSQL",  # azureSQLConnection.py
         "DynamoDB",  # dynamoDBConnection.py
@@ -98,7 +98,7 @@ class TestConnectionFallbackMechanism:
     ]
 
     # Services with single word or naturally lowercase names
-    SIMPLE_SERVICES = [
+    SIMPLE_SERVICES = [  # noqa: RUF012
         "Athena",
         "Cassandra",
         "Clickhouse",
@@ -114,7 +114,6 @@ class TestConnectionFallbackMechanism:
         "Glue",
         "Greenplum",
         "Hive",
-        "Iceberg",
         "Impala",
         "Mssql",
         "Mysql",
@@ -150,22 +149,18 @@ class TestConnectionFallbackMechanism:
         connection_class = get_connection_class(service_name, DatabaseConnection)
 
         # Verify class was loaded successfully
-        assert (
-            connection_class is not None
-        ), f"Failed to load connection class for {service_name}"
+        assert connection_class is not None, f"Failed to load connection class for {service_name}"
 
         # Verify class name is correct
         expected_class_name = f"{service_name}Connection"
         assert connection_class.__name__ == expected_class_name, (
-            f"Expected class name '{expected_class_name}', "
-            f"got '{connection_class.__name__}'"
+            f"Expected class name '{expected_class_name}', got '{connection_class.__name__}'"
         )
 
         # Verify module uses all-lowercase naming
         expected_module = f"{service_name.lower()}Connection"
         assert connection_class.__module__.endswith(expected_module), (
-            f"Expected module to end with '{expected_module}', "
-            f"got '{connection_class.__module__}'"
+            f"Expected module to end with '{expected_module}', got '{connection_class.__module__}'"
         )
 
     @pytest.mark.parametrize("service_name", CAMELCASE_SERVICES)
@@ -182,34 +177,30 @@ class TestConnectionFallbackMechanism:
           Result: MATCH - worked on both Linux and macOS
 
         The try block succeeds immediately without needing the fallback.
-        This represents 44 out of 47 database services (94%).
+        This represents 43 out of 46 database services (93%).
         """
         connection_class = get_connection_class(service_name, DatabaseConnection)
 
         # Verify class was loaded successfully
-        assert (
-            connection_class is not None
-        ), f"Failed to load connection class for {service_name}"
+        assert connection_class is not None, f"Failed to load connection class for {service_name}"
 
         # Verify class name is correct
         expected_class_name = f"{service_name}Connection"
         assert connection_class.__name__ == expected_class_name, (
-            f"Expected class name '{expected_class_name}', "
-            f"got '{connection_class.__name__}'"
+            f"Expected class name '{expected_class_name}', got '{connection_class.__name__}'"
         )
 
         # Verify module uses camelCase naming (not all-lowercase)
         expected_module = f"{service_name[0].lower()}{service_name[1:]}Connection"
         assert connection_class.__module__.endswith(expected_module), (
-            f"Expected module to end with '{expected_module}', "
-            f"got '{connection_class.__module__}'"
+            f"Expected module to end with '{expected_module}', got '{connection_class.__module__}'"
         )
 
         # Verify it's NOT using all-lowercase (that would be wrong)
         wrong_module = f"{service_name.lower()}Connection"
-        assert not connection_class.__module__.endswith(
-            wrong_module
-        ), f"Module should use camelCase, not all-lowercase '{wrong_module}'"
+        assert not connection_class.__module__.endswith(wrong_module), (
+            f"Module should use camelCase, not all-lowercase '{wrong_module}'"
+        )
 
     @pytest.mark.parametrize("service_name", SIMPLE_SERVICES)
     def test_simple_name_services(self, service_name):
@@ -222,9 +213,7 @@ class TestConnectionFallbackMechanism:
         connection_class = get_connection_class(service_name, DatabaseConnection)
 
         # Verify class was loaded successfully
-        assert (
-            connection_class is not None
-        ), f"Failed to load connection class for {service_name}"
+        assert connection_class is not None, f"Failed to load connection class for {service_name}"
 
         # Verify class name is correct
         expected_class_name = f"{service_name}Connection"
@@ -252,9 +241,7 @@ class TestConnectionFallbackMechanism:
                 continue
 
             try:
-                connection_class = get_connection_class(
-                    service_name, DatabaseConnection
-                )
+                connection_class = get_connection_class(service_name, DatabaseConnection)
 
                 # Verify basic properties
                 assert connection_class is not None
@@ -275,9 +262,7 @@ class TestConnectionFallbackMechanism:
         total_services = len(list(DatabaseServiceType)) - len(excluded_services)
 
         if failed_services:
-            failure_details = "\n".join(
-                f"  - {name}: {error}" for name, error in failed_services
-            )
+            failure_details = "\n".join(f"  - {name}: {error}" for name, error in failed_services)
             pytest.fail(
                 f"❌ Failed to import {len(failed_services)} out of {total_services} services:\n"
                 f"{failure_details}\n\n"
@@ -317,9 +302,9 @@ class TestConnectionFallbackMechanism:
         assert "sasConnection" in connection_class.__module__
 
         # Verify it has expected Pydantic model attributes
-        assert hasattr(connection_class, "model_fields") or hasattr(
-            connection_class, "__fields__"
-        ), "Connection class should be a Pydantic model"
+        assert hasattr(connection_class, "model_fields") or hasattr(connection_class, "__fields__"), (
+            "Connection class should be a Pydantic model"
+        )
 
     def test_fallback_mechanism_performance(self):
         """
@@ -328,7 +313,7 @@ class TestConnectionFallbackMechanism:
         Standard path services: 1 import attempt (fast)
         Fallback path services: 2 import attempts (still fast)
 
-        With only 3 services using fallback out of 47, the overhead is negligible.
+        With only 3 services using fallback out of 46, the overhead is negligible.
         """
         import time
 
@@ -350,9 +335,7 @@ class TestConnectionFallbackMechanism:
 
         # Fallback has negligible overhead in absolute terms (extra import attempt adds ~1ms)
         # Use absolute threshold rather than relative to avoid CI timing sensitivity
-        assert (
-            fallback_time < 0.1
-        ), f"Fallback path ({fallback_time:.4f}s) should be fast in absolute terms"
+        assert fallback_time < 0.1, f"Fallback path ({fallback_time:.4f}s) should be fast in absolute terms"
 
     def test_edge_case_numeric_service_name(self):
         """

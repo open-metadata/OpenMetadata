@@ -2,6 +2,7 @@ package org.openmetadata.service.migration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -289,7 +290,7 @@ class MigrationWorkflowReprocessingTest {
 
     MigrationFile copy = original.copyWithReprocessing(true);
 
-    assertTrue(copy instanceof FlywayMigrationFile);
+    assertInstanceOf(FlywayMigrationFile.class, copy);
     assertTrue(copy.isReprocessing());
     assertEquals(1, copy.getSchemaChanges().size());
     assertEquals("CREATE TABLE test (id INT)", copy.getSchemaChanges().get(0));

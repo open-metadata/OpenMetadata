@@ -99,8 +99,8 @@ public class OMSqlLogger implements SqlLogger {
       slowSummary.record(elapsedTimeMillis);
     }
 
-    LEGACY_JDBI_TIMER.record((long) (elapsedTime * 1000), TimeUnit.MILLISECONDS);
-    LEGACY_LATENCY_TIMER.record((long) (elapsedTime * 1000), TimeUnit.MILLISECONDS);
+    LEGACY_JDBI_TIMER.record(elapsedTime * 1000, TimeUnit.MILLISECONDS);
+    LEGACY_LATENCY_TIMER.record(elapsedTime * 1000, TimeUnit.MILLISECONDS);
 
     try {
       Object timerSample = context.getAttribute(DB_TIMER_CONTEXT_KEY);

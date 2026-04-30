@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.elasticsearch;
 
 import static org.openmetadata.service.search.SearchUtils.buildHttpHostsForHc5;
+import static org.openmetadata.service.search.SearchUtils.buildScopedCredentialsProvider;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 
@@ -30,10 +31,7 @@ import java.util.stream.Stream;
 import javax.net.ssl.SSLContext;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.hc.client5.http.auth.AuthScope;
-import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
 import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.HttpHeaders;
@@ -128,7 +126,7 @@ public class ElasticSearchClient implements SearchClient {
       };
 
   // Add this field to the class
-  private NLQService nlqService;
+  private final NLQService nlqService;
 
   public ElasticSearchClient(ElasticSearchConfiguration config) {
     this(config, null);
@@ -300,6 +298,12 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public SearchResultListMapper searchForExport(
+      SearchRequest request, SubjectContext subjectContext) throws IOException {
+    return searchManager.searchForExport(request, subjectContext);
+  }
+
+  @Override
   public Response previewSearch(
       SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
       throws IOException {
@@ -422,6 +426,14 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void invalidateLineageCache(String fqn) {
+    if (lineageGraphBuilder == null) {
+      return;
+    }
+    lineageGraphBuilder.invalidateLineageCacheForFqn(fqn);
+  }
+
+  @Override
   public Response searchEntityRelationship(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException {
@@ -449,9 +461,10 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+  public Response searchByField(
+      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException {
-    return searchManager.searchByField(fieldName, fieldValue, index, deleted);
+    return searchManager.searchByField(fieldName, fieldValue, index, deleted, from, size);
   }
 
   @Override
@@ -498,8 +511,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
-      throws IOException {
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
     entityManager.createEntities(indexName, docsAndIds);
   }
 
@@ -735,13 +747,9 @@ public class ElasticSearchClient implements SearchClient {
 
               httpAsyncClientBuilder.setConnectionManager(connectionManagerBuilder.build());
 
-              if (StringUtils.isNotEmpty(esConfig.getUsername())
-                  && StringUtils.isNotEmpty(esConfig.getPassword())) {
-                BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-                credentialsProvider.setCredentials(
-                    new AuthScope(null, -1),
-                    new UsernamePasswordCredentials(
-                        esConfig.getUsername(), esConfig.getPassword().toCharArray()));
+              BasicCredentialsProvider credentialsProvider =
+                  buildScopedCredentialsProvider(esConfig, httpHosts);
+              if (credentialsProvider != null) {
                 httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
               }
 
@@ -752,6 +760,12 @@ public class ElasticSearchClient implements SearchClient {
                         org.apache.hc.core5.util.TimeValue.ofSeconds(
                             esConfig.getKeepAliveTimeoutSecs()));
               }
+
+              httpAsyncClientBuilder.evictExpiredConnections();
+              httpAsyncClientBuilder.evictIdleConnections(
+                  org.apache.hc.core5.util.TimeValue.ofSeconds(30));
+
+              httpAsyncClientBuilder.useSystemProperties();
             });
 
         restClientBuilder.setRequestConfigCallback(

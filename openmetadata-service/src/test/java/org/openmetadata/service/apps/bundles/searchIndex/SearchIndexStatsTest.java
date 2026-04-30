@@ -326,6 +326,90 @@ class SearchIndexStatsTest {
       executor.updateReaderStats(5, 1, 0);
       executor.updateSinkTotalSubmitted(10);
     }
+
+    @Test
+    @DisplayName("Entity total should be adjusted when success + failed exceeds initial total")
+    void testEntityTotalAdjustedWhenExceeded() {
+      Set<String> entities = Set.of("table");
+
+      lenient()
+          .when(searchRepository.getEntityIndexMap())
+          .thenReturn(Map.of("table", mock(IndexMapping.class)));
+
+      Stats stats = executor.initializeTotalRecords(entities);
+      executor.getStats().set(stats);
+
+      // Initial total is 0 (mocked). Simulate batches that exceed it.
+      executor.updateStats("table", new StepStats().withSuccessRecords(50).withFailedRecords(2));
+      executor.updateStats("table", new StepStats().withSuccessRecords(55).withFailedRecords(1));
+
+      Stats finalStats = executor.getStats().get();
+      StepStats tableStats = finalStats.getEntityStats().getAdditionalProperties().get("table");
+
+      assertEquals(105, tableStats.getSuccessRecords());
+      assertEquals(3, tableStats.getFailedRecords());
+      // Total should have been bumped to success + failed
+      assertEquals(108, tableStats.getTotalRecords());
+
+      // Job total should also reflect the adjusted entity total
+      assertEquals(108, finalStats.getJobStats().getTotalRecords());
+      assertEquals(105, finalStats.getJobStats().getSuccessRecords());
+      assertEquals(3, finalStats.getJobStats().getFailedRecords());
+    }
+
+    @Test
+    @DisplayName("Entity total should not decrease when already higher than success + failed")
+    void testEntityTotalNotDecreasedWhenAlreadyHigher() {
+      Set<String> entities = Set.of("table");
+
+      lenient()
+          .when(searchRepository.getEntityIndexMap())
+          .thenReturn(Map.of("table", mock(IndexMapping.class)));
+
+      Stats stats = executor.initializeTotalRecords(entities);
+      executor.getStats().set(stats);
+
+      // Manually set a higher initial total to simulate real DB count
+      stats.getEntityStats().getAdditionalProperties().get("table").setTotalRecords(200);
+      stats.getJobStats().setTotalRecords(200);
+      stats.getReaderStats().setTotalRecords(200);
+
+      executor.updateStats("table", new StepStats().withSuccessRecords(50).withFailedRecords(2));
+
+      Stats finalStats = executor.getStats().get();
+      StepStats tableStats = finalStats.getEntityStats().getAdditionalProperties().get("table");
+
+      assertEquals(50, tableStats.getSuccessRecords());
+      assertEquals(2, tableStats.getFailedRecords());
+      // Total should remain 200 since 52 < 200
+      assertEquals(200, tableStats.getTotalRecords());
+    }
+
+    @Test
+    @DisplayName("Reader total should be adjusted when job total exceeds it")
+    void testReaderTotalAdjustedFromJobTotal() {
+      Set<String> entities = Set.of("table", "dashboard");
+
+      lenient()
+          .when(searchRepository.getEntityIndexMap())
+          .thenReturn(
+              Map.of("table", mock(IndexMapping.class), "dashboard", mock(IndexMapping.class)));
+
+      Stats stats = executor.initializeTotalRecords(entities);
+      executor.getStats().set(stats);
+
+      // Simulate processing that exceeds initial totals
+      executor.updateStats("table", new StepStats().withSuccessRecords(60).withFailedRecords(5));
+      executor.updateStats(
+          "dashboard", new StepStats().withSuccessRecords(30).withFailedRecords(2));
+
+      Stats finalStats = executor.getStats().get();
+
+      // Reader total should have been bumped to match the adjusted job total
+      int expectedTotal = 65 + 32; // table (60+5) + dashboard (30+2)
+      assertEquals(expectedTotal, finalStats.getReaderStats().getTotalRecords());
+      assertEquals(expectedTotal, finalStats.getJobStats().getTotalRecords());
+    }
   }
 
   private ElasticSearchBulkSink.CustomBulkProcessor getCustomBulkProcessor(

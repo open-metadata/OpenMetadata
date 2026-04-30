@@ -57,13 +57,12 @@ public class SimpleMetricsTest {
     Metrics.globalRegistry
         .getMeters()
         .forEach(
-            meter -> {
-              LOG.info(
-                  "  Meter: {} type: {} tags: {}",
-                  meter.getId().getName(),
-                  meter.getClass().getSimpleName(),
-                  meter.getId().getTags());
-            });
+            meter ->
+                LOG.info(
+                    "  Meter: {} type: {} tags: {}",
+                    meter.getId().getName(),
+                    meter.getClass().getSimpleName(),
+                    meter.getId().getTags()));
 
     // Try different ways to find the timer
     Timer timer1 = Metrics.globalRegistry.find("request.latency.total").timer();

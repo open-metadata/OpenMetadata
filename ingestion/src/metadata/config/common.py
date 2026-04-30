@@ -11,6 +11,7 @@
 """
 Common configuration models and exceptions
 """
+
 import io
 import json
 import os
@@ -34,7 +35,7 @@ class DynamicTypedConfig(ConfigModel):
     """Class definition for Dynamic Typed Config"""
 
     type: str
-    config: Optional[Any] = None
+    config: Optional[Any] = None  # noqa: UP045
 
 
 class WorkflowExecutionError(Exception):
@@ -69,9 +70,9 @@ class YamlConfigurationMechanism(ConfigurationMechanism):
 
         try:
             config = yaml.safe_load(config_fp)
-            return config
+            return config  # noqa: RET504, TRY300
         except yaml.error.YAMLError as exc:
-            raise ConfigurationError(f"YAML Configuration file is not valid \n {exc}")
+            raise ConfigurationError(f"YAML Configuration file is not valid \n {exc}")  # noqa: B904
 
 
 class JsonConfigurationMechanism(ConfigurationMechanism):
@@ -82,9 +83,9 @@ class JsonConfigurationMechanism(ConfigurationMechanism):
     def load_config(self, config_fp: IO) -> dict:
         try:
             config = json.load(config_fp)
-            return config
+            return config  # noqa: RET504, TRY300
         except json.decoder.JSONDecodeError as exc:
-            raise ConfigurationError(f"JSON Configuration file is not valid \n {exc}")
+            raise ConfigurationError(f"JSON Configuration file is not valid \n {exc}")  # noqa: B904
 
 
 def load_config_file(config_file: pathlib.Path) -> dict:
@@ -101,12 +102,10 @@ def load_config_file(config_file: pathlib.Path) -> dict:
     elif config_file.suffix == ".json":
         config_mech = JsonConfigurationMechanism()
     else:
-        raise ConfigurationError(
-            f"Only .json and .yml are supported. Cannot process file type {config_file.suffix}"
-        )
+        raise ConfigurationError(f"Only .json and .yml are supported. Cannot process file type {config_file.suffix}")
     with config_file.open() as raw_config_file:
         raw_config = raw_config_file.read()
     expanded_config_file = os.path.expandvars(raw_config)
     config_fp = io.StringIO(expanded_config_file)
     config = config_mech.load_config(config_fp)
-    return config
+    return config  # noqa: RET504

@@ -14,9 +14,9 @@ Validator for column values to be unique test case
 """
 
 import logging
-from typing import List, Optional
+from typing import List, Optional, cast  # noqa: UP035
 
-from sqlalchemy import Column, case, func, literal_column, select
+from sqlalchemy import Column, case, func, inspect, literal_column, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.data_quality.validations.base_test_handler import (
@@ -26,19 +26,30 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToBeUnique import (
     BaseColumnValuesToBeUniqueValidator,
 )
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    SQARowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.functions.unique_count import _unique_count_dimensional_cte
 from metadata.profiler.orm.registry import Dialects
+from metadata.profiler.processor.runner import QueryRunner
 
 logger = logging.getLogger(__name__)
 
 
 class ColumnValuesToBeUniqueValidator(
-    BaseColumnValuesToBeUniqueValidator, SQAValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValuesToBeUniqueValidator,
+    SQAValidatorMixin,
+    SQARowSamplerMixin,
 ):
     """Validator for column values to be unique test case"""
 
@@ -55,7 +66,7 @@ class ColumnValuesToBeUniqueValidator(
         """
         return count - unique_count
 
-    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -64,10 +75,7 @@ class ColumnValuesToBeUniqueValidator(
         """
         count = Metrics.valuesCount.value(column).fn()
         grouped_cte = (
-            select(count.label(column.name))
-            .select_from(self.runner.dataset)
-            .group_by(column)
-            .cte("grouped_cte")
+            select(count.label(column.name)).select_from(self.runner.dataset).group_by(column).cte("grouped_cte")
         )
         unique_count = Metrics.uniqueCount.value(column).query(
             sample=self.runner.dataset,
@@ -89,7 +97,7 @@ class ColumnValuesToBeUniqueValidator(
             self.value = dict(row._mapping)  # type: ignore
             res = self.value.get(Metrics.valuesCount.name)
         except Exception as exc:
-            raise SQLAlchemyError(exc)
+            raise SQLAlchemyError(exc)  # noqa: B904
 
         if res is None:
             raise ValueError(
@@ -101,7 +109,7 @@ class ColumnValuesToBeUniqueValidator(
 
         return res
 
-    def _get_unique_count(self, metric: Metrics, column: Column) -> Optional[int]:
+    def _get_unique_count(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
         """Get unique count of values"""
 
         return self.value.get(metric.name)
@@ -111,9 +119,9 @@ class ColumnValuesToBeUniqueValidator(
         column: Column,
         dimension_col: Column,
         metrics_to_compute: dict,
-        test_params: Optional[dict],
+        test_params: Optional[dict],  # noqa: UP045
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional validation for uniqueness using two-pass approach
 
         Two-pass query strategy for accurate "Others" unique count:
@@ -143,14 +151,11 @@ class ColumnValuesToBeUniqueValidator(
             if hasattr(self.runner.dataset, "__table__"):
                 table = self.runner.dataset.__table__
             else:
-
                 table = self.runner.dataset
 
             dialect = self.runner._session.get_bind().dialect.name
 
-            normalized_dimension = self._get_normalized_dimension_expression(
-                dimension_col
-            )
+            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
             # Build dialect-specific value_counts CTE for dimensional unique count
             value_counts_cte, unique_count_expr = _unique_count_dimensional_cte(
@@ -161,10 +166,7 @@ class ColumnValuesToBeUniqueValidator(
                 DIMENSION_TOTAL_COUNT_KEY: func.sum(value_counts_cte.c.row_count),
                 Metrics.valuesCount.name: func.sum(value_counts_cte.c.occurrence_count),
                 Metrics.uniqueCount.name: unique_count_expr,
-                DIMENSION_FAILED_COUNT_KEY: func.sum(
-                    value_counts_cte.c.occurrence_count
-                )
-                - unique_count_expr,
+                DIMENSION_FAILED_COUNT_KEY: func.sum(value_counts_cte.c.occurrence_count) - unique_count_expr,
             }
 
             result_rows = self._run_dimensional_validation_query(
@@ -176,9 +178,7 @@ class ColumnValuesToBeUniqueValidator(
                 top_n=top_n,
             )
 
-            return self._process_dimension_rows(
-                result_rows, dimension_col.name, metrics_to_compute, test_params
-            )
+            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")
@@ -191,9 +191,7 @@ class ColumnValuesToBeUniqueValidator(
             return (
                 select(
                     value_counts_cte.c.col_value,
-                    func.sum(value_counts_cte.c.occurrence_count).label(
-                        "occurrence_count"
-                    ),
+                    func.sum(value_counts_cte.c.occurrence_count).label("occurrence_count"),
                     func.sum(value_counts_cte.c.row_count).label("row_count"),
                 )
                 .select_from(value_counts_cte)
@@ -205,15 +203,34 @@ class ColumnValuesToBeUniqueValidator(
 
     def _get_others_metric_expressions_builder(self):
         def build_others_metric_expressions(others_source):
-            unique_count_expr = func.sum(
-                case((others_source.c.occurrence_count == 1, 1), else_=0)
-            )
+            unique_count_expr = func.sum(case((others_source.c.occurrence_count == 1, 1), else_=0))
             return {
                 DIMENSION_TOTAL_COUNT_KEY: func.sum(others_source.c.row_count),
                 Metrics.valuesCount.name: func.sum(others_source.c.occurrence_count),
                 Metrics.uniqueCount.name: unique_count_expr,
-                DIMENSION_FAILED_COUNT_KEY: func.sum(others_source.c.occurrence_count)
-                - unique_count_expr,
+                DIMENSION_FAILED_COUNT_KEY: func.sum(others_source.c.occurrence_count) - unique_count_expr,
             }
 
         return build_others_metric_expressions
+
+    def filter(self):
+        self.runner = cast(QueryRunner, self.runner)  # noqa: TC006
+        col = self.get_column_from_list(
+            self.test_case.entityLink.root,
+            inspect(self.runner.dataset).c,
+        )
+        filters = [
+            (
+                col,
+                "in",
+                (self.runner._build_query(col).group_by(col).having(func.count() > 1)),
+            )
+        ]
+        return {
+            "filters": filters,
+            "or_filter": False,
+        }
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

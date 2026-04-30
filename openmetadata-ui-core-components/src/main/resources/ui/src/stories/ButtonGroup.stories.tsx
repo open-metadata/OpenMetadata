@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edit01, Settings01, Trash01 } from '@untitledui/icons';
 import type { Meta, StoryObj } from '@storybook/react';
+import { Edit01, Settings01, Trash01 } from '@untitledui/icons';
 import {
   ButtonGroup,
   ButtonGroupItem,
@@ -24,6 +24,12 @@ const meta = {
     layout: 'centered',
   },
   tags: ['autodocs'],
+  argTypes: {
+    size: {
+      control: false,
+      table: { type: { summary: '"sm" | "md" | "lg"' } },
+    },
+  },
 } satisfies Meta<typeof ButtonGroup>;
 
 export default meta;
@@ -95,6 +101,22 @@ export const WithDisabled: StoryObj = {
         Disabled
       </ButtonGroupItem>
       <ButtonGroupItem id="opt3">Option 3</ButtonGroupItem>
+    </ButtonGroup>
+  ),
+};
+
+export const WithTrailingIcon: StoryObj = {
+  render: () => (
+    <ButtonGroup>
+      <ButtonGroupItem iconTrailing={Edit01} id="edit">
+        Edit
+      </ButtonGroupItem>
+      <ButtonGroupItem iconTrailing={Settings01} id="settings">
+        Settings
+      </ButtonGroupItem>
+      <ButtonGroupItem iconTrailing={Trash01} id="delete">
+        Delete
+      </ButtonGroupItem>
     </ButtonGroup>
   ),
 };

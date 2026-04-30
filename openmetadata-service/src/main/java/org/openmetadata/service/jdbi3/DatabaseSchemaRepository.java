@@ -55,7 +55,9 @@ import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ProfileSampleConfig;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.StaticSamplingConfig;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -702,26 +704,22 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "retentionPeriod",
-          () -> {
-            recordChange(
-                "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
-          });
+          () ->
+              recordChange(
+                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
       compareAndUpdate(
           "sourceUrl",
-          () -> {
-            recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-          });
+          () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
       compareAndUpdate(
           "sourceHash",
-          () -> {
-            recordChange(
-                "sourceHash",
-                original.getSourceHash(),
-                updated.getSourceHash(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "sourceHash",
+                  original.getSourceHash(),
+                  updated.getSourceHash(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
     }
   }
 
@@ -730,11 +728,20 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     // Validate the request content
     DatabaseSchema databaseSchema = find(databaseSchemaId, Include.NON_DELETED);
 
-    if (databaseSchemaProfilerConfig.getProfileSampleType() != null
-        && databaseSchemaProfilerConfig.getProfileSample() != null) {
-      EntityUtil.validateProfileSample(
-          databaseSchemaProfilerConfig.getProfileSampleType().toString(),
-          databaseSchemaProfilerConfig.getProfileSample());
+    ProfileSampleConfig profileSampleConfig = databaseSchemaProfilerConfig.getProfileSampleConfig();
+    if (!nullOrEmpty(profileSampleConfig) && !nullOrEmpty(profileSampleConfig.getConfig())) {
+      ProfileSampleConfig.SampleConfigType sampleConfigType =
+          profileSampleConfig.getSampleConfigType();
+      if (!nullOrEmpty(sampleConfigType)
+          && sampleConfigType.equals(ProfileSampleConfig.SampleConfigType.STATIC)) {
+        StaticSamplingConfig staticConfig =
+            JsonUtils.convertValue(profileSampleConfig.getConfig(), StaticSamplingConfig.class);
+        if (staticConfig.getProfileSampleType() != null
+            && staticConfig.getProfileSample() != null) {
+          EntityUtil.validateProfileSample(
+              staticConfig.getProfileSampleType().toString(), staticConfig.getProfileSample());
+        }
+      }
     }
 
     daoCollection
@@ -976,6 +983,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       // Get entityType and fullyQualifiedName if provided
       String entityType = csvRecord.size() > 12 ? csvRecord.get(12) : TABLE;
       String entityFQN = csvRecord.size() > 13 ? csvRecord.get(13) : null;
+      rowEntityType = entityType;
 
       if (TABLE.equals(entityType)) {
         createTableEntity(printer, csvRecord, entityFQN);

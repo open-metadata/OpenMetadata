@@ -187,12 +187,10 @@ test.describe('Glossary Term Details Operations', () => {
         .getByTestId('edit-button')
         .click();
 
-      // Remove the related term by clicking the close icon on the tag
-      // Use a more robust selector that doesn't rely on FQN in attribute
-      await page.locator('.ant-tag-close-icon').first().click();
+      await page.locator('[data-testid^="remove-row-"]').first().click();
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await page.getByTestId('saveAssociatedTag').click();
+      await page.getByTestId('save-related-terms').click();
       await saveRes;
 
       // Verify related term is removed
@@ -235,17 +233,19 @@ test.describe('Glossary Term Details Operations', () => {
 
       await expect(page.getByTestId(term1Name)).toBeVisible();
 
+      // Move mouse away to dismiss any tooltip that may be overlapping the edit button
+      await page.mouse.move(0, 0);
+
       // Clean up: remove the related term from term2's page - use edit button since term exists
       await page
         .getByTestId('related-term-container')
         .getByTestId('edit-button')
         .click();
 
-      // Use a more robust selector
-      await page.locator('.ant-tag-close-icon').first().click();
+      await page.locator('[data-testid^="remove-row-"]').first().click();
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await page.getByTestId('saveAssociatedTag').click();
+      await page.getByTestId('save-related-terms').click();
       await saveRes;
     } finally {
       await glossaryTerm1.delete(apiContext);

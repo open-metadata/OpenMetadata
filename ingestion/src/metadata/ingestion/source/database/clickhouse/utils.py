@@ -9,10 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Utils module to define overrided sqlalchamy methods 
+Utils module to define overrided sqlalchamy methods
 """
 # pylint: disable=protected-access,unused-argument
-
 
 from clickhouse_sqlalchemy.drivers.base import ischema_names
 from clickhouse_sqlalchemy.types import Date
@@ -62,14 +61,19 @@ ischema_names.update(
         "UInt8": SMALLINT,
         "IPv4": create_sqlalchemy_type("IPv4"),
         "IPv6": create_sqlalchemy_type("IPv6"),
+        # ClickHouse geo types (v21+)
+        "Point": create_sqlalchemy_type("Point"),
+        "Ring": create_sqlalchemy_type("Ring"),
+        "Polygon": create_sqlalchemy_type("Polygon"),
+        "MultiPolygon": create_sqlalchemy_type("MultiPolygon"),
+        "LineString": create_sqlalchemy_type("LineString"),
+        "MultiLineString": create_sqlalchemy_type("MultiLineString"),
     }
 )
 
 
 @reflection.cache
-def _get_column_type(
-    self, name, spec
-):  # pylint: disable=protected-access,too-many-branches,too-many-return-statements
+def _get_column_type(self, name, spec):  # pylint: disable=protected-access,too-many-branches,too-many-return-statements
     if spec.startswith("Array"):
         return self.ischema_names["Array"]
 
@@ -83,8 +87,9 @@ def _get_column_type(
 
     if spec.startswith("LowCardinality"):
         inner = spec[15:-1]
-        coltype = self.ischema_names["_lowcardinality"]
-        return coltype(self._get_column_type(name, inner))
+        # Using inner type directly instead of _lowcardinality for LowCardinality.
+        # Example: LowCardinality(String) should return String.
+        return self._get_column_type(name, inner)
 
     if spec.startswith("Tuple"):
         return self.ischema_names["Tuple"]
@@ -130,10 +135,7 @@ def get_mview_names(self, schema=None):
 
 
 def get_mview_names_dialect(self, connection, schema=None, **kw):
-    query = text(
-        "SELECT name FROM system.tables WHERE engine = 'MaterializedView' "
-        "AND database = :database"
-    )
+    query = text("SELECT name FROM system.tables WHERE engine = 'MaterializedView' AND database = :database")
     database = schema or connection.engine.url.database
     rows = self._execute(connection, query, database=database)
     return [row.name for row in rows]
@@ -146,19 +148,23 @@ def get_unique_constraints(self, connection, table_name, schema=None, **kw):
 
 @reflection.cache
 def get_pk_constraint(
-    self, bind, table_name, schema=None, **kw  # pylint: disable=unused-argument
+    self,
+    bind,
+    table_name,
+    schema=None,
+    **kw,  # pylint: disable=unused-argument
 ):
     return {"constrained_columns": [], "name": "undefined"}
 
 
 @reflection.cache
 def get_view_names(
-    self, connection, schema=None, **kw  # pylint: disable=unused-argument
+    self,
+    connection,
+    schema=None,
+    **kw,  # pylint: disable=unused-argument
 ):
-    query = text(
-        "SELECT name FROM system.tables WHERE engine = 'View' "
-        "AND database = :database"
-    )
+    query = text("SELECT name FROM system.tables WHERE engine = 'View' AND database = :database")
     database = schema or connection.engine.url.database
     rows = self._execute(  # pylint: disable=protected-access
         connection, query, database=database
@@ -168,7 +174,11 @@ def get_view_names(
 
 @reflection.cache
 def get_view_definition(
-    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
+    self,
+    connection,
+    table_name,
+    schema=None,
+    **kw,  # pylint: disable=unused-argument
 ):
     return get_view_definition_wrapper(
         self,
@@ -181,7 +191,11 @@ def get_view_definition(
 
 @reflection.cache
 def get_table_comment(
-    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
+    self,
+    connection,
+    table_name,
+    schema=None,
+    **kw,  # pylint: disable=unused-argument
 ):
     return get_table_comment_wrapper(
         self,
@@ -192,9 +206,7 @@ def get_table_comment(
     )
 
 
-def _get_column_info(
-    self, name, format_type, default_type, default_expression, comment
-):
+def _get_column_info(self, name, format_type, default_type, default_expression, comment):
     col_type = self._get_column_type(  # pylint: disable=protected-access
         name, format_type
     )

@@ -109,9 +109,8 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
       delegateTask.setVariable("rejectersList", new ArrayList<String>());
     } catch (Exception exc) {
       LOG.error(
-          String.format(
-              "[%s] Failure: ",
-              getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId())),
+          "[{}] Failure: ",
+          getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId()),
           exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
@@ -171,7 +170,7 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
           .withUpdatedAt(System.currentTimeMillis());
 
       // Save the updated thread to database
-      Entity.getCollectionDAO().feedDAO().update(thread.getId(), JsonUtils.pojoToJson(thread));
+      feedRepository.updateLegacyThread(thread);
 
       // Now terminate the old workflow instance
       WorkflowHandler.getInstance()

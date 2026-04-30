@@ -12,6 +12,7 @@
 """
 Validate filter patterns
 """
+
 import pytest
 
 from metadata.generated.schema.type.filterPattern import FilterPattern
@@ -26,9 +27,7 @@ from metadata.utils.filters import (
 
 def test_filter():
     """Validate main filter logic"""
-    filter_pattern_both = FilterPattern(
-        includes=["^.*potato.*$"], excludes=["^.*tomato.*$"]
-    )
+    filter_pattern_both = FilterPattern(includes=["^.*potato.*$"], excludes=["^.*tomato.*$"])
     filter_pattern_inc = FilterPattern(includes=["^.*potato.*$"])
     filter_pattern_exc = FilterPattern(excludes=["^.*tomato.*$"])
 

@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
@@ -39,10 +40,16 @@ import org.testcontainers.utility.DockerImageName;
  * <p>Tests verify that glossaries can be exported as RDF ontologies in various formats (Turtle,
  * RDF/XML, N-Triples, JSON-LD) with proper SKOS vocabulary mapping.
  *
- * <p>Test isolation: Uses TestNamespace for unique entity naming Parallelization: Safe for
- * concurrent execution via @Execution(ExecutionMode.CONCURRENT)
+ * <p>Test isolation: Uses TestNamespace for unique entity naming.
+ *
+ * <p>Parallelization: Annotated {@code @Isolated} because {@link RdfUpdater} is a JVM-wide
+ * singleton. {@code @BeforeAll} flips it on, so any test class running concurrently starts doing
+ * synchronous Fuseki writes on every entity create — saturating the Dropwizard thread pool and
+ * causing 60s request timeouts (see issue #27649). {@code @Execution(SAME_THREAD)} alone only
+ * serializes within this class and does not prevent that cross-class leakage.
  */
-@Execution(ExecutionMode.CONCURRENT)
+@Isolated
+@Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(TestNamespaceExtension.class)
 public class GlossaryOntologyExportIT {
 
@@ -425,7 +432,7 @@ public class GlossaryOntologyExportIT {
             .uri(URI.create(url))
             .header("Authorization", "Bearer " + token)
             .header("Accept", acceptHeader)
-            .timeout(Duration.ofSeconds(30))
+            .timeout(Duration.ofSeconds(60))
             .GET()
             .build();
 

@@ -85,7 +85,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_SkipsGovernanceBotEvents() throws Exception {
+  void testSendMessage_SkipsGovernanceBotEvents() {
     ChangeEvent event = createChangeEvent("governance-bot", EventType.ENTITY_UPDATED);
 
     try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class)) {
@@ -98,7 +98,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_SkipsGovernanceBotImpersonatedEvents() throws Exception {
+  void testSendMessage_SkipsGovernanceBotImpersonatedEvents() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     event.setImpersonatedBy("governance-bot");
 
@@ -112,7 +112,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_SuccessfulTrigger() throws Exception {
+  void testSendMessage_SuccessfulTrigger() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     EntityReference entityRef = createEntityReference();
 
@@ -133,7 +133,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_RetriesOnDeadlock() throws Exception {
+  void testSendMessage_RetriesOnDeadlock() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     EntityReference entityRef = createEntityReference();
 
@@ -166,7 +166,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_RetriesOnOptimisticLockingFailure() throws Exception {
+  void testSendMessage_RetriesOnOptimisticLockingFailure() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     EntityReference entityRef = createEntityReference();
 
@@ -198,7 +198,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_DoesNotRetryNonTransientErrors() throws Exception {
+  void testSendMessage_DoesNotRetryNonTransientErrors() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     EntityReference entityRef = createEntityReference();
 
@@ -222,7 +222,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_FailsAfterMaxRetries() throws Exception {
+  void testSendMessage_FailsAfterMaxRetries() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     EntityReference entityRef = createEntityReference();
 
@@ -252,7 +252,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_SkipsGracefullyWhenEntityDeleted() throws Exception {
+  void testSendMessage_SkipsGracefullyWhenEntityDeleted() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_CREATED);
 
     try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
@@ -270,7 +270,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_SafetyNetCatchesEntityNotFoundFromTrigger() throws Exception {
+  void testSendMessage_SafetyNetCatchesEntityNotFoundFromTrigger() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     EntityReference entityRef = createEntityReference();
 
@@ -291,7 +291,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_SkipsInvalidEventTypes() throws Exception {
+  void testSendMessage_SkipsInvalidEventTypes() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_DELETED);
 
     try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class)) {

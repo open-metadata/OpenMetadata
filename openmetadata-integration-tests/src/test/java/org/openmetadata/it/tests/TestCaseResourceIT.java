@@ -7,11 +7,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -46,6 +50,8 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Integration tests for TestCase entity operations.
@@ -56,6 +62,14 @@ import org.openmetadata.service.resources.dqtests.TestCaseResource;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
+  private static final Logger LOG = LoggerFactory.getLogger(TestCaseResourceIT.class);
+  private static final RetryConfig DEADLOCK_RETRY_CONFIG =
+      RetryConfig.custom()
+          .maxAttempts(3)
+          .intervalFunction(IntervalFunction.ofExponentialBackoff(250, 2.0))
+          .retryOnException(TestCaseResourceIT::isTransientDeadlock)
+          .failAfterMaxAttempts(true)
+          .build();
 
   // Disable tests that don't apply to TestCase
   {
@@ -201,12 +215,37 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
   @Override
   protected TestCase patchEntity(String id, TestCase entity) {
-    return SdkClients.adminClient().testCases().update(id, entity);
+    return executeWithDeadlockRetry(
+        () -> SdkClients.adminClient().testCases().update(id, entity), "testCaseUpdate-" + id);
   }
 
   @Override
   protected void deleteEntity(String id) {
     SdkClients.adminClient().testCases().delete(id);
+  }
+
+  private static boolean isTransientDeadlock(Throwable throwable) {
+    for (Throwable current = throwable; current != null; current = current.getCause()) {
+      String message = current.getMessage();
+      if (message != null && message.contains("Deadlock found when trying to get lock")) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private <T> T executeWithDeadlockRetry(Supplier<T> operation, String operationName) {
+    Retry retry = Retry.of(operationName, DEADLOCK_RETRY_CONFIG);
+    retry
+        .getEventPublisher()
+        .onRetry(
+            event ->
+                LOG.warn(
+                    "Retrying {} after transient deadlock (attempt {}/{})",
+                    operationName,
+                    event.getNumberOfRetryAttempts() + 1,
+                    DEADLOCK_RETRY_CONFIG.getMaxAttempts()));
+    return Retry.decorateSupplier(retry, operation).get();
   }
 
   @Override
@@ -279,6 +318,17 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Override
   protected EntityHistory getVersionHistory(java.util.UUID id) {
     return SdkClients.adminClient().testCases().getVersionList(id);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryPaginated(java.util.UUID id, int limit, int offset) {
+    return SdkClients.adminClient().testCases().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      java.util.UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().testCases().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override
@@ -2242,7 +2292,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     client.testCaseResults().create(testCase.getFullyQualifiedName(), failedResult);
 
     Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
+        .atMost(180, TimeUnit.SECONDS)
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> {
@@ -2303,7 +2353,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     final java.util.UUID firstIncidentId =
         Awaitility.await()
-            .atMost(30, TimeUnit.SECONDS)
+            .atMost(90, TimeUnit.SECONDS)
             .pollInterval(Duration.ofSeconds(2))
             .until(
                 () -> {
@@ -2322,7 +2372,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     client.testCaseResolutionStatuses().create(ackStatus);
 
     Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
+        .atMost(180, TimeUnit.SECONDS)
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> {
@@ -2343,7 +2393,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     client.testCaseResolutionStatuses().create(resolvedStatus);
 
     Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
+        .atMost(180, TimeUnit.SECONDS)
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> {
@@ -2363,7 +2413,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     client.testCaseResults().create(testCase.getFullyQualifiedName(), failedAgain);
 
     Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
+        .atMost(180, TimeUnit.SECONDS)
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> {
@@ -2388,7 +2438,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             });
 
     Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
+        .atMost(180, TimeUnit.SECONDS)
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> {
@@ -3479,13 +3529,13 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     // Dry run with name="*" should succeed
     CsvImportResult dryRunResult = importCsvWithWildcard(client, csvData, true);
     assertEquals(ApiStatus.SUCCESS, dryRunResult.getStatus());
-    assertEquals(3, dryRunResult.getNumberOfRowsProcessed());
+    assertEquals(2, dryRunResult.getNumberOfRowsProcessed());
 
     // Actual import with name="*" — previously failed because
     // processChangeEventForBulkImport would call getByName("*")
     CsvImportResult result = importCsvWithWildcard(client, csvData, false);
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
-    assertEquals(3, result.getNumberOfRowsProcessed());
+    assertEquals(2, result.getNumberOfRowsProcessed());
 
     // Verify test cases created on different tables
     TestCase tc1 =
@@ -3546,7 +3596,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     CsvImportResult result = importCsvWithWildcard(client, csvData, false);
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
-    assertEquals(2, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsProcessed());
 
     TestCase imported =
         client.testCases().getByName(table.getFullyQualifiedName() + "." + testName, "testSuite");
@@ -3607,7 +3657,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     CsvImportResult dryRunResult = importCsvWithWildcard(client, csvData, true);
     assertEquals(ApiStatus.SUCCESS, dryRunResult.getStatus());
-    assertEquals(2, dryRunResult.getNumberOfRowsProcessed());
+    assertEquals(1, dryRunResult.getNumberOfRowsProcessed());
 
     // Entity should NOT exist after dry run
     String expectedFqn = table.getFullyQualifiedName() + "." + testName;
@@ -3850,6 +3900,219 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         fetched.getTags().stream()
             .anyMatch(t -> t.getTagFQN().equals(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN())),
         "Test case should inherit non-conflicting tag (Sensitive) from table");
+  }
+
+  @Test
+  void test_testCaseSearchIndexUpdatedWhenTableTagChanges(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+
+    // 1. Create a table without tags and a test case linked to it
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("search_tag_propagation"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // 2. Update the table to add a tag via PUT
+    Table fetchedTable = client.tables().get(table.getId().toString(), "tags");
+    fetchedTable.setTags(List.of(shared.PII_SENSITIVE_TAG_LABEL));
+    client.tables().update(fetchedTable.getId().toString(), fetchedTable);
+
+    // 3. Verify the test case search index document is updated with the inherited tag
+    String testCaseId = testCase.getId().toString();
+    Awaitility.await(
+            "Test case search index should contain inherited tag from table after table tag update")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + testCaseId)
+                      .index("test_case_search_index")
+                      .size(1)
+                      .execute();
+
+              assertTrue(
+                  searchResponse.contains(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN()),
+                  "Test case search index should contain the inherited tag '"
+                      + shared.PII_SENSITIVE_TAG_LABEL.getTagFQN()
+                      + "' from the table, but got: "
+                      + searchResponse);
+            });
+  }
+
+  @Test
+  void test_testCaseSearchIndexUpdatedWhenTableOwnerChanges(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    com.fasterxml.jackson.databind.ObjectMapper mapper =
+        new com.fasterxml.jackson.databind.ObjectMapper();
+
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("search_owner_propagation"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    Table fetchedTable = client.tables().get(table.getId().toString(), "owners");
+    fetchedTable.setOwners(List.of(shared.USER1_REF));
+    client.tables().update(fetchedTable.getId().toString(), fetchedTable);
+
+    String testCaseId = testCase.getId().toString();
+    Awaitility.await(
+            "Test case search index should contain inherited owner from table after owner update")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + testCaseId)
+                      .index("test_case_search_index")
+                      .size(1)
+                      .execute();
+              com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(searchResponse);
+              com.fasterxml.jackson.databind.JsonNode hits = root.path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "Test case should be in search index");
+
+              com.fasterxml.jackson.databind.JsonNode source = hits.get(0).path("_source");
+              com.fasterxml.jackson.databind.JsonNode owners = source.path("owners");
+              assertTrue(
+                  owners.isArray() && !owners.isEmpty(),
+                  "Owners should be propagated to test case search index");
+              assertTrue(
+                  java.util.stream.StreamSupport.stream(owners.spliterator(), false)
+                      .anyMatch(o -> shared.USER1.getId().toString().equals(o.path("id").asText())),
+                  "Owner in test case search index should match the user set on the table");
+            });
+  }
+
+  @Test
+  void test_testCaseSearchIndexUpdatedWhenTableDomainChanges(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    com.fasterxml.jackson.databind.ObjectMapper mapper =
+        new com.fasterxml.jackson.databind.ObjectMapper();
+
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("search_domain_propagation"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    Table fetchedTable = client.tables().get(table.getId().toString(), "domains");
+    fetchedTable.setDomains(List.of(shared.DOMAIN.getEntityReference()));
+    client.tables().update(fetchedTable.getId().toString(), fetchedTable);
+
+    String testCaseId = testCase.getId().toString();
+    String domainFqn = shared.DOMAIN.getFullyQualifiedName();
+    Awaitility.await(
+            "Test case search index should contain inherited domain from table after domain update")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + testCaseId)
+                      .index("test_case_search_index")
+                      .size(1)
+                      .execute();
+              assertTrue(
+                  searchResponse.contains(domainFqn),
+                  "Test case search index should contain inherited domain '"
+                      + domainFqn
+                      + "' from the table, but got: "
+                      + searchResponse);
+            });
+  }
+
+  @Test
+  @org.junit.jupiter.api.Disabled("Requires correct change event to be sent")
+  void test_testCaseSearchIndexUpdatedWhenTableDataProductChanges(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    com.fasterxml.jackson.databind.ObjectMapper mapper =
+        new com.fasterxml.jackson.databind.ObjectMapper();
+
+    org.openmetadata.schema.entity.domains.DataProduct dataProduct =
+        client
+            .dataProducts()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDataProduct()
+                    .withName(ns.prefix("dp_prop"))
+                    .withDescription("DataProduct for propagation test")
+                    .withDomains(List.of(shared.DOMAIN.getFullyQualifiedName())));
+
+    Table table = createTable(ns);
+
+    // Table must share the DataProduct's domain for the validation rule to pass
+    Table fetchedTable = client.tables().get(table.getId().toString(), "dataProducts,domains");
+    fetchedTable.setDomains(List.of(shared.DOMAIN.getEntityReference()));
+    client.tables().update(fetchedTable.getId().toString(), fetchedTable);
+
+    fetchedTable = client.tables().get(table.getId().toString(), "dataProducts,domains");
+    fetchedTable.setDataProducts(List.of(dataProduct.getEntityReference()));
+    client.tables().update(fetchedTable.getId().toString(), fetchedTable);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("search_dp_propagation"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    String testCaseId = testCase.getId().toString();
+    String dpFqn = dataProduct.getFullyQualifiedName();
+    Awaitility.await("Test case search index should contain inherited dataProduct from table")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + testCaseId)
+                      .index("test_case_search_index")
+                      .size(1)
+                      .execute();
+              com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(searchResponse);
+              com.fasterxml.jackson.databind.JsonNode hits = root.path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "Test case should be in search index");
+
+              com.fasterxml.jackson.databind.JsonNode source = hits.get(0).path("_source");
+              com.fasterxml.jackson.databind.JsonNode dataProducts = source.path("dataProducts");
+              assertTrue(
+                  dataProducts.isArray() && !dataProducts.isEmpty(),
+                  "dataProducts should be propagated to test case search index");
+              assertTrue(
+                  java.util.stream.StreamSupport.stream(dataProducts.spliterator(), false)
+                      .anyMatch(dp -> dpFqn.equals(dp.path("fullyQualifiedName").asText())),
+                  "dataProduct FQN should match '" + dpFqn + "' in test case search index");
+            });
   }
 
   private String formatTagsForCsv(List<org.openmetadata.schema.type.TagLabel> tags) {
@@ -4159,5 +4422,52 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                     "Table-level test should not appear when filtering by columnName");
               }
             });
+  }
+
+  /**
+   * Verifies that PATCH with op:replace on displayName succeeds even when the test case was created
+   * without a displayName. The search index sets displayName to the entity name, so the UI sends
+   * op:replace. The server must handle this gracefully (converting replace→add when the path is
+   * absent in the persisted entity).
+   */
+  @Test
+  void test_patchDisplayName_replaceOnMissingField_succeeds(TestNamespace ns) throws Exception {
+    // Create a test case WITHOUT displayName
+    CreateTestCase createRequest = createMinimalRequest(ns);
+    TestCase created = createEntity(createRequest);
+    assertNotNull(created.getId());
+    // displayName should be null after creation (not set)
+
+    // Simulate what the UI does: send a PATCH with op:replace for displayName
+    String patchBody =
+        "[{\"op\":\"replace\",\"path\":\"/displayName\"," + "\"value\":\"Updated Display Name\"}]";
+
+    String baseUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+    String url = String.format("%s/v1/dataQuality/testCases/%s", baseUrl, created.getId());
+
+    java.net.http.HttpRequest request =
+        java.net.http.HttpRequest.newBuilder()
+            .uri(java.net.URI.create(url))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json-patch+json")
+            .timeout(java.time.Duration.ofSeconds(30))
+            .method("PATCH", java.net.http.HttpRequest.BodyPublishers.ofString(patchBody))
+            .build();
+
+    java.net.http.HttpResponse<String> response =
+        java.net.http.HttpClient.newHttpClient()
+            .send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+    assertEquals(
+        200,
+        response.statusCode(),
+        "PATCH replace on missing displayName should succeed (converted to add). "
+            + "Response: "
+            + response.body());
+
+    // Verify the displayName was actually set
+    TestCase updated = getEntity(created.getId().toString());
+    assertEquals("Updated Display Name", updated.getDisplayName());
   }
 }

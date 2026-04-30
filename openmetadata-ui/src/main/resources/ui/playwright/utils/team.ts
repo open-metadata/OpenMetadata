@@ -21,7 +21,6 @@ import {
   assignDomain,
   descriptionBox,
   redirectToHomePage,
-  toastNotification,
   uuid,
 } from './common';
 import {
@@ -133,12 +132,11 @@ export const softDeleteTeam = async (page: Page) => {
 
   await page.click('[data-testid="confirm-button"]');
 
-  await deleteResponse;
-
-  await toastNotification(page, /deleted successfully!/);
+  const response = await deleteResponse;
+  expect(response.status()).toBe(200);
 };
 
-export const hardDeleteTeam = async (page: Page) => {
+export const hardDeleteTeam = async (page: Page, teamName: string) => {
   await page
     .getByTestId('team-details-collapse')
     .getByTestId('manage-button')
@@ -159,9 +157,10 @@ export const hardDeleteTeam = async (page: Page) => {
 
   await page.click('[data-testid="confirm-button"]');
 
-  await deleteResponse;
+  const response = await deleteResponse;
+  expect(response.status()).toBe(200);
 
-  await toastNotification(page, /deleted successfully!/);
+  await searchTeam(page, teamName, { expectEmptyResults: true });
 };
 
 export const getNewTeamDetails = (teamName: string) => {
@@ -253,16 +252,17 @@ export const addTeamHierarchy = async (
   index?: number,
   isHierarchy = false
 ) => {
-  const getTeamsResponse = page.waitForResponse('/api/v1/teams*');
+  const addTeamModal = page.locator('[role="dialog"].ant-modal').last();
 
   // Fetching the add button and clicking on it
   if (index && index > 0) {
-    await page.click('[data-testid="add-placeholder-button"]');
+    await page.click('[data-testid="add-placeholder-button"]', { force: true });
   } else {
-    await page.click('[data-testid="add-team"]');
+    await page.click('[data-testid="add-team"]', { force: true });
   }
 
-  await getTeamsResponse;
+  await expect(addTeamModal).toBeVisible();
+  await expect(page.locator('[data-testid="name"]')).toBeVisible();
 
   // Entering team details
   await validateFormNameFieldInput({
@@ -286,9 +286,20 @@ export const addTeamHierarchy = async (
   await page.locator(descriptionBox).fill(teamDetails.description);
 
   // Saving the created team
-  const saveTeamResponse = page.waitForResponse('/api/v1/teams');
+  const saveTeamResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams') &&
+      response.request().method() === 'POST' &&
+      response.ok()
+  );
   await page.click('[form="add-team-form"]');
   await saveTeamResponse;
+  await expect(addTeamModal).toBeHidden({ timeout: 60000 });
+  await expect(
+    page.locator(`[data-row-key="${teamDetails.name}"]`)
+  ).toBeVisible({
+    timeout: 60000,
+  });
 };
 
 export const removeOrganizationPolicyAndRole = async (
@@ -317,8 +328,10 @@ export const searchTeam = async (
   teamName: string,
   options?: SearchTeamOptions
 ) => {
-  const searchBar = await openTeamsPage(page);
+  await openTeamsPage(page);
   await page.fill('[data-testid="searchbar"]', teamName);
+
+  const teamNameLinks = page.locator('[data-testid^="team-name-"]');
 
   if (options?.expectEmptyResults) {
     await expect
@@ -328,18 +341,18 @@ export const searchTeam = async (
             .getByTestId('search-error-placeholder')
             .isVisible()
             .catch(() => false);
-          const matchingRows = await page
-            .getByRole('cell', { name: teamName })
+          const matchingCount = await teamNameLinks
+            .filter({ hasText: teamName })
             .count();
 
-          return hasPlaceholder || matchingRows === 0;
+          return hasPlaceholder || matchingCount === 0;
         },
         { timeout: 30000, intervals: [500, 1000, 2000] }
       )
       .toBe(true);
   } else if (options?.expectNotFound) {
     await expect
-      .poll(async () => page.getByRole('cell', { name: teamName }).count(), {
+      .poll(async () => teamNameLinks.filter({ hasText: teamName }).count(), {
         timeout: 30000,
         intervals: [500, 1000, 2000],
       })
@@ -347,11 +360,18 @@ export const searchTeam = async (
   } else {
     await expect
       .poll(
-        async () =>
-          page
-            .getByRole('cell', { name: teamName })
-            .isVisible()
-            .catch(() => false),
+        async () => {
+          const matchingCells = page.getByRole('cell', { name: teamName });
+          const count = await matchingCells.count();
+
+          return (
+            count > 0 &&
+            (await matchingCells
+              .first()
+              .isVisible()
+              .catch(() => false))
+          );
+        },
         { timeout: 30000, intervals: [500, 1000, 2000] }
       )
       .toBe(true);
@@ -435,7 +455,11 @@ export const verifyTeamListingAssetCount = async (
 export const addUserInTeam = async (page: Page, user: UserClass) => {
   const userName = user.data.email.split('@')[0];
   const fetchUsersResponse = page.waitForResponse(
-    '/api/v1/users?limit=25&isBot=false'
+    (response) =>
+      response.url().includes('/api/v1/users') &&
+      response.url().includes('limit=25') &&
+      response.request().method() === 'GET' &&
+      response.status() === 200
   );
   await page.locator('[data-testid="add-new-user"]').click();
   await fetchUsersResponse;
@@ -518,7 +542,11 @@ export const addUserTeam = async (
   await page.locator('[data-testid="users"]').click();
 
   const fetchUsersResponse = page.waitForResponse(
-    '/api/v1/users?limit=25&isBot=false'
+    (response) =>
+      response.url().includes('/api/v1/users') &&
+      response.url().includes('limit=25') &&
+      response.request().method() === 'GET' &&
+      response.status() === 200
   );
   await page.locator('[data-testid="add-new-user"]').click();
   await fetchUsersResponse;

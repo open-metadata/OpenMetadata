@@ -20,6 +20,16 @@ const meta = {
     layout: 'centered',
   },
   tags: ['autodocs'],
+  argTypes: {
+    orientation: {
+      control: false,
+      table: { type: { summary: '"horizontal" | "vertical"' } },
+    },
+    labelAlign: {
+      control: false,
+      table: { type: { summary: '"start" | "center" | "end"' } },
+    },
+  },
 } satisfies Meta<typeof Divider>;
 
 export default meta;

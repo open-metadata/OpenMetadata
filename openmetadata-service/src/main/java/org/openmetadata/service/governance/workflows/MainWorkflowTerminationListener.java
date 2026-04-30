@@ -23,9 +23,9 @@ public class MainWorkflowTerminationListener implements JavaDelegate {
           workflowInstanceId, System.currentTimeMillis(), execution.getVariables());
     } catch (Exception exc) {
       LOG.error(
-          String.format(
-              "[%s] Failed due to: %s ",
-              getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc.getMessage()),
+          "[{}] Failed due to: {} ",
+          getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()),
+          exc.getMessage(),
           exc);
     }
   }

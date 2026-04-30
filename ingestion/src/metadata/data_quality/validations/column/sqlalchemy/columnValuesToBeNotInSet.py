@@ -13,7 +13,8 @@
 Validator for column value to be not in set test case
 """
 
-from typing import List, Optional
+from ast import literal_eval
+from typing import List, Optional  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -24,9 +25,16 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToBeNotInSet import (
     BaseColumnValuesToBeNotInSetValidator,
 )
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    SQARowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.logger import test_suite_logger
@@ -35,11 +43,14 @@ logger = test_suite_logger()
 
 
 class ColumnValuesToBeNotInSetValidator(
-    BaseColumnValuesToBeNotInSetValidator, SQAValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValuesToBeNotInSetValidator,
+    SQAValidatorMixin,
+    SQARowSamplerMixin,
 ):
     """Validator for column value to be not in set test case"""
 
-    def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -55,7 +66,7 @@ class ColumnValuesToBeNotInSetValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional query with impact scoring and Others aggregation
 
         Calculates impact scores for all dimension values and aggregates
@@ -73,9 +84,7 @@ class ColumnValuesToBeNotInSetValidator(
         dimension_results = []
 
         try:
-            forbidden_values = test_params[
-                BaseColumnValuesToBeNotInSetValidator.FORBIDDEN_VALUES
-            ]
+            forbidden_values = test_params[BaseColumnValuesToBeNotInSetValidator.FORBIDDEN_VALUES]
 
             # Build metric expressions using enum names as keys
             metric_expressions = {}
@@ -86,13 +95,9 @@ class ColumnValuesToBeNotInSetValidator(
                 metric_expressions[metric_name] = metric_instance.fn()
 
             metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = Metrics.rowCount().fn()
-            metric_expressions[DIMENSION_FAILED_COUNT_KEY] = metric_expressions[
-                Metrics.countInSet.name
-            ]
+            metric_expressions[DIMENSION_FAILED_COUNT_KEY] = metric_expressions[Metrics.countInSet.name]
 
-            normalized_dimension = self._get_normalized_dimension_expression(
-                dimension_col
-            )
+            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
             result_rows = self._run_dimensional_validation_query(
                 source=self.runner.dataset,
@@ -101,9 +106,7 @@ class ColumnValuesToBeNotInSetValidator(
                 top_n=top_n,
             )
 
-            return self._process_dimension_rows(
-                result_rows, dimension_col.name, metrics_to_compute, test_params
-            )
+            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")
@@ -121,3 +124,18 @@ class ColumnValuesToBeNotInSetValidator(
             NotImplementedError:
         """
         return self._compute_row_count(self.runner, column)
+
+    def filter(self):
+        items = self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            "forbiddenValues",
+            literal_eval,
+        )
+        return {
+            "filters": [(self.get_column(), "in", items)],
+            "or_filter": False,
+        }
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

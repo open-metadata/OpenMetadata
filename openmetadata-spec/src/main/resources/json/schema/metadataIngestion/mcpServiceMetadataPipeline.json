@@ -1,0 +1,34 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/mcpServiceMetadataPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "McpServiceMetadataPipeline",
+  "description": "McpService Metadata Pipeline Configuration.",
+  "type": "object",
+  "definitions": {
+    "McpMetadataConfigType": {
+      "description": "MCP Source Config Metadata Pipeline type",
+      "type": "string",
+      "enum": ["McpMetadata"],
+      "default": "McpMetadata"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/McpMetadataConfigType",
+      "default": "McpMetadata"
+    },
+    "serverFilterPattern": {
+      "description": "Regex to only fetch MCP servers with names matching the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Server Filter Pattern"
+    },
+    "overrideMetadata": {
+      "title": "Override Metadata",
+      "description": "Set the 'Override Metadata' toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}

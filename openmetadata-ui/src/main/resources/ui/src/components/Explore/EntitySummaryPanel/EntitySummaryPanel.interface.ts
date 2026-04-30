@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { EntityReference } from '../../../generated/entity/type';
 import { PipelineViewMode } from '../../../generated/settings/settings';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
@@ -38,4 +39,6 @@ export interface EntitySummaryPanelProps {
   readonly downstreamDepth?: number;
   readonly nodesPerLayer?: number;
   readonly onEntityUpdate?: (updatedEntity: Partial<EntityData>) => void;
+  readonly ontologyExplorerRelationsSlot?: ReactNode;
+  readonly sideDrawerOverviewOnly?: boolean;
 }

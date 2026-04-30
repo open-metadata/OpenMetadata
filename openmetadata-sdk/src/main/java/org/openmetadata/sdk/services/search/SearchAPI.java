@@ -348,6 +348,7 @@ public class SearchAPI {
     private String query;
     private String index;
     private String field;
+    private String queryText;
 
     AggregateBuilder(HttpClient httpClient) {
       this.httpClient = httpClient;
@@ -371,6 +372,12 @@ public class SearchAPI {
       return this;
     }
 
+    /** Set free-text search query to scope aggregation results. */
+    public AggregateBuilder queryText(String queryText) {
+      this.queryText = queryText;
+      return this;
+    }
+
     /** Execute the aggregate query. */
     public String execute() throws OpenMetadataException {
       RequestOptions.Builder optionsBuilder = RequestOptions.builder();
@@ -378,6 +385,7 @@ public class SearchAPI {
       if (query != null) optionsBuilder.queryParam("q", query);
       if (index != null) optionsBuilder.queryParam("index", index);
       if (field != null) optionsBuilder.queryParam("field", field);
+      if (queryText != null) optionsBuilder.queryParam("queryText", queryText);
 
       return httpClient.executeForString(
           HttpMethod.GET, "/v1/search/aggregate", null, optionsBuilder.build());

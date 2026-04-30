@@ -52,6 +52,12 @@
   },
   "mappings": {
     "properties": {
+      "changeDescription": {
+        "enabled": false
+      },
+      "incrementalChangeDescription": {
+        "enabled": false
+      },
       "query": {
         "properties": {
           "id": {
@@ -204,6 +210,7 @@
             "type": "long"
           },
           "owners": {
+            "type": "nested",
             "properties": {
               "id": {
                 "type": "keyword",

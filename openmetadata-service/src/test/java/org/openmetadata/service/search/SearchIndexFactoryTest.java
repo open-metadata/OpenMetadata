@@ -1,10 +1,13 @@
 package org.openmetadata.service.search;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
@@ -17,6 +20,8 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
 import org.openmetadata.schema.entity.ai.LLMModel;
+import org.openmetadata.schema.entity.ai.McpExecution;
+import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.ai.PromptTemplate;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -50,6 +55,7 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.entity.services.LLMService;
+import org.openmetadata.schema.entity.services.McpService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.MlModelService;
@@ -91,6 +97,9 @@ import org.openmetadata.service.search.indexes.GlossaryTermIndex;
 import org.openmetadata.service.search.indexes.IngestionPipelineIndex;
 import org.openmetadata.service.search.indexes.LlmModelIndex;
 import org.openmetadata.service.search.indexes.LlmServiceIndex;
+import org.openmetadata.service.search.indexes.McpExecutionIndex;
+import org.openmetadata.service.search.indexes.McpServerIndex;
+import org.openmetadata.service.search.indexes.McpServiceIndex;
 import org.openmetadata.service.search.indexes.MessagingServiceIndex;
 import org.openmetadata.service.search.indexes.MetadataServiceIndex;
 import org.openmetadata.service.search.indexes.MetricIndex;
@@ -153,6 +162,76 @@ class SearchIndexFactoryTest {
             IllegalArgumentException.class, () -> factory.buildIndex("unknownType", new Object()));
 
     org.junit.jupiter.api.Assertions.assertTrue(exception.getMessage().contains("unknownType"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("supportedIndexMappings")
+  void reindexFieldsProbeSucceedsForEveryEntityType(
+      String entityType, Supplier<Object> entitySupplier, Class<? extends SearchIndex> indexClass) {
+    // The factory probes each Index with a null entity to read its static field declarations.
+    // This asserts every Index constructor is null-safe and that a non-empty field set is returned.
+    Set<String> fields = factory.getReindexFieldsFor(entityType);
+    assertFalse(
+        fields.isEmpty(),
+        () -> "Reindex fields for " + entityType + " must not be empty; got " + fields);
+  }
+
+  @ParameterizedTest
+  @MethodSource("supportedIndexMappings")
+  void commonReindexFieldsPresentForEveryEntityType(
+      String entityType, Supplier<Object> entitySupplier, Class<? extends SearchIndex> indexClass) {
+    Set<String> fields = factory.getReindexFieldsFor(entityType);
+    for (String common : SearchIndex.COMMON_REINDEX_FIELDS) {
+      assertTrue(
+          fields.contains(common),
+          () -> entityType + " reindex fields missing common field '" + common + "': " + fields);
+    }
+  }
+
+  @Test
+  void reindexFieldsIncludeKnownOverrides() {
+    // Regression guard: every Index class that adds its own fields via getRequiredReindexFields
+    // must continue to surface those fields through the factory probe.
+    assertTrue(factory.getReindexFieldsFor(Entity.TABLE).contains("columns"));
+    assertTrue(factory.getReindexFieldsFor(Entity.CONTAINER).contains("dataModel"));
+    assertTrue(factory.getReindexFieldsFor(Entity.SPREADSHEET).contains("worksheets"));
+    assertTrue(factory.getReindexFieldsFor(Entity.INGESTION_PIPELINE).contains("pipelineStatuses"));
+    assertTrue(factory.getReindexFieldsFor(Entity.DATABASE).contains("usageSummary"));
+    assertTrue(factory.getReindexFieldsFor(Entity.DASHBOARD).contains("charts"));
+    assertTrue(factory.getReindexFieldsFor(Entity.PIPELINE).contains("tasks"));
+    assertTrue(factory.getReindexFieldsFor(Entity.GLOSSARY_TERM).contains("relatedTerms"));
+    assertTrue(factory.getReindexFieldsFor(Entity.TEAM).contains("parents"));
+    Set<String> userFields = factory.getReindexFieldsFor(Entity.USER);
+    assertTrue(userFields.contains("teams"));
+    assertTrue(userFields.contains("roles"));
+    assertTrue(userFields.contains("inheritedRoles"));
+    Set<String> testCaseFields = factory.getReindexFieldsFor(Entity.TEST_CASE);
+    assertTrue(testCaseFields.contains("testSuite"));
+    assertTrue(testCaseFields.contains("testSuites"));
+    assertTrue(testCaseFields.contains("testDefinition"));
+  }
+
+  @Test
+  void reindexFieldsOmitKnownFanOutFields() {
+    // These are the "blow up the heap" relationships we explicitly do NOT want fetched during
+    // reindex. They either live in the Index's getExcludedFields() (stripped post-hoc) or
+    // aren't read by buildSearchIndexDocInternal. Either way, asking setFields to load them
+    // would be wasted work and risks OOM on large parents.
+    assertFalse(factory.getReindexFieldsFor(Entity.DATABASE_SCHEMA).contains("tables"));
+    assertFalse(factory.getReindexFieldsFor(Entity.DATABASE).contains("databaseSchemas"));
+    assertFalse(factory.getReindexFieldsFor(Entity.TEAM).contains("users"));
+    assertFalse(factory.getReindexFieldsFor(Entity.CONTAINER).contains("children"));
+    assertFalse(factory.getReindexFieldsFor(Entity.API_COLLECTION).contains("apiEndpoints"));
+    assertFalse(factory.getReindexFieldsFor(Entity.DASHBOARD).contains("dataModels"));
+    assertFalse(factory.getReindexFieldsFor(Entity.GLOSSARY_TERM).contains("children"));
+  }
+
+  @Test
+  void reindexFieldsUnknownEntityTypeFallsBackToCommon() {
+    // Graceful degradation: if a new entity type is added and the factory can't probe it,
+    // the reindex path still works with the common set rather than throwing.
+    Set<String> fields = factory.getReindexFieldsFor("nonExistentEntityType");
+    org.junit.jupiter.api.Assertions.assertEquals(SearchIndex.COMMON_REINDEX_FIELDS, fields);
   }
 
   private static Stream<Arguments> supportedIndexMappings() {
@@ -227,6 +306,10 @@ class SearchIndexFactoryTest {
             (Supplier<Object>) MlModelService::new,
             MlModelServiceIndex.class),
         Arguments.of(Entity.LLM_SERVICE, (Supplier<Object>) LLMService::new, LlmServiceIndex.class),
+        Arguments.of(Entity.MCP_SERVER, (Supplier<Object>) McpServer::new, McpServerIndex.class),
+        Arguments.of(
+            Entity.MCP_EXECUTION, (Supplier<Object>) McpExecution::new, McpExecutionIndex.class),
+        Arguments.of(Entity.MCP_SERVICE, (Supplier<Object>) McpService::new, McpServiceIndex.class),
         Arguments.of(
             Entity.SEARCH_SERVICE, (Supplier<Object>) SearchService::new, SearchServiceIndex.class),
         Arguments.of(

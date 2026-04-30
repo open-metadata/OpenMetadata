@@ -45,6 +45,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   // ===================================================================
@@ -156,6 +157,17 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().mlModels().getVersionList(id);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().mlModels().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().mlModels().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

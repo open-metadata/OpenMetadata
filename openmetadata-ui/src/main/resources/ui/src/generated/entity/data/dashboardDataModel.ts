@@ -23,7 +23,11 @@ export interface DashboardDataModel {
     /**
      * Columns from the data model.
      */
-    columns:       Column[];
+    columns: Column[];
+    /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
     dataModelType: DataModelType;
     /**
      * List of data products this entity is part of.
@@ -234,6 +238,10 @@ export enum LabelType {
  * was applied.
  */
 export interface TagLabelMetadata {
+    /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
     /**
      * Metadata about the recognizer that automatically applied this tag
      */
@@ -655,6 +663,8 @@ export interface CustomMetric {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Reference to the data contract for this entity.
+ *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Link to service where this data model is hosted in.
@@ -890,7 +900,9 @@ export enum DataModelType {
     PowerBIDataModel = "PowerBIDataModel",
     QlikDataModel = "QlikDataModel",
     QuickSightDataModel = "QuickSightDataModel",
+    SapS4HanaCdsView = "SapS4HanaCdsView",
     SigmaDataModel = "SigmaDataModel",
+    SsrsDataModel = "SsrsDataModel",
     SupersetDataModel = "SupersetDataModel",
     TableauDataModel = "TableauDataModel",
     TableauEmbeddedDatasource = "TableauEmbeddedDatasource",
@@ -906,6 +918,7 @@ export enum DataModelType {
  */
 export enum EntityStatus {
     Approved = "Approved",
+    Archived = "Archived",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",
@@ -979,6 +992,7 @@ export enum DashboardServiceType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     Redash = "Redash",
+    SapS4Hana = "SapS4Hana",
     Sigma = "Sigma",
     Ssrs = "Ssrs",
     Superset = "Superset",

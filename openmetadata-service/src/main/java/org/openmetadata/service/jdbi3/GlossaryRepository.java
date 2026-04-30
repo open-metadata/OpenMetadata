@@ -56,6 +56,7 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
+import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.type.Style;
@@ -81,6 +82,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -198,6 +200,15 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         new ListFilter(Include.NON_DELETED)
             .addQueryParam("parent", FullyQualifiedName.build(glossary.getName()));
     return daoCollection.glossaryTermDAO().listCount(filter);
+  }
+
+  @Override
+  protected void postDelete(Glossary entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
+    PolicyConditionUpdater.updateAllPolicyConditions(
+        condition ->
+            PolicyConditionUpdater.removeByPrefixFromCondition(
+                condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
   }
 
   @Override
@@ -453,7 +464,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
                 SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
         if (settings != null && settings.getRelationTypes() != null) {
           return settings.getRelationTypes().stream()
-              .map(rt -> rt.getName())
+              .map(GlossaryTermRelationType::getName)
               .sorted()
               .collect(Collectors.joining(", "));
         }
@@ -603,13 +614,15 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
     MessageParser.EntityLink newAbout = new MessageParser.EntityLink(entityType, newFqn);
 
-    daoCollection.feedDAO().updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+    Entity.getFeedRepository()
+        .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
 
     List<GlossaryTerm> childTerms = getAllTerms(updated);
 
     for (GlossaryTerm child : childTerms) {
       newAbout = new MessageParser.EntityLink(GLOSSARY_TERM, child.getFullyQualifiedName());
-      daoCollection.feedDAO().updateByEntityId(newAbout.getLinkString(), child.getId().toString());
+      Entity.getFeedRepository()
+          .updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
     }
   }
 
@@ -632,11 +645,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          "name",
-          () -> {
-            updateName(updated);
-          });
+      compareAndUpdate("name", () -> updateName(updated));
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
     }
@@ -665,6 +674,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
       // Glossary name changed - update tag names starting from glossary and all the children tags
       LOG.info("Glossary FQN changed from {} to {}", oldFqn, newFqn);
+      // Drop cache entries for every glossary term under this glossary BEFORE we rewrite the DB.
+      invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().updateTagPrefix(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
@@ -679,6 +690,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .tagUsageDAO()
           .renameByTargetFQNHash(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
       updateEntityLinksOnGlossaryRename(oldFqn, newFqn, updated);
+
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.renamePrefixInCondition(
+                  condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
     }
 
     public void invalidateGlossary(UUID classificationId) {

@@ -12,9 +12,10 @@
 """
 Source connection handler
 """
-import os
+
+import os  # noqa: I001
 from functools import partial, singledispatch
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import quote
 
 from airflow import __version__ as airflow_version
@@ -92,7 +93,7 @@ def _(_: BackendConnection) -> Engine:
     return engine
 
 
-def _get_backend_engine_from_session() -> Optional[Engine]:
+def _get_backend_engine_from_session() -> Optional[Engine]:  # noqa: UP045
     """
     Try to get the Airflow metadata engine via airflow.settings.Session.
     This is allowed on Airflow 2.x but raises a RuntimeError on Airflow 3.x.
@@ -147,15 +148,12 @@ def _get_engine_from_env_vars() -> Engine:
     encoded_password = quote(password, safe="")
     properties = properties or ""
 
-    sql_alchemy_conn = (
-        f"{scheme}://{encoded_user}:{encoded_password}"
-        f"@{host}:{port}/{database}{properties}"
-    )
+    sql_alchemy_conn = f"{scheme}://{encoded_user}:{encoded_password}@{host}:{port}/{database}{properties}"
 
     try:
         engine = create_engine(sql_alchemy_conn, pool_pre_ping=True)
         attach_query_tracker(engine)
-        return engine
+        return engine  # noqa: TRY300
     except Exception as exc:  # pylint: disable=broad-except
         raise SourceConnectionException(
             "Failed to create SQLAlchemy engine using the DB_* environment variables. "
@@ -165,14 +163,14 @@ def _get_engine_from_env_vars() -> Engine:
 
 @_get_connection.register
 def _(airflow_connection: MysqlConnectionConfig) -> Engine:
-    from metadata.ingestion.source.database.mysql.connection import MySQLConnection
+    from metadata.ingestion.source.database.mysql.connection import MySQLConnection  # noqa: PLC0415
 
     return MySQLConnection(airflow_connection)._get_client()
 
 
 @_get_connection.register
 def _(airflow_connection: PostgresConnectionConfig) -> Engine:
-    from metadata.ingestion.source.database.postgres.connection import (
+    from metadata.ingestion.source.database.postgres.connection import (  # noqa: PLC0415
         PostgresConnection,
     )
 
@@ -181,17 +179,28 @@ def _(airflow_connection: PostgresConnectionConfig) -> Engine:
 
 @_get_connection.register
 def _(airflow_connection: SQLiteConnection) -> Engine:
-    from metadata.ingestion.source.database.sqlite.connection import (
+    from metadata.ingestion.source.database.sqlite.connection import (  # noqa: PLC0415
         get_connection as get_sqlite_connection,
     )
 
     return get_sqlite_connection(airflow_connection)
 
 
-def get_connection(connection: AirflowConnection) -> Engine:
+def get_connection(connection: AirflowConnection):
     """
     Create connection
     """
+    from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        AirflowRestApiConnection,
+    )
+
+    if isinstance(connection.connection, AirflowRestApiConnection):
+        from metadata.ingestion.source.pipeline.airflow.api.client import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            AirflowApiClient,
+        )
+
+        return AirflowApiClient(connection)
+
     try:
         return _get_connection(connection.connection)
     except Exception as exc:
@@ -211,19 +220,88 @@ class AirflowTaskDetailsAccessError(Exception):
     """
 
 
+def _test_task_detail_access(session) -> Optional[Any]:  # noqa: UP045
+    """
+    Verify task-level access to serialized_dag.
+    Extracted to module level so it can be unit-tested directly.
+    """
+    try:
+        if IS_AIRFLOW_3:
+            # Airflow 3.x changed DAG storage: the `data` column in
+            # `serialized_dag` is NULL (data moved to bundles/compressed
+            # format). Querying it causes 'NoneType' subscript errors.
+            # Fall back to a dag_id-only query to confirm table access.
+            logger.warning(
+                "Airflow 3.x detected: skipping `data` column validation as it may be NULL. "
+                "Falling back to dag_id query to confirm `serialized_dag` table access."
+            )
+            return session.query(SerializedDagModel.dag_id).first()
+
+        json_data_column = (
+            SerializedDagModel._data  # For 2.3.0 onwards # pylint: disable=protected-access
+            if hasattr(SerializedDagModel, "_data")
+            else SerializedDagModel.data  # For 2.2.5 and 2.1.4
+        )
+        result = session.query(json_data_column).first()
+
+        if result is None:
+            logger.warning(
+                "No serialized DAGs found in the `serialized_dag` table. "
+                "The table is accessible but empty — task detail access cannot be validated."
+            )
+            return None
+
+        return result[0]["dag"]["tasks"]
+    except Exception as e:
+        raise AirflowTaskDetailsAccessError(f"Task details access error : {e}") from e
+
+
+def _test_api_connection(
+    metadata: OpenMetadata,
+    client,
+    service_connection: AirflowConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+) -> TestConnectionResult:
+    test_fn = {
+        "CheckAccess": client.get_version,
+        "PipelineDetailsAccess": lambda: client.list_dags(limit=1),
+        "TaskDetailAccess": lambda: True,
+    }
+    return test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_type=service_connection.type.value,
+        automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
+    )
+
+
 def test_connection(
     metadata: OpenMetadata,
-    engine: Engine,
+    connection_obj,
     service_connection: AirflowConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
+    from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        AirflowRestApiConnection,
+    )
 
-    session_maker = sessionmaker(bind=engine)
+    if isinstance(service_connection.connection, AirflowRestApiConnection):
+        return _test_api_connection(
+            metadata,
+            connection_obj,
+            service_connection,
+            automation_workflow,
+            timeout_seconds,
+        )
+
+    session_maker = sessionmaker(bind=connection_obj)
     session = session_maker()
 
     def test_pipeline_details_access(session):
@@ -231,30 +309,14 @@ def test_connection(
             # Query only the dag_id column to avoid version compatibility issues
             # The data_compressed column doesn't exist in Airflow 2.2.5
             result = session.query(SerializedDagModel.dag_id).first()
-            return result
+            return result  # noqa: RET504, TRY300
         except Exception as e:
-            raise AirflowPipelineDetailsAccessError(
-                f"Pipeline details access error: {e}"
-            )
-
-    def test_task_detail_access(session):
-        try:
-            json_data_column = (
-                SerializedDagModel._data  # For 2.3.0 onwards # pylint: disable=protected-access
-                if hasattr(SerializedDagModel, "_data")
-                else SerializedDagModel.data  # For 2.2.5 and 2.1.4
-            )
-            result = session.query(json_data_column).first()
-
-            retrieved_tasks = result[0]["dag"]["tasks"]
-            return retrieved_tasks
-        except Exception as e:
-            raise AirflowTaskDetailsAccessError(f"Task details access error : {e}")
+            raise AirflowPipelineDetailsAccessError(f"Pipeline details access error: {e}")  # noqa: B904
 
     test_fn = {
-        "CheckAccess": partial(test_connection_engine_step, engine),
+        "CheckAccess": partial(test_connection_engine_step, connection_obj),
         "PipelineDetailsAccess": partial(test_pipeline_details_access, session),
-        "TaskDetailAccess": partial(test_task_detail_access, session),
+        "TaskDetailAccess": partial(_test_task_detail_access, session),
     }
     return test_connection_steps(
         metadata=metadata,

@@ -36,8 +36,10 @@
 }
 
 .left-sidebar-menu {
-  display: flex;
-  flex-direction: column;
+  &:not(.ant-menu-submenu-hidden) {
+    display: flex;
+    flex-direction: column;
+  }
 
   .ant-menu-item,
   .ant-menu-submenu {

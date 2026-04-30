@@ -1,6 +1,6 @@
-import { type FC, type ReactNode, useState } from 'react';
-import { User01 } from '@untitledui/icons';
 import { cx } from '@/utils/cx';
+import { User01 } from '@untitledui/icons';
+import { type CSSProperties, type FC, type ReactNode, useState } from 'react';
 import { AvatarOnlineIndicator, VerifiedTick } from './base-components';
 
 type AvatarSize = 'xxs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
@@ -49,6 +49,7 @@ export interface AvatarProps {
    * @default false
    */
   focusable?: boolean;
+  style?: CSSProperties;
 }
 
 const styles = {
@@ -102,6 +103,7 @@ export const Avatar = ({
   verified,
   focusable = false,
   className,
+  style,
 }: AvatarProps) => {
   const [isFailed, setIsFailed] = useState(false);
 
@@ -128,9 +130,7 @@ export const Avatar = ({
 
     if (PlaceholderIcon) {
       return (
-        <PlaceholderIcon
-          className={cx('tw:text-fg-quaternary', styles[size].icon)}
-        />
+        <PlaceholderIcon className={cx('tw:text-current', styles[size].icon)} />
       );
     }
 
@@ -177,7 +177,8 @@ export const Avatar = ({
         contrastBorder && 'tw:outline tw:outline-avatar-contrast-border',
         styles[size].root,
         className
-      )}>
+      )}
+      style={style}>
       {renderMainContent()}
       {renderBadgeContent()}
     </div>

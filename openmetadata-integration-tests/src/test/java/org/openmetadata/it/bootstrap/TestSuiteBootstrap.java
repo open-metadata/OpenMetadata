@@ -27,7 +27,9 @@ import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.validation.Validator;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
@@ -58,9 +60,12 @@ import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
+import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
@@ -124,10 +129,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static String databaseType;
   private static String searchType;
   private static boolean rdfEnabled;
+  private static String cacheProvider;
 
   private static JdbcDatabaseContainer<?> DATABASE_CONTAINER;
   private static GenericContainer<?> SEARCH_CONTAINER;
   private static GenericContainer<?> FUSEKI_CONTAINER;
+  private static GenericContainer<?> REDIS_CONTAINER;
   private static K3sContainer K3S_CONTAINER;
   private static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   private static Jdbi jdbi;
@@ -136,6 +143,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static int searchPort;
   private static String fusekiEndpoint;
   private static String kubeConfigYaml;
+  private static String redisUrl;
+
+  private static final String DEFAULT_REDIS_IMAGE = "redis:7-alpine";
+  private static final int REDIS_PORT = 6379;
 
   @Override
   public void launcherSessionOpened(LauncherSession session) {
@@ -148,11 +159,13 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     databaseType = System.getProperty("databaseType", "postgres");
     searchType = System.getProperty("searchType", "elasticsearch");
     rdfEnabled = Boolean.parseBoolean(System.getProperty("enableRdf", "false"));
+    cacheProvider = System.getProperty("cacheProvider", "none");
 
     LOG.info("=== TestSuiteBootstrap: Starting test infrastructure ===");
     LOG.info("Database type: {}", databaseType);
     LOG.info("Search type: {}", searchType);
     LOG.info("RDF enabled: {}", rdfEnabled);
+    LOG.info("Cache provider: {}", cacheProvider);
     boolean k8sEnabled = isK8sTestsRequested();
     LOG.info("K8s tests enabled: {}", k8sEnabled);
     long startTime = System.currentTimeMillis();
@@ -162,6 +175,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       startSearch();
       if (rdfEnabled) {
         startFuseki();
+      }
+      if (isRedisEnabled()) {
+        startRedis();
       }
       if (k8sEnabled) {
         startK3s();
@@ -174,6 +190,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       LOG.info("Search ({}): {}:{}", searchType, searchHost, searchPort);
       if (rdfEnabled) {
         LOG.info("Fuseki SPARQL: {}", fusekiEndpoint);
+      }
+      if (isRedisEnabled()) {
+        LOG.info("Redis: {}", redisUrl);
       }
       if (k8sEnabled) {
         LOG.info("K3s Kubernetes: enabled");
@@ -211,7 +230,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       mysql.withDatabaseName("openmetadata");
       mysql.withUsername("test");
       mysql.withPassword("test");
-      mysql.withCommand("mysqld", "--max_allowed_packet=" + mysqlMaxAllowedPacket);
+      mysql.withCommand(
+          "mysqld",
+          "--max_allowed_packet=" + mysqlMaxAllowedPacket,
+          // The tag list query (TagDAO.listAfter) joins three tables and sorts by tag.name,
+          // tag.id; under the parallel-tests fork the tag table grows large and the default
+          // 256KB sort_buffer_size overflows with "Out of sort memory" (#27649). 8MB is plenty
+          // for an integration-test workload and well under the 4GB overall limit.
+          "--sort_buffer_size=8M");
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
       mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=2g"));
@@ -259,7 +285,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "-c",
           "synchronous_commit=off",
           "-c",
-          "full_page_writes=off");
+          "full_page_writes=off",
+          // Bump work_mem for the same reason MySQL gets a larger sort_buffer above:
+          // TagDAO.listAfter joins three tables and sorts; default 4MB spills to temp files
+          // under load.
+          "-c",
+          "work_mem=32MB");
       postgres.withTmpFs(java.util.Map.of("/var/lib/postgresql/data", "rw,size=2g"));
       postgres.withCreateContainerCmdModifier(
           cmd ->
@@ -335,6 +366,58 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
   }
 
+  private void startRedis() {
+    String image = System.getProperty("redisImage", DEFAULT_REDIS_IMAGE);
+    LOG.info("Starting Redis container with image: {}", image);
+    REDIS_CONTAINER =
+        new GenericContainer<>(DockerImageName.parse(image))
+            .withExposedPorts(REDIS_PORT)
+            .withCommand(
+                "redis-server",
+                "--appendonly",
+                "no",
+                "--save",
+                "",
+                "--maxmemory",
+                "512mb",
+                "--maxmemory-policy",
+                "allkeys-lru")
+            .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(1)));
+    REDIS_CONTAINER.start();
+    redisUrl =
+        String.format(
+            "redis://%s:%d", REDIS_CONTAINER.getHost(), REDIS_CONTAINER.getMappedPort(REDIS_PORT));
+    LOG.info("Redis started: {}", redisUrl);
+  }
+
+  public static boolean isRedisEnabled() {
+    return "redis".equalsIgnoreCase(cacheProvider);
+  }
+
+  public static String getRedisUrl() {
+    return redisUrl;
+  }
+
+  private void configureCache(OpenMetadataApplicationConfig config) {
+    if (!isRedisEnabled()) {
+      return;
+    }
+    org.openmetadata.service.cache.CacheConfig cacheConfig = config.getCacheConfig();
+    cacheConfig.provider = org.openmetadata.service.cache.CacheConfig.Provider.redis;
+    cacheConfig.redis.url = redisUrl;
+    cacheConfig.redis.authType = org.openmetadata.service.cache.CacheConfig.AuthType.NONE;
+    cacheConfig.redis.keyspace = "om:it:" + System.currentTimeMillis();
+    cacheConfig.redis.commandTimeoutMs = 1000;
+    cacheConfig.entityTtlSeconds = 3600;
+    cacheConfig.relationshipTtlSeconds = 3600;
+    cacheConfig.tagTtlSeconds = 3600;
+    config.setCacheConfig(cacheConfig);
+    LOG.info(
+        "Configured Redis cache: url={} keyspace={}",
+        cacheConfig.redis.url,
+        cacheConfig.redis.keyspace);
+  }
+
   private void startFuseki() {
     String image = System.getProperty("rdfContainerImage", DEFAULT_FUSEKI_IMAGE);
     LOG.info("Starting Fuseki SPARQL container...");
@@ -397,7 +480,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
   }
 
-  private static boolean isK8sTestsRequested() {
+  public static boolean isK8sTestsRequested() {
     return "true".equalsIgnoreCase(System.getProperty("ENABLE_K8S_TESTS"))
         || "true".equalsIgnoreCase(System.getenv("ENABLE_K8S_TESTS"));
   }
@@ -446,6 +529,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
     configurePipelineServiceClient(config);
     configureRdf(config);
+    configureCache(config);
 
     IndexMappingLoader.init(getBaseSearchConfig());
 
@@ -516,7 +600,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private OpenMetadataApplicationConfig readTestAppConfig(String path)
       throws ConfigurationException, IOException {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
-    objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
+    objectMapper.registerSubtypes(
+        AuditExcludeFilterFactory.class,
+        AuditOnlyFilterFactory.class,
+        SwitchableEventLayoutFactory.class,
+        SwitchableAccessLayoutFactory.class);
     Validator validator = Validators.newValidator();
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
         new YamlConfigurationFactory<>(
@@ -710,6 +798,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
 
     try {
+      if (REDIS_CONTAINER != null) {
+        REDIS_CONTAINER.stop();
+      }
+    } catch (Exception e) {
+      LOG.warn("Error stopping Redis container", e);
+    }
+
+    try {
       if (K3S_CONTAINER != null) {
         K3S_CONTAINER.stop();
       }
@@ -798,6 +894,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory
             .createPipelineServiceClient(pipelineConfig);
 
+    if (APP != null) {
+      APP.getConfiguration().setPipelineServiceClientConfiguration(pipelineConfig);
+    }
+
     // Update the IngestionPipelineRepository with the new client
     // This is necessary because the repository caches the client at startup
     try {
@@ -811,7 +911,40 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       throw new RuntimeException("Failed to configure K8s pipeline client", e);
     }
 
+    refreshIngestionPipelineResource();
+
     LOG.info("K8s pipeline service client configured and ready");
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void refreshIngestionPipelineResource() {
+    if (APP == null) {
+      LOG.info("OpenMetadata application is not initialized yet; skipping resource refresh");
+      return;
+    }
+
+    try {
+      Field collectionMapField = CollectionRegistry.class.getDeclaredField("collectionMap");
+      collectionMapField.setAccessible(true);
+
+      Map<String, CollectionRegistry.CollectionDetails> collectionMap =
+          (Map<String, CollectionRegistry.CollectionDetails>)
+              collectionMapField.get(CollectionRegistry.getInstance());
+
+      for (CollectionRegistry.CollectionDetails details : collectionMap.values()) {
+        Object resource = details.getResource();
+        if (resource instanceof IngestionPipelineResource ingestionPipelineResource) {
+          ingestionPipelineResource.initialize(APP.getConfiguration());
+          LOG.info("Refreshed IngestionPipelineResource with K8s pipeline client");
+          return;
+        }
+      }
+
+      LOG.warn("IngestionPipelineResource is not registered; skipping resource refresh");
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Failed to refresh IngestionPipelineResource with K8s pipeline client", e);
+    }
   }
 
   /**

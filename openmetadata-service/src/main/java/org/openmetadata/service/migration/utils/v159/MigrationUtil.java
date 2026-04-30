@@ -62,8 +62,7 @@ public class MigrationUtil {
                           row.get("appid").toString(),
                           AppExtension.ExtensionType.STATUS.toString());
                 } catch (Exception ex) {
-                  LOG.warn(
-                      String.format("Error migrating app extension [%s] due to [%s]", row, ex));
+                  LOG.warn("Error migrating app extension [{}] due to ", row, ex);
                 }
               });
     } catch (Exception ex) {

@@ -133,6 +133,10 @@ export class DataProduct extends EntityClass {
     return response.body;
   }
 
+  getDomains(): Domain[] {
+    return this.domains;
+  }
+
   private getFqn() {
     return this.data?.fullyQualifiedName ?? this.data.name;
   }

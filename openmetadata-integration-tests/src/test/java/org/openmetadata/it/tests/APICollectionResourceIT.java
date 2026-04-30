@@ -42,6 +42,7 @@ public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateA
     supportsBulkAPI = true;
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
+    supportsDataContract = true;
   }
 
   // ===================================================================
@@ -152,6 +153,19 @@ public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateA
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().apiCollections().getVersionList(id);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().apiCollections().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient()
+        .apiCollections()
+        .getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

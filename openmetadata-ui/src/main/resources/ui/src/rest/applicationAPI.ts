@@ -102,9 +102,15 @@ export const getExternalApplicationRuns = async (
   return response.data;
 };
 
-export const getLatestApplicationRuns = async (appName: string) => {
+export const getLatestApplicationRuns = async (
+  appName: string,
+  runId?: string
+) => {
   const response = await APIClient.get<DataInsightLatestRun>(
-    `${BASE_URL}/name/${getEncodedFqn(appName)}/logs`
+    `${BASE_URL}/name/${getEncodedFqn(appName)}/logs`,
+    {
+      params: runId ? { runId } : undefined,
+    }
   );
 
   return response.data;
@@ -155,14 +161,25 @@ export const restoreApp = async (id: string) => {
   return response.data;
 };
 
-export const stopApp = async (name: string) => {
-  return await APIClient.post(`${BASE_URL}/stop/${getEncodedFqn(name)}`);
+export const stopApp = async (name: string, runId?: string) => {
+  return await APIClient.post(
+    `${BASE_URL}/stop/${getEncodedFqn(name)}`,
+    undefined,
+    {
+      params: runId ? { runId } : undefined,
+    }
+  );
 };
 
-export const getApplicationLogs = (appName: string, after?: string) => {
+export const getApplicationLogs = (
+  appName: string,
+  after?: string,
+  runId?: string
+) => {
   return APIClient.get(`${BASE_URL}/name/${appName}/logs`, {
     params: {
       after,
+      ...(runId && { runId }),
     },
   });
 };
@@ -175,6 +192,29 @@ export const getAgentRuns = async (
     `/collate/apps/name/${applicationName}/agentRuns`,
     { params }
   );
+
+  return response.data;
+};
+
+export interface SearchIndexRetryRecord {
+  entityId: string;
+  entityFqn: string;
+  failureReason: string;
+  status: string;
+  entityType: string;
+  retryCount: number;
+  claimedAt: string | null;
+}
+
+export const getLiveIndexingQueue = async (
+  appName: string,
+  params?: { limit?: number; offset?: number }
+) => {
+  const response = await APIClient.get<
+    PagingResponse<SearchIndexRetryRecord[]>
+  >(`${BASE_URL}/name/${getEncodedFqn(appName)}/live-indexing-queue`, {
+    params,
+  });
 
   return response.data;
 };

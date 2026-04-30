@@ -1,4 +1,4 @@
-# https://github.com/open-metadata/OpenMetadata/actions/runs/15640676139/job/44066998708?pr=21719  Copyright 2025 Collate
+#  Copyright 2025 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -13,18 +13,18 @@
 Python Dependencies
 """
 
-import sys
-from typing import Dict, List, Set
+from typing import Dict, List, Set  # noqa: UP035
 
 from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==3.1.5",
+    "airflow": "apache-airflow==3.1.7",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     "avro": "avro>=1.11.4,<1.12",
     "boto3": "boto3~=1.41.5",
+    "cloud-sql-python-connector-pymysql": "cloud-sql-python-connector[pymysql]>=1.0.0,<2.0.0",
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
     "google-cloud-storage": "google-cloud-storage>=1.43.0",
@@ -35,15 +35,15 @@ VERSIONS = {
     "ijson": "ijson~=3.4",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
-    "pandas": "pandas~=2.0.3",
+    "pandas": "pandas~=2.1.4",
     "pyarrow": "pyarrow~=16.0",
     "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
     "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
-    "pyodbc": "pyodbc>=4.0.35,<5",
+    "pyodbc": "pyodbc~=5.3.0",
     "numpy": "numpy<2",
-    "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
+    "scikit-learn": "scikit-learn>=1.3,<2",
     "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
@@ -66,7 +66,6 @@ VERSIONS = {
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
     "starrocks": "pymysql~=1.0",
-    "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "google-cloud-pubsub": "google-cloud-pubsub>=2.0.0",
     "pyathena": "pyathena~=3.25.0",
@@ -104,9 +103,7 @@ COMMONS = {
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
-        VERSIONS[
-            "grpc-tools"
-        ],  # grpcio-tools already depends on grpcio. No need to add separately
+        VERSIONS["grpc-tools"],  # grpcio-tools already depends on grpcio. No need to add separately
         "protobuf",
     },
     "postgres": {
@@ -165,7 +162,7 @@ base_requirements = {
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
-    "collate-sqllineage>=2.0.2",
+    "collate-sqllineage>=2.1.1",
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
@@ -176,12 +173,11 @@ base_requirements = {
     "jaraco.context==6.0.1",
     # TODO: Remove one once we have updated datadiff version
     VERSIONS["snowflake-connector"],
-    "mysql-connector-python>=8.0.29;python_version<'3.9'",
-    "mysql-connector-python>=9.1;python_version>='3.9'",
+    "mysql-connector-python>=9.1",
     "httpx~=0.28.0",
 }
 
-plugins: Dict[str, Set[str]] = {
+plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "airflow": {
         "opentelemetry-exporter-otlp==1.37.0",
         "attrs",
@@ -192,7 +188,12 @@ plugins: Dict[str, Set[str]] = {
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
+    "microsoftfabric": {VERSIONS["pyodbc"], VERSIONS["msal"]},
+    "microsoftfabricpipeline": {VERSIONS["msal"]},
     "backup": {VERSIONS["boto3"], VERSIONS["azure-identity"], "azure-storage-blob"},
+    "googledrive": {
+        "google-api-python-client>=2.0.0",
+    },
     "bigquery": {
         "google-cloud-datacatalog>=3.6.2",
         "google-cloud-logging",
@@ -296,13 +297,10 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl~=0.4",
         "impyla~=0.18.0",
     },
-    "iceberg": {
-        VERSIONS["pyiceberg"],
-        # Forcing the version of a few packages so it plays nicely with other requirements.
-        VERSIONS["pydantic"],
-        VERSIONS["adlfs"],
-        VERSIONS["gcsfs"],
-        VERSIONS["pyarrow"],
+    "iomete": {
+        "iomete-sqlalchemy>=1.0.22",
+        "adbc-driver-flightsql",
+        "adbc-driver-manager",
     },
     "impala": {
         "presto-types-parser>=0.0.2",
@@ -336,6 +334,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "mysql": {
         VERSIONS["pymysql"],
+        VERSIONS["cloud-sql-python-connector-pymysql"],
         DATA_DIFF["mysql"],
     },
     "nifi": {},  # uses requests
@@ -358,7 +357,7 @@ plugins: Dict[str, Set[str]] = {
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
-        # sqlalchemy-redshift is pre-installed with --no-deps (SA<2 metadata conflict)
+        "sqlalchemy-redshift~=1.0.0",
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },
@@ -395,16 +394,14 @@ plugins: Dict[str, Set[str]] = {
 }
 
 dev = {
-    "black==22.3.0",
+    "ruff~=0.15.12",
     "uvloop==0.21.0",
     "datamodel-code-generator==0.25.6",
     "boto3-stubs",
     "mypy-boto3-glue",
-    "isort",
+    "nox",
     "pre-commit",
-    "pycln",
-    "pylint~=3.2.0",  # 3.3.0+ breaks our current linting
-    "basedpyright~=1.14",
+    "basedpyright~=1.39.0",
     # For publishing
     "twine",
     "build",
@@ -463,9 +460,7 @@ test = {
     VERSIONS["cockroach"],
     # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
     VERSIONS["starrocks"],
-    VERSIONS["pyiceberg"],
-    "testcontainers==3.7.1;python_version<'3.9'",
-    "testcontainers~=4.8.0;python_version>='3.9'",
+    "testcontainers~=4.8.0",
     "minio==7.2.5",
     *plugins["mlflow"],
     *plugins["datalake-s3"],
@@ -491,14 +486,12 @@ test = {
     VERSIONS["opensearch"],
     VERSIONS["kafka-connect"],
     VERSIONS["factory-boy"],
+    "locust~=2.32.0",
 }
 
 docs = {
     VERSIONS["griffe2md"],
 }
-
-if sys.version_info >= (3, 9):
-    test.add("locust~=2.32.0")
 
 e2e_test = {
     # playwright dependencies
@@ -526,16 +519,10 @@ playwright_dependencies = {
 }
 
 
-def filter_requirements(filtered: Set[str]) -> List[str]:
+def filter_requirements(filtered: Set[str]) -> List[str]:  # noqa: UP006
     """Filter out requirements from base_requirements"""
     return list(
-        base_requirements.union(
-            *[
-                requirements
-                for plugin, requirements in plugins.items()
-                if plugin not in filtered
-            ]
-        )
+        base_requirements.union(*[requirements for plugin, requirements in plugins.items() if plugin not in filtered])
     )
 
 
@@ -551,9 +538,7 @@ setup(
         # FIXME: all-dev-env is a temporary solution to install all dependencies except
         #   those that might conflict with each other or cause issues in the dev environment
         #   This covers all development cases where none of the plugins are used
-        "all-dev-env": filter_requirements(
-            {"airflow", "db2", "great-expectations", "pymssql"}
-        ),
+        "all-dev-env": filter_requirements({"airflow", "db2", "great-expectations", "pymssql"}),
         # enf-of-fixme
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),
         "playwright": list(playwright_dependencies),

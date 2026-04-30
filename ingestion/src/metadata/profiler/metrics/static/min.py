@@ -12,8 +12,9 @@
 """
 Min Metric definition
 """
+
 from functools import partial
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional  # noqa: UP035
 
 from sqlalchemy import TIME, column
 from sqlalchemy.ext.compiler import compiles
@@ -62,8 +63,7 @@ def _(element, compiler, **kw):
     # Check if the first clause is an instance of LenFn and its type is not in FLOAT_SET
     # or if the type of the first clause is date time
     if (
-        isinstance(first_clause, LenFn)
-        and type(first_clause.clauses.clauses[0].type) not in FLOAT_SET
+        isinstance(first_clause, LenFn) and type(first_clause.clauses.clauses[0].type) not in FLOAT_SET
     ) or is_date_time(first_clause.type):
         # If the condition is true, return the minimum value of the column
         return f"MIN({col})"
@@ -99,9 +99,7 @@ class Min(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_concatenable(self.col.type):
-            return MinFn(
-                LenFn(column(self.col.name, self.col.type)), type_=self.col.type
-            )
+            return MinFn(LenFn(column(self.col.name, self.col.type)), type_=self.col.type)
 
         if (not is_quantifiable(self.col.type)) and (not is_date_time(self.col.type)):
             return None
@@ -117,32 +115,26 @@ class Min(StaticMetric):
             try:
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:
-                logger.debug(
-                    f"Error while computing min for column {self.col.name}: {err}"
-                )
+                logger.debug(f"Error while computing min for column {self.col.name}: {err}")
                 return None
         return computation.aggregate_accumulator(accumulator)
 
     def get_pandas_computation(self) -> PandasComputation:
         """Returns the logic to compute this metrics using Pandas"""
-        return PandasComputation[Optional[float], Optional[float]](
+        return PandasComputation[Optional[float], Optional[float]](  # noqa: UP045
             create_accumulator=lambda: None,
-            update_accumulator=lambda acc, df: Min.update_accumulator(
-                acc, df, self.col
-            ),
+            update_accumulator=lambda acc, df: Min.update_accumulator(acc, df, self.col),
             aggregate_accumulator=lambda acc: acc,
         )
 
     @staticmethod
-    def update_accumulator(
-        current_min: Optional[float], df: "pd.DataFrame", column
-    ) -> Optional[float]:
+    def update_accumulator(current_min: Optional[float], df: "pd.DataFrame", column) -> Optional[float]:  # noqa: UP045
         """Computes one DataFrame chunk and updates the running minimum
 
         Maintains a single minimum value (not a list). Compares chunk's min
         with current minimum and returns the smaller value.
         """
-        import pandas as pd
+        import pandas as pd  # noqa: PLC0415
 
         chunk_min = None
 
@@ -166,7 +158,7 @@ class Min(StaticMetric):
 
         return min(current_min, chunk_min)
 
-    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
+    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:  # noqa: UP045
         """nosql function"""
         if is_quantifiable(self.col.type):
             return partial(adaptor.min, column=self.col)

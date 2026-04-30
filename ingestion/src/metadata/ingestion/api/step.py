@@ -11,10 +11,11 @@
 """
 Each of the ingestion steps: Source, Sink, Stage,...
 """
+
 import inspect
 import traceback
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StepSummary,
@@ -23,7 +24,7 @@ from metadata.ingestion.api.closeable import Closeable
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.logger import ingestion_logger
+from metadata.utils.logger import StatusWarningHandler, ingestion_logger
 from metadata.utils.operation_metrics import OperationMetricsState
 from metadata.utils.progress_tracker import ProgressTrackerState
 
@@ -45,6 +46,24 @@ class Step(ABC, Closeable):
 
     def __init__(self):
         self.status = Status()
+        self._warning_handler = StatusWarningHandler(self.status)
+
+    def _activate_handler(self) -> None:
+        """Attach the warning handler to the ingestion logger.
+
+        Called at the start of each run() so that warnings emitted
+        during step execution are captured in the step's Status.
+        Must be paired with _deactivate_handler in a finally block.
+        """
+        ingestion_logger().addHandler(self._warning_handler)
+
+    def _deactivate_handler(self) -> None:
+        """Remove the warning handler from the ingestion logger.
+
+        Called in the finally block of run() to ensure the handler
+        does not leak across step boundaries.
+        """
+        ingestion_logger().removeHandler(self._warning_handler)
 
     @classmethod
     @abstractmethod
@@ -52,7 +71,7 @@ class Step(ABC, Closeable):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ) -> "Step":
         pass
 
@@ -94,9 +113,7 @@ class Summary(StepSummary):
 
         return Summary(
             name=step.name,
-            records=step.status.record_count
-            if step.status.record_count > 0
-            else len(step.status.records),
+            records=step.status.record_count if step.status.record_count > 0 else len(step.status.records),
             updated_records=len(step.status.updated_records),
             warnings=len(step.status.warnings),
             errors=len(step.status.failures),
@@ -124,10 +141,11 @@ class ReturnStep(Step, ABC):
         Main entrypoint to execute the step
         """
 
-    def run(self, record: Entity) -> Optional[Entity]:
+    def run(self, record: Entity) -> Optional[Entity]:  # noqa: UP045
         """
         Run the step and handle the status and exceptions
         """
+        self._activate_handler()
         try:
             result: Either = self._run(record)
             if result:
@@ -140,12 +158,9 @@ class ReturnStep(Step, ABC):
                     return result.right
         except WorkflowFatalError as err:
             logger.error(f"Fatal error running step [{self}]: [{err}]")
-            raise err
+            raise err  # noqa: TRY201
         except AttributeError as exc:
-            error = (
-                f"Object type defined in `def _run()` "
-                f"{inspect.getsourcefile(self._run)} is not an Either: [{exc}]"
-            )
+            error = f"Object type defined in `def _run()` {inspect.getsourcefile(self._run)} is not an Either: [{exc}]"
             logger.warning(error)
             self.status.failed(
                 StackTraceError(
@@ -157,11 +172,9 @@ class ReturnStep(Step, ABC):
         except Exception as exc:
             error = f"Unhandled exception during workflow processing: [{exc}]"
             logger.warning(error)
-            self.status.failed(
-                StackTraceError(
-                    name="Unhandled", error=error, stackTrace=traceback.format_exc()
-                )
-            )
+            self.status.failed(StackTraceError(name="Unhandled", error=error, stackTrace=traceback.format_exc()))
+        finally:
+            self._deactivate_handler()
 
         return None
 
@@ -186,6 +199,7 @@ class StageStep(Step, ABC):
         """
         Run the step and handle the status and exceptions.
         """
+        self._activate_handler()
         try:
             for result in self._run(record):
                 if result.left is not None:
@@ -195,12 +209,9 @@ class StageStep(Step, ABC):
                     self.status.scanned(result.right)
         except WorkflowFatalError as err:
             logger.error(f"Fatal error running step [{self}]: [{err}]")
-            raise err
+            raise err  # noqa: TRY201
         except AttributeError as exc:
-            error = (
-                f"Object type defined in `def _run()` "
-                f"{inspect.getsourcefile(self._run)} is not an Either: [{exc}]"
-            )
+            error = f"Object type defined in `def _run()` {inspect.getsourcefile(self._run)} is not an Either: [{exc}]"
             logger.warning(error)
             self.status.failed(
                 StackTraceError(
@@ -212,11 +223,9 @@ class StageStep(Step, ABC):
         except Exception as exc:
             error = f"Unhandled exception during workflow processing: [{exc}]"
             logger.warning(error)
-            self.status.failed(
-                StackTraceError(
-                    name="Unhandled", error=error, stackTrace=traceback.format_exc()
-                )
-            )
+            self.status.failed(StackTraceError(name="Unhandled", error=error, stackTrace=traceback.format_exc()))
+        finally:
+            self._deactivate_handler()
 
 
 class IterStep(Step, ABC):
@@ -226,13 +235,14 @@ class IterStep(Step, ABC):
     def _iter(self) -> Iterable[Either]:
         """Main entrypoint to run through the Iterator"""
 
-    def run(self) -> Iterable[Optional[Entity]]:
+    def run(self) -> Iterable[Optional[Entity]]:  # noqa: UP045
         """
         Run the step and handle the status and exceptions
 
         Note that we are overwriting the default run implementation
         in order to create a generator with `yield`.
         """
+        self._activate_handler()
         try:
             for result in self._iter():
                 if result.left is not None:
@@ -244,11 +254,10 @@ class IterStep(Step, ABC):
                     yield result.right
         except WorkflowFatalError as err:
             logger.error(f"Fatal error running step [{self}]: [{err}]")
-            raise err
+            raise err  # noqa: TRY201
         except AttributeError as exc:
             error = (
-                f"Object type defined in `def _iter()` "
-                f"{inspect.getsourcefile(self._iter)} is not an Either: [{exc}]"
+                f"Object type defined in `def _iter()` {inspect.getsourcefile(self._iter)} is not an Either: [{exc}]"
             )
             logger.warning(error)
             self.status.failed(
@@ -261,11 +270,9 @@ class IterStep(Step, ABC):
         except Exception as exc:
             error = f"Encountered exception running step [{self}]: [{exc}]"
             logger.warning(error)
-            self.status.failed(
-                StackTraceError(
-                    name="Unhandled", error=error, stackTrace=traceback.format_exc()
-                )
-            )
+            self.status.failed(StackTraceError(name="Unhandled", error=error, stackTrace=traceback.format_exc()))
+        finally:
+            self._deactivate_handler()
 
 
 class BulkStep(Step, ABC):

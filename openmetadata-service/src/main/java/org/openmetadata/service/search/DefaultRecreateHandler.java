@@ -99,6 +99,13 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     }
 
     if (shouldPromote) {
+      // Always clear staged-index routing on the way out, regardless of outcome:
+      //   - swap success      → alias now points at staged; canonical and staged resolve to the
+      //                         same index, so unregistering keeps reads/writes consistent.
+      //   - swap failure / empty aliases / exception → leaving routing active would silently
+      //                         send live writes to a staged index nothing reads from, which
+      //                         is strictly worse than the writes going back to the canonical
+      //                         alias target. Operators need to retry the reindex either way.
       try {
         Set<String> aliasesToAttach = new HashSet<>();
 
@@ -148,6 +155,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
                 entityType);
             return;
           }
+        } else {
+          LOG.warn("Entity '{}': aliasesToAttach is empty, skipping alias swap", entityType);
         }
 
         LOG.info(
@@ -180,6 +189,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         if (metrics != null) {
           metrics.recordPromotionFailure(entityType);
         }
+      } finally {
+        searchRepository.unregisterStagedIndex(entityType, stagedIndex);
       }
     } else {
       try {
@@ -196,6 +207,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
             stagedIndex,
             entityType,
             ex);
+      } finally {
+        searchRepository.unregisterStagedIndex(entityType, stagedIndex);
       }
     }
   }
@@ -262,10 +275,13 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
             stagedIndex,
             entityType,
             ex);
+      } finally {
+        searchRepository.unregisterStagedIndex(entityType, stagedIndex);
       }
       return;
     }
 
+    // Always clear staged-index routing on the way out — see the rationale in finalizeReindex.
     try {
       Set<String> aliasesToAttach =
           getAliasesFromMapping(indexMapping, searchRepository.getClusterAlias());
@@ -340,6 +356,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       if (promoteMetrics != null) {
         promoteMetrics.recordPromotionFailure(entityType);
       }
+    } finally {
+      searchRepository.unregisterStagedIndex(entityType, stagedIndex);
     }
   }
 
@@ -422,6 +440,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
 
     String stagedIndexName = buildStagedIndexName(canonicalIndexName);
     searchClient.createIndex(stagedIndexName, mappingContent);
+    searchRepository.registerStagedIndex(entityType, stagedIndexName);
 
     Set<String> existingAliases =
         activeIndexName != null ? searchClient.getAliases(activeIndexName) : new HashSet<>();

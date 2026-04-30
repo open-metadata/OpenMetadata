@@ -286,7 +286,7 @@ public class MigrationUtil {
           .getDao()
           .insert("fqnHash", chart, chart.getFullyQualifiedName());
     } catch (Exception ex) {
-      LOG.warn(String.format("Chart %s exists, Exception Message: {}", chartName, ex.getMessage()));
+      LOG.warn("Chart {} exists, Exception Message: {}", chartName, ex.getMessage());
     }
   }
 

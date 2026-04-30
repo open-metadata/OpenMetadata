@@ -352,8 +352,24 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Data contract Id", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+          UUID id,
+      @Parameter(description = "Limit the number of versions returned")
+          @QueryParam("limit")
+          @DefaultValue("0")
+          @Min(0)
+          @Max(1000)
+          int limit,
+      @Parameter(description = "Offset of the versions to return")
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset,
+      @Parameter(
+              description =
+                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
+          @QueryParam("fieldChanged")
+          String fieldChanged) {
+    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
   }
 
   @GET
@@ -431,8 +447,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   public Response createFromYaml(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
     try {
-      ObjectMapper yamlMapper = YAML_MAPPER;
-      CreateDataContract create = yamlMapper.readValue(yamlContent, CreateDataContract.class);
+      CreateDataContract create = YAML_MAPPER.readValue(yamlContent, CreateDataContract.class);
       DataContract dataContract =
           getDataContract(create, securityContext.getUserPrincipal().getName());
       return create(uriInfo, securityContext, dataContract);
@@ -513,8 +528,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   public Response createOrUpdateFromYaml(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
     try {
-      ObjectMapper yamlMapper = YAML_MAPPER;
-      CreateDataContract create = yamlMapper.readValue(yamlContent, CreateDataContract.class);
+      CreateDataContract create = YAML_MAPPER.readValue(yamlContent, CreateDataContract.class);
       DataContract dataContract =
           getDataContract(create, securityContext.getUserPrincipal().getName());
       return createOrUpdate(uriInfo, securityContext, dataContract);
@@ -1342,9 +1356,8 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   public Response validateDataContractRequestYaml(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
     try {
-      ObjectMapper yamlMapper = YAML_MAPPER;
       CreateDataContract createRequest =
-          yamlMapper.readValue(yamlContent, CreateDataContract.class);
+          YAML_MAPPER.readValue(yamlContent, CreateDataContract.class);
       DataContract dataContract = DataContractMapper.createEntity(createRequest, "validation");
       ContractValidation validation = repository.validateContractWithoutThrowing(dataContract);
       return Response.ok(validation).build();

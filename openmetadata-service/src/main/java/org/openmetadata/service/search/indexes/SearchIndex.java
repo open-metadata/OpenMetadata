@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
@@ -32,14 +31,12 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -56,21 +53,57 @@ public interface SearchIndex {
           "connection",
           "changeSummary");
 
-  public static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
-  static final Logger LOG = LoggerFactory.getLogger(SearchIndex.class);
+  /**
+   * Relationship/enrichment fields fetched by {@code EntityRepository.setFields} that every search
+   * document populates via {@link #populateCommonFields(Map, EntityInterface, String)}. Stored-JSON
+   * fields (name, displayName, description, service, entity-native counts) are NOT in this set —
+   * they live on the entity row and need no extra fetch.
+   */
+  Set<String> COMMON_REINDEX_FIELDS =
+      Set.of(
+          "owners",
+          "domains",
+          "reviewers",
+          "followers",
+          "votes",
+          "extension",
+          "certification",
+          "dataProducts");
+
+  SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
+  Logger LOG = LoggerFactory.getLogger(SearchIndex.class);
 
   default Map<String, Object> buildSearchIndexDoc() {
-    // Build Index Doc
-    Map<String, Object> esDoc = this.buildSearchIndexDocInternal(JsonUtils.getMap(getEntity()));
+    Object entity = getEntity();
+    Map<String, Object> esDoc = JsonUtils.getMap(entity);
 
-    // Add FqnHash
+    // Phase 1: Common entity fields (owners, domains, displayName, etc.)
+    if (entity instanceof EntityInterface ei) {
+      populateCommonFields(esDoc, ei, getEntityTypeName());
+    }
+
+    // Phase 2: Mixin fields (tags, service, lineage) — auto-applied based on interface
+    if (this instanceof TaggableIndex ti) {
+      ti.applyTagFields(esDoc);
+    }
+    if (this instanceof ServiceBackedIndex sbi) {
+      sbi.applyServiceFields(esDoc);
+    }
+    if (this instanceof LineageIndex li) {
+      li.applyLineageFields(esDoc);
+    }
+
+    // Phase 3: Entity-specific fields only
+    esDoc = this.buildSearchIndexDocInternal(esDoc);
+
+    // Phase 4: FQN hash
     if (esDoc.containsKey(Entity.FIELD_FULLY_QUALIFIED_NAME)
         && !nullOrEmpty((String) esDoc.get(Entity.FIELD_FULLY_QUALIFIED_NAME))) {
       String fqn = (String) esDoc.get(Entity.FIELD_FULLY_QUALIFIED_NAME);
       esDoc.put("fqnHash", FullyQualifiedName.buildHash(fqn));
     }
 
-    // Non Indexable Fields
+    // Phase 5: Cleanup
     removeNonIndexableFields(esDoc);
 
     return esDoc;
@@ -86,73 +119,100 @@ public interface SearchIndex {
 
   Object getEntity();
 
+  /**
+   * Returns the entity type name (e.g., Entity.TABLE). Used by mixin interfaces to avoid requiring
+   * each implementation to pass the entity type explicitly.
+   */
+  String getEntityTypeName();
+
   default Set<String> getExcludedFields() {
     return Collections.emptySet();
   }
 
   Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc);
 
-  default Map<String, Object> getCommonAttributesMap(EntityInterface entity, String entityType) {
-    Map<String, Object> map = new HashMap<>();
-    map.put(
+  /**
+   * Returns the minimal set of fields the {@code SearchIndexApp} reindex path must ask
+   * {@code EntityRepository.setFields} to populate for this index to build a correct document.
+   *
+   * <p>Default is {@link #COMMON_REINDEX_FIELDS}, augmented with {@code "tags"} when the index
+   * implements {@link TaggableIndex}. Individual index classes override to add entity-specific
+   * relationships. Keep this method side-effect-free and safe to call on a probe instance whose
+   * entity is {@code null} — it is invoked without an entity to discover fields statically.
+   */
+  default Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(COMMON_REINDEX_FIELDS);
+    if (this instanceof TaggableIndex) {
+      fields.add("tags");
+    }
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
+  /**
+   * Populates common entity fields into the search index document. Called automatically by {@link
+   * #buildSearchIndexDoc()} for all EntityInterface-based entities. Individual index classes should
+   * NOT call this — it is handled by the framework.
+   */
+  default void populateCommonFields(
+      Map<String, Object> doc, EntityInterface entity, String entityType) {
+    doc.put(
         "displayName",
         entity.getDisplayName() != null && !entity.getDisplayName().isBlank()
             ? entity.getDisplayName()
             : entity.getName());
-    map.put("entityType", entityType);
+    doc.put("entityType", entityType);
     List<EntityReference> ownersList = getEntitiesWithDisplayName(entity.getOwners());
-    map.put("owners", ownersList);
-    map.put(
+    doc.put("owners", ownersList);
+    doc.put(
         "ownerDisplayName",
         ownersList.stream()
             .map(EntityReference::getDisplayName)
             .filter(n -> !nullOrEmpty(n))
             .toList());
-    map.put(
+    doc.put(
         "ownerName",
         ownersList.stream().map(EntityReference::getName).filter(n -> !nullOrEmpty(n)).toList());
-    map.put("domains", getEntitiesWithDisplayName(entity.getDomains()));
-    map.put("reviewers", getEntitiesWithDisplayName(entity.getReviewers()));
-    map.put("followers", SearchIndexUtils.parseFollowers(entity.getFollowers()));
-    Optional.ofNullable(entity.getEntityStatus())
-        .ifPresent(status -> map.put("entityStatus", status.value()));
-    int totalVotes =
-        nullOrEmpty(entity.getVotes())
-            ? 0
-            : Math.max(entity.getVotes().getUpVotes() - entity.getVotes().getDownVotes(), 0);
-    map.put("totalVotes", totalVotes);
-
+    doc.put("domains", getEntitiesWithDisplayName(entity.getDomains()));
+    doc.put("reviewers", getEntitiesWithDisplayName(entity.getReviewers()));
+    doc.put("followers", SearchIndexUtils.parseFollowers(entity.getFollowers()));
+    doc.put(
+        "entityStatus",
+        entity.getEntityStatus() != null
+            ? entity.getEntityStatus().value()
+            : org.openmetadata.schema.type.EntityStatus.UNPROCESSED.value());
     if (entity.getVotes() != null) {
+      int upVotes = entity.getVotes().getUpVotes() != null ? entity.getVotes().getUpVotes() : 0;
+      int downVotes =
+          entity.getVotes().getDownVotes() != null ? entity.getVotes().getDownVotes() : 0;
+      doc.put("totalVotes", Math.max(upVotes - downVotes, 0));
       Map<String, Object> votesMap = new HashMap<>();
-      votesMap.put(
-          "upVotes", entity.getVotes().getUpVotes() != null ? entity.getVotes().getUpVotes() : 0);
-      votesMap.put(
-          "downVotes",
-          entity.getVotes().getDownVotes() != null ? entity.getVotes().getDownVotes() : 0);
-      map.put("votes", votesMap);
+      votesMap.put("upVotes", upVotes);
+      votesMap.put("downVotes", downVotes);
+      doc.put("votes", votesMap);
+    } else {
+      doc.put("totalVotes", 0);
     }
 
-    map.put("descriptionStatus", getDescriptionStatus(entity));
+    doc.put("descriptionStatus", getDescriptionStatus(entity));
 
     Map<String, ChangeSummary> changeSummaryMap = SearchIndexUtils.getChangeSummaryMap(entity);
-    map.put(
+    doc.put(
         "descriptionSources", SearchIndexUtils.processDescriptionSources(entity, changeSummaryMap));
-    SearchIndexUtils.TagAndTierSources tagAndTierSources =
-        SearchIndexUtils.processTagAndTierSources(entity);
-    map.put("tagSources", tagAndTierSources.getTagSources());
-    map.put("tierSources", tagAndTierSources.getTierSources());
+    // tagSources/tierSources only for entities that support tags (TaggableIndex sets tier)
+    if (this instanceof TaggableIndex) {
+      SearchIndexUtils.TagAndTierSources tagAndTierSources =
+          SearchIndexUtils.processTagAndTierSources(entity);
+      doc.put("tagSources", tagAndTierSources.getTagSources());
+      doc.put("tierSources", tagAndTierSources.getTierSources());
+    }
 
-    map.put("fqnParts", getFQNParts(entity.getFullyQualifiedName()));
-    map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
-    TagLabel tierTag = new ParseTags(Entity.getEntityTags(entityType, entity)).getTierTag();
-    map.put("tier", tierTag);
-    map.put("certification", entity.getCertification());
+    doc.put("fqnParts", getFQNParts(entity.getFullyQualifiedName()));
+    doc.put("deleted", entity.getDeleted() != null && entity.getDeleted());
+    doc.put("certification", entity.getCertification());
 
-    map.put(
+    doc.put(
         "customPropertiesTyped",
         SearchIndexUtils.buildTypedCustomProperties(entity.getExtension(), entityType));
-
-    return map;
   }
 
   default Set<String> getFQNParts(String fqn) {
@@ -228,6 +288,23 @@ public interface SearchIndex {
       }
     }
     return data;
+  }
+
+  /**
+   * Populates upstreamLineage and lineageSqlQueries in the given search doc map.
+   *
+   * <p>Identical SQL queries across edges are deduplicated: the full text is stored once in
+   * lineageSqlQueries keyed by a sequential integer, and each edge carries only the key via
+   * sqlQueryKey. Edges with unique SQL still get their SQL stored (and keyed). The authoritative
+   * per-edge SQL remains in the database; this deduplication is search-doc-local.
+   */
+  static void populateLineageData(Map<String, Object> doc, EntityReference entity) {
+    List<EsLineageData> edges = getLineageData(entity);
+    Map<String, String> sqlQueries = SearchIndexUtils.deduplicateSqlAcrossEdges(edges);
+    doc.put("upstreamLineage", edges);
+    if (!sqlQueries.isEmpty()) {
+      doc.put("lineageSqlQueries", sqlQueries);
+    }
   }
 
   static List<Map<String, Object>> populateUpstreamEntityRelationshipData(Table entity) {

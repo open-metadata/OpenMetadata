@@ -470,6 +470,11 @@ export interface PipelineServiceClientConfiguration {
     microsoftAppTenantId?: string;
     metricConfiguration?:  MetricConfigurationDefinition[];
     /**
+     * Whether to enable sample data collection at the platform level. This setting will
+     * override the source configuration.
+     */
+    sampleDataConfig?: SampleDataIngestionConfig;
+    /**
      * Configurations of allowed searchable fields for each entity type
      */
     allowedFields?: AllowedSearchFields[];
@@ -1702,8 +1707,9 @@ export enum EventTypeFilter {
  */
 export interface ExecutorConfiguration {
     /**
-     * The interval in milliseconds to acquire async jobs. Default: 60 seconds. This controls
-     * how often Flowable polls for new jobs.
+     * The interval in milliseconds to acquire async jobs. Default: 1 second. Keep this low so
+     * user-facing workflow tasks (e.g. Glossary Term approval) appear within seconds of the
+     * triggering entity change instead of waiting a full polling cycle.
      */
     asyncJobAcquisitionInterval?: number;
     /**
@@ -1729,8 +1735,9 @@ export interface ExecutorConfiguration {
      */
     tasksDuePerAcquisition?: number;
     /**
-     * The interval in milliseconds to acquire timer jobs. Default: 60 seconds. This controls
-     * how often Flowable polls for scheduled jobs.
+     * The interval in milliseconds to acquire timer jobs. Default: 5 seconds. Timer jobs
+     * (due-date escalations, etc.) are less latency-sensitive than async jobs but still benefit
+     * from quick pickup.
      */
     timerJobAcquisitionInterval?: number;
 }
@@ -2307,6 +2314,10 @@ export interface Openai {
      * https://your-resource.openai.azure.com). Leave empty for standard OpenAI API.
      */
     endpoint?: string;
+    /**
+     * OpenAI model identifier to use for query transformation (chat completions).
+     */
+    modelId?: string;
 }
 
 /**
@@ -2551,6 +2562,27 @@ export interface RunTimeCleanUpConfiguration {
      * Batch size used when cleaning up Flowable Run Time data
      */
     batchSize?: number;
+}
+
+/**
+ * Whether to enable sample data collection at the platform level. This setting will
+ * override the source configuration.
+ *
+ * Define the configuration for sample data ingestion at the platform level. This
+ * configuration will override the source-level configuration for sample data collection.
+ */
+export interface SampleDataIngestionConfig {
+    /**
+     * Allows OpenMetadata to read the sample data. This setting won't save the sample data but
+     * sample data will temporarily be brought in OpenMetadata infrastructure for processing. If
+     * reading is disabled but storing is enabled, reading will be enabled by default.
+     */
+    readSampleData?: boolean;
+    /**
+     * Allows OpenMetadata to store the sample data. This setting will override the source
+     * configuration.
+     */
+    storeSampleData?: boolean;
 }
 
 /**

@@ -11,10 +11,11 @@
 """
 Module containing AWS Client
 """
+
 import datetime
 from enum import Enum
 from functools import partial
-from typing import Any, Callable, Dict, Optional, Type, TypeVar
+from typing import Any, Callable, Dict, Optional, Type, TypeVar  # noqa: UP035
 
 import boto3
 import botocore.session
@@ -44,6 +45,7 @@ class AWSServices(Enum):
     REDSHIFT = "redshift"
     REDSHIFT_SERVERLESS = "redshift-serverless"
     LAKE_FORMATION = "lakeformation"
+    MWAA = "mwaa"
 
 
 def _get_valid_aws_regions() -> set:
@@ -58,7 +60,7 @@ def _get_valid_aws_regions() -> set:
 VALID_AWS_REGIONS = _get_valid_aws_regions()
 
 
-class AWSAssumeRoleException(Exception):
+class AWSAssumeRoleException(Exception):  # noqa: N818
     """
     Exception class to handle assume role related issues
     """
@@ -67,25 +69,23 @@ class AWSAssumeRoleException(Exception):
 class AWSAssumeRoleCredentialResponse(BaseModel):
     AccessKeyId: str = Field()
     SecretAccessKey: str = Field()
-    SessionToken: Optional[str] = Field(
+    SessionToken: Optional[str] = Field(  # noqa: UP045
         default=None,
     )
-    Expiration: Optional[datetime.datetime] = None
+    Expiration: Optional[datetime.datetime] = None  # noqa: UP045
 
 
 class AWSAssumeRoleCredentialWrapper(BaseModel):
-    accessKeyId: str = Field(alias="access_key")
-    secretAccessKey: CustomSecretStr = Field(alias="secret_key")
-    sessionToken: Optional[str] = Field(default=None, alias="token")
-    expiryTime: Optional[str] = Field(alias="expiry_time")
+    accessKeyId: str = Field(alias="access_key")  # noqa: N815
+    secretAccessKey: CustomSecretStr = Field(alias="secret_key")  # noqa: N815
+    sessionToken: Optional[str] = Field(default=None, alias="token")  # noqa: N815, UP045
+    expiryTime: Optional[str] = Field(alias="expiry_time")  # noqa: N815, UP045
 
     class Config:
         populate_by_name = True
 
 
-AWSAssumeRoleCredentialFormat = TypeVar(
-    "AWSAssumeRoleCredentialFormat", AWSAssumeRoleCredentialWrapper, Dict
-)
+AWSAssumeRoleCredentialFormat = TypeVar("AWSAssumeRoleCredentialFormat", AWSAssumeRoleCredentialWrapper, Dict)  # noqa: UP006
 
 
 class AWSClient:
@@ -103,21 +103,16 @@ class AWSClient:
             region = self.config.awsRegion
             if region not in VALID_AWS_REGIONS:
                 msg = f"Invalid AWS Region: '{region}'."
-                if any(
-                    region.startswith(r) and len(region) == len(r) + 1
-                    for r in VALID_AWS_REGIONS
-                ):
+                if any(region.startswith(r) and len(region) == len(r) + 1 for r in VALID_AWS_REGIONS):
                     msg += " This looks like an availability zone rather than a region."
-                msg += f" Expected one of:" f" {', '.join(sorted(VALID_AWS_REGIONS))}"
+                msg += f" Expected one of: {', '.join(sorted(VALID_AWS_REGIONS))}"
                 raise ValueError(msg)
 
     @staticmethod
     def get_assume_role_config(
         config: AWSCredentials,
-        return_type: Type[
-            AWSAssumeRoleCredentialFormat
-        ] = AWSAssumeRoleCredentialWrapper,
-    ) -> Optional[AWSAssumeRoleCredentialFormat]:
+        return_type: Type[AWSAssumeRoleCredentialFormat] = AWSAssumeRoleCredentialWrapper,  # noqa: UP006
+    ) -> Optional[AWSAssumeRoleCredentialFormat]:  # noqa: UP045
         """
         Get temporary credentials from assumed role
         """
@@ -142,8 +137,8 @@ class AWSClient:
             )
 
         if resp:
-            credentials: AWSAssumeRoleCredentialResponse = (
-                AWSAssumeRoleCredentialResponse(**resp.get("Credentials", {}))
+            credentials: AWSAssumeRoleCredentialResponse = AWSAssumeRoleCredentialResponse(
+                **resp.get("Credentials", {})
             )
             creds_wrapper = AWSAssumeRoleCredentialWrapper(
                 accessKeyId=credentials.AccessKeyId,
@@ -151,7 +146,7 @@ class AWSClient:
                 sessionToken=credentials.SessionToken,
                 expiryTime=credentials.Expiration.isoformat(),
             )
-            if return_type == Dict:
+            if return_type == Dict:  # noqa: UP006
                 return creds_wrapper.model_dump(by_alias=True)
             return creds_wrapper
 
@@ -159,12 +154,12 @@ class AWSClient:
 
     @staticmethod
     def _get_session(
-        aws_access_key_id: Optional[str],
-        aws_secret_access_key: Optional[CustomSecretStr],
-        aws_session_token: Optional[str],
+        aws_access_key_id: Optional[str],  # noqa: UP045
+        aws_secret_access_key: Optional[CustomSecretStr],  # noqa: UP045
+        aws_session_token: Optional[str],  # noqa: UP045
         aws_region: str,
         profile=None,
-        refresh_using: Optional[Callable] = None,
+        refresh_using: Optional[Callable] = None,  # noqa: UP045
     ) -> Session:
         """
         The only required param for boto3 is the region.
@@ -179,17 +174,11 @@ class AWSClient:
             )
             session = get_session()
             session._credentials = refreshable_creds  # pylint: disable=protected-access
-            return Session(
-                botocore_session=session, region_name=aws_region, profile_name=profile
-            )
+            return Session(botocore_session=session, region_name=aws_region, profile_name=profile)
 
         return Session(
             aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=(
-                aws_secret_access_key.get_secret_value()
-                if aws_secret_access_key
-                else None
-            ),
+            aws_secret_access_key=(aws_secret_access_key.get_secret_value() if aws_secret_access_key else None),
             aws_session_token=aws_session_token,
             region_name=aws_region,
             profile_name=profile,
@@ -203,9 +192,7 @@ class AWSClient:
                 None,
                 self.config.awsRegion,
                 self.config.profileName,
-                refresh_using=partial(
-                    AWSClient.get_assume_role_config, self.config, Dict
-                ),
+                refresh_using=partial(AWSClient.get_assume_role_config, self.config, Dict),  # noqa: UP006
             )
 
         return AWSClient._get_session(
@@ -222,9 +209,7 @@ class AWSClient:
             logger.debug(f"Getting AWS client for service [{service_name}]")
             session = self.create_session()
             if self.config.endPointURL is not None:
-                return session.client(
-                    service_name=service_name, endpoint_url=str(self.config.endPointURL)
-                )
+                return session.client(service_name=service_name, endpoint_url=str(self.config.endPointURL))
             return session.client(service_name=service_name)
 
         logger.debug(f"Getting AWS default client for service [{service_name}]")
@@ -234,9 +219,7 @@ class AWSClient:
     def get_resource(self, service_name: str) -> Any:
         session = self.create_session()
         if self.config.endPointURL is not None:
-            return session.resource(
-                service_name=service_name, endpoint_url=str(self.config.endPointURL)
-            )
+            return session.resource(service_name=service_name, endpoint_url=str(self.config.endPointURL))
         return session.resource(service_name=service_name)
 
     def get_rds_client(self):
@@ -277,3 +260,6 @@ class AWSClient:
 
     def get_redshift_serverless_client(self):
         return self.get_client(AWSServices.REDSHIFT_SERVERLESS.value)
+
+    def get_mwaa_client(self):
+        return self.get_client(AWSServices.MWAA.value)

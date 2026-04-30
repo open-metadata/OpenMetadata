@@ -59,7 +59,7 @@ class EmbeddingClientTest {
   }
 
   @Test
-  void testCustomConcurrencyLimitEnforced() throws Exception {
+  void testCustomConcurrencyLimitEnforced() {
     int concurrencyLimit = 2;
     CountDownLatch gate = new CountDownLatch(1);
     AtomicInteger concurrentCount = new AtomicInteger(0);

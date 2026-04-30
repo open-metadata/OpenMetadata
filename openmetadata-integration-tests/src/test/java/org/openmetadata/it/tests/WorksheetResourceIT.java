@@ -56,6 +56,7 @@ public class WorksheetResourceIT extends BaseEntityIT<Worksheet, CreateWorksheet
     supportsDomains = false;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   @Override
@@ -168,6 +169,17 @@ public class WorksheetResourceIT extends BaseEntityIT<Worksheet, CreateWorksheet
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return getWorksheetService().getVersionList(id);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return getWorksheetService().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return getWorksheetService().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

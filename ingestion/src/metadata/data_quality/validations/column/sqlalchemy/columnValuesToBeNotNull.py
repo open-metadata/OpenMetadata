@@ -13,7 +13,7 @@
 Validator for column values to be not null test case
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -24,9 +24,16 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToBeNotNull import (
     BaseColumnValuesToBeNotNullValidator,
 )
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    SQARowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.logger import test_suite_logger
@@ -35,11 +42,14 @@ logger = test_suite_logger()
 
 
 class ColumnValuesToBeNotNullValidator(
-    BaseColumnValuesToBeNotNullValidator, SQAValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValuesToBeNotNullValidator,
+    SQAValidatorMixin,
+    SQARowSamplerMixin,
 ):
     """Validator for column values to be not null test case"""
 
-    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -55,7 +65,7 @@ class ColumnValuesToBeNotNullValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional query with impact scoring and Others aggregation
 
         Calculates impact scores for all dimension values and aggregates
@@ -73,7 +83,6 @@ class ColumnValuesToBeNotNullValidator(
         dimension_results = []
 
         try:
-
             # Build metric expressions using enum names as keys
             metric_expressions = {}
             for metric_name, metric in metrics_to_compute.items():
@@ -81,13 +90,9 @@ class ColumnValuesToBeNotNullValidator(
                 metric_expressions[metric_name] = metric_instance.fn()
 
             metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = Metrics.rowCount().fn()
-            metric_expressions[DIMENSION_FAILED_COUNT_KEY] = metric_expressions[
-                Metrics.nullCount.name
-            ]
+            metric_expressions[DIMENSION_FAILED_COUNT_KEY] = metric_expressions[Metrics.nullCount.name]
 
-            normalized_dimension = self._get_normalized_dimension_expression(
-                dimension_col
-            )
+            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
             result_rows = self._run_dimensional_validation_query(
                 source=self.runner.dataset,
@@ -96,9 +101,7 @@ class ColumnValuesToBeNotNullValidator(
                 top_n=top_n,
             )
 
-            return self._process_dimension_rows(
-                result_rows, dimension_col.name, metrics_to_compute, test_params
-            )
+            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")
@@ -116,3 +119,13 @@ class ColumnValuesToBeNotNullValidator(
             NotImplementedError:
         """
         return self._compute_row_count(self.runner, column)
+
+    def filter(self):
+        return {
+            "filters": [(self.get_column(), "eq", None)],
+            "or_filter": False,
+        }
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

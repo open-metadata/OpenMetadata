@@ -141,12 +141,12 @@
         "keywordWeight": {
           "description": "Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)",
           "type": "number",
-          "default": 0.6
+          "default": 0.4
         },
         "semanticWeight": {
           "description": "Weight for semantic vector search results in hybrid RRF pipeline (0.0-1.0)",
           "type": "number",
-          "default": 0.4
+          "default": 0.6
         },
         "embeddingProvider": {
           "description": "The provider to use for generating vector embeddings (e.g., bedrock, openai).",
@@ -209,6 +209,11 @@
             "apiKey": {
               "description": "API key for authenticating with OpenAI or Azure OpenAI.",
               "type": "string"
+            },
+            "modelId": {
+              "description": "OpenAI model identifier to use for query transformation (chat completions).",
+              "type": "string",
+              "default": "gpt-4o-mini"
             },
             "embeddingModelId": {
               "description": "OpenAI embedding model identifier (e.g., text-embedding-3-small, text-embedding-ada-002).",

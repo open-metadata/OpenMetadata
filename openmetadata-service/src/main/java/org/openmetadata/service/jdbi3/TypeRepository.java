@@ -334,11 +334,7 @@ public class TypeRepository extends EntityRepository<Type> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          "customProperties",
-          () -> {
-            updateCustomProperties();
-          });
+      compareAndUpdate("customProperties", this::updateCustomProperties);
     }
 
     private void updateCustomProperties() {

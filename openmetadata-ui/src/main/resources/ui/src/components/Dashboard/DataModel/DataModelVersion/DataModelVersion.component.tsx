@@ -59,6 +59,9 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   tier,
   slashedDataModelName,
   versionList,
+  onLoadMore,
+  hasMore,
+  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -262,9 +265,12 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={version ?? ''}
         entityType={EntityType.DASHBOARD_DATA_MODEL}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
+        onLoadMore={onLoadMore}
       />
     </div>
   );

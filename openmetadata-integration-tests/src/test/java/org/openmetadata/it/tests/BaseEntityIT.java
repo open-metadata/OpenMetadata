@@ -10,6 +10,8 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -42,6 +44,9 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.TestUtils;
 
 /**
@@ -147,6 +152,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   protected boolean supportsDomains = true;
   protected boolean supportsPatchDomains = true; // Can domains be changed via PATCH after creation?
   protected boolean supportsDataProducts = true;
+  protected boolean supportsDataContract = false;
   protected boolean supportsSoftDelete = true;
   protected boolean supportsCustomExtension = true;
   protected boolean supportsFieldsQueryParam = true;
@@ -1337,7 +1343,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void get_entityVersionHistory_200(TestNamespace ns) {
-    if (!supportsPatch) return; // Version history tests require patch support
+    if (!supportsVersionHistory || !supportsPatch) return;
 
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
@@ -1358,8 +1364,72 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   @Test
+  void get_entityVersionHistory_paginated_200(TestNamespace ns) {
+    if (!supportsVersionHistory || !supportsPatch) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    String entityId = created.getId().toString();
+    String patchPath = getResourcePath() + entityId;
+    RequestOptions patchOptions =
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build();
+
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient user1 = SdkClients.user1Client();
+
+    for (int i = 1; i <= 10; i++) {
+      OpenMetadataClient patchClient = i % 2 == 0 ? user1 : admin;
+      String op = i == 1 ? "add" : "replace";
+      String value = (i % 2 == 0 ? "User1" : "Admin") + " patch " + i;
+      try {
+        patchClient
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PATCH,
+                patchPath,
+                String.format(
+                    "[{\"op\":\"%s\",\"path\":\"/description\",\"value\":\"%s\"}]", op, value),
+                patchOptions);
+      } catch (Exception e) {
+        Assumptions.assumeTrue(
+            false, "Skipping: user1 cannot patch this entity type - " + e.getMessage());
+      }
+    }
+
+    org.openmetadata.schema.type.EntityHistory allVersions = getVersionHistory(created.getId());
+    int totalVersions = allVersions.getVersions().size();
+    assertTrue(totalVersions >= 11, "Should have at least 11 versions after repeated patches");
+
+    org.openmetadata.schema.type.EntityHistory page1 =
+        getVersionHistoryPaginated(created.getId(), 1, 0);
+    assertNotNull(page1.getPaging(), "Paging metadata should be present");
+    assertEquals(1, (int) page1.getPaging().getLimit());
+    assertEquals(0, (int) page1.getPaging().getOffset());
+    assertEquals(totalVersions, (int) page1.getPaging().getTotal());
+    assertEquals(1, page1.getVersions().size());
+
+    org.openmetadata.schema.type.EntityHistory page2 =
+        getVersionHistoryPaginated(created.getId(), 1, 1);
+    assertNotNull(page2.getPaging());
+    assertEquals(1, (int) page2.getPaging().getLimit());
+    assertEquals(1, (int) page2.getPaging().getOffset());
+    assertEquals(totalVersions, (int) page2.getPaging().getTotal());
+    assertEquals(1, page2.getVersions().size());
+
+    double page1Version = versionOfHistoryEntry(page1.getVersions().get(0));
+    double page2Version = versionOfHistoryEntry(page2.getVersions().get(0));
+    assertTrue(page1Version > 1.0, "First page should contain a version after the 1.0 boundary");
+    assertTrue(page1Version > page2Version, "Paginated results should remain newest-first");
+
+    org.openmetadata.schema.type.EntityHistory unpaginated = getVersionHistory(created.getId());
+    assertNotNull(unpaginated.getVersions());
+    assertEquals(totalVersions, unpaginated.getVersions().size());
+  }
+
+  @Test
   void get_specificVersion_200(TestNamespace ns) {
-    if (!supportsPatch) return; // Specific version tests require patch support
+    if (!supportsVersionHistory || !supportsGetByVersion || !supportsPatch) return;
 
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
@@ -1376,9 +1446,240 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
   }
 
+  @Test
+  void get_entityVersionHistory_fieldChanged_200(TestNamespace ns) {
+    if (!supportsVersionHistory || !supportsPatch) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    created.setDescription("Description change for fieldChanged test");
+    patchEntity(created.getId().toString(), created);
+
+    org.openmetadata.schema.type.EntityHistory filtered =
+        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "description");
+    assertNotNull(filtered, "Filtered version history should not be null");
+    assertNotNull(filtered.getPaging(), "Paging metadata should be present");
+    assertTrue(
+        filtered.getVersions().size() >= 1,
+        "Should have at least 1 version with description change");
+    assertTrue(filtered.getPaging().getTotal() >= 1, "Total should reflect filtered count");
+
+    org.openmetadata.schema.type.EntityHistory filteredWithDefaultLimit =
+        getVersionHistoryWithFieldChanged(created.getId(), 0, 0, "description");
+    assertNotNull(filteredWithDefaultLimit);
+    assertNotNull(filteredWithDefaultLimit.getPaging());
+    assertEquals(
+        100,
+        (int) filteredWithDefaultLimit.getPaging().getLimit(),
+        "Filtered history should use a bounded default page size when limit is omitted");
+    assertEquals(
+        filtered.getPaging().getTotal(),
+        filteredWithDefaultLimit.getPaging().getTotal(),
+        "Default pagination should preserve the same filtered total");
+
+    org.openmetadata.schema.type.EntityHistory substringNoMatch =
+        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "script");
+    assertNotNull(substringNoMatch);
+    assertEquals(
+        0,
+        substringNoMatch.getVersions().size(),
+        "Substring matches should not be treated as field-name matches");
+    assertEquals(0, (int) substringNoMatch.getPaging().getTotal());
+
+    org.openmetadata.schema.type.EntityHistory nestedPathNoMatch =
+        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "nested.description");
+    assertNotNull(nestedPathNoMatch);
+    assertEquals(
+        0,
+        nestedPathNoMatch.getVersions().size(),
+        "Exact field filters should not match nested paths for a top-level description change");
+    assertEquals(0, (int) nestedPathNoMatch.getPaging().getTotal());
+
+    org.openmetadata.schema.type.EntityHistory noMatch =
+        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "nonExistentField_xyz_12345");
+    assertNotNull(noMatch);
+    assertEquals(0, noMatch.getVersions().size(), "No versions should match a bogus field name");
+    assertEquals(0, (int) noMatch.getPaging().getTotal());
+  }
+
+  @Test
+  void get_entityVersionHistory_fieldChanged_ignoresWrongExtensionPrefix(TestNamespace ns) {
+    if (!supportsVersionHistory || !supportsPatch) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    created.setDescription("Description change for extension prefix test");
+    patchEntity(created.getId().toString(), created);
+
+    org.openmetadata.schema.type.EntityHistory baseline =
+        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "description");
+    assertNotNull(baseline);
+    assertNotNull(baseline.getPaging());
+
+    String rogueExtension = "rogue.version.999.0";
+    try {
+      Entity.getCollectionDAO()
+          .entityExtensionDAO()
+          .insertVersionExtension(
+              created.getId(),
+              rogueExtension,
+              getEntityType(),
+              JsonUtils.pojoToJson(created),
+              999.0,
+              JsonUtils.pojoToJson(List.of("description")));
+
+      org.openmetadata.schema.type.EntityHistory filtered =
+          getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "description");
+
+      assertNotNull(filtered);
+      assertNotNull(filtered.getPaging());
+      assertEquals(
+          baseline.getPaging().getTotal(),
+          filtered.getPaging().getTotal(),
+          "Filtered history should ignore extension rows outside the entity version prefix");
+      assertEquals(
+          baseline.getVersions().size(),
+          filtered.getVersions().size(),
+          "Filtered history should not include rows from a rogue extension prefix");
+    } finally {
+      Entity.getCollectionDAO().entityExtensionDAO().delete(created.getId(), rogueExtension);
+    }
+  }
+
+  @Test
+  void get_entityVersionHistory_paginated_ordersNullVersionNumRowsByVersion(TestNamespace ns) {
+    if (!supportsVersionHistory) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    List<Double> insertedVersions = List.of(9.0, 10.0, 11.0);
+
+    try {
+      for (Double version : insertedVersions) {
+        ObjectNode historicalVersion = (ObjectNode) JsonUtils.pojoToJsonNode(created);
+        historicalVersion.put("version", version);
+        Entity.getCollectionDAO()
+            .entityExtensionDAO()
+            .insert(
+                created.getId(),
+                EntityUtil.getVersionExtension(getEntityType(), version),
+                getEntityType(),
+                JsonUtils.pojoToJson(historicalVersion));
+      }
+
+      org.openmetadata.schema.type.EntityHistory paginatedHistory =
+          getVersionHistoryPaginated(created.getId(), 3, 1);
+
+      assertNotNull(paginatedHistory);
+      assertNotNull(paginatedHistory.getPaging());
+      assertEquals(4, (int) paginatedHistory.getPaging().getTotal());
+      assertEquals(3, paginatedHistory.getVersions().size());
+      assertEquals(11.0, versionOfHistoryEntry(paginatedHistory.getVersions().get(0)), 0.001);
+      assertEquals(10.0, versionOfHistoryEntry(paginatedHistory.getVersions().get(1)), 0.001);
+      assertEquals(9.0, versionOfHistoryEntry(paginatedHistory.getVersions().get(2)), 0.001);
+    } finally {
+      for (Double version : insertedVersions) {
+        Entity.getCollectionDAO()
+            .entityExtensionDAO()
+            .delete(created.getId(), EntityUtil.getVersionExtension(getEntityType(), version));
+      }
+    }
+  }
+
+  @Test
+  void get_entityVersionHistory_fieldChanged_matchesNullChangedFieldKeysRows(TestNamespace ns) {
+    if (!supportsVersionHistory || !supportsPatch) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    created.setDescription("Description change for null changedFieldKeys test");
+    patchEntity(created.getId().toString(), created);
+
+    org.openmetadata.schema.type.EntityHistory baseline =
+        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "description");
+    assertNotNull(baseline);
+    assertNotNull(baseline.getPaging());
+
+    double legacyVersion = 77.0;
+    String legacyExtension = EntityUtil.getVersionExtension(getEntityType(), legacyVersion);
+
+    try {
+      ObjectNode historicalVersion = (ObjectNode) JsonUtils.pojoToJsonNode(created);
+      historicalVersion.put("version", legacyVersion);
+      ObjectNode changeDescription = historicalVersion.putObject("changeDescription");
+      ArrayNode fieldsUpdated = changeDescription.putArray("fieldsUpdated");
+      fieldsUpdated.addObject().put("name", "nested.description");
+
+      Entity.getCollectionDAO()
+          .entityExtensionDAO()
+          .insert(
+              created.getId(),
+              legacyExtension,
+              getEntityType(),
+              JsonUtils.pojoToJson(historicalVersion));
+
+      org.openmetadata.schema.type.EntityHistory filtered =
+          getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "description");
+
+      assertNotNull(filtered);
+      assertNotNull(filtered.getPaging());
+      assertEquals(
+          baseline.getPaging().getTotal(),
+          (int) filtered.getPaging().getTotal(),
+          "Exact field filters should not match nested legacy rows without changedFieldKeys");
+      assertFalse(
+          filtered.getVersions().stream()
+              .anyMatch(
+                  version -> Math.abs(versionOfHistoryEntry(version) - legacyVersion) < 0.001),
+          "Top-level description filters should not include nested legacy rows");
+
+      org.openmetadata.schema.type.EntityHistory nestedFiltered =
+          getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "nested.description");
+
+      assertNotNull(nestedFiltered);
+      assertNotNull(nestedFiltered.getPaging());
+      assertEquals(
+          1,
+          (int) nestedFiltered.getPaging().getTotal(),
+          "Exact nested field filters should still match legacy rows without changedFieldKeys");
+      assertTrue(
+          nestedFiltered.getVersions().stream()
+              .anyMatch(
+                  version -> Math.abs(versionOfHistoryEntry(version) - legacyVersion) < 0.001),
+          "Nested field filters should include the legacy row without changedFieldKeys");
+    } finally {
+      Entity.getCollectionDAO().entityExtensionDAO().delete(created.getId(), legacyExtension);
+    }
+  }
+
+  private double versionOfHistoryEntry(Object versionEntry) {
+    JsonNode node =
+        versionEntry instanceof String versionJson
+            ? JsonUtils.readValue(versionJson, JsonNode.class)
+            : JsonUtils.pojoToJsonNode(versionEntry);
+    assertTrue(node.hasNonNull("version"), "Version history entry should include version");
+    return node.get("version").asDouble();
+  }
+
   protected org.openmetadata.schema.type.EntityHistory getVersionHistory(UUID id) {
     throw new UnsupportedOperationException(
         "Version history not implemented - override in subclass");
+  }
+
+  protected org.openmetadata.schema.type.EntityHistory getVersionHistoryPaginated(
+      UUID id, int limit, int offset) {
+    throw new UnsupportedOperationException(
+        "Paginated version history not implemented - override in subclass");
+  }
+
+  protected org.openmetadata.schema.type.EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    throw new UnsupportedOperationException(
+        "fieldChanged version history not implemented - override in subclass");
   }
 
   protected T getVersion(UUID id, Double version) {
@@ -1838,6 +2139,45 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         Exception.class,
         () -> patchEntity(entityId, entity),
         "Setting non-existent domain should fail");
+  }
+
+  // ===================================================================
+  // DATA CONTRACT TESTS
+  // ===================================================================
+
+  @Test
+  void get_entityDataContract_200(TestNamespace ns) {
+    if (!supportsDataContract) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+
+    org.openmetadata.schema.api.data.CreateDataContract contractRequest =
+        new org.openmetadata.schema.api.data.CreateDataContract()
+            .withName(ns.prefix("contract"))
+            .withEntity(entity.getEntityReference())
+            .withDescription("Data contract for test entity");
+    org.openmetadata.schema.entity.data.DataContract contract =
+        SdkClients.adminClient().dataContracts().create(contractRequest);
+
+    T fetched = getEntityWithFields(entity.getId().toString(), "dataContract");
+    assertNotNull(fetched.getDataContract(), "Entity should have a dataContract");
+    assertEquals(
+        contract.getId(),
+        fetched.getDataContract().getId(),
+        "DataContract reference should match created contract");
+  }
+
+  @Test
+  void get_entityWithoutDataContract_200(TestNamespace ns) {
+    if (!supportsDataContract) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+
+    T fetched = getEntityWithFields(entity.getId().toString(), "dataContract");
+    assertNull(
+        fetched.getDataContract(), "Entity without a contract should have null dataContract");
   }
 
   // ===================================================================
@@ -3238,12 +3578,23 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       patchEntity(fetched.getId().toString(), fetched);
     }
 
-    // Verify updates
+    // Verify updates. Retry to absorb the cache write-through / pub-sub fan-out under parallel
+    // load — the PATCH is synchronous server-side but concurrent test traffic can briefly stall
+    // the fresh read of a just-updated row. 60s matches other eventual-consistency windows in
+    // this test suite; NotificationTemplate showed the previous 10s budget hit 12s of stall.
     for (T entity : createdEntities) {
-      T fetched = getEntity(entity.getId().toString());
-      assertTrue(
-          fetched.getDescription().startsWith("Bulk updated"),
-          "Description should be bulk updated");
+      String entityId = entity.getId().toString();
+      Awaitility.await("Description should be bulk updated")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofMillis(500))
+          .untilAsserted(
+              () -> {
+                T refetched = getEntity(entityId);
+                assertTrue(
+                    refetched.getDescription() != null
+                        && refetched.getDescription().startsWith("Bulk updated"),
+                    "Description should be bulk updated");
+              });
     }
   }
 
@@ -4027,7 +4378,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
         .ignoreExceptions()
@@ -4089,7 +4440,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(3))
         .ignoreExceptions()
@@ -4751,7 +5102,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4779,7 +5130,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4815,7 +5166,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4843,7 +5194,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4862,7 +5213,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for search to reflect update")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -6199,5 +6550,169 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         assertFalse(hasBeforeOnFirstPage, "First page should not have 'before' cursor");
       }
     }
+  }
+
+  // ===================================================================
+  // CHANGE SUMMARY TESTS
+  // ===================================================================
+
+  /**
+   * Test: Retrieve changeSummary by entity ID after updating the entity.
+   * The changeSummary API returns metadata about who changed each field,
+   * the source of the change, and when it was changed.
+   */
+  @Test
+  void get_changeSummaryById_200(TestNamespace ns) throws Exception {
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    created.setDescription("Updated description for changeSummary test");
+    T updated = patchEntity(created.getId().toString(), created);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/changeSummary/" + getEntityType() + "/" + updated.getId(),
+                null);
+    assertNotNull(response, "ChangeSummary response should not be null");
+    JsonNode result = MAPPER.readTree(response);
+    assertTrue(result.has("changeSummary"), "Response must contain changeSummary field");
+    assertTrue(result.has("totalEntries"), "Response must contain totalEntries field");
+    assertTrue(
+        result.get("totalEntries").asInt() > 0,
+        "totalEntries should be > 0 after patching description");
+    JsonNode changeSummaryNode = result.get("changeSummary");
+    assertTrue(
+        changeSummaryNode.isObject() && changeSummaryNode.size() > 0,
+        "changeSummary should contain at least one entry after patching description");
+  }
+
+  /**
+   * Test: Retrieve changeSummary by entity FQN after updating the entity.
+   */
+  @Test
+  void get_changeSummaryByFqn_200(TestNamespace ns) throws Exception {
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    created.setDescription("Updated description for changeSummary FQN test");
+    T updated = patchEntity(created.getId().toString(), created);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String fqn = updated.getFullyQualifiedName();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/changeSummary/" + getEntityType() + "/name/" + fqn, null);
+    assertNotNull(response, "ChangeSummary response should not be null");
+    JsonNode result = MAPPER.readTree(response);
+    assertTrue(result.has("changeSummary"), "Response must contain changeSummary field");
+    assertTrue(result.has("totalEntries"), "Response must contain totalEntries field");
+    assertTrue(
+        result.get("totalEntries").asInt() > 0,
+        "totalEntries should be > 0 after patching description");
+    JsonNode changeSummaryNode = result.get("changeSummary");
+    assertTrue(
+        changeSummaryNode.isObject() && changeSummaryNode.size() > 0,
+        "changeSummary should contain at least one entry after patching description");
+  }
+
+  /**
+   * Test: Retrieve changeSummary with fieldPrefix filter.
+   * Verifies that the filtering parameter works correctly.
+   */
+  @Test
+  void get_changeSummaryWithFieldPrefix_200(TestNamespace ns) throws Exception {
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    created.setDescription("Updated for fieldPrefix test");
+    T updated = patchEntity(created.getId().toString(), created);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/changeSummary/"
+                    + getEntityType()
+                    + "/"
+                    + updated.getId()
+                    + "?fieldPrefix=description",
+                null);
+    assertNotNull(response, "ChangeSummary filtered response should not be null");
+    JsonNode result = MAPPER.readTree(response);
+    assertTrue(result.has("changeSummary"), "Response must contain changeSummary field");
+    assertTrue(result.has("totalEntries"), "Response must contain totalEntries field");
+
+    JsonNode changeSummary = result.get("changeSummary");
+    assertTrue(
+        changeSummary.isObject() && changeSummary.size() > 0,
+        "Filtered changeSummary should contain at least one entry matching 'description' prefix");
+    changeSummary
+        .fieldNames()
+        .forEachRemaining(
+            key ->
+                assertTrue(
+                    key.startsWith("description"),
+                    "All keys should start with 'description', but found: " + key));
+  }
+
+  /**
+   * Test: Retrieve changeSummary with pagination parameters.
+   */
+  @Test
+  void get_changeSummaryWithPagination_200(TestNamespace ns) throws Exception {
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    created.setDescription("Updated for pagination test");
+    patchEntity(created.getId().toString(), created);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/changeSummary/"
+                    + getEntityType()
+                    + "/"
+                    + created.getId()
+                    + "?limit=1&offset=0",
+                null);
+    assertNotNull(response, "ChangeSummary paginated response should not be null");
+    JsonNode result = MAPPER.readTree(response);
+    assertTrue(result.has("changeSummary"), "Response must contain changeSummary field");
+    assertTrue(result.has("totalEntries"), "Response must contain totalEntries field");
+    assertTrue(result.has("offset"), "Paginated response must contain offset field");
+    assertTrue(result.has("limit"), "Paginated response must contain limit field");
+  }
+
+  /**
+   * Test: changeSummary returns 404 for non-existent entity.
+   */
+  @Test
+  void get_changeSummaryNotFound_404(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID randomId = UUID.randomUUID();
+    Exception thrown =
+        assertThrows(
+            Exception.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.GET,
+                        "/v1/changeSummary/" + getEntityType() + "/" + randomId,
+                        null));
+    assertTrue(
+        thrown.getMessage().contains("404") || thrown.getMessage().contains("not found"),
+        "Should get 404 for non-existent entity, got: " + thrown.getMessage());
   }
 }

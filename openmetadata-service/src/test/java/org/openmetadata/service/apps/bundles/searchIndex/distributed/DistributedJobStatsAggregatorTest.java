@@ -32,6 +32,7 @@ import static org.mockito.Mockito.when;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
@@ -120,7 +121,7 @@ class DistributedJobStatsAggregatorTest {
   }
 
   @Test
-  void testStopsWhenJobNotFound() throws Exception {
+  void testStopsWhenJobNotFound() {
     when(coordinator.getJobWithAggregatedStats(jobId)).thenReturn(null);
 
     aggregator = new DistributedJobStatsAggregator(coordinator, jobId, 500);
@@ -542,8 +543,7 @@ class DistributedJobStatsAggregatorTest {
     assertEquals(100, stats.getSinkStats().getSuccessRecords());
     assertEquals(23, stats.getVectorStats().getTotalRecords());
 
-    StepStats tableStats =
-        (StepStats) stats.getEntityStats().getAdditionalProperties().get("table");
+    StepStats tableStats = stats.getEntityStats().getAdditionalProperties().get("table");
     assertEquals(Integer.MAX_VALUE, tableStats.getTotalRecords());
     assertEquals(Integer.MAX_VALUE, tableStats.getSuccessRecords());
 
@@ -701,6 +701,77 @@ class DistributedJobStatsAggregatorTest {
     verify(interruptedScheduler).shutdown();
     verify(interruptedScheduler).shutdownNow();
     assertTrue(Thread.currentThread().isInterrupted());
+  }
+
+  @Test
+  void testFetchVectorStatsByEntityReturnsEmptyMapOnException() throws Exception {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.SearchIndexServerStatsDAO serverStatsDAO =
+        mock(CollectionDAO.SearchIndexServerStatsDAO.class);
+    when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
+    when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(serverStatsDAO);
+    when(serverStatsDAO.getStatsByEntityType(jobId.toString()))
+        .thenThrow(new RuntimeException("DB connection failed"));
+
+    aggregator = new DistributedJobStatsAggregator(coordinator, jobId);
+
+    @SuppressWarnings("unchecked")
+    Map<String, CollectionDAO.SearchIndexServerStatsDAO.EntityStats> result =
+        (Map<String, CollectionDAO.SearchIndexServerStatsDAO.EntityStats>)
+            invokePrivate(
+                "fetchVectorStatsByEntity",
+                new Class<?>[] {SearchIndexJob.class},
+                newJob(IndexJobStatus.RUNNING));
+
+    assertTrue(result.isEmpty());
+  }
+
+  @Test
+  void testConvertToStatsPopulatesVectorStatsPerEntity() throws Exception {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.SearchIndexServerStatsDAO serverStatsDAO =
+        mock(CollectionDAO.SearchIndexServerStatsDAO.class);
+    when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
+    when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(serverStatsDAO);
+
+    CollectionDAO.SearchIndexServerStatsDAO.EntityStats tableVectorStats =
+        new CollectionDAO.SearchIndexServerStatsDAO.EntityStats(
+            "table", 50, 2, 1, 45, 3, 40, 5, 30, 7);
+    when(serverStatsDAO.getStatsByEntityType(jobId.toString()))
+        .thenReturn(List.of(tableVectorStats));
+
+    SearchIndexJob job =
+        newJob(IndexJobStatus.RUNNING).toBuilder()
+            .entityStats(
+                Map.of(
+                    "table",
+                    SearchIndexJob.EntityTypeStats.builder()
+                        .entityType("table")
+                        .totalRecords(100)
+                        .processedRecords(80)
+                        .successRecords(75)
+                        .failedRecords(5)
+                        .build()))
+            .build();
+
+    aggregator = new DistributedJobStatsAggregator(coordinator, jobId);
+
+    Stats stats =
+        (Stats)
+            invokePrivate(
+                "convertToStats",
+                new Class<?>[] {
+                  SearchIndexJob.class,
+                  CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats.class
+                },
+                job,
+                (CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats) null);
+
+    StepStats tableStats =
+        (StepStats) stats.getEntityStats().getAdditionalProperties().get("table");
+    assertNotNull(tableStats);
+    assertEquals(30, tableStats.getVectorSuccessRecords());
+    assertEquals(7, tableStats.getVectorFailedRecords());
   }
 
   private SearchIndexJob newJob(IndexJobStatus status) {

@@ -43,6 +43,9 @@
               "$ref": "storageServiceMetadataPipeline.json"
             },
             {
+              "$ref": "storageServiceAutoClassificationPipeline.json"
+            },
+            {
               "$ref": "driveServiceMetadataPipeline.json"
             },
             {
@@ -68,6 +71,9 @@
             },
             {
               "$ref": "reverseIngestionPipeline.json"
+            },
+            {
+              "$ref": "mcpServiceMetadataPipeline.json"
             },
             {
               "$ref": "reverseMetadataPipeline.json"

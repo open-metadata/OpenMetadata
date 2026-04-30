@@ -20,13 +20,16 @@ import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
 import { ReactComponent as ColumnBulkIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
+import { ReactComponent as MarketplaceIcon } from '../assets/svg/ic-data-marketplace.svg';
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
 import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage.svg';
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
+import { ReactComponent as OverviewIcon } from '../assets/svg/ic-overview.svg';
 import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform-lineage.svg';
 import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
+import { ReactComponent as WorkflowsNavIcon } from '../assets/svg/ic-workflows.svg';
 import { ReactComponent as InsightsIcon } from '../assets/svg/lamp-charge.svg';
 import { ReactComponent as LogoutIcon } from '../assets/svg/logout.svg';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
@@ -47,6 +50,7 @@ const DataProductIcon = createIconWithStroke(
 
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
+  [ROUTES.ONTOLOGY_EXPLORER]: ROUTES.ONTOLOGY_EXPLORER,
 };
 
 export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
@@ -118,11 +122,18 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}`,
   },
   {
-    key: 'domains-section',
-    title: 'label.domain-plural',
-    icon: DomainsIcon,
-    dataTestId: SidebarItem.DOMAINS_SECTION,
+    key: ROUTES.DATA_MARKETPLACE_SECTION,
+    title: 'label.data-marketplace-section',
+    icon: MarketplaceIcon,
+    dataTestId: SidebarItem.DATA_MARKETPLACE_SECTION,
     children: [
+      {
+        key: ROUTES.DATA_MARKETPLACE,
+        title: 'label.overview',
+        icon: OverviewIcon,
+        redirect_url: ROUTES.DATA_MARKETPLACE,
+        dataTestId: `app-bar-item-${SidebarItem.DATA_MARKETPLACE}`,
+      },
       {
         key: ROUTES.DOMAIN,
         title: 'label.domain-plural',
@@ -180,6 +191,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         icon: ColumnBulkIcon,
         dataTestId: `app-bar-item-${SidebarItem.COLUMN_BULK_OPERATIONS}`,
         isBeta: true,
+      },
+      {
+        key: ROUTES.WORKFLOWS,
+        title: 'label.workflow-plural',
+        redirect_url: ROUTES.WORKFLOWS,
+        icon: WorkflowsNavIcon,
+        dataTestId: `app-bar-item-${SidebarItem.WORKFLOWS}`,
       },
     ],
   },

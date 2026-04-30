@@ -113,6 +113,8 @@ import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
+import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -214,9 +216,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
               .fields()
               .forEachRemaining(
                   entry -> {
-                    if (!columns.contains(entry.getKey())) {
-                      columns.add(entry.getKey());
-                    }
+                    columns.add(entry.getKey());
                     row.add(entry.getValue().toString());
                   });
         }
@@ -574,7 +574,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
 
       LOG.info("Reading security configuration from file: {}", configFile);
-      String yamlContent = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+      String yamlContent = Files.readString(file.toPath());
 
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
       SecurityConfiguration securityConfig =
@@ -864,9 +864,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     JWTTokenGenerator.getInstance()
         .init(
-            SecurityConfigurationManager.getInstance()
-                .getCurrentAuthConfig()
-                .getTokenValidationAlgorithm(),
+            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
             config.getJwtTokenConfiguration());
 
     AppMarketPlaceMapper mapper = new AppMarketPlaceMapper(pipelineServiceClient);
@@ -956,6 +954,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Running the Native Migrations.");
       validateAndRunSystemDataMigrations(true);
       LOG.info("OpenMetadata Database Schema is Updated.");
+      WorkflowHandler.initialize(config, true);
       LOG.info("create indexes.");
       searchRepository.createIndexes();
       searchRepository.createOrUpdateIndexTemplates();
@@ -1037,6 +1036,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Migrating the OpenMetadata Schema.");
       parseConfig();
       validateAndRunSystemDataMigrations(force);
+      LOG.info("Running Flowable schema upgrade.");
+      WorkflowHandler.initialize(config, true);
       LOG.info("Update Search Indexes.");
       searchRepository.updateIndexes();
       LOG.info("Update Index Templates.");
@@ -1371,6 +1372,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           autoTune);
       parseConfig();
       CollectionRegistry.initialize();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
       ApplicationHandler.initialize(config);
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
@@ -1951,6 +1954,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           endDate);
       parseConfig();
       CollectionRegistry.initialize();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
       ApplicationHandler.initialize(config);
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
@@ -1992,10 +1997,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     // Trigger Application
     long currentTime = System.currentTimeMillis();
     AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
-
-    int result = waitAndReturnReindexingAppStatus(app, currentTime);
-
-    return result;
+    return waitAndReturnReindexingAppStatus(app, currentTime);
   }
 
   @SneakyThrows
@@ -2176,7 +2178,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           pipelineRepository.listAll(
               new EntityUtil.Fields(Set.of(FIELD_OWNERS, "service")),
               new ListFilter(Include.NON_DELETED));
-      LOG.debug(String.format("Pipelines %d", pipelines.size()));
+      LOG.debug("Pipelines size {}", pipelines.size());
       List<String> columns = Arrays.asList("Name", "Type", "Service Name", "Status");
       List<List<String>> pipelineStatuses = new ArrayList<>();
 
@@ -2494,9 +2496,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       JWTTokenGenerator.getInstance()
           .init(
-              SecurityConfigurationManager.getInstance()
-                  .getCurrentAuthConfig()
-                  .getTokenValidationAlgorithm(),
+              SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
               config.getJwtTokenConfiguration());
 
       initOrganization();
@@ -2866,7 +2866,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   public void parseConfig() throws Exception {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
-    objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
+    objectMapper.registerSubtypes(
+        AuditExcludeFilterFactory.class,
+        AuditOnlyFilterFactory.class,
+        SwitchableEventLayoutFactory.class,
+        SwitchableAccessLayoutFactory.class);
     Validator validator = Validators.newValidator();
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
         new YamlConfigurationFactory<>(
@@ -2939,7 +2943,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
                   try {
                     handle.execute("DROP TABLE IF EXISTS " + tableName);
                   } catch (Exception e) {
-                    LOG.warn("Failed to drop table: " + tableName, e);
+                    LOG.warn("Failed to drop table: {} ", tableName, e);
                   }
                 });
         handle.execute("SET FOREIGN_KEY_CHECKS = 1");
@@ -2954,7 +2958,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
                   try {
                     handle.execute("DROP TABLE IF EXISTS \"" + tableName + "\" CASCADE");
                   } catch (Exception e) {
-                    LOG.warn("Failed to drop table: " + tableName, e);
+                    LOG.warn("Failed to drop table: {}", tableName, e);
                   }
                 });
       }

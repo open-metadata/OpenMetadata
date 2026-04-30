@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -88,9 +89,9 @@ class OrphanedIndexCleanerTest {
     when(searchClient.getAliases("table_rebuild_1")).thenReturn(Set.of());
     when(searchClient.getAliases("user_rebuild_1")).thenThrow(new RuntimeException("boom"));
 
-    assertEquals(false, invokeBoolean("isOrphaned", "table"));
+    assertFalse(invokeBoolean("isOrphaned", "table"));
     assertTrue(invokeBoolean("isOrphaned", "table_rebuild_1"));
-    assertEquals(false, invokeBoolean("isOrphaned", "user_rebuild_1"));
+    assertFalse(invokeBoolean("isOrphaned", "user_rebuild_1"));
   }
 
   @Test

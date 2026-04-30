@@ -9,8 +9,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -259,6 +266,48 @@ public class SearchResourceIT {
     assertNotNull(response);
   }
 
+  @Test
+  void testAggregateQueryWithQueryText(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    createTestTable(ns, "aggregate_querytext_test");
+
+    String response =
+        client
+            .search()
+            .aggregate("*")
+            .index("table_search_index")
+            .field("database.name")
+            .queryText("aggregate_querytext_test")
+            .execute();
+
+    assertNotNull(response);
+    JsonNode root = OBJECT_MAPPER.readTree(response);
+    assertTrue(root.has("aggregations"), "Response should have aggregations");
+  }
+
+  @Test
+  void testAggregateQueryWithEmptyQueryText(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    createTestTable(ns, "aggregate_empty_qt");
+
+    String responseWithout =
+        client.search().aggregate("*").index("table_search_index").field("database.name").execute();
+
+    String responseWith =
+        client
+            .search()
+            .aggregate("*")
+            .index("table_search_index")
+            .field("database.name")
+            .queryText("")
+            .execute();
+
+    assertNotNull(responseWithout);
+    assertNotNull(responseWith);
+  }
+
   // ===================================================================
   // SPECIAL CHARACTER AND EDGE CASE TESTS
   // ===================================================================
@@ -349,6 +398,317 @@ public class SearchResourceIT {
               client.search().query(problematicQuery).index("topic_search_index").execute();
           assertNotNull(response);
         });
+  }
+
+  /**
+   * Matrix test that reproduces the {@code dataAsset}-alias regression and pins the behavior of
+   * any fix across the query shapes users actually type.
+   *
+   * <p>The bug: composite config merges fuzzy fields from every asset type. The {@code name.ngram}
+   * analyzer splits on non-alphanumeric characters, so a long multi-segment identifier yields many
+   * sub-tokens that each expand into many ngrams, and each ngram becomes a fuzzy term (fuzziness=1,
+   * maxExpansions=10). Clause count crosses Lucene's 1024 limit; in ES 7/OS only the table shards
+   * overflow (silent drop); in ES 9 the whole query is rejected.
+   *
+   * <p>Every scenario must satisfy {@code _shards.failed == 0}. The {@code shouldFind} column pins
+   * whether the seeded table is expected in {@code hits.hits}. Failures from every row are
+   * collected and reported together rather than short-circuiting on the first one, so a single
+   * run surfaces the whole regression surface.
+   */
+  @Test
+  void testDataAssetAliasSearchMatrix(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Use a production-realistic name length (~40 chars, 5-6 alnum sub-tokens) by bypassing
+    // ns.prefix() — that helper appends RUN_ID + classId + methodId which balloons the name
+    // to ~127 chars, and the sheer ngram cardinality of that long string exceeds
+    // OpenSearch's 1024 max_clause_count even with fuzziness=0 + max_expansions=1.
+    // Production names like kochi__expected_vessels__portcall_v1 are ~36 chars, which is
+    // the length we want to pin behavior against.
+    // Prefix the unique tag with a distinctive "xqz" marker. uniqueShortId() returns hex,
+    // and pure-hex prefixes share ngrams with every UUID/hash in a busy CI index, which can
+    // push our seeded table out of the top-N hits. "xqz" is rare in any real document and
+    // makes the first sub-token uniquely ours.
+    String uniq = "xqz" + ns.uniqueShortId().substring(0, 5);
+    String longName = uniq + "_lhr__incoming_flights__arrivals_schedule_v1";
+    Table table =
+        createTestTableWithColumns(
+            ns,
+            longName,
+            List.of(
+                new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+                new Column()
+                    .withName("name")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
+    String indexedName = table.getName();
+
+    // Wait for the table to appear in the table-only index using a real search call.
+    // Query by the first alphanumeric segment of the indexed name — it's short (3-5 chars,
+    // one alnum sub-token), so it won't itself trigger the clause-explosion path we're
+    // about to stress in the matrix below. We still verify the specific seeded table is the
+    // hit, so accidental matches on other docs with "lhr" in their name don't fool us.
+    String waitQuery = indexedName.split("_+")[0];
+    // 90s timeout: search indexing is async via change events and can lag noticeably under
+    // CI load, especially the first time the index is warmed in a fresh test container.
+    Awaitility.await()
+        .atMost(90, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              String r =
+                  client.search().query(waitQuery).index("table_search_index").size(25).execute();
+              JsonNode root = OBJECT_MAPPER.readTree(r);
+              for (JsonNode hit : root.path("hits").path("hits")) {
+                if (indexedName.equals(hit.path("_source").path("name").asText())) {
+                  return true;
+                }
+              }
+              return false;
+            });
+
+    // Derive substrings from the seeded name. shouldFind reflects realistic user expectations
+    // given that `name` has fuzziness via FUZZY_FIELDS and `name.ngram` handles substrings.
+    String firstSegment = indexedName.split("_+")[0]; // the 8-char unique tag
+    int midLen = Math.min(15, indexedName.length());
+    String shortPrefix = indexedName.substring(0, Math.min(5, indexedName.length()));
+    String midPrefix = indexedName.substring(0, midLen);
+    String fullWithDots = indexedName.replace("_", ".");
+    String typoInSegment = indexedName.replaceFirst("incoming", "incaming"); // 1-char typo
+    String dropOneSegment = indexedName.replaceFirst("__arrivals_schedule_v1", "_v1");
+    String trailingSegment = "schedule_v1";
+    String middleSegment = "flights";
+
+    String firstTwoSegments = "lhr__incoming"; // exactly 2 alnum sub-tokens (boundary case)
+    String firstThreeSegments = "lhr__incoming_flights"; // exactly 3 — first to trip fuzz=0
+    String mixedSeparators = indexedName.replace("__", "-").replace("_", ".");
+    String withTrailingWhitespace = "  " + indexedName + "  ";
+    String withInternalWhitespace = indexedName.replace("__", " ");
+    String camelCaseChunk = "LhrIncomingFlightsArrivalsScheduleV1"; // single alnum sub-token, long
+    String slashSeparated = indexedName.replace("_", "/");
+
+    List<Scenario> scenarios =
+        List.of(
+            // --- the original repro and its immediate variants ---
+            new Scenario("exact full name (the repro)", indexedName, true),
+            new Scenario("short prefix (autocomplete early)", shortPrefix, true),
+            new Scenario("medium prefix (autocomplete mid-type)", midPrefix, true),
+            new Scenario("first segment alone", firstSegment, true),
+            new Scenario("middle segment alone", middleSegment, true),
+            new Scenario("trailing segment only", trailingSegment, true),
+            new Scenario("dotted variant (FQN-ish)", fullWithDots, true),
+            new Scenario("one-char typo inside a segment", typoInSegment, true),
+            new Scenario("dropped middle segments", dropOneSegment, true),
+            new Scenario("unrelated query", "totally_unrelated_zzzqqq_9999", false),
+            // --- boundary cases for the sub-token-count heuristic ---
+            // 2 sub-tokens → fuzziness=1 path still active; must not explode and must match
+            new Scenario("exactly 2 sub-tokens (fuzzy path active)", firstTwoSegments, true),
+            // 3 sub-tokens → first to flip to fuzziness=0; must not explode and must match
+            new Scenario("exactly 3 sub-tokens (fuzzy path off)", firstThreeSegments, true),
+            // --- separator variants: ngram tokenizer splits on ALL non-alnum the same way, so
+            //     dots / dashes / slashes must all behave equivalently to underscores ---
+            new Scenario("mixed separators (- and .)", mixedSeparators, true),
+            new Scenario("slash-separated (path-like)", slashSeparated, true),
+            // --- whitespace handling: trim, and whitespace as a separator in the query ---
+            new Scenario("leading/trailing whitespace", withTrailingWhitespace, true),
+            new Scenario("whitespace-separated segments", withInternalWhitespace, true),
+            // --- single-alnum-token stress: long camelCase that is one 36-char sub-token ---
+            new Scenario("long camelCase single token", camelCaseChunk, false),
+            // --- edge-case query shape that must never throw or blow shards ---
+            new Scenario("only separators", "___", false));
+
+    List<String> failures = new ArrayList<>();
+    for (Scenario s : scenarios) {
+      evaluateScenario(client, s, indexedName, failures);
+    }
+
+    assertTrue(
+        failures.isEmpty(), "Matrix scenarios failed:\n  - " + String.join("\n  - ", failures));
+  }
+
+  private record Scenario(String description, String query, boolean shouldFind) {}
+
+  private void evaluateScenario(
+      OpenMetadataClient client, Scenario s, String seededName, List<String> failures) {
+    JsonNode root;
+    try {
+      String response =
+          client.search().query(s.query()).index("dataAsset").deleted(false).size(50).execute();
+      root = OBJECT_MAPPER.readTree(response);
+    } catch (Exception e) {
+      // A thrown exception means the whole search was rejected (e.g. ES 9 "too many clauses"
+      // blows the request). Treat that as a shard-level failure for reporting purposes.
+      failures.add(
+          s.description()
+              + " [query=\""
+              + s.query()
+              + "\"]: request threw "
+              + e.getClass().getSimpleName()
+              + " — "
+              + e.getMessage());
+      return;
+    }
+
+    int shardsFailed = root.path("_shards").path("failed").asInt(-1);
+    if (shardsFailed != 0) {
+      failures.add(
+          s.description()
+              + " [query=\""
+              + s.query()
+              + "\"]: _shards.failed="
+              + shardsFailed
+              + ", failures="
+              + root.path("_shards").path("failures").toString());
+      return;
+    }
+
+    boolean found = false;
+    for (JsonNode hit : root.path("hits").path("hits")) {
+      if (seededName.equals(hit.path("_source").path("name").asText())) {
+        found = true;
+        break;
+      }
+    }
+    if (found != s.shouldFind()) {
+      failures.add(
+          s.description()
+              + " [query=\""
+              + s.query()
+              + "\"]: expected shouldFind="
+              + s.shouldFind()
+              + " but got found="
+              + found);
+    }
+  }
+
+  /**
+   * Guards against over-correction of the clause-explosion fix. The fix disables fuzziness
+   * once the query analyzes to more than 2 sub-tokens; it must keep fuzziness on single-word
+   * queries so normal typo tolerance ({@code custmer} → {@code customer}) keeps working.
+   */
+  @Test
+  void testSingleWordTypoStillMatchesViaFuzzy(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Table table = createTestTable(ns, "customer_analytics");
+    String indexedName = table.getName();
+    String firstSeg = indexedName.split("_+")[0];
+
+    Awaitility.await()
+        .atMost(90, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              String r =
+                  client.search().query(firstSeg).index("table_search_index").size(25).execute();
+              JsonNode root = OBJECT_MAPPER.readTree(r);
+              for (JsonNode hit : root.path("hits").path("hits")) {
+                if (indexedName.equals(hit.path("_source").path("name").asText())) {
+                  return true;
+                }
+              }
+              return false;
+            });
+
+    // "custmer" is a 1-char typo of "customer", 1 alnum sub-token → fuzziness path is active.
+    String typoQuery = "custmer";
+    String response =
+        client.search().query(typoQuery).index("dataAsset").deleted(false).size(25).execute();
+    JsonNode root = OBJECT_MAPPER.readTree(response);
+
+    assertEquals(
+        0,
+        root.path("_shards").path("failed").asInt(-1),
+        "single-word fuzzy query must not cause shard failures: "
+            + root.path("_shards").path("failures").toString());
+
+    boolean found = false;
+    for (JsonNode hit : root.path("hits").path("hits")) {
+      if (indexedName.equals(hit.path("_source").path("name").asText())) {
+        found = true;
+        break;
+      }
+    }
+    assertTrue(
+        found,
+        "Single-word typo query \""
+            + typoQuery
+            + "\" must still match seeded table \""
+            + indexedName
+            + "\" via fuzzy path; regression would indicate the clause-explosion fix "
+            + "over-corrected and killed normal typo tolerance.");
+  }
+
+  /**
+   * Pins the {@code name.keyword} exact-match boost for tables. This field was missing from
+   * the {@code table} asset config (unlike most other asset types), which meant typing a
+   * table's full name produced no exact-match boost. Regression guard: the seeded table must
+   * be the top hit (or strictly above any accidental substring matches) when the full name is
+   * queried.
+   */
+  @Test
+  void testExactFullNameRanksSeededTableFirst(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Seed two tables so ranking is observable: the exact-match query must prefer `target`
+    // over the near-duplicate `decoy` that shares the same first segment. Use short unique
+    // tags (bypassing ns.prefix()) so the seeded names stay at production-realistic lengths
+    // and the exact-name query stays well under OpenSearch's default 1024-clause cap.
+    String uniq = "xqz" + ns.uniqueShortId().substring(0, 5);
+    String targetNameRaw = uniq + "_exact_rank_target_v1";
+    String decoyNameRaw = uniq + "_exact_rank_target_v1_extended_suffix";
+    List<Column> cols =
+        List.of(
+            new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+            new Column().withName("name").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+    Table target = createTestTableWithColumns(ns, targetNameRaw, cols);
+    Table decoy = createTestTableWithColumns(ns, decoyNameRaw, cols);
+    String targetName = target.getName();
+    String decoyName = decoy.getName();
+
+    Awaitility.await()
+        .atMost(90, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              String r =
+                  client
+                      .search()
+                      .query(targetName.split("_+")[0])
+                      .index("table_search_index")
+                      .size(50)
+                      .execute();
+              JsonNode root = OBJECT_MAPPER.readTree(r);
+              boolean sawTarget = false;
+              boolean sawDecoy = false;
+              for (JsonNode hit : root.path("hits").path("hits")) {
+                String n = hit.path("_source").path("name").asText();
+                if (targetName.equals(n)) sawTarget = true;
+                if (decoyName.equals(n)) sawDecoy = true;
+              }
+              return sawTarget && sawDecoy;
+            });
+
+    String response =
+        client.search().query(targetName).index("dataAsset").deleted(false).size(10).execute();
+    JsonNode root = OBJECT_MAPPER.readTree(response);
+
+    assertEquals(
+        0, root.path("_shards").path("failed").asInt(-1), "exact-name query must not fail shards");
+
+    JsonNode hits = root.path("hits").path("hits");
+    assertTrue(hits.size() > 0, "exact-name query must return at least one hit");
+    String topName = hits.get(0).path("_source").path("name").asText();
+    assertEquals(
+        targetName,
+        topName,
+        "Exact full-name query must rank the exact-match table first, not the decoy. "
+            + "Got top hit \""
+            + topName
+            + "\" instead of \""
+            + targetName
+            + "\". This typically regresses when name.keyword exact-match is removed "
+            + "from the table asset config.");
   }
 
   // ===================================================================
@@ -1421,5 +1781,149 @@ public class SearchResourceIT {
     assertNotNull(response);
     JsonNode root = OBJECT_MAPPER.readTree(response);
     assertTrue(root.has("hits"), "Response should have hits");
+  }
+
+  // ===================================================================
+  // SEARCH EXPORT TESTS (streaming CSV endpoint)
+  // ===================================================================
+
+  private static final HttpClient HTTP_CLIENT =
+      HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+
+  private HttpResponse<String> httpGetExport(String path) throws Exception {
+    String baseUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(baseUrl + path))
+            .header("Authorization", "Bearer " + token)
+            .header("Accept", "text/csv")
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  @Test
+  void testExportReturnsOkWithCsvContent(TestNamespace ns) throws Exception {
+    HttpResponse<String> response = httpGetExport("/v1/search/export?q=*&index=table_search_index");
+
+    assertEquals(200, response.statusCode(), "Export should return HTTP 200");
+
+    String body = response.body();
+    assertTrue(
+        body.startsWith("Entity Type,Service Name"), "Response should start with CSV header");
+  }
+
+  @Test
+  void testExportWithSizeLimitsRows(TestNamespace ns) throws Exception {
+    createTestTable(ns, "export_size_test_1");
+    createTestTable(ns, "export_size_test_2");
+    createTestTable(ns, "export_size_test_3");
+
+    Awaitility.await()
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              HttpResponse<String> r =
+                  httpGetExport("/v1/search/export?q=export_size_test&index=table_search_index");
+              return r.statusCode() == 200 && r.body().split("\n").length >= 4;
+            });
+
+    HttpResponse<String> allResponse =
+        httpGetExport("/v1/search/export?q=export_size_test&index=table_search_index");
+    assertEquals(200, allResponse.statusCode());
+    int allLineCount = allResponse.body().split("\n").length;
+
+    HttpResponse<String> limitedResponse =
+        httpGetExport("/v1/search/export?q=export_size_test&index=table_search_index&size=1");
+    assertEquals(200, limitedResponse.statusCode());
+    int limitedLineCount = limitedResponse.body().split("\n").length;
+
+    // limitedResponse should have header + at most 1 data row = 2 lines
+    assertTrue(
+        limitedLineCount <= 2,
+        "Export with size=1 should have at most 2 lines (header + 1 row), got " + limitedLineCount);
+    assertTrue(
+        allLineCount >= limitedLineCount,
+        "Export without size should have >= rows than export with size=1");
+  }
+
+  @Test
+  void testExportWithoutSizeExportsAll(TestNamespace ns) throws Exception {
+    HttpResponse<String> response = httpGetExport("/v1/search/export?q=*&index=table_search_index");
+
+    assertEquals(200, response.statusCode(), "Export without size should return 200");
+    assertTrue(
+        response.body().contains("Entity Type,Service Name"), "Response should contain CSV header");
+  }
+
+  @Test
+  void testExportWithSizeAndSortParameters(TestNamespace ns) throws Exception {
+    HttpResponse<String> response =
+        httpGetExport(
+            "/v1/search/export?q=*&index=table_search_index&size=5&sort_field=name.keyword&sort_order=asc");
+
+    assertEquals(200, response.statusCode());
+    assertTrue(response.body().startsWith("Entity Type,Service Name"));
+  }
+
+  @Test
+  void testExportWithDataAssetIndex(TestNamespace ns) throws Exception {
+    HttpResponse<String> response = httpGetExport("/v1/search/export?q=*&index=dataAsset");
+
+    assertEquals(200, response.statusCode(), "Export with dataAsset index should return 200");
+    assertTrue(response.body().startsWith("Entity Type,Service Name"));
+  }
+
+  @Test
+  void testExportWithFromAndSizeForPagination(TestNamespace ns) throws Exception {
+    createTestTable(ns, "export_page_test_a");
+    createTestTable(ns, "export_page_test_b");
+    createTestTable(ns, "export_page_test_c");
+
+    Awaitility.await()
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              HttpResponse<String> r =
+                  httpGetExport("/v1/search/export?q=export_page_test&index=table_search_index");
+              return r.statusCode() == 200 && r.body().split("\n").length >= 4;
+            });
+
+    HttpResponse<String> page1 =
+        httpGetExport(
+            "/v1/search/export?q=export_page_test&index=table_search_index"
+                + "&sort_field=name.keyword&sort_order=asc&from=0&size=1");
+    assertEquals(200, page1.statusCode());
+    String[] page1Lines = page1.body().split("\n");
+    assertTrue(page1Lines.length <= 2, "from=0&size=1 should return at most 2 lines");
+
+    HttpResponse<String> page2 =
+        httpGetExport(
+            "/v1/search/export?q=export_page_test&index=table_search_index"
+                + "&sort_field=name.keyword&sort_order=asc&from=1&size=1");
+    assertEquals(200, page2.statusCode());
+    String[] page2Lines = page2.body().split("\n");
+    assertTrue(page2Lines.length <= 2, "from=1&size=1 should return at most 2 lines");
+
+    if (page1Lines.length == 2 && page2Lines.length == 2) {
+      assertFalse(
+          page1Lines[1].equals(page2Lines[1]), "Page 1 and page 2 should return different rows");
+    }
+  }
+
+  @Test
+  void testExportWithFromBeyondResults(TestNamespace ns) throws Exception {
+    HttpResponse<String> response =
+        httpGetExport("/v1/search/export?q=*&index=table_search_index&from=999999&size=10");
+
+    assertEquals(200, response.statusCode());
+    String[] lines = response.body().split("\n");
+    assertEquals(1, lines.length, "Export beyond results should only contain header");
   }
 }

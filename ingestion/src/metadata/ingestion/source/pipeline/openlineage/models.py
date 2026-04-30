@@ -14,7 +14,7 @@ Openlineage Source Model module
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union  # noqa: UP035
 
 
 @dataclass
@@ -24,11 +24,11 @@ class OpenLineageEvent:
     OpenlineageSource connector.
     """
 
-    run_facet: Dict
-    job: Dict
+    run_facet: Dict  # noqa: UP006
+    job: Dict  # noqa: UP006
     event_type: str
-    inputs: List[Any]
-    outputs: List[Any]
+    inputs: List[Any]  # noqa: UP006
+    outputs: List[Any]  # noqa: UP006
 
 
 @dataclass
@@ -50,6 +50,15 @@ class TopicFQN:
 
 
 @dataclass
+class PipelineFQN:
+    """
+    Fully Qualified Name of a Pipeline.
+    """
+
+    value: str
+
+
+@dataclass
 class ColumnFQN:
     """
     Fully Qualified Name of a Column.
@@ -65,7 +74,7 @@ class LineageNode:
     """
 
     uuid: str
-    fqn: Union[TableFQN, TopicFQN]
+    fqn: Union[TableFQN, TopicFQN, PipelineFQN]  # noqa: UP007
     node_type: str = "table"
 
 
@@ -87,7 +96,7 @@ class TableDetails:
 
     name: str
     schema: str
-    database: Optional[str] = None
+    database: Optional[str] = None  # noqa: UP045
 
 
 @dataclass
@@ -109,8 +118,8 @@ class EntityDetails:
     """
 
     entity_type: str
-    table_details: Optional[TableDetails] = None
-    topic_details: Optional[TopicDetails] = None
+    table_details: Optional[TableDetails] = None  # noqa: UP045
+    topic_details: Optional[TopicDetails] = None  # noqa: UP045
 
 
 class EventType(str, Enum):

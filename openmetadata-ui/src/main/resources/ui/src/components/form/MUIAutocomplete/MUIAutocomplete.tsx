@@ -70,6 +70,11 @@ const MUIAutocomplete: FC<MUIAutocompleteProps> = ({
           {option?.label ?? option}
         </Typography>
       )}
+      slotProps={{
+        paper: {
+          'data-react-aria-top-layer': true,
+        } as object,
+      }}
       value={value}
       onChange={handleChange}
       {...props}

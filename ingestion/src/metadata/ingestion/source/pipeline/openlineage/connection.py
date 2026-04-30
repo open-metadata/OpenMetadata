@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional, Union
 
 from botocore.client import BaseClient
@@ -43,7 +44,7 @@ from metadata.utils.constants import THREE_MIN
 
 def get_connection(
     connection: OpenLineageConnection,
-) -> Union[KafkaConsumer, BaseClient]:
+) -> Union[KafkaConsumer, BaseClient]:  # noqa: UP007
     """
     Create connection based on broker config type.
     """
@@ -77,6 +78,7 @@ def _get_kafka_connection(broker: KafkaBrokerConfig) -> KafkaConsumer:
                     "ssl.key.location": broker.sslConfig.root.sslKey,
                 }
             )
+
         if broker.securityProtocol.value in (
             KafkaSecProtocol.SASL_PLAINTEXT.value,
             KafkaSecProtocol.SASL_SSL.value,
@@ -92,10 +94,10 @@ def _get_kafka_connection(broker: KafkaBrokerConfig) -> KafkaConsumer:
         kafka_consumer = KafkaConsumer(config)
         kafka_consumer.subscribe([broker.topicName])
 
-        return kafka_consumer
+        return kafka_consumer  # noqa: TRY300
     except Exception as exc:
         msg = f"Unknown error connecting with Kafka broker: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg)  # noqa: B904
 
 
 def _get_kinesis_connection(broker: KinesisBrokerConfig):
@@ -103,15 +105,15 @@ def _get_kinesis_connection(broker: KinesisBrokerConfig):
         return AWSClient(broker.awsConfig).get_kinesis_client()
     except Exception as exc:
         msg = f"Unknown error connecting with Kinesis: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg)  # noqa: B904
 
 
 def test_connection(
     metadata: OpenMetadata,
-    client: Union[KafkaConsumer, object],
+    client: Union[KafkaConsumer, object],  # noqa: UP007
     service_connection: OpenLineageConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -134,9 +136,7 @@ def test_connection(
         test_fn = {"CheckBrokerConnectivity": custom_executor}
 
     else:
-        raise SourceConnectionException(
-            f"Unsupported broker config type: {type(broker)}"
-        )
+        raise SourceConnectionException(f"Unsupported broker config type: {type(broker)}")
 
     return test_connection_steps(
         metadata=metadata,

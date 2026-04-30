@@ -75,6 +75,7 @@ describe('TestCaseClassBase', () => {
       'owners',
       'incidentId',
       'tags',
+      'inspectionQuery',
     ];
 
     const result = testCaseClassBase.getFields();

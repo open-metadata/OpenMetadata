@@ -11,8 +11,9 @@
 """
 Delete methods
 """
+
 import traceback
-from typing import Dict, Iterable, List, Optional, Type
+from typing import Dict, Iterable, List, Optional, Type  # noqa: UP035
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -27,10 +28,10 @@ logger = utils_logger()
 
 def delete_entity_from_source(
     metadata: OpenMetadata,
-    entity_type: Type[T],
+    entity_type: Type[T],  # noqa: UP006
     entity_source_state,
     mark_deleted_entity: bool = True,
-    params: Optional[Dict[str, str]] = None,
+    params: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
 ) -> Iterable[Either[DeleteEntity]]:
     """
     Method to delete the entities
@@ -62,8 +63,8 @@ def delete_entity_from_source(
 
 def delete_entity_by_name(
     metadata: OpenMetadata,
-    entity_type: Type[T],
-    entity_names: List[str],
+    entity_type: Type[T],  # noqa: UP006
+    entity_names: List[str],  # noqa: UP006
     mark_deleted_entity: bool = True,
 ) -> Iterable[Either[DeleteEntity]]:
     """
@@ -77,11 +78,7 @@ def delete_entity_by_name(
         for entity_name in entity_names:
             entity = metadata.get_by_name(entity=entity_type, fqn=entity_name)
             if entity:
-                yield Either(
-                    right=DeleteEntity(
-                        entity=entity, mark_deleted_entities=mark_deleted_entity
-                    )
-                )
+                yield Either(right=DeleteEntity(entity=entity, mark_deleted_entities=mark_deleted_entity))
     except Exception as exc:
         yield Either(
             left=StackTraceError(

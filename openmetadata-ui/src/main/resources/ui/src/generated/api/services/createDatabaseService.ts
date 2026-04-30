@@ -55,7 +55,7 @@ export interface CreateDatabaseService {
  * Database Connection.
  */
 export interface DatabaseConnection {
-    config?: ConfigObject;
+    config?: Connection;
 }
 
 /**
@@ -89,6 +89,8 @@ export interface DatabaseConnection {
  *
  * Mssql Database Connection Config
  *
+ * Microsoft Access Database Connection Config
+ *
  * Mysql Database Connection Config
  *
  * SQLite Database Connection Config
@@ -104,6 +106,8 @@ export interface DatabaseConnection {
  * Redshift  Connection Config
  *
  * Salesforce Connection Config
+ *
+ * SAP SuccessFactors Connection Config
  *
  * SingleStore Database Connection Config
  *
@@ -140,8 +144,6 @@ export interface DatabaseConnection {
  *
  * SAS Connection Config
  *
- * Iceberg Catalog Connection Config
- *
  * Teradata Database Connection Config
  *
  * Sap ERP Database Connection Config
@@ -166,8 +168,10 @@ export interface DatabaseConnection {
  * BurstIQ LifeGraph Database Connection Config
  *
  * IBM Informix Database Connection Config
+ *
+ * IOMETE Connection Config
  */
-export interface ConfigObject {
+export interface Connection {
     /**
      * Billing Project ID
      */
@@ -213,7 +217,8 @@ export interface ConfigObject {
      *
      * Host and port of the MSSQL service.
      *
-     * Host and port of the MySQL service.
+     * Host and port of the MySQL service. For GCP CloudSQL, use the instance connection name in
+     * the format 'project_id:region:instance_name'.
      *
      * Host and port of the SQLite service. Blank for in-memory database.
      *
@@ -259,6 +264,8 @@ export interface ConfigObject {
      * your-workspace.datawarehouse.fabric.microsoft.com:1433).
      *
      * Host and port of the Informix service.
+     *
+     * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
      */
     hostPort?: string;
     /**
@@ -276,6 +283,9 @@ export interface ConfigObject {
      *
      * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
      * are mapped as schemas.
+     *
+     * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
+     * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -455,6 +465,8 @@ export interface ConfigObject {
      *
      * Password to connect to Salesforce.
      *
+     * Password for BasicAuth authentication. Required when authType is BasicAuth.
+     *
      * Password to connect to SingleStore.
      *
      * Password to connect to Snowflake.
@@ -486,6 +498,8 @@ export interface ConfigObject {
      * Password to connect to BurstIQ.
      *
      * Password to connect to Informix.
+     *
+     * Password to connect to IOMETE.
      */
     password?: string;
     /**
@@ -534,6 +548,11 @@ export interface ConfigObject {
      *
      * Username to connect to Salesforce. This user should have privileges to read all the
      * metadata in Salesforce.
+     *
+     * SAP SuccessFactors user login name. For BasicAuth: used as the credential username. For
+     * OAuth2Credentials: used as the SAML NameID — the user on whose behalf the token is
+     * requested. The user must exist in the SF system and be permitted to use the OAuth2
+     * application.
      *
      * Username to connect to SingleStore. This user should have privileges to read all the
      * metadata in MySQL.
@@ -592,6 +611,8 @@ export interface ConfigObject {
      *
      * Username to connect to Informix. This user should have privileges to read all the
      * metadata in Informix.
+     *
+     * Username to connect to IOMETE.
      */
     username?: string;
     /**
@@ -605,6 +626,10 @@ export interface ConfigObject {
      *
      * Optional name to give to the schema in OpenMetadata. If left blank, we will use default
      * as the schema name
+     *
+     * IOMETE database to restrict metadata ingestion to (e.g. default, finance_db). This is an
+     * optional parameter; if left blank, OpenMetadata attempts to scan all databases in the
+     * catalog.
      */
     databaseSchema?: string;
     /**
@@ -630,6 +655,8 @@ export interface ConfigObject {
      *
      * Choose Auth Configuration Type.
      *
+     * Choose how to authenticate with SAP SuccessFactors OData API.
+     *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      */
     authType?: AuthenticationType | NoConfigAuthenticationTypes;
@@ -641,8 +668,11 @@ export interface ConfigObject {
      * Presto catalog
      *
      * Catalog of the data source.
+     *
+     * Catalog of the data source (e.g. spark_catalog). This is an optional parameter; if left
+     * blank, OpenMetadata uses default catalog.
      */
-    catalog?: IcebergCatalog | string;
+    catalog?: string;
     /**
      * The maximum amount of time (in seconds) to wait for a successful connection to the data
      * source. If the connection attempt takes longer than this timeout period, an error will be
@@ -734,6 +764,13 @@ export interface ConfigObject {
      * server certificates against the certificate authority.
      */
     trustServerCertificate?: boolean;
+    /**
+     * Choose between local file system path (object) or S3 bucket location (object) for Access
+     * database files.
+     *
+     * Choose between Database connection or HDB User Store connection.
+     */
+    connection?: AccessDatabaseLocationLocalPathOrS3;
     /**
      * Use slow logs to extract lineage.
      */
@@ -828,6 +865,44 @@ export interface ConfigObject {
      */
     sobjectNames?: string[];
     /**
+     * SAP SuccessFactors OData API version.
+     */
+    apiVersion?: string;
+    /**
+     * SAP SuccessFactors OData API base URL. For example: https://api4.successfactors.com
+     */
+    baseUrl?: string;
+    /**
+     * OAuth2 Client ID. Required when authType is OAuth2Credentials.
+     *
+     * Client ID for DOMO
+     *
+     * Azure Application (client) ID for service principal authentication.
+     *
+     * Azure Application (client) ID for Service Principal authentication.
+     */
+    clientId?: string;
+    /**
+     * SAP SuccessFactors Company ID (tenant identifier). Required for all API calls.
+     */
+    companyId?: string;
+    /**
+     * PEM-encoded RSA private key used to sign SAML assertions for OAuth2 SAML Bearer flow.
+     * Required when authType is OAuth2Credentials.
+     *
+     * Connection to Snowflake instance via Private Key
+     */
+    privateKey?: string;
+    /**
+     * OAuth2 Token endpoint URL. Required when authType is OAuth2Credentials. For example:
+     * https://api4.successfactors.com/oauth/token
+     */
+    tokenUrl?: string;
+    /**
+     * Client SSL verification.
+     */
+    verifySSL?: VerifySSL;
+    /**
      * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
      * account is xyz1234.us-east-1.gcp
      *
@@ -863,10 +938,6 @@ export interface ConfigObject {
      * TRANSIENT tables.
      */
     includeTransientTables?: boolean;
-    /**
-     * Connection to Snowflake instance via Private Key
-     */
-    privateKey?: string;
     /**
      * Session query tag used to monitor usage on snowflake. To use a query tag snowflake user
      * should have enough privileges to alter the session.
@@ -919,14 +990,6 @@ export interface ConfigObject {
      */
     apiHost?: string;
     /**
-     * Client ID for DOMO
-     *
-     * Azure Application (client) ID for service principal authentication.
-     *
-     * Azure Application (client) ID for Service Principal authentication.
-     */
-    clientId?: string;
-    /**
      * URL of your Domo instance, e.g., https://openmetadata.domo.com
      */
     instanceDomain?: string;
@@ -938,10 +1001,6 @@ export interface ConfigObject {
      * Source Python Class Name to instantiated by the ingestion workflow
      */
     sourcePythonClass?: string;
-    /**
-     * Choose between Database connection or HDB User Store connection.
-     */
-    connection?: SAPHanaConnection;
     /**
      * Couchbase connection Bucket options.
      */
@@ -979,10 +1038,6 @@ export interface ConfigObject {
      */
     serverHost?: string;
     /**
-     * Table property to look for the Owner.
-     */
-    ownershipProperty?: string;
-    /**
      * Specifies additional data needed by a logon mechanism, such as a secure token,
      * Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon
      * mechanism.
@@ -1005,7 +1060,6 @@ export interface ConfigObject {
      * Pagination limit used while querying the SAP ERP API for fetching the entities
      */
     paginationLimit?: number;
-    verifySSL?:       VerifySSL;
     /**
      * Azure Application client secret for service principal authentication.
      *
@@ -1053,6 +1107,11 @@ export interface ConfigObject {
      */
     biqSdzName?: string;
     /**
+     * BurstIQ system wallet ID sent as the biq_system_wallet_id header. Required for profiler
+     * data access.
+     */
+    biqSystemWalletId?: string;
+    /**
      * BurstIQ Keycloak realm name (e.g., 'ems' from https://auth.burstiq.com/realms/ems).
      */
     realmName?: string;
@@ -1061,6 +1120,14 @@ export interface ConfigObject {
      * variable.
      */
     serverName?: string;
+    /**
+     * IOMETE lakehouse cluster name to connect to.
+     */
+    cluster?: string;
+    /**
+     * IOMETE data plane name.
+     */
+    dataPlane?: string;
     [property: string]: any;
 }
 
@@ -1109,6 +1176,8 @@ export enum AuthMechanismEnum {
  *
  * Azure Database Connection Config
  *
+ * GCP CloudSQL Database Connection Config. Uses the Google Cloud SQL Python Connector.
+ *
  * Choose Auth Configuration Type.
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
@@ -1152,11 +1221,21 @@ export interface AuthenticationType {
     /**
      * Password to connect to source.
      *
+     * Database user password. Leave empty if using IAM database authentication.
+     *
      * Password for the Dremio Software user account.
      */
     password?:    string;
     awsConfig?:   AWSCredentials;
     azureConfig?: AzureCredentials;
+    /**
+     * Use GCP IAM for database authentication instead of a password.
+     */
+    enableIamAuth?: boolean;
+    /**
+     * GCP credentials to use. If not provided, Application Default Credentials will be used.
+     */
+    gcpConfig?: GCPCredentials;
     /**
      * JWT to connect to source.
      */
@@ -1299,430 +1378,22 @@ export interface DataStaxAstraDBConfiguration {
 }
 
 /**
- * Dremio Cloud region where your organization is hosted. Choose 'US' for United States
- * region or 'EU' for European region.
- */
-export enum CloudRegion {
-    Eu = "EU",
-    Us = "US",
-}
-
-/**
- * Database Authentication types not requiring config.
- */
-export enum NoConfigAuthenticationTypes {
-    OAuth2 = "OAuth2",
-}
-
-export interface AuthenticationModeObject {
-    /**
-     * Authentication from Connection String for AzureSQL.
-     *
-     * Authentication from Connection String for Azure Synapse.
-     */
-    authentication?: Authentication;
-    /**
-     * Connection Timeout from Connection String for AzureSQL.
-     *
-     * Connection Timeout from Connection String for Azure Synapse.
-     */
-    connectionTimeout?: number;
-    /**
-     * Encrypt from Connection String for AzureSQL.
-     *
-     * Encrypt from Connection String for Azure Synapse.
-     */
-    encrypt?: boolean;
-    /**
-     * Trust Server Certificate from Connection String for AzureSQL.
-     *
-     * Trust Server Certificate from Connection String for Azure Synapse.
-     */
-    trustServerCertificate?: boolean;
-    [property: string]: any;
-}
-
-/**
- * Authentication from Connection String for AzureSQL.
- *
- * Authentication from Connection String for Azure Synapse.
- */
-export enum Authentication {
-    ActiveDirectoryIntegrated = "ActiveDirectoryIntegrated",
-    ActiveDirectoryPassword = "ActiveDirectoryPassword",
-    ActiveDirectoryServicePrincipal = "ActiveDirectoryServicePrincipal",
-}
-
-/**
- * Iceberg Catalog configuration.
- */
-export interface IcebergCatalog {
-    /**
-     * Catalog connection configuration, depending on your catalog type.
-     */
-    connection: Connection;
-    /**
-     * Custom Database Name for your Iceberg Service. If not set it will be 'default'.
-     */
-    databaseName?: string;
-    /**
-     * Catalog Name.
-     */
-    name: string;
-    /**
-     * Warehouse Location. Used to specify a custom warehouse location if needed.
-     */
-    warehouseLocation?: string;
-}
-
-/**
- * Catalog connection configuration, depending on your catalog type.
- *
- * Iceberg Hive Catalog configuration.
- *
- * Iceberg REST Catalog configuration.
- *
- * Iceberg Glue Catalog configuration.
- *
- * Iceberg DynamoDB Catalog configuration.
- */
-export interface Connection {
-    fileSystem?: IcebergFileSystem;
-    /**
-     * Uri to the Hive Metastore. Example: 'thrift://localhost:9083'
-     *
-     * Uri to the REST catalog. Example: 'http://rest-catalog/ws/'
-     */
-    uri?: string;
-    /**
-     * OAuth2 credential to use when initializing the catalog.
-     */
-    credential?: OAuth2Credential;
-    /**
-     * Sign requests to the REST Server using AWS SigV4 protocol.
-     */
-    sigv4?: Sigv4;
-    /**
-     * SSL Configuration details.
-     */
-    ssl?: SSLCertificatesByPath;
-    /**
-     * Berarer token to use for the 'Authorization' header.
-     */
-    token?:     string;
-    awsConfig?: AWSCredentials;
-    /**
-     * DynamoDB table name.
-     */
-    tableName?: string;
-}
-
-/**
- * OAuth2 credential to use when initializing the catalog.
- */
-export interface OAuth2Credential {
-    /**
-     * OAuth2 Client ID.
-     */
-    clientId?: string;
-    /**
-     * OAuth2 Client Secret
-     */
-    clientSecret?: string;
-}
-
-/**
- * Iceberg File System configuration, based on where the Iceberg Warehouse is located.
- */
-export interface IcebergFileSystem {
-    type?: Credentials | null;
-}
-
-/**
- * AWS credentials configs.
- *
- * Azure Cloud Credentials
- */
-export interface Credentials {
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
-     * Role
-     */
-    assumeRoleArn?: string;
-    /**
-     * An identifier for the assumed role session. Use the role session name to uniquely
-     * identify a session when the same role is assumed by different principals or for different
-     * reasons. Required Field in case of Assume Role
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
-     * Role
-     */
-    assumeRoleSourceIdentity?: string;
-    /**
-     * AWS Access key ID.
-     */
-    awsAccessKeyId?: string;
-    /**
-     * AWS Region
-     */
-    awsRegion?: string;
-    /**
-     * AWS Secret Access Key.
-     */
-    awsSecretAccessKey?: string;
-    /**
-     * AWS Session Token.
-     */
-    awsSessionToken?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * EndPoint URL for the AWS
-     */
-    endPointURL?: string;
-    /**
-     * The name of a profile to use with the boto session.
-     */
-    profileName?: string;
-    /**
-     * Account Name of your storage account
-     */
-    accountName?: string;
-    /**
-     * Your Service Principal App ID (Client ID)
-     */
-    clientId?: string;
-    /**
-     * Your Service Principal Password (Client Secret)
-     */
-    clientSecret?: string;
-    /**
-     * Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default
-     */
-    scopes?: string;
-    /**
-     * Tenant ID of your Azure Subscription
-     */
-    tenantId?: string;
-    /**
-     * Key Vault Name
-     */
-    vaultName?: string;
-}
-
-/**
- * Sign requests to the REST Server using AWS SigV4 protocol.
- */
-export interface Sigv4 {
-    /**
-     * The service signing name to use when SigV4 signs a request.
-     */
-    signingName?: string;
-    /**
-     * AWS Region to use when SigV4 signs a request.
-     */
-    signingRegion?: string;
-    [property: string]: any;
-}
-
-/**
- * SSL Configuration details.
- *
- * SSL Certificates By Path
- */
-export interface SSLCertificatesByPath {
-    /**
-     * CA Certificate Path
-     */
-    caCertPath?: string;
-    /**
-     * Client Certificate Path
-     */
-    clientCertPath?: string;
-    /**
-     * Private Key Path
-     */
-    privateKeyPath?: string;
-}
-
-/**
- * Available sources to fetch the metadata.
- *
- * Deltalake Metastore configuration.
- *
- * DeltaLake Storage Connection Config
- *
- * Available sources to fetch files.
- *
- * Local config source where no extra information needs to be sent.
- *
- * Azure Datalake Storage will ingest files in container
- *
- * DataLake GCS storage will ingest metadata of files
- *
- * DataLake S3 bucket will ingest metadata of files in bucket
- */
-export interface TaLakeConfigurationSource {
-    /**
-     * pySpark App Name.
-     */
-    appName?: string;
-    /**
-     * Metastore connection configuration, depending on your metastore type.
-     *
-     * Available sources to fetch files.
-     */
-    connection?: ConnectionClass;
-    /**
-     * Bucket Name of the data source.
-     */
-    bucketName?: string;
-    /**
-     * Prefix of the data source.
-     */
-    prefix?:         string;
-    securityConfig?: SecurityConfigClass;
-}
-
-/**
- * Metastore connection configuration, depending on your metastore type.
- *
- * Available sources to fetch files.
- *
- * DataLake S3 bucket will ingest metadata of files in bucket
- */
-export interface ConnectionClass {
-    /**
-     * Thrift connection to the metastore service. E.g., localhost:9083
-     */
-    metastoreHostPort?: string;
-    /**
-     * Driver class name for JDBC metastore. The value will be mapped as
-     * spark.hadoop.javax.jdo.option.ConnectionDriverName sparks property. E.g.,
-     * org.mariadb.jdbc.Driver
-     */
-    driverName?: string;
-    /**
-     * Class path to JDBC driver required for JDBC connection. The value will be mapped as
-     * spark.driver.extraClassPath sparks property.
-     */
-    jdbcDriverClassPath?: string;
-    /**
-     * JDBC connection to the metastore database. E.g., jdbc:mysql://localhost:3306/demo_hive
-     */
-    metastoreDb?: string;
-    /**
-     * Password to use against metastore database. The value will be mapped as
-     * spark.hadoop.javax.jdo.option.ConnectionPassword sparks property.
-     */
-    password?: string;
-    /**
-     * Username to use against metastore database. The value will be mapped as
-     * spark.hadoop.javax.jdo.option.ConnectionUserName sparks property.
-     */
-    username?: string;
-    /**
-     * Local path for the local file with metastore data. E.g., /tmp/metastore.db
-     */
-    metastoreFilePath?: string;
-    securityConfig?:    AWSCredentials;
-}
-
-/**
- * Azure Cloud Credentials
- *
  * GCP Credentials
  *
  * GCP credentials configs.
  *
- * AWS credentials configs.
+ * GCP credentials to use. If not provided, Application Default Credentials will be used.
  */
-export interface SecurityConfigClass {
-    /**
-     * Account Name of your storage account
-     */
-    accountName?: string;
-    /**
-     * Your Service Principal App ID (Client ID)
-     */
-    clientId?: string;
-    /**
-     * Your Service Principal Password (Client Secret)
-     */
-    clientSecret?: string;
-    /**
-     * Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default
-     */
-    scopes?: string;
-    /**
-     * Tenant ID of your Azure Subscription
-     */
-    tenantId?: string;
-    /**
-     * Key Vault Name
-     */
-    vaultName?: string;
+export interface GCPCredentials {
     /**
      * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
      * Credentials Path
      */
-    gcpConfig?: GCPCredentialsConfiguration;
+    gcpConfig: GCPCredentialsConfiguration;
     /**
      * we enable the authenticated service account to impersonate another service account
      */
     gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
-     * Role
-     */
-    assumeRoleArn?: string;
-    /**
-     * An identifier for the assumed role session. Use the role session name to uniquely
-     * identify a session when the same role is assumed by different principals or for different
-     * reasons. Required Field in case of Assume Role
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
-     * Role
-     */
-    assumeRoleSourceIdentity?: string;
-    /**
-     * AWS Access key ID.
-     */
-    awsAccessKeyId?: string;
-    /**
-     * AWS Region
-     */
-    awsRegion?: string;
-    /**
-     * AWS Secret Access Key.
-     */
-    awsSecretAccessKey?: string;
-    /**
-     * AWS Session Token.
-     */
-    awsSessionToken?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * EndPoint URL for the AWS
-     */
-    endPointURL?: string;
-    /**
-     * The name of a profile to use with the boto session.
-     */
-    profileName?: string;
 }
 
 /**
@@ -1828,13 +1499,285 @@ export interface GCPImpersonateServiceAccountValues {
 }
 
 /**
+ * Dremio Cloud region where your organization is hosted. Choose 'US' for United States
+ * region or 'EU' for European region.
+ */
+export enum CloudRegion {
+    Eu = "EU",
+    Us = "US",
+}
+
+/**
+ * Choose how to authenticate with SAP SuccessFactors OData API.
+ *
+ * Authentication type to connect to SAP SuccessFactors.
+ *
+ * Database Authentication types not requiring config.
+ */
+export enum NoConfigAuthenticationTypes {
+    BasicAuth = "BasicAuth",
+    OAuth2 = "OAuth2",
+    OAuth2Credentials = "OAuth2Credentials",
+}
+
+export interface AuthenticationModeObject {
+    /**
+     * Authentication from Connection String for AzureSQL.
+     *
+     * Authentication from Connection String for Azure Synapse.
+     */
+    authentication?: Authentication;
+    /**
+     * Connection Timeout from Connection String for AzureSQL.
+     *
+     * Connection Timeout from Connection String for Azure Synapse.
+     */
+    connectionTimeout?: number;
+    /**
+     * Encrypt from Connection String for AzureSQL.
+     *
+     * Encrypt from Connection String for Azure Synapse.
+     */
+    encrypt?: boolean;
+    /**
+     * Trust Server Certificate from Connection String for AzureSQL.
+     *
+     * Trust Server Certificate from Connection String for Azure Synapse.
+     */
+    trustServerCertificate?: boolean;
+    [property: string]: any;
+}
+
+/**
+ * Authentication from Connection String for AzureSQL.
+ *
+ * Authentication from Connection String for Azure Synapse.
+ */
+export enum Authentication {
+    ActiveDirectoryIntegrated = "ActiveDirectoryIntegrated",
+    ActiveDirectoryPassword = "ActiveDirectoryPassword",
+    ActiveDirectoryServicePrincipal = "ActiveDirectoryServicePrincipal",
+}
+
+/**
+ * Available sources to fetch the metadata.
+ *
+ * Deltalake Metastore configuration.
+ *
+ * DeltaLake Storage Connection Config
+ *
+ * Available sources to fetch files.
+ *
+ * Local config source where no extra information needs to be sent.
+ *
+ * Azure Datalake Storage will ingest files in container
+ *
+ * DataLake GCS storage will ingest metadata of files
+ *
+ * DataLake S3 bucket will ingest metadata of files in bucket
+ */
+export interface TaLakeConfigurationSource {
+    /**
+     * pySpark App Name.
+     */
+    appName?: string;
+    /**
+     * Metastore connection configuration, depending on your metastore type.
+     *
+     * Available sources to fetch files.
+     */
+    connection?: ConnectionClass;
+    /**
+     * Bucket Name of the data source.
+     */
+    bucketName?: string;
+    /**
+     * Prefix of the data source.
+     */
+    prefix?:         string;
+    securityConfig?: Credentials;
+}
+
+/**
+ * Metastore connection configuration, depending on your metastore type.
+ *
+ * Available sources to fetch files.
+ *
+ * DataLake S3 bucket will ingest metadata of files in bucket
+ */
+export interface ConnectionClass {
+    /**
+     * Thrift connection to the metastore service. E.g., localhost:9083
+     */
+    metastoreHostPort?: string;
+    /**
+     * Driver class name for JDBC metastore. The value will be mapped as
+     * spark.hadoop.javax.jdo.option.ConnectionDriverName sparks property. E.g.,
+     * org.mariadb.jdbc.Driver
+     */
+    driverName?: string;
+    /**
+     * Class path to JDBC driver required for JDBC connection. The value will be mapped as
+     * spark.driver.extraClassPath sparks property.
+     */
+    jdbcDriverClassPath?: string;
+    /**
+     * JDBC connection to the metastore database. E.g., jdbc:mysql://localhost:3306/demo_hive
+     */
+    metastoreDb?: string;
+    /**
+     * Password to use against metastore database. The value will be mapped as
+     * spark.hadoop.javax.jdo.option.ConnectionPassword sparks property.
+     */
+    password?: string;
+    /**
+     * Username to use against metastore database. The value will be mapped as
+     * spark.hadoop.javax.jdo.option.ConnectionUserName sparks property.
+     */
+    username?: string;
+    /**
+     * Local path for the local file with metastore data. E.g., /tmp/metastore.db
+     */
+    metastoreFilePath?: string;
+    securityConfig?:    AWSCredentials;
+}
+
+/**
+ * Azure Cloud Credentials
+ *
+ * GCP Credentials
+ *
+ * GCP credentials configs.
+ *
+ * GCP credentials to use. If not provided, Application Default Credentials will be used.
+ *
+ * AWS credentials configs.
+ */
+export interface Credentials {
+    /**
+     * Account Name of your storage account
+     */
+    accountName?: string;
+    /**
+     * Your Service Principal App ID (Client ID)
+     */
+    clientId?: string;
+    /**
+     * Your Service Principal Password (Client Secret)
+     */
+    clientSecret?: string;
+    /**
+     * Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default
+     */
+    scopes?: string;
+    /**
+     * Tenant ID of your Azure Subscription
+     */
+    tenantId?: string;
+    /**
+     * Key Vault Name
+     */
+    vaultName?: string;
+    /**
+     * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
+     * Credentials Path
+     */
+    gcpConfig?: GCPCredentialsConfiguration;
+    /**
+     * we enable the authenticated service account to impersonate another service account
+     */
+    gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
+     * Role
+     */
+    assumeRoleArn?: string;
+    /**
+     * An identifier for the assumed role session. Use the role session name to uniquely
+     * identify a session when the same role is assumed by different principals or for different
+     * reasons. Required Field in case of Assume Role
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
+     * Role
+     */
+    assumeRoleSourceIdentity?: string;
+    /**
+     * AWS Access key ID.
+     */
+    awsAccessKeyId?: string;
+    /**
+     * AWS Region
+     */
+    awsRegion?: string;
+    /**
+     * AWS Secret Access Key.
+     */
+    awsSecretAccessKey?: string;
+    /**
+     * AWS Session Token.
+     */
+    awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
+     * EndPoint URL for the AWS
+     */
+    endPointURL?: string;
+    /**
+     * The name of a profile to use with the boto session.
+     */
+    profileName?: string;
+}
+
+/**
+ * Choose between local file system path (object) or S3 bucket location (object) for Access
+ * database files.
+ *
+ * Local filesystem path to a single Access database file or a directory containing Access
+ * files.
+ *
+ * S3 Connection.
+ *
  * Choose between Database connection or HDB User Store connection.
  *
  * Sap Hana Database SQL Connection Config
  *
  * Sap Hana Database HDB User Store Connection Config
  */
-export interface SAPHanaConnection {
+export interface AccessDatabaseLocationLocalPathOrS3 {
+    /**
+     * Absolute path to the .accdb or .mdb file, or a directory. Supports ~ expansion (e.g.
+     * ~/data/sales.accdb). All .accdb and .mdb files found recursively in a directory will be
+     * ingested.
+     */
+    localFilePath?: string;
+    awsConfig?:     AWSCredentials;
+    /**
+     * Bucket Names of the data source.
+     */
+    bucketNames?:         string[];
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Console EndPoint URL for S3-compatible services
+     */
+    consoleEndpointURL?: string;
+    /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?:     FilterPattern;
+    supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
+    /**
+     * Service Type
+     */
+    type?: S3Type;
     /**
      * Database of the data source.
      */
@@ -1865,23 +1808,6 @@ export interface SAPHanaConnection {
 }
 
 /**
- * GCP Credentials
- *
- * GCP credentials configs.
- */
-export interface GCPCredentials {
-    /**
-     * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
-     * Credentials Path
-     */
-    gcpConfig: GCPCredentialsConfiguration;
-    /**
-     * we enable the authenticated service account to impersonate another service account
-     */
-    gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
-}
-
-/**
  * Regex to only include/exclude databases that matches the pattern.
  *
  * Regex to only fetch entities that matches the pattern.
@@ -1891,6 +1817,8 @@ export interface GCPCredentials {
  * Regex to only include/exclude stored procedures that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only fetch containers that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
  * (information_schema, _statistics_, sys) are excluded by default.
@@ -1908,6 +1836,9 @@ export interface GCPCredentials {
  * Regex to only include/exclude tables that match the pattern.
  *
  * Regex to only include/exclude dictionaries (tables) that matches the pattern.
+ *
+ * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
+ * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
  */
 export interface FilterPattern {
     /**
@@ -1918,6 +1849,15 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * Service Type
+ *
+ * S3 service type
+ */
+export enum S3Type {
+    S3 = "S3",
 }
 
 /**
@@ -1953,7 +1893,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Choose Auth Config Type.
      */
-    authType?: AuthConfigurationType;
+    authType?: AuthTypeClass;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -1973,7 +1913,8 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Host and port of the source service.
      *
-     * Host and port of the MySQL service.
+     * Host and port of the MySQL service. For GCP CloudSQL, use the instance connection name in
+     * the format 'project_id:region:instance_name'.
      */
     hostPort?: string;
     /**
@@ -2055,14 +1996,26 @@ export interface HiveMetastoreConnectionDetails {
  * IAM Auth Database Connection Config
  *
  * Azure Database Connection Config
+ *
+ * GCP CloudSQL Database Connection Config. Uses the Google Cloud SQL Python Connector.
  */
-export interface AuthConfigurationType {
+export interface AuthTypeClass {
     /**
      * Password to connect to source.
+     *
+     * Database user password. Leave empty if using IAM database authentication.
      */
     password?:    string;
     awsConfig?:   AWSCredentials;
     azureConfig?: AzureCredentials;
+    /**
+     * Use GCP IAM for database authentication instead of a password.
+     */
+    enableIamAuth?: boolean;
+    /**
+     * GCP credentials to use. If not provided, Application Default Credentials will be used.
+     */
+    gcpConfig?: GCPCredentials;
 }
 
 /**
@@ -2338,10 +2291,11 @@ export enum ConfigType {
     Glue = "Glue",
     Greenplum = "Greenplum",
     Hive = "Hive",
-    Iceberg = "Iceberg",
     Impala = "Impala",
     Informix = "Informix",
+    Iomete = "Iomete",
     MariaDB = "MariaDB",
+    MicrosoftAccess = "MicrosoftAccess",
     MicrosoftFabric = "MicrosoftFabric",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
@@ -2356,6 +2310,7 @@ export enum ConfigType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    SapSuccessFactors = "SapSuccessFactors",
     ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
@@ -2370,6 +2325,8 @@ export enum ConfigType {
 }
 
 /**
+ * Client SSL verification.
+ *
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
  */
 export enum VerifySSL {
@@ -2466,10 +2423,11 @@ export enum DatabaseServiceType {
     Glue = "Glue",
     Greenplum = "Greenplum",
     Hive = "Hive",
-    Iceberg = "Iceberg",
     Impala = "Impala",
     Informix = "Informix",
+    Iomete = "Iomete",
     MariaDB = "MariaDB",
+    MicrosoftAccess = "MicrosoftAccess",
     MicrosoftFabric = "MicrosoftFabric",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
@@ -2485,6 +2443,7 @@ export enum DatabaseServiceType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    SapSuccessFactors = "SapSuccessFactors",
     ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
@@ -2579,6 +2538,10 @@ export enum LabelType {
  * was applied.
  */
 export interface TagLabelMetadata {
+    /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
     /**
      * Metadata about the recognizer that automatically applied this tag
      */

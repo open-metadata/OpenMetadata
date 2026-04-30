@@ -11,26 +11,38 @@
  *  limitations under the License.
  */
 
-import { Box, Paper, TableContainer, useTheme } from '@mui/material';
-import { useForm } from 'antd/lib/form/Form';
+import {
+  Avatar,
+  Box,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Globe01 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import { useSnackbar } from 'notistack';
-import { useCallback, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
+import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
-import { CreateDomain } from '../../generated/api/domains/createDomain';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { addDataProducts, patchDataProduct } from '../../rest/dataProductAPI';
 import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { submitAndClose } from '../../utils/FormDrawerUtils';
+import { getEntityAvatarProps } from '../../utils/IconUtils';
+import { getClassificationTags, getGlossaryTags } from '../../utils/TagsUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
-import { useFormDrawerWithRef } from '../common/atoms/drawer';
+import { useFormDrawerWithHook } from '../common/atoms/drawer';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
 import { useBreadcrumbs } from '../common/atoms/navigation/useBreadcrumbs';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
@@ -38,30 +50,38 @@ import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { useViewToggle } from '../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
-import { useCardView } from '../common/atoms/table/useCardView';
-import { useDataTable } from '../common/atoms/table/useDataTable';
+import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
+import EntityCardView from '../common/EntityCardView/EntityCardView.component';
+import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
+import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import AddDomainForm from '../Domain/AddDomainForm/AddDomainForm.component';
+import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
+import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
+import AddDomainForm, {
+  DOMAIN_FORM_DEFAULTS,
+  transformDomainFormData,
+} from '../Domain/AddDomainForm/AddDomainForm.component';
+import { DomainFormValues } from '../Domain/AddDomainForm/AddDomainForm.interface';
 import { DomainFormType } from '../Domain/DomainPage.interface';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
 
 const DataProductListPage = () => {
   const dataProductListing = useDataProductListingData();
-  const theme = useTheme();
+  const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { permissions } = usePermissionProvider();
-  const [form] = useForm();
+  const form = useForm<DomainFormValues>({
+    defaultValues: DOMAIN_FORM_DEFAULTS,
+  });
   const [isLoading, setIsLoading] = useState(false);
 
-  // Use the simplified data product filters configuration
   const { quickFilters, defaultFilters } = useDataProductFilters({
     aggregations: dataProductListing.aggregations || undefined,
     parsedFilters: dataProductListing.parsedFilters,
     onFilterChange: dataProductListing.handleFilterChange,
   });
 
-  // Use the filter selection hook for displaying selected filters
   const { filterSelectionDisplay } = useFilterSelection({
     urlState: dataProductListing.urlState,
     filterConfigs: defaultFilters,
@@ -69,57 +89,85 @@ const DataProductListPage = () => {
     onFilterChange: dataProductListing.handleFilterChange,
   });
 
-  const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
-    title: t('label.add-entity', { entity: t('label.data-product') }),
-    width: 670,
-    closeOnEscape: false,
-    onCancel: () => {
-      form.resetFields();
+  const handleDataProductSubmit = useCallback(
+    async (data: DomainFormValues) => {
+      const formData = transformDomainFormData(
+        data,
+        DomainFormType.DATA_PRODUCT
+      ) as CreateDataProduct;
+      setIsLoading(true);
+      try {
+        await createEntityWithCoverImage({
+          formData,
+          entityType: EntityType.DATA_PRODUCT,
+          entityLabel: t('label.data-product'),
+          entityPluralLabel: 'data-products',
+          createEntity: addDataProducts,
+          patchEntity: patchDataProduct,
+          onSuccess: () => {
+            form.reset();
+          },
+          enqueueSnackbar,
+          closeSnackbar,
+          t,
+        });
+      } finally {
+        setIsLoading(false);
+      }
     },
-    form: (
-      <AddDomainForm
-        isFormInDialog
-        formRef={form}
-        loading={isLoading}
-        type={DomainFormType.DATA_PRODUCT}
-        onCancel={() => {
-          // No-op: Drawer close and form reset handled by useFormDrawerWithRef
-        }}
-        onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
-          setIsLoading(true);
-          try {
-            await createEntityWithCoverImage({
-              formData: formData as CreateDataProduct,
-              entityType: EntityType.DATA_PRODUCT,
-              entityLabel: t('label.data-product'),
-              entityPluralLabel: 'data-products',
-              createEntity: addDataProducts,
-              patchEntity: patchDataProduct,
-              onSuccess: () => {
-                closeDrawer();
-                dataProductListing.refetch();
-              },
-              enqueueSnackbar,
-              closeSnackbar,
-              t,
-            });
-          } finally {
-            setIsLoading(false);
-          }
-        }}
-      />
-    ),
-    formRef: form,
-    onSubmit: () => {
-      // This is called by the drawer button, but actual submission
-      // happens via formRef.submit() which triggers form.onFinish
-    },
-    loading: isLoading,
-  });
+    [form, enqueueSnackbar, closeSnackbar, t]
+  );
 
-  // Composable hooks for each UI component
+  const refreshDataProducts = useCallback(() => {
+    dataProductListing.refetch();
+  }, [dataProductListing]);
+
+  const { formDrawer, openDrawer, closeDrawer } =
+    useFormDrawerWithHook<DomainFormValues>({
+      title: t('label.add-entity', { entity: t('label.data-product') }),
+      width: 670,
+      closeOnEscape: false,
+      className: 'tw:z-[20]',
+      hookForm: form,
+      form: (
+        <AddDomainForm
+          isFormInDialog
+          form={form}
+          loading={isLoading}
+          type={DomainFormType.DATA_PRODUCT}
+          onCancel={() => {}}
+          onSubmit={(data: DomainFormValues): Promise<void> =>
+            submitAndClose(
+              data,
+              handleDataProductSubmit,
+              closeDrawer,
+              refreshDataProducts
+            )
+          }
+        />
+      ),
+      onSubmit: (data: DomainFormValues): Promise<void> =>
+        submitAndClose(
+          data,
+          handleDataProductSubmit,
+          closeDrawer,
+          refreshDataProducts
+        ),
+      loading: isLoading,
+    });
+
   const { breadcrumbs } = useBreadcrumbs({
-    items: [{ name: t('label.data-product-plural'), url: '/dataProduct' }],
+    items: [
+      ...(isMarketplace
+        ? [
+            {
+              name: t('label.data-marketplace'),
+              url: ROUTES.DATA_MARKETPLACE,
+            },
+          ]
+        : []),
+      { name: t('label.data-product-plural'), url: dataProductBasePath },
+    ],
   });
 
   const { pageHeader } = usePageHeader({
@@ -144,18 +192,90 @@ const DataProductListPage = () => {
   });
 
   const { view, viewToggle } = useViewToggle();
-  const { dataProductCardTemplate } = useDomainCardTemplates();
+  const { renderDataProductCard } = useDomainCardTemplates();
 
-  const { dataTable } = useDataTable({
-    listing: dataProductListing,
-    enableSelection: true,
-    entityLabelKey: 'label.data-product',
-  });
+  const dataProductColumns: ColumnDef[] = useMemo(
+    () => [
+      { id: 'name', label: t('label.data-product') },
+      { id: 'owners', label: t('label.owner') },
+      { id: 'glossaryTerms', label: t('label.glossary-term-plural') },
+      { id: 'domains', label: t('label.domain-plural') },
+      { id: 'tags', label: t('label.tag-plural') },
+      { id: 'experts', label: t('label.expert-plural') },
+    ],
+    [t]
+  );
 
-  const { cardView } = useCardView({
-    listing: dataProductListing,
-    cardTemplate: dataProductCardTemplate,
-  });
+  const renderDataProductCell = useCallback(
+    (entity: DataProduct, columnId: string): ReactNode => {
+      switch (columnId) {
+        case 'name': {
+          const entityName = getEntityName(entity);
+          const showName =
+            entity.displayName &&
+            entity.name &&
+            entity.displayName !== entity.name;
+
+          return (
+            <Box align="center" direction="row" gap={3}>
+              <Avatar size="md" {...getEntityAvatarProps(entity)} />
+              <Box direction="col">
+                <Typography size="text-sm" weight="medium">
+                  {entityName}
+                </Typography>
+                {showName && (
+                  <Typography size="text-xs">{entity.name}</Typography>
+                )}
+              </Box>
+            </Box>
+          );
+        }
+        case 'owners':
+          return (
+            <OwnerLabel
+              isCompactView={false}
+              maxVisibleOwners={4}
+              owners={entity.owners}
+              showLabel={false}
+            />
+          );
+        case 'glossaryTerms':
+          return <TagBadgeList size="lg" tags={getGlossaryTags(entity.tags)} />;
+        case 'domains': {
+          const domains = entity.domains;
+          if (!domains?.length) {
+            return <Typography size="text-sm">{NO_DATA}</Typography>;
+          }
+          const domain = domains[0];
+
+          return (
+            <Box align="center" direction="row" gap={1}>
+              <Globe01 size={16} style={{ flexShrink: 0 }} />
+              <Typography size="text-sm">
+                {domain.displayName || domain.name}
+              </Typography>
+            </Box>
+          );
+        }
+        case 'tags':
+          return (
+            <TagBadgeList size="sm" tags={getClassificationTags(entity.tags)} />
+          );
+        case 'experts':
+          return (
+            <OwnerLabel
+              isCompactView={false}
+              maxVisibleOwners={4}
+              owners={entity.experts}
+              showLabel={false}
+            />
+          );
+        default:
+          return null;
+      }
+    },
+    []
+  );
 
   const { paginationControls } = usePaginationControls({
     currentPage: dataProductListing.currentPage,
@@ -166,7 +286,6 @@ const DataProductListPage = () => {
     loading: dataProductListing.loading,
   });
 
-  // Map selected IDs to actual entities for the delete hook
   const selectedDataProductEntities = useMemo(
     () =>
       dataProductListing.entities.filter((entity) =>
@@ -185,21 +304,14 @@ const DataProductListPage = () => {
     },
   });
 
-  const hasActiveSearchOrFilter = useCallback(() => {
-    const { searchQuery, filters } = dataProductListing.urlState;
-
-    const hasActiveFilters =
-      filters &&
-      Object.values(filters).some(
-        (values) => Array.isArray(values) && values.length > 0
-      );
-
-    return Boolean(searchQuery) || hasActiveFilters;
-  }, [dataProductListing.urlState]);
+  const isSearchOrFilterActive = useCallback(
+    () => hasActiveSearchOrFilter(dataProductListing.urlState),
+    [dataProductListing.urlState]
+  );
 
   const content = useMemo(() => {
     if (!dataProductListing.loading && isEmpty(dataProductListing.entities)) {
-      if (hasActiveSearchOrFilter()) {
+      if (isSearchOrFilterActive()) {
         return (
           <ErrorPlaceHolder
             className="border-none"
@@ -220,7 +332,7 @@ const DataProductListPage = () => {
           })}
           icon={<FolderEmptyIcon />}
           permission={permissions.dataProduct?.Create}
-          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
           onClick={openDrawer}
         />
       );
@@ -229,7 +341,17 @@ const DataProductListPage = () => {
     if (view === 'table') {
       return (
         <>
-          {dataTable}
+          <EntityListingTable
+            ariaLabel={t('label.data-product')}
+            columns={dataProductColumns}
+            entities={dataProductListing.entities}
+            loading={dataProductListing.loading}
+            renderCell={renderDataProductCell}
+            selectedEntities={dataProductListing.selectedEntities}
+            onEntityClick={dataProductListing.actionHandlers.onEntityClick}
+            onSelect={dataProductListing.handleSelect}
+            onSelectAll={dataProductListing.handleSelectAll}
+          />
           {paginationControls}
         </>
       );
@@ -237,17 +359,24 @@ const DataProductListPage = () => {
 
     return (
       <>
-        {cardView}
+        <EntityCardView
+          entities={dataProductListing.entities}
+          loading={dataProductListing.loading}
+          renderCard={renderDataProductCard}
+          onEntityClick={dataProductListing.actionHandlers.onEntityClick}
+        />
         {paginationControls}
       </>
     );
   }, [
     dataProductListing.loading,
     dataProductListing.entities,
-    hasActiveSearchOrFilter,
+    dataProductListing.selectedEntities,
+    dataProductListing.actionHandlers,
+    isSearchOrFilterActive,
     view,
-    dataTable,
-    cardView,
+    renderDataProductCell,
+    renderDataProductCard,
     paginationControls,
     openDrawer,
     t,
@@ -259,33 +388,29 @@ const DataProductListPage = () => {
       {breadcrumbs}
       {pageHeader}
 
-      <TableContainer component={Paper} sx={{ mb: 5 }}>
+      <Card style={{ marginBottom: 20 }} variant="elevated">
         <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-            px: 6,
-            py: 4,
-            borderBottom: `1px solid`,
-            borderColor: theme.palette.allShades?.gray?.[200],
-          }}>
-          <Box sx={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+          className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
+          direction="col"
+          gap={4}>
+          <Box align="center" direction="row" gap={5}>
             {titleAndCount}
             {search}
             {quickFilters}
-            <Box ml="auto" />
+            <Box className="tw:ml-auto" />
             {viewToggle}
             {deleteIconButton}
           </Box>
           {filterSelectionDisplay}
         </Box>
         {content}
-      </TableContainer>
+      </Card>
       {deleteModal}
       {formDrawer}
     </>
   );
 };
+
+export { DataProductListPage };
 
 export default withPageLayout(DataProductListPage);

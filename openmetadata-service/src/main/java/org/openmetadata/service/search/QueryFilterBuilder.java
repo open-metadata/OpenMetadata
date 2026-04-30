@@ -204,6 +204,7 @@ public class QueryFilterBuilder {
     ObjectNode nestedNode = MAPPER.createObjectNode();
     ObjectNode nestedInner = nestedNode.putObject("nested");
     nestedInner.put("path", path);
+    nestedInner.put("ignore_unmapped", true);
     ObjectNode termNode = MAPPER.createObjectNode();
     termNode.putObject(TERM_KEY).put(fieldPath, fieldValue);
     nestedInner.set(QUERY_KEY, termNode);
@@ -215,6 +216,7 @@ public class QueryFilterBuilder {
     ObjectNode nestedNode = MAPPER.createObjectNode();
     ObjectNode nestedInner = nestedNode.putObject("nested");
     nestedInner.put("path", path);
+    nestedInner.put("ignore_unmapped", true);
     ObjectNode matchNode = MAPPER.createObjectNode();
     matchNode.putObject(MATCH_KEY).put(fieldPath, fieldValue);
     nestedInner.set(QUERY_KEY, matchNode);
@@ -226,6 +228,7 @@ public class QueryFilterBuilder {
     ObjectNode nestedNode = MAPPER.createObjectNode();
     ObjectNode nestedInner = nestedNode.putObject("nested");
     nestedInner.put("path", path);
+    nestedInner.put("ignore_unmapped", true);
     ObjectNode orCondition = MAPPER.createObjectNode();
     ObjectNode innerBool = orCondition.putObject(BOOL_KEY);
     ArrayNode shouldArray = innerBool.putArray(SHOULD_KEY);

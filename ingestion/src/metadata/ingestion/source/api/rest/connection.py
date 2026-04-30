@@ -12,7 +12,8 @@
 """
 Source connection handler
 """
-from typing import Dict, Optional, Union
+
+from typing import Dict, Optional, Union  # noqa: UP035
 
 import requests
 from requests.models import Response
@@ -45,6 +46,7 @@ from metadata.ingestion.source.api.rest.parser import (
     validate_openapi_schema,
 )
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 
 class SchemaURLError(Exception):
@@ -59,7 +61,7 @@ class InvalidOpenAPISchemaError(Exception):
     """
 
 
-def get_connection(connection: RestConnection) -> Union[Response, Dict]:
+def get_connection(connection: RestConnection) -> Union[Response, Dict]:  # noqa: UP006, UP007
     """
     Create connection.
     If openAPISchemaURL is provided, fetches the schema via HTTP.
@@ -67,10 +69,14 @@ def get_connection(connection: RestConnection) -> Union[Response, Dict]:
     """
     schema_conn = connection.openAPISchemaConnection
     if isinstance(schema_conn, OpenAPISchemaURL):
+        verify_ssl_fn = get_verify_ssl_fn(connection.verifySSL)
+        verify = verify_ssl_fn(connection.sslConfig)
+        if verify is None:
+            verify = True
+        headers = {}
         if connection.token:
-            headers = {"Authorization": f"Bearer {connection.token.get_secret_value()}"}
-            return requests.get(schema_conn.openAPISchemaURL, headers=headers)
-        return requests.get(schema_conn.openAPISchemaURL)
+            headers["Authorization"] = f"Bearer {connection.token.get_secret_value()}"
+        return requests.get(schema_conn.openAPISchemaURL, headers=headers, verify=verify)
 
     if isinstance(schema_conn, OpenAPISchemaFilePath):
         return parse_openapi_schema_from_file(schema_conn.openAPISchemaFilePath)
@@ -86,10 +92,10 @@ def get_connection(connection: RestConnection) -> Union[Response, Dict]:
 
 def test_connection(
     metadata: OpenMetadata,
-    client: Union[Response, Dict],
+    client: Union[Response, Dict],  # noqa: UP006, UP007
     service_connection: RestConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -114,15 +120,13 @@ def test_connection(
             if validate_openapi_schema(schema):
                 return []
 
-            raise InvalidOpenAPISchemaError(
-                "Provided schema is not valid OpenAPI specification"
-            )
+            raise InvalidOpenAPISchemaError("Provided schema is not valid OpenAPI specification")  # noqa: TRY301
         except OpenAPIParseError as e:
-            raise InvalidOpenAPISchemaError(f"Failed to parse OpenAPI schema: {e}")
+            raise InvalidOpenAPISchemaError(f"Failed to parse OpenAPI schema: {e}")  # noqa: B904
         except InvalidOpenAPISchemaError:
             raise
         except Exception as e:
-            raise InvalidOpenAPISchemaError(f"Error validating OpenAPI schema: {e}")
+            raise InvalidOpenAPISchemaError(f"Error validating OpenAPI schema: {e}")  # noqa: B904
 
     test_fn = {"CheckURL": custom_url_exec, "CheckSchema": custom_schema_exec}
 

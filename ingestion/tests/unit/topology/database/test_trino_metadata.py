@@ -14,7 +14,12 @@
 import unittest
 from unittest.mock import Mock
 
-from metadata.ingestion.source.database.trino.metadata import get_view_definition
+from metadata.generated.schema.entity.data.table import TableType
+from metadata.ingestion.source.database.common_db_source import TableNameAndType
+from metadata.ingestion.source.database.trino.metadata import (
+    TrinoSource,
+    get_view_definition,
+)
 
 
 class TestTrinoMetadata(unittest.TestCase):
@@ -29,9 +34,7 @@ class TestTrinoMetadata(unittest.TestCase):
 
     def _set_execute_side_effect(self, primary_result, fallback_result=None):
         """Helper to mock connection.execute for primary and fallback queries"""
-        results = iter(
-            [self._mock_result(primary_result), self._mock_result(fallback_result)]
-        )
+        results = iter([self._mock_result(primary_result), self._mock_result(fallback_result)])
         self.mock_connection.execute.side_effect = lambda *args, **kwargs: next(results)
 
     @staticmethod
@@ -61,9 +64,7 @@ class TestTrinoMetadata(unittest.TestCase):
 
     def test_view_definition_with_create_view_not_modified(self):
         """Test that a definition already containing CREATE VIEW is returned as-is"""
-        self._set_execute_side_effect(
-            "CREATE VIEW test_catalog.test_schema.test_view AS SELECT * FROM table1"
-        )
+        self._set_execute_side_effect("CREATE VIEW test_catalog.test_schema.test_view AS SELECT * FROM table1")
 
         result = get_view_definition(
             self.mock_self,
@@ -80,9 +81,7 @@ class TestTrinoMetadata(unittest.TestCase):
 
     def test_view_definition_with_create_or_replace_not_modified(self):
         """Test that CREATE OR REPLACE VIEW is not double-prefixed"""
-        self._set_execute_side_effect(
-            "CREATE OR REPLACE VIEW test_view AS SELECT * FROM table1"
-        )
+        self._set_execute_side_effect("CREATE OR REPLACE VIEW test_view AS SELECT * FROM table1")
 
         result = get_view_definition(
             self.mock_self,
@@ -91,9 +90,7 @@ class TestTrinoMetadata(unittest.TestCase):
             schema="test_schema",
         )
 
-        self.assertEqual(
-            result, "CREATE OR REPLACE VIEW test_view AS SELECT * FROM table1"
-        )
+        self.assertEqual(result, "CREATE OR REPLACE VIEW test_view AS SELECT * FROM table1")
 
     def test_view_definition_fallback_when_primary_returns_none(self):
         """Test that SHOW CREATE VIEW is used when information_schema returns None"""
@@ -129,9 +126,7 @@ class TestTrinoMetadata(unittest.TestCase):
             schema="test_schema",
         )
 
-        self.assertEqual(
-            result, "CREATE VIEW test_catalog.test_schema.test_view AS SELECT 1"
-        )
+        self.assertEqual(result, "CREATE VIEW test_catalog.test_schema.test_view AS SELECT 1")
         self.assertEqual(self.mock_connection.execute.call_count, 2)
 
     def test_view_definition_returns_none_when_both_queries_empty(self):
@@ -210,6 +205,38 @@ class TestTrinoMetadata(unittest.TestCase):
                 "test_view",
                 schema=None,
             )
+
+
+class TestTrinoIcebergDetection(unittest.TestCase):
+    def _make_mock_source(self, connector_name, table_names):
+        mock_self = Mock()
+        mock_self.context.get.return_value.database = "test_catalog"
+        mock_result = Mock()
+        mock_result.first.return_value = (connector_name,) if connector_name else None
+        mock_self.connection.execute.return_value = mock_result
+        mock_self.inspector.get_table_names.return_value = table_names
+        return mock_self
+
+    def test_iceberg_catalog_returns_iceberg_type(self):
+        mock_self = self._make_mock_source("iceberg", ["orders", "customers"])
+        result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
+        assert result == [
+            TableNameAndType(name="orders", type_=TableType.Iceberg),
+            TableNameAndType(name="customers", type_=TableType.Iceberg),
+        ]
+
+    def test_non_iceberg_catalog_returns_regular_type(self):
+        mock_self = self._make_mock_source("hive", ["orders"])
+        result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
+        assert result == [TableNameAndType(name="orders", type_=TableType.Regular)]
+
+    def test_connection_error_falls_back_to_regular(self):
+        mock_self = Mock()
+        mock_self.context.get.return_value.database = "test_catalog"
+        mock_self.connection.execute.side_effect = Exception("permission denied")
+        mock_self.inspector.get_table_names.return_value = ["orders"]
+        result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
+        assert result == [TableNameAndType(name="orders", type_=TableType.Regular)]
 
 
 if __name__ == "__main__":

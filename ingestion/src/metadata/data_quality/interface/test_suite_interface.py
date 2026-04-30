@@ -15,19 +15,20 @@ supporting sqlalchemy abstraction layer
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, Set, Type
+from typing import Optional, Set, Type  # noqa: UP035
 
+from metadata.data_quality.api.models import TestCaseResultResponse
 from metadata.data_quality.builders.validator_builder import ValidatorBuilder
-from metadata.data_quality.validations.base_test_handler import BaseTestValidator
+from metadata.data_quality.validations.base_test_handler import BaseTestValidator  # noqa: TC001
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
-    RuntimeParameterSetter,
+    RuntimeParameterSetter,  # noqa: TC001
 )
 from metadata.data_quality.validations.runtime_param_setter.param_setter_factory import (
     RuntimeParameterSetterFactory,
 )
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -48,7 +49,7 @@ class TestSuiteInterface(ABC):
         ometa_client: OpenMetadata,
         sampler: SamplerInterface,
         table_entity: Table,
-        validator_builder: Type[ValidatorBuilder],
+        validator_builder: Type[ValidatorBuilder],  # noqa: UP006
     ):
         """Required attribute for the interface"""
         self.ometa_client = ometa_client
@@ -77,9 +78,7 @@ class TestSuiteInterface(ABC):
         )
 
     @abstractmethod
-    def _get_validator_builder(
-        self, test_case: TestCase, entity_type: str
-    ) -> ValidatorBuilder:
+    def _get_validator_builder(self, test_case: TestCase, entity_type: str) -> ValidatorBuilder:
         """get the builder class for the validator. Define this in the implementation class
 
         Args:
@@ -97,9 +96,7 @@ class TestSuiteInterface(ABC):
         return cls.runtime_params_setter_fact()
 
     @classmethod
-    def _set_runtime_params_setter_fact(
-        cls, class_fact: Type[RuntimeParameterSetterFactory]
-    ):
+    def _set_runtime_params_setter_fact(cls, class_fact: Type[RuntimeParameterSetterFactory]):  # noqa: UP006
         """Set the runtime parameter setter factory.
         Use this method to set the runtime parameter setter factory and override the default.
 
@@ -108,14 +105,10 @@ class TestSuiteInterface(ABC):
         """
         cls.runtime_params_setter_fact = class_fact
 
-    def run_test_case(self, test_case: TestCase) -> Optional[TestCaseResult]:
+    def run_test_case(self, test_case: TestCase) -> Optional[TestCaseResultResponse]:  # noqa: UP045
         """run column data quality tests"""
-        runtime_params_setter_fact: RuntimeParameterSetterFactory = (
-            self._get_runtime_params_setter_fact()
-        )  # type: ignore
-        runtime_params_setters: Set[
-            RuntimeParameterSetter
-        ] = runtime_params_setter_fact.get_runtime_param_setters(
+        runtime_params_setter_fact: RuntimeParameterSetterFactory = self._get_runtime_params_setter_fact()  # type: ignore
+        runtime_params_setters: Set[RuntimeParameterSetter] = runtime_params_setter_fact.get_runtime_param_setters(  # noqa: UP006
             test_case.testDefinition.fullyQualifiedName,  # type: ignore
             self.ometa_client,
             self.service_connection_config,
@@ -124,25 +117,27 @@ class TestSuiteInterface(ABC):
         )
 
         # get `column` or `table` type for validator import
-        entity_type: str = self.ometa_client.get_by_id(
-            TestDefinition, test_case.testDefinition.id
-        ).entityType.value
+        entity_type: str = self.ometa_client.get_by_id(TestDefinition, test_case.testDefinition.id).entityType.value
 
         validator_builder = self._get_validator_builder(test_case, entity_type)
         validator_builder.set_runtime_params(runtime_params_setters)
         validator: BaseTestValidator = validator_builder.validator
         try:
-            return validator.run_validation()
+            test_result = validator.run_validation()
+            response = TestCaseResultResponse(testCaseResult=test_result, testCase=test_case)
+            validator.result_with_failed_samples(response)
+            return response  # noqa: TRY300
         except Exception as err:
-            message = (
-                f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
-            )
+            message = f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
             logger.exception(message)
-            return validator.get_test_case_result_object(
-                validator.execution_date,
-                TestCaseStatus.Aborted,
-                message,
-                [],
+            return TestCaseResultResponse(
+                testCase=test_case,
+                testCaseResult=validator.get_test_case_result_object(
+                    validator.execution_date,
+                    TestCaseStatus.Aborted,
+                    message,
+                    [],
+                ),
             )
 
     def _get_table_config(self):

@@ -25,6 +25,7 @@ import { isEmpty } from 'lodash';
 import {
   forwardRef,
   Ref,
+  RefAttributes,
   useCallback,
   useEffect,
   useMemo,
@@ -51,9 +52,9 @@ import {
 } from './Table.interface';
 import './table.less';
 
-type TableProps<T extends Record<string, unknown>> = TableComponentProps<T>;
+type TableProps<T extends object> = TableComponentProps<T>;
 
-const Table = <T extends Record<string, unknown>>(
+const Table = <T extends object>(
   {
     loading,
     searchProps,
@@ -341,4 +342,6 @@ const Table = <T extends Record<string, unknown>>(
   );
 };
 
-export default forwardRef<HTMLDivElement, TableProps<object>>(Table);
+export default forwardRef(Table) as <T extends object>(
+  props: TableProps<T> & RefAttributes<HTMLDivElement>
+) => ReturnType<typeof Table>;

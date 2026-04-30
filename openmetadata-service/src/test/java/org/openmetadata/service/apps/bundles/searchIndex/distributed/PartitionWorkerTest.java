@@ -15,6 +15,7 @@ package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -33,6 +34,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.InvocationTargetException;
@@ -265,7 +267,7 @@ class PartitionWorkerTest {
     PartitionWorker.BatchResult result3 = new PartitionWorker.BatchResult(100, 10, 0, null);
 
     assertEquals(result1, result2);
-    assertFalse(result1.equals(result3));
+    assertNotEquals(result1, result3);
   }
 
   @Test
@@ -275,7 +277,7 @@ class PartitionWorkerTest {
     PartitionWorker.PartitionResult result3 = new PartitionWorker.PartitionResult(1000, 50, true);
 
     assertEquals(result1, result2);
-    assertFalse(result1.equals(result3));
+    assertNotEquals(result1, result3);
   }
 
   @Test
@@ -385,6 +387,66 @@ class PartitionWorkerTest {
   }
 
   @Test
+  void processBatchExtractsIdFromEntityInterfaceForReaderFailure() throws Exception {
+    IndexingFailureRecorder failureRecorder = mock(IndexingFailureRecorder.class);
+    StageStatsTracker statsTracker = mock(StageStatsTracker.class);
+    PartitionWorker batchWorker =
+        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false, failureRecorder);
+
+    UUID errorEntityId = UUID.randomUUID();
+    EntityInterface failingEntity = mock(EntityInterface.class);
+    when(failingEntity.getId()).thenReturn(errorEntityId);
+    EntityInterface successEntity = mock(EntityInterface.class);
+
+    ResultList<EntityInterface> resultList = new ResultList<>();
+    resultList.setData(List.of(successEntity));
+    resultList.setErrors(
+        List.of(new EntityError().withEntity(failingEntity).withMessage("reader failure")));
+    resultList.setWarningsCount(0);
+    resultList.setPaging(new Paging().withAfter("next-cursor"));
+
+    try (MockedConstruction<PaginatedEntitiesSource> ignored =
+        mockConstruction(
+            PaginatedEntitiesSource.class,
+            (mock, context) -> doReturn(resultList).when(mock).readNextKeyset("cursor-1"))) {
+
+      invokeProcessBatch(batchWorker, "table", "cursor-1", 2, statsTracker);
+    }
+
+    verify(failureRecorder)
+        .recordReaderEntityFailure("table", errorEntityId.toString(), null, "reader failure");
+  }
+
+  @Test
+  void processBatchSkipsReaderFailureWhenEntityInterfaceHasNullId() throws Exception {
+    IndexingFailureRecorder failureRecorder = mock(IndexingFailureRecorder.class);
+    StageStatsTracker statsTracker = mock(StageStatsTracker.class);
+    PartitionWorker batchWorker =
+        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false, failureRecorder);
+
+    EntityInterface failingEntity = mock(EntityInterface.class);
+    when(failingEntity.getId()).thenReturn(null);
+    EntityInterface successEntity = mock(EntityInterface.class);
+
+    ResultList<EntityInterface> resultList = new ResultList<>();
+    resultList.setData(List.of(successEntity));
+    resultList.setErrors(
+        List.of(new EntityError().withEntity(failingEntity).withMessage("reader failure")));
+    resultList.setWarningsCount(0);
+    resultList.setPaging(new Paging().withAfter("next-cursor"));
+
+    try (MockedConstruction<PaginatedEntitiesSource> ignored =
+        mockConstruction(
+            PaginatedEntitiesSource.class,
+            (mock, context) -> doReturn(resultList).when(mock).readNextKeyset("cursor-1"))) {
+
+      invokeProcessBatch(batchWorker, "table", "cursor-1", 2, statsTracker);
+    }
+
+    verifyNoInteractions(failureRecorder);
+  }
+
+  @Test
   void processBatchWrapsSinkFailuresAsSearchIndexException() throws Exception {
     PartitionWorker batchWorker =
         new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false);
@@ -488,7 +550,7 @@ class PartitionWorkerTest {
   }
 
   @Test
-  void processPartitionKeepsProgressStatusProcessingAndCompletesSuccessfully() throws Exception {
+  void processPartitionKeepsProgressStatusProcessingAndCompletesSuccessfully() {
     PartitionWorker partitionWorker =
         new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false);
     SearchIndexPartition partition = buildPartition("table", 0, 2);
@@ -530,7 +592,7 @@ class PartitionWorkerTest {
   }
 
   @Test
-  void processPartitionTracksReaderFailuresAndCompletesWithFailedCounts() throws Exception {
+  void processPartitionTracksReaderFailuresAndCompletesWithFailedCounts() {
     PartitionWorker partitionWorker =
         new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false);
     SearchIndexPartition partition = buildPartition("table", 0, 2);
@@ -570,7 +632,7 @@ class PartitionWorkerTest {
   }
 
   @Test
-  void processPartitionStopsAfterReadWhenStopRequestedMidLoop() throws Exception {
+  void processPartitionStopsAfterReadWhenStopRequestedMidLoop() {
     PartitionWorker partitionWorker =
         new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false);
     SearchIndexPartition partition = buildPartition("table", 0, 2);
@@ -665,7 +727,7 @@ class PartitionWorkerTest {
   }
 
   @Test
-  void processPartitionAdjustsSuccessCountsForProcessFailures() throws Exception {
+  void processPartitionAdjustsSuccessCountsForProcessFailures() {
     PartitionWorker partitionWorker = new PartitionWorker(coordinator, bulkSink, 2, null, false);
     SearchIndexPartition partition = buildPartition("table", 0, 2);
 
@@ -709,7 +771,7 @@ class PartitionWorkerTest {
   }
 
   @Test
-  void processPartitionFailsPartitionWhenCompletionThrows() throws Exception {
+  void processPartitionFailsPartitionWhenCompletionThrows() {
     PartitionWorker partitionWorker = new PartitionWorker(coordinator, bulkSink, 2, null, false);
     SearchIndexPartition partition = buildPartition("table", 0, 1);
 
@@ -780,6 +842,22 @@ class PartitionWorkerTest {
               "table",
               5L));
     }
+  }
+
+  @Test
+  void initializeKeysetCursorRejectsOffsetsBeyondSupportedRange() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                invokePrivate(
+                    worker,
+                    "initializeKeysetCursor",
+                    new Class<?>[] {String.class, long.class},
+                    "table",
+                    (long) Integer.MAX_VALUE + 2L));
+
+    assertTrue(exception.getMessage().contains("does not support offsets above"));
   }
 
   @Test

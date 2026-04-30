@@ -13,6 +13,7 @@
 
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { get, isEmpty, isNil, isString, isUndefined, lowerCase } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
@@ -363,7 +364,8 @@ export const getAggregationOptions = async (
   isIndependent: boolean,
   deleted = false,
   size = 10,
-  isNLPEnabled = false
+  isNLPEnabled = false,
+  queryText?: string
 ) => {
   return isIndependent
     ? postAggregateFieldOptions({
@@ -380,7 +382,8 @@ export const getAggregationOptions = async (
         filter,
         undefined,
         deleted,
-        isNLPEnabled
+        isNLPEnabled,
+        queryText
       );
 };
 
@@ -506,7 +509,7 @@ export const generateTabItems = (
   searchIndex: ExploreSearchIndex
 ) => {
   return Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => {
-    const Icon = tabDetail.icon as React.FC;
+    const Icon = tabDetail.icon as React.FC<{ className?: string }>;
 
     return {
       key: tabSearchIndex,
@@ -516,7 +519,11 @@ export const generateTabItems = (
           data-testid={`${lowerCase(tabDetail.label)}-tab`}>
           <div className="explore-tab-label">
             <span className="explore-icon d-flex m-r-xs">
-              <Icon />
+              <Icon
+                className={classNames(tabDetail.iconClassName, {
+                  'text-primary': tabSearchIndex === searchIndex,
+                })}
+              />
             </span>
             <Typography.Text
               className={tabSearchIndex === searchIndex ? 'text-primary' : ''}

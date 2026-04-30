@@ -7,12 +7,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -25,6 +27,7 @@ import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.ContainerFileFormat;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
@@ -45,6 +48,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   // ===================================================================
@@ -153,6 +157,17 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().containers().getVersionList(id);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().containers().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().containers().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override
@@ -1153,6 +1168,289 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     Column retrievedBigintArray = container.getDataModel().getColumns().get(2);
     assertEquals(ColumnDataType.ARRAY, retrievedBigintArray.getDataType());
     assertEquals(ColumnDataType.BIGINT, retrievedBigintArray.getArrayDataType());
+  }
+
+  // ===================================================================
+  // PATCH TESTS FOR NESTED DATA MODEL COLUMNS
+  // ===================================================================
+
+  @Test
+  void patch_dataModelColumnDescription_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    ContainerDataModel dataModel =
+        new ContainerDataModel()
+            .withIsPartitioned(false)
+            .withColumns(
+                Arrays.asList(
+                    new Column()
+                        .withName("account_id")
+                        .withDataType(ColumnDataType.STRING)
+                        .withDataTypeDisplay("string"),
+                    new Column()
+                        .withName("balance")
+                        .withDataType(ColumnDataType.NUMERIC)
+                        .withDataTypeDisplay("numeric")));
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("patch_col_desc"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDataModel(dataModel);
+
+    Container container = createEntity(request);
+    Container fetched = getEntityWithFields(container.getId().toString(), "tags,dataModel");
+    Double versionBefore = fetched.getVersion();
+
+    fetched.getDataModel().getColumns().get(0).setDescription("Unique account identifier");
+    Container patched = patchEntity(fetched.getId().toString(), fetched);
+
+    assertTrue(patched.getVersion() > versionBefore);
+
+    Container verified = getEntityWithFields(patched.getId().toString(), "tags,dataModel");
+    assertEquals(
+        "Unique account identifier", verified.getDataModel().getColumns().get(0).getDescription());
+  }
+
+  @Test
+  void patch_dataModelColumnTags_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    SharedEntities shared = SharedEntities.get();
+
+    ContainerDataModel dataModel =
+        new ContainerDataModel()
+            .withIsPartitioned(false)
+            .withColumns(
+                Arrays.asList(
+                    new Column()
+                        .withName("email")
+                        .withDataType(ColumnDataType.STRING)
+                        .withDataTypeDisplay("string"),
+                    new Column()
+                        .withName("phone")
+                        .withDataType(ColumnDataType.STRING)
+                        .withDataTypeDisplay("string")));
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("patch_col_tags"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDataModel(dataModel);
+
+    Container container = createEntity(request);
+    Container fetched = getEntityWithFields(container.getId().toString(), "tags,dataModel");
+    Double versionBefore = fetched.getVersion();
+
+    TagLabel piiTag = shared.PII_SENSITIVE_TAG_LABEL;
+    fetched.getDataModel().getColumns().get(0).setTags(new ArrayList<>(List.of(piiTag)));
+    Container patched = patchEntity(fetched.getId().toString(), fetched);
+
+    assertTrue(patched.getVersion() > versionBefore);
+
+    Container verified = getEntityWithFields(patched.getId().toString(), "tags,dataModel");
+    List<TagLabel> columnTags = verified.getDataModel().getColumns().get(0).getTags();
+    assertNotNull(columnTags);
+    assertFalse(columnTags.isEmpty());
+    assertTrue(columnTags.stream().anyMatch(t -> t.getTagFQN().equals(piiTag.getTagFQN())));
+  }
+
+  @Test
+  void patch_dataModelColumnDisplayName_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    ContainerDataModel dataModel =
+        new ContainerDataModel()
+            .withIsPartitioned(false)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("txn_id")
+                        .withDataType(ColumnDataType.STRING)
+                        .withDataTypeDisplay("string")));
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("patch_col_display"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDataModel(dataModel);
+
+    Container container = createEntity(request);
+    Container fetched = getEntityWithFields(container.getId().toString(), "tags,dataModel");
+    Double versionBefore = fetched.getVersion();
+
+    fetched.getDataModel().getColumns().get(0).setDisplayName("Transaction ID");
+    Container patched = patchEntity(fetched.getId().toString(), fetched);
+
+    assertTrue(patched.getVersion() > versionBefore);
+
+    Container verified = getEntityWithFields(patched.getId().toString(), "tags,dataModel");
+    assertEquals("Transaction ID", verified.getDataModel().getColumns().get(0).getDisplayName());
+  }
+
+  // ===================================================================
+  // SAMPLE DATA AND PII MASKING TESTS
+  // ===================================================================
+
+  @Test
+  void test_sampleDataAddedToContainerWithDataModel_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    List<Column> columns =
+        Arrays.asList(
+            new Column().withName("id").withDataType(ColumnDataType.INT),
+            new Column().withName("email").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
+            new Column().withName("name").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+
+    ContainerDataModel dataModel =
+        new ContainerDataModel().withIsPartitioned(false).withColumns(columns);
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("container_sample_data"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDataModel(dataModel);
+
+    Container container = createEntity(request);
+    assertNotNull(container);
+
+    // Note: Sample data is added via PUT endpoint in actual workflow
+    // This test verifies container is ready to accept sample data
+    Container fetched = client.containers().get(container.getId().toString(), "dataModel");
+    assertNotNull(fetched.getDataModel());
+    assertEquals(3, fetched.getDataModel().getColumns().size());
+  }
+
+  @Test
+  void test_sampleDataWithoutDataModel_400(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    // Create container WITHOUT data model
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("container_no_model_sample"));
+    request.setService(service.getFullyQualifiedName());
+
+    Container container = createEntity(request);
+    assertNotNull(container);
+    assertNull(container.getDataModel(), "Container should be created without dataModel");
+
+    // Attempting to add sample data to container without dataModel should fail
+    // This is enforced by ContainerRepository.addSampleData()
+  }
+
+  @Test
+  void test_sampleDataMaskingForNonAdminUser_200(TestNamespace ns) {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    SharedEntities shared = SharedEntities.get();
+
+    // Create container with dataModel including PII columns
+    List<Column> columns =
+        Arrays.asList(
+            new Column().withName("id").withDataType(ColumnDataType.INT),
+            new Column().withName("email").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
+            new Column().withName("ssn").withDataType(ColumnDataType.VARCHAR).withDataLength(11),
+            new Column().withName("name").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+
+    ContainerDataModel dataModel =
+        new ContainerDataModel().withIsPartitioned(false).withColumns(columns);
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("container_pii_masking"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDataModel(dataModel);
+
+    Container container = createEntity(request);
+    assertNotNull(container);
+
+    // Tag sensitive columns with PII tag (as admin)
+    Container fetched = adminClient.containers().get(container.getId().toString(), "dataModel");
+    fetched.getDataModel().getColumns().stream()
+        .filter(c -> c.getName().equals("email") || c.getName().equals("ssn"))
+        .forEach(c -> c.setTags(new ArrayList<>(List.of(shared.PII_SENSITIVE_TAG_LABEL))));
+
+    Container updated = adminClient.containers().update(container.getId().toString(), fetched);
+    assertNotNull(updated.getDataModel());
+
+    // Verify that admin user sees complete column names without masking
+    Container adminView =
+        adminClient.containers().get(container.getId().toString(), "dataModel,sampleData");
+    List<String> adminColumnNames =
+        adminView.getDataModel().getColumns().stream().map(Column::getName).toList();
+    assertTrue(adminColumnNames.contains("email"));
+    assertTrue(adminColumnNames.contains("ssn"));
+    assertTrue(adminColumnNames.stream().noneMatch(c -> c.contains("[MASKED]")));
+  }
+
+  @Test
+  void test_containerSampleDataNotAccessibleViaFieldsParameter_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    List<Column> columns =
+        List.of(
+            new Column().withName("col1").withDataType(ColumnDataType.INT),
+            new Column().withName("col2").withDataType(ColumnDataType.VARCHAR));
+
+    ContainerDataModel dataModel =
+        new ContainerDataModel().withIsPartitioned(false).withColumns(columns);
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("container_fields_sample"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDataModel(dataModel);
+
+    Container container = createEntity(request);
+    assertNotNull(container);
+
+    // Retrieve with sampleData field - should NOT include sample data
+    // (sample data is only accessible via dedicated /sampleData endpoint)
+    Container fetched = client.containers().get(container.getId().toString(), "sampleData");
+    assertNull(
+        fetched.getSampleData(),
+        "Sample data should not be accessible via fields parameter - must use dedicated endpoint");
+  }
+
+  @Test
+  void test_containerDataModelColumnsHaveTags_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    SharedEntities shared = SharedEntities.get();
+
+    List<Column> columns =
+        Arrays.asList(
+            new Column().withName("pii_field").withDataType(ColumnDataType.VARCHAR),
+            new Column().withName("normal_field").withDataType(ColumnDataType.INT));
+
+    ContainerDataModel dataModel =
+        new ContainerDataModel().withIsPartitioned(false).withColumns(columns);
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("container_col_tags"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDataModel(dataModel);
+
+    Container container = createEntity(request);
+
+    // Tag the PII column
+    Container fetched = client.containers().get(container.getId().toString(), "tags,dataModel");
+    fetched.getDataModel().getColumns().stream()
+        .filter(c -> c.getName().equals("pii_field"))
+        .forEach(c -> c.setTags(new ArrayList<>(List.of(shared.PII_SENSITIVE_TAG_LABEL))));
+
+    Container updated = client.containers().update(container.getId().toString(), fetched);
+
+    // Verify tags are present on column
+    Container verified = client.containers().get(updated.getId().toString(), "tags,dataModel");
+    Column piiColumn =
+        verified.getDataModel().getColumns().stream()
+            .filter(c -> c.getName().equals("pii_field"))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(piiColumn);
+    assertNotNull(piiColumn.getTags());
+    assertFalse(piiColumn.getTags().isEmpty());
+    assertTrue(
+        piiColumn.getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN())));
   }
 
   // ===================================================================

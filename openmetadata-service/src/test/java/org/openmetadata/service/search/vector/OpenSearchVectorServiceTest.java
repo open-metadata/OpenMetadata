@@ -438,7 +438,7 @@ class OpenSearchVectorServiceTest {
     ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
         ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
 
-    vectorService.ensureHybridSearchPipeline(0.6, 0.4);
+    vectorService.ensureHybridSearchPipeline(0.4, 0.6);
 
     verify(mockGenericClient).execute(captor.capture());
     os.org.opensearch.client.opensearch.generic.Request captured = captor.getValue();
@@ -448,9 +448,9 @@ class OpenSearchVectorServiceTest {
 
     String body =
         new String(captured.getBody().get().bodyAsBytes(), java.nio.charset.StandardCharsets.UTF_8);
-    assertTrue(body.contains("\"weights\":[0.6,0.4]"));
+    assertTrue(body.contains("\"weights\":[0.4,0.6]"));
     assertTrue(body.contains("\"technique\":\"rrf\""));
-    assertTrue(body.contains("\"rank_constant\":60"));
+    assertTrue(body.contains("\"rank_constant\":30"));
     assertTrue(body.contains("\"collapse\""));
     assertTrue(body.contains("\"parentId\""));
   }
@@ -472,6 +472,49 @@ class OpenSearchVectorServiceTest {
     assertTrue(
         body.contains("\"weights\":[0.3,0.7]"),
         "Pipeline body should contain custom weights [0.3,0.7]");
+  }
+
+  @Test
+  void testCheckHybridSearchPipelineReturnsEmptyWhenAvailable() throws IOException {
+    mockOpenSearchResponse("{\"hybrid-rrf\":{}}");
+
+    assertTrue(
+        vectorService.checkHybridSearchPipeline().isEmpty(),
+        "Pipeline should be available when OpenSearch returns 200");
+  }
+
+  @Test
+  void testCheckHybridSearchPipelineReturnsErrorOn404() throws IOException {
+    Response mockResponse = mock(Response.class);
+    when(mockResponse.getStatus()).thenReturn(404);
+    when(mockResponse.getBody()).thenReturn(Optional.empty());
+    when(mockGenericClient.execute(any())).thenReturn(mockResponse);
+
+    Optional<String> result = vectorService.checkHybridSearchPipeline();
+    assertTrue(result.isPresent(), "Should return error when pipeline not found");
+    assertTrue(result.get().contains("not found"), "Error should mention pipeline not found");
+  }
+
+  @Test
+  void testCheckHybridSearchPipelineReturnsErrorOn5xx() throws IOException {
+    Response mockResponse = mock(Response.class);
+    when(mockResponse.getStatus()).thenReturn(500);
+    when(mockResponse.getBody()).thenReturn(Optional.empty());
+    when(mockGenericClient.execute(any())).thenReturn(mockResponse);
+
+    Optional<String> result = vectorService.checkHybridSearchPipeline();
+    assertTrue(result.isPresent(), "Should return error on server error");
+    assertTrue(result.get().contains("Unexpected status 500"), "Error should mention status code");
+  }
+
+  @Test
+  void testCheckHybridSearchPipelineReturnsErrorOnException() throws IOException {
+    when(mockGenericClient.execute(any())).thenThrow(new IOException("Connection refused"));
+
+    Optional<String> result = vectorService.checkHybridSearchPipeline();
+    assertTrue(result.isPresent(), "Should return error when exception occurs");
+    assertTrue(
+        result.get().contains("Connection refused"), "Error should include exception message");
   }
 
   private void mockOpenSearchResponse(String responseJson) throws IOException {

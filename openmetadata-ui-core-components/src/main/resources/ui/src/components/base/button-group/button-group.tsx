@@ -1,3 +1,5 @@
+import { cx, sortCx } from '@/utils/cx';
+import { isReactComponent } from '@/utils/is-react-component';
 import {
   type FC,
   type PropsWithChildren,
@@ -6,6 +8,7 @@ import {
   createContext,
   isValidElement,
   useContext,
+  useMemo,
 } from 'react';
 import {
   ToggleButton as AriaToggleButton,
@@ -13,8 +16,6 @@ import {
   type ToggleButtonGroupProps,
   type ToggleButtonProps,
 } from 'react-aria-components';
-import { cx, sortCx } from '@/utils/cx';
-import { isReactComponent } from '@/utils/is-react-component';
 
 export const styles = sortCx({
   common: {
@@ -32,15 +33,15 @@ export const styles = sortCx({
 
   sizes: {
     sm: {
-      root: 'tw:gap-1.5 tw:px-3.5 tw:py-2 tw:text-sm tw:not-last:pr-[calc(calc(var(--spacing)*3.5)+1px)] tw:first:rounded-l-lg tw:last:rounded-r-lg tw:data-icon-leading:pl-3 tw:data-icon-only:p-2',
+      root: 'tw:gap-1.5 tw:px-3.5 tw:py-2 tw:text-sm tw:not-last:pr-[calc(calc(theme(--spacing)*3.5)+1px)] tw:first:rounded-l-lg tw:last:rounded-r-lg tw:data-icon-leading:pl-3 tw:data-icon-only:p-2',
       icon: 'tw:size-5',
     },
     md: {
-      root: 'tw:gap-1.5 tw:px-4 tw:py-2.5 tw:text-sm tw:not-last:pr-[calc(calc(var(--spacing)*4)+1px)] tw:first:rounded-l-lg tw:last:rounded-r-lg tw:data-icon-leading:pl-3.5 tw:data-icon-only:px-3',
+      root: 'tw:gap-1.5 tw:px-4 tw:py-2.5 tw:text-sm tw:not-last:pr-[calc(calc(theme(--spacing)*4)+1px)] tw:first:rounded-l-lg tw:last:rounded-r-lg tw:data-icon-leading:pl-3.5 tw:data-icon-only:px-3',
       icon: 'tw:size-5',
     },
     lg: {
-      root: 'tw:gap-2 tw:px-4.5 tw:py-2.5 tw:text-md tw:not-last:pr-[calc(calc(var(--spacing)*4.5)+1px)] tw:first:rounded-l-lg tw:last:rounded-r-lg tw:data-icon-leading:pl-4 tw:data-icon-only:p-3',
+      root: 'tw:gap-2 tw:px-4.5 tw:py-2.5 tw:text-md tw:not-last:pr-[calc(calc(theme(--spacing)*4.5)+1px)] tw:first:rounded-l-lg tw:last:rounded-r-lg tw:data-icon-leading:pl-4 tw:data-icon-only:p-3',
       icon: 'tw:size-5',
     },
   },
@@ -116,8 +117,10 @@ export const ButtonGroup = ({
   className,
   ...otherProps
 }: ButtonGroupProps) => {
+  const contextValue = useMemo(() => ({ size }), [size]);
+
   return (
-    <ButtonGroupContext.Provider value={{ size }}>
+    <ButtonGroupContext.Provider value={contextValue}>
       <AriaToggleButtonGroup
         className={cx(
           'tw:relative tw:z-0 tw:inline-flex tw:w-max tw:-space-x-px tw:rounded-lg tw:shadow-xs',

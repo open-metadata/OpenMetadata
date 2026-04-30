@@ -74,6 +74,7 @@ export interface DataQualityTabProps {
   isEditAllowed?: boolean;
   tableHeader?: ReactNode;
   removeTableBorder?: boolean;
+  enableBulkActions?: boolean;
 }
 
 export interface TestSummaryProps {
