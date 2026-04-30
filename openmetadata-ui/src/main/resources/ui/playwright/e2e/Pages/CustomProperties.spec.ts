@@ -3603,6 +3603,17 @@ test.describe('Custom property name validation', () => {
     );
   });
 
+  test('should show error when name contains a backslash', async ({ page }) => {
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_BACKSLASH
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
   test('should accept a valid name starting with a letter', async ({
     page,
   }) => {

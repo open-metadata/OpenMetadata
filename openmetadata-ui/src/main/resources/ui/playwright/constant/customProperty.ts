@@ -213,7 +213,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
 };
 
 export const CUSTOM_PROPERTY_NAME_VALIDATION_ERROR =
-  'Name must start with a letter or number. Invalid characters: " : ^ $';
+  'Name must start with a letter or number. Invalid characters: " : ^ $ \\';
 
 export const CUSTOM_PROPERTY_INVALID_NAMES = {
   STARTS_WITH_SPECIAL_CHAR: '_invalidName',
@@ -221,6 +221,7 @@ export const CUSTOM_PROPERTY_INVALID_NAMES = {
   DISALLOWED_DOLLAR: 'name$invalid',
   DISALLOWED_CARET: 'name^invalid',
   DISALLOWED_QUOTE: 'name"invalid',
+  DISALLOWED_BACKSLASH: String.raw`name\invalid`,
 };
 
-export const NAME_SUFFIX = ".!@#%`&*()_-=+{}[]~|\\;'<>,.?/";
+export const NAME_SUFFIX = ".!@#%`&*()_-=+{}[]~|;'<>,.?/";
