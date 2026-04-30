@@ -451,8 +451,7 @@ describe('testAPI tests', () => {
         const result = await getTestCaseVersionList('test-case-id');
 
         expect(mockGet).toHaveBeenCalledWith(
-          '/dataQuality/testCases/test-case-id/versions',
-          { params: undefined }
+          '/dataQuality/testCases/test-case-id/versions'
         );
         expect(result).toEqual(mockVersions);
       });
