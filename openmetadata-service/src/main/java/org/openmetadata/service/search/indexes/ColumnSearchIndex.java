@@ -153,8 +153,12 @@ public class ColumnSearchIndex implements SearchIndex {
     Map<String, Float> fields = new HashMap<>();
     fields.put("name", 10.0f);
     fields.put("name.keyword", 20.0f);
+    fields.put("name.ngram", 1.0f);
+    fields.put("name.compound", 5.0f);
     fields.put("displayName", 7.0f);
     fields.put("displayName.keyword", 20.0f);
+    fields.put("displayName.ngram", 1.0f);
+    fields.put("displayName.compound", 4.0f);
     fields.put("fullyQualifiedName", 5.0f);
     fields.put("description", 2.0f);
     fields.put("dataType", 3.0f);
