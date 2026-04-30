@@ -2268,7 +2268,6 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
   @Test
   void test_glossaryTermReviewersMultipleUpdates(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
@@ -2277,20 +2276,28 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term for multiple reviewer updates");
     GlossaryTerm term = createEntity(request);
+    String termId = term.getId().toString();
 
+    // Refresh local state before each patch. The async GlossaryTermApprovalWorkflow promotes
+    // entityStatus DRAFT -> IN_REVIEW once reviewers exist; sending a stale local copy causes
+    // the JSON diff to include an entityStatus transition that trips
+    // EntityRepository.checkUpdatedByReviewer (admin is not in the reviewer list).
+    term = getEntity(termId);
     term.setReviewers(List.of(testUser1().getEntityReference()));
-    GlossaryTerm updated1 = patchEntity(term.getId().toString(), term);
+    GlossaryTerm updated1 = patchEntity(termId, term);
     assertNotNull(updated1.getReviewers());
     assertEquals(1, updated1.getReviewers().size());
 
+    updated1 = getEntity(termId);
     updated1.setReviewers(
         List.of(testUser1().getEntityReference(), testUser2().getEntityReference()));
-    GlossaryTerm updated2 = patchEntity(updated1.getId().toString(), updated1);
+    GlossaryTerm updated2 = patchEntity(termId, updated1);
     assertNotNull(updated2.getReviewers());
     assertTrue(updated2.getReviewers().size() >= 2);
 
+    updated2 = getEntity(termId);
     updated2.setReviewers(List.of(testUser2().getEntityReference()));
-    GlossaryTerm updated3 = patchEntity(updated2.getId().toString(), updated2);
+    GlossaryTerm updated3 = patchEntity(termId, updated2);
     assertNotNull(updated3.getReviewers());
     assertEquals(1, updated3.getReviewers().size());
   }
