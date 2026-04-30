@@ -280,6 +280,68 @@ class SearchRepositoryBehaviorTest {
         "table_search_index", repository.getIndexNameWithoutAlias("cluster_table_search_index"));
   }
 
+  /**
+   * Bug regression for issue #27761: passing the entity-specific alias {@code "table"} used to
+   * leak into ES alias expansion and surface tableColumn docs (because column_search_index is
+   * registered with {@code "table"} as one of its aliases). Resolving the alias to its canonical
+   * index name here bypasses ES's alias resolution, so the search hits exactly the table index.
+   */
+  @Test
+  void getIndexOrAliasNameResolvesEntitySpecificAliasToCanonicalIndex() {
+    assertEquals("cluster_table_search_index", repository.getIndexOrAliasName("table"));
+    assertEquals("cluster_domain_search_index", repository.getIndexOrAliasName("domain"));
+  }
+
+  /**
+   * Compound aliases like {@code "all"} and {@code "dataAsset"} have no entry in
+   * {@code entityIndexMap} (they're meta-aliases registered against many entities at index
+   * creation time). The resolver passes them through with the cluster prefix so ES expands them
+   * natively — searching {@code dataAsset} should still surface every data-asset entity.
+   */
+  @Test
+  void getIndexOrAliasNamePassesCompoundAliasesThroughForNativeESExpansion() {
+    assertEquals("cluster_dataAsset", repository.getIndexOrAliasName("dataAsset"));
+    assertEquals("cluster_all", repository.getIndexOrAliasName("all"));
+  }
+
+  /**
+   * Defense-in-depth: a token that already carries the cluster prefix must not get prefixed
+   * again. Otherwise multi-tenant deployments would 404 on
+   * {@code cluster_cluster_table_search_index} if any internal code accidentally hands a
+   * resolved value back to this method.
+   */
+  @Test
+  void getIndexOrAliasNameIsIdempotentForAlreadyPrefixedTokens() {
+    assertEquals(
+        "cluster_table_search_index", repository.getIndexOrAliasName("cluster_table_search_index"));
+  }
+
+  /**
+   * Mixed input: each comma-separated token is resolved independently. Entity-specific aliases
+   * resolve to canonical names; compound aliases pass through.
+   */
+  @Test
+  void getIndexOrAliasNameResolvesEachCommaSeparatedTokenIndependently() {
+    assertEquals(
+        "cluster_table_search_index,cluster_dataAsset",
+        repository.getIndexOrAliasName("table,dataAsset"));
+  }
+
+  /**
+   * Stray-comma / empty-token input must not produce bare cluster prefixes such as
+   * {@code "cluster_"}. Empty tokens are dropped; if every token is empty the original string
+   * is returned unchanged so downstream ES surfaces a normal "unknown index" error instead of
+   * a confusing empty-target failure.
+   */
+  @Test
+  void getIndexOrAliasNameDropsEmptyTokensAndPreservesAllEmptyInput() {
+    assertEquals("cluster_table_search_index", repository.getIndexOrAliasName("table,"));
+    assertEquals(
+        "cluster_table_search_index,cluster_domain_search_index",
+        repository.getIndexOrAliasName("table, ,domain"));
+    assertEquals(", ,", repository.getIndexOrAliasName(", ,"));
+  }
+
   @Test
   void indexExistsFallsBackToAliasLookup() {
     when(searchClient.indexExists("cluster_table_search_index")).thenReturn(false);
@@ -2514,7 +2576,7 @@ class SearchRepositoryBehaviorTest {
                 .SearchSchemaEntityRelationshipResult();
 
     when(filter.getCondition(Entity.TABLE)).thenReturn("deleted = false");
-    when(searchClient.searchByField("name", "orders", "table", false)).thenReturn(response);
+    when(searchClient.searchByField("name", "orders", "table", false, 0, 10)).thenReturn(response);
     when(searchClient.aggregate("query", Entity.TABLE, searchAggregation, "deleted = false"))
         .thenReturn(aggregationResult);
     when(searchClient.genericAggregation("query", "table", searchAggregation)).thenReturn(report);
@@ -2534,7 +2596,7 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.getSchemaEntityRelationship("svc.db.schema", "{}", "*", 1, 2, 3, 4, false))
         .thenReturn(schemaResult);
 
-    assertSame(response, repository.searchByField("name", "orders", "table", false));
+    assertSame(response, repository.searchByField("name", "orders", "table", false, 0, 10));
     assertSame(
         aggregationResult, repository.aggregate("query", Entity.TABLE, searchAggregation, filter));
     assertSame(report, repository.genericAggregation("query", "table", searchAggregation));

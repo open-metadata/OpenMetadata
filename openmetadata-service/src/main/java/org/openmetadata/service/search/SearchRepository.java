@@ -656,13 +656,59 @@ public class SearchRepository {
     return false;
   }
 
+  /**
+   * Resolve the supplied index alias into the actual Elasticsearch / OpenSearch index name to
+   * query. Handles four shapes:
+   *
+   * <ul>
+   *   <li><b>Entity-specific alias</b> (e.g. {@code "table"}): looked up in
+   *       {@code entityIndexMap} and resolved to the canonical {@code *_search_index} name.
+   *       This is the bug fix — without resolving, ES would treat {@code "table"} as an alias
+   *       and expand it to every index that has that alias attached, including
+   *       {@code column_search_index} (because {@code tableColumn} declares {@code "table"} as
+   *       a {@code parentAlias}). Resolving here bypasses ES's alias expansion entirely so a
+   *       query for tables only hits the table index.
+   *   <li><b>Compound alias</b> (e.g. {@code "all"}, {@code "dataAsset"}): no entry in
+   *       {@code entityIndexMap}, no canonical index, so the alias passes through and ES
+   *       resolves it natively across the entities that have registered the alias. This is the
+   *       intended behavior — searching {@code dataAsset} should surface every data-asset
+   *       entity.
+   *   <li><b>Canonical / legacy index name</b> (e.g. {@code "table_search_index"}): not a key
+   *       in {@code entityIndexMap}, falls through to the prefix-and-pass branch, identical to
+   *       the legacy behavior.
+   *   <li><b>Already cluster-prefixed token</b>: idempotent — returned unchanged so that
+   *       internal code paths that hand back a resolved value don't double-prefix.
+   * </ul>
+   *
+   * Comma-separated tokens are resolved independently. Empty tokens (from {@code "table,"} or
+   * {@code ","}) are dropped instead of materializing as a bare cluster prefix; if every token
+   * is empty the original input is returned unchanged so downstream ES surfaces a normal
+   * "unknown index" error instead of an empty-target failure.
+   */
   public String getIndexOrAliasName(String name) {
-    if (clusterAlias == null || clusterAlias.isEmpty()) {
+    if (nullOrEmpty(name)) {
       return name;
     }
-    return Arrays.stream(name.split(","))
-        .map(index -> clusterAlias + INDEX_NAME_SEPARATOR + index.trim())
-        .collect(Collectors.joining(","));
+    String prefix =
+        clusterAlias == null || clusterAlias.isEmpty() ? null : clusterAlias + INDEX_NAME_SEPARATOR;
+    String resolved =
+        Arrays.stream(name.split(","))
+            .map(String::trim)
+            .filter(t -> !t.isEmpty())
+            .map(t -> resolveSingleAliasToken(t, prefix))
+            .collect(Collectors.joining(","));
+    return resolved.isEmpty() ? name : resolved;
+  }
+
+  private String resolveSingleAliasToken(String token, String clusterPrefix) {
+    if (clusterPrefix != null && token.startsWith(clusterPrefix)) {
+      return token;
+    }
+    IndexMapping mapping = entityIndexMap == null ? null : entityIndexMap.get(token);
+    if (mapping != null) {
+      return mapping.getIndexName(clusterAlias);
+    }
+    return clusterPrefix == null ? token : clusterPrefix + token;
   }
 
   private static final Map<String, Set<String>> RBAC_CHILD_TYPES =
@@ -2946,9 +2992,10 @@ public class SearchRepository {
             .withIsConnectedVia(isConnectedVia(entityType)));
   }
 
-  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+  public Response searchByField(
+      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException {
-    return searchClient.searchByField(fieldName, fieldValue, index, deleted);
+    return searchClient.searchByField(fieldName, fieldValue, index, deleted, from, size);
   }
 
   public Response aggregate(AggregationRequest request) throws IOException {
