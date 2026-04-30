@@ -105,12 +105,6 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         return isinstance(self.service_connection.oracleConnectionType, OracleAutonomousConnection)
 
     @staticmethod
-    def _get_autonomous_connection_config(
-        connection_type: OracleAutonomousConnection,
-    ) -> OracleAutonomousConnection:
-        return connection_type
-
-    @staticmethod
     def _safe_extract_wallet_archive(zip_ref: zipfile.ZipFile, target_dir: str) -> None:
         target_root = Path(target_dir).resolve()
 
@@ -174,11 +168,10 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         return wallet_temp_dir
 
     def _configure_autonomous_connection_arguments(self) -> None:
-        connection_type = self.service_connection.oracleConnectionType
-        if not isinstance(connection_type, OracleAutonomousConnection):
+        autonomous_connection = self.service_connection.oracleConnectionType
+        if not isinstance(autonomous_connection, OracleAutonomousConnection):
             return
 
-        autonomous_connection = self._get_autonomous_connection_config(connection_type)
         if not self.service_connection.connectionArguments:
             self.service_connection.connectionArguments = init_empty_connection_arguments()
         if self.service_connection.connectionArguments.root is None:
@@ -289,8 +282,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         elif isinstance(connection_copy.oracleConnectionType, OracleTNSConnection):
             connection_dict["host"] = connection_copy.oracleConnectionType.oracleTNSConnection
         elif isinstance(connection_copy.oracleConnectionType, OracleAutonomousConnection):
-            autonomous_connection = self._get_autonomous_connection_config(connection_copy.oracleConnectionType)
-            connection_dict["host"] = autonomous_connection.tnsAlias
+            connection_dict["host"] = connection_copy.oracleConnectionType.tnsAlias
 
         # Add connection options if present
         if connection_copy.connectionOptions and connection_copy.connectionOptions.root:
@@ -344,8 +336,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
             return url
 
         if isinstance(connection.oracleConnectionType, OracleAutonomousConnection):
-            autonomous_connection = OracleConnection._get_autonomous_connection_config(connection.oracleConnectionType)
-            url += autonomous_connection.tnsAlias
+            url += connection.oracleConnectionType.tnsAlias
             return url
 
         # If not TNS, we add the hostPort
