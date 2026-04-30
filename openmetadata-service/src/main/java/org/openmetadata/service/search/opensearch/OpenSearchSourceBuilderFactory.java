@@ -385,13 +385,15 @@ public class OpenSearchSourceBuilderFactory
   }
 
   /**
-   * Multi-match used both by {@code index=tableColumn} and the column-scoped should clause in the
-   * {@code dataAsset} composite query. Uses {@link
+   * Multi-match used both by {@code index=tableColumn} and the column branch of {@link
+   * #buildPerTypeUnionQueryV2(String)}. Uses {@link
    * os.org.opensearch.client.opensearch._types.query_dsl.Operator#And} so every sub-token produced
    * by {@code om_analyzer} (which splits on letter/digit/underscore boundaries) must hit some
-   * field. Without {@code And}, a query like {@code first_name} matches any column whose name
-   * contains just {@code first} or just {@code name}, which both inflates the column index hits
-   * and creates the dataAsset/tableColumn count mismatch tracked in github issue #3851.
+   * field. The previous shape used {@code Operator.Or} with this helper's {@code fuzziness="0"}
+   * — that combination did not set {@code minimum_should_match}, so any single sub-token in any
+   * field was enough to match. As a result a search like {@code first_name} matched columns whose
+   * name contained just {@code first} or just {@code name}, which both inflated the column index
+   * hits and caused the dataAsset/tableColumn count mismatch tracked in github issue #3851.
    */
   private os.org.opensearch.client.opensearch._types.query_dsl.Query buildColumnMultiMatchV2(
       String query) {
@@ -505,9 +507,15 @@ public class OpenSearchSourceBuilderFactory
           .must(OpenSearchQueryBuilder.matchAllQuery())
           .build();
     }
+    List<AssetTypeConfiguration> configs = searchSettings.getAssetTypeConfigurations();
+    if (configs == null || configs.isEmpty()) {
+      return OpenSearchQueryBuilder.boolQuery()
+          .must(buildBaseQueryV2(query, getOrCreateDefaultConfig()))
+          .build();
+    }
     OpenSearchQueryBuilder.BoolQueryBuilder union = OpenSearchQueryBuilder.boolQuery();
     Set<String> configuredTypes = new HashSet<>();
-    for (AssetTypeConfiguration typeConfig : searchSettings.getAssetTypeConfigurations()) {
+    for (AssetTypeConfiguration typeConfig : configs) {
       String assetType = typeConfig.getAssetType();
       if (assetType == null || assetType.equals(INDEX_ALL)) {
         continue;

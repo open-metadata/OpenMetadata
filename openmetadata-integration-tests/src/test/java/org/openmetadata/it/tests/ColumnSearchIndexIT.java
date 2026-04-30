@@ -385,59 +385,22 @@ public class ColumnSearchIndexIT {
       Table table = createTableWithMultiTokenColumns(ns, "agg_parity_" + tag, tag);
       assertNotNull(table);
 
-      String multiTokenQuery = tag + "_first " + tag + "_address";
+      // Two analyzed sub-tokens (`<tag>` and `name`); seeded columns first_name and last_name
+      // contain both, so the AND-based column builder produces a non-zero match count we can
+      // assert real parity against (not a trivial 0 == 0).
+      String multiTokenQuery = tag + " name";
 
       Awaitility.await()
           .atMost(90, TimeUnit.SECONDS)
           .pollInterval(500, TimeUnit.MILLISECONDS)
-          .until(
-              () -> {
-                String r =
-                    client
-                        .search()
-                        .query(multiTokenQuery)
-                        .index("tableColumn")
-                        .size(0)
-                        .deleted(false)
-                        .execute();
-                JsonNode root = OBJECT_MAPPER.readTree(r);
-                long total = root.path("hits").path("total").path("value").asLong(-1);
-                return total >= 3;
-              });
+          .until(() -> totalHitsForIndex(client, multiTokenQuery, "tableColumn") >= 2);
 
-      String columnResponse =
-          client
-              .search()
-              .query(multiTokenQuery)
-              .index("tableColumn")
-              .size(0)
-              .deleted(false)
-              .execute();
-      long columnTotal =
-          OBJECT_MAPPER.readTree(columnResponse).path("hits").path("total").path("value").asLong();
+      long columnTotal = totalHitsForIndex(client, multiTokenQuery, "tableColumn");
+      long aggColumnCount = bucketCountFromDataAsset(client, multiTokenQuery, Entity.TABLE_COLUMN);
 
-      String aggResponse =
-          client
-              .search()
-              .query(multiTokenQuery)
-              .index("dataAsset")
-              .size(0)
-              .deleted(false)
-              .execute();
-      JsonNode aggBuckets =
-          OBJECT_MAPPER
-              .readTree(aggResponse)
-              .path("aggregations")
-              .path("sterms#entityType")
-              .path("buckets");
-      long aggColumnCount = 0;
-      for (JsonNode bucket : aggBuckets) {
-        if ("tableColumn".equals(bucket.path("key").asText())) {
-          aggColumnCount = bucket.path("doc_count").asLong();
-          break;
-        }
-      }
-
+      assertTrue(
+          columnTotal >= 2,
+          "Seeded columns first_name and last_name should match query " + multiTokenQuery);
       assertEquals(
           columnTotal,
           aggColumnCount,
@@ -732,13 +695,12 @@ public class ColumnSearchIndexIT {
         OpenMetadataClient client, String query, String entityType) throws Exception {
       String response =
           client.search().query(query).index("dataAsset").size(0).deleted(false).execute();
-      JsonNode buckets =
-          OBJECT_MAPPER
-              .readTree(response)
-              .path("aggregations")
-              .path("sterms#entityType")
-              .path("buckets");
-      for (JsonNode bucket : buckets) {
+      JsonNode aggregations = OBJECT_MAPPER.readTree(response).path("aggregations");
+      JsonNode entityTypeAgg = aggregations.path("entityType");
+      if (entityTypeAgg.isMissingNode()) {
+        entityTypeAgg = aggregations.path("sterms#entityType");
+      }
+      for (JsonNode bucket : entityTypeAgg.path("buckets")) {
         if (entityType.equals(bucket.path("key").asText())) {
           return bucket.path("doc_count").asLong();
         }
@@ -921,6 +883,10 @@ public class ColumnSearchIndexIT {
                 .withDataLength(255)
                 .withDescription("First name"),
             new Column()
+                .withName(tag + "_first_id")
+                .withDataType(ColumnDataType.INT)
+                .withDescription("Decoy: shares only the 'first' sub-token with first_name"),
+            new Column()
                 .withName(tag + "_last_name")
                 .withDataType(ColumnDataType.VARCHAR)
                 .withDataLength(255)
@@ -929,10 +895,25 @@ public class ColumnSearchIndexIT {
                 .withName(tag + "_address")
                 .withDataType(ColumnDataType.VARCHAR)
                 .withDataLength(512)
-                .withDescription("Postal address")));
+                .withDescription("Postal address"),
+            new Column()
+                .withName(tag + "_alpha_amount")
+                .withDataType(ColumnDataType.DECIMAL)
+                .withDescription("Alpha amount column for complex-syntax tests"),
+            new Column()
+                .withName(tag + "_alpha_address")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(512)
+                .withDescription("Alpha address column"),
+            new Column()
+                .withName(tag + "_bravo_total")
+                .withDataType(ColumnDataType.DECIMAL)
+                .withDescription("Bravo total column")));
 
     return SdkClients.adminClient().tables().create(tableRequest);
   }
+
+  private static final int MULTI_TOKEN_SEED_COUNT = 7;
 
   private Table createTableWithNestedColumns(TestNamespace ns, String baseName) {
     String shortId = ns.shortPrefix();
