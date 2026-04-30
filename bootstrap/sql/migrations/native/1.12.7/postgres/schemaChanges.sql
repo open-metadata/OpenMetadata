@@ -15,9 +15,11 @@ CREATE INDEX IF NOT EXISTS idx_entity_extension_changed_field_keys
 -- Fix: add single-col indexes on the `_lower` columns, and drop the
 -- `WHERE state = 1` filter from the partials so changes can't invalidate them.
 
+DROP INDEX CONCURRENTLY IF EXISTS idx_tag_usage_targetfqnhash_lower_pattern;
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tag_usage_targetfqnhash_lower_pattern
 ON tag_usage (targetfqnhash_lower text_pattern_ops);
 
+DROP INDEX CONCURRENTLY IF EXISTS idx_tag_usage_tagfqn_lower_pattern;
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tag_usage_tagfqn_lower_pattern
 ON tag_usage (tagfqn_lower text_pattern_ops);
 
