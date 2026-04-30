@@ -352,15 +352,9 @@ class HiveUnitTest(TestCase):
         self.thread_id = self.hive.context.get_current_thread_id()
         self.hive._inspector_map[self.thread_id] = types.SimpleNamespace()
 
-        self.hive._inspector_map[self.thread_id].get_pk_constraint = (
-            lambda table_name, schema_name: []
-        )
-        self.hive._inspector_map[self.thread_id].get_unique_constraints = (
-            lambda table_name, schema_name: []
-        )
-        self.hive._inspector_map[self.thread_id].get_foreign_keys = (
-            lambda table_name, schema_name: []
-        )
+        self.hive._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema_name: []
+        self.hive._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
+        self.hive._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [either.right for either in self.hive.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
@@ -1187,16 +1181,14 @@ class TestHivePartitionDetails(TestCase):
         """
         Create a minimal HiveSource-like object with mocked internals.
         Do NOT call HiveSource() constructor — mock only what the method needs:
-        - self.source.engine (Mock)
-        - self.source.service_connection (Mock with metastoreConnection=None)
+        - self.source.engine (MagicMock for context manager support)
+        - self.source._get_validated_metastore_connection returns None
         """
         self.source = Mock()
-        self.source.service_connection.metastoreConnection = None
-        self.source.engine = Mock()
+        self.source._get_validated_metastore_connection.return_value = None
+        self.source.engine = MagicMock()
         # Bind the real method to our mock source
-        self.source.get_table_partition_details = (
-            HiveSource.get_table_partition_details.__get__(self.source)
-        )
+        self.source.get_table_partition_details = HiveSource.get_table_partition_details.__get__(self.source)
 
     def _make_rows(self, data):
         """Helper: convert list of tuples into mock row objects."""
@@ -1225,8 +1217,7 @@ class TestHivePartitionDetails(TestCase):
         )
         conn_mock = Mock()
         conn_mock.execute.return_value = mock_rows
-        self.source.engine.connect.return_value.__enter__ = Mock(return_value=conn_mock)
-        self.source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+        self.source.engine.connect.return_value.__enter__.return_value = conn_mock
 
         is_partitioned, partition = self.source.get_table_partition_details(
             table_name="sales",
@@ -1254,8 +1245,7 @@ class TestHivePartitionDetails(TestCase):
         )
         conn_mock = Mock()
         conn_mock.execute.return_value = mock_rows
-        self.source.engine.connect.return_value.__enter__ = Mock(return_value=conn_mock)
-        self.source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+        self.source.engine.connect.return_value.__enter__.return_value = conn_mock
 
         is_partitioned, partition = self.source.get_table_partition_details(
             table_name="simple_table",
@@ -1268,7 +1258,7 @@ class TestHivePartitionDetails(TestCase):
 
     def test_metastore_connection_skips_detection(self):
         """When metastoreConnection is set, engine is never called."""
-        with patch.object(self.source, '_get_validated_metastore_connection', return_value=Mock()):
+        with patch.object(self.source, "_get_validated_metastore_connection", return_value=Mock()):
             is_partitioned, partition = self.source.get_table_partition_details(
                 table_name="any_table",
                 schema_name="any_schema",

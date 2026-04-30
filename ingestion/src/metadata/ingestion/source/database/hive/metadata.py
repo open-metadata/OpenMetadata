@@ -13,7 +13,7 @@ Hive source methods.
 """
 
 import traceback
-from typing import List, Optional, Tuple, Union  # noqa: UP035
+from typing import Optional, Tuple, Union  # noqa: UP035
 
 from pydantic import ValidationError
 from pyhive.sqlalchemy_hive import HiveDialect
@@ -140,7 +140,7 @@ class HiveSource(CommonDbSourceService):
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Tuple[bool, Optional[TablePartition]]:
+    ) -> tuple[bool, TablePartition | None]:
         """
         Extract partition key columns from DESCRIBE FORMATTED output.
         Returns (True, TablePartition) if partition keys are found,
@@ -163,7 +163,7 @@ class HiveSource(CommonDbSourceService):
             )
             return False, None
 
-        partition_keys: List[str] = []
+        partition_keys: list[str] = []
         in_partition_section = False
 
         try:
@@ -172,9 +172,7 @@ class HiveSource(CommonDbSourceService):
             quoted_schema = preparer.quote(schema_name)
             quoted_table = preparer.quote(table_name)
             with self.engine.connect() as conn:
-                rows = conn.execute(
-                    text(f"DESCRIBE FORMATTED {quoted_schema}.{quoted_table}")
-                )
+                rows = conn.execute(text(f"DESCRIBE FORMATTED {quoted_schema}.{quoted_table}"))
                 for row in rows:
                     col_name = row[0].strip() if row[0] else ""
                     if col_name == "# Partition Information":
@@ -193,10 +191,7 @@ class HiveSource(CommonDbSourceService):
                         partition_keys.append(col_name)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to get partition details for"
-                f" {schema_name}.{table_name}: {exc}"
-            )
+            logger.warning(f"Failed to get partition details for {schema_name}.{table_name}: {exc}")
             return False, None
 
         if not partition_keys:
