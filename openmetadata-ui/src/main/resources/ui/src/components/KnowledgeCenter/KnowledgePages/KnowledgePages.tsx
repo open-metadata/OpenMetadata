@@ -73,13 +73,13 @@ const KnowledgePages: FC = () => {
       <Typography.Text
         className="text-sm font-medium"
         data-testid="header-label">
-        {t('label.knowledge-center')}
+        {t('label.context-center')}
       </Typography.Text>
       {/* only show view all if length is greater than PAGE_SIZE i.e 10 */}
       {paging?.total > PAGE_SIZE && (
         <Link
           data-testid="view-all-data-asset-related-articles"
-          to={`${ROUTES.KNOWLEDGE_CENTER_FILTER}?entityId=${entityId}&entityType=${entityType}`}>
+          to={`${ROUTES.CONTEXT_CENTER_FILTER}?entityId=${entityId}&entityType=${entityType}`}>
           {t('label.view-all')}
         </Link>
       )}

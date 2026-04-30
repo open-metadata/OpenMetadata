@@ -858,20 +858,20 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.FORGOT_PASSWORD}
       />
       {[
-        ROUTES.KNOWLEDGE_CENTER,
-        ROUTES.KNOWLEDGE_PAGE,
-        ROUTES.KNOWLEDGE_PAGE_WITH_TAB,
-        ROUTES.KNOWLEDGE_PAGE_WITH_SUB_TAB,
+        ROUTES.CONTEXT_CENTER,
+        ROUTES.CONTEXT_PAGE,
+        ROUTES.CONTEXT_PAGE_WITH_TAB,
+        ROUTES.CONTEXT_PAGE_WITH_SUB_TAB,
       ].map((route) => (
         <Route element={<KnowledgeCenterPage />} key={route} path={route} />
       ))}
       <Route
         element={<KnowledgePageVersionPage onPageChange={() => undefined} />}
-        path={ROUTES.KNOWLEDGE_PAGE_VERSION}
+        path={ROUTES.CONTEXT_PAGE_VERSION}
       />
       <Route
         element={<KnowledgeCenterFilterPage />}
-        path={ROUTES.KNOWLEDGE_CENTER_FILTER}
+        path={ROUTES.CONTEXT_CENTER_FILTER}
       />
       <Route element={<Navigate to={ROUTES.NOT_FOUND} />} path="*" />
     </Routes>

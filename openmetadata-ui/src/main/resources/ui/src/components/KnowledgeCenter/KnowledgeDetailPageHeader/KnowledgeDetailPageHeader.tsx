@@ -110,8 +110,8 @@ const KnowledgeDetailPageHeader: FC<KnowledgeDetailPageHeaderProps> = ({
         url: ROUTES.HOME,
       },
       {
-        name: t('label.knowledge-center'),
-        url: ROUTES.KNOWLEDGE_CENTER,
+        name: t('label.context-center'),
+        url: ROUTES.CONTEXT_CENTER,
       },
       {
         name: (knowledgePage?.displayName ?? '') || t('label.untitled'),
@@ -261,7 +261,7 @@ const KnowledgeDetailPageHeader: FC<KnowledgeDetailPageHeaderProps> = ({
       updateKnowledgeCenterRecentViewed(
         recentlyViewed.filter((page) => page.id !== knowledgePage?.id)
       );
-      isSoftDelete ? onToggleDelete() : navigate(ROUTES.KNOWLEDGE_CENTER);
+      isSoftDelete ? onToggleDelete() : navigate(ROUTES.CONTEXT_CENTER);
 
       // fetch knowledge page hierarchy with force refresh to ensure updates are shown
       fetchKnowledgePageHierarchy?.(true);

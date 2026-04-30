@@ -114,8 +114,8 @@ const KnowledgeCenterFilterPage = () => {
 
     return [
       {
-        name: t('label.knowledge-center'),
-        url: ROUTES.KNOWLEDGE_CENTER,
+        name: t('label.context-center'),
+        url: ROUTES.CONTEXT_CENTER,
       },
       {
         name,
@@ -154,7 +154,7 @@ const KnowledgeCenterFilterPage = () => {
 
   if (isLoading) {
     return (
-      <PageLayoutV1 pageTitle={t('label.knowledge-center')}>
+      <PageLayoutV1 pageTitle={t('label.context-center')}>
         <div className="knowledge-center-filter-page">
           <Row data-testid="knowledge-page-listing" gutter={[0, 56]}>
             {Array.from({ length: 4 }).map(() => (
@@ -211,7 +211,7 @@ const KnowledgeCenterFilterPage = () => {
       <ErrorPlaceHolder
         className="border-none"
         permissionValue={t('label.view-entity', {
-          entity: t('label.knowledge-center'),
+          entity: t('label.context-center'),
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
@@ -219,7 +219,7 @@ const KnowledgeCenterFilterPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.knowledge-center')}>
+    <PageLayoutV1 pageTitle={t('label.context-center')}>
       <div className="knowledge-center-filter-page">
         <Row gutter={[0, 24]}>
           {!isEmpty(breadcrumbs) && (

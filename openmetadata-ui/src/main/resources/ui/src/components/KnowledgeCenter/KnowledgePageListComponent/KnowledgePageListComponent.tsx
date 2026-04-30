@@ -357,7 +357,7 @@ const KnowledgePageListComponent = forwardRef<
 
   useEffect(() => {
     onPageChange({
-      title: t('label.knowledge-center'),
+      title: t('label.context-center'),
       rightPanel: getRightPanelElement(),
       data: undefined,
       header: null,

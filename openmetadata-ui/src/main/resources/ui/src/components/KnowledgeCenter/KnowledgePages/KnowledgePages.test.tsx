@@ -59,7 +59,7 @@ describe('KnowledgePages', () => {
     });
 
     expect(screen.getByTestId('knowledge-pages')).toBeInTheDocument();
-    expect(screen.getByText('label.knowledge-center')).toBeInTheDocument();
+    expect(screen.getByText('label.context-center')).toBeInTheDocument();
 
     // article page
     expect(screen.getByText('Data Collaboration')).toBeInTheDocument();

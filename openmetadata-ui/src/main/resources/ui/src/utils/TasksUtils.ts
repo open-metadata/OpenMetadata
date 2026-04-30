@@ -200,7 +200,7 @@ export const getKnowledgeCenterPagePath = (
 ) => {
   const encodedFqn = getEncodedFqn(pageFQN);
 
-  return `${ROUTES.KNOWLEDGE_CENTER_PAGE}/${encodedFqn}/${tab}/${subTab}`;
+  return `${ROUTES.CONTEXT_CENTER_PAGE}/${encodedFqn}/${tab}/${subTab}`;
 };
 
 export const getTaskDetailPath = (task: Thread) => {

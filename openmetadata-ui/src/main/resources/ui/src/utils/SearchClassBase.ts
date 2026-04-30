@@ -61,8 +61,8 @@ import {
   entitySortingFields,
   INITIAL_SORT_FIELD,
   tableSortingFields,
-  TAGS_INITIAL_SORT_FIELD,
   tagSortingFields,
+  TAGS_INITIAL_SORT_FIELD,
 } from '../constants/explore.constants';
 import {
   Option,
@@ -386,7 +386,7 @@ class SearchClassBase {
         ],
       },
       {
-        title: t('label.knowledge-center'),
+        title: t('label.context-center'),
         key: 'KnowledgeCenter',
         data: {
           isRoot: true,
