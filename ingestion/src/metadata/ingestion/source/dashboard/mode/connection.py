@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from functools import partial
 from typing import Optional
 
@@ -41,19 +42,15 @@ def test_connection(
     metadata: OpenMetadata,
     client: ModeApiClient,
     service_connection: ModeConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
 
-    test_fn = {
-        "CheckDashboards": partial(
-            client.get_workspace, service_connection.workspaceName
-        )
-    }
+    test_fn = {"CheckDashboards": partial(client.get_workspace, service_connection.workspaceName)}
 
     return test_connection_steps(
         metadata=metadata,

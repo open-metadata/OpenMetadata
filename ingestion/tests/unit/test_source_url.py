@@ -12,6 +12,7 @@
 """
 OpenMetadata source URL building tests
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (

@@ -11,8 +11,10 @@
 """
 Redshift SQLAlchemy util methods
 """
+
 import re
 from collections import defaultdict
+from typing import Any
 
 import sqlalchemy as sa
 from packaging.version import Version
@@ -55,7 +57,7 @@ def _redshift_initialize(self, connection):
     PostgreSQL-specific queries that Redshift doesn't support
     (e.g., SHOW standard_conforming_strings).
     """
-    from sqlalchemy.engine.default import DefaultDialect
+    from sqlalchemy.engine.default import DefaultDialect  # noqa: PLC0415
 
     DefaultDialect.initialize(self, connection)
     self._backslash_escapes = False
@@ -65,7 +67,7 @@ def _redshift_initialize(self, connection):
     self._has_native_hstore = False
 
 
-def _load_domains(self, connection, **kw):
+def _load_domains(self, connection, schema: str | None = None, **kw: Any) -> dict:
     """
     Override to return empty dict since Redshift does not support user-created
     domains and pg_catalog.pg_collation does not exist in Redshift, causing a
@@ -84,7 +86,15 @@ def get_temp_table_names(self, connection, schema=None, **kw):
     return []
 
 
-def get_multi_columns(self, connection, **kw):
+def get_multi_columns(
+    self,
+    connection,
+    schema: str | None = None,
+    filter_names: Any | None = None,
+    scope: Any | None = None,
+    kind: Any | None = None,
+    **kw: Any,
+):
     """
     Override PGDialect's get_multi_columns to avoid querying
     pg_attribute.attcollation which does not exist in Redshift.
@@ -169,9 +179,7 @@ def _get_column_info(self, *args, **kwargs):
 
 
 @calculate_execution_time()
-def _get_schema_column_info(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
+def _get_schema_column_info(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
     """
     Get schema column info
 
@@ -186,9 +194,7 @@ def _get_schema_column_info(
 
     schema_clause = f"AND schema = '{schema if schema else ''}'"
     all_columns = defaultdict(list)
-    result = connection.execute(
-        sa.text(REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause))
-    )
+    result = connection.execute(sa.text(REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause)))
     for col in result:
         key = RelationKey(col.table_name, col.schema, connection)
         all_columns[key].append(col)
@@ -277,13 +283,7 @@ def _update_column_info(  # pylint: disable=too-many-arguments
                 # unconditionally quote the schema name.  this could
                 # later be enhanced to obey quoting rules /
                 # "quote schema"
-                default = (
-                    match.group(1)
-                    + (f'"{sch}"')
-                    + "."
-                    + match.group(2)
-                    + match.group(3)
-                )
+                default = match.group(1) + (f'"{sch}"') + "." + match.group(2) + match.group(3)
     column_info = {
         "name": name,
         "type": coltype,
@@ -409,13 +409,17 @@ def _get_pg_column_info(  # pylint: disable=too-many-locals,too-many-arguments, 
         computed,
     )
 
-    return column_info
+    return column_info  # noqa: RET504
 
 
 @calculate_execution_time()
 @reflection.cache
 def get_table_comment(
-    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
+    self,
+    connection,
+    table_name,
+    schema=None,
+    **kw,  # pylint: disable=unused-argument
 ):
     return get_table_comment_wrapper(
         self,
@@ -438,21 +442,17 @@ def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-ar
     cache is keyed by schema only.
     """
     # pylint: disable=consider-using-f-string
-    schema = kw.get("schema", None)
+    schema = kw.get("schema", None)  # noqa: SIM910
 
     # Single-schema cache: invalidate when schema changes
     cached = getattr(self, "_relation_info_cache", None)
     if cached is not None and cached[0] == schema:
         return cached[1]
 
-    schema_clause = "AND schema = '{schema}'".format(schema=schema) if schema else ""
+    schema_clause = "AND schema = '{schema}'".format(schema=schema) if schema else ""  # noqa: UP032
 
     result = connection.execute(
-        sa.text(
-            REDSHIFT_GET_ALL_RELATIONS.format(
-                schema_clause=schema_clause, table_clause="", limit_clause=""
-            )
-        )
+        sa.text(REDSHIFT_GET_ALL_RELATIONS.format(schema_clause=schema_clause, table_clause="", limit_clause=""))
     )
     relations = {}
     for rel in result:
@@ -487,9 +487,7 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
         re.IGNORECASE,
     )
     if not create_view_pattern.search(view_definition):
-        view_definition = (
-            f"CREATE VIEW {view.schema}.{view.relname} AS {view_definition}"
-        )
+        view_definition = f"CREATE VIEW {view.schema}.{view.relname} AS {view_definition}"
     return view_definition
 
 
@@ -502,7 +500,7 @@ def get_redshift_columns(self, connection, table_name, schema=None, **kw):
             info_cache=info_cache,
         )
         key = RelationKey(table_name, schema, connection)
-        if key not in all_schema_columns.keys():
+        if key not in all_schema_columns.keys():  # noqa: SIM118
             key = key.unquoted()
         return all_schema_columns[key]
     except KeyError:

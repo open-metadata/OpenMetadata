@@ -26,6 +26,7 @@ import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder;
 import org.apache.hc.client5.http.ssl.ClientTlsStrategyBuilder;
 import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.util.TimeValue;
 import org.apache.hc.core5.util.Timeout;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
@@ -446,9 +447,10 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+  public Response searchByField(
+      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException {
-    return searchManager.searchByField(fieldName, fieldValue, index, deleted);
+    return searchManager.searchByField(fieldName, fieldValue, index, deleted, from, size);
   }
 
   @Override
@@ -826,10 +828,11 @@ public class OpenSearchClient implements SearchClient {
             if (esConfig.getKeepAliveTimeoutSecs() != null
                 && esConfig.getKeepAliveTimeoutSecs() > 0) {
               httpClientBuilder.setKeepAliveStrategy(
-                  (response, context) ->
-                      org.apache.hc.core5.util.TimeValue.ofSeconds(
-                          esConfig.getKeepAliveTimeoutSecs()));
+                  (response, context) -> TimeValue.ofSeconds(esConfig.getKeepAliveTimeoutSecs()));
             }
+
+            httpClientBuilder.evictExpiredConnections();
+            httpClientBuilder.evictIdleConnections(TimeValue.ofSeconds(30));
 
             httpClientBuilder.useSystemProperties();
 
@@ -841,6 +844,17 @@ public class OpenSearchClient implements SearchClient {
               requestConfigBuilder
                   .setConnectTimeout(Timeout.ofSeconds(esConfig.getConnectionTimeoutSecs()))
                   .setResponseTimeout(Timeout.ofSeconds(esConfig.getSocketTimeoutSecs())));
+
+      var defaultFactory =
+          os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Options.DEFAULT
+              .getHttpAsyncResponseConsumerFactory();
+      os.org.opensearch.client.transport.httpclient5.HttpAsyncResponseConsumerFactory safeFactory =
+          () -> new SafeResponseConsumer<>(defaultFactory.createHttpAsyncResponseConsumer());
+      var optsBuilder =
+          os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Options.DEFAULT
+              .toBuilder();
+      optsBuilder.setHttpAsyncResponseConsumerFactory(safeFactory);
+      builder.setOptions(optsBuilder.build());
 
       builder.setCompressionEnabled(true);
       builder.setChunkedEnabled(true);

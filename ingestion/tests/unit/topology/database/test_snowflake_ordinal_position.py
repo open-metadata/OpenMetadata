@@ -87,7 +87,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -97,9 +97,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
                 "_get_schema_primary_keys",
                 return_value={"TEST_TABLE": {"constrained_columns": ["ID"]}},
             ):
-                result = get_schema_columns(
-                    self.dialect, self.mock_connection, "TEST_SCHEMA"
-                )
+                result = get_schema_columns(self.dialect, self.mock_connection, "TEST_SCHEMA")
 
         self.assertIsNotNone(result)
         self.assertIn("TEST_TABLE", result)
@@ -168,7 +166,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -178,9 +176,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
                 "_get_schema_primary_keys",
                 return_value={},
             ):
-                result = get_schema_columns(
-                    self.dialect, self.mock_connection, "TEST_SCHEMA"
-                )
+                result = get_schema_columns(self.dialect, self.mock_connection, "TEST_SCHEMA")
 
         self.assertEqual(result["TABLE_A"][0]["name"], "COL_Z")
         self.assertEqual(result["TABLE_A"][0]["ordinal_position"], 3)
@@ -275,7 +271,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -285,9 +281,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
                 "_get_schema_primary_keys",
                 return_value={},
             ):
-                result = get_schema_columns(
-                    self.dialect, self.mock_connection, "TEST_SCHEMA"
-                )
+                result = get_schema_columns(self.dialect, self.mock_connection, "TEST_SCHEMA")
 
         self.assertEqual(len(result["TABLE_1"]), 2)
         self.assertEqual(result["TABLE_1"][0]["ordinal_position"], 1)
@@ -337,7 +331,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -347,9 +341,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
                 "_get_schema_primary_keys",
                 return_value={"TEST_TABLE": {"constrained_columns": ["ID"]}},
             ):
-                result = get_schema_columns(
-                    self.dialect, self.mock_connection, "TEST_SCHEMA"
-                )
+                result = get_schema_columns(self.dialect, self.mock_connection, "TEST_SCHEMA")
 
         self.assertEqual(result["TEST_TABLE"][0]["ordinal_position"], 1)
         self.assertEqual(result["TEST_TABLE"][0]["autoincrement"], True)
@@ -412,7 +404,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -422,9 +414,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
                 "_get_schema_primary_keys",
                 return_value={},
             ):
-                result = get_schema_columns(
-                    self.dialect, self.mock_connection, "TEST_SCHEMA"
-                )
+                result = get_schema_columns(self.dialect, self.mock_connection, "TEST_SCHEMA")
 
         self.assertEqual(len(result["TEST_TABLE"]), 2)
         self.assertEqual(result["TEST_TABLE"][0]["name"], "ID")
@@ -577,7 +567,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -587,9 +577,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
                 "_get_schema_primary_keys",
                 return_value={},
             ):
-                result = get_schema_columns(
-                    self.dialect, self.mock_connection, "TEST_SCHEMA"
-                )
+                result = get_schema_columns(self.dialect, self.mock_connection, "TEST_SCHEMA")
 
         self.assertEqual(len(result["TEST_TABLE"]), 9)
         for idx, column in enumerate(result["TEST_TABLE"], start=1):
@@ -634,7 +622,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -644,9 +632,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
                 "_get_schema_primary_keys",
                 return_value={"TEST_TABLE": {"constrained_columns": ["PK_COL"]}},
             ):
-                result = get_schema_columns(
-                    self.dialect, self.mock_connection, "TEST_SCHEMA"
-                )
+                result = get_schema_columns(self.dialect, self.mock_connection, "TEST_SCHEMA")
 
         self.assertEqual(result["TEST_TABLE"][0]["name"], "OTHER_COL")
         self.assertEqual(result["TEST_TABLE"][0]["ordinal_position"], 1)
@@ -680,7 +666,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -690,9 +676,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
                 "_get_schema_primary_keys",
                 return_value={},
             ):
-                result = get_schema_columns(
-                    self.dialect, self.mock_connection, "TEST_SCHEMA"
-                )
+                result = get_schema_columns(self.dialect, self.mock_connection, "TEST_SCHEMA")
 
         column = result["TEST_TABLE"][0]
         self.assertIn("ordinal_position", column)
@@ -707,7 +691,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -717,9 +701,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
                 "_get_schema_primary_keys",
                 return_value={},
             ):
-                result = get_schema_columns(
-                    self.dialect, self.mock_connection, "TEST_SCHEMA"
-                )
+                result = get_schema_columns(self.dialect, self.mock_connection, "TEST_SCHEMA")
 
         self.assertEqual(result, {})
 
@@ -762,7 +744,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
         mock_execute_result.__iter__ = Mock(return_value=iter(mock_result))
         self.mock_connection.execute = Mock(return_value=mock_execute_result)
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.dialect,
             "_current_database_schema",
             return_value=("TEST_DB", "TEST_SCHEMA"),
@@ -772,9 +754,7 @@ class SnowflakeOrdinalPositionTest(TestCase):
                 "_get_schema_primary_keys",
                 return_value={},
             ):
-                result = get_schema_columns(
-                    self.dialect, self.mock_connection, "TEST_SCHEMA"
-                )
+                result = get_schema_columns(self.dialect, self.mock_connection, "TEST_SCHEMA")
 
         self.assertEqual(result["TEST_TABLE"][0]["ordinal_position"], 1)
         self.assertEqual(result["TEST_TABLE"][0]["system_data_type"], "NUMBER(38,0)")

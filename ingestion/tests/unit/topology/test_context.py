@@ -12,6 +12,7 @@
 """
 Check context operations
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.api.classification.createClassification import (
@@ -172,6 +173,4 @@ class TopologyContextTest(TestCase):
             ),
         )
 
-        self.assertEqual(
-            context.stored_procedures, ["service.database.schema.stored_proc"]
-        )
+        self.assertEqual(context.stored_procedures, ["service.database.schema.stored_proc"])

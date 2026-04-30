@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """MSSQL models"""
+
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -25,6 +26,6 @@ class MssqlStoredProcedure(BaseModel):
     """MSSQL stored procedure list query results"""
 
     name: str = Field(...)
-    owner: Optional[str] = Field(None)
+    owner: Optional[str] = Field(None)  # noqa: UP045
     language: str = Field(Language.SQL)
-    definition: Optional[str] = Field(None)
+    definition: Optional[str] = Field(None)  # noqa: UP045

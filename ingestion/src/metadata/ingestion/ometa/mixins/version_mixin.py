@@ -14,7 +14,7 @@ Mixin class containing entity versioning specific methods
 To be used by OpenMetadata
 """
 
-from typing import Generic, List, Optional, Type, TypeVar, Union
+from typing import Generic, List, Optional, Type, TypeVar, Union  # noqa: UP035
 
 from pydantic import BaseModel
 from requests.models import Response
@@ -39,7 +39,7 @@ class OMetaVersionMixin(Generic[T]):
     client: REST
 
     @staticmethod
-    def version_to_str(version: Union[str, float]):
+    def version_to_str(version: Union[str, float]):  # noqa: UP007
         """convert float version to str
 
         Parameters
@@ -59,11 +59,11 @@ class OMetaVersionMixin(Generic[T]):
 
     def get_entity_version(
         self,
-        entity: Type[T],
-        entity_id: Union[str, basic.Uuid],
-        version: Union[str, float],
-        fields: Optional[List[str]] = None,
-    ) -> Optional[T]:
+        entity: Type[T],  # noqa: UP006
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+        version: Union[str, float],  # noqa: UP007
+        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+    ) -> Optional[T]:  # noqa: UP045
         """
         Get an entity at a specific version
 
@@ -87,12 +87,12 @@ class OMetaVersionMixin(Generic[T]):
 
     def get_list_entity_versions(
         self,
-        entity_id: Union[str, basic.Uuid],
-        entity: Type[T],
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
-        field_changed: Optional[str] = None,
-    ) -> Union[Response, EntityVersionHistory]:
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+        entity: Type[T],  # noqa: UP006
+        limit: Optional[int] = None,  # noqa: UP045
+        offset: Optional[int] = None,  # noqa: UP045
+        field_changed: Optional[str] = None,  # noqa: UP045
+    ) -> Union[Response, EntityVersionHistory]:  # noqa: UP007
         """
         Retrieve the list of versions for a specific entity
 
@@ -124,9 +124,7 @@ class OMetaVersionMixin(Generic[T]):
         if field_changed is not None:
             params["fieldChanged"] = field_changed
 
-        resp = self.client.get(
-            f"{self.get_suffix(entity)}/{path}", data=params if params else None
-        )
+        resp = self.client.get(f"{self.get_suffix(entity)}/{path}", data=params if params else None)
 
         if self._use_raw_data:
             return resp
@@ -135,12 +133,12 @@ class OMetaVersionMixin(Generic[T]):
 
     def get_entity_history_by_timeline(
         self,
-        entity: Type[T],
+        entity: Type[T],  # noqa: UP006
         start_ts: int,
         end_ts: int,
         limit: int = 10,
-        before: Optional[str] = None,
-        after: Optional[str] = None,
+        before: Optional[str] = None,  # noqa: UP045
+        after: Optional[str] = None,  # noqa: UP045
     ) -> dict:
         """
         Retrieve entity versions within a time range
