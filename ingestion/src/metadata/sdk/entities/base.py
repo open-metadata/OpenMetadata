@@ -319,14 +319,12 @@ class BaseEntity(Generic[TEntity, TCreate]):
         """Fetch all historical versions for an entity."""
 
         client = cls._get_client()
-        list_versions = cast(
-            Callable[..., Any], getattr(client, "get_list_entity_versions")
-        )
+        list_versions = cast("Callable[..., Any]", client.get_list_entity_versions)
         history = list_versions(
             entity=cls.entity_type(),
             entity_id=cls._stringify_identifier(entity_id),
         )
-        versions = cast(Sequence[Any], getattr(history, "versions", []) or [])
+        versions = cast("Sequence[Any]", getattr(history, "versions", []) or [])
         return [cls._coerce_entity(item) for item in versions]
 
     @classmethod
