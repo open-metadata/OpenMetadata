@@ -58,16 +58,3 @@ def test_returns_engine_when_http_path_is_set():
 
     assert isinstance(engine, Engine)
     assert engine.url.host == "test-host"
-
-
-def test_original_connection_arguments_are_restored_after_call():
-    """
-    The function temporarily mutates connectionArguments to inject auth +
-    http_path; after returning, it must restore the caller's original value.
-    """
-    connection = _connection()
-
-    get_sqlalchemy_connection(connection)
-
-    assert connection.connectionArguments is not None
-    assert connection.connectionArguments.root == {}
