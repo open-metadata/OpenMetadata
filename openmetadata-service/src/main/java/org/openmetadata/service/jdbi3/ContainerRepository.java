@@ -121,22 +121,43 @@ public class ContainerRepository extends EntityRepository<Container> {
       return;
     }
 
-    // First, fetch container-level tags (important for search indexing)
+    // Container-level tags. Important for search indexing where we may process 100k+
+    // containers in a single bulk batch — we must not issue a derived-tag DB query per
+    // container, so collect all tags up front and batch derived tags once.
     List<String> entityFQNs = containers.stream().map(Container::getFullyQualifiedName).toList();
     Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
+
+    Map<String, List<TagLabel>> derivedTagsMap;
+    try {
+      List<TagLabel> allContainerTags =
+          tagsMap.values().stream()
+              .filter(tags -> tags != null)
+              .flatMap(List::stream)
+              .collect(Collectors.toList());
+      derivedTagsMap = batchFetchDerivedTags(allContainerTags);
+    } catch (Exception ex) {
+      LOG.warn(
+          "Failed to batch fetch derived tags for {} containers. Falling back to per-container: {}",
+          containers.size(),
+          ex.getMessage());
+      derivedTagsMap = null;
+    }
+
     for (Container container : containers) {
-      container.setTags(
-          addDerivedTagsGracefully(
-              tagsMap.getOrDefault(container.getFullyQualifiedName(), Collections.emptyList())));
+      List<TagLabel> containerTags =
+          tagsMap.getOrDefault(container.getFullyQualifiedName(), Collections.emptyList());
+      if (derivedTagsMap != null) {
+        container.setTags(addDerivedTagsWithPreFetched(containerTags, derivedTagsMap));
+      } else {
+        container.setTags(addDerivedTagsGracefully(containerTags));
+      }
     }
 
     // Then, if dataModel field is requested, also fetch data model column tags
     if (fields.contains("dataModel")) {
       // Filter containers that have data models and use bulk tag fetching
       List<Container> containersWithDataModels =
-          containers.stream()
-              .filter(c -> c.getDataModel() != null)
-              .collect(java.util.stream.Collectors.toList());
+          containers.stream().filter(c -> c.getDataModel() != null).collect(Collectors.toList());
 
       if (!containersWithDataModels.isEmpty()) {
         bulkPopulateEntityFieldTags(containersWithDataModels, c -> c.getDataModel().getColumns());
