@@ -318,6 +318,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
           CacheConfiguration.DEFAULT_ENTITY_CACHE_TTL_SECONDS);
 
   /**
+   * Short-TTL cache for {@code SELECT count(*) FROM <entity_table> <cond>} results that back
+   * every paginated list endpoint. The exact count is recomputed on every call without this
+   * cache, which on Postgres becomes a sequential scan over the full entity table when the
+   * visibility map lags (typical on hot tables like {@code storage_container_entity} or
+   * {@code entity_relationship}). With many concurrent UI sessions hitting list endpoints
+   * the COUNTs pin the database CPU and starve the connection pool — a single
+   * {@code GET /v1/containers?fields=id&limit=1} can stall for tens of seconds, taking
+   * the API server with it.
+   *
+   * <p>Caching the count for a few seconds is safe because cursor-based pagination uses
+   * {@code before}/{@code after} cursors for navigation; {@code paging.total} is purely a
+   * UI hint ("Showing 1-15 of N"). A 30-second-stale total is acceptable; the per-page
+   * data is always fresh.
+   *
+   * <p>Key shape: {@code <entityType>|<conditionSql>|<paramsToString>} so that distinct
+   * filters (e.g. {@code ?service=foo} vs {@code ?service=bar}) are cached separately.
+   */
+  public static final com.google.common.cache.Cache<String, Integer> LIST_COUNT_CACHE =
+      CacheBuilder.newBuilder()
+          .maximumSize(10_000)
+          .expireAfterWrite(30, TimeUnit.SECONDS)
+          .recordStats()
+          .build();
+
+  /**
    * Canonical {@link #CACHE_WITH_NAME} key. User FQNs are lowercased at the DB layer
    * ({@code UserDAO.findEntityByName}), so the Guava cache must use the same normalization —
    * otherwise {@code Alice@x.com} and {@code alice@x.com} produce two split entries and
@@ -2131,9 +2156,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return dao.listAll(startHash, endHash, filter);
   }
 
+  /**
+   * Cached {@link EntityDAO#listCount(ListFilter)}. See {@link #LIST_COUNT_CACHE} for the
+   * rationale; in short, the underlying {@code SELECT count(*)} is the dominant cost of every
+   * paginated list endpoint on Postgres for hot tables, and a 30-second-stale total is fine
+   * for the UI's "Showing 1-15 of N" badge.
+   *
+   * <p>Subclasses can override to bypass the cache (e.g., admin/diagnostic endpoints that
+   * really need a fresh count); falls back to the DAO when the cache loader throws.
+   */
+  protected int cachedListCount(ListFilter filter) {
+    String cacheKey = entityType + "|" + filter.getCondition() + "|" + filter.getQueryParams();
+    Integer cached = LIST_COUNT_CACHE.getIfPresent(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
+    int count = dao.listCount(filter);
+    LIST_COUNT_CACHE.put(cacheKey, count);
+    return count;
+  }
+
   public ResultList<T> listAfter(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
-    int total = dao.listCount(filter);
+    int total = cachedListCount(filter);
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
@@ -2162,7 +2207,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public ResultList<T> listAfterWithOffset(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limit, int offset) {
-    int total = dao.listCount(filter);
+    int total = cachedListCount(filter);
     List<String> jsons = dao.listAfter(filter, limit, offset);
 
     List<T> entities = listInternal(jsons, fields, uriInfo);
@@ -2256,7 +2301,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setFieldsInBulk(fields, entities);
     entities.forEach(entity -> withHref(uriInfo, entity));
 
-    int total = dao.listCount(filter);
+    int total = cachedListCount(filter);
 
     String beforeCursor = null;
     String afterCursor;

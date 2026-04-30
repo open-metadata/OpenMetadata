@@ -68,7 +68,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   private final ContainerMapper mapper = new ContainerMapper();
   public static final String COLLECTION_PATH = "/v1/containers/";
   static final String FIELDS =
-      "parent,children,dataModel,owners,tags,followers,extension,domains,sourceHash,sampleData";
+      "parent,dataModel,owners,tags,followers,extension,domains,sourceHash,sampleData";
 
   @Override
   public Container addHref(UriInfo uriInfo, Container container) {
@@ -84,7 +84,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("parent,children,dataModel", MetadataOperation.VIEW_BASIC);
+    addViewOperation("parent,dataModel", MetadataOperation.VIEW_BASIC);
     addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
     return listOf(MetadataOperation.VIEW_SAMPLE_DATA, MetadataOperation.EDIT_SAMPLE_DATA);
   }

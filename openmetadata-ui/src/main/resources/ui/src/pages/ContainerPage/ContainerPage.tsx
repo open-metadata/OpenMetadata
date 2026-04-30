@@ -21,6 +21,7 @@ import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
+import { ContainerChildrenCountContext } from '../../components/Container/ContainerChildren/ContainerChildrenCountContext';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -56,7 +57,6 @@ import { FeedCounts } from '../../interface/feed.interface';
 import {
   addContainerFollower,
   getContainerByName,
-  getContainerChildrenByName,
   patchContainerDetails,
   removeContainerFollower,
   restoreContainer,
@@ -221,22 +221,6 @@ const ContainerPage = () => {
       setIsLoading(false);
     }
   };
-
-  // Fetch children count to show it in Tab label
-  const fetchContainerChildren = useCallback(async () => {
-    // Use resolvedEntityFqn for children
-    if (!resolvedEntityFqn) {
-      return;
-    }
-    try {
-      const { paging } = await getContainerChildrenByName(resolvedEntityFqn, {
-        limit: 0,
-      });
-      setChildrenCount(paging.total);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [resolvedEntityFqn]);
 
   const { deleted, version, isUserFollowing } = useMemo(() => {
     return {
@@ -634,7 +618,10 @@ const ContainerPage = () => {
 
   useEffect(() => {
     if (resolvedEntityFqn) {
-      fetchContainerChildren();
+      // Reset the count so a stale value from the previous container is not shown
+      // until ContainerChildren mounts and reports the new container's count via
+      // the onChildrenCountChange callback.
+      setChildrenCount(0);
       getEntityFeedCount();
     }
   }, [resolvedEntityFqn]);
@@ -726,26 +713,28 @@ const ContainerPage = () => {
           permissions={containerPermissions}
           type={EntityType.CONTAINER as CustomizeEntityType}
           onUpdate={handleContainerUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
-            <Tabs
-              activeKey={tab}
-              className="tabs-new"
-              data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={handleTabChange}
-            />
-          </Col>
+          <ContainerChildrenCountContext.Provider value={setChildrenCount}>
+            <Col className="entity-details-page-tabs" span={24}>
+              <Tabs
+                activeKey={tab}
+                className="tabs-new"
+                data-testid="tabs"
+                items={tabs}
+                tabBarExtraContent={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
+                onChange={handleTabChange}
+              />
+            </Col>
+          </ContainerChildrenCountContext.Provider>
         </GenericProvider>
 
         <LimitWrapper resource="container">

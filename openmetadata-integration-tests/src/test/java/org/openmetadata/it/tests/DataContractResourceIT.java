@@ -12,16 +12,20 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.ContractSLA;
+import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
@@ -293,6 +297,48 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     assertNotNull(fetched);
     assertEquals(contract.getId(), fetched.getId());
+  }
+
+  @Test
+  void testGetDataContractByEntityId_containerEntity_slimEntityLoad(TestNamespace ns) {
+    // Pins the perf contract on `GET /v1/dataContracts/entity?entityType=container`.
+    //
+    // The handler used to call `Entity.getEntity(entityType, entityId, "*", ...)`
+    // which eagerly hydrates every relationship (owners, tags, followers, domains,
+    // dataProducts, extension) and deserialises the entity's full stored JSON. For
+    // a Container with a heavyweight `dataModel` — common in the Tahoe POC where
+    // a parquet-backed container carries multi-MB column-schema metadata — that
+    // single call routinely exceeded the 60-second request timeout in production
+    // and starved the connection pool, taking the API server with it.
+    //
+    // The handler now passes `"dataProducts"` (the only field the contract
+    // inheritance path actually consumes via `getEffectiveDataContract`) instead
+    // of `"*"`. This test exercises the Container path end-to-end so a future
+    // regression that puts `"*"` back in the resource layer fails here.
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    CreateContainer containerRequest =
+        new CreateContainer()
+            .withName(ns.prefix("dc_container"))
+            .withService(service.getFullyQualifiedName())
+            .withDescription("Container under data-contract perf-pinning IT");
+    Container container = SdkClients.adminClient().containers().create(containerRequest);
+
+    CreateDataContract contractRequest =
+        new CreateDataContract()
+            .withName(ns.prefix("test_get_by_container_entity"))
+            .withEntity(container.getEntityReference())
+            .withDescription("Pin slim entity load on getByEntityId");
+    DataContract created = createEntity(contractRequest);
+
+    DataContract fetched =
+        SdkClients.adminClient().dataContracts().getByEntityId(container.getId(), "container");
+
+    assertNotNull(fetched, "Container should have been resolved as a valid entity type");
+    assertEquals(
+        created.getId(),
+        fetched.getId(),
+        "getByEntityId must return the contract bound to the Container, proving the slim"
+            + " `dataProducts`-only entity load is sufficient for contract resolution");
   }
 
   @Test

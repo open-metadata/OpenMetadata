@@ -12,7 +12,7 @@
  */
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
@@ -30,8 +30,10 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import Table from '../../common/Table/Table';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ContainerChildrenProps } from './ContainerChildren.interface';
+import { useContainerChildrenCountSetter } from './ContainerChildrenCountContext';
 
 const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
+  const onChildrenCountChange = useContainerChildrenCountSetter();
   const { t } = useTranslation();
   const {
     paging,
@@ -76,24 +78,39 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
     []
   );
 
-  const fetchContainerChildren = async (pagingOffset?: number) => {
-    setIsChildrenLoading(true);
-    try {
-      const { data, paging } = await getContainerChildrenByName(
-        decodedContainerName,
-        {
+  // Track the FQN of the latest in-flight fetch so a slow earlier response for a
+  // previous container does not overwrite the newer container's data when the
+  // user navigates between containers.
+  const latestFetchFqn = useRef<string>('');
+
+  const fetchContainerChildren = useCallback(
+    async (pagingOffset?: number) => {
+      const fetchFqn = decodedContainerName;
+      latestFetchFqn.current = fetchFqn;
+      setIsChildrenLoading(true);
+      try {
+        const { data, paging } = await getContainerChildrenByName(fetchFqn, {
           limit: pageSize,
           offset: pagingOffset ?? 0,
+        });
+        if (latestFetchFqn.current !== fetchFqn) {
+          return;
         }
-      );
-      setContainerChildrenData(data ?? []);
-      handlePagingChange(paging);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsChildrenLoading(false);
-    }
-  };
+        setContainerChildrenData(data ?? []);
+        handlePagingChange(paging);
+        onChildrenCountChange?.(paging.total);
+      } catch (error) {
+        if (latestFetchFqn.current === fetchFqn) {
+          showErrorToast(error as AxiosError);
+        }
+      } finally {
+        if (latestFetchFqn.current === fetchFqn) {
+          setIsChildrenLoading(false);
+        }
+      }
+    },
+    [decodedContainerName, pageSize, handlePagingChange, onChildrenCountChange]
+  );
 
   const handleChildrenPageChange = (data: PagingHandlerParams) => {
     handlePageChange(data.currentPage);
@@ -101,12 +118,20 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
   };
 
   useEffect(() => {
-    if (!isReadOnly) {
-      fetchContainerChildren();
-    } else {
-      setContainerChildrenData(container?.children ?? []);
+    if (isReadOnly) {
+      return;
     }
-  }, [pageSize, isReadOnly]);
+    fetchContainerChildren();
+  }, [pageSize, isReadOnly, decodedContainerName, fetchContainerChildren]);
+
+  useEffect(() => {
+    if (!isReadOnly) {
+      return;
+    }
+    const children = container?.children ?? [];
+    setContainerChildrenData(children);
+    onChildrenCountChange?.(children.length);
+  }, [isReadOnly, container?.children, onChildrenCountChange]);
 
   return (
     <Table

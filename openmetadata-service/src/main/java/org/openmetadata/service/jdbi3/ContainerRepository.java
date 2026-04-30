@@ -47,6 +47,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.storages.ContainerResource;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -75,10 +76,16 @@ public class ContainerRepository extends EntityRepository<Container> {
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
 
+    // children is unbounded — for a 5,000-file Tahoe-style container, fields=children
+    // (or fields=* expanding to it) loads every reference with no pagination. Remove it
+    // from the entity's allowed-fields set so that fields=* silently skips it and
+    // fields=children returns 400. Callers that need to traverse children must use the
+    // paginated /v1/containers/name/{fqn}/children endpoint.
+    allowedFields.remove("children");
+
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_PARENT, this::fetchAndSetParents);
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetDataModelColumnTags);
-    fieldFetchers.put("children", this::fetchAndSetChildren);
   }
 
   @Override
@@ -87,8 +94,6 @@ public class ContainerRepository extends EntityRepository<Container> {
     setDefaultFields(container);
     container.setParent(
         fields.contains(FIELD_PARENT) ? getContainerParent(container) : container.getParent());
-    container.setChildren(
-        fields.contains("children") ? getChildren(container) : container.getChildren());
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(
           fields.contains(FIELD_TAGS), container.getDataModel().getColumns());
@@ -253,14 +258,22 @@ public class ContainerRepository extends EntityRepository<Container> {
             .relationshipDAO()
             .findFromBatch(entityListToStrings(containers), Relationship.CONTAINS.ordinal());
 
+    // De-dupe service IDs before resolving them to references. In any practical paged
+    // listing the children are all under the same storage service, so the naive loop
+    // below would call getEntityReferenceById N times for the same service id —
+    // each call hits CACHE_WITH_ID (or DB) for the full StorageService JSON. Cache one
+    // ref per unique service id and fan it back out to every child.
+    Map<UUID, EntityReference> serviceRefById = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID containerId = UUID.fromString(record.getToId());
-      if (STORAGE_SERVICE.equals(record.getFromEntity())) {
-        EntityReference serviceRef =
-            getEntityReferenceById(
-                STORAGE_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-        serviceMap.put(containerId, serviceRef);
+      if (!STORAGE_SERVICE.equals(record.getFromEntity())) {
+        continue;
       }
+      UUID containerId = UUID.fromString(record.getToId());
+      UUID serviceId = UUID.fromString(record.getFromId());
+      EntityReference serviceRef =
+          serviceRefById.computeIfAbsent(
+              serviceId, id -> getEntityReferenceById(STORAGE_SERVICE, id, NON_DELETED));
+      serviceMap.put(containerId, serviceRef);
     }
 
     return serviceMap;
@@ -535,50 +548,83 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   public ResultList<Container> listChildren(String parentFQN, Integer limit, Integer offset) {
 
-    Container parentContainer = dao.findEntityByName(parentFQN);
+    // Phase markers feed the slow-request log so when a /children call exceeds the
+    // latency budget in prod we can tell which step (parent lookup / relationship
+    // fetch / count / slim hydration / service restore) was responsible.
+    Container parentContainer;
+    try (var ignored =
+        RequestLatencyContext.phase("listChildrenParent")) {
+      parentContainer = dao.findEntityByName(parentFQN);
+    }
 
     try {
-      List<CollectionDAO.EntityRelationshipRecord> relationshipRecords =
-          daoCollection
-              .relationshipDAO()
-              .findToWithOffset(
-                  parentContainer.getId(),
-                  CONTAINER,
-                  List.of(Relationship.CONTAINS.ordinal()),
-                  offset,
-                  limit);
+      List<CollectionDAO.EntityRelationshipRecord> relationshipRecords;
+      try (var ignored =
+          RequestLatencyContext.phase(
+              "listChildrenRelationships")) {
+        relationshipRecords =
+            daoCollection
+                .relationshipDAO()
+                .findToWithOffset(
+                    parentContainer.getId(),
+                    CONTAINER,
+                    List.of(Relationship.CONTAINS.ordinal()),
+                    offset,
+                    limit);
+      }
 
-      int total =
-          daoCollection
-              .relationshipDAO()
-              .countFindTo(
-                  parentContainer.getId(), CONTAINER, List.of(Relationship.CONTAINS.ordinal()));
+      int total;
+      try (var ignored =
+          RequestLatencyContext.phase("listChildrenCount")) {
+        total =
+            daoCollection
+                .relationshipDAO()
+                .countFindTo(
+                    parentContainer.getId(), CONTAINER, List.of(Relationship.CONTAINS.ordinal()));
+      }
 
       if (relationshipRecords.isEmpty()) {
         return new ResultList<>(new ArrayList<>(), null, null, total);
       }
 
-      List<EntityReference> refs = getEntityReferences(relationshipRecords);
-      // Hydrate the page in a single DB call instead of one Entity.getEntity per child.
-      // findEntitiesByIds chunks internally at 30k IDs, so it is safe even if a caller
-      // requests the maximum page size.
-      List<UUID> ids = refs.stream().map(EntityReference::getId).toList();
+      // Hydrate the page with a slim projection: id, name, fqn, displayName, description.
+      // Heavy fields like dataModel, tags, owners, extension are intentionally skipped —
+      // the UI's children table only renders name and description, and parquet
+      // containers can carry multi-MB column schemas in dataModel.
+      //
+      // The IDs come straight from the relationship rows we already loaded in
+      // findToWithOffset — we deliberately do NOT call EntityUtil.getEntityReferences
+      // here because that path round-trips through Entity.getEntityReferencesByIds →
+      // EntityRepository.find → CACHE_WITH_ID, which materialises the FULL Container
+      // JSON (dataModel, tags, owners, extension) for every child just to extract its
+      // EntityReference. For 15 parquet rows that single call alone can dominate the
+      // listing latency.
+      List<UUID> ids = relationshipRecords.stream().map(r -> r.getId()).toList();
       Map<UUID, Container> byId = new HashMap<>();
-      for (Container c : dao.findEntitiesByIds(ids, Include.ALL)) {
-        byId.put(c.getId(), c);
+      try (var ignored =
+          RequestLatencyContext.phase(
+              "listChildrenHydrate")) {
+        for (Container c :
+            ((CollectionDAO.ContainerDAO) dao).findContainerSummariesByIds(ids)) {
+          byId.put(c.getId(), c);
+        }
       }
       // Preserve relationship-offset ordering returned by findToWithOffset; drop
-      // any refs that no longer resolve (deleted between the relationship lookup and
+      // any rows that no longer resolve (deleted between the relationship lookup and
       // the bulk fetch) rather than failing the whole page.
-      List<Container> children = new ArrayList<>(refs.size());
-      for (EntityReference ref : refs) {
-        Container container = byId.get(ref.getId());
+      List<Container> children = new ArrayList<>(ids.size());
+      for (UUID id : ids) {
+        Container container = byId.get(id);
         if (container != null) {
           children.add(container);
         }
       }
       // service is stripped from stored JSON; restore via batched relationship lookup.
-      fetchAndSetDefaultService(children);
+      try (var ignored =
+          RequestLatencyContext.phase(
+              "listChildrenService")) {
+        fetchAndSetDefaultService(children);
+      }
 
       return new ResultList<>(children, null, null, total);
     } catch (Exception e) {

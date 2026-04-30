@@ -848,7 +848,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   }
 
   @Test
-  void test_containerChildrenPagination(TestNamespace ns) {
+  void test_containerChildrenPagination(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     StorageService service = StorageServiceTestFactory.createS3(ns);
 
@@ -869,9 +869,19 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
       createEntity(childRequest);
     }
 
-    Container fetchedParent = client.containers().get(parent.getId().toString(), "children");
-    assertNotNull(fetchedParent.getChildren());
-    assertEquals(5, fetchedParent.getChildren().size());
+    // children must be enumerated via the dedicated paginated /children endpoint —
+    // it is no longer a valid value for the fields= query param.
+    ContainerResultList page =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + parent.getFullyQualifiedName() + "/children",
+                null,
+                ContainerResultList.class);
+    assertNotNull(page);
+    assertNotNull(page.getData());
+    assertEquals(5, page.getData().size());
   }
 
   @Test
@@ -919,8 +929,68 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
           "child service ref must be populated by setDefaultFields after bulk fetch");
       assertEquals(
           service.getId(), child.getService().getId(), "child must reference parent service");
+      // Slim projection contract: heavy fields are NOT loaded on the listing path.
+      // Callers that need them must fetch the child by id/fqn directly.
+      assertNull(
+          child.getDataModel(),
+          "dataModel must NOT be populated in the listing — it can be MBs per row");
+      assertNull(child.getOwners(), "owners must NOT be populated in the listing");
+      assertNull(child.getExtension(), "extension must NOT be populated in the listing");
+      // Container's generated POJO initialises `tags` to an empty list, so we assert
+      // it is empty rather than null — the point is no actual tag data is loaded.
+      assertTrue(
+          child.getTags() == null || child.getTags().isEmpty(),
+          "tags must NOT be populated in the listing");
     }
   }
+
+  @Test
+  void test_listChildren_returnsDescriptionForUiTable(TestNamespace ns) throws Exception {
+    // The UI's children table renders name + description, so the slim projection
+    // must include description. This test guards that field specifically.
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer parentRequest = new CreateContainer();
+    parentRequest.setName(ns.prefix("parent_listChildren_desc"));
+    parentRequest.setService(service.getFullyQualifiedName());
+    Container parent = createEntity(parentRequest);
+
+    String childDescription = "child description for UI table";
+    CreateContainer childRequest = new CreateContainer();
+    childRequest.setName(ns.prefix("listChildren_desc_child"));
+    childRequest.setService(service.getFullyQualifiedName());
+    childRequest.setDescription(childDescription);
+    childRequest.setParent(
+        new EntityReference()
+            .withId(parent.getId())
+            .withType("container")
+            .withFullyQualifiedName(parent.getFullyQualifiedName()));
+    createEntity(childRequest);
+
+    ContainerResultList page =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + parent.getFullyQualifiedName() + "/children",
+                null,
+                ContainerResultList.class);
+
+    assertNotNull(page);
+    assertEquals(1, page.getData().size());
+    assertEquals(childDescription, page.getData().get(0).getDescription());
+  }
+
+  // Note: explicit "fields=children rejected" and "fields=* excludes children"
+  // assertions were intentionally not added here. With Container's allowedFields
+  // set in the parent EntityRepository constructor *before* ContainerRepository
+  // can mutate it, downstream caches and inheritance paths can still surface
+  // children even after the allow-list removal. The actual perf win — children
+  // are NEVER eagerly loaded by the listing path or the data-contract resolver
+  // — is locked in by test_listChildren_populatesDefaultFields and
+  // testGetDataContractByEntityId_containerEntity_slimEntityLoad. The hardening
+  // of fields=* expansion is tracked separately.
 
   private static class ContainerResultList extends ResultList<Container> {}
 
