@@ -17,24 +17,10 @@ import React, { useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../utils/ToastUtils';
-
-export enum ExportFormat {
-  PNG = 'png',
-  SVG = 'svg',
-  JSONLD = 'jsonld',
-  TURTLE = 'turtle',
-  RDFXML = 'rdfxml',
-}
-
-export interface ExportGraphPanelProps {
-  supportedExports?: ExportFormat[];
-  onExportPng: () => Promise<void>;
-  onExportSvg?: () => Promise<void>;
-  onExportJsonLd?: () => Promise<void>;
-  onExportTurtle?: () => Promise<void>;
-  onExportRdfXml?: () => Promise<void>;
-  'data-testid'?: string;
-}
+import {
+  ExportFormat,
+  ExportGraphPanelProps,
+} from './ExportGraphPanel.interface';
 
 const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
   onExportPng,
