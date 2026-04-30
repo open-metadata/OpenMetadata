@@ -209,10 +209,10 @@ export const updateSearchInputAndWait = async (
   await waitForAllLoadersToDisappear(page);
 };
 
-interface SearchInputOptions {
+type SearchInputOptions = {
   waitForSearchApi?: boolean;
   searchApiPattern?: string;
-}
+};
 
 export const searchFromSearchInput = async (
   page: Page,
@@ -225,22 +225,23 @@ export const searchFromSearchInput = async (
     searchApiPattern = '/api/v1/search/query',
   } = options;
 
-  const searchResponsePromise =
-    waitForSearchApi && searchTerm
-      ? page.waitForResponse(
-          (response) =>
-            response.url().includes(searchApiPattern) &&
-            response.request().method() === 'GET' &&
-            response.url().includes(encodeURIComponent(searchTerm))
-        )
-      : undefined;
+  const searchResponsePromise = waitForSearchApi
+    ? page.waitForResponse(
+        (response) =>
+          response.url().includes(searchApiPattern) &&
+          response.request().method() === 'GET' &&
+          response.url().includes(encodeURIComponent(searchTerm))
+      )
+    : undefined;
 
   await updateSearchInputAndWait(page, searchInput, searchTerm);
 
-  if (searchResponsePromise) {
-    const searchResponse = await searchResponsePromise;
-    expect(searchResponse.status()).toBe(200);
+  if (!searchResponsePromise) {
+    return;
   }
+
+  const searchResponse = await searchResponsePromise;
+  expect(searchResponse.status()).toBe(200);
 };
 
 export const visitOwnProfilePage = async (page: Page) => {

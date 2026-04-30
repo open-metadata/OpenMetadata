@@ -35,9 +35,8 @@ import { Paging } from '../../../../generated/type/paging';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import { useAuth } from '../../../../hooks/authHooks';
 import { usePaging } from '../../../../hooks/paging/usePaging';
-import { getBots } from '../../../../rest/botsAPI';
+import { getBotByName, getBots } from '../../../../rest/botsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getBotByName } from '../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
 import {
   getEntityName,
@@ -63,6 +62,12 @@ import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBread
 import PageHeader from '../../../PageHeader/PageHeader.component';
 import './bot-list-v1.less';
 import { BotListV1Props } from './BotListV1.interfaces';
+
+const BOT_SEARCH_PAGE_SIZE = 100;
+const BOT_SEARCH_CONCURRENCY = 10;
+const MAX_BOT_SEARCH_PAGES = 5;
+const MAX_BOT_USER_RESOLUTION = BOT_SEARCH_PAGE_SIZE * MAX_BOT_SEARCH_PAGES;
+
 const BotListV1 = ({
   showDeleted,
   handleAddBotClick,
@@ -89,10 +94,6 @@ const BotListV1 = ({
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const latestSearchRequest = useRef(0);
-  const BOT_SEARCH_PAGE_SIZE = 100;
-  const BOT_SEARCH_CONCURRENCY = 10;
-  const MAX_BOT_SEARCH_PAGES = 5;
-  const MAX_BOT_USER_RESOLUTION = BOT_SEARCH_PAGE_SIZE * MAX_BOT_SEARCH_PAGES;
 
   const getBotIncludeFilter = useCallback(
     () => (showDeleted ? Include.Deleted : Include.NonDeleted),
@@ -112,19 +113,22 @@ const BotListV1 = ({
     email: botUser.email,
   });
 
-  const enrichBotWithMatchedUser = useCallback((bot: Bot, botUser?: User) => {
-    if (!botUser) {
-      return bot;
-    }
+  const enrichBotWithMatchedUser = useCallback(
+    (bot: Bot, botUser?: User) => {
+      if (!botUser) {
+        return bot;
+      }
 
-    return {
-      ...bot,
-      botUser: {
-        ...(bot.botUser ?? {}),
-        ...getBotUserFromUser(botUser),
-      } as Bot['botUser'],
-    };
-  }, []);
+      return {
+        ...bot,
+        botUser: {
+          ...(bot.botUser ?? {}),
+          ...getBotUserFromUser(botUser),
+        } as Bot['botUser'],
+      };
+    },
+    [getBotUserFromUser]
+  );
 
   const enrichBotsWithBotUsers = async (bots: Bot[]) => {
     if (!bots.length) {
@@ -415,7 +419,7 @@ const BotListV1 = ({
         },
       },
     ],
-    []
+    [t, searchTerm, isAdminUser]
   );
 
   /**

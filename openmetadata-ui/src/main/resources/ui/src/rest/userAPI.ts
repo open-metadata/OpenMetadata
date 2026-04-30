@@ -149,15 +149,6 @@ export const getAuthMechanismForBotUser = async (botId: string) => {
   return response.data;
 };
 
-export const getBotByName = async (name: string, params?: ListParams) => {
-  const response = await APIClient.get<Bot>(
-    `/bots/name/${getEncodedFqn(name)}`,
-    { params }
-  );
-
-  return response.data;
-};
-
 export const updateBotDetail = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<Operation[], AxiosResponse<Bot>>(
     `/bots/${id}`,

@@ -16,6 +16,8 @@ import axiosClient from '.';
 import { CreateBot } from '../generated/api/createBot';
 import { Bot } from '../generated/entity/bot';
 import { Include } from '../generated/type/include';
+import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import { Paging } from '../generated/type/paging';
 
 const BASE_URL = '/bots';
@@ -42,6 +44,15 @@ export const createBot = async (data: CreateBot) => {
   const response = await axiosClient.post<CreateBot, AxiosResponse<Bot>>(
     BASE_URL,
     data
+  );
+
+  return response.data;
+};
+
+export const getBotByName = async (name: string, params?: ListParams) => {
+  const response = await axiosClient.get<Bot>(
+    `${BASE_URL}/name/${getEncodedFqn(name)}`,
+    { params }
   );
 
   return response.data;
