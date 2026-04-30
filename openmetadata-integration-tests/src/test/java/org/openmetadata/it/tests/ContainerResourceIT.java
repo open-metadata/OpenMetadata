@@ -982,15 +982,74 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     assertEquals(childDescription, page.getData().get(0).getDescription());
   }
 
-  // Note: explicit "fields=children rejected" and "fields=* excludes children"
-  // assertions were intentionally not added here. With Container's allowedFields
-  // set in the parent EntityRepository constructor *before* ContainerRepository
-  // can mutate it, downstream caches and inheritance paths can still surface
-  // children even after the allow-list removal. The actual perf win — children
-  // are NEVER eagerly loaded by the listing path or the data-contract resolver
-  // — is locked in by test_listChildren_populatesDefaultFields and
-  // testGetDataContractByEntityId_containerEntity_slimEntityLoad. The hardening
-  // of fields=* expansion is tracked separately.
+  @Test
+  void test_fields_children_rejected_with400(TestNamespace ns) {
+    // children was previously available via fields=children, but it was unbounded:
+    // ContainerRepository#getChildren returned every reference under the parent
+    // with no pagination, easily blowing past the 60s request timeout for
+    // Tahoe-style containers. We removed it from Container's allowed-fields set
+    // so the API surface forces callers onto the dedicated paginated endpoint
+    // /v1/containers/name/{fqn}/children?limit=&offset=.
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("fields_children_rejected"));
+    request.setService(service.getFullyQualifiedName());
+    Container container = createEntity(request);
+
+    assertThrows(
+        Exception.class,
+        () ->
+            client
+                .getHttpClient()
+                .execute(
+                    HttpMethod.GET,
+                    "/v1/containers/name/" + container.getFullyQualifiedName() + "?fields=children",
+                    null,
+                    Container.class),
+        "fields=children must be rejected — callers must use /children endpoint");
+  }
+
+  @Test
+  void test_fields_star_excludesChildren(TestNamespace ns) throws Exception {
+    // fields=* expands server-side to the entity's allowed-fields set. Removing
+    // children from that set means existing clients passing fields=* keep working
+    // but no longer pull thousands of child references implicitly. Real children
+    // listings must go through the paginated /children endpoint.
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer parentRequest = new CreateContainer();
+    parentRequest.setName(ns.prefix("fields_star_parent"));
+    parentRequest.setService(service.getFullyQualifiedName());
+    Container parent = createEntity(parentRequest);
+
+    CreateContainer childRequest = new CreateContainer();
+    childRequest.setName(ns.prefix("fields_star_child"));
+    childRequest.setService(service.getFullyQualifiedName());
+    childRequest.setParent(
+        new EntityReference()
+            .withId(parent.getId())
+            .withType("container")
+            .withFullyQualifiedName(parent.getFullyQualifiedName()));
+    createEntity(childRequest);
+
+    Container fetched =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + parent.getFullyQualifiedName() + "?fields=*",
+                null,
+                Container.class);
+
+    assertNotNull(fetched);
+    assertNull(
+        fetched.getChildren(),
+        "fields=* must NOT expand to children — that field is unbounded and only the"
+            + " paginated /children endpoint should populate it");
+  }
 
   private static class ContainerResultList extends ResultList<Container> {}
 

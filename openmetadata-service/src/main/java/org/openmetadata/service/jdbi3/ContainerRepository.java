@@ -12,7 +12,6 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
-import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -552,16 +551,13 @@ public class ContainerRepository extends EntityRepository<Container> {
     // latency budget in prod we can tell which step (parent lookup / relationship
     // fetch / count / slim hydration / service restore) was responsible.
     Container parentContainer;
-    try (var ignored =
-        RequestLatencyContext.phase("listChildrenParent")) {
+    try (var ignored = RequestLatencyContext.phase("listChildrenParent")) {
       parentContainer = dao.findEntityByName(parentFQN);
     }
 
     try {
       List<CollectionDAO.EntityRelationshipRecord> relationshipRecords;
-      try (var ignored =
-          RequestLatencyContext.phase(
-              "listChildrenRelationships")) {
+      try (var ignored = RequestLatencyContext.phase("listChildrenRelationships")) {
         relationshipRecords =
             daoCollection
                 .relationshipDAO()
@@ -574,8 +570,7 @@ public class ContainerRepository extends EntityRepository<Container> {
       }
 
       int total;
-      try (var ignored =
-          RequestLatencyContext.phase("listChildrenCount")) {
+      try (var ignored = RequestLatencyContext.phase("listChildrenCount")) {
         total =
             daoCollection
                 .relationshipDAO()
@@ -601,11 +596,8 @@ public class ContainerRepository extends EntityRepository<Container> {
       // listing latency.
       List<UUID> ids = relationshipRecords.stream().map(r -> r.getId()).toList();
       Map<UUID, Container> byId = new HashMap<>();
-      try (var ignored =
-          RequestLatencyContext.phase(
-              "listChildrenHydrate")) {
-        for (Container c :
-            ((CollectionDAO.ContainerDAO) dao).findContainerSummariesByIds(ids)) {
+      try (var ignored = RequestLatencyContext.phase("listChildrenHydrate")) {
+        for (Container c : ((CollectionDAO.ContainerDAO) dao).findContainerSummariesByIds(ids)) {
           byId.put(c.getId(), c);
         }
       }
@@ -620,9 +612,7 @@ public class ContainerRepository extends EntityRepository<Container> {
         }
       }
       // service is stripped from stored JSON; restore via batched relationship lookup.
-      try (var ignored =
-          RequestLatencyContext.phase(
-              "listChildrenService")) {
+      try (var ignored = RequestLatencyContext.phase("listChildrenService")) {
         fetchAndSetDefaultService(children);
       }
 

@@ -106,8 +106,7 @@ public class OpenMetadataServerHealthCheck extends HealthCheck {
       LOG.warn(
           "Health check exceeded {} ms — failing the probe so k8s can recycle the pod",
           DB_TIMEOUT_MILLIS);
-      return Result.unhealthy(
-          "Database probe did not complete in " + DB_TIMEOUT_MILLIS + " ms");
+      return Result.unhealthy("Database probe did not complete in " + DB_TIMEOUT_MILLIS + " ms");
     } catch (Exception e) {
       LOG.warn("Health check raised an unexpected error", e);
       return Result.unhealthy("Health check error: " + e.getMessage());
