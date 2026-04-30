@@ -44,6 +44,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
+import { getNodeRenderKey } from '../../../utils/KnowledgeGraph.utils';
 import { getEntityIcon } from '../../../utils/TableUtils';
 
 function makeNodeData(
@@ -60,6 +61,15 @@ function makeNodeData(
   } as NodeData;
 }
 
+function renderCustomNode(nodeData: NodeData) {
+  return render(
+    <CustomNode
+      nodeData={nodeData}
+      nodeRenderKey={getNodeRenderKey(nodeData)}
+    />
+  );
+}
+
 describe('CustomNode', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -70,25 +80,25 @@ describe('CustomNode', () => {
 
   describe('Basic rendering', () => {
     it('renders without crashing with minimal props', () => {
-      render(<CustomNode nodeData={makeNodeData()} />);
+      renderCustomNode(makeNodeData());
 
       expect(screen.getByTestId('node-TestNode')).toBeInTheDocument();
     });
 
     it('renders label from nodeData.data.label', () => {
-      render(<CustomNode nodeData={makeNodeData({ label: 'MyTable' })} />);
+      renderCustomNode(makeNodeData({ label: 'MyTable' }));
 
       expect(screen.getByTestId('label')).toHaveTextContent('MyTable');
     });
 
     it('renders type text in type-tag', () => {
-      render(<CustomNode nodeData={makeNodeData({ type: 'pipeline' })} />);
+      renderCustomNode(makeNodeData({ type: 'pipeline' }));
 
       expect(screen.getByTestId('type-tag')).toHaveTextContent('pipeline');
     });
 
     it('sets data-node-id attribute to nodeData.id', () => {
-      render(<CustomNode nodeData={makeNodeData({}, 'abc-123')} />);
+      renderCustomNode(makeNodeData({}, 'abc-123'));
 
       expect(screen.getByTestId('node-TestNode')).toHaveAttribute(
         'data-node-id',
@@ -97,19 +107,19 @@ describe('CustomNode', () => {
     });
 
     it('sets data-testid to "node-{label}" on root div', () => {
-      render(<CustomNode nodeData={makeNodeData({ label: 'SomeLabel' })} />);
+      renderCustomNode(makeNodeData({ label: 'SomeLabel' }));
 
       expect(screen.getByTestId('node-SomeLabel')).toBeInTheDocument();
     });
 
     it('exposes data-testid="label" on the label element', () => {
-      render(<CustomNode nodeData={makeNodeData()} />);
+      renderCustomNode(makeNodeData());
 
       expect(screen.getByTestId('label')).toBeInTheDocument();
     });
 
     it('exposes data-testid="type-tag" on the type element', () => {
-      render(<CustomNode nodeData={makeNodeData()} />);
+      renderCustomNode(makeNodeData());
 
       expect(screen.getByTestId('type-tag')).toBeInTheDocument();
     });
@@ -117,7 +127,7 @@ describe('CustomNode', () => {
 
   describe('Highlighted state', () => {
     it('does NOT add highlighted class when highlighted is undefined', () => {
-      render(<CustomNode nodeData={makeNodeData()} />);
+      renderCustomNode(makeNodeData());
 
       expect(screen.getByTestId('node-TestNode')).not.toHaveClass(
         'highlighted'
@@ -125,7 +135,7 @@ describe('CustomNode', () => {
     });
 
     it('does NOT add highlighted class when highlighted is false', () => {
-      render(<CustomNode nodeData={makeNodeData({ highlighted: false })} />);
+      renderCustomNode(makeNodeData({ highlighted: false }));
 
       expect(screen.getByTestId('node-TestNode')).not.toHaveClass(
         'highlighted'
@@ -133,7 +143,26 @@ describe('CustomNode', () => {
     });
 
     it('DOES add highlighted class when highlighted is true', () => {
-      render(<CustomNode nodeData={makeNodeData({ highlighted: true })} />);
+      renderCustomNode(makeNodeData({ highlighted: true }));
+
+      expect(screen.getByTestId('node-TestNode')).toHaveClass('highlighted');
+    });
+
+    it('updates highlighted class when same node object is mutated and rerendered', () => {
+      const nodeData = makeNodeData({ highlighted: false });
+      const { rerender } = renderCustomNode(nodeData);
+
+      expect(screen.getByTestId('node-TestNode')).not.toHaveClass(
+        'highlighted'
+      );
+
+      (nodeData.data as { highlighted?: boolean }).highlighted = true;
+      rerender(
+        <CustomNode
+          nodeData={nodeData}
+          nodeRenderKey={getNodeRenderKey(nodeData)}
+        />
+      );
 
       expect(screen.getByTestId('node-TestNode')).toHaveClass('highlighted');
     });
@@ -141,13 +170,11 @@ describe('CustomNode', () => {
 
   describe('Custom color styles', () => {
     it('applies colorMain and colorLight as inline style on type-tag when both provided', () => {
-      render(
-        <CustomNode
-          nodeData={makeNodeData({
-            colorMain: '#1677ff',
-            colorLight: '#e6f4ff',
-          })}
-        />
+      renderCustomNode(
+        makeNodeData({
+          colorMain: '#1677ff',
+          colorLight: '#e6f4ff',
+        })
       );
 
       const tag = screen.getByTestId('type-tag');
@@ -156,20 +183,18 @@ describe('CustomNode', () => {
     });
 
     it('sets border:none on type-tag when both colors provided', () => {
-      render(
-        <CustomNode
-          nodeData={makeNodeData({
-            colorMain: '#1677ff',
-            colorLight: '#e6f4ff',
-          })}
-        />
+      renderCustomNode(
+        makeNodeData({
+          colorMain: '#1677ff',
+          colorLight: '#e6f4ff',
+        })
       );
 
       expect(screen.getByTestId('type-tag')).toHaveStyle({ border: 'none' });
     });
 
     it('does NOT apply inline style when only colorMain is provided', () => {
-      render(<CustomNode nodeData={makeNodeData({ colorMain: '#1677ff' })} />);
+      renderCustomNode(makeNodeData({ colorMain: '#1677ff' }));
 
       expect(screen.getByTestId('type-tag')).not.toHaveStyle({
         color: '#1677ff',
@@ -177,7 +202,7 @@ describe('CustomNode', () => {
     });
 
     it('does NOT apply inline style when only colorLight is provided', () => {
-      render(<CustomNode nodeData={makeNodeData({ colorLight: '#e6f4ff' })} />);
+      renderCustomNode(makeNodeData({ colorLight: '#e6f4ff' }));
 
       expect(screen.getByTestId('type-tag')).not.toHaveStyle({
         backgroundColor: '#e6f4ff',
@@ -185,7 +210,7 @@ describe('CustomNode', () => {
     });
 
     it('does NOT apply inline style when neither color is provided', () => {
-      render(<CustomNode nodeData={makeNodeData()} />);
+      renderCustomNode(makeNodeData());
       const tag = screen.getByTestId('type-tag');
 
       expect(tag.getAttribute('style')).toBeFalsy();
@@ -194,7 +219,7 @@ describe('CustomNode', () => {
 
   describe('Icon rendering', () => {
     it('calls getEntityIcon with the node type string', () => {
-      render(<CustomNode nodeData={makeNodeData({ type: 'dashboard' })} />);
+      renderCustomNode(makeNodeData({ type: 'dashboard' }));
 
       expect(getEntityIcon).toHaveBeenCalledWith(
         'dashboard',
@@ -204,7 +229,7 @@ describe('CustomNode', () => {
     });
 
     it('renders the icon returned by getEntityIcon', () => {
-      render(<CustomNode nodeData={makeNodeData()} />);
+      renderCustomNode(makeNodeData());
 
       expect(screen.getByTestId('entity-icon')).toBeInTheDocument();
     });

@@ -19,6 +19,7 @@ import './custom-node.less';
 
 export interface CustomNodeProps {
   nodeData: NodeData;
+  nodeRenderKey: string;
 }
 
 function CustomNode({ nodeData }: Readonly<CustomNodeProps>) {
@@ -65,16 +66,12 @@ function CustomNode({ nodeData }: Readonly<CustomNodeProps>) {
   );
 }
 
-export default React.memo(CustomNode, (prev, next) => {
-  const p = prev.nodeData.data;
-  const n = next.nodeData.data;
-
-  return (
-    prev.nodeData.id === next.nodeData.id &&
-    p?.highlighted === n?.highlighted &&
-    p?.label === n?.label &&
-    p?.type === n?.type &&
-    p?.colorMain === n?.colorMain &&
-    p?.colorLight === n?.colorLight
-  );
-});
+// The G6 node object is mutable and can be updated in place.
+// In a custom memo comparator, prev.nodeData.data and next.nodeData.data
+// can end up reading the same already-mutated object
+// Hence adding nodeRenderKey which is derived from nodeData but is a string
+// and won't be affected by mutations to the nodeData object
+export default React.memo(
+  CustomNode,
+  (prev, next) => prev.nodeRenderKey === next.nodeRenderKey
+);

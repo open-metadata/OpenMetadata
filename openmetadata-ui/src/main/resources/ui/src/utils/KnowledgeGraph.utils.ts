@@ -13,13 +13,15 @@
 
 import {
   EdgeData as G6EdgeData,
-  Graph,
   GraphData as G6GraphData,
-  IElementEvent,
   NodeData as G6NodeData,
+  Graph,
+  IElementEvent,
+  NodeData,
   NodePortStyleProps,
 } from '@antv/g6';
 import { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
+import { toString } from 'lodash';
 import { EDGE_STYLE_RESET } from '../components/KnowledgeGraph/KnowledgeGraph.constants';
 import {
   GraphData,
@@ -889,4 +891,17 @@ export const setupGraphEventHandlers = (ctx: GraphInteractionCtx): void => {
     selectedNodeIdRef.current = null;
     clearAllHighlights();
   });
+};
+
+export const getNodeRenderKey = (nodeData: NodeData): string => {
+  const data = nodeData.data ?? {};
+
+  return [
+    toString(nodeData.id),
+    toString(data.label),
+    toString(data.type),
+    toString(data.colorMain),
+    toString(data.colorLight),
+    toString(data.highlighted),
+  ].join('|');
 };

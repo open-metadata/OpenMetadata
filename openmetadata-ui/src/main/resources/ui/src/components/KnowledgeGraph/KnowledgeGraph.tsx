@@ -12,10 +12,10 @@
  */
 
 import {
-  EdgeData as G6EdgeData,
   ExtensionCategory,
-  Graph,
+  EdgeData as G6EdgeData,
   NodeData as G6NodeData,
+  Graph,
   NodePortStyleProps,
   register,
 } from '@antv/g6';
@@ -72,6 +72,7 @@ import {
   assignRadialPorts,
   computeELKPositions,
   computeELKRadialPositions,
+  getNodeRenderKey,
   MAX_NODE_WIDTH,
   NODE_HEIGHT,
   setupGraphEventHandlers,
@@ -196,7 +197,9 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   ]);
 
   const renderNode = useCallback(
-    (data: G6NodeData) => <CustomNode nodeData={data} />,
+    (data: G6NodeData) => (
+      <CustomNode nodeData={data} nodeRenderKey={getNodeRenderKey(data)} />
+    ),
     []
   );
 
