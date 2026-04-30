@@ -82,7 +82,7 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:  # noqa: UP006
         parsed = _ensure_mapping(json.loads(content), "JSON")
         logger.debug("Successfully parsed OpenAPI schema as JSON")
         return parsed  # noqa: TRY300
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, OpenAPIParseError):
         logger.debug("Content is not valid JSON, trying YAML")
 
     # Then try YAML
@@ -90,7 +90,7 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:  # noqa: UP006
         parsed = _ensure_mapping(yaml.safe_load(content), "YAML")
         logger.debug("Successfully parsed OpenAPI schema as YAML")
         return parsed  # noqa: TRY300
-    except yaml.YAMLError as e:
+    except (yaml.YAMLError, OpenAPIParseError) as e:
         logger.error(f"Failed to parse as YAML: {e}")
 
     # If both formats fail, raise an error
@@ -147,12 +147,12 @@ def parse_openapi_schema_from_file(file_path: Union[str, Path]) -> Dict[str, Any
     # Unknown extension — try JSON first, then YAML
     try:
         return _ensure_mapping(json.loads(content), "JSON")
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, OpenAPIParseError):
         pass
 
     try:
         return _ensure_mapping(yaml.safe_load(content), "YAML")
-    except yaml.YAMLError:
+    except (yaml.YAMLError, OpenAPIParseError):
         pass
 
     raise OpenAPIParseError(f"Failed to parse '{file_path}' as either JSON or YAML.")
@@ -236,12 +236,12 @@ def parse_openapi_schema_from_s3(
     # Unknown extension — try JSON first, then YAML
     try:
         return _ensure_mapping(json.loads(content), "JSON")
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, OpenAPIParseError):
         pass
 
     try:
         return _ensure_mapping(yaml.safe_load(content), "YAML")
-    except yaml.YAMLError:
+    except (yaml.YAMLError, OpenAPIParseError):
         pass
 
     raise OpenAPIParseError(f"Failed to parse S3 file '{key}' as either JSON or YAML.")

@@ -1028,8 +1028,12 @@ class RESTTest(TestCase):
         # When no items key exists, children is None
         assert result.children is None
 
+    @patch(
+        "metadata.ingestion.source.api.api_service.get_connection",
+        return_value=MOCK_JSON_RESPONSE,
+    )
     @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
-    def test_endpoint_filter_pattern(self, test_connection):
+    def test_endpoint_filter_pattern(self, test_connection, get_connection):
         """test endpoint filter pattern"""
         test_connection.return_value = False
 
