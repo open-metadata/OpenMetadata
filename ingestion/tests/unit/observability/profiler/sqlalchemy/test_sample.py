@@ -12,6 +12,7 @@
 """
 Test Sample behavior
 """
+
 import os
 from unittest import TestCase
 from unittest.mock import patch
@@ -61,9 +62,7 @@ class SampleTest(TestCase):
     Run checks on different metrics
     """
 
-    db_path = os.path.join(
-        os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db"
-    )
+    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")  # noqa: PTH118, PTH120, PTH122
     sqlite_conn = SQLiteConnection(
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
@@ -156,7 +155,7 @@ class SampleTest(TestCase):
         User.__table__.create(bind=cls.engine)
 
         # Insert 30 rows
-        for i in range(10):
+        for i in range(10):  # noqa: B007
             data = [
                 User(
                     name="John",
@@ -316,7 +315,7 @@ class SampleTest(TestCase):
 
         UserBinary.__table__.create(bind=self.engine)
 
-        for i in range(10):
+        for i in range(10):  # noqa: B007
             data = [
                 UserBinary(
                     name="John",
@@ -354,7 +353,7 @@ class SampleTest(TestCase):
             "password_hash",
         ]
 
-        assert type(sample_data.rows[0][6]) == str
+        assert type(sample_data.rows[0][6]) == str  # noqa: E721
 
         UserBinary.__table__.drop(bind=self.engine)
 
@@ -409,9 +408,7 @@ class SampleTest(TestCase):
                 sample_data_count=5,
             )
 
-        with patch.object(
-            sampler, "get_sample_query", wraps=sampler.get_sample_query
-        ) as mock_gsq:
+        with patch.object(sampler, "get_sample_query", wraps=sampler.get_sample_query) as mock_gsq:
             sampler.fetch_sample_data()
             assert mock_gsq.called
 
@@ -436,9 +433,7 @@ class SampleTest(TestCase):
                 sample_data_count=5,
             )
 
-        with patch.object(
-            sampler, "get_sample_query", wraps=sampler.get_sample_query
-        ) as mock_gsq:
+        with patch.object(sampler, "get_sample_query", wraps=sampler.get_sample_query) as mock_gsq:
             sampler.fetch_sample_data()
             assert not mock_gsq.called
 
@@ -463,9 +458,7 @@ class SampleTest(TestCase):
                 sample_data_count=5,
             )
 
-        with patch.object(
-            sampler, "get_sample_query", wraps=sampler.get_sample_query
-        ) as mock_gsq:
+        with patch.object(sampler, "get_sample_query", wraps=sampler.get_sample_query) as mock_gsq:
             sampler.fetch_sample_data()
             assert not mock_gsq.called
 
@@ -491,9 +484,9 @@ class SampleTest(TestCase):
             )
 
         results = [sampler.fetch_sample_data().rows for _ in range(20)]
-        assert any(
-            results[i] != results[0] for i in range(1, len(results))
-        ), "Expected non-deterministic row ordering with randomizedSample=True"
+        assert any(results[i] != results[0] for i in range(1, len(results))), (
+            "Expected non-deterministic row ordering with randomizedSample=True"
+        )
 
     def test_randomized_false_produces_deterministic_rows(self, sampler_mock):
         """With randomizedSample=False at 100% PERCENTAGE, multiple
@@ -517,11 +510,11 @@ class SampleTest(TestCase):
             )
 
         results = [sampler.fetch_sample_data().rows for _ in range(5)]
-        assert all(
-            results[i] == results[0] for i in range(1, len(results))
-        ), "Expected deterministic row ordering with randomizedSample=False"
+        assert all(results[i] == results[0] for i in range(1, len(results))), (
+            "Expected deterministic row ordering with randomizedSample=False"
+        )
 
     @classmethod
     def tearDownClass(cls) -> None:
-        os.remove(cls.db_path)
+        os.remove(cls.db_path)  # noqa: PTH107
         return super().tearDownClass()

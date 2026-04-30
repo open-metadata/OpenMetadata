@@ -13,7 +13,7 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Table, func, text
 from sqlalchemy.sql.selectable import CTE
@@ -42,14 +42,14 @@ class SnowflakeSampler(SQASampler):
     # pylint: disable=too-many-arguments
     def __init__(
         self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection],  # noqa: UP007
         ometa_client: OpenMetadata,
         entity: Table,
-        sample_config: Optional[SampleConfig] = None,
-        partition_details: Optional[Dict] = None,
-        sample_query: Optional[str] = None,
+        sample_config: Optional[SampleConfig] = None,  # noqa: UP045
+        partition_details: Optional[Dict] = None,  # noqa: UP006, UP045
+        sample_query: Optional[str] = None,  # noqa: UP045
         storage_config: DataStorageConfig = None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
+        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,  # noqa: UP045
         **kwargs,
     ):
         super().__init__(

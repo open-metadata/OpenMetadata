@@ -10,23 +10,33 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { NodeViewProps } from '@tiptap/core';
+import React from 'react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
-import { getActiveFieldNameForAppDocs } from '../../../utils/ServiceUtils';
+import {
+  getActiveFieldNameForAppDocs,
+  processDocMarkdown,
+} from '../../../utils/ServiceUtils';
+import CodeBlockComponent from '../../BlockEditor/Extensions/CodeBlock/CodeBlockComponent';
 import ServiceDocPanel from './ServiceDocPanel';
 
 jest.mock('../Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
-jest.mock('../RichTextEditor/RichTextEditorPreviewer', () =>
-  jest
-    .fn()
-    .mockImplementation(({ markdown }) => (
-      <div data-testid="requirement-text">{markdown}</div>
-    ))
-);
+jest.mock('@tiptap/react', () => ({
+  NodeViewWrapper: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => React.createElement('pre', props, children),
+  NodeViewContent: ({ as: Tag = 'div' }: { as?: string }) =>
+    React.createElement(Tag),
+}));
 
 jest.mock('../../Explore/EntitySummaryPanel/EntitySummaryPanel.component', () =>
   jest
@@ -42,10 +52,21 @@ jest.mock('../../../rest/miscAPI', () => ({
 
 jest.mock('../../../utils/ServiceUtils', () => ({
   getActiveFieldNameForAppDocs: jest.fn(),
+  processDocMarkdown: jest.fn((content: string) => content),
 }));
+
+jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest.fn(({ markdown }: { markdown: string }) => (
+    <div
+      className="service-doc-content"
+      dangerouslySetInnerHTML={{ __html: markdown }}
+    />
+  ))
+);
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
+    t: (key: string) => key,
     i18n: {
       language: 'en-US',
     },
@@ -59,12 +80,13 @@ const mockGetActiveFieldNameForAppDocs =
   getActiveFieldNameForAppDocs as jest.MockedFunction<
     typeof getActiveFieldNameForAppDocs
   >;
+const mockProcessDocMarkdown = processDocMarkdown as jest.MockedFunction<
+  typeof processDocMarkdown
+>;
 
 const mockScrollIntoView = jest.fn();
 const mockQuerySelector = jest.fn();
 const mockQuerySelectorAll = jest.fn();
-const mockSetAttribute = jest.fn();
-const mockRemoveAttribute = jest.fn();
 
 Object.defineProperty(window, 'requestAnimationFrame', {
   writable: true,
@@ -81,13 +103,9 @@ Object.defineProperty(document, 'querySelectorAll', {
   value: mockQuerySelectorAll,
 });
 
-const createMockElement = (
-  setAttribute = mockSetAttribute,
-  removeAttribute = mockRemoveAttribute
-) => ({
+const createMockElement = () => ({
   scrollIntoView: mockScrollIntoView,
-  setAttribute,
-  removeAttribute,
+  dataset: {} as DOMStringMap,
 });
 
 const defaultProps = {
@@ -113,11 +131,11 @@ describe('ServiceDocPanel Component', () => {
 
   describe('Core Functionality', () => {
     it('should render component and fetch markdown content', async () => {
-      render(<ServiceDocPanel {...defaultProps} />);
+      const { container } = render(<ServiceDocPanel {...defaultProps} />);
 
       await waitFor(() => {
         expect(screen.getByTestId('service-requirements')).toBeInTheDocument();
-        expect(screen.getByTestId('requirement-text')).toBeInTheDocument();
+        expect(container.querySelector('.service-doc-content')).not.toBeNull();
         expect(mockFetchMarkdownFile).toHaveBeenCalledWith(
           'en-US/DatabaseService/mysql.md'
         );
@@ -171,19 +189,64 @@ describe('ServiceDocPanel Component', () => {
       render(<ServiceDocPanel {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('requirement-text')).toHaveTextContent('');
+        expect(screen.getByTestId('service-requirements')).toBeInTheDocument();
+        expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Admonition Rendering', () => {
+    it('should render a note admonition block', async () => {
+      mockProcessDocMarkdown.mockReturnValue(
+        '<div class="admonition admonition-note"><p>This is a note</p></div>'
+      );
+
+      const { container } = render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.admonition.admonition-note')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should render a warning admonition block', async () => {
+      mockProcessDocMarkdown.mockReturnValue(
+        '<div class="admonition admonition-warning"><p>This is a warning</p></div>'
+      );
+
+      const { container } = render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.admonition.admonition-warning')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should pass fetched markdown through processDocMarkdown', async () => {
+      mockFetchMarkdownFile.mockResolvedValue('$$note\nsome note\n$$');
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          '$$note\nsome note\n$$'
+        );
       });
     });
   });
 
   describe('Field Highlighting', () => {
     beforeEach(() => {
-      const mockElement = createMockElement();
-      mockQuerySelector.mockReturnValue(mockElement);
+      mockQuerySelector.mockReturnValue(createMockElement());
       mockQuerySelectorAll.mockReturnValue([createMockElement()]);
     });
 
     it('should highlight and scroll to active field', async () => {
+      const mockElement = createMockElement();
+      mockQuerySelector.mockReturnValue(mockElement);
+
       render(
         <ServiceDocPanel {...defaultProps} activeField="root/database/name" />
       );
@@ -195,10 +258,7 @@ describe('ServiceDocPanel Component', () => {
           behavior: 'smooth',
           inline: 'center',
         });
-        expect(mockSetAttribute).toHaveBeenCalledWith(
-          'data-highlighted',
-          'true'
-        );
+        expect(mockElement.dataset.highlighted).toBe('true');
       });
     });
 
@@ -218,13 +278,14 @@ describe('ServiceDocPanel Component', () => {
           'root/config/database'
         );
         expect(mockQuerySelector).toHaveBeenCalledWith(
-          '[data-id="config.database"]'
+          `[data-id="${CSS.escape('config.database')}"]`
         );
       });
     });
 
     it('should clean up previous highlights before highlighting new element', async () => {
       const previousElement = createMockElement();
+      previousElement.dataset.highlighted = 'true';
       const currentElement = createMockElement();
 
       mockQuerySelectorAll.mockReturnValue([previousElement]);
@@ -238,13 +299,8 @@ describe('ServiceDocPanel Component', () => {
         expect(mockQuerySelectorAll).toHaveBeenCalledWith(
           '[data-highlighted="true"]'
         );
-        expect(previousElement.removeAttribute).toHaveBeenCalledWith(
-          'data-highlighted'
-        );
-        expect(currentElement.setAttribute).toHaveBeenCalledWith(
-          'data-highlighted',
-          'true'
-        );
+        expect(previousElement.dataset.highlighted).toBe('false');
+        expect(currentElement.dataset.highlighted).toBe('true');
       });
     });
 
@@ -281,7 +337,7 @@ describe('ServiceDocPanel Component', () => {
       mockQuerySelector.mockReturnValue(mockElement);
       mockGetActiveFieldNameForAppDocs.mockReturnValue('application.config');
 
-      render(
+      const { container } = render(
         <ServiceDocPanel
           activeField="root/application/config"
           selectedEntity={mockSelectedEntity}
@@ -292,12 +348,12 @@ describe('ServiceDocPanel Component', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('entity-summary-panel')).toBeInTheDocument();
-        expect(screen.getByTestId('requirement-text')).toBeInTheDocument();
+        expect(container.querySelector('.service-doc-content')).not.toBeNull();
         expect(mockGetActiveFieldNameForAppDocs).toHaveBeenCalledWith(
           'root/application/config'
         );
         expect(mockQuerySelector).toHaveBeenCalledWith(
-          '[data-id="application.config"]'
+          `[data-id="${CSS.escape('application.config')}"]`
         );
       });
     });
@@ -339,5 +395,125 @@ describe('ServiceDocPanel Component', () => {
         expect(mockQuerySelector).toHaveBeenCalledWith('[data-id="field2"]');
       });
     });
+  });
+});
+
+describe('CodeBlockComponent', () => {
+  const mockWriteText = jest.fn().mockResolvedValue(undefined);
+
+  const mockNode = {
+    textContent: 'SELECT * FROM table;',
+  } as unknown as NodeViewProps['node'];
+
+  const mockNodeViewProps = {
+    node: mockNode,
+  } as unknown as NodeViewProps;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: mockWriteText },
+      writable: true,
+    });
+  });
+
+  it('should render the copy button', () => {
+    render(<CodeBlockComponent {...mockNodeViewProps} />);
+
+    expect(screen.getByTestId('code-block-copy-icon')).toBeInTheDocument();
+  });
+
+  it('should set data-copied to false initially', () => {
+    const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
+
+    expect(container.querySelector('.code-copy-button')).toHaveAttribute(
+      'data-copied',
+      'false'
+    );
+  });
+
+  it('should copy node text content to clipboard on click', async () => {
+    render(<CodeBlockComponent {...mockNodeViewProps} />);
+
+    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
+
+    await waitFor(() => {
+      expect(mockWriteText).toHaveBeenCalledWith('SELECT * FROM table;');
+    });
+  });
+
+  it('should set data-copied to true after clicking copy', async () => {
+    const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
+
+    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
+
+    await waitFor(() => {
+      expect(container.querySelector('.code-copy-button')).toHaveAttribute(
+        'data-copied',
+        'true'
+      );
+    });
+  });
+
+  it('should schedule a timer to reset data-copied after clicking copy', async () => {
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+
+    const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
+
+    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
+
+    await waitFor(() => {
+      expect(container.querySelector('.code-copy-button')).toHaveAttribute(
+        'data-copied',
+        'true'
+      );
+    });
+
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
+
+    setTimeoutSpy.mockRestore();
+  });
+
+  it('should cancel the previous timer on rapid clicks', async () => {
+    const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+    const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
+
+    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
+
+    await waitFor(() => {
+      expect(mockWriteText).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
+
+    await waitFor(() => {
+      expect(mockWriteText).toHaveBeenCalledTimes(2);
+    });
+
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+
+    expect(container.querySelector('.code-copy-button')).toHaveAttribute(
+      'data-copied',
+      'true'
+    );
+
+    clearTimeoutSpy.mockRestore();
+  });
+
+  it('should clear timeout on unmount', async () => {
+    const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+    const { unmount } = render(<CodeBlockComponent {...mockNodeViewProps} />);
+
+    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
+
+    await waitFor(() => {
+      expect(mockWriteText).toHaveBeenCalled();
+    });
+
+    unmount();
+
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+
+    clearTimeoutSpy.mockRestore();
   });
 });

@@ -11,7 +11,8 @@
 """
 Helper module to handle data sampling for the profiler
 """
-from typing import Dict, Optional, Union
+
+from typing import Dict, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Table as SqaTable
 from sqlalchemy import func
@@ -43,14 +44,14 @@ class PostgresSampler(SQASampler):
     # pylint: disable=too-many-arguments
     def __init__(
         self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection],  # noqa: UP007
         ometa_client: OpenMetadata,
         entity: Table,
-        sample_config: Optional[SampleConfig] = None,
-        partition_details: Optional[Dict] = None,
-        sample_query: Optional[str] = None,
+        sample_config: Optional[SampleConfig] = None,  # noqa: UP045
+        partition_details: Optional[Dict] = None,  # noqa: UP006, UP045
+        sample_query: Optional[str] = None,  # noqa: UP045
         storage_config: DataStorageConfig = None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
+        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,  # noqa: UP045
         **kwargs,
     ):
         super().__init__(
@@ -86,8 +87,6 @@ class PostgresSampler(SQASampler):
     def get_sample_query(self, *, column=None) -> Query:
         static = self.sample_config.get_static_config()
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
-            return self._base_sample_query(column).cte(
-                f"{self.get_sampler_table_name()}_rnd"
-            )
+            return self._base_sample_query(column).cte(f"{self.get_sampler_table_name()}_rnd")
 
         return super().get_sample_query(static, column=column)

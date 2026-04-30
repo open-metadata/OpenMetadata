@@ -12,7 +12,7 @@
  */
 
 import { cloneDeep, isUndefined } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import {
   MessagingConnection,
   MessagingServiceType,
@@ -31,7 +31,13 @@ export const getBrokers = (config: MessagingConnection['config']) => {
     retVal = config.bootstrapServers;
   }
 
-  return !isUndefined(retVal) ? retVal : '--';
+  return isUndefined(retVal) ? '--' : retVal;
+};
+
+const SCHEMA_REGISTRY_SUFFIX_UI_SCHEMA = {
+  schemaRegistryTopicSuffixName: {
+    'ui:emptyValue': '',
+  },
 };
 
 export const getMessagingConfig = (type: MessagingServiceType) => {
@@ -41,11 +47,13 @@ export const getMessagingConfig = (type: MessagingServiceType) => {
   switch (type) {
     case MessagingServiceType.Kafka:
       schema = kafkaConnection;
+      Object.assign(uiSchema, SCHEMA_REGISTRY_SUFFIX_UI_SCHEMA);
 
       break;
 
     case MessagingServiceType.Redpanda:
       schema = redpandaConnection;
+      Object.assign(uiSchema, SCHEMA_REGISTRY_SUFFIX_UI_SCHEMA);
 
       break;
 

@@ -56,9 +56,7 @@ def get_connection(connection: IometeConnection) -> Engine:
     url = URL.create(
         "iomete",
         username=connection.username,
-        password=connection.password.get_secret_value()
-        if connection.password
-        else None,
+        password=connection.password.get_secret_value() if connection.password else None,
         host=host,
         port=port,
         database=connection.catalog if connection.catalog else None,
@@ -71,8 +69,8 @@ def test_connection(
     metadata: OpenMetadata,
     engine: Engine,
     service_connection: IometeConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     return test_connection_db_schema_sources(
         metadata=metadata,

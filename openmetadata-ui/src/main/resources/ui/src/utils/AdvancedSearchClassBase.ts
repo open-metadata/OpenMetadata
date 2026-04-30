@@ -43,6 +43,7 @@ import {
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Config } from '../generated/api/data/createCustomProperty';
+import { EntityStatus } from '../generated/entity/data/searchIndex';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import {
@@ -55,6 +56,8 @@ import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchUtils';
+
+type OMField = Field & { __omPropertyType: CustomPropertySummary['type'] };
 
 class AdvancedSearchClassBase {
   baseConfig = AntdConfig;
@@ -431,18 +434,6 @@ class AdvancedSearchClassBase {
    * Fields specific to Glossary
    */
   glossaryTermQueryBuilderFields: Fields = {
-    [EntityFields.GLOSSARY_TERM_STATUS]: {
-      label: t('label.status'),
-      type: 'select',
-      mainWidgetProps: this.mainWidgetProps,
-      fieldSettings: {
-        asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.GLOSSARY_TERM,
-          entityField: EntityFields.GLOSSARY_TERM_STATUS,
-        }),
-        useAsyncSearch: true,
-      },
-    },
     [EntityFields.GLOSSARY]: {
       label: t('label.glossary'),
       type: 'select',
@@ -1046,6 +1037,21 @@ class AdvancedSearchClassBase {
           useAsyncSearch: true,
         },
       },
+      [EntityFields.ENTITY_STATUS]: {
+        label: t('label.status'),
+        type: 'select',
+        operators: LIST_VALUE_OPERATORS,
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+        fieldSettings: {
+          listValues: Object.values(EntityStatus).map((status) => ({
+            value: status,
+            title: status,
+          })),
+          showSearch: true,
+          useAsyncSearch: false,
+        },
+      },
     };
   }
 
@@ -1250,6 +1256,27 @@ class AdvancedSearchClassBase {
     field: CustomPropertySummary,
     searchOutputType: SearchOutputType = SearchOutputType.ElasticSearch
   ):
+    | { subfieldsKey: string; dataObject: OMField }
+    | Array<{ subfieldsKey: string; dataObject: OMField }> {
+    const result = this.buildCustomPropertiesSubFields(field, searchOutputType);
+    const attachType = (entry: {
+      subfieldsKey: string;
+      dataObject: Field;
+    }): { subfieldsKey: string; dataObject: OMField } => ({
+      subfieldsKey: entry.subfieldsKey,
+      dataObject: {
+        ...entry.dataObject,
+        __omPropertyType: field.type,
+      },
+    });
+
+    return Array.isArray(result) ? result.map(attachType) : attachType(result);
+  }
+
+  private buildCustomPropertiesSubFields(
+    field: CustomPropertySummary,
+    searchOutputType: SearchOutputType
+  ):
     | { subfieldsKey: string; dataObject: Field }
     | Array<{ subfieldsKey: string; dataObject: Field }> {
     const label = getEntityName(field);
@@ -1374,7 +1401,7 @@ class AdvancedSearchClassBase {
       case 'hyperlink-cp': {
         return [
           {
-            subfieldsKey: `${field.name}.url.keyword`,
+            subfieldsKey: `${field.name}.url`,
             dataObject: {
               type: 'text',
               label: `${label} ${t('label.url')}`,
@@ -1382,7 +1409,7 @@ class AdvancedSearchClassBase {
             },
           },
           {
-            subfieldsKey: `${field.name}.displayText.keyword`,
+            subfieldsKey: `${field.name}.displayText`,
             dataObject: {
               type: 'text',
               label: `${label} ${t('label.display-text')}`,
@@ -1401,7 +1428,7 @@ class AdvancedSearchClassBase {
         }
 
         return columns.map((columnName) => ({
-          subfieldsKey: `${field.name}.rows.${columnName}.keyword`,
+          subfieldsKey: `${field.name}.rows.${columnName}`,
           dataObject: {
             type: 'text',
             label: `${label} - ${columnName}`,

@@ -12,6 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
+
 from sqlalchemy import inspect, or_, text
 
 from metadata.profiler.orm.registry import FLOAT_SET
@@ -31,7 +32,7 @@ class TrinoSampler(SQASampler):
 
     def __init__(self, *args, **kwargs):
         # pylint: disable=import-outside-toplevel
-        from trino.sqlalchemy.dialect import TrinoDialect
+        from trino.sqlalchemy.dialect import TrinoDialect  # noqa: PLC0415
 
         TrinoDialect._json_deserializer = None
 
@@ -62,11 +63,5 @@ class TrinoSampler(SQASampler):
         entity = selectable if column is None else column
         with self.get_client() as client:
             return client.query(entity, label).where(
-                or_(
-                    *[
-                        text(f'is_nan("{cols.name}") = False')
-                        for cols in sqa_columns
-                        if type(cols.type) in FLOAT_SET
-                    ]
-                )
+                or_(*[text(f'is_nan("{cols.name}") = False') for cols in sqa_columns if type(cols.type) in FLOAT_SET])
             )

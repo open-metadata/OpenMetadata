@@ -27,9 +27,7 @@ from metadata.utils.bigquery_utils import copy_service_config
 class BigQueryProfilerSource(ProfilerSource):
     """override the base profiler source to handle BigQuery specific connection configs"""
 
-    def _copy_service_config(
-        self, config: OpenMetadataWorkflowConfig, database: Database
-    ) -> BigQueryConnection:
+    def _copy_service_config(self, config: OpenMetadataWorkflowConfig, database: Database) -> BigQueryConnection:
         """Make a copy of the database connection config. If MultiProjectId is used, replace it
         with SingleProjectId with the database name being profiled. We iterate over all non filtered
         database in workflow.py `def execute`.

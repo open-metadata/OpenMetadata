@@ -12,13 +12,13 @@
  */
 
 import { useMemo } from 'react';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import AnnouncementCardV1Content from '../../MyData/Widgets/AnnouncementsWidgetV1/AnnouncementCardV1/AnnouncementCardV1Content.component';
 
 interface AnnouncementItemV2Props {
-  announcement: Thread;
+  announcement: AnnouncementEntity;
   onClick: () => void;
 }
 
@@ -37,20 +37,21 @@ const AnnouncementItemV2 = ({
     title,
     userName,
   } = useMemo(() => {
-    const fqn = getEntityFQN(announcement.about);
+    const entityLink = announcement.entityLink ?? '';
+    const fqn = getEntityFQN(entityLink);
     const entityName = fqn.split('::').pop() || '';
-    const entityType = getEntityType(announcement.about);
+    const entityType = getEntityType(entityLink);
 
     return {
-      title: announcement.message,
-      description: announcement?.announcement?.description || '',
+      title: announcement.displayName ?? announcement.name,
+      description: announcement.description || '',
       userName: announcement.createdBy || '',
-      timestamp: announcement.threadTs,
+      timestamp: announcement.updatedAt ?? announcement.createdAt ?? Date.now(),
       entityName,
       entityType,
       entityFQN: fqn,
-      fieldOperation: announcement.fieldOperation,
-      columnName: announcement.feedInfo?.fieldName || '',
+      fieldOperation: undefined,
+      columnName: '',
     };
   }, [announcement]);
 

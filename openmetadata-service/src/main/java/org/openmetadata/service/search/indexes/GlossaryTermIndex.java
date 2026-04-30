@@ -29,6 +29,13 @@ public class GlossaryTermIndex implements TaggableIndex {
     return Set.of("children");
   }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    fields.add("relatedTerms");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     if (doc.containsKey("glossary") && glossaryTerm.getGlossary() != null) {
       @SuppressWarnings("unchecked")

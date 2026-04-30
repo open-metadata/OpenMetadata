@@ -11,8 +11,10 @@
 """
 Airflow REST API definition
 """
+
 from flask_appbuilder import BaseView as AppBuilderBaseView
 from flask_appbuilder import expose as app_builder_expose
+
 from openmetadata_managed_apis.api.apis_metadata import APIS_METADATA
 from openmetadata_managed_apis.api.config import (
     AIRFLOW_VERSION,

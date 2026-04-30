@@ -579,6 +579,7 @@ export enum DashboardServiceType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     Redash = "Redash",
+    SapS4Hana = "SapS4Hana",
     Sigma = "Sigma",
     Ssrs = "Ssrs",
     Superset = "Superset",

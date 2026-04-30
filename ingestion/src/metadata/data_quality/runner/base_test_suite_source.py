@@ -12,6 +12,7 @@
 """
 Base source for the data quality used to instantiate a data quality runner with its interface
 """
+
 from copy import deepcopy
 from typing import Optional, cast
 
@@ -43,7 +44,7 @@ from metadata.sampler.models import (
     SampleConfig,
     StaticSamplingConfig,
 )
-from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.sampler.sampler_interface import SamplerInterface  # noqa: TC001
 from metadata.utils.bigquery_utils import copy_service_config
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import (
@@ -67,22 +68,18 @@ class BaseTestSuiteRunner:
         self.service_conn_config = self._copy_service_config(config, self.entity.database)  # type: ignore
         self._interface_type: str = self.service_conn_config.type.value.lower()
 
-        self.source_config = TestSuitePipeline.model_validate(
-            config.source.sourceConfig.config
-        )
+        self.source_config = TestSuitePipeline.model_validate(config.source.sourceConfig.config)
         self.ometa_client = ometa_client
 
     @property
-    def interface(self) -> Optional[TestSuiteInterface]:
+    def interface(self) -> Optional[TestSuiteInterface]:  # noqa: UP045
         return self._interface
 
     @interface.setter
     def interface(self, interface):
         self._interface = interface
 
-    def _copy_service_config(
-        self, config: OpenMetadataWorkflowConfig, database: EntityReference
-    ) -> DatabaseConnection:
+    def _copy_service_config(self, config: OpenMetadataWorkflowConfig, database: EntityReference) -> DatabaseConnection:
         """Make a copy of the service config and update the database name
 
         Args:
@@ -105,9 +102,9 @@ class BaseTestSuiteRunner:
                 config_copy.catalog = database.name  # type: ignore
 
         # we know we'll only be working with DatabaseConnection, we cast the type to satisfy type checker
-        config_copy = cast(DatabaseConnection, config_copy)
+        config_copy = cast(DatabaseConnection, config_copy)  # noqa: TC006
 
-        return config_copy
+        return config_copy  # noqa: RET504
 
     def create_data_quality_interface(self) -> TestSuiteInterface:
         """Create data quality interface
@@ -115,9 +112,7 @@ class BaseTestSuiteRunner:
         Returns:
             TestSuiteInterface: a data quality interface
         """
-        schema_entity, database_entity, _ = get_context_entities(
-            entity=self.entity, metadata=self.ometa_client
-        )
+        schema_entity, database_entity, _ = get_context_entities(entity=self.entity, metadata=self.ometa_client)
         test_suite_class = import_test_suite_class(
             ServiceType.Database,
             source_type=self._interface_type,
