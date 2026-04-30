@@ -39,6 +39,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableData;
@@ -758,5 +759,29 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @Min(value = 0, message = "must be greater than or equal to 0")
           Integer offset) {
     return repository.listChildren(fqn, limit, offset);
+  }
+
+  @GET
+  @Path("/name/{fqn}/ancestors")
+  @Operation(
+      operationId = "listContainerAncestors",
+      summary = "List ancestor containers (parent chain)",
+      description =
+          "Return the ordered chain of ancestor containers from root (immediate child of the storage service) down to the immediate parent of the given container. Resolved via a single batched fetch — useful for rendering breadcrumbs without N sequential parent lookups.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Ordered list of ancestor container references",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(type = "array", implementation = EntityReference.class)))
+      })
+  public List<EntityReference> listAncestors(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the container") @PathParam("fqn")
+          String fqn) {
+    return repository.getAncestors(fqn);
   }
 }

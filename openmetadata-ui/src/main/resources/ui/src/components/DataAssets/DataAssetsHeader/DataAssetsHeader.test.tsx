@@ -28,7 +28,7 @@ import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
-import { getContainerByName } from '../../../rest/storageAPI';
+import { getContainerAncestors } from '../../../rest/storageAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -175,9 +175,9 @@ jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
 );
 
 jest.mock('../../../rest/storageAPI', () => ({
-  getContainerByName: jest
+  getContainerAncestors: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ name: 'test' })),
+    .mockImplementation(() => Promise.resolve([])),
 }));
 
 let mockIsAlertSupported = false;
@@ -257,26 +257,29 @@ describe('ExtraInfoLink component', () => {
 });
 
 describe('DataAssetsHeader component', () => {
-  it('should call getContainerByName API on Page load for container assets', () => {
-    const mockGetContainerByName = getContainerByName as jest.Mock;
+  it('should call getContainerAncestors API on Page load for container assets', () => {
+    const mockGetContainerAncestors = getContainerAncestors as jest.Mock;
     render(<DataAssetsHeader {...mockProps} />);
 
-    expect(mockGetContainerByName).toHaveBeenCalledWith('fullyQualifiedName', {
-      fields: 'parent',
-    });
+    // The breadcrumb resolution is now a single batched server call against
+    // the container's own FQN. The server returns the full ancestor chain.
+    expect(mockGetContainerAncestors).toHaveBeenCalledWith(
+      mockProps.dataAsset.fullyQualifiedName
+    );
     expect(getDataQualityLineage).not.toHaveBeenCalled();
   });
 
-  it('should not call getContainerByName API if parent is undefined', () => {
-    const mockGetContainerByName = getContainerByName as jest.Mock;
+  it('should not call getContainerAncestors API when the container FQN is missing', () => {
+    const mockGetContainerAncestors = getContainerAncestors as jest.Mock;
+    mockGetContainerAncestors.mockClear();
     render(
       <DataAssetsHeader
         {...mockProps}
-        dataAsset={{ ...mockProps.dataAsset, parent: undefined }}
+        dataAsset={{ ...mockProps.dataAsset, fullyQualifiedName: '' }}
       />
     );
 
-    expect(mockGetContainerByName).not.toHaveBeenCalled();
+    expect(mockGetContainerAncestors).not.toHaveBeenCalled();
   });
 
   it('should render the Tier data if present', () => {

@@ -77,6 +77,20 @@ export const getContainerChildrenByName = async (
   return response.data;
 };
 
+/**
+ * Resolve the full ancestor chain for a container in a single call.
+ * Returns references ordered from root container (immediate child of the
+ * storage service) down to the immediate parent of `name`. Empty when the
+ * container is at the top level.
+ */
+export const getContainerAncestors = async (name: string) => {
+  const response = await APIClient.get<EntityReference[]>(
+    `${BASE_URL}/name/${getEncodedFqn(name)}/ancestors`
+  );
+
+  return response.data;
+};
+
 export const patchContainerDetails = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<Operation[], AxiosResponse<Container>>(
     `${BASE_URL}/${id}`,

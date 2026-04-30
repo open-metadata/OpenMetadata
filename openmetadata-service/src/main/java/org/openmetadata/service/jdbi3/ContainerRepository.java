@@ -589,6 +589,45 @@ public class ContainerRepository extends EntityRepository<Container> {
     }
   }
 
+  /**
+   * Return the parent chain for the given container, ordered from root container (immediate
+   * child of the storage service) down to the immediate parent. Empty when the container is at
+   * the top level. Resolves the entire chain in a single batched DB lookup so the UI does not
+   * need to issue one parent fetch per breadcrumb level.
+   */
+  public List<EntityReference> getAncestors(String fqn) {
+    String[] parts = FullyQualifiedName.split(fqn);
+    // parts[0] is the storage service; parts[parts.length - 1] is the container itself.
+    // Ancestors live at indices 1 .. parts.length - 2.
+    if (parts.length < 3) {
+      return new ArrayList<>();
+    }
+
+    List<String> ancestorFqns = new ArrayList<>(parts.length - 2);
+    StringBuilder current = new StringBuilder(parts[0]);
+    for (int i = 1; i < parts.length - 1; i++) {
+      current.append('.').append(parts[i]);
+      ancestorFqns.add(current.toString());
+    }
+
+    // Single batched IN-by-fqnHash query (chunked at 30k inside the DAO).
+    List<Container> ancestors = dao.findEntityByNames(ancestorFqns, NON_DELETED);
+
+    // Preserve the root → immediate-parent ordering even if the DAO returns rows out of order.
+    Map<String, Container> byFqn = new HashMap<>();
+    for (Container ancestor : ancestors) {
+      byFqn.put(ancestor.getFullyQualifiedName(), ancestor);
+    }
+    List<EntityReference> ordered = new ArrayList<>(ancestorFqns.size());
+    for (String ancestorFqn : ancestorFqns) {
+      Container ancestor = byFqn.get(ancestorFqn);
+      if (ancestor != null) {
+        ordered.add(ancestor.getEntityReference());
+      }
+    }
+    return ordered;
+  }
+
   private TableData getSampleDataInternal(UUID containerId) {
     String json =
         daoCollection

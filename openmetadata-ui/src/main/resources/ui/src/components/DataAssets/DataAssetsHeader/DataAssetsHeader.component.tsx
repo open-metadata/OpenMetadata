@@ -50,13 +50,13 @@ import {
 } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
-import { Container } from '../../../generated/entity/data/container';
 import {
   ContractExecutionStatus,
   DataContract,
 } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityRules } from '../../../hooks/useEntityRules';
@@ -67,7 +67,7 @@ import {
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
-import { getContainerByName } from '../../../rest/storageAPI';
+import { getContainerAncestors } from '../../../rest/storageAPI';
 import {
   getDataAssetsHeaderInfo,
   isDataAssetsWithServiceField,
@@ -153,7 +153,9 @@ export const DataAssetsHeader = ({
   const { customizedPage } = useCustomPages(
     ENTITY_PAGE_TYPE_MAP[entityType as CustomizeEntityType]
   );
-  const [parentContainers, setParentContainers] = useState<Container[]>([]);
+  const [parentContainers, setParentContainers] = useState<EntityReference[]>(
+    []
+  );
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
@@ -336,27 +338,16 @@ export const DataAssetsHeader = ({
     }
   };
 
-  const fetchContainerParent = async (
-    parentName: string,
-    parents = [] as Container[]
-  ) => {
-    if (isEmpty(parentName)) {
+  const fetchContainerAncestors = async (containerFqn: string) => {
+    if (isEmpty(containerFqn)) {
       return;
     }
     setIsBreadcrumbLoading(true);
     try {
-      const response = await getContainerByName(parentName, {
-        fields: TabSpecificField.PARENT,
-      });
-      const updatedParent = [response, ...parents];
-      if (response?.parent?.fullyQualifiedName) {
-        await fetchContainerParent(
-          response.parent.fullyQualifiedName,
-          updatedParent
-        );
-      } else {
-        setParentContainers(updatedParent);
-      }
+      // Single batched server call replaces what used to be one
+      // getContainerByName per ancestor level.
+      const ancestors = await getContainerAncestors(containerFqn);
+      setParentContainers(ancestors ?? []);
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
     } finally {
@@ -370,8 +361,7 @@ export const DataAssetsHeader = ({
       fetchDQFailureCount();
     }
     if (entityType === EntityType.CONTAINER && !isCustomizedView) {
-      const asset = dataAsset;
-      fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
+      fetchContainerAncestors(dataAsset.fullyQualifiedName ?? '');
     }
   }, [dataAsset.fullyQualifiedName, isTourPage, isCustomizedView]);
 
