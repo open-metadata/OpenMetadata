@@ -14,9 +14,11 @@ import static org.openmetadata.service.search.SearchUtils.isTimeSeriesIndex;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.search.Aggregation;
@@ -50,6 +52,7 @@ public class OpenSearchSourceBuilderFactory
   private static final String MATCH_TYPE_STANDARD = "standard";
   private static final String INDEX_ALL = "all";
   private static final String INDEX_DATA_ASSET = "dataAsset";
+  private static final String ENTITY_TYPE_FIELD = "entityType";
   private static final String MINIMUM_SHOULD_MATCH = "2<70%";
   private static final float DEFAULT_TIE_BREAKER = 0.3f;
   private static final float DEFAULT_BOOST = 1.0f;
@@ -322,9 +325,9 @@ public class OpenSearchSourceBuilderFactory
           indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
 
-    if (indexName.equals("all") || indexName.equals("dataAsset")) {
-      return buildDataAssetSearchBuilderV2(
-          indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
+    if (indexName.equals(INDEX_ALL) || indexName.equals(INDEX_DATA_ASSET)) {
+      return buildAllAssetsSearchBuilderV2(
+          searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
 
     return switch (indexName) {
@@ -374,19 +377,31 @@ public class OpenSearchSourceBuilderFactory
       queryBuilder =
           os.org.opensearch.client.opensearch._types.query_dsl.Query.of(q -> q.matchAll(m -> m));
     } else {
-      Map<String, Float> fields = ColumnSearchIndex.getFields();
-      queryBuilder =
-          OpenSearchQueryBuilder.multiMatchQuery(
-              query,
-              fields,
-              os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType.BestFields,
-              os.org.opensearch.client.opensearch._types.query_dsl.Operator.Or,
-              String.valueOf(DEFAULT_TIE_BREAKER),
-              "0");
+      queryBuilder = buildColumnMultiMatchV2(query);
     }
     os.org.opensearch.client.opensearch.core.search.Highlight highlighter =
         buildHighlightsV2(List.of("name", "displayName", "description"));
     return searchBuilderV2(queryBuilder, highlighter, from, size);
+  }
+
+  /**
+   * Multi-match used both by {@code index=tableColumn} and the column-scoped should clause in the
+   * {@code dataAsset} composite query. Uses {@link
+   * os.org.opensearch.client.opensearch._types.query_dsl.Operator#And} so every sub-token produced
+   * by {@code om_analyzer} (which splits on letter/digit/underscore boundaries) must hit some
+   * field. Without {@code And}, a query like {@code first_name} matches any column whose name
+   * contains just {@code first} or just {@code name}, which both inflates the column index hits
+   * and creates the dataAsset/tableColumn count mismatch tracked in github issue #3851.
+   */
+  private os.org.opensearch.client.opensearch._types.query_dsl.Query buildColumnMultiMatchV2(
+      String query) {
+    return OpenSearchQueryBuilder.multiMatchQuery(
+        query,
+        ColumnSearchIndex.getFields(),
+        os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType.BestFields,
+        os.org.opensearch.client.opensearch._types.query_dsl.Operator.And,
+        String.valueOf(DEFAULT_TIE_BREAKER),
+        "0");
   }
 
   public OpenSearchRequestBuilder buildServiceSearchBuilderV2(String query, int from, int size) {
@@ -450,6 +465,92 @@ public class OpenSearchSourceBuilderFactory
     searchRequestBuilder.explain(explain);
 
     return searchRequestBuilder;
+  }
+
+  /**
+   * Build a search source for the {@code all} / {@code dataAsset} alias as a per-entity-type
+   * union: each asset type contributes a clause built with its own configuration (column docs go
+   * through {@link #buildColumnMultiMatchV2(String)}, every other type through {@link
+   * #buildBaseQueryV2(String, AssetTypeConfiguration)}), filtered by {@code entityType=<type>}.
+   * Each entity-type bucket in the aggregation therefore equals what the dedicated index returns
+   * for the same query, by construction. Avoids the composite-config divergence behind
+   * github.com/open-metadata/openmetadata-collate#3851.
+   */
+  public OpenSearchRequestBuilder buildAllAssetsSearchBuilderV2(
+      String query, int from, int size, boolean explain, boolean includeAggregations) {
+    AssetTypeConfiguration compositeConfig = getOrBuildCompositeConfig();
+    os.org.opensearch.client.opensearch._types.query_dsl.Query baseQuery =
+        buildPerTypeUnionQueryV2(query);
+    os.org.opensearch.client.opensearch._types.query_dsl.Query finalQuery =
+        applyFunctionScoringV2(baseQuery, compositeConfig);
+    os.org.opensearch.client.opensearch.core.search.Highlight highlightBuilder =
+        buildHighlightingIfNeededV2(query, compositeConfig);
+
+    OpenSearchRequestBuilder searchRequestBuilder =
+        createSearchSourceBuilderV2(finalQuery, from, size);
+    if (highlightBuilder != null) {
+      searchRequestBuilder.highlighter(highlightBuilder);
+    }
+    if (includeAggregations) {
+      addConfiguredAggregationsV2(searchRequestBuilder, compositeConfig);
+    }
+    searchRequestBuilder.explain(explain);
+    return searchRequestBuilder;
+  }
+
+  private os.org.opensearch.client.opensearch._types.query_dsl.Query buildPerTypeUnionQueryV2(
+      String query) {
+    if (isMatchAllQuery(query)) {
+      return OpenSearchQueryBuilder.boolQuery()
+          .must(OpenSearchQueryBuilder.matchAllQuery())
+          .build();
+    }
+    OpenSearchQueryBuilder.BoolQueryBuilder union = OpenSearchQueryBuilder.boolQuery();
+    Set<String> configuredTypes = new HashSet<>();
+    for (AssetTypeConfiguration typeConfig : searchSettings.getAssetTypeConfigurations()) {
+      String assetType = typeConfig.getAssetType();
+      if (assetType == null || assetType.equals(INDEX_ALL)) {
+        continue;
+      }
+      configuredTypes.add(assetType);
+      union.should(buildAssetTypeClauseV2(query, assetType, typeConfig));
+    }
+    union.should(buildUnconfiguredAssetFallbackV2(query, configuredTypes));
+    union.minimumShouldMatch(1);
+    return union.build();
+  }
+
+  private static boolean isMatchAllQuery(String query) {
+    return query == null || query.trim().isEmpty() || query.trim().equals("*");
+  }
+
+  private os.org.opensearch.client.opensearch._types.query_dsl.Query buildAssetTypeClauseV2(
+      String query, String assetType, AssetTypeConfiguration typeConfig) {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query inner =
+        Entity.TABLE_COLUMN.equals(assetType)
+            ? buildColumnMultiMatchV2(query)
+            : buildBaseQueryV2(query, typeConfig);
+    return OpenSearchQueryBuilder.boolQuery()
+        .filter(OpenSearchQueryBuilder.termQuery(ENTITY_TYPE_FIELD, assetType))
+        .must(inner)
+        .build();
+  }
+
+  /**
+   * Catches asset types that are part of the {@code dataAsset} alias but lack a dedicated entry in
+   * {@code searchSettings.assetTypeConfigurations} (e.g. {@code glossary}, {@code apiCollection}).
+   * Without this, docs of those types would silently disappear from the dataAsset alias after the
+   * per-type-union refactor.
+   */
+  private os.org.opensearch.client.opensearch._types.query_dsl.Query
+      buildUnconfiguredAssetFallbackV2(String query, Set<String> configuredTypes) {
+    OpenSearchQueryBuilder.BoolQueryBuilder fallback =
+        OpenSearchQueryBuilder.boolQuery()
+            .must(buildBaseQueryV2(query, getOrCreateDefaultConfig()));
+    for (String configured : configuredTypes) {
+      fallback.mustNot(OpenSearchQueryBuilder.termQuery(ENTITY_TYPE_FIELD, configured));
+    }
+    return fallback.build();
   }
 
   private os.org.opensearch.client.opensearch._types.query_dsl.Query buildBaseQueryV2(
