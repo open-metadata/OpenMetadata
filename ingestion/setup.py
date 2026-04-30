@@ -401,7 +401,7 @@ dev = {
     "mypy-boto3-glue",
     "nox",
     "pre-commit",
-    "basedpyright~=1.39.0",
+    "basedpyright==1.39.3",
     # For publishing
     "twine",
     "build",
