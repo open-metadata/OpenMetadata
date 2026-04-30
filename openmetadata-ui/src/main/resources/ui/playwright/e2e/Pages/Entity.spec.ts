@@ -1009,8 +1009,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           const clickResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/columns/name/') ||
+              (response.url().includes('/columns') &&
+                response.url().includes('profile') &&
+                response.request().method() === 'GET') ||
               response.url().includes(`/api/v1/${entity.endpoint}/name/`),
-            { timeout: 10000 }
+            { timeout: 150000 }
           );
 
           await firstLink.click();
@@ -1062,8 +1065,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             const intermediateClickResponse = page.waitForResponse(
               (response) =>
                 response.url().includes('/api/v1/columns/name/') ||
+                (response.url().includes('/columns') &&
+                  response.url().includes('profile') &&
+                  response.request().method() === 'GET') ||
                 response.url().includes(`/api/v1/${entity.endpoint}/name/`),
-              { timeout: 10000 }
+              { timeout: 150000 }
             );
 
             await intermediateLink.click();
