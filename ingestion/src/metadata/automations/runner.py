@@ -58,7 +58,7 @@ def _(
 
         host_port_type = type(request.connection.config.hostPort)
         docker_host_port_str = host_port_str.replace("localhost", "host.docker.internal")
-        request.connection.config.hostPort = host_port_type(docker_host_port_str)
+        request.connection.config.hostPort = host_port_type(docker_host_port_str)  # pyright: ignore[reportAttributeAccessIssue]
 
         _ = _test_connection(metadata, request.connection.config, automation_workflow)
 
