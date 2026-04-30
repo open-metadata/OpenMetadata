@@ -24,7 +24,7 @@ import { ReactComponent as MarketplaceIcon } from '../assets/svg/ic-data-marketp
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
 import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
-import { ReactComponent as KnowledgePageIcon } from '../assets/svg/ic-knowledge-page.svg';
+import { ReactComponent as KnowledgeCenterIcon } from '../assets/svg/ic-knowledge-center.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage.svg';
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
 import { ReactComponent as OverviewIcon } from '../assets/svg/ic-overview.svg';
@@ -206,7 +206,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     key: ROUTES.KNOWLEDGE_CENTER,
     title: 'label.knowledge-center',
     redirect_url: ROUTES.KNOWLEDGE_CENTER,
-    icon: KnowledgePageIcon,
+    icon: KnowledgeCenterIcon,
     dataTestId: `app-bar-item-${SidebarItem.KNOWLEDGE_CENTER}`,
   },
 ];

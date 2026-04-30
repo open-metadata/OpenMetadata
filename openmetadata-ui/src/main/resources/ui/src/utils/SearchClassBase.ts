@@ -25,7 +25,6 @@ import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as DriveIcon } from '../assets/svg/ic-drive-service.svg';
-import { ReactComponent as KnowledgePageIcon } from '../assets/svg/ic-knowledge-page.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
@@ -62,8 +61,8 @@ import {
   entitySortingFields,
   INITIAL_SORT_FIELD,
   tableSortingFields,
-  tagSortingFields,
   TAGS_INITIAL_SORT_FIELD,
+  tagSortingFields,
 } from '../constants/explore.constants';
 import {
   Option,
@@ -399,7 +398,7 @@ class SearchClassBase {
             title: t('label.knowledge-page'),
             key: EntityType.KNOWLEDGE_PAGE,
             isLeaf: true,
-            icon: KnowledgePageIcon,
+            icon: KnowledgeCenterIcon,
             data: {
               entityType: EntityType.KNOWLEDGE_PAGE,
               isStatic: true,
