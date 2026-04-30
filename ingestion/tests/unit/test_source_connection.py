@@ -627,15 +627,11 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url(druid_conn_obj)
 
         expected_url = "druid+http://localhost:8082/druid/v2/sql"
-        druid_conn_obj = DruidConnection(
-            scheme=DruidScheme.druid_http, hostPort="localhost:8082"
-        )
+        druid_conn_obj = DruidConnection(scheme=DruidScheme.druid_http, hostPort="localhost:8082")
         assert expected_url == get_connection_url(druid_conn_obj)
 
         expected_url = "druid+https://localhost:8082/druid/v2/sql"
-        druid_conn_obj = DruidConnection(
-            scheme=DruidScheme.druid_https, hostPort="localhost:8082"
-        )
+        druid_conn_obj = DruidConnection(scheme=DruidScheme.druid_https, hostPort="localhost:8082")
         assert expected_url == get_connection_url(druid_conn_obj)
 
     def test_pinotdb_url(self):

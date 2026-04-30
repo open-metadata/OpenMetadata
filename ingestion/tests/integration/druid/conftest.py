@@ -27,17 +27,13 @@ def druid_container():
     container.with_exposed_ports(8082)
     container.with_env("DRUID_SINGLE_NODE_CONF", "nano-quickstart")
 
-    with (
-        try_bind(container, 8082, None) if not os.getenv("CI") else container
-    ) as container:
+    with try_bind(container, 8082, None) if not os.getenv("CI") else container as container:
         host = container.get_container_host_ip()
         port = container.get_exposed_port(8082)
 
         @retry(wait=wait_fixed(3), stop=stop_after_delay(180))
         def _wait_for_broker():
-            resp = requests.get(
-                f"http://{host}:{port}/status/health", timeout=(5, 10)
-            )
+            resp = requests.get(f"http://{host}:{port}/status/health", timeout=(5, 10))
             assert resp.status_code == 200 and resp.text.strip() == "true"
 
         _wait_for_broker()

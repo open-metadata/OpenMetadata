@@ -17,6 +17,4 @@ def test_ingest_metadata(
         entity=DatabaseSchema,
         params={"database": f"{db_service.fullyQualifiedName.root}.druid"},
     )
-    assert schemas.entities, (
-        "Expected at least one schema to be discovered from Druid"
-    )
+    assert schemas.entities, "Expected at least one schema to be discovered from Druid"
