@@ -721,8 +721,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                   multiple={multiple}
                   placeholder={
                     multiple
-                      ? t('label.entity-reference')
-                      : t('label.entity-reference-plural')
+                      ? t('label.entity-reference-plural')
+                      : t('label.entity-reference')
                   }
                   searchIndex={index.join(',') as SearchIndex}
                 />

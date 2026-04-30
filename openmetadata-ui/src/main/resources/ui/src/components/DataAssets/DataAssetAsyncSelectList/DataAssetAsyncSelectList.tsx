@@ -44,7 +44,7 @@ import {
 } from './DataAssetAsyncSelectList.interface';
 
 const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
-  multiple = true,
+  multiple = false,
   autoFocus = true,
   onChange,
   debounceTimeout = 800,
@@ -53,7 +53,6 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   value: selectedValue,
   filterFqns = [],
   queryFilter,
-  defaultValue,
   ...props
 }) => {
   const [paging, setPaging] = useState<Paging>({} as Paging);
@@ -70,10 +69,6 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   // Tracks all options ever seen so selected items survive option list changes
   const knownOptionsRef = useRef<Map<string, DataAssetOption>>(
     new Map(initialOptions?.map((opt) => [opt.value, opt]) ?? [])
-  );
-  // Pending default values to resolve when options first load
-  const pendingDefaultValues = useRef<string[] | null>(
-    !initialOptions?.length && defaultValue?.length ? defaultValue : null
   );
 
   const defaultQueryFilter = useMemo(
@@ -100,7 +95,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
 
       const dataAssets = hits.map(({ _source }) => {
         const entityName = getEntityName(_source);
-        const sourceType = (_source as { type?: string }).type as EntityType;
+        const sourceType = (_source as { entityType: EntityType }).entityType;
         const entityRef = getEntityReferenceFromEntity(
           _source as EntityReference,
           sourceType
@@ -143,15 +138,15 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         // Track all loaded options so selection survives option list changes
         res.data.forEach((opt) => knownOptionsRef.current.set(opt.value, opt));
         // Resolve any pending default values on first load
-        if (pendingDefaultValues.current) {
-          const defaultItems = res.data.filter((opt) =>
-            pendingDefaultValues.current!.includes(opt.value)
-          );
-          if (defaultItems.length > 0) {
-            setSelectedItems(defaultItems);
-            pendingDefaultValues.current = null;
-          }
-        }
+        // if (pendingDefaultValues.current) {
+        //   const defaultItems = res.data.filter((opt) =>
+        //     pendingDefaultValues.current!.includes(opt.value)
+        //   );
+        //   if (defaultItems.length > 0) {
+        //     setSelectedItems(defaultItems);
+        //     pendingDefaultValues.current = null;
+        //   }
+        // }
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -230,9 +225,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
 
   const handleItemCleared = useCallback(
     (key: Key) => {
-      const updatedSelection = selectedItems.filter(
-        (item) => item.id !== key
-      );
+      const updatedSelection = selectedItems.filter((item) => item.id !== key);
       setSelectedItems(updatedSelection);
       if (multiple) {
         onChange?.(updatedSelection);
@@ -276,7 +269,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       }
     } else {
       // Single DataAssetOption object
-      setSelectedItems([selectedValue as DataAssetOption]);
+      setSelectedItems([selectedValue]);
     }
   }, [selectedValue]);
 
@@ -291,10 +284,8 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
     return `data-asset-async-select-popover ${props.popoverClassName ?? ''}`;
   }, [props.popoverClassName]);
 
-  useEffect(() => {
-    let currentPopover: HTMLDivElement | null = null;
-
-    const handleNativeScroll = (e: Event) => {
+  const handleNativeScroll = useCallback(
+    (e: Event) => {
       const target = e.currentTarget as HTMLDivElement;
       const scrollThreshold = 50;
       const isNearBottom =
@@ -304,43 +295,9 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       if (isNearBottom) {
         loadMoreOptions();
       }
-    };
-
-    const tryAttachScroll = (popover: HTMLDivElement | null) => {
-      if (!popover || currentPopover === popover) {
-        return;
-      }
-      if (currentPopover) {
-        currentPopover.removeEventListener('scroll', handleNativeScroll);
-      }
-      currentPopover = popover;
-      popover.addEventListener('scroll', handleNativeScroll);
-    };
-
-    // Attach immediately if popover already exists
-    tryAttachScroll(
-      document.querySelector(
-        '.data-asset-async-select-popover'
-      ) as HTMLDivElement | null
-    );
-
-    const observer = new MutationObserver(() => {
-      tryAttachScroll(
-        document.querySelector(
-          '.data-asset-async-select-popover'
-        ) as HTMLDivElement | null
-      );
-    });
-
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    return () => {
-      observer.disconnect();
-      if (currentPopover) {
-        currentPopover.removeEventListener('scroll', handleNativeScroll);
-      }
-    };
-  }, [loadMoreOptions]);
+    },
+    [loadMoreOptions]
+  );
 
   return (
     <Autocomplete
@@ -350,6 +307,9 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       multiple={multiple}
       placeholder={props.placeholder}
       popoverClassName={customPopoverClassName}
+      popoverProps={{
+        onscroll: handleNativeScroll,
+      }}
       selectedItems={selectedItems}
       onItemCleared={handleItemCleared}
       onItemInserted={handleItemInserted}

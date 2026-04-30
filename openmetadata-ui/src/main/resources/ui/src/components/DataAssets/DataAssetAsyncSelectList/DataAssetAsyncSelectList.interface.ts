@@ -36,7 +36,6 @@ export interface DataAssetAsyncSelectListProps {
   popoverClassName?: string;
   value?: DataAssetOption | DataAssetOption[] | string | string[];
   debounceTimeout?: number;
-  defaultValue?: string[];
   initialOptions?: DataAssetOption[];
   searchIndex?: SearchIndex;
   onChange?: (option: DataAssetOption | DataAssetOption[] | null) => void;

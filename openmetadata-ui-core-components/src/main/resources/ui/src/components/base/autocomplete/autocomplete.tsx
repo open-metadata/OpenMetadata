@@ -1,3 +1,4 @@
+import { PopoverProps } from '@/components/application/popover/popover';
 import type { IconComponentType } from '@/components/base/badges/badge-types';
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
@@ -98,6 +99,7 @@ export interface AutocompleteProps
   onSearchChange?: (value: string) => void;
   maxVisibleItems?: number;
   multiple?: boolean;
+  popoverProps?: PopoverProps;
 }
 
 const renderChipIcon = (item: SelectItemType) => {
@@ -327,6 +329,7 @@ export const AutocompleteBase = ({
   maxVisibleItems,
   name: _name,
   className: _className,
+  popoverProps,
   ...props
 }: AutocompleteProps) => {
   const { contains } = useFilter({ sensitivity: 'base' });
@@ -479,6 +482,7 @@ export const AutocompleteBase = ({
               </div>
 
               <Popover
+                {...popoverProps}
                 className={popoverClassName}
                 size="md"
                 style={{ width: popoverWidth }}
