@@ -9,7 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -1012,6 +1014,137 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     assertTrue(
         ancestors.isEmpty(),
         "top-level containers (immediate child of the storage service) have no ancestors");
+  }
+
+  @Test
+  void test_listAncestors_deepChainPreservesOrder(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    // Build a 10-level deep chain. The endpoint resolves the chain via a single
+    // batched dao.findEntityByNames(...) IN(...) — that DAO call returns rows in
+    // arbitrary order, so the repository has to reorder by depth. A deep chain
+    // makes any future regression to HashMap-style iteration order obvious.
+    int depth = 10;
+    List<Container> chain = new ArrayList<>(depth);
+    Container previous = null;
+    for (int i = 0; i < depth; i++) {
+      CreateContainer request = new CreateContainer();
+      request.setName(ns.prefix(String.format("ancestors_deep_%02d", i)));
+      request.setService(service.getFullyQualifiedName());
+      if (previous != null) {
+        request.setParent(
+            new EntityReference()
+                .withId(previous.getId())
+                .withType("container")
+                .withFullyQualifiedName(previous.getFullyQualifiedName()));
+      }
+      previous = createEntity(request);
+      chain.add(previous);
+    }
+
+    Container leaf = chain.get(depth - 1);
+    EntityReferenceList ancestors =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + leaf.getFullyQualifiedName() + "/ancestors",
+                null,
+                EntityReferenceList.class);
+
+    assertNotNull(ancestors);
+    assertEquals(
+        depth - 1,
+        ancestors.size(),
+        "ancestors list excludes the storage service and the leaf itself");
+    for (int i = 0; i < depth - 1; i++) {
+      assertEquals(
+          chain.get(i).getId(),
+          ancestors.get(i).getId(),
+          "ancestor at depth " + i + " must match the chain at index " + i);
+      assertEquals(
+          chain.get(i).getFullyQualifiedName(),
+          ancestors.get(i).getFullyQualifiedName(),
+          "ancestor FQN at depth " + i + " must match the chain at index " + i);
+    }
+  }
+
+  @Test
+  void test_listAncestors_doesNotLeakSiblingSubtree(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    // Shared root with two divergent subtrees:
+    //   root → branchA → leafA
+    //   root → branchB → deeperB → leafB
+    // The endpoint must return only the leaf's own ancestor chain, never the
+    // sibling subtree. This is the regression test for the original prefix-LIKE
+    // bug that motivated batched-by-target-hash fetching elsewhere.
+    CreateContainer rootRequest = new CreateContainer();
+    rootRequest.setName(ns.prefix("ancestors_isolation_root"));
+    rootRequest.setService(service.getFullyQualifiedName());
+    Container root = createEntity(rootRequest);
+
+    Container branchA = createChild(ns, service, root, "ancestors_isolation_branch_a");
+    Container leafA = createChild(ns, service, branchA, "ancestors_isolation_leaf_a");
+
+    Container branchB = createChild(ns, service, root, "ancestors_isolation_branch_b");
+    Container deeperB = createChild(ns, service, branchB, "ancestors_isolation_deeper_b");
+    Container leafB = createChild(ns, service, deeperB, "ancestors_isolation_leaf_b");
+
+    EntityReferenceList ancestorsA =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + leafA.getFullyQualifiedName() + "/ancestors",
+                null,
+                EntityReferenceList.class);
+
+    assertEquals(2, ancestorsA.size(), "leafA's chain is exactly root → branchA");
+    assertEquals(root.getId(), ancestorsA.get(0).getId());
+    assertEquals(branchA.getId(), ancestorsA.get(1).getId());
+    Set<UUID> leakedIntoA = new HashSet<>();
+    for (EntityReference ref : ancestorsA) {
+      leakedIntoA.add(ref.getId());
+    }
+    assertFalse(leakedIntoA.contains(branchB.getId()), "branchB must not appear in leafA's chain");
+    assertFalse(leakedIntoA.contains(deeperB.getId()), "deeperB must not appear in leafA's chain");
+    assertFalse(leakedIntoA.contains(leafB.getId()), "leafB must not appear in leafA's chain");
+
+    EntityReferenceList ancestorsB =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + leafB.getFullyQualifiedName() + "/ancestors",
+                null,
+                EntityReferenceList.class);
+
+    assertEquals(3, ancestorsB.size(), "leafB's chain is exactly root → branchB → deeperB");
+    assertEquals(root.getId(), ancestorsB.get(0).getId());
+    assertEquals(branchB.getId(), ancestorsB.get(1).getId());
+    assertEquals(deeperB.getId(), ancestorsB.get(2).getId());
+    Set<UUID> leakedIntoB = new HashSet<>();
+    for (EntityReference ref : ancestorsB) {
+      leakedIntoB.add(ref.getId());
+    }
+    assertFalse(leakedIntoB.contains(branchA.getId()), "branchA must not appear in leafB's chain");
+    assertFalse(leakedIntoB.contains(leafA.getId()), "leafA must not appear in leafB's chain");
+  }
+
+  private Container createChild(
+      TestNamespace ns, StorageService service, Container parent, String suffix) {
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix(suffix));
+    request.setService(service.getFullyQualifiedName());
+    request.setParent(
+        new EntityReference()
+            .withId(parent.getId())
+            .withType("container")
+            .withFullyQualifiedName(parent.getFullyQualifiedName()));
+    return createEntity(request);
   }
 
   private static class EntityReferenceList extends ArrayList<EntityReference> {}
