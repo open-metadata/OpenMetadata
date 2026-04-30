@@ -11,9 +11,10 @@
 """
 Validate the deprecated functions still work.
 """
+
 from metadata.workflow.workflow_output_handler import print_init_error, print_status
 
-from .test_base_workflow import SimpleWorkflow, config
+from .test_base_workflow import SimpleWorkflow, config  # noqa: TID252
 
 
 # TODO: remove after the print_status and print_init_error functions are removed in Release 1.6

@@ -347,6 +347,9 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     List<String> neighbors = adjacencyList.get(node);
     if (neighbors != null) {
       for (String neighbor : neighbors) {
+        if (neighbor.equals(node)) {
+          continue;
+        }
         if (hasCycleDFS(neighbor, adjacencyList, visited, recursionStack)) {
           return true;
         }

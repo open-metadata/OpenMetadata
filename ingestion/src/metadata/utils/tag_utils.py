@@ -14,7 +14,7 @@ Tag utils Module
 
 import functools
 import traceback
-from typing import Iterable, List, Optional, Type, Union
+from typing import Iterable, List, Optional, Type, Union  # noqa: UP035
 
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
@@ -52,13 +52,13 @@ logger = ingestion_logger()
 
 # pylint: disable=too-many-arguments
 def get_ometa_tag_and_classification(
-    tags: List[str],
+    tags: List[str],  # noqa: UP006
     classification_name: str,
     tag_description: str,
     classification_description: str,
     include_tags: bool = True,
-    tag_fqn: Optional[FullyQualifiedEntityName] = None,
-    metadata: Optional[OpenMetadata] = None,
+    tag_fqn: Optional[FullyQualifiedEntityName] = None,  # noqa: UP045
+    metadata: Optional[OpenMetadata] = None,  # noqa: UP045
     system_tags: bool = False,
 ) -> Iterable[Either[OMetaTagAndClassification]]:
     """
@@ -70,15 +70,11 @@ def get_ometa_tag_and_classification(
     if system_tags:
         # Checking for system classification
         for classification_entity in (
-            metadata.es_search_from_fqn(
-                entity_type=Classification, fqn_search_string=classification_name
-            )
-            or []
+            metadata.es_search_from_fqn(entity_type=Classification, fqn_search_string=classification_name) or []
         ):
             if (
                 classification_entity.provider == ProviderType.system
-                and classification_entity.name.root.lower()
-                == classification_name.lower()
+                and classification_entity.name.root.lower() == classification_name.lower()
             ):
                 classification_name = classification_entity.name.root
                 classification_description = classification_entity.description.root
@@ -87,9 +83,7 @@ def get_ometa_tag_and_classification(
     for tag in tags:
         # Skip empty or whitespace-only tags
         if not tag or not str(tag).strip():
-            logger.warning(
-                f"Skipping empty or whitespace-only tag for classification '{classification_name}'"
-            )
+            logger.warning(f"Skipping empty or whitespace-only tag for classification '{classification_name}'")
             continue
 
         specific_tag_description = tag_description
@@ -108,7 +102,7 @@ def get_ometa_tag_and_classification(
                         and tag_entity.classification.name == classification_name
                         and tag_entity.name.root.lower() == tag.lower()
                     ):
-                        tag = tag_entity.name.root
+                        tag = tag_entity.name.root  # noqa: PLW2901
                         specific_tag_description = tag_entity.description.root
                         break
 
@@ -121,11 +115,7 @@ def get_ometa_tag_and_classification(
                 tag_request=CreateTagRequest(
                     classification=FullyQualifiedEntityName(classification_name),
                     name=EntityName(tag),
-                    description=(
-                        Markdown(specific_tag_description)
-                        if specific_tag_description
-                        else None
-                    ),
+                    description=(Markdown(specific_tag_description) if specific_tag_description else None),
                 ),
             )
             yield Either(right=classification)
@@ -144,17 +134,15 @@ def get_ometa_tag_and_classification(
 def get_tag_label(
     metadata: OpenMetadata,
     tag_name: str,
-    classification_name: Optional[str],
-    tag_type: Union[Type[Tag], Type[GlossaryTerm]] = Tag,
-) -> Optional[TagLabel]:
+    classification_name: Optional[str],  # noqa: UP045
+    tag_type: Union[Type[Tag], Type[GlossaryTerm]] = Tag,  # noqa: UP006, UP007
+) -> Optional[TagLabel]:  # noqa: UP045
     """
     Returns the tag label if the tag is created
     """
     # Skip empty or whitespace-only tag names
     if not tag_name or not str(tag_name).strip():
-        logger.warning(
-            f"Skipping empty or whitespace-only tag name for classification '{classification_name}'"
-        )
+        logger.warning(f"Skipping empty or whitespace-only tag name for classification '{classification_name}'")
         return None
 
     try:
@@ -193,11 +181,11 @@ def get_tag_label(
 
 def get_tag_labels(
     metadata: OpenMetadata,
-    tags: List[str],
-    classification_name: Optional[str] = None,
+    tags: List[str],  # noqa: UP006
+    classification_name: Optional[str] = None,  # noqa: UP045
     include_tags: bool = True,
-    tag_type: Union[Type[Tag], Type[GlossaryTerm]] = Tag,
-) -> Optional[List[TagLabel]]:
+    tag_type: Union[Type[Tag], Type[GlossaryTerm]] = Tag,  # noqa: UP006, UP007
+) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
     """
     Method to create tag labels from the collected tags
     """
@@ -206,9 +194,7 @@ def get_tag_labels(
         for tag in tags:
             # Skip empty or whitespace-only tags
             if not tag or not str(tag).strip():
-                logger.warning(
-                    f"Skipping empty or whitespace-only tag for classification '{classification_name}'"
-                )
+                logger.warning(f"Skipping empty or whitespace-only tag for classification '{classification_name}'")
                 continue
 
             try:
