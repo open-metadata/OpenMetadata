@@ -6563,59 +6563,58 @@ public interface CollectionDAO {
                 hash = true)
             String tagFqnHash);
 
-    /**
-     * Get tag usage counts for multiple tags.
-     * This method retrieves counts for exact tag matches and their children in one query.
-     */
     @SqlQuery(
-        "SELECT tagFQN, count FROM ("
-            + "  SELECT ? as tagFQN, COUNT(DISTINCT targetFQNHash) as count "
-            + "  FROM tag_usage "
-            + "  WHERE source = ? AND (tagFQNHash = MD5(?) OR tagFQNHash LIKE CONCAT(MD5(?), '.%'))"
-            + ") t WHERE tagFQN IN (<tagFQNs>)")
+        "SELECT tagFQNHash AS tagFQN, COUNT(*) AS count "
+            + "FROM tag_usage "
+            + "WHERE source = :source AND tagFQNHash IN (<hashes>) "
+            + "GROUP BY tagFQNHash")
     @RegisterRowMapper(TagCountMapper.class)
-    @Deprecated
-    List<Map.Entry<String, Integer>> getTagCountsBulkComplex(
-        @Bind("tagFQN") String sampleTagFQN,
-        @Bind("source") int source,
-        @Bind("tagFQNHash") String tagFQNHash,
-        @Bind("tagFQNHashPrefix") String tagFQNHashPrefix,
-        @BindList("tagFQNs") List<String> tagFQNs);
+    List<Map.Entry<String, Integer>> getTagUsageCountsByExactHashes(
+        @Bind("source") int source, @BindList("hashes") List<String> hashes);
 
+    @SqlQuery(
+        "SELECT COUNT(*) FROM tag_usage "
+            + "WHERE source = :source AND tagFQNHash LIKE :hashPrefix")
+    int getTagUsageCountByHashPrefix(
+        @Bind("source") int source, @Bind("hashPrefix") String hashPrefix);
+
+    /**
+     * Returns usage count per tagFQN = exact-match rows + descendant rows.
+     * Hashes are pre-computed via FullyQualifiedName.buildHash to match the hierarchical format
+     * stored in tag_usage.tagFQNHash. Exact-match counts use one batched GROUP BY; descendant
+     * counts use one indexed prefix-LIKE per tag.
+     */
     default Map<String, Integer> getTagCountsBulk(int source, List<String> tagFQNs) {
       if (tagFQNs == null || tagFQNs.isEmpty()) {
         return Collections.emptyMap();
       }
 
-      Map<String, Integer> resultMap = new HashMap<>();
-
-      // Process tags in batches to create a single efficient query
-      // We'll use a UNION ALL approach which is more compatible with JDBI
-      StringBuilder queryBuilder = new StringBuilder();
-      List<String> params = new ArrayList<>();
-
-      for (int i = 0; i < tagFQNs.size(); i++) {
-        if (i > 0) {
-          queryBuilder.append(" UNION ALL ");
-        }
-        queryBuilder.append(
-            "SELECT ? as tagFQN, COUNT(DISTINCT targetFQNHash) as count "
-                + "FROM tag_usage "
-                + "WHERE source = ? AND (tagFQNHash = MD5(?) OR tagFQNHash LIKE CONCAT(MD5(?), '.%'))");
-        params.add(tagFQNs.get(i)); // tagFQN for selection
-        params.add(String.valueOf(source)); // source
-        params.add(tagFQNs.get(i)); // tagFQN for MD5
-        params.add(tagFQNs.get(i)); // tagFQN for LIKE
-      }
-
-      // For now, fall back to individual queries until we have a better solution
-      // This ensures correctness while we work on optimization
+      LinkedHashMap<String, String> fqnByHash = new LinkedHashMap<>();
       for (String tagFQN : tagFQNs) {
-        int count = getTagCount(source, tagFQN);
-        resultMap.put(tagFQN, count);
+        fqnByHash.put(FullyQualifiedName.buildHash(tagFQN), tagFQN);
       }
 
-      return resultMap;
+      Map<String, Integer> result = new HashMap<>();
+      for (String tagFQN : tagFQNs) {
+        result.put(tagFQN, 0);
+      }
+
+      for (Map.Entry<String, Integer> row :
+          getTagUsageCountsByExactHashes(source, new ArrayList<>(fqnByHash.keySet()))) {
+        String tagFQN = fqnByHash.get(row.getKey());
+        if (tagFQN != null) {
+          result.merge(tagFQN, row.getValue(), Integer::sum);
+        }
+      }
+
+      for (Map.Entry<String, String> entry : fqnByHash.entrySet()) {
+        int descendants = getTagUsageCountByHashPrefix(source, entry.getKey() + ".%");
+        if (descendants > 0) {
+          result.merge(entry.getValue(), descendants, Integer::sum);
+        }
+      }
+
+      return result;
     }
 
     @SqlUpdate("DELETE FROM tag_usage where targetFQNHash = :targetFQNHash")

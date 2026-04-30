@@ -357,6 +357,87 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
   }
 
   @Test
+  void test_classificationAndTagUsageCount(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateClassification createClassification = new CreateClassification();
+    createClassification.setName(ns.prefix("classification_usagecount"));
+    createClassification.setDescription("Classification for tag usage-count test");
+    Classification classification = createEntity(createClassification);
+
+    CreateTag createTag1 = new CreateTag();
+    createTag1.setName(ns.prefix("tag_a"));
+    createTag1.setDescription("Tag A");
+    createTag1.setClassification(classification.getFullyQualifiedName());
+    org.openmetadata.schema.entity.classification.Tag tagA = client.tags().create(createTag1);
+
+    CreateTag createTag2 = new CreateTag();
+    createTag2.setName(ns.prefix("tag_b"));
+    createTag2.setDescription("Tag B");
+    createTag2.setClassification(classification.getFullyQualifiedName());
+    org.openmetadata.schema.entity.classification.Tag tagB = client.tags().create(createTag2);
+
+    TableResourceIT tableResourceIT = new TableResourceIT();
+    Table table1 = tableResourceIT.createEntity(tableResourceIT.createRequest(ns.prefix("usage_t1"), ns).withTags(null));
+    Table table2 = tableResourceIT.createEntity(tableResourceIT.createRequest(ns.prefix("usage_t2"), ns).withTags(null));
+    Table table3 = tableResourceIT.createEntity(tableResourceIT.createRequest(ns.prefix("usage_t3"), ns).withTags(null));
+
+    table1.setTags(List.of(new TagLabel().withTagFQN(tagA.getFullyQualifiedName())));
+    tableResourceIT.patchEntity(table1.getId().toString(), table1);
+
+    table2.setTags(List.of(new TagLabel().withTagFQN(tagA.getFullyQualifiedName())));
+    tableResourceIT.patchEntity(table2.getId().toString(), table2);
+
+    table3.setTags(List.of(new TagLabel().withTagFQN(tagB.getFullyQualifiedName())));
+    tableResourceIT.patchEntity(table3.getId().toString(), table3);
+
+    Classification withUsage =
+        getEntityWithFields(classification.getId().toString(), "usageCount");
+    assertEquals(
+        3,
+        withUsage.getUsageCount(),
+        "Classification usage count must include all child-tag applications (correctness regression: hierarchical hash prefix match)");
+
+    org.openmetadata.schema.entity.classification.Tag tagAWithUsage =
+        client.tags().get(tagA.getId().toString(), "usageCount");
+    assertEquals(
+        2,
+        tagAWithUsage.getUsageCount(),
+        "Tag A must report exact usage count (correctness regression: exact hash match)");
+
+    org.openmetadata.schema.entity.classification.Tag tagBWithUsage =
+        client.tags().get(tagB.getId().toString(), "usageCount");
+    assertEquals(1, tagBWithUsage.getUsageCount(), "Tag B must report exact usage count");
+
+    ListParams listParams =
+        new ListParams()
+            .addFilter("parent", classification.getFullyQualifiedName())
+            .setFields("usageCount");
+    ListResponse<org.openmetadata.schema.entity.classification.Tag> listed =
+        client.tags().list(listParams);
+    org.openmetadata.schema.entity.classification.Tag listedA =
+        listed.getData().stream()
+            .filter(t -> t.getId().equals(tagA.getId()))
+            .findFirst()
+            .orElse(null);
+    org.openmetadata.schema.entity.classification.Tag listedB =
+        listed.getData().stream()
+            .filter(t -> t.getId().equals(tagB.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(listedA);
+    assertNotNull(listedB);
+    assertEquals(
+        2,
+        listedA.getUsageCount(),
+        "Bulk LIST: tag A usage count must be correct (exercises batched getTagCountsBulk path)");
+    assertEquals(
+        1,
+        listedB.getUsageCount(),
+        "Bulk LIST: tag B usage count must be correct (exercises batched getTagCountsBulk path)");
+  }
+
+  @Test
   void test_entityStatusUpdateAndPatch(TestNamespace ns) {
     // Create a classification
     CreateClassification createClassification = new CreateClassification();
