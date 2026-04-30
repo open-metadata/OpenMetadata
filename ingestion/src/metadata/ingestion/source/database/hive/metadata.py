@@ -168,6 +168,9 @@ class HiveSource(CommonDbSourceService):
 
         try:
             dialect = getattr(self.engine, "dialect", None)
+            if dialect is None:
+                logger.debug(f"Engine has no dialect; skipping partition detection for {schema_name}.{table_name}")
+                return False, None
             preparer = dialect.identifier_preparer
             quoted_schema = preparer.quote(schema_name)
             quoted_table = preparer.quote(table_name)
