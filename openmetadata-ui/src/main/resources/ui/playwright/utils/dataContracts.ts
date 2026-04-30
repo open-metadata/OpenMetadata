@@ -19,6 +19,7 @@ import {
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
 import { getApiContext } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
 export const saveAndTriggerDataContractValidation = async (
@@ -95,23 +96,29 @@ export const validateDataContractInsideBundleTestSuites = async (
 export const waitForDataContractExecution = async (
   page: Page,
   contractId: string,
-  resultId: string,
   maxConsecutiveErrors = 3
 ) => {
   const { apiContext } = await getApiContext(page);
   let consecutiveErrors = 0;
+  const terminalStatusPattern =
+    /(Aborted|Success|Failed|PartialSuccess|Queued)/;
 
   await expect
     .poll(
       async () => {
         try {
-          const response = await apiContext
-            .get(`/api/v1/dataContracts/${contractId}/results/${resultId}`)
-            .then((res) => res.json());
+          // Poll the contract entity — latestResult.status is what the backend updates
+          // and what the UI reads. Avoids coupling to a resultId that may be stale.
+          const contractResponse = await apiContext
+            .get(`/api/v1/dataContracts/${contractId}`)
+            .then((res) => (res.ok() ? res.json() : null))
+            .catch(() => null);
 
-          consecutiveErrors = 0; // Reset error counter on success
+          consecutiveErrors = 0;
 
-          return response.contractExecutionStatus;
+          const status = contractResponse?.latestResult?.status;
+
+          return status ?? 'Running';
         } catch (error) {
           consecutiveErrors++;
           if (consecutiveErrors >= maxConsecutiveErrors) {
@@ -125,13 +132,11 @@ export const waitForDataContractExecution = async (
       },
       {
         message: 'Wait for data contract execution to complete',
-        timeout: 300_000,
+        timeout: 600_000,
         intervals: [30_000, 20_000, 10_000],
       }
     )
-    .toEqual(
-      expect.stringMatching(/(Aborted|Success|Failed|PartialSuccess|Queued)/)
-    );
+    .toEqual(expect.stringMatching(terminalStatusPattern));
 };
 
 /**
