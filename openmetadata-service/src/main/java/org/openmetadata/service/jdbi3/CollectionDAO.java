@@ -6572,25 +6572,19 @@ public interface CollectionDAO {
     List<Map.Entry<String, Integer>> getTagUsageCountsByExactHashes(
         @Bind("source") int source, @BindList("hashes") List<String> hashes);
 
-    @SqlQuery(
-        "SELECT COUNT(*) FROM tag_usage "
-            + "WHERE source = :source AND tagFQNHash LIKE :hashPrefix")
-    int getTagUsageCountByHashPrefix(
-        @Bind("source") int source, @Bind("hashPrefix") String hashPrefix);
-
     int TAG_COUNT_BATCH_CHUNK_SIZE = 1000;
 
     /**
      * Returns usage count per tagFQN = exact-match rows + descendant rows.
      *
      * <p>Hashes are pre-computed via FullyQualifiedName.buildHash to match the hierarchical
-     * format stored in tag_usage.tagFQNHash. Exact-match counts use a batched GROUP BY chunked
-     * at {@link #TAG_COUNT_BATCH_CHUNK_SIZE} hashes per query to keep IN-list size bounded.
+     * format stored in tag_usage.tagFQNHash. Both branches are chunked at
+     * {@link #TAG_COUNT_BATCH_CHUNK_SIZE} so neither the IN-list nor the UNION-ALL of
+     * prefix-LIKE inputs grows unbounded.
      *
-     * <p>Descendant counts use one indexed prefix-LIKE per tag. Each LIKE returns a single
-     * integer (COUNT only — no row materialization), and the index range scan is bounded by
-     * the descendant count of that specific tag, not by overall table size. For typical
-     * 1–2 level tag hierarchies (Classification.Tag) the descendant set is small or empty.
+     * <p>Per-chunk query count is exactly 2 (one exact-match GROUP BY + one batched
+     * descendant GROUP BY) regardless of how many tags the chunk contains — eliminating the
+     * N+1 round-trip pattern that would scale poorly for large tag pages.
      */
     default Map<String, Integer> getTagCountsBulk(int source, List<String> tagFQNs) {
       if (tagFQNs == null || tagFQNs.isEmpty()) {
@@ -6611,22 +6605,57 @@ public interface CollectionDAO {
       for (int i = 0; i < allHashes.size(); i += TAG_COUNT_BATCH_CHUNK_SIZE) {
         List<String> chunk =
             allHashes.subList(i, Math.min(i + TAG_COUNT_BATCH_CHUNK_SIZE, allHashes.size()));
+
         for (Map.Entry<String, Integer> row : getTagUsageCountsByExactHashes(source, chunk)) {
           String tagFQN = fqnByHash.get(row.getKey());
           if (tagFQN != null) {
             result.merge(tagFQN, row.getValue(), Integer::sum);
           }
         }
-      }
 
-      for (Map.Entry<String, String> entry : fqnByHash.entrySet()) {
-        int descendants = getTagUsageCountByHashPrefix(source, entry.getKey() + ".%");
-        if (descendants > 0) {
-          result.merge(entry.getValue(), descendants, Integer::sum);
+        for (Map.Entry<String, Integer> row : batchedDescendantCounts(source, chunk)) {
+          String tagFQN = fqnByHash.get(row.getKey());
+          if (tagFQN != null && row.getValue() > 0) {
+            result.merge(tagFQN, row.getValue(), Integer::sum);
+          }
         }
       }
 
       return result;
+    }
+
+    /**
+     * Single-round-trip descendant count for up to {@link #TAG_COUNT_BATCH_CHUNK_SIZE} root
+     * hashes. Builds a UNION-ALL of (rootHash, hashPrefix) input rows and joins to
+     * tag_usage with an indexed LIKE per row. All values are bound as named parameters —
+     * no string interpolation, safe against injection.
+     */
+    default List<Map.Entry<String, Integer>> batchedDescendantCounts(
+        int source, List<String> rootHashes) {
+      if (rootHashes == null || rootHashes.isEmpty()) {
+        return Collections.emptyList();
+      }
+      StringBuilder sql =
+          new StringBuilder("SELECT i.rootHash AS tagFQN, COUNT(*) AS count FROM (");
+      for (int i = 0; i < rootHashes.size(); i++) {
+        if (i > 0) sql.append(" UNION ALL ");
+        sql.append("SELECT :h").append(i).append(" AS rootHash, :p").append(i).append(" AS hashPrefix");
+      }
+      sql.append(") i JOIN tag_usage tu ON tu.source = :source ")
+          .append("AND tu.tagFQNHash LIKE i.hashPrefix ")
+          .append("GROUP BY i.rootHash");
+
+      return org.openmetadata.service.Entity.getJdbi()
+          .withHandle(
+              handle -> {
+                var query = handle.createQuery(sql.toString());
+                query.bind("source", source);
+                for (int i = 0; i < rootHashes.size(); i++) {
+                  query.bind("h" + i, rootHashes.get(i));
+                  query.bind("p" + i, rootHashes.get(i) + ".%");
+                }
+                return query.map(new TagCountMapper()).list();
+              });
     }
 
     @SqlUpdate("DELETE FROM tag_usage where targetFQNHash = :targetFQNHash")
