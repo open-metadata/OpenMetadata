@@ -511,7 +511,7 @@ elasticsearch:
     enabled: ${NATURAL_LANGUAGE_SEARCH_ENABLED:-false}
     semanticSearchEnabled: ${SEMANTIC_SEARCH_ENABLED:-false}
     embeddingProvider: ${EMBEDDING_PROVIDER:-bedrock} # Options: "openai", "bedrock", "djl"
-    maxConcurrentEmbeddingRequests: ${MAX_CONCURRENT_EMBEDDING_REQUESTS:-10}
+    maxConcurrentEmbeddingRequests: ${MAX_CONCURRENT_EMBEDDING_REQUESTS:-5}
     providerClass: ${NATURAL_LANGUAGE_SEARCH_PROVIDER_CLASS:-org.openmetadata.service.search.nlq.NoOpNLQService}
     bedrock:
       awsConfig:
