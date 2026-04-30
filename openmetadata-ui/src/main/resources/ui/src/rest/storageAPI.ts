@@ -80,12 +80,12 @@ export const getContainerChildrenByName = async (
 /**
  * Resolve the full ancestor chain for a container in a single call.
  * Returns references ordered from root container (immediate child of the
- * storage service) down to the immediate parent of `name`. Empty when the
+ * storage service) down to the immediate parent of `fqn`. Empty when the
  * container is at the top level.
  */
-export const getContainerAncestors = async (name: string) => {
+export const getContainerAncestors = async (fqn: string) => {
   const response = await APIClient.get<EntityReference[]>(
-    `${BASE_URL}/name/${getEncodedFqn(name)}/ancestors`
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}/ancestors`
   );
 
   return response.data;

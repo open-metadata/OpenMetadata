@@ -50,8 +50,6 @@ class OpenMetadataServerHealthCheckTest {
     assertTrue(result.isHealthy());
     assertTrue(
         elapsedMicros < 1_000,
-        "health check must complete in microseconds without I/O; took "
-            + elapsedMicros
-            + " µs");
+        "health check must complete in microseconds without I/O; took " + elapsedMicros + " µs");
   }
 }

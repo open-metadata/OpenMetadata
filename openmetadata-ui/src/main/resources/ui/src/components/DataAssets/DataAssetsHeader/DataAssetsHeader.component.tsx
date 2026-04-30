@@ -335,6 +335,11 @@ export const DataAssetsHeader = ({
   };
 
   const fetchContainerAncestors = async (containerFqn: string) => {
+    // Always reset state at the top so a navigation to a container without an FQN
+    // (or to one whose ancestor fetch fails) doesn't keep painting the previous
+    // container's breadcrumbs. Without this reset, switching between containers
+    // could leave stale ancestors visible after either an early return or an error.
+    setParentContainers([]);
     if (isEmpty(containerFqn)) {
       return;
     }
