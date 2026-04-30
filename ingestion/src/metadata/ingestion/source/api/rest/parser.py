@@ -135,14 +135,14 @@ def parse_openapi_schema_from_file(file_path: Union[str, Path]) -> Dict[str, Any
     if suffix == ".json":
         try:
             return _ensure_mapping(json.loads(content), "JSON")
-        except json.JSONDecodeError as e:
-            raise OpenAPIParseError(f"Failed to parse JSON file: {e}") from e
+        except (json.JSONDecodeError, OpenAPIParseError) as e:
+            raise OpenAPIParseError(f"Failed to parse JSON file '{file_path}': {e}") from e
 
     if suffix in (".yaml", ".yml"):
         try:
             return _ensure_mapping(yaml.safe_load(content), "YAML")
-        except yaml.YAMLError as e:
-            raise OpenAPIParseError(f"Failed to parse YAML file: {e}") from e
+        except (yaml.YAMLError, OpenAPIParseError) as e:
+            raise OpenAPIParseError(f"Failed to parse YAML file '{file_path}': {e}") from e
 
     # Unknown extension — try JSON first, then YAML
     try:
@@ -224,14 +224,14 @@ def parse_openapi_schema_from_s3(
     if suffix == ".json":
         try:
             return _ensure_mapping(json.loads(content), "JSON")
-        except json.JSONDecodeError as e:
-            raise OpenAPIParseError(f"Failed to parse S3 JSON file: {e}") from e
+        except (json.JSONDecodeError, OpenAPIParseError) as e:
+            raise OpenAPIParseError(f"Failed to parse S3 JSON file 's3://{bucket}/{key}': {e}") from e
 
     if suffix in (".yaml", ".yml"):
         try:
             return _ensure_mapping(yaml.safe_load(content), "YAML")
-        except yaml.YAMLError as e:
-            raise OpenAPIParseError(f"Failed to parse S3 YAML file: {e}") from e
+        except (yaml.YAMLError, OpenAPIParseError) as e:
+            raise OpenAPIParseError(f"Failed to parse S3 YAML file 's3://{bucket}/{key}': {e}") from e
 
     # Unknown extension — try JSON first, then YAML
     try:
