@@ -555,8 +555,8 @@ public class OpenSearchSourceBuilderFactory
     OpenSearchQueryBuilder.BoolQueryBuilder fallback =
         OpenSearchQueryBuilder.boolQuery()
             .must(buildBaseQueryV2(query, getOrCreateDefaultConfig()));
-    for (String configured : configuredTypes) {
-      fallback.mustNot(OpenSearchQueryBuilder.termQuery(ENTITY_TYPE_FIELD, configured));
+    if (!configuredTypes.isEmpty()) {
+      fallback.mustNot(OpenSearchQueryBuilder.termsQuery(ENTITY_TYPE_FIELD, configuredTypes));
     }
     return fallback.build();
   }

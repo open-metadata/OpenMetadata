@@ -535,8 +535,8 @@ public class ElasticSearchSourceBuilderFactory
       buildUnconfiguredAssetFallbackV2(String query, Set<String> configuredTypes) {
     ElasticQueryBuilder.BoolQueryBuilder fallback =
         ElasticQueryBuilder.boolQuery().must(buildBaseQueryV2(query, getOrCreateDefaultConfig()));
-    for (String configured : configuredTypes) {
-      fallback.mustNot(ElasticQueryBuilder.termQuery(ENTITY_TYPE_FIELD, configured));
+    if (!configuredTypes.isEmpty()) {
+      fallback.mustNot(ElasticQueryBuilder.termsQuery(ENTITY_TYPE_FIELD, configuredTypes));
     }
     return fallback.build();
   }

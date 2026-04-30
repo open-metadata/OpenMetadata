@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.opensearch;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import os.org.opensearch.client.opensearch._types.FieldValue;
@@ -27,6 +28,11 @@ public class OpenSearchQueryBuilder {
 
   public static Query termQuery(String field, int value) {
     return Query.of(q -> q.term(t -> t.field(field).value(FieldValue.of(value))));
+  }
+
+  public static Query termsQuery(String field, Collection<String> values) {
+    List<FieldValue> fieldValues = values.stream().map(FieldValue::of).toList();
+    return Query.of(q -> q.terms(t -> t.field(field).terms(tf -> tf.value(fieldValues))));
   }
 
   public static Query matchQuery(String field, String value) {
