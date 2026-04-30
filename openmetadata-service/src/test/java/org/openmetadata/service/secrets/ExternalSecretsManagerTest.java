@@ -243,6 +243,14 @@ public abstract class ExternalSecretsManagerTest {
   }
 
   @Test
+  void testStoreValueWithNullDoesNotThrowNpe() {
+    // Defensive: storeValue must handle null directly — isSecret(null) would NPE,
+    // so the null guard has to come first. (Caught in PR review by Gitar bot.)
+    String result = secretsManager.storeValue("password", null, "test-null-input", true);
+    assertNull(result, "storeValue with null value should return null without throwing");
+  }
+
+  @Test
   void testIssue21259ClearingPasswordDoesNotStoreNullString() {
     String serviceName = "bug21259-clear-password";
 

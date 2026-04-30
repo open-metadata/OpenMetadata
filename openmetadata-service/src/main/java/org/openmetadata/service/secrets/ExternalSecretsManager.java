@@ -33,15 +33,20 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   @Override
   protected String storeValue(String fieldName, String value, String secretId, boolean store) {
     String fieldSecretId = buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
+    // Issue #21259: a null/empty value means "no credential". Handle this case BEFORE
+    // calling isSecret() — isSecret() invokes startsWith() on the value and would NPE
+    // on null. Returning null here ensures the entity does not carry a stale secret:/
+    // reference to a deleted secret.
+    if (Objects.isNull(value) || value.isEmpty()) {
+      if (store) {
+        upsertSecret(fieldSecretId, value);
+      }
+      return null;
+    }
     // check if value does not start with 'config:' only String can have password annotation
     if (Boolean.FALSE.equals(isSecret(value))) {
       if (store) {
         upsertSecret(fieldSecretId, value);
-      }
-      // Issue #21259: a null/empty value means "no credential" — return null so the
-      // entity does not carry a stale secret:/ reference to a deleted secret.
-      if (Objects.isNull(value) || value.isEmpty()) {
-        return null;
       }
       return SECRET_FIELD_PREFIX + fieldSecretId;
     } else {
