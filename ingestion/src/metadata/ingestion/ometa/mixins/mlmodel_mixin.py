@@ -13,8 +13,9 @@ Mixin class containing Lineage specific methods
 
 To be used by OpenMetadata class
 """
+
 import traceback
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -55,9 +56,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
 
     client: REST
 
-    def add_mlmodel_lineage(
-        self, model: MlModel, description: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def add_mlmodel_lineage(self, model: MlModel, description: Optional[str] = None) -> Dict[str, Any]:  # noqa: UP006, UP045
         """
         Iterates over MlModel's Feature Sources and
         add the lineage information.
@@ -83,22 +82,20 @@ class OMetaMlModelMixin(OMetaLineageMixin):
                     edge=EntitiesEdge(
                         description=description,
                         fromEntity=entity_ref,
-                        toEntity=self.get_entity_reference(
-                            entity=MlModel, fqn=model.fullyQualifiedName
-                        ),
+                        toEntity=self.get_entity_reference(entity=MlModel, fqn=model.fullyQualifiedName),
                     ),
                 )
             )
 
         mlmodel_lineage = self.get_lineage_by_id(MlModel, str(model.id.root))
 
-        return mlmodel_lineage
+        return mlmodel_lineage  # noqa: RET504
 
     def get_mlmodel_sklearn(
         self,
         name: str,
         model,
-        description: Optional[str] = None,
+        description: Optional[str] = None,  # noqa: UP045
         service_name: str = "scikit-learn",
     ) -> CreateMlModelRequest:
         """
@@ -113,7 +110,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
         """
         try:
             # pylint: disable=import-outside-toplevel
-            from sklearn.base import BaseEstimator
+            from sklearn.base import BaseEstimator  # noqa: PLC0415
 
             # pylint: enable=import-outside-toplevel
         except ModuleNotFoundError as err:
@@ -123,10 +120,10 @@ class OMetaMlModelMixin(OMetaLineageMixin):
                 "pip install openmetadata-ingestion[sklearn], %s",
                 err,
             )
-            raise err
+            raise err  # noqa: TRY201
 
         if not isinstance(model, BaseEstimator):
-            raise ValueError("Input model is not an instance of sklearn BaseEstimator")
+            raise ValueError("Input model is not an instance of sklearn BaseEstimator")  # noqa: TRY004
 
         # Prepare a sklearn source configuration
         source_config = WorkflowSource(
@@ -136,18 +133,13 @@ class OMetaMlModelMixin(OMetaLineageMixin):
             sourceConfig=SourceConfig(config=MlModelServiceMetadataPipeline()),
         )
 
-        service = self.get_service_or_create(
-            entity=MlModelService, config=source_config
-        )
+        service = self.get_service_or_create(entity=MlModelService, config=source_config)
 
         return CreateMlModelRequest(
             name=name,
             description=description,
             algorithm=model.__class__.__name__,
-            mlFeatures=[
-                MlFeature(name=format_name(feature))
-                for feature in model.feature_names_in_
-            ],
+            mlFeatures=[MlFeature(name=format_name(feature)) for feature in model.feature_names_in_],
             mlHyperParameters=[
                 MlHyperParameter(
                     name=key,

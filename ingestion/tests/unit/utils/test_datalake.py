@@ -164,14 +164,69 @@ class TestDatalakeUtils(TestCase):
         ]
         actual = GenericDataFrameColumnParser.construct_json_column_children(STRUCTURE)
 
-        for el in zip(expected, actual):
+        for el in zip(expected, actual):  # noqa: B905
             self.assertDictEqual(el[0], el[1])
+
+    def test_unique_json_structure_with_list_of_dicts(self):
+        """list-of-dicts values are merged into a struct shape (e.g. Iceberg `schema.fields`)."""
+        sample_data = [
+            {
+                "schema": {
+                    "fields": [
+                        {"id": 1, "name": "customer_id", "type": "string"},
+                        {"id": 2, "name": "customer_type_cd", "type": "string"},
+                    ]
+                }
+            }
+        ]
+
+        actual = GenericDataFrameColumnParser.unique_json_structure(sample_data)
+        fields_value = actual["schema"]["fields"]
+
+        from metadata.utils.datalake.datalake_utils import _ArrayOfStruct
+
+        assert isinstance(fields_value, _ArrayOfStruct)
+        assert set(fields_value.struct.keys()) == {"id", "name", "type"}
+
+    def test_unique_json_structure_merges_list_of_dicts_across_samples(self):
+        """list-of-dicts values across multiple samples are unioned, not overwritten."""
+        from metadata.utils.datalake.datalake_utils import _ArrayOfStruct
+
+        sample_data = [
+            {"schema": {"fields": [{"id": 1, "name": "customer_id", "type": "string"}]}},
+            {"schema": {"fields": [{"id": 2, "required": False, "type": "string"}]}},
+            {"schema": {"fields": [{"description": "ciam id"}]}},
+        ]
+
+        actual = GenericDataFrameColumnParser.unique_json_structure(sample_data)
+        fields_value = actual["schema"]["fields"]
+
+        assert isinstance(fields_value, _ArrayOfStruct)
+        assert set(fields_value.struct.keys()) == {"id", "name", "type", "required", "description"}
+
+    def test_construct_column_with_array_of_struct(self):
+        """list-of-dicts values render as ARRAY<STRUCT<...>> with children for the struct fields."""
+        structure = {
+            "schema": {
+                "fields": [
+                    {"id": 1, "name": "customer_id", "type": "string"},
+                    {"id": 2, "name": "ciam_id", "type": "string"},
+                ]
+            }
+        }
+        merged = GenericDataFrameColumnParser.unique_json_structure([structure])
+        children = GenericDataFrameColumnParser.construct_json_column_children(merged)
+
+        schema_col = children[0]
+        fields_col = next(c for c in schema_col["children"] if c["name"] == "fields")
+
+        assert fields_col["dataType"] == DataType.ARRAY.value
+        assert fields_col["arrayDataType"] == DataType.STRUCT
+        assert {child["name"] for child in fields_col["children"]} == {"id", "name", "type"}
 
     def test_create_column_object(self):
         """test create column object fn"""
-        formatted_column = GenericDataFrameColumnParser.construct_json_column_children(
-            STRUCTURE
-        )
+        formatted_column = GenericDataFrameColumnParser.construct_json_column_children(STRUCTURE)
         column = {
             "dataTypeDisplay": "STRING",
             "dataType": "STRING",
@@ -188,10 +243,8 @@ class TestParquetDataFrameColumnParser(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        resources_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "resources"
-        )
-        cls.parquet_path = os.path.join(resources_path, "datalake", "example.parquet")
+        resources_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources")  # noqa: PTH118, PTH120
+        cls.parquet_path = os.path.join(resources_path, "datalake", "example.parquet")  # noqa: PTH118
 
         cls.df = pd.read_parquet(cls.parquet_path)
 
@@ -213,26 +266,18 @@ class TestParquetDataFrameColumnParser(TestCase):
         for other_type in other_types:
             with self.subTest(other_type=other_type):
                 generic_parser = DataFrameColumnParser.create(self.df, other_type)
-                self.assertIsInstance(
-                    generic_parser.parser, GenericDataFrameColumnParser
-                )
+                self.assertIsInstance(generic_parser.parser, GenericDataFrameColumnParser)
 
     def test_shuffle_and_sample_from_parser(self):
         """test the shuffle and sampling logic from the parser creator method"""
         parquet_parser = DataFrameColumnParser.create(self.df, SupportedTypes.PARQUET)
         self.assertEqual(parquet_parser.parser.data_frame.shape, self.df.shape)
 
-        parquet_parser = DataFrameColumnParser.create(
-            [self.df, self.df], SupportedTypes.PARQUET
-        )
+        parquet_parser = DataFrameColumnParser.create([self.df, self.df], SupportedTypes.PARQUET)
         self.assertEqual(parquet_parser.parser.data_frame.shape, self.df.shape)
 
-        parquet_parser = DataFrameColumnParser.create(
-            [self.df, self.df], SupportedTypes.PARQUET, sample=False
-        )
-        self.assertEqual(
-            parquet_parser.parser.data_frame.shape, pd.concat([self.df, self.df]).shape
-        )
+        parquet_parser = DataFrameColumnParser.create([self.df, self.df], SupportedTypes.PARQUET, sample=False)
+        self.assertEqual(parquet_parser.parser.data_frame.shape, pd.concat([self.df, self.df]).shape)
 
     def test_get_columns(self):
         """test `get_columns` method of the parquet column parser"""
@@ -437,7 +482,7 @@ class TestParquetDataFrameColumnParser(TestCase):
             ),  # type: ignore
         ]
         actual = self.parquet_parser.get_columns()
-        for validation in zip(expected, actual):
+        for validation in zip(expected, actual):  # noqa: B905
             with self.subTest(validation=validation):
                 expected_col, actual_col = validation
                 self.assertEqual(expected_col.name, actual_col.name)
@@ -451,7 +496,7 @@ class TestParquetDataFrameColumnParser(TestCase):
         self.assertEqual(expected.displayName, actual.displayName)
         if expected.children:
             self.assertEqual(len(expected.children), len(actual.children))
-            for validation in zip(expected.children, actual.children):
+            for validation in zip(expected.children, actual.children):  # noqa: B905
                 with self.subTest(validation=validation):
                     expected_col, actual_col = validation
                     self._validate_parsed_column(expected_col, actual_col)
@@ -549,7 +594,7 @@ class TestParquetDataFrameColumnParser(TestCase):
         local_config = LocalConfig()
 
         # Create DSV reader
-        reader = DSVDataFrameReader(config_source=local_config, client=None)
+        reader = DSVDataFrameReader(config_source=local_config, client=None)  # noqa: F841
 
         # Test compression detection logic (this is the same logic used in the dispatch methods)
         test_cases = [
@@ -776,12 +821,8 @@ class TestCSVQuotedHeaderFix(TestCase):
             LocalConfig,
         )
 
-        cls.csv_reader = DSVDataFrameReader(
-            config_source=LocalConfig(), client=None, separator=","
-        )
-        cls.tsv_reader = DSVDataFrameReader(
-            config_source=LocalConfig(), client=None, separator="\t"
-        )
+        cls.csv_reader = DSVDataFrameReader(config_source=LocalConfig(), client=None, separator=",")
+        cls.tsv_reader = DSVDataFrameReader(config_source=LocalConfig(), client=None, separator="\t")
 
     def test_normal_csv_no_fix_applied(self):
         """Test that normal CSV files with proper headers are not modified"""

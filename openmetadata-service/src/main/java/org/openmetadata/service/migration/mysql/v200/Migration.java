@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration.mysql.v200;
 
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addTableColumnSearchSettings;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.backfillAnnouncementRelationships;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateLegacyActivityThreadsToActivityStream;
@@ -20,9 +21,9 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     addTableColumnSearchSettings();
-    migrateSuggestionsToTaskEntity(handle);
-    migrateThreadTasksToTaskEntity(handle);
-    migrateLegacyActivityThreadsToActivityStream(handle);
+    migrateSuggestionsToTaskEntity(handle, MYSQL);
+    migrateThreadTasksToTaskEntity(handle, MYSQL);
+    migrateLegacyActivityThreadsToActivityStream(handle, MYSQL);
     backfillAnnouncementRelationships(handle);
   }
 }

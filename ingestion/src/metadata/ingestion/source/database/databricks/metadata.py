@@ -14,7 +14,7 @@ import json
 import re
 import traceback
 from copy import deepcopy
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
 
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
@@ -236,9 +236,7 @@ def _get_table_columns(self, connection, table_name, schema, db_name):
     # Using DESCRIBE works but is uglier.
     try:
         # This needs the table name to be unescaped (no backticks).
-        query = DATABRICKS_GET_TABLE_COMMENTS.format(
-            database_name=db_name, schema_name=schema, table_name=table_name
-        )
+        query = DATABRICKS_GET_TABLE_COMMENTS.format(database_name=db_name, schema_name=schema, table_name=table_name)
         rows = get_table_comment_result(
             self,
             connection=connection,
@@ -253,8 +251,8 @@ def _get_table_columns(self, connection, table_name, schema, db_name):
         regex_fmt = r"TExecuteStatementResp.*SemanticException.*Table not found {}"
         regex = regex_fmt.format(re.escape(full_table))
         if re.search(regex, e.args[0]):
-            raise exc.NoSuchTableError(full_table)
-        else:
+            raise exc.NoSuchTableError(full_table)  # noqa: B904
+        else:  # noqa: RET506
             raise
     else:
         # Hive is stupid: this is what I get from DESCRIBE some_schema.does_not_exist
@@ -269,9 +267,7 @@ def _get_column_rows(self, connection, table_name, schema, db_name):
     table_columns = _get_table_columns(  # pylint: disable=protected-access
         self, connection, table_name, schema, db_name
     )
-    column_rows = [
-        [col.strip() if col else None for col in row] for row in table_columns
-    ]
+    column_rows = [[col.strip() if col else None for col in row] for row in table_columns]
     # Filter out empty rows and comment
     return [row for row in column_rows if row[0] and row[0] != "# col_name"]
 
@@ -313,11 +309,10 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             type_match = re.search(r"^\w+", col_type)
             if type_match is None:
                 logger.warning(
-                    f"Skipping column '{col_name}' in {schema}.{table_name}: "
-                    f"unparseable col_type '{col_type}'"
+                    f"Skipping column '{col_name}' in {schema}.{table_name}: unparseable col_type '{col_type}'"
                 )
                 continue
-            col_type = type_match.group(0)
+            col_type = type_match.group(0)  # noqa: PLW2901
 
             try:
                 coltype = _type_map[col_type]
@@ -339,10 +334,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     sub_rows = {
                         r[0]: r[1]
                         for r in connection.execute(
-                            text(
-                                f"DESCRIBE TABLE `{kw.get('db_name')}`.`{schema}`"
-                                f".`{table_name}` `{col_name}`"
-                            )
+                            text(f"DESCRIBE TABLE `{kw.get('db_name')}`.`{schema}`.`{table_name}` `{col_name}`")
                         ).fetchall()
                     }
                     col_info["system_data_type"] = sub_rows["data_type"]
@@ -358,16 +350,12 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                         col_info["nested_descriptions"] = nested_descriptions
                 except (DatabaseError, KeyError) as err:
                     logger.error(
-                        f"Failed to fetch complex-type details for column "
-                        f"{col_name} in table {table_name}: {err}"
+                        f"Failed to fetch complex-type details for column {col_name} in table {table_name}: {err}"
                     )
                     logger.debug(traceback.format_exc())
             result.append(col_info)
         except Exception as err:  # pylint: disable=broad-except
-            logger.warning(
-                f"Skipping column '{col_name}' in {schema}.{table_name} due to "
-                f"unexpected error: {err}"
-            )
+            logger.warning(f"Skipping column '{col_name}' in {schema}.{table_name} due to unexpected error: {err}")
             logger.debug(traceback.format_exc())
     return result
 
@@ -394,9 +382,7 @@ def get_table_names_reflection(self, schema=None, **kw):
 
     if hasattr(self.dialect, "get_table_names"):
         with self._operation_context() as conn:  # pylint: disable=protected-access
-            return self.dialect.get_table_names(
-                conn, schema=schema, info_cache=self.info_cache, **kw
-            )
+            return self.dialect.get_table_names(conn, schema=schema, info_cache=self.info_cache, **kw)
     return []
 
 
@@ -405,21 +391,13 @@ def get_view_names_reflection(self, schema=None, **kw):
 
     if hasattr(self.dialect, "get_view_names"):
         with self._operation_context() as conn:  # pylint: disable=protected-access
-            return self.dialect.get_view_names(
-                conn, schema=schema, info_cache=self.info_cache, **kw
-            )
+            return self.dialect.get_view_names(conn, schema=schema, info_cache=self.info_cache, **kw)
     return []
 
 
-def get_view_names(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_view_names(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
     if kw.get("db_name"):
-        connection.execute(
-            text(
-                f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"
-            )
-        )
+        connection.execute(text(f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"))
     query = "SHOW VIEWS"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
@@ -468,7 +446,11 @@ def get_table_comment(  # pylint: disable=unused-argument
 
 @reflection.cache
 def get_view_definition(
-    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
+    self,
+    connection,
+    table_name,
+    schema=None,
+    **kw,  # pylint: disable=unused-argument
 ):
     schema_name = [row[0] for row in connection.execute(text("SHOW SCHEMAS"))]
     if "information_schema" in schema_name:
@@ -521,9 +503,7 @@ def get_schema_comment_result(
 
 
 @reflection.cache
-def get_table_ddl(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_ddl(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     """
     Gets the Table DDL
     """
@@ -540,15 +520,9 @@ def get_table_ddl(
 
 
 @reflection.cache
-def get_table_names(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_names(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
     if kw.get("db_name"):
-        connection.execute(
-            text(
-                f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"
-            )
-        )
+        connection.execute(text(f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"))
     query = "SHOW TABLES"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
@@ -567,9 +541,7 @@ def get_table_names(
             table_type = get_table_type(self, connection, database, schema, table_name)
             if not table_type or table_type == "FOREIGN":
                 # skip the table if it's foreign table / error in fetching table_type
-                logger.debug(
-                    f"Skipping metadata ingestion for unsupported foreign table {table_name}"
-                )
+                logger.debug(f"Skipping metadata ingestion for unsupported foreign table {table_name}")
                 continue
         tables.append(table_name)
 
@@ -583,9 +555,7 @@ def get_table_type(self, connection, database, schema, table):
     """get table type (regular/foreign)"""
     try:
         if database:
-            query = DATABRICKS_GET_TABLE_COMMENTS.format(
-                database_name=database, schema_name=schema, table_name=table
-            )
+            query = DATABRICKS_GET_TABLE_COMMENTS.format(database_name=database, schema_name=schema, table_name=table)
         else:
             query = f"DESCRIBE TABLE EXTENDED `{schema}`.`{table}`"
         rows = get_table_comment_result(
@@ -603,7 +573,7 @@ def get_table_type(self, connection, database, schema, table):
                 return row_dict.get("data_type")
     except DatabaseError as err:
         logger.error(f"Failed to fetch table type for table {table} due to: {err}")
-    return
+    return  # noqa: RET502
 
 
 DatabricksDialect.get_table_comment = get_table_comment
@@ -656,15 +626,11 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         return om_column
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DatabricksConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatabricksConnection):
-            raise InvalidSourceException(
-                f"Expected DatabricksConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected DatabricksConnection, but got {connection}")
         return cls(config, metadata)
 
     def set_inspector(self, database_name: str) -> None:
@@ -682,7 +648,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         return self.service_connection.catalog
 
     def get_database_names_raw(self) -> Iterable[str]:
@@ -699,23 +665,19 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         """
         Adding the CREATE VIEW/ MATERIALIZED VIEW statement in views' schema definition
         """
-        schema_definition = super().get_schema_definition(
-            table_type, table_name, schema_name, inspector
-        )
+        schema_definition = super().get_schema_definition(table_type, table_name, schema_name, inspector)
 
         if schema_definition and table_type in (
             TableType.View,
             TableType.MaterializedView,
         ):
-            view_type = table_type == TableType.View and "VIEW" or "MATERIALIZED VIEW"
+            view_type = table_type == TableType.View and "VIEW" or "MATERIALIZED VIEW"  # noqa: RUF021
 
             return f"CREATE {view_type} `{self.context.get().database}`.`{schema_name}`.`{table_name}` AS {schema_definition}"
 
         return schema_definition
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Connect to the source database to get the table
         name and type. By default, use the inspector method
@@ -727,15 +689,11 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
 
         return [
             TableNameAndType(name=table_name)
-            for table_name in self.inspector.get_table_names(
-                schema=schema_name, db_name=self.context.get().database
-            )
+            for table_name in self.inspector.get_table_names(schema=schema_name, db_name=self.context.get().database)
             or []
         ]
 
-    def query_view_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Connect to the source database to get the view
         name and type. By default, use the inspector method
@@ -747,9 +705,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
 
         return [
             TableNameAndType(name=table_name, type_=TableType.View)
-            for table_name in self.inspector.get_view_names(
-                schema=schema_name, db_name=self.context.get().database
-            )
+            for table_name in self.inspector.get_view_names(schema=schema_name, db_name=self.context.get().database)
             or []
         ]
 
@@ -762,9 +718,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self.schema_tags.clear()
         self.column_tags.clear()
 
-    def _add_to_tag_cache(
-        self, tag_dict: dict, key: Union[str, Tuple], value: Tuple[str, str]
-    ):
+    def _add_to_tag_cache(self, tag_dict: dict, key: Union[str, Tuple], value: Tuple[str, str]):  # noqa: UP006, UP007
         if tag_dict.get(key):
             tag_dict.get(key).append(value)
         else:
@@ -778,9 +732,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         if self.source_config.includeTags is False:
             return
         try:
-            tags = self.connection.execute(
-                text(DATABRICKS_GET_CATALOGS_TAGS.format(database_name=database_name))
-            )
+            tags = self.connection.execute(text(DATABRICKS_GET_CATALOGS_TAGS.format(database_name=database_name)))
 
             for tag in tags:
                 self._add_to_tag_cache(
@@ -793,9 +745,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             logger.debug(f"Failed to fetch catalog tags due to - {exc}")
 
         try:
-            tags = self.connection.execute(
-                text(DATABRICKS_GET_SCHEMA_TAGS.format(database_name=database_name))
-            )
+            tags = self.connection.execute(text(DATABRICKS_GET_SCHEMA_TAGS.format(database_name=database_name)))
             for tag in tags:
                 self._add_to_tag_cache(
                     self.schema_tags,
@@ -807,9 +757,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             logger.debug(f"Failed to fetch schema tags due to - {exc}")
 
         try:
-            tags = self.connection.execute(
-                text(DATABRICKS_GET_TABLE_TAGS.format(database_name=database_name))
-            )
+            tags = self.connection.execute(text(DATABRICKS_GET_TABLE_TAGS.format(database_name=database_name)))
             for tag in tags:
                 self._add_to_tag_cache(
                     self.table_tags,
@@ -821,9 +769,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             logger.debug(f"Failed to fetch table tags due to - {exc}")
 
         try:
-            tags = self.connection.execute(
-                text(DATABRICKS_GET_COLUMN_TAGS.format(database_name=database_name))
-            )
+            tags = self.connection.execute(text(DATABRICKS_GET_COLUMN_TAGS.format(database_name=database_name)))
             for tag in tags:
                 tag_table_id = (tag.catalog_name, tag.schema_name, tag.table_name)
                 if self.column_tags.get(tag_table_id):
@@ -861,11 +807,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 )
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    (
-                        database_fqn
-                        if self.source_config.useFqnForFiltering
-                        else new_catalog
-                    ),
+                    (database_fqn if self.source_config.useFqnForFiltering else new_catalog),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -875,23 +817,19 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     yield new_catalog
                 except Exception as exc:
                     logger.error(traceback.format_exc())
-                    logger.warning(
-                        f"Error trying to process database {new_catalog}: {exc}"
-                    )
+                    logger.warning(f"Error trying to process database {new_catalog}: {exc}")
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):
             yield self.service_connection.databaseSchema
         else:
-            for schema_name in self.inspector.get_schema_names(
+            for schema_name in self.inspector.get_schema_names(  # noqa: UP028
                 database=self.context.get().database,
                 is_old_version=self.is_older_version,
             ):
                 yield schema_name
 
-    def yield_database_tag(
-        self, database_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_database_tag(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Method to yield database tags
         """
@@ -922,16 +860,12 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 )
             )
 
-    def yield_tag(
-        self, schema_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Method to yield schema tags
         """
         try:
-            schema_tags = self.schema_tags.get(
-                (self.context.get().database, schema_name), []
-            )
+            schema_tags = self.schema_tags.get((self.context.get().database, schema_name), [])
             for tag_name, tag_value in schema_tags:
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=fqn.build(
@@ -959,7 +893,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             )
 
     def yield_table_tags(
-        self, table_name_and_type: Tuple[str, TableType]
+        self,
+        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         table_name, _ = table_name_and_type
         try:
@@ -1043,19 +978,15 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 data = tuple(result)
                 if data[0] and data[0].strip() == "Comment":
                     description = data[1] if data and data[1] else None
-                    return description
+                    return description  # noqa: RET504
 
         # Catch any exception without breaking the ingestion
         except Exception as exep:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Schema description error for schema [{schema_name}]: {exep}"
-            )
+            logger.warning(f"Schema description error for schema [{schema_name}]: {exep}")
         return description
 
-    def get_table_description(
-        self, schema_name: str, table_name: str, inspector: Inspector
-    ) -> str:
+    def get_table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> str:
         description = None
         try:
             query = DATABRICKS_GET_TABLE_COMMENTS.format(
@@ -1075,37 +1006,29 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 if data[0] and data[0].strip() == "Comment":
                     description = data[1] if data and data[1] else None
                 elif data[0] and data[0].strip() == "Location":
-                    self.external_location_map[
-                        (self.context.get().database, schema_name, table_name)
-                    ] = (
-                        data[1]
-                        if data and data[1] and not data[1].startswith("dbfs")
-                        else None
+                    self.external_location_map[(self.context.get().database, schema_name, table_name)] = (
+                        data[1] if data and data[1] and not data[1].startswith("dbfs") else None
                     )
 
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Table description error for table [{schema_name}.{table_name}]: {exc}"
-            )
+            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
         return description
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:
+    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the location path of the table
         """
-        return self.external_location_map.get(
-            (self.context.get().database, schema_name, table_name)
-        )
+        return self.external_location_map.get((self.context.get().database, schema_name, table_name))
 
     def _filter_owner_name(self, owner_name: str) -> str:
         """remove unnecessary keyword from name"""
         pattern = r"\(Unknown\)"
         filtered_name = re.sub(pattern, "", owner_name).strip()
-        return filtered_name
+        return filtered_name  # noqa: RET504
 
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Method to process the table owners
         """
@@ -1129,7 +1052,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     owner = row_dict.get("data_type")
                     break
             if not owner:
-                return
+                return  # noqa: RET502
 
             owner = self._filter_owner_name(owner)
             owner_ref = None
@@ -1138,8 +1061,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 owner_ref = self.metadata.get_reference_by_email(email=owner_email)
             except PydanticCustomError:
                 owner_ref = self.metadata.get_reference_by_name(name=owner)
-            return owner_ref
+            return owner_ref  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner for table {table_name}: {exc}")
-        return
+        return  # noqa: RET502
