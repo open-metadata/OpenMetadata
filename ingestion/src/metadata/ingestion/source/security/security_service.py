@@ -92,7 +92,7 @@ class SecurityServiceSource(TopologyRunnerMixin, Source, ABC):
         config: WorkflowSource,
         metadata: OpenMetadata,
     ):
-        config.serviceConnection.root.config.hostPort = clean_uri(config.serviceConnection.root.config.hostPort)
+        config.serviceConnection.root.config.hostPort = clean_uri(config.serviceConnection.root.config.hostPort)  # pyright: ignore[reportAttributeAccessIssue]
         super().__init__()
         self.config = config
         self.metadata = metadata

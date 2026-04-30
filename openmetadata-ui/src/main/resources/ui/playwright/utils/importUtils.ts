@@ -523,9 +523,11 @@ export const uploadCSVAndWaitForGrid = async (
   options?: {
     isContentString?: boolean;
     tempFileName?: string;
+    csvImportCompletedPromise?: Promise<void>;
   }
 ): Promise<{ rowCount: number; tempFilePath?: string }> => {
-  await page.locator('[type="file"]').waitFor({ state: 'attached' });
+  const uploadWidget = page.getByTestId('upload-file-widget');
+  await uploadWidget.waitFor({ state: 'attached' });
   let actualFilePath = filePath;
   let tempFilePath: string | undefined;
 
@@ -537,10 +539,11 @@ export const uploadCSVAndWaitForGrid = async (
     actualFilePath = tempFilePath;
   }
 
-  await page.setInputFiles('[type="file"]', actualFilePath);
-  await page
-    .getByTestId('upload-file-widget')
-    .waitFor({ state: 'hidden', timeout: 30000 });
+  await uploadWidget.setInputFiles([actualFilePath]);
+
+  if (options?.csvImportCompletedPromise) {
+    await options.csvImportCompletedPromise;
+  }
 
   await page
     .locator('.rdg-header-row')
