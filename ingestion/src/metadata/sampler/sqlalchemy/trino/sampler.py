@@ -50,16 +50,12 @@ class TrinoSampler(SQASampler):
                 if result is not None:
                     return result
         except Exception as exc:
-            logger.debug(
-                f"SHOW STATS row count failed, falling back to COUNT(*): {exc}"
-            )
+            logger.debug(f"SHOW STATS row count failed, falling back to COUNT(*): {exc}")
 
         return super()._get_asset_row_count()
 
     def _base_sample_query(self, selectable, column, label=None):
-        sqa_columns = [
-            col for col in inspect(self.raw_dataset).c if col.name != RANDOM_LABEL
-        ]
+        sqa_columns = [col for col in inspect(self.raw_dataset).c if col.name != RANDOM_LABEL]
         entity = selectable if column is None else column
         with self.get_client() as client:
             return client.query(entity, label).where(

@@ -54,18 +54,14 @@ class DatabricksSamplerInterface(SQASampler):
             schema = self.raw_dataset.__table__.schema
             table = self.raw_dataset.__tablename__
             with self.session_factory() as session:
-                result = session.execute(
-                    text(f"DESCRIBE DETAIL `{schema}`.`{table}`")
-                ).first()
+                result = session.execute(text(f"DESCRIBE DETAIL `{schema}`.`{table}`")).first()
                 if result:
                     row_dict = result._asdict()
                     num_records = row_dict.get("numRecords")
                     if num_records is not None:
                         return int(num_records)
         except Exception as exc:
-            logger.debug(
-                "DESCRIBE DETAIL row count failed, " f"falling back to COUNT(*): {exc}"
-            )
+            logger.debug(f"DESCRIBE DETAIL row count failed, falling back to COUNT(*): {exc}")
 
         return super()._get_asset_row_count()
 

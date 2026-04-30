@@ -186,7 +186,7 @@ class TimescaleSampler(PostgresSampler):
             return self._get_uncompressed_dataset()
         return dataset
 
-    def _base_sample_query(self, selectable, column: Optional[Column], label=None):
+    def _base_sample_query(self, selectable, column: Column | None, label=None):
         """Add an uncompressed-chunks filter when sampling is active.
 
         The base class builds the sampling query from the given selectable.

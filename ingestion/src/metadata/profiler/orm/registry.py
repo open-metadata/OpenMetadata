@@ -70,6 +70,7 @@ class PythonDialects(Enum):
     StarRocks = "starrocks"
     Druid = "druid"
     DynamoDB = "dynamoDB"
+    Exasol = "exasol"
     Glue = "glue"
     Hana = "hana"
     Hive = "hive"

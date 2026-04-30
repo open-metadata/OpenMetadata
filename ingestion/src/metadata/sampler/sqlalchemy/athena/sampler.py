@@ -11,6 +11,7 @@
 """
 Helper module to handle data sampling for the profiler
 """
+
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.sampler.sqlalchemy.stats_utils import get_row_count_from_show_stats
 from metadata.utils.logger import profiler_interface_registry_logger
@@ -35,8 +36,6 @@ class AthenaSampler(SQASampler):
                 if result is not None:
                     return result
         except Exception as exc:
-            logger.debug(
-                f"SHOW STATS row count failed, falling back to COUNT(*): {exc}"
-            )
+            logger.debug(f"SHOW STATS row count failed, falling back to COUNT(*): {exc}")
 
         return super()._get_asset_row_count()

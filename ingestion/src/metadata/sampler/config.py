@@ -39,10 +39,7 @@ from metadata.profiler.config import (
 )
 from metadata.sampler.models import (
     DatabaseAndSchemaConfig,
-    ProfileSampleConfig,
-    ProfileSampleConfigType,
     SampleConfig,
-    StaticSamplingConfig,
     TableConfig,
 )
 

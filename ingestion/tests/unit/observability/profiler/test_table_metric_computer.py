@@ -25,9 +25,11 @@ from metadata.profiler.orm.functions.table_metric_computer import (
     BaseTableMetricComputer,
     CockroachTableMetricComputer,
     DB2TableMetricComputer,
+    ExasolTableMetricComputer,
     MSSQLTableMetricComputer,
     MySQLTableMetricComputer,
     SAPHanaTableMetricComputer,
+    TeradataTableMetricComputer,
     VerticaTableMetricComputer,
     table_metric_computer_factory,
 )
@@ -261,6 +263,90 @@ class TestSAPHanaTableMetricComputer:
         computer = _build_computer(session, SAPHanaTableMetricComputer, table_type=TableType.Regular)
         result = computer.compute()
         assert result is mock_result
+
+
+class TestExasolTableMetricComputer:
+    def test_exasol_registration(self):
+        assert table_metric_computer_factory._constructs.get(Dialects.Exasol) is ExasolTableMetricComputer
+
+    def test_compute_returns_result(self):
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = 3000
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, ExasolTableMetricComputer)
+        result = computer.compute()
+        assert result is mock_result
+        assert result.rowCount == 3000
+
+    def test_compute_returns_none_when_no_result(self):
+        session = _build_mock_session()
+        session.execute.return_value.first.return_value = None
+        computer = _build_computer(session, ExasolTableMetricComputer)
+        result = computer.compute()
+        assert result is None
+
+    def test_compute_fallback_on_none_row_count(self):
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = None
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, ExasolTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback"):
+            result = computer.compute()
+            assert result == "fallback"
+
+    def test_compute_fallback_on_zero_row_count_for_view(self):
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = 0
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, ExasolTableMetricComputer, table_type=TableType.View)
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback"):
+            result = computer.compute()
+            assert result == "fallback"
+
+
+class TestTeradataTableMetricComputer:
+    def test_teradata_registration(self):
+        assert table_metric_computer_factory._constructs.get(Dialects.Teradata) is TeradataTableMetricComputer
+
+    def test_compute_returns_result(self):
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = 7500
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        result = computer.compute()
+        assert result is mock_result
+        assert result.rowCount == 7500
+
+    def test_compute_returns_none_when_no_result(self):
+        session = _build_mock_session()
+        session.execute.return_value.first.return_value = None
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        result = computer.compute()
+        assert result is None
+
+    def test_compute_fallback_on_none_row_count(self):
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = None
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback"):
+            result = computer.compute()
+            assert result == "fallback"
+
+    def test_compute_fallback_on_zero_row_count_for_view(self):
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = 0
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, TeradataTableMetricComputer, table_type=TableType.View)
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback"):
+            result = computer.compute()
+            assert result == "fallback"
 
     def test_compute_uppercases_schema_and_table_in_where_clause(self):
         """MockModel has lowercase schema='test_schema' and table='test_table'.

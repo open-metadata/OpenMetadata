@@ -27,13 +27,13 @@ from metadata.generated.schema.entity.services.connections.database.azureSQLConn
     AzureSQLConnection,
 )
 from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.samplingConfig import SampleConfigType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.sampler.models import (
     ProfileSampleConfig,
-    ProfileSampleConfigType,
     SampleConfig,
 )
 from metadata.sampler.sqlalchemy.azuresql.sampler import AzureSQLSampler
@@ -99,14 +99,7 @@ class SampleTest(TestCase):
             entity=self.table_entity,
             sample_config=SampleConfig(
                 profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
-                    config=StaticSamplingConfig(
-                        profileSample=50.0,
-                        profileSampleType=ProfileSampleType.PERCENTAGE,
-                    ),
-                )
-                profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=50.0,
                         profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -132,14 +125,7 @@ class SampleTest(TestCase):
             entity=self.table_entity,
             sample_config=SampleConfig(
                 profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
-                    config=StaticSamplingConfig(
-                        profileSample=50,
-                        profileSampleType=ProfileSampleType.ROWS,
-                    ),
-                )
-                profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=50,
                         profileSampleType=ProfileSampleType.ROWS,
@@ -165,14 +151,7 @@ class SampleTest(TestCase):
             entity=self.table_entity,
             sample_config=SampleConfig(
                 profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
-                    config=StaticSamplingConfig(
-                        profileSample=50.0,
-                        profileSampleType=ProfileSampleType.PERCENTAGE,
-                    ),
-                )
-                profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=50.0,
                         profileSampleType=ProfileSampleType.PERCENTAGE,

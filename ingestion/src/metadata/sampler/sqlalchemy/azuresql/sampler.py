@@ -19,10 +19,10 @@ from sqlalchemy import Column, Table, text
 from sqlalchemy.sql.selectable import CTE
 
 from metadata.generated.schema.entity.data.table import TableData, TableType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.sqlalchemy.sampler import (
     ProfileSampleType,
     SQASampler,
-    StaticSamplingConfig,
 )
 
 
@@ -54,9 +54,7 @@ class AzureSQLSampler(SQASampler):
     def get_sample_query(self, static: StaticSamplingConfig, *, column=None) -> CTE:
         """Override the base method as ROWS or PERCENT sampling handled through the tablesample clause"""
         selectable = self.set_tablesample(static, self.raw_dataset.__table__)
-        rnd = self._base_sample_query(selectable, column).cte(
-            f"{self.get_sampler_table_name()}_rnd"
-        )
+        rnd = self._base_sample_query(selectable, column).cte(f"{self.get_sampler_table_name()}_rnd")
         query = self.get_client().query(rnd)
         return query.cte(f"{self.get_sampler_table_name()}_sample")
 

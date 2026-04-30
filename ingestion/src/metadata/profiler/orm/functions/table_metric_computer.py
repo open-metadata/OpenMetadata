@@ -882,6 +882,100 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
         return namedtuple("Row", d.keys())(**d)
 
 
+class ExasolTableMetricComputer(BaseTableMetricComputer):
+    """Exasol Table Metric Computer"""
+
+    def compute(self):
+        """Compute table metrics for Exasol using SYS.EXA_ALL_TABLES and
+        SYS.EXA_ALL_OBJECT_SIZES for row count and size respectively."""
+        row_data = cte(
+            self._build_query(
+                [
+                    Column("TABLE_SCHEMA"),
+                    Column("TABLE_NAME"),
+                    Column("TABLE_ROW_COUNT"),
+                ],
+                self._build_table("EXA_ALL_TABLES", "SYS"),
+                [
+                    Column("TABLE_SCHEMA") == self.schema_name,
+                    Column("TABLE_NAME") == self.table_name,
+                ],
+            )
+        )
+
+        size_data = cte(
+            self._build_query(
+                [
+                    Column("SCHEMA_NAME"),
+                    Column("OBJECT_NAME"),
+                    Column("RAW_OBJECT_SIZE"),
+                ],
+                self._build_table("EXA_ALL_OBJECT_SIZES", "SYS"),
+                [
+                    Column("SCHEMA_NAME") == self.schema_name,
+                    Column("OBJECT_NAME") == self.table_name,
+                ],
+            )
+        )
+
+        columns = [
+            row_data.c.TABLE_ROW_COUNT.label(ROW_COUNT),
+            size_data.c.RAW_OBJECT_SIZE.label(SIZE_IN_BYTES),
+            *self._get_col_names_and_count(),
+        ]
+
+        query = (
+            select(*columns)
+            .select_from(row_data)
+            .outerjoin(
+                size_data,
+                and_(
+                    row_data.c.TABLE_SCHEMA == size_data.c.SCHEMA_NAME,
+                    row_data.c.TABLE_NAME == size_data.c.OBJECT_NAME,
+                ),
+            )
+        )
+
+        res = self.runner._session.execute(query).first()
+        if not res:
+            return None
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+            return super().compute()
+        return res
+
+
+class TeradataTableMetricComputer(BaseTableMetricComputer):
+    """Teradata Table Metric Computer"""
+
+    def compute(self):
+        """Compute table metrics for Teradata using DBC.TableSizeV.
+
+        TableSizeV may return one row per AMP, so we SUM the values
+        to get the total row count and size.
+        """
+        columns = [
+            func.sum(Column("CurrentPerm")).label(SIZE_IN_BYTES),
+            func.sum(Column("RowCount")).cast(BigInteger).label(ROW_COUNT),
+            *self._get_col_names_and_count(),
+        ]
+        where_clause = [
+            func.trim(Column("DatabaseName")) == self.schema_name,
+            func.trim(Column("TableName")) == self.table_name,
+        ]
+        query = self._build_query(
+            columns,
+            self._build_table("TableSizeV", "DBC"),
+            where_clause,
+        )
+
+        res = self.runner._session.execute(query).first()
+        if not res:
+            return None
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+            return super().compute()
+        return res
+
+
 class TableMetricComputer:
     """Table Metric Construct"""
 
@@ -976,3 +1070,5 @@ table_metric_computer_factory.register(Dialects.Vertica, VerticaTableMetricCompu
 table_metric_computer_factory.register(Dialects.Hana, SAPHanaTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Informix, InformixTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Timescale, TimescaleTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Exasol, ExasolTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Teradata, TeradataTableMetricComputer)

@@ -37,12 +37,13 @@ from metadata.generated.schema.entity.services.storageService import StorageConn
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     ProcessingEngine,
 )
+from metadata.generated.schema.type.dynamicSamplingConfig import DynamicSamplingConfig
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.types import ClassifiableEntityType
 from metadata.profiler.api.models import TableConfig
 from metadata.profiler.processor.sample_data_handler import upload_sample_data
 from metadata.sampler.config import (
-    StaticSamplingConfig,
     get_exclude_columns,
     get_include_columns,
     get_profile_sample_config,
@@ -102,6 +103,7 @@ class SamplerInterface(ABC):
         self.service_connection_config = service_connection_config
         self.connection = get_ssl_connection(self.service_connection_config)
         self._row_count = None
+        self._sample_config: StaticSamplingConfig | None = self._get_sample_config()
 
     # pylint: disable=too-many-arguments, too-many-locals
     @classmethod
@@ -191,27 +193,35 @@ class SamplerInterface(ABC):
                 profileSampleType="percentage",
             )  # type: ignore
         if row_count <= 1_000_000:
-            return StaticSamplingConfig(
-                profileSample=50, profileSampleType="percentage"
-            )  # type: ignore
+            return StaticSamplingConfig(profileSample=50, profileSampleType="percentage")  # type: ignore
         if row_count <= 10_000_000:
-            return StaticSamplingConfig(
-                profileSample=10, profileSampleType="percentage"
-            )  # type: ignore
+            return StaticSamplingConfig(profileSample=10, profileSampleType="percentage")  # type: ignore
         if row_count <= 100_000_000:
-            return StaticSamplingConfig(
-                profileSample=5, profileSampleType="percentage"
-            )  # type: ignore
+            return StaticSamplingConfig(profileSample=5, profileSampleType="percentage")  # type: ignore
         if row_count <= 1_000_000_000:
-            return StaticSamplingConfig(
-                profileSample=1, profileSampleType="percentage"
-            )  # type: ignore
-        else:
-            return StaticSamplingConfig(
-                profileSample=0.1, profileSampleType="percentage"
-            )  # type: ignore
+            return StaticSamplingConfig(profileSample=1, profileSampleType="percentage")  # type: ignore
+        return StaticSamplingConfig(profileSample=0.1, profileSampleType="percentage")  # type: ignore
 
-    def _get_excluded_columns(self) -> Set[str]:
+    def _get_sample_config(self) -> StaticSamplingConfig | None:
+        """Get the sampling config from the sample config object"""
+        static: StaticSamplingConfig | None = self.sample_config.get_config(StaticSamplingConfig)
+        dynamic: DynamicSamplingConfig | None = self.sample_config.get_config(DynamicSamplingConfig)
+        if dynamic:
+            row_count = self._get_asset_row_count()
+            if not dynamic.smartSampling and dynamic.thresholds is not None:
+                for threshold in sorted(dynamic.thresholds, key=lambda t: t.rowCountThreshold, reverse=True):
+                    if row_count >= threshold.rowCountThreshold:
+                        static = StaticSamplingConfig(
+                            profileSample=threshold.profileSample,
+                            profileSampleType=threshold.profileSampleType,
+                            samplingMethodType=threshold.samplingMethodType,
+                        )
+            if dynamic.smartSampling:
+                static = self._get_tiered_sample(row_count)
+
+        return static
+
+    def _get_excluded_columns(self) -> set[str]:
         """Get excluded  columns for table being profiled"""
         if self.exclude_columns:
             return set(self.exclude_columns)
@@ -263,10 +273,16 @@ class SamplerInterface(ABC):
         """get columns"""
         raise NotImplementedError
 
-    @abstractmethod
     def _get_asset_row_count(self) -> int:
-        """Get table row count"""
-        raise NotImplementedError
+        """
+        Get the row count of the asset being profiled. This is used for dynamic sampling.
+        Default implementation returns 0 and should be overridden by implementations that support fetching row count.
+        """
+        logger.info(
+            "Row count fetching is not implemented for this sampler. "
+            "Returning 0 as default row count. Dynamic sampling will be ignored."
+        )
+        return self._row_count or 0
 
     @staticmethod
     def _truncate_cell(value: Any) -> Any:

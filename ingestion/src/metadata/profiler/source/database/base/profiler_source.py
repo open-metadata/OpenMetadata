@@ -46,7 +46,7 @@ from metadata.sampler.config import (
     get_exclude_columns,
     get_include_columns,
 )
-from metadata.sampler.models import ProfileSampleConfig, SampleConfig
+from metadata.sampler.models import SampleConfig
 from metadata.sampler.sampler_interface import SamplerInterface  # noqa: TC001
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,

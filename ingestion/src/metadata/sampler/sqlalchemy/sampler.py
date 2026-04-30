@@ -130,8 +130,8 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def _base_sample_query(
         self,
-        selectable: Union[Table, TableSample],
-        column: Optional[Column],
+        selectable: Table | TableSample,
+        column: Column | None,
         label=None,
     ):
         """Base query for sampling
@@ -153,20 +153,14 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 query = self.get_partitioned_query(query)
             return query
 
-    def _get_sample_config(self) -> Optional[StaticSamplingConfig]:
+    def _get_sample_config(self) -> StaticSamplingConfig | None:
         """Get the sampling config from the sample config object"""
-        static: Optional[StaticSamplingConfig] = self.sample_config.get_config(
-            StaticSamplingConfig
-        )
-        dynamic: Optional[DynamicSamplingConfig] = self.sample_config.get_config(
-            DynamicSamplingConfig
-        )
+        static: StaticSamplingConfig | None = self.sample_config.get_config(StaticSamplingConfig)
+        dynamic: DynamicSamplingConfig | None = self.sample_config.get_config(DynamicSamplingConfig)
         if dynamic:
             row_count = self._get_asset_row_count()
             if not dynamic.smartSampling and dynamic.thresholds is not None:
-                for threshold in sorted(
-                    dynamic.thresholds, key=lambda t: t.rowCountThreshold, reverse=True
-                ):
+                for threshold in sorted(dynamic.thresholds, key=lambda t: t.rowCountThreshold, reverse=True):
                     if row_count >= threshold.rowCountThreshold:
                         static = StaticSamplingConfig(
                             profileSample=threshold.profileSample,
@@ -270,10 +264,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if (
             not static
             or not static.profileSample
-            or (
-                static.profileSampleType == ProfileSampleType.PERCENTAGE
-                and static.profileSample == 100
-            )
+            or (static.profileSampleType == ProfileSampleType.PERCENTAGE and static.profileSample == 100)
         ):
             if self.partition_details:
                 return self._partitioned_table()

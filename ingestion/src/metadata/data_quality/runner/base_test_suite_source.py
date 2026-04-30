@@ -32,17 +32,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.samplingConfig import (
-    ProfileSampleConfig,
-    SampleConfigType,
-)
-from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.models import (
-    ProfileSampleConfig,
-    ProfileSampleConfigType,
     SampleConfig,
-    StaticSamplingConfig,
 )
 from metadata.sampler.sampler_interface import SamplerInterface  # noqa: TC001
 from metadata.utils.bigquery_utils import copy_service_config
@@ -131,15 +123,8 @@ class BaseTestSuiteRunner:
             schema_entity=schema_entity,
             database_entity=database_entity,
             default_sample_config=SampleConfig(
-                profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=SampleConfigType.STATIC,
-                    config=StaticSamplingConfig(
-                        profileSample=self.source_config.profileSample,
-                        profileSampleType=self.source_config.profileSampleType,
-                        samplingMethodType=self.source_config.samplingMethodType,
-                    ),
-                )
-                if self.source_config.profileSample
+                profileSampleConfig=self.source_config.profileSampleConfig
+                if self.source_config.profileSampleConfig
                 else None,
             ),
         )

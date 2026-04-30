@@ -18,13 +18,13 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
     PostgresConnection,
 )
 from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
+from metadata.generated.schema.type.samplingConfig import SampleConfigType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.sampler.models import (
     ProfileSampleConfig,
-    ProfileSampleConfigType,
     SampleConfig,
 )
 from metadata.sampler.sqlalchemy.postgres.sampler import PostgresSampler
@@ -88,7 +88,7 @@ class SampleTest(TestCase):
             entity=self.table_entity,
             sample_config=SampleConfig(
                 profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=50.0,
                         profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -114,7 +114,7 @@ class SampleTest(TestCase):
                 entity=self.table_entity,
                 sample_config=SampleConfig(
                     profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        sampleConfigType=SampleConfigType.STATIC,
                         config=StaticSamplingConfig(
                             profileSample=50.0,
                             profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -137,7 +137,7 @@ class SampleTest(TestCase):
             entity=self.table_entity,
             sample_config=SampleConfig(
                 profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=50.0,
                         profileSampleType=ProfileSampleType.PERCENTAGE,

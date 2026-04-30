@@ -23,12 +23,13 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 )
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig, SampleConfigType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.profiler.orm.functions.table_metric_computer import TableType
-from metadata.sampler.models import ProfileSampleConfig, ProfileSampleConfigType
+from metadata.sampler.models import SampleConfig
 from metadata.sampler.sqlalchemy.bigquery.sampler import BigQuerySampler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
@@ -117,7 +118,7 @@ class SampleTest(TestCase):
             entity=self.table_entity,
             sample_config=SampleConfig(
                 profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=50.0,
                         profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -153,7 +154,7 @@ class SampleTest(TestCase):
             entity=view_entity,
             sample_config=SampleConfig(
                 profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=50.0,
                         profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -192,7 +193,7 @@ class SampleTest(TestCase):
             entity=view_entity,
             sample_config=SampleConfig(
                 profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=50.0,
                         profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -225,7 +226,7 @@ class SampleTest(TestCase):
             entity=self.table_entity,
             sample_config=SampleConfig(
                 profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=50.0,
                         profileSampleType=ProfileSampleType.PERCENTAGE,

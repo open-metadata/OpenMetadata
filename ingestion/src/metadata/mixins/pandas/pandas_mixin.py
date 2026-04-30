@@ -23,9 +23,9 @@ from metadata.generated.schema.entity.data.table import (
     PartitionIntervalTypes,
     PartitionProfilerConfig,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
-from metadata.sampler.models import ProfileSampleType
-from metadata.sampler.sampler_interface import SampleConfig
+from metadata.sampler.models import SampleConfig
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 from metadata.utils.datalake.datalake_utils import (
     DatalakeColumnWrapper,

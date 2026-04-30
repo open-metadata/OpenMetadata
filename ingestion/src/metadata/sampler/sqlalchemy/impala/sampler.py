@@ -11,6 +11,7 @@
 """
 Helper module to handle data sampling for the profiler
 """
+
 from sqlalchemy import text
 
 from metadata.sampler.sqlalchemy.sampler import SQASampler
@@ -30,9 +31,7 @@ class ImpalaSampler(SQASampler):
             schema = self.raw_dataset.__table__.schema
             table = self.raw_dataset.__tablename__
             with self.session_factory() as session:
-                rows = session.execute(
-                    text(f"SHOW TABLE STATS `{schema}`.`{table}`")
-                ).fetchall()
+                rows = session.execute(text(f"SHOW TABLE STATS `{schema}`.`{table}`")).fetchall()
                 total_rows = 0
                 for row in rows:
                     row_dict = row._asdict()
@@ -42,8 +41,6 @@ class ImpalaSampler(SQASampler):
                 if total_rows > 0:
                     return total_rows
         except Exception as exc:
-            logger.debug(
-                "SHOW TABLE STATS row count failed, " f"falling back to COUNT(*): {exc}"
-            )
+            logger.debug(f"SHOW TABLE STATS row count failed, falling back to COUNT(*): {exc}")
 
         return super()._get_asset_row_count()
