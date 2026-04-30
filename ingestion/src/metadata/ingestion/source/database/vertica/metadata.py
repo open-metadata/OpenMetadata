@@ -15,7 +15,7 @@ Vertica source implementation.
 import re
 import traceback
 from textwrap import dedent
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy import sql, util
 from sqlalchemy.engine import reflection
@@ -113,7 +113,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
     return columns.values()
 
 
-def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-many-statements  # noqa: C901
     self,
     name,
     format_type,
@@ -200,7 +200,7 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
         "autoincrement": autoincrement,
         "comment": comment,
     }
-    return column_info
+    return column_info  # noqa: RET504
 
 
 @reflection.cache
@@ -267,14 +267,14 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
         self.schema_desc_map = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: VerticaConnection = config.serviceConnection.root.config
         if not isinstance(connection, VerticaConnection):
             raise InvalidSourceException(f"Expected VerticaConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:
+    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the schema description
         """
@@ -283,14 +283,14 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
     def set_schema_description_map(self) -> None:
         self.schema_desc_map = get_schema_descriptions(self.engine, VERTICA_SCHEMA_COMMENTS)
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         return self.service_connection.database
 
     def get_database_names_raw(self) -> Iterable[str]:
         yield from self._execute_database_query(VERTICA_LIST_DATABASES)
 
     def get_database_names(self) -> Iterable[str]:
-        configured_db = self.config.serviceConnection.root.config.database
+        configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
         if configured_db:
             self.set_inspector(database_name=configured_db)
             self.set_schema_description_map()

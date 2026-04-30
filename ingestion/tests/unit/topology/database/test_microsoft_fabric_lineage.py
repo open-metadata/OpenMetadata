@@ -105,7 +105,7 @@ class TestFabricLineageFilters:
             )
 
             source = MicrosoftFabricLineageSource.create(MOCK_LINEAGE_CONFIG["source"], MagicMock())
-            return source
+            return source  # noqa: RET504
 
     def test_lineage_includes_select_into(self, lineage_source):
         assert "select%%into" in lineage_source.filters.lower()

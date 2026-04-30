@@ -13,7 +13,7 @@ Bigtable source methods.
 """
 
 import traceback
-from typing import Dict, Iterable, List, Optional, Union
+from typing import Dict, Iterable, List, Optional, Union  # noqa: UP035
 
 from google.cloud.bigtable import row_filters
 from google.cloud.bigtable.instance import Instance
@@ -32,7 +32,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.bigtable.client import MultiProjectClient
+from metadata.ingestion.source.database.bigtable.client import MultiProjectClient  # noqa: TC001
 from metadata.ingestion.source.database.bigtable.models import Row
 from metadata.ingestion.source.database.common_nosql_source import (
     SAMPLE_SIZE as GLOBAL_SAMPLE_SIZE,
@@ -71,18 +71,18 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
         self.client: MultiProjectClient = self.connection_obj
 
         # ths instances and tables are cached to avoid making redundant requests to the API.
-        self.instances: Dict[ProjectId, Dict[InstanceId, Instance]] = {}
-        self.tables: Dict[ProjectId, Dict[InstanceId, Dict[TableId, Table]]] = {}
+        self.instances: Dict[ProjectId, Dict[InstanceId, Instance]] = {}  # noqa: UP006
+        self.tables: Dict[ProjectId, Dict[InstanceId, Dict[TableId, Table]]] = {}  # noqa: UP006
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: BigTableConnection = config.serviceConnection.root.config
         if not isinstance(connection, BigTableConnection):
             raise InvalidSourceException(f"Expected BigTableConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         """
         This connector uses "virtual databases" in the form of GCP projects.
         The concept of a default project for the GCP client is not useful here because the project ID
@@ -97,7 +97,7 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
     def get_database_names_raw(self) -> Iterable[str]:
         yield from self.client.project_ids()
 
-    def get_schema_name_list(self) -> List[str]:
+    def get_schema_name_list(self) -> List[str]:  # noqa: UP006
         project_id = self.context.get().database
         try:
             # the first element is a list of instances
@@ -115,7 +115,7 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
         try:
             instance = self._get_instance(project_id, schema_name)
             if instance is None:
-                raise RuntimeError(f"Instance {project_id}/{schema_name} not found.")
+                raise RuntimeError(f"Instance {project_id}/{schema_name} not found.")  # noqa: TRY301
             tables = instance.list_tables()
             for table in tables:
                 self._set_nested(
@@ -123,22 +123,22 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
                     [project_id, instance.instance_id, table.table_id],
                     table,
                 )
-            return [TableNameAndType(name=table) for table in self.tables[project_id][schema_name].keys()]
+            return [TableNameAndType(name=table) for table in self.tables[project_id][schema_name].keys()]  # noqa: SIM118
         except Exception as err:
             logger.debug(traceback.format_exc())
             # add context to the error message
             logger.error(f"Failed to list BigTable table names in {project_id}.{schema_name}: {err}")
         return []
 
-    def get_table_constraints(self, db_name: str, schema_name: str, table_name: str) -> List[TableConstraint]:
+    def get_table_constraints(self, db_name: str, schema_name: str, table_name: str) -> List[TableConstraint]:  # noqa: UP006
         return [TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=["row_key"])]
 
-    def get_table_columns_dict(self, schema_name: str, table_name: str) -> Union[List[Dict], Dict]:
+    def get_table_columns_dict(self, schema_name: str, table_name: str) -> Union[List[Dict], Dict]:  # noqa: UP006, UP007
         project_id = self.context.get().database
         try:
             table = self._get_table(project_id, schema_name, table_name)
             if table is None:
-                raise RuntimeError(f"Table {project_id}/{schema_name}/{table_name} not found.")
+                raise RuntimeError(f"Table {project_id}/{schema_name}/{table_name} not found.")  # noqa: TRY301
             column_families = table.list_column_families()
             # all BigTable tables have a "row_key" column. Even if there are no records in the table.
             records = [{"row_key": b"row_key"}]
@@ -148,7 +148,7 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
                 records.extend(self._get_records_for_column_family(table, column_family, SAMPLES_PER_COLUMN_FAMILY))
                 if len(records) >= GLOBAL_SAMPLE_SIZE:
                     break
-            return records
+            return records  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to read BigTable rows for [{project_id}.{schema_name}.{table_name}]: {err}")
@@ -156,11 +156,11 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
 
     def get_source_url(
         self,
-        database_name: Optional[str] = None,
-        schema_name: Optional[str] = None,
-        table_name: Optional[str] = None,
-        table_type: Optional[TableType] = None,
-    ) -> Optional[str]:
+        database_name: Optional[str] = None,  # noqa: UP045
+        schema_name: Optional[str] = None,  # noqa: UP045
+        table_name: Optional[str] = None,  # noqa: UP045
+        table_type: Optional[TableType] = None,  # noqa: UP045
+    ) -> Optional[str]:  # noqa: UP045
         """
         Method to get the source url for a BigTable table
         """
@@ -176,24 +176,24 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
         return None
 
     @staticmethod
-    def _set_nested(dct: dict, keys: List[str], value: any) -> None:
+    def _set_nested(dct: dict, keys: List[str], value: any) -> None:  # noqa: UP006
         for key in keys[:-1]:
             dct = dct.setdefault(key, {})
         dct[keys[-1]] = value
 
     @staticmethod
-    def _get_records_for_column_family(table: Table, column_family: str, limit: int) -> List[Dict]:
+    def _get_records_for_column_family(table: Table, column_family: str, limit: int) -> List[Dict]:  # noqa: UP006
         filter_ = row_filters.ColumnRangeFilter(column_family_id=column_family)
         rows = table.read_rows(limit=limit, filter_=filter_)
         return [Row.from_partial_row(row).to_record() for row in rows]
 
-    def _get_table(self, project_id: str, schema_name: str, table_name: str) -> Optional[Table]:
+    def _get_table(self, project_id: str, schema_name: str, table_name: str) -> Optional[Table]:  # noqa: UP045
         try:
             return self.tables[project_id][schema_name][table_name]
         except KeyError:
             return None
 
-    def _get_instance(self, project_id: str, schema_name: str) -> Optional[Instance]:
+    def _get_instance(self, project_id: str, schema_name: str) -> Optional[Instance]:  # noqa: UP045
         try:
             return self.instances[project_id][schema_name]
         except KeyError:

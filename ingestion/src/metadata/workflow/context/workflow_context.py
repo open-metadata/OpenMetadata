@@ -9,7 +9,7 @@ from typing import Union
 
 from pydantic import Field
 
-from .base import BaseContext, BaseContextFieldsEnum
+from .base import BaseContext, BaseContextFieldsEnum  # noqa: TID252
 
 
 class WorkflowContextFieldsEnum(BaseContextFieldsEnum):
@@ -25,6 +25,6 @@ class WorkflowContext(BaseContext):
     Context for workflow-level metadata.
     """
 
-    serviceName: Union[str, None] = Field(
+    serviceName: Union[str, None] = Field(  # noqa: N815, UP007
         default=None, description="Name of the service on which the workflow operates"
     )

@@ -30,7 +30,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 
-from ..integration_base import generate_name
+from ..integration_base import generate_name  # noqa: TID252
 
 
 @pytest.fixture

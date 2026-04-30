@@ -215,7 +215,7 @@ MOCK_TABLE_ENTITY = Table(
 )
 
 MOCK_NODE_DETAILS = NodeDetails(
-    **{
+    **{  # noqa: PIE804
         "id": "node1",
         "name": "test_table",
         "type": "table",
@@ -238,7 +238,7 @@ class SigmaUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.sigma.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:
+    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         get_connection.return_value = False
         test_connection.return_value = False
@@ -273,9 +273,9 @@ class SigmaUnitTest(TestCase):
         results = self.sigma.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS)
         for result in results:
             if isinstance(result, Either) and result.right:
-                chart_list.append(result.right)
+                chart_list.append(result.right)  # noqa: PERF401
 
-        for expected, original in zip(EXPECTED_CHARTS, chart_list):
+        for expected, original in zip(EXPECTED_CHARTS, chart_list):  # noqa: B905
             self.assertEqual(expected, original)
 
     def test_include_owners_flag_enabled(self):

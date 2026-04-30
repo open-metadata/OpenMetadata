@@ -14,7 +14,7 @@ Interface for sampler
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Set
+from typing import Any, List, Optional, Set  # noqa: UP035
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     SampleDataIngestionConfig,
@@ -74,19 +74,19 @@ class SamplerInterface(ABC):
         service_connection_config: DatabaseConnection | DatalakeConnection | StorageConnection,
         ometa_client: OpenMetadata,
         entity: ClassifiableEntityType,
-        include_columns: Optional[List[ColumnProfilerConfig]] = None,
-        exclude_columns: Optional[List[str]] = None,
+        include_columns: Optional[List[ColumnProfilerConfig]] = None,  # noqa: UP006, UP045
+        exclude_columns: Optional[List[str]] = None,  # noqa: UP006, UP045
         sample_config: SampleConfig = SampleConfig(),
-        partition_details: Optional[PartitionProfilerConfig] = None,
-        sample_query: Optional[str] = None,
-        storage_config: Optional[DataStorageConfig] = None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
-        processing_engine: Optional[ProcessingEngine] = None,
+        partition_details: Optional[PartitionProfilerConfig] = None,  # noqa: UP045
+        sample_query: Optional[str] = None,  # noqa: UP045
+        storage_config: Optional[DataStorageConfig] = None,  # noqa: UP045
+        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,  # noqa: UP045
+        processing_engine: Optional[ProcessingEngine] = None,  # noqa: UP045
         **__,
     ):
         self.ometa_client = ometa_client
         self._sample = None
-        self._columns: List[SQALikeColumn] = []
+        self._columns: List[SQALikeColumn] = []  # noqa: UP006
         self.sample_config = sample_config
 
         self.entity = entity
@@ -110,11 +110,11 @@ class SamplerInterface(ABC):
         entity: ClassifiableEntityType,
         schema_entity: DatabaseSchema,
         database_entity: Database,
-        table_config: Optional[TableConfig] = None,
-        storage_config: Optional[DataStorageConfig] = None,
-        default_sample_config: Optional[SampleConfig] = None,
+        table_config: Optional[TableConfig] = None,  # noqa: UP045
+        storage_config: Optional[DataStorageConfig] = None,  # noqa: UP045
+        default_sample_config: Optional[SampleConfig] = None,  # noqa: UP045
         default_sample_data_count: int = SAMPLE_DATA_DEFAULT_COUNT,
-        processing_engine: Optional[ProcessingEngine] = None,
+        processing_engine: Optional[ProcessingEngine] = None,  # noqa: UP045
         **kwargs,
     ) -> "SamplerInterface":
         """Create sampler"""
@@ -154,7 +154,7 @@ class SamplerInterface(ABC):
         )
 
     @property
-    def columns(self) -> List[SQALikeColumn]:
+    def columns(self) -> List[SQALikeColumn]:  # noqa: UP006
         """
         Return the list of columns to profile
         by skipping the columns to ignore.
@@ -175,13 +175,13 @@ class SamplerInterface(ABC):
 
         return self._columns
 
-    def _get_excluded_columns(self) -> Set[str]:
+    def _get_excluded_columns(self) -> Set[str]:  # noqa: UP006
         """Get excluded  columns for table being profiled"""
         if self.exclude_columns:
             return set(self.exclude_columns)
         return set()
 
-    def _get_included_columns(self) -> Set[str]:
+    def _get_included_columns(self) -> Set[str]:  # noqa: UP006
         """Get include columns for table being profiled"""
         if self.include_columns:
             return {include_col.columnName for include_col in self.include_columns if include_col.columnName}
@@ -214,7 +214,7 @@ class SamplerInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:
+    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:  # noqa: UP006, UP045
         """Fetch sample data
 
         Args:
@@ -223,7 +223,7 @@ class SamplerInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_columns(self) -> List[SQALikeColumn]:
+    def get_columns(self) -> List[SQALikeColumn]:  # noqa: UP006
         """get columns"""
         raise NotImplementedError
 
@@ -235,7 +235,7 @@ class SamplerInterface(ABC):
         return value
 
     @calculate_execution_time(store=False)
-    def generate_sample_data(self, sample_data_config: Optional[SampleDataIngestionConfig] = None) -> TableData:
+    def generate_sample_data(self, sample_data_config: Optional[SampleDataIngestionConfig] = None) -> TableData:  # noqa: UP045
         """Fetch and ingest sample data
 
         Returns:
@@ -276,7 +276,7 @@ class SamplerInterface(ABC):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching sample data: {err}")
-            raise err
+            raise err  # noqa: TRY201
 
-    def close(self):
+    def close(self):  # noqa: B027
         """Default noop"""

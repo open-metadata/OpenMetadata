@@ -359,7 +359,7 @@ class TestYieldDashboardLineageDetails:
             if entity is Chart:
                 call_count["n"] += 1
                 if call_count["n"] == 1:
-                    raise Exception("API error for first chart")
+                    raise Exception("API error for first chart")  # noqa: TRY002
                 return MOCK_CHART_ENTITY
             return None
 

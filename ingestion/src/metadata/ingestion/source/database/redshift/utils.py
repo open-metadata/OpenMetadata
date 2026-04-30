@@ -14,6 +14,7 @@ Redshift SQLAlchemy util methods
 
 import re
 from collections import defaultdict
+from typing import Any
 
 import sqlalchemy as sa
 from packaging.version import Version
@@ -56,7 +57,7 @@ def _redshift_initialize(self, connection):
     PostgreSQL-specific queries that Redshift doesn't support
     (e.g., SHOW standard_conforming_strings).
     """
-    from sqlalchemy.engine.default import DefaultDialect
+    from sqlalchemy.engine.default import DefaultDialect  # noqa: PLC0415
 
     DefaultDialect.initialize(self, connection)
     self._backslash_escapes = False
@@ -66,7 +67,7 @@ def _redshift_initialize(self, connection):
     self._has_native_hstore = False
 
 
-def _load_domains(self, connection, **kw):
+def _load_domains(self, connection, schema: str | None = None, **kw: Any) -> dict:
     """
     Override to return empty dict since Redshift does not support user-created
     domains and pg_catalog.pg_collation does not exist in Redshift, causing a
@@ -85,7 +86,15 @@ def get_temp_table_names(self, connection, schema=None, **kw):
     return []
 
 
-def get_multi_columns(self, connection, **kw):
+def get_multi_columns(
+    self,
+    connection,
+    schema: str | None = None,
+    filter_names: Any | None = None,
+    scope: Any | None = None,
+    kind: Any | None = None,
+    **kw: Any,
+):
     """
     Override PGDialect's get_multi_columns to avoid querying
     pg_attribute.attcollation which does not exist in Redshift.
@@ -400,7 +409,7 @@ def _get_pg_column_info(  # pylint: disable=too-many-locals,too-many-arguments, 
         computed,
     )
 
-    return column_info
+    return column_info  # noqa: RET504
 
 
 @calculate_execution_time()
@@ -433,14 +442,14 @@ def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-ar
     cache is keyed by schema only.
     """
     # pylint: disable=consider-using-f-string
-    schema = kw.get("schema", None)
+    schema = kw.get("schema", None)  # noqa: SIM910
 
     # Single-schema cache: invalidate when schema changes
     cached = getattr(self, "_relation_info_cache", None)
     if cached is not None and cached[0] == schema:
         return cached[1]
 
-    schema_clause = "AND schema = '{schema}'".format(schema=schema) if schema else ""
+    schema_clause = "AND schema = '{schema}'".format(schema=schema) if schema else ""  # noqa: UP032
 
     result = connection.execute(
         sa.text(REDSHIFT_GET_ALL_RELATIONS.format(schema_clause=schema_clause, table_clause="", limit_clause=""))
@@ -491,7 +500,7 @@ def get_redshift_columns(self, connection, table_name, schema=None, **kw):
             info_cache=info_cache,
         )
         key = RelationKey(table_name, schema, connection)
-        if key not in all_schema_columns.keys():
+        if key not in all_schema_columns.keys():  # noqa: SIM118
             key = key.unquoted()
         return all_schema_columns[key]
     except KeyError:
