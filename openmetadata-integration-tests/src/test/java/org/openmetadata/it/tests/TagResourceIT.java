@@ -1589,18 +1589,6 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         "LIST (batch): regular tag must still be present in tags field");
   }
 
-  /**
-   * Verifies the batched cert fetch path — the underlying query uses
-   * {@code WHERE source = 0 AND targetFQNHash IN (...) AND tagFQNHash LIKE 'md5(Certification).%'}.
-   *
-   * <p>Covers three correctness properties of that query:
-   * <ul>
-   *   <li>Entities with a cert get the correct certification populated</li>
-   *   <li>Entities without any cert get a null certification (no false positives from the IN list)</li>
-   *   <li>Entities with a non-cert tag from a different classification do NOT get that tag treated
-   *       as a certification (regression test for the {@code source} filter + hash prefix).</li>
-   * </ul>
-   */
   @Test
   void test_certBatch_bulkFetchReturnsCorrectCertsPerEntity(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -1609,9 +1597,8 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         client.classifications().getByName("Certification", null);
     assertNotNull(certClassification, "Certification classification must exist");
 
-    String certTagName = ns.shortPrefix("cert_bulk_tag");
     CreateTag createCertTag = new CreateTag();
-    createCertTag.setName(certTagName);
+    createCertTag.setName(ns.shortPrefix("cert_bulk_tag"));
     createCertTag.setClassification(certClassification.getFullyQualifiedName());
     createCertTag.setDescription("Cert tag for bulk fetch test");
     Tag certTag = SdkClients.adminClient().tags().create(createCertTag);
@@ -1629,9 +1616,12 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     org.openmetadata.schema.entity.data.Database db =
         createDatabase(ns, dbService.getFullyQualifiedName());
 
-    DatabaseSchema schemaWithCert = createDatabaseSchema(ns, db.getFullyQualifiedName());
-    DatabaseSchema schemaWithoutCert = createDatabaseSchema(ns, db.getFullyQualifiedName());
-    DatabaseSchema schemaWithRegularTag = createDatabaseSchema(ns, db.getFullyQualifiedName());
+    DatabaseSchema schemaWithCert =
+        createDatabaseSchemaNamed(ns, db.getFullyQualifiedName(), "cert_bulk_with");
+    DatabaseSchema schemaWithoutCert =
+        createDatabaseSchemaNamed(ns, db.getFullyQualifiedName(), "cert_bulk_without");
+    DatabaseSchema schemaWithRegularTag =
+        createDatabaseSchemaNamed(ns, db.getFullyQualifiedName(), "cert_bulk_regular");
 
     org.openmetadata.schema.type.TagLabel certTagLabel =
         new org.openmetadata.schema.type.TagLabel()
@@ -1657,7 +1647,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
             .setFields("certification");
     org.openmetadata.sdk.models.ListResponse<DatabaseSchema> listed =
         client.databaseSchemas().list(listParams);
-    assertNotNull(listed.getData(), "List response must contain data");
+    assertNotNull(listed.getData());
 
     DatabaseSchema listedWithCert =
         listed.getData().stream()
@@ -1675,26 +1665,28 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
             .findFirst()
             .orElse(null);
 
-    assertNotNull(listedWithCert, "Cert-tagged schema must appear in list");
-    assertNotNull(listedWithoutCert, "Untagged schema must appear in list");
-    assertNotNull(listedWithRegularTag, "Regular-tagged schema must appear in list");
+    assertNotNull(listedWithCert);
+    assertNotNull(listedWithoutCert);
+    assertNotNull(listedWithRegularTag);
 
-    assertNotNull(
-        listedWithCert.getCertification(),
-        "Bulk fetch must populate certification for cert-tagged schema");
+    assertNotNull(listedWithCert.getCertification(), "cert-tagged schema: certification missing");
     assertEquals(
         certTag.getFullyQualifiedName(),
-        listedWithCert.getCertification().getTagLabel().getTagFQN(),
-        "Bulk fetch must return the exact cert tag applied");
+        listedWithCert.getCertification().getTagLabel().getTagFQN());
 
-    assertNull(
-        listedWithoutCert.getCertification(),
-        "Schema without any cert tag must have null certification (no false positives)");
-
+    assertNull(listedWithoutCert.getCertification(), "untagged schema: false-positive cert");
     assertNull(
         listedWithRegularTag.getCertification(),
-        "Schema with a non-cert tag from a different classification must have null certification "
-            + "(source filter + hash prefix must exclude tags outside the Certification classification)");
+        "non-cert tag from another classification leaked as certification");
+  }
+
+  private org.openmetadata.schema.entity.data.DatabaseSchema createDatabaseSchemaNamed(
+      TestNamespace ns, String databaseFqn, String name) {
+    org.openmetadata.schema.api.data.CreateDatabaseSchema createSchema =
+        new org.openmetadata.schema.api.data.CreateDatabaseSchema();
+    createSchema.setName(ns.shortPrefix(name));
+    createSchema.setDatabase(databaseFqn);
+    return SdkClients.adminClient().databaseSchemas().create(createSchema);
   }
 
   @Test
