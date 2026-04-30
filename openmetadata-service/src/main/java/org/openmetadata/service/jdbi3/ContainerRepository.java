@@ -577,6 +577,8 @@ public class ContainerRepository extends EntityRepository<Container> {
           children.add(container);
         }
       }
+      // service is stripped from stored JSON; restore via batched relationship lookup.
+      fetchAndSetDefaultService(children);
 
       return new ResultList<>(children, null, null, total);
     } catch (Exception e) {

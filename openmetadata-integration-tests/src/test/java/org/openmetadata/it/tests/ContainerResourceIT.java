@@ -29,9 +29,11 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Container entity operations.
@@ -869,6 +871,56 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     assertNotNull(fetchedParent.getChildren());
     assertEquals(5, fetchedParent.getChildren().size());
   }
+
+  @Test
+  void test_listChildren_populatesDefaultFields(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer parentRequest = new CreateContainer();
+    parentRequest.setName(ns.prefix("parent_listChildren"));
+    parentRequest.setService(service.getFullyQualifiedName());
+    Container parent = createEntity(parentRequest);
+
+    int childCount = 3;
+    for (int i = 0; i < childCount; i++) {
+      CreateContainer childRequest = new CreateContainer();
+      childRequest.setName(ns.prefix("listChildren_child_" + i));
+      childRequest.setService(service.getFullyQualifiedName());
+      childRequest.setParent(
+          new EntityReference()
+              .withId(parent.getId())
+              .withType("container")
+              .withFullyQualifiedName(parent.getFullyQualifiedName()));
+      createEntity(childRequest);
+    }
+
+    ContainerResultList page =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + parent.getFullyQualifiedName() + "/children",
+                null,
+                ContainerResultList.class);
+
+    assertNotNull(page);
+    assertNotNull(page.getData());
+    assertEquals(childCount, page.getData().size());
+
+    for (Container child : page.getData()) {
+      assertNotNull(child.getId(), "child id must be populated");
+      assertNotNull(child.getName(), "child name must be populated");
+      assertNotNull(child.getFullyQualifiedName(), "child FQN must be populated");
+      assertNotNull(
+          child.getService(),
+          "child service ref must be populated by setDefaultFields after bulk fetch");
+      assertEquals(
+          service.getId(), child.getService().getId(), "child must reference parent service");
+    }
+  }
+
+  private static class ContainerResultList extends ResultList<Container> {}
 
   @Test
   void test_containerWithFullyQualifiedName(TestNamespace ns) {
