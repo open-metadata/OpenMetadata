@@ -48,7 +48,6 @@ public record TableIndex(Table table) implements ColumnIndex {
     return java.util.Collections.unmodifiableSet(fields);
   }
 
-
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
     List<String> columnsWithChildrenName = new ArrayList<>();

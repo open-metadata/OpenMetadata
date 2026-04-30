@@ -35,7 +35,6 @@ public class SpreadsheetIndex implements SearchIndex {
     return java.util.Collections.unmodifiableSet(fields);
   }
 
-
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.SPREADSHEET, spreadsheet));
     List<TagLabel> tags = new ArrayList<>();

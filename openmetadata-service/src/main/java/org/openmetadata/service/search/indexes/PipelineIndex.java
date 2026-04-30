@@ -25,7 +25,6 @@ public class PipelineIndex implements SearchIndex {
     return java.util.Collections.unmodifiableSet(fields);
   }
 
-
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.PIPELINE, pipeline));
     Map<String, Object> commonAttributes = getCommonAttributesMap(pipeline, Entity.PIPELINE);
