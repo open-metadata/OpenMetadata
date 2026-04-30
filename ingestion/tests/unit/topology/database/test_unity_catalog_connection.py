@@ -12,6 +12,7 @@
 """
 Tests for unitycatalog.connection.get_sqlalchemy_connection.
 """
+
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
