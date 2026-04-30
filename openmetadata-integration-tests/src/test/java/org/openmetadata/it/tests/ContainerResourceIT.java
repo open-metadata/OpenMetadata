@@ -923,6 +923,100 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   private static class ContainerResultList extends ResultList<Container> {}
 
   @Test
+  void test_listAncestors_returnsOrderedChain(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    // Build a 4-level deep chain: root → mid → leaf-parent → leaf
+    CreateContainer rootRequest = new CreateContainer();
+    rootRequest.setName(ns.prefix("ancestors_root"));
+    rootRequest.setService(service.getFullyQualifiedName());
+    Container root = createEntity(rootRequest);
+
+    CreateContainer midRequest = new CreateContainer();
+    midRequest.setName(ns.prefix("ancestors_mid"));
+    midRequest.setService(service.getFullyQualifiedName());
+    midRequest.setParent(
+        new EntityReference()
+            .withId(root.getId())
+            .withType("container")
+            .withFullyQualifiedName(root.getFullyQualifiedName()));
+    Container mid = createEntity(midRequest);
+
+    CreateContainer leafParentRequest = new CreateContainer();
+    leafParentRequest.setName(ns.prefix("ancestors_leaf_parent"));
+    leafParentRequest.setService(service.getFullyQualifiedName());
+    leafParentRequest.setParent(
+        new EntityReference()
+            .withId(mid.getId())
+            .withType("container")
+            .withFullyQualifiedName(mid.getFullyQualifiedName()));
+    Container leafParent = createEntity(leafParentRequest);
+
+    CreateContainer leafRequest = new CreateContainer();
+    leafRequest.setName(ns.prefix("ancestors_leaf"));
+    leafRequest.setService(service.getFullyQualifiedName());
+    leafRequest.setParent(
+        new EntityReference()
+            .withId(leafParent.getId())
+            .withType("container")
+            .withFullyQualifiedName(leafParent.getFullyQualifiedName()));
+    Container leaf = createEntity(leafRequest);
+
+    EntityReferenceList ancestors =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + leaf.getFullyQualifiedName() + "/ancestors",
+                null,
+                EntityReferenceList.class);
+
+    assertNotNull(ancestors);
+    assertEquals(
+        3,
+        ancestors.size(),
+        "ancestors should be root, mid, leaf-parent — service is excluded and the leaf itself is not returned");
+    assertEquals(root.getId(), ancestors.get(0).getId(), "first ancestor must be the root");
+    assertEquals(mid.getId(), ancestors.get(1).getId(), "second ancestor must be mid");
+    assertEquals(
+        leafParent.getId(), ancestors.get(2).getId(), "last ancestor must be the immediate parent");
+    for (EntityReference ref : ancestors) {
+      assertNotNull(ref.getName(), "ancestor name must be populated for breadcrumb display");
+      assertNotNull(
+          ref.getFullyQualifiedName(),
+          "ancestor FQN must be populated so the UI can build deep links");
+    }
+  }
+
+  @Test
+  void test_listAncestors_topLevelContainerReturnsEmpty(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer topRequest = new CreateContainer();
+    topRequest.setName(ns.prefix("ancestors_top_only"));
+    topRequest.setService(service.getFullyQualifiedName());
+    Container top = createEntity(topRequest);
+
+    EntityReferenceList ancestors =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + top.getFullyQualifiedName() + "/ancestors",
+                null,
+                EntityReferenceList.class);
+
+    assertNotNull(ancestors);
+    assertTrue(
+        ancestors.isEmpty(),
+        "top-level containers (immediate child of the storage service) have no ancestors");
+  }
+
+  private static class EntityReferenceList extends ArrayList<EntityReference> {}
+
+  @Test
   void test_containerWithFullyQualifiedName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     StorageService service = StorageServiceTestFactory.createS3(ns);

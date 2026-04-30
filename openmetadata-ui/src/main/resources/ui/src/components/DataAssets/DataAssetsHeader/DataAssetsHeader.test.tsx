@@ -282,6 +282,54 @@ describe('DataAssetsHeader component', () => {
     expect(mockGetContainerAncestors).not.toHaveBeenCalled();
   });
 
+  it('should resolve the full ancestor chain in a single API call', async () => {
+    // Replaces the old recursive behaviour where each ancestor required its
+    // own getContainerByName request. We assert the breadcrumb resolution
+    // makes exactly one network call regardless of nesting depth.
+    const mockGetContainerAncestors = getContainerAncestors as jest.Mock;
+    mockGetContainerAncestors.mockClear();
+    mockGetContainerAncestors.mockResolvedValue([
+      {
+        id: 'root-id',
+        type: 'container',
+        name: 'root',
+        displayName: 'Root',
+        fullyQualifiedName: 's3.root',
+      },
+      {
+        id: 'mid-id',
+        type: 'container',
+        name: 'mid',
+        displayName: 'Mid',
+        fullyQualifiedName: 's3.root.mid',
+      },
+      {
+        id: 'leaf-parent-id',
+        type: 'container',
+        name: 'leaf_parent',
+        displayName: 'Leaf Parent',
+        fullyQualifiedName: 's3.root.mid.leaf_parent',
+      },
+    ]);
+
+    await act(async () => {
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{
+            ...mockProps.dataAsset,
+            fullyQualifiedName: 's3.root.mid.leaf_parent.leaf',
+          }}
+        />
+      );
+    });
+
+    expect(mockGetContainerAncestors).toHaveBeenCalledTimes(1);
+    expect(mockGetContainerAncestors).toHaveBeenCalledWith(
+      's3.root.mid.leaf_parent.leaf'
+    );
+  });
+
   it('should render the Tier data if present', () => {
     render(
       <DataAssetsHeader
