@@ -20,6 +20,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClaimSelectorProps, ClaimValue } from './TestLogin.interface';
+import { claimValueHasEmail } from './TestLogin.utils';
 
 const formatClaimValue = (value: ClaimValue): string => {
   if (Array.isArray(value)) {
@@ -58,10 +59,12 @@ const ClaimSelector = ({
       return [];
     }
 
-    return Object.entries(result.claims).map(([name, value]) => ({
-      name,
-      value: formatClaimValue(value),
-    }));
+    return Object.entries(result.claims)
+      .filter(([, value]) => claimValueHasEmail(value))
+      .map(([name, value]) => ({
+        name,
+        value: formatClaimValue(value),
+      }));
   }, [result]);
 
   const { adminPrincipal, principalDomain } = useMemo(() => {

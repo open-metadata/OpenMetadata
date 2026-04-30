@@ -84,6 +84,7 @@ import {
   getProviderDisplayName,
   getProviderIcon,
   hasFieldValidationErrors,
+  hasLockoutRiskChange,
   isValidNonBasicProvider,
   parseSamlMetadataXml,
   parseValidationErrors,
@@ -107,8 +108,13 @@ import ProviderSelector from '../ProviderSelector/ProviderSelector';
 import SSODocPanel from '../SSODocPanel/SSODocPanel';
 import { SSOGroupedFieldTemplate } from '../SSOGroupedFieldTemplate/SSOGroupedFieldTemplate';
 import ClaimSelector from '../TestLogin/ClaimSelector.component';
+import EmailClaimRecommendation from '../TestLogin/EmailClaimRecommendation.component';
+import EmailClaimStatus from '../TestLogin/EmailClaimStatus.component';
 import { TestLoginResult } from '../TestLogin/TestLogin.interface';
-import TestLoginButton from '../TestLogin/TestLoginButton.component';
+import TestLoginButton, {
+  TestLoginButtonHandle,
+} from '../TestLogin/TestLoginButton.component';
+import { claimValueHasEmail } from '../TestLogin/TestLogin.utils';
 import './sso-configuration-form.less';
 import {
   FormData,
@@ -264,7 +270,11 @@ const SSOConfigurationFormRJSF = ({
   const [testLoginResult, setTestLoginResult] =
     useState<TestLoginResult | null>(null);
   const [claimSelectorOpen, setClaimSelectorOpen] = useState<boolean>(false);
+  const [testLoginSnapshot, setTestLoginSnapshot] = useState<string | null>(
+    null
+  );
   const fieldErrorsRef = useRef<ErrorSchema>({});
+  const testLoginTriggerRef = useRef<TestLoginButtonHandle | null>(null);
 
   // Helper function to setup configuration state - extracted to avoid redundancy
   const setupConfigurationState = useCallback(
@@ -904,37 +914,38 @@ const SSOConfigurationFormRJSF = ({
     [hasExistingConfig, isModalSave, t, setIsAuthenticated, setCurrentUser]
   );
 
-  const applyAuthorizerSuggestion = useCallback(
-    (admin: string | null, domain: string | null) => {
+  const withAuthorizerSuggestionApplied = useCallback(
+    (
+      data: FormData | undefined,
+      admin: string | null,
+      domain: string | null
+    ): FormData | undefined => {
+      if (!data) {
+        return data;
+      }
       const trimmedAdmin = admin?.trim() ?? '';
       const trimmedDomain = domain?.trim() ?? '';
       if (!trimmedAdmin && !trimmedDomain) {
-        return;
+        return data;
       }
 
-      setInternalData((prev) => {
-        if (!prev) {
-          return prev;
-        }
+      const existingAdmins =
+        data.authorizerConfiguration?.adminPrincipals ?? [];
+      const adminPrincipals =
+        trimmedAdmin && !existingAdmins.includes(trimmedAdmin)
+          ? [...existingAdmins, trimmedAdmin]
+          : existingAdmins;
+      const principalDomain =
+        data.authorizerConfiguration?.principalDomain || trimmedDomain;
 
-        const existingAdmins =
-          prev.authorizerConfiguration?.adminPrincipals ?? [];
-        const adminPrincipals =
-          trimmedAdmin && !existingAdmins.includes(trimmedAdmin)
-            ? [...existingAdmins, trimmedAdmin]
-            : existingAdmins;
-        const principalDomain =
-          prev.authorizerConfiguration?.principalDomain || trimmedDomain;
-
-        return {
-          ...prev,
-          authorizerConfiguration: {
-            ...prev.authorizerConfiguration,
-            adminPrincipals,
-            principalDomain,
-          },
-        };
-      });
+      return {
+        ...data,
+        authorizerConfiguration: {
+          ...data.authorizerConfiguration,
+          adminPrincipals,
+          principalDomain,
+        },
+      };
     },
     []
   );
@@ -943,6 +954,34 @@ const SSOConfigurationFormRJSF = ({
     (result: TestLoginResult) => {
       setTestLoginResult(result);
 
+      const existingEmailClaim = (
+        internalData?.authenticationConfiguration as
+          | { emailClaim?: string }
+          | undefined
+      )?.emailClaim;
+      const claimStillResolves =
+        Boolean(existingEmailClaim) &&
+        claimValueHasEmail(result.claims[existingEmailClaim as string]);
+
+      // Auto-close path: existing config's emailClaim still resolves to a
+      // valid email in the returned token, so re-prompting via ClaimSelector
+      // would be redundant. Capture freshness snapshot and let the user save.
+      if (claimStillResolves) {
+        const next = withAuthorizerSuggestionApplied(
+          internalData,
+          result.suggestedAdminPrincipal,
+          result.derivedPrincipalDomain
+        );
+        if (next && next !== internalData) {
+          setInternalData(next);
+        }
+        setTestLoginSnapshot(JSON.stringify(next ?? internalData ?? null));
+        setTestLoginResult(null);
+        showSuccessToast(t('message.test-login-success'));
+
+        return;
+      }
+
       const hasClaims = Object.keys(result.claims).length > 0;
       if (hasClaims) {
         setClaimSelectorOpen(true);
@@ -950,13 +989,18 @@ const SSOConfigurationFormRJSF = ({
         return;
       }
 
-      applyAuthorizerSuggestion(
+      const next = withAuthorizerSuggestionApplied(
+        internalData,
         result.suggestedAdminPrincipal,
         result.derivedPrincipalDomain
       );
+      if (next && next !== internalData) {
+        setInternalData(next);
+      }
+      setTestLoginSnapshot(JSON.stringify(next ?? internalData ?? null));
       showSuccessToast(t('message.test-login-success'));
     },
-    [applyAuthorizerSuggestion, t]
+    [internalData, withAuthorizerSuggestionApplied, t]
   );
 
   const handleClaimSelectorConfirm = useCallback(
@@ -969,29 +1013,31 @@ const SSOConfigurationFormRJSF = ({
       principalDomain: string;
       emailClaim: string;
     }) => {
-      applyAuthorizerSuggestion(adminPrincipal, principalDomain);
+      const withAdmin = withAuthorizerSuggestionApplied(
+        internalData,
+        adminPrincipal,
+        principalDomain
+      );
+      const next =
+        withAdmin && emailClaim
+          ? {
+              ...withAdmin,
+              authenticationConfiguration: {
+                ...withAdmin.authenticationConfiguration,
+                emailClaim,
+              },
+            }
+          : withAdmin;
 
-      if (emailClaim) {
-        setInternalData((prev) => {
-          if (!prev) {
-            return prev;
-          }
-
-          return {
-            ...prev,
-            authenticationConfiguration: {
-              ...prev.authenticationConfiguration,
-              emailClaim,
-            },
-          };
-        });
+      if (next && next !== internalData) {
+        setInternalData(next);
       }
-
+      setTestLoginSnapshot(JSON.stringify(next ?? internalData ?? null));
       setClaimSelectorOpen(false);
       setTestLoginResult(null);
       showSuccessToast(t('message.test-login-success'));
     },
-    [applyAuthorizerSuggestion, t]
+    [internalData, withAuthorizerSuggestionApplied, t]
   );
 
   const handleClaimSelectorCancel = useCallback(() => {
@@ -1012,6 +1058,23 @@ const SSOConfigurationFormRJSF = ({
       );
 
       if (!cleanedFormData) {
+        updateLoadingState(isModalSave, setIsLoading, false);
+
+        return;
+      }
+
+      // Smart save gate: any lockout-risk field change requires a fresh
+      // Test Login. New configs always require it. Safe-only edits skip.
+      const provider = internalData?.authenticationConfiguration
+        ?.provider as string | undefined;
+      const isLockoutRiskEdit = hasExistingConfig
+        ? hasLockoutRiskChange(savedData, internalData, provider)
+        : true;
+      const isTestLoginFresh =
+        testLoginSnapshot !== null &&
+        testLoginSnapshot === JSON.stringify(internalData);
+      if (isLockoutRiskEdit && !isTestLoginFresh) {
+        showErrorToast(t('message.test-login-required-before-save'));
         updateLoadingState(isModalSave, setIsLoading, false);
 
         return;
@@ -1309,6 +1372,38 @@ const SSOConfigurationFormRJSF = ({
           </span>
         </div>
       )}
+      {showForm && isOidcCallbackProvider && (
+        <div className="m-t-md">
+          <EmailClaimStatus
+            emailClaim={
+              (
+                internalData?.authenticationConfiguration as
+                  | { emailClaim?: string }
+                  | undefined
+              )?.emailClaim
+            }
+            isDisabled={isLoading}
+            onChange={() => testLoginTriggerRef.current?.triggerTestLogin()}
+          />
+        </div>
+      )}
+      {hasExistingConfig &&
+        showForm &&
+        isOidcCallbackProvider &&
+        !(
+          internalData?.authenticationConfiguration as
+            | { emailClaim?: string }
+            | undefined
+        )?.emailClaim && (
+          <div className="m-t-md">
+            <EmailClaimRecommendation
+              isDisabled={isLoading}
+              onRunTestLogin={() =>
+                testLoginTriggerRef.current?.triggerTestLogin()
+              }
+            />
+          </div>
+        )}
     </>
   );
 
@@ -1346,9 +1441,12 @@ const SSOConfigurationFormRJSF = ({
                     </Button>
                     {currentProvider && (
                       <TestLoginButton
-                        formData={internalData as never}
+                        formData={
+                          internalData?.authenticationConfiguration as never
+                        }
                         isDisabled={isLoading}
                         securityConfig={internalData as never}
+                        triggerRef={testLoginTriggerRef}
                         onSuccess={handleTestLoginSuccess}
                       />
                     )}
@@ -1467,6 +1565,7 @@ const SSOConfigurationFormRJSF = ({
                       }
                       isDisabled={isLoading}
                       securityConfig={internalData as never}
+                      triggerRef={testLoginTriggerRef}
                       onSuccess={handleTestLoginSuccess}
                     />
                   )}

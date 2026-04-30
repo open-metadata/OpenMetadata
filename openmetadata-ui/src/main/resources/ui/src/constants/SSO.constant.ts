@@ -1006,3 +1006,59 @@ export const hasAnyAdvancedFields = (
 
   return false;
 };
+
+const OIDC_LOCKOUT_RISK_FIELDS: ReadonlySet<string> = new Set([
+  'root/authenticationConfiguration/discoveryUri',
+  'root/authenticationConfiguration/clientId',
+  'root/authenticationConfiguration/callbackUrl',
+  'root/authenticationConfiguration/emailClaim',
+  'root/authenticationConfiguration/jwtPrincipalClaims',
+  'root/authenticationConfiguration/jwtPrincipalClaimsMapping',
+  'root/authenticationConfiguration/oidcConfiguration/id',
+  'root/authenticationConfiguration/oidcConfiguration/secret',
+  'root/authenticationConfiguration/oidcConfiguration/scope',
+  'root/authenticationConfiguration/oidcConfiguration/prompt',
+  'root/authenticationConfiguration/oidcConfiguration/disablePkce',
+  'root/authenticationConfiguration/oidcConfiguration/clientAuthenticationMethod',
+  'root/authenticationConfiguration/oidcConfiguration/responseType',
+  'root/authenticationConfiguration/oidcConfiguration/callbackUrl',
+  'root/authenticationConfiguration/oidcConfiguration/discoveryUri',
+]);
+
+const SAML_LOCKOUT_RISK_FIELDS: ReadonlySet<string> = new Set([
+  'root/authenticationConfiguration/samlConfiguration/idp/entityId',
+  'root/authenticationConfiguration/samlConfiguration/idp/ssoLoginUrl',
+  'root/authenticationConfiguration/samlConfiguration/idp/idpX509Certificate',
+  'root/authenticationConfiguration/samlConfiguration/idp/nameId',
+]);
+
+const LDAP_LOCKOUT_RISK_FIELDS: ReadonlySet<string> = new Set([
+  'root/authenticationConfiguration/ldapConfiguration/host',
+  'root/authenticationConfiguration/ldapConfiguration/port',
+  'root/authenticationConfiguration/ldapConfiguration/dnAdminPrincipal',
+  'root/authenticationConfiguration/ldapConfiguration/dnAdminPassword',
+  'root/authenticationConfiguration/ldapConfiguration/userBaseDN',
+  'root/authenticationConfiguration/ldapConfiguration/mailAttributeName',
+]);
+
+export const getLockoutRiskFields = (
+  provider: string | undefined
+): ReadonlySet<string> => {
+  if (!provider) {
+    return new Set();
+  }
+
+  if (provider === AuthProvider.Saml) {
+    return SAML_LOCKOUT_RISK_FIELDS;
+  }
+
+  if (provider === AuthProvider.LDAP) {
+    return LDAP_LOCKOUT_RISK_FIELDS;
+  }
+
+  if (OIDC_PROVIDERS.has(provider)) {
+    return OIDC_LOCKOUT_RISK_FIELDS;
+  }
+
+  return new Set();
+};

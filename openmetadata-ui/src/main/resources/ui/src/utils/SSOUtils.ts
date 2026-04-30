@@ -30,6 +30,7 @@ import {
   DEFAULT_CALLBACK_URL,
   DEFAULT_CONTAINER_REQUEST_FILTER,
   GOOGLE_SSO_DEFAULTS,
+  getLockoutRiskFields,
   OIDC_SSO_DEFAULTS,
   PROVIDERS_WITHOUT_BOT_PRINCIPALS,
   PROVIDER_FIELD_MAPPINGS,
@@ -1221,4 +1222,23 @@ export const parseSamlMetadataXml = (xmlString: string): SamlIdpMetadata => {
     ssoLoginUrl,
     idpX509Certificate: `-----BEGIN CERTIFICATE-----\n${certText}\n-----END CERTIFICATE-----`,
   };
+};
+
+/**
+ * Returns true if any field changed between savedData and currentData is in
+ * the lockout-risk set for the given provider. Used to gate save behind a
+ * fresh Test Login on existing-config edits.
+ */
+export const hasLockoutRiskChange = (
+  savedData: unknown,
+  currentData: unknown,
+  provider: string | undefined
+): boolean => {
+  const lockoutRiskFields = getLockoutRiskFields(provider);
+  if (lockoutRiskFields.size === 0) {
+    return false;
+  }
+  const changedFields = findChangedFields(savedData, currentData);
+
+  return changedFields.some((field) => lockoutRiskFields.has(field));
 };

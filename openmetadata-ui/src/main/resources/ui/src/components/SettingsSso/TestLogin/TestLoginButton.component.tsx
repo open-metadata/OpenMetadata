@@ -18,7 +18,14 @@ import {
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  RefObject,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { validateSecurityConfiguration } from '../../../rest/securityConfigAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -32,11 +39,16 @@ const TEST_LOGIN_RESULT_KEY = 'sso-test-login-result';
 const POPUP_NAME = 'sso-test-login';
 const POPUP_TIMEOUT_MS = 60_000;
 
+export interface TestLoginButtonHandle {
+  triggerTestLogin: () => void;
+}
+
 interface TestLoginButtonProps {
   formData?: TestLoginFormData;
   securityConfig?: SecurityConfigForValidation;
   isDisabled?: boolean;
   onSuccess: (result: TestLoginResult) => void;
+  triggerRef?: RefObject<TestLoginButtonHandle | null>;
 }
 
 const openCenteredPopup = (): Window | null => {
@@ -77,6 +89,7 @@ const TestLoginButton = ({
   securityConfig,
   isDisabled = false,
   onSuccess,
+  triggerRef,
 }: TestLoginButtonProps) => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
@@ -178,6 +191,8 @@ const TestLoginButton = ({
       return;
     }
 
+    localStorage.removeItem(TEST_LOGIN_RESULT_KEY);
+
     const popup = openCenteredPopup();
     if (!popup) {
       failPopupBlocked();
@@ -267,6 +282,8 @@ const TestLoginButton = ({
     const oidc = formData?.oidcConfiguration;
     const callbackUrl =
       oidc?.callbackUrl ?? `${window.location.origin}/callback`;
+
+    localStorage.removeItem(TEST_LOGIN_RESULT_KEY);
 
     const popup = openCenteredPopup();
     if (!popup) {
@@ -367,6 +384,14 @@ const TestLoginButton = ({
 
     void startOidcTestLogin();
   }, [formData?.provider, startSamlTestLogin, startOidcTestLogin]);
+
+  useImperativeHandle(
+    triggerRef,
+    () => ({
+      triggerTestLogin: handleTestLogin,
+    }),
+    [handleTestLogin]
+  );
 
   const closeLdapModal = useCallback(() => {
     setLdapModalOpen(false);
