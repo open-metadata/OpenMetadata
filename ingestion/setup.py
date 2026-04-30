@@ -172,6 +172,10 @@ base_requirements = {
     "setuptools>=78.1.1,<81",  # <81 required: pkg_resources removed in setuptools 81+
     "shapely",
     "collate-data-diff>=0.11.9",
+    # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
+    # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
+    # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
+    "dbt-extractor>=0.5.0",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     "jaraco.context==6.0.1",
     # TODO: Remove one once we have updated datadiff version
