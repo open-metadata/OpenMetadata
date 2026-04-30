@@ -136,6 +136,16 @@ public class SystemRepository {
     return dao.getAggregatedEntitiesCount(filter.getCondition());
   }
 
+  /**
+   * Probe the database with the canary {@code SELECT 42}. Used by the {@code /api/v1/system/health}
+   * and Dropwizard {@code /healthcheck} endpoints to validate that the connection pool is
+   * reachable and that the DB is responsive. Surfacing this as a public method on
+   * {@link SystemRepository} keeps the resource layer free of direct DAO wiring.
+   */
+  public Integer testDatabaseConnection() {
+    return dao.testConnection();
+  }
+
   public ServicesCount getAllServicesCount(ListFilter filter) {
     return dao.getAggregatedServicesCount(filter.getCondition());
   }
