@@ -453,7 +453,9 @@ test.describe('Temp lineage table nodes', () => {
   const TEMP_TABLE_NAMES = ['tmp_order_staging', 'tmp_order_enriched'];
 
   test.beforeAll('verify sample data entity exists', async ({ browser }) => {
-    const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     try {
       const response = await apiContext.get(
