@@ -96,9 +96,10 @@ def get_sqlalchemy_connection(connection: UnityCatalogConnection) -> Engine:
     Create sqlalchemy connection
     """
 
+    if not connection.connectionArguments:
+        connection.connectionArguments = init_empty_connection_arguments()
+
     if connection.httpPath:
-        if not connection.connectionArguments:
-            connection.connectionArguments = init_empty_connection_arguments()
         connection.connectionArguments.root["http_path"] = connection.httpPath
 
     auth_args = get_auth_config(connection)
