@@ -3019,6 +3019,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
         cachedReadBundle.invalidate(entityType, entity.getId());
       }
 
+      // Invalidate the entity's own ancestors cache entry. Descendants pick up display-name
+      // drift via the cache TTL — that's acceptable since breadcrumb metadata is cosmetic.
+      var ancestorsCache = CacheBundle.getAncestorsCache();
+      if (ancestorsCache != null) {
+        ancestorsCache.invalidate(entityType, entity.getFullyQualifiedName());
+      }
+
       // Invalidate tag caches
       var cachedTagUsageDao = CacheBundle.getCachedTagUsageDao();
       if (cachedTagUsageDao != null) {

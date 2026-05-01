@@ -54,4 +54,15 @@ public final class CacheKeys {
     String fqnHash = FullyQualifiedName.buildHash(fqn);
     return ns + ":rn:" + type + ":" + fqnHash;
   }
+
+  /**
+   * Cached ancestor chain for hierarchical entities (root → immediate parent). Keyed by the
+   * descendant's FQN hash so a topology change at any ancestor invalidates exactly the
+   * descendants whose chain includes it (the writer drops its own key on update — descendants
+   * pick up display-name drift via TTL, which is acceptable for breadcrumb metadata).
+   */
+  public String ancestors(String type, String fqn) {
+    String fqnHash = FullyQualifiedName.buildHash(fqn);
+    return ns + ":anc:" + type + ":" + fqnHash;
+  }
 }

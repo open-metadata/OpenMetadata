@@ -45,6 +45,8 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.AncestorsCache;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
@@ -629,6 +631,22 @@ public class ContainerRepository extends EntityRepository<Container> {
    * need to issue one parent fetch per breadcrumb level.
    */
   public List<EntityReference> getAncestors(String fqn) {
+    AncestorsCache ancestorsCache = CacheBundle.getAncestorsCache();
+    if (ancestorsCache != null) {
+      List<EntityReference> cached = ancestorsCache.get(CONTAINER, fqn);
+      if (cached != null) {
+        return Collections.unmodifiableList(cached);
+      }
+    }
+
+    List<EntityReference> ordered = resolveAncestors(fqn);
+    if (ancestorsCache != null) {
+      ancestorsCache.put(CONTAINER, fqn, ordered);
+    }
+    return ordered;
+  }
+
+  private List<EntityReference> resolveAncestors(String fqn) {
     String[] parts = FullyQualifiedName.split(fqn);
     // parts[0] is the storage service; parts[parts.length - 1] is the container itself.
     // Ancestors live at indices 1 .. parts.length - 2.
