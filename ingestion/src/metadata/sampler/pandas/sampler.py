@@ -119,7 +119,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         if self.partition_details:
             raw_dataset = self._partitioned_table()
 
-        static = self._get_sample_config()
+        static = self._get_sample_config
         if (
             not static
             or not static.profileSample

@@ -82,7 +82,7 @@ class NoSQLSampler(SamplerInterface):
 
     def _get_limit(self) -> Optional[int]:  # noqa: UP045
         num_rows = self._row_count if self._row_count is not None else self._get_asset_row_count()
-        static = self._get_sample_config()
+        static = self._get_sample_config
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
             limit = num_rows * (static.profileSample or 100 / 100)
         elif static and static.profileSampleType == ProfileSampleType.ROWS:

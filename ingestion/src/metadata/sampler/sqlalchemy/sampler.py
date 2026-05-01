@@ -90,7 +90,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         """Build the SQA Client"""
         return self.session_factory()
 
-    def set_tablesample(self, static: StaticSamplingConfig, selectable: Table):
+    def set_tablesample(self, static: StaticSamplingConfig | None, selectable: Table):
         """Set the tablesample for the table. To be implemented by the child SQA sampler class
         Args:
             selectable (Table): a selectable table
@@ -201,7 +201,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         hash_object = hashlib.md5(encoded_name)
         return hash_object.hexdigest()
 
-    def get_sample_query(self, static: StaticSamplingConfig, *, column=None) -> Query:
+    def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> Query:
         """get query for sample data"""
         selectable = self.set_tablesample(static, self.raw_dataset.__table__)
         with self.session_factory() as client:
@@ -239,7 +239,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.sample_query:
             return self._rdn_sample_from_user_query()
 
-        static = self._get_sample_config()
+        static = self._get_sample_config
 
         if (
             not static

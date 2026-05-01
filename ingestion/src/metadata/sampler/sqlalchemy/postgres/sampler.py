@@ -68,25 +68,24 @@ class PostgresSampler(SQASampler):
         self.sampling_fn = func.bernoulli
         self.sampling_method_type = SamplingMethodType.BERNOULLI
         if sample_config:
-            static = sample_config.get_static_config()
+            static = self._get_sample_config
             if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
                 self.sampling_fn = func.system
 
-    def set_tablesample(self, static: StaticSamplingConfig, selectable: SqaTable):
+    def set_tablesample(self, static: StaticSamplingConfig | None, selectable: SqaTable):
         """Set the TABLESAMPLE clause for postgres
         Args:
-            static (StaticSamplingConfig): sampling configuration
+            static (StaticSamplingConfig | None): sampling configuration
             selectable (Table): table to sample
         """
-        static = self.sample_config.get_static_config()
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
             return selectable.tablesample(self.sampling_fn(static.profileSample or 100))
 
         return selectable
 
-    def get_sample_query(self, *, column=None) -> Query:
-        static = self.sample_config.get_static_config()
+    def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> Query:
+        selectable = self.set_tablesample(static, self.raw_dataset.__table__)
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
-            return self._base_sample_query(column).cte(f"{self.get_sampler_table_name()}_rnd")
+            return self._base_sample_query(selectable, column).cte(f"{self.get_sampler_table_name()}_rnd")
 
         return super().get_sample_query(static, column=column)

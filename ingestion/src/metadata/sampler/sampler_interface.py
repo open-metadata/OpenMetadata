@@ -14,6 +14,7 @@ Interface for sampler
 
 import traceback
 from abc import ABC, abstractmethod
+from functools import cached_property
 from typing import Any, List, Optional, Set  # noqa: UP035
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
@@ -103,7 +104,7 @@ class SamplerInterface(ABC):
         self.service_connection_config = service_connection_config
         self.connection = get_ssl_connection(self.service_connection_config)
         self._row_count = None
-        self._sample_config: StaticSamplingConfig | None = self._get_sample_config()
+        self._sample_config: StaticSamplingConfig | None = None
 
     # pylint: disable=too-many-arguments, too-many-locals
     @classmethod
@@ -179,7 +180,15 @@ class SamplerInterface(ABC):
 
         return self._columns
 
+    @cached_property
     def _get_sample_config(self) -> StaticSamplingConfig | None:
+        """Get the static sampling config. Use cached_property to cache the
+        result since it can be used multiple times during the sampling process
+        and contains a potentially expensive computation.
+
+        Returns:
+            StaticSamplingConfig | None: _description_
+        """
         return resolve_static_sampling_config(
             sample_config=self.sample_config.profileSampleConfig,
             row_count=self._get_asset_row_count(),

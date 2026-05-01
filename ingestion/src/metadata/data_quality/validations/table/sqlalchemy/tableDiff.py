@@ -494,9 +494,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         config = self.runtime_params.table_profile_config
         profile_sample_config = config.profileSampleConfig if config else None
         sample_config = profile_sample_config.root if profile_sample_config else None
-        static = sample_config.config if sample_config else None
-        profile_sample = getattr(static, "profileSample", 100)
-        profile_sample_type = getattr(static, "profileSampleType", None)
+        static = resolve_static_sampling_config(
+            sample_config=sample_config,
+            row_count=self.get_total_row_count(),
+        )
+        profile_sample = static.profileSample if static else None
+        profile_sample_type = static.profileSampleType if static else None
         if profile_sample_type == ProfileSampleType.PERCENTAGE:
             return int(max_nounce * profile_sample / 100)
         if profile_sample_type == ProfileSampleType.ROWS:

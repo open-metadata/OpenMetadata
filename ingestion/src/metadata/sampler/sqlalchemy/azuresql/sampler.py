@@ -42,7 +42,7 @@ class AzureSQLSampler(SQASampler):
         Args:
             selectable (Table): _description_
         """
-        static = self.sample_config.get_static_config()
+        static = self._get_sample_config
         if self.entity.tableType != TableType.View:
             if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
                 return selectable.tablesample(text(f"{static.profileSample or 100} PERCENT"))
