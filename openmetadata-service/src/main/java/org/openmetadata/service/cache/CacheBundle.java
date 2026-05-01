@@ -81,17 +81,21 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
               if (msg.id() != null && cachedReadBundle != null) {
                 cachedReadBundle.invalidate(msg.type(), msg.id());
               }
-              if (msg.fqn() != null && ancestorsCache != null) {
-                ancestorsCache.invalidate(msg.type(), msg.fqn());
-              }
-              // Children-page cache rotates by parent FQN. The publisher emits the changed
-              // entity's own FQN, not its parent's, so we derive the parent here. No-op
-              // when the entity has no parent (top-level under a service).
-              if (msg.fqn() != null && childrenPageCache != null) {
-                String parentFqn =
-                    org.openmetadata.service.util.FullyQualifiedName.getParentFQN(msg.fqn());
-                if (parentFqn != null) {
-                  childrenPageCache.invalidate(msg.type(), parentFqn);
+              // Container-only derived caches: ancestors keyed by descendant FQN, children-page
+              // keyed by parent FQN. Other entity types don't have these caches today, so this
+              // gate keeps unrelated invalidations from doing redundant Redis work on every
+              // table / dashboard / user write.
+              if (msg.fqn() != null
+                  && org.openmetadata.service.Entity.CONTAINER.equals(msg.type())) {
+                if (ancestorsCache != null) {
+                  ancestorsCache.invalidate(msg.type(), msg.fqn());
+                }
+                if (childrenPageCache != null) {
+                  String parentFqn =
+                      org.openmetadata.service.util.FullyQualifiedName.getParentFQN(msg.fqn());
+                  if (parentFqn != null) {
+                    childrenPageCache.invalidate(msg.type(), parentFqn);
+                  }
                 }
               }
             } catch (Exception e) {
