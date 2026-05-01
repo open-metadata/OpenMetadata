@@ -784,8 +784,23 @@ public class ContainerRepository extends EntityRepository<Container> {
             byFqn.put(ancestorFqn, JsonUtils.readValue(hit.get(), EntityReference.class));
             continue;
           } catch (Exception e) {
+            // Evict the corrupt entry up front so a transient warm-write failure below
+            // doesn't leave the bad JSON pinned in Redis until TTL — every subsequent
+            // breadcrumb call would re-hit it, parse-fail, and round-trip the DB.
+            try {
+              entityCache.invalidateReferenceByName(CONTAINER, ancestorFqn);
+            } catch (Exception evictError) {
+              LOG.debug(
+                  "Failed to evict bad reference cache entry for {} {}",
+                  CONTAINER,
+                  ancestorFqn,
+                  evictError);
+            }
             LOG.debug(
-                "Bad cached EntityReference for {} {}, falling through", CONTAINER, ancestorFqn, e);
+                "Bad cached EntityReference for {} {}, evicted and falling through",
+                CONTAINER,
+                ancestorFqn,
+                e);
           }
         }
         misses.add(ancestorFqn);
