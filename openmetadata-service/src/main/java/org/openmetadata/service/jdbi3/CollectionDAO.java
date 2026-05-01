@@ -6311,13 +6311,15 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT targetFQNHash, source, tagFQN, labelType, state, reason, appliedAt, appliedBy, metadata "
             + "FROM tag_usage "
-            + "WHERE targetFQNHash IN (<targetFQNHashes>) "
-            + "AND tagFQN LIKE :tagFQNPrefix "
+            + "WHERE source = :source "
+            + "AND targetFQNHash IN (<targetFQNHashes>) "
+            + "AND tagFQNHash LIKE :tagFQNHashPrefix "
             + "ORDER BY targetFQNHash, tagFQN")
     @UseRowMapper(TagLabelWithFQNHashMapper.class)
     List<TagLabelWithFQNHash> getCertTagsInternalBatch(
+        @Bind("source") int source,
         @BindListFQN("targetFQNHashes") List<String> targetFQNHashes,
-        @Bind("tagFQNPrefix") String tagFQNPrefix);
+        @Bind("tagFQNHashPrefix") String tagFQNHashPrefix);
 
     /**
      * Batch fetch derived tags for multiple glossary term FQNs. Returns a map from glossary term
