@@ -715,9 +715,11 @@ public interface CollectionDAO {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
 
-      String sqlCondition = String.format("%s AND er.toId is NULL", condition);
+      // The root-only SQL is a NOT EXISTS anti-join — there is no outer `er` alias to refer
+      // to here, so the condition is just the regular ListFilter WHERE clause; the new
+      // SQL appends its own NOT EXISTS predicate after this.
       return listBefore(
-          getTableName(), filter.getQueryParams(), sqlCondition, limit, beforeName, beforeId);
+          getTableName(), filter.getQueryParams(), condition, limit, beforeName, beforeId);
     }
 
     @Override
@@ -729,10 +731,8 @@ public interface CollectionDAO {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
 
-      String sqlCondition = String.format("%s AND er.toId is NULL", condition);
-
       return listAfter(
-          getTableName(), filter.getQueryParams(), sqlCondition, limit, afterName, afterId);
+          getTableName(), filter.getQueryParams(), condition, limit, afterName, afterId);
     }
 
     @Override
@@ -744,8 +744,7 @@ public interface CollectionDAO {
         return EntityDAO.super.listCount(filter);
       }
 
-      String sqlCondition = String.format("%s AND er.toId is NULL", condition);
-      return listCount(getTableName(), getNameHashColumn(), filter.getQueryParams(), sqlCondition);
+      return listCount(getTableName(), getNameHashColumn(), filter.getQueryParams(), condition);
     }
 
     // Root-only listing (?root=true) returns containers that have no parent container.
