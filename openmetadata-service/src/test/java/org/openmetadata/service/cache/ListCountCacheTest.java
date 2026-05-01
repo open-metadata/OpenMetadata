@@ -15,6 +15,7 @@ package org.openmetadata.service.cache;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.Include;
@@ -82,9 +83,24 @@ class ListCountCacheTest {
     // SHA-1 truncated to 16 hex chars (64 bits). Lock the format so the Redis field width is
     // stable; downstream tooling and dashboards expect a fixed-width key.
     String hash = ListCountCache.hashFilter(new ListFilter(Include.NON_DELETED));
-    org.junit.jupiter.api.Assertions.assertEquals(16, hash.length());
-    org.junit.jupiter.api.Assertions.assertTrue(
-        hash.matches("[0-9a-f]{16}"), "expected 16 lowercase hex chars, got: " + hash);
+    assertEquals(16, hash.length());
+    assertTrue(hash.matches("[0-9a-f]{16}"), "expected 16 lowercase hex chars, got: " + hash);
+  }
+
+  @Test
+  void hashIgnoresDerivedHashSuffixedParams() {
+    // ListFilter.getCondition() adds bind params like "serviceHash" / "databaseSchemaHash" as a
+    // side-effect when called via dao.listAfter / dao.listBefore. The same logical filter must
+    // hash to the same field whether or not getCondition has run yet (matters for the order of
+    // count vs listBefore in EntityRepository.listBefore).
+    ListFilter beforeMutation =
+        new ListFilter(Include.NON_DELETED).addQueryParam("service", "aws_s3");
+    ListFilter afterMutation =
+        new ListFilter(Include.NON_DELETED)
+            .addQueryParam("service", "aws_s3")
+            .addQueryParam("serviceHash", "deadbeef.%");
+    assertEquals(
+        ListCountCache.hashFilter(beforeMutation), ListCountCache.hashFilter(afterMutation));
   }
 
   @Test

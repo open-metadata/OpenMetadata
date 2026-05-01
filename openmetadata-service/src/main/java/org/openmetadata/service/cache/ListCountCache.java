@@ -56,34 +56,60 @@ public final class ListCountCache {
     String hashKey = buildHashKey(entityType, config);
     String filterHash = hashFilter(filter);
 
-    try {
-      Optional<String> cached = provider.hget(hashKey, filterHash);
-      if (cached.isPresent()) {
-        try {
-          return Integer.parseInt(cached.get());
-        } catch (NumberFormatException e) {
-          // Corrupt value (truncation, manual edit, version skew). Drop the bad field so
-          // the next caller writes a clean value instead of failing to parse it forever.
-          LOG.debug(
-              "listCount cache had non-integer value for {} field {}; evicting",
-              entityType,
-              filterHash);
-          try {
-            provider.hdel(hashKey, filterHash);
-          } catch (Exception evictFail) {
-            LOG.debug(
-                "listCount cache hdel after parse failure failed for {}: {}",
-                entityType,
-                evictFail.getMessage());
-          }
-        }
-      }
-    } catch (Exception e) {
-      LOG.debug("listCount cache read failed for {}: {}", entityType, e.getMessage());
+    Integer cachedCount = readCachedCount(provider, hashKey, filterHash, entityType);
+    if (cachedCount != null) {
+      return cachedCount;
     }
 
     int count = supplier.getAsInt();
+    writeCachedCount(provider, hashKey, filterHash, count, config, entityType);
+    return count;
+  }
 
+  /**
+   * Read a cached count, returning null on miss or any failure. Evicts the field on parse failure
+   * so the next caller writes a clean value instead of looping on a corrupt field until TTL.
+   */
+  private static Integer readCachedCount(
+      CacheProvider provider, String hashKey, String filterHash, String entityType) {
+    try {
+      Optional<String> cached = provider.hget(hashKey, filterHash);
+      if (cached.isEmpty()) {
+        return null;
+      }
+      try {
+        return Integer.parseInt(cached.get());
+      } catch (NumberFormatException e) {
+        evictCorruptField(provider, hashKey, filterHash, entityType);
+        return null;
+      }
+    } catch (Exception e) {
+      LOG.debug("listCount cache read failed for {}: {}", entityType, e.getMessage());
+      return null;
+    }
+  }
+
+  private static void evictCorruptField(
+      CacheProvider provider, String hashKey, String filterHash, String entityType) {
+    LOG.debug(
+        "listCount cache had non-integer value for {} field {}; evicting", entityType, filterHash);
+    try {
+      provider.hdel(hashKey, filterHash);
+    } catch (Exception evictFail) {
+      LOG.debug(
+          "listCount cache hdel after parse failure failed for {}: {}",
+          entityType,
+          evictFail.getMessage());
+    }
+  }
+
+  private static void writeCachedCount(
+      CacheProvider provider,
+      String hashKey,
+      String filterHash,
+      int count,
+      CacheConfig config,
+      String entityType) {
     try {
       provider.hset(
           hashKey,
@@ -92,7 +118,6 @@ public final class ListCountCache {
     } catch (Exception e) {
       LOG.debug("listCount cache write failed for {}: {}", entityType, e.getMessage());
     }
-    return count;
   }
 
   /**
@@ -132,6 +157,13 @@ public final class ListCountCache {
    * deleted predicate) and the {@code queryParams} map sorted by key. Same-shaped filter
    * regardless of {@code addQueryParam} call order produces the same key.
    *
+   * <p>Derived bind params with the {@code Hash} suffix are excluded — those get added as a
+   * side-effect of {@link ListFilter#getCondition()} (e.g. {@code serviceHash},
+   * {@code databaseSchemaHash}) and would otherwise make the same logical filter hash differently
+   * depending on whether the caller has already invoked {@code dao.listAfter / listBefore} (which
+   * triggers the mutation) before {@link #getOrCompute}. The user-set inputs are stable; the
+   * derived hashes aren't.
+   *
    * <p>Bytes are hashed under {@link StandardCharsets#UTF_8} so cross-environment / cross-JVM
    * deployments produce identical keys regardless of platform default charset.
    *
@@ -146,6 +178,7 @@ public final class ListCountCache {
     Map<String, String> params = filter.getQueryParams();
     if (params != null && !params.isEmpty()) {
       params.entrySet().stream()
+          .filter(e -> !e.getKey().endsWith("Hash"))
           .sorted(Map.Entry.comparingByKey())
           .forEach(e -> canonical.append('|').append(e.getKey()).append('=').append(e.getValue()));
     }
@@ -154,7 +187,10 @@ public final class ListCountCache {
       byte[] digest = MessageDigest.getInstance("SHA-1").digest(input);
       return HexFormat.of().formatHex(digest).substring(0, 16);
     } catch (NoSuchAlgorithmException e) {
-      return Integer.toHexString(canonical.toString().hashCode());
+      // SHA-1 is mandated by every Java SE implementation. If this throws, the JVM is broken in
+      // a way we can't recover from — fail loudly rather than silently fall back to a
+      // variable-length hash that breaks the documented 16-char invariant.
+      throw new IllegalStateException("SHA-1 unavailable from JVM provider", e);
     }
   }
 }
