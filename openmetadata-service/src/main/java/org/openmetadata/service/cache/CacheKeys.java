@@ -57,14 +57,23 @@ public final class CacheKeys {
 
   /**
    * Cached ancestor chain (topology only) for hierarchical entities, keyed by the descendant's
-   * FQN hash. The value is the ordered list of ancestor FQNs — display names are rehydrated
-   * per-read from the write-through per-entity reference cache ({@link #refByName}), so an
-   * ancestor's renamed FQN or edited displayName shows up on the next breadcrumb call without
-   * a reverse index.
+   * FQN hash. The value is the ordered list of ancestor FQNs.
    *
-   * <p>Invalidation is descendant-local: writers drop the key for the FQN they wrote. A rename
-   * is self-healing because the descendant's FQN itself changes (old key becomes orphan,
-   * TTL-expires; the new FQN starts cold).
+   * <p><b>What stays fresh:</b> ancestor display names. The {@code List<String>} of FQNs is
+   * resolved per-read into {@link org.openmetadata.schema.type.EntityReference}s through
+   * {@link #refByName} (the write-through per-entity reference cache, invalidated on every
+   * entity write), so an edit to an ancestor's displayName shows up on the next breadcrumb
+   * call.
+   *
+   * <p><b>What does NOT stay fresh:</b> if an ancestor's FQN itself changes (rename), the
+   * cached chain still references the old FQN. Hydration drops that entry and the chain
+   * comes back shorter until the descendant's own ancestors key expires. There is no
+   * reverse index from ancestor → descendant, so we don't proactively invalidate
+   * descendants on an ancestor rename — TTL is the backstop.
+   *
+   * <p><b>Invalidation:</b> descendant-local — each writer drops the key for the FQN it
+   * wrote. A rename of the descendant itself is self-healing: the descendant's own FQN
+   * changes, so the old key is orphaned and TTL-expires while the new FQN starts cold.
    */
   public String ancestors(String type, String fqn) {
     String fqnHash = FullyQualifiedName.buildHash(fqn);

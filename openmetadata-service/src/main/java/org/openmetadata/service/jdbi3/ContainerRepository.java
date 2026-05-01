@@ -482,6 +482,10 @@ public class ContainerRepository extends EntityRepository<Container> {
     }
     ChildrenPageCache childrenPageCache = CacheBundle.getChildrenPageCache();
     if (childrenPageCache != null) {
+      // Rotate the container's own children-page first — when the container is itself a
+      // parent (typical for buckets/folders), a delete or rename leaves cached pages
+      // serving the stale child list until TTL otherwise.
+      childrenPageCache.invalidate(CONTAINER, fqn);
       String parentFqn = FullyQualifiedName.getParentFQN(fqn);
       if (parentFqn != null) {
         childrenPageCache.invalidate(CONTAINER, parentFqn);
@@ -757,10 +761,11 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   /**
    * Resolve a list of container FQNs to {@link EntityReference}s, ordered to match the input.
-   * Reads first hit the write-through per-entity reference cache so display-name drift after a
-   * remote rename / displayName edit is not visible — the per-entity cache is invalidated and
-   * repopulated on every entity write. Misses are batched into one
-   * {@code findReferencesByFqns} call and warm-up the per-entity cache on the way out.
+   * Reads first hit the write-through per-entity reference cache, which is invalidated and
+   * repopulated on every entity write — so the displayName returned here always reflects the
+   * latest write, not whatever was current when the topology chain was first cached. Misses
+   * are batched into one {@code findReferencesByFqns} call and warm the per-entity cache on
+   * the way out.
    */
   private List<EntityReference> hydrateRefsByFqn(List<String> fqns) {
     if (fqns.isEmpty()) {

@@ -91,6 +91,14 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
                   ancestorsCache.invalidate(msg.type(), msg.fqn());
                 }
                 if (childrenPageCache != null) {
+                  // Two children-page caches need rotation:
+                  //   1. The parent's — the parent's child list changed (this row was added,
+                  //      renamed, or removed under it).
+                  //   2. The container's own — if the changed container is itself a parent
+                  //      (typical for buckets/folders), its /children pages cached on this
+                  //      pod must be invalidated too. Otherwise a delete on the writer leaves
+                  //      readers serving 200 with the old child list until the page TTL.
+                  childrenPageCache.invalidate(msg.type(), msg.fqn());
                   String parentFqn =
                       org.openmetadata.service.util.FullyQualifiedName.getParentFQN(msg.fqn());
                   if (parentFqn != null) {
