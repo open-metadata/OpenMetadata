@@ -48,7 +48,8 @@ class ContainerCacheCorrectnessIT {
   static void requireRedis() {
     Assumptions.assumeTrue(
         TestSuiteBootstrap.isRedisEnabled(),
-        "Container cache correctness ITs require -PcacheProvider=redis (or a profile that sets it)");
+        "Container cache correctness ITs require cacheProvider=redis (set by -Pcache-tests"
+            + " or -Ppostgres-os-redis, or pass -DcacheProvider=redis directly)");
   }
 
   // -------------------------- Ancestors cache --------------------------
@@ -92,18 +93,18 @@ class ContainerCacheCorrectnessIT {
     StorageService service = StorageServiceTestFactory.createS3(ns);
     Container parent = createChild(ns, "kids_parent_create", service.getFullyQualifiedName(), null);
 
-    ListResponse<Container> initial = getChildren(client, parent.getFullyQualifiedName());
+    ListResponse<Container> initial = getChildren(parent.getFullyQualifiedName());
     assertEquals(0, initial.getData().size(), "parent starts with no children");
     assertEquals(0, initial.getPaging().getTotal(), "paging total agrees with row count");
 
     // Warmth check — second read must return the same empty page (cached or not, has to match).
-    ListResponse<Container> warm = getChildren(client, parent.getFullyQualifiedName());
+    ListResponse<Container> warm = getChildren(parent.getFullyQualifiedName());
     assertEquals(0, warm.getData().size(), "warm read agrees with cold read");
 
     // Now create a child and confirm the next children read sees it.
     Container child = createChild(ns, "kids_child_a", service.getFullyQualifiedName(), parent);
 
-    ListResponse<Container> afterCreate = getChildren(client, parent.getFullyQualifiedName());
+    ListResponse<Container> afterCreate = getChildren(parent.getFullyQualifiedName());
     assertEquals(
         1,
         afterCreate.getData().size(),
@@ -121,7 +122,7 @@ class ContainerCacheCorrectnessIT {
     Container b = createChild(ns, "kids_child_del_b", service.getFullyQualifiedName(), parent);
 
     // Warm the cache.
-    ListResponse<Container> warmup = getChildren(client, parent.getFullyQualifiedName());
+    ListResponse<Container> warmup = getChildren(parent.getFullyQualifiedName());
     assertEquals(2, warmup.getData().size(), "parent has 2 children before delete");
 
     // Hard delete so the relationship row goes away. Soft-delete keeps the row and the
@@ -132,7 +133,7 @@ class ContainerCacheCorrectnessIT {
     hardDelete.put("recursive", "true");
     SdkClients.adminClient().containers().delete(a.getId().toString(), hardDelete);
 
-    ListResponse<Container> after = getChildren(client, parent.getFullyQualifiedName());
+    ListResponse<Container> after = getChildren(parent.getFullyQualifiedName());
     assertEquals(
         1, after.getData().size(), "delete must invalidate the parent's children-page cache");
     assertEquals(
@@ -147,13 +148,13 @@ class ContainerCacheCorrectnessIT {
     Container child = createChild(ns, "kids_child_dn", service.getFullyQualifiedName(), parent);
 
     // Warm the cache.
-    ListResponse<Container> warmup = getChildren(client, parent.getFullyQualifiedName());
+    ListResponse<Container> warmup = getChildren(parent.getFullyQualifiedName());
     assertEquals(1, warmup.getData().size(), "parent has 1 child before edit");
 
     String newDisplayName = "Child Renamed " + System.currentTimeMillis();
     patchDisplayName(client, child.getId().toString(), newDisplayName);
 
-    ListResponse<Container> after = getChildren(client, parent.getFullyQualifiedName());
+    ListResponse<Container> after = getChildren(parent.getFullyQualifiedName());
     assertEquals(1, after.getData().size(), "displayName edit doesn't change the row count");
     assertEquals(
         newDisplayName,
@@ -197,8 +198,7 @@ class ContainerCacheCorrectnessIT {
     return list;
   }
 
-  private static ListResponse<Container> getChildren(OpenMetadataClient client, String parentFqn)
-      throws Exception {
+  private static ListResponse<Container> getChildren(String parentFqn) throws Exception {
     return SdkClients.adminClient().containers().listChildren(parentFqn);
   }
 

@@ -441,9 +441,11 @@ public class ContainerRepository extends EntityRepository<Container> {
   // (only the /containers/{fqn}/ancestors and /containers/{fqn}/children endpoints exist
   // today), so the invalidation lives here, not in the generic EntityRepository. Hooks fire
   // on every container create / update / delete so a parent's cached children pages can't
-  // outlive a mutation, and a renamed container doesn't leave its old descendants serving
-  // stale display names. Cross-instance invalidation is handled separately by the pubsub
-  // handler in CacheBundle (gated to entityType=container).
+  // outlive a mutation. Display-name edits on an ancestor are picked up automatically: the
+  // ancestors cache stores topology only (a List<String> of ancestor FQNs); display names
+  // are rehydrated per-read through the existing write-through per-entity reference cache,
+  // which is invalidated on every entity write. Cross-instance invalidation is handled
+  // separately by the pubsub handler in CacheBundle (gated to entityType=container).
   // ----------------------------------------------------------------------------------------
 
   @Override
@@ -630,8 +632,8 @@ public class ContainerRepository extends EntityRepository<Container> {
                     parentContainer.getId(),
                     CONTAINER,
                     List.of(Relationship.CONTAINS.ordinal()),
-                    offset,
-                    limit);
+                    safeOffset,
+                    safeLimit);
       }
 
       int total;

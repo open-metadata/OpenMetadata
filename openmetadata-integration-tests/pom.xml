@@ -758,7 +758,7 @@
                     <include>**/cache/*IT.java</include>
                   </includes>
                   <systemPropertyVariables>
-                    <databaseType>postgresql</databaseType>
+                    <databaseType>postgres</databaseType>
                     <databaseImage>postgres:16-alpine</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>

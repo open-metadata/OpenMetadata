@@ -12,12 +12,18 @@ import org.openmetadata.schema.utils.JsonUtils;
  * keyed by the descendant's FQN.
  *
  * <p>Stores only the chain's <em>topology</em> — the ordered list of ancestor FQNs — not their
- * display metadata. Topology changes only on rename / move (rare); descendants pick up an
- * ancestor's renamed FQN automatically because rename invalidates everything keyed under the
- * old FQN. Display names live in the existing write-through per-entity reference cache
- * ({@code om:rn:} keys, kept fresh on every entity write), so callers rehydrate
+ * display metadata. Display names live in the existing write-through per-entity reference
+ * cache ({@code om:rn:} keys, kept fresh on every entity write), so callers rehydrate
  * {@link org.openmetadata.schema.type.EntityReference}s on read and never see stale display
  * names — TTL drift on cosmetic fields is gone.
+ *
+ * <p>Invalidation is descendant-local: each writer drops the key for its own FQN. A rename
+ * is self-healing because the descendant's FQN itself changes — the old key is orphaned and
+ * TTL-expires, the new FQN starts cold and is populated on first read. A non-cascading
+ * delete of a mid-level ancestor is the one edge case: descendants whose cached chain still
+ * references the deleted entity will hydrate it through the per-entity ref cache and skip
+ * the missing entry on read (yielding a shorter chain) until the descendant's own ancestors
+ * key TTL-expires. Acceptable for breadcrumb metadata; deletes in OM are typically cascading.
  */
 @Slf4j
 public class AncestorsCache {

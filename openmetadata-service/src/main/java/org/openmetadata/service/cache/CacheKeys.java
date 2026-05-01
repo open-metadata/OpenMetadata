@@ -56,10 +56,15 @@ public final class CacheKeys {
   }
 
   /**
-   * Cached ancestor chain for hierarchical entities (root → immediate parent). Keyed by the
-   * descendant's FQN hash so a topology change at any ancestor invalidates exactly the
-   * descendants whose chain includes it (the writer drops its own key on update — descendants
-   * pick up display-name drift via TTL, which is acceptable for breadcrumb metadata).
+   * Cached ancestor chain (topology only) for hierarchical entities, keyed by the descendant's
+   * FQN hash. The value is the ordered list of ancestor FQNs — display names are rehydrated
+   * per-read from the write-through per-entity reference cache ({@link #refByName}), so an
+   * ancestor's renamed FQN or edited displayName shows up on the next breadcrumb call without
+   * a reverse index.
+   *
+   * <p>Invalidation is descendant-local: writers drop the key for the FQN they wrote. A rename
+   * is self-healing because the descendant's FQN itself changes (old key becomes orphan,
+   * TTL-expires; the new FQN starts cold).
    */
   public String ancestors(String type, String fqn) {
     String fqnHash = FullyQualifiedName.buildHash(fqn);
