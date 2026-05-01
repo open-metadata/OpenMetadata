@@ -54,4 +54,13 @@ public final class CacheKeys {
     String fqnHash = FullyQualifiedName.buildHash(fqn);
     return ns + ":rn:" + type + ":" + fqnHash;
   }
+
+  /**
+   * Redis hash key holding cached listing totals for an entity type. Each ListFilter variant
+   * lives as a field (hash of its WHERE clause + bound params) under this single key, so a
+   * single DEL atomically clears every filter variant on create/delete/restore.
+   */
+  public String listCount(String entityType) {
+    return ns + ":lc:" + entityType;
+  }
 }

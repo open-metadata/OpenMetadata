@@ -309,3 +309,174 @@ CREATE TABLE IF NOT EXISTS rdf_index_server_stats (
 );
 
 CREATE INDEX IF NOT EXISTS idx_rdf_index_server_stats_job_id ON rdf_index_server_stats(jobId);
+
+-- Reapply the 1.8.2 entity-table indexing pass.
+--
+-- 1.8.2 added composite (deleted, name, id) covering indexes (and (deleted, name)
+-- for service tables) and dropped the legacy 1.4.0 (fqnHash, deleted) indexes that
+-- they replaced. On at least one production tenant the migration applied only
+-- partially: 9 of the 20 entity tables we audited got the new index, 11 did not,
+-- and zero of the 18 legacy drops ran. Symptom is a 504 on
+-- GET /api/v1/containers?fields=id&limit=1 because count(*) is forced into a
+-- parallel seq scan of a 1.5 GB JSONB heap.
+--
+-- Statements below are byte-identical to 1.8.2/postgres/schemaChanges.sql lines
+-- 1-145 (only the index DDL portion; not the data migration). The migration
+-- runner's per-statement hash dedup (SERVER_MIGRATION_SQL_LOGS) ensures this is
+-- a no-op on tenants where 1.8.2 already logged the same statement, and a
+-- repair on tenants where it did not. Postgres `IF EXISTS` on the drops
+-- additionally guards the rare case where the legacy index was already removed
+-- by other means.
+
+CREATE INDEX idx_thread_type_resolved_createdAt ON thread_entity(type, resolved, createdAt DESC);
+
+CREATE INDEX idx_thread_entity_entityId ON thread_entity(entityId);
+
+CREATE INDEX idx_thread_entity_type_announcementDates ON thread_entity(type, announcementStart, announcementEnd);
+
+CREATE INDEX idx_thread_entity_createdBy_type ON thread_entity(createdBy, type);
+
+CREATE INDEX idx_thread_entity_type_taskStatus_createdAt ON thread_entity(type, taskStatus, createdAt DESC);
+
+CREATE INDEX idx_table_entity_deleted_fqnHash ON table_entity(deleted, fqnHash);
+
+CREATE INDEX idx_table_entity_name_id ON table_entity(name, id);
+
+DROP INDEX IF EXISTS index_table_entity_deleted;
+
+CREATE INDEX idx_dashboard_entity_deleted_name_id ON dashboard_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_dashboard_entity_deleted;
+
+CREATE INDEX idx_pipeline_entity_deleted_name_id ON pipeline_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_pipeline_entity_deleted;
+
+CREATE INDEX idx_chart_entity_deleted_name_id ON chart_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_chart_entity_deleted;
+
+CREATE INDEX idx_topic_entity_deleted_name_id ON topic_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_topic_entity_deleted;
+
+CREATE INDEX idx_ml_model_entity_deleted_name_id ON ml_model_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_ml_model_entity_deleted;
+
+CREATE INDEX idx_storage_container_entity_deleted_name_id ON storage_container_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_storage_container_entity_deleted;
+
+CREATE INDEX idx_database_entity_deleted_name_id ON database_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_database_entity_deleted;
+
+CREATE INDEX idx_database_schema_entity_deleted_name_id ON database_schema_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_database_schema_entity_deleted;
+
+CREATE INDEX idx_glossary_term_entity_deleted_name_id ON glossary_term_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_glossary_term_entity_deleted;
+
+CREATE INDEX idx_metric_entity_deleted_name_id ON metric_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_metric_entity_deleted;
+
+CREATE INDEX idx_report_entity_deleted_name_id ON report_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_report_entity_deleted;
+
+CREATE INDEX idx_stored_procedure_entity_deleted_name_id ON stored_procedure_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_stored_procedure_entity_deleted;
+
+CREATE INDEX idx_search_index_entity_deleted_name_id ON search_index_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_search_index_entity_deleted;
+
+CREATE INDEX idx_api_endpoint_entity_deleted_name_id ON api_endpoint_entity(deleted, name, id);
+
+CREATE INDEX idx_api_collection_entity_deleted_name_id ON api_collection_entity(deleted, name, id);
+
+CREATE INDEX idx_dashboard_data_model_entity_deleted_name_id ON dashboard_data_model_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_dashboard_data_model_entity_deleted;
+
+CREATE INDEX idx_dbservice_entity_deleted_name ON dbservice_entity(deleted, name);
+
+DROP INDEX IF EXISTS index_dbservice_entity_deleted;
+
+CREATE INDEX idx_dashboard_service_entity_deleted_name ON dashboard_service_entity(deleted, name);
+
+DROP INDEX IF EXISTS index_dashboard_service_entity_deleted;
+
+CREATE INDEX idx_messaging_service_entity_deleted_name ON messaging_service_entity(deleted, name);
+
+DROP INDEX IF EXISTS index_messaging_service_entity_deleted;
+
+CREATE INDEX idx_metadata_service_entity_deleted_name ON metadata_service_entity(deleted, name);
+
+DROP INDEX IF EXISTS index_metadata_service_entity_deleted;
+
+CREATE INDEX idx_mlmodel_service_entity_deleted_name ON mlmodel_service_entity(deleted, name);
+
+DROP INDEX IF EXISTS index_mlmodel_service_entity_deleted;
+
+CREATE INDEX idx_pipeline_service_entity_deleted_name ON pipeline_service_entity(deleted, name);
+
+DROP INDEX IF EXISTS index_pipeline_service_entity_deleted;
+
+CREATE INDEX idx_storage_service_entity_deleted_name ON storage_service_entity(deleted, name);
+
+DROP INDEX IF EXISTS index_storage_service_entity_deleted;
+
+CREATE INDEX idx_search_service_entity_deleted_name ON search_service_entity(deleted, name);
+
+DROP INDEX IF EXISTS index_search_service_entity_deleted;
+
+CREATE INDEX idx_api_service_entity_deleted_name ON api_service_entity(deleted, name);
+
+CREATE INDEX idx_team_entity_deleted_name ON team_entity(deleted, name);
+
+DROP INDEX IF EXISTS index_team_entity_deleted;
+
+CREATE INDEX idx_role_entity_deleted_name ON role_entity(deleted, name);
+
+DROP INDEX IF EXISTS index_role_entity_deleted;
+
+CREATE INDEX idx_policy_entity_deleted_name_id ON policy_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_policy_entity_deleted;
+
+CREATE INDEX idx_user_entity_deleted_name ON user_entity(deleted, name);
+
+DROP INDEX IF EXISTS index_user_entity_deleted;
+
+CREATE INDEX idx_glossary_entity_deleted_name ON glossary_entity(deleted, name);
+
+DROP INDEX IF EXISTS index_glossary_entity_deleted;
+
+CREATE INDEX idx_bot_entity_deleted_name ON bot_entity(deleted, name);
+
+DROP INDEX IF EXISTS index_bot_entity_deleted;
+
+CREATE INDEX idx_kpi_entity_deleted_name ON kpi_entity(deleted, name);
+
+DROP INDEX IF EXISTS index_kpi_entity_deleted;
+
+CREATE INDEX idx_ingestion_pipeline_entity_deleted_name_id ON ingestion_pipeline_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_ingestion_pipeline_entity_deleted;
+
+CREATE INDEX idx_data_contract_entity_deleted_name_id ON data_contract_entity(deleted, name, id);
+
+DROP INDEX IF EXISTS index_data_contract_entity_deleted;
+
+-- Speeds up the NOT EXISTS anti-join used by ContainerDAO root-only listings
+-- (?root=true&service=...). Covers the subquery's filter and projection so the
+-- planner can answer "does this container have a parent?" with an index-only
+-- scan instead of materializing the child-edge set.
+CREATE INDEX IF NOT EXISTS idx_er_fromentity_toentity_relation_toid
+    ON entity_relationship (fromEntity, toEntity, relation, toId);
