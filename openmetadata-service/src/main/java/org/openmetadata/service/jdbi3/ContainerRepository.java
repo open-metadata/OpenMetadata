@@ -76,11 +76,6 @@ public class ContainerRepository extends EntityRepository<Container> {
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
 
-    // children is unbounded — for a 5,000-file Tahoe-style container, fields=children
-    // (or fields=* expanding to it) loads every reference with no pagination. Remove it
-    // from the entity's allowed-fields set so that fields=* silently skips it and
-    // fields=children returns 400. Callers that need to traverse children must use the
-    // paginated /v1/containers/name/{fqn}/children endpoint.
     allowedFields.remove("children");
 
     // Register bulk field fetchers for efficient database operations
