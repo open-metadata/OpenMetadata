@@ -74,7 +74,7 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
       },
       ...descriptionTableObject<Container>(),
     ],
-    []
+    [t]
   );
 
   // Track the FQN of the latest in-flight fetch so a slow earlier response for a

@@ -125,10 +125,7 @@ class OMetaContainerMixin:
         populated. Re-fetch the specific child via :meth:`get_by_name` when
         full details are needed.
         """
-        path = (
-            f"/containers/name/{quote(container_fqn)}/children"
-            f"?limit={limit}&offset={offset}"
-        )
+        path = f"/containers/name/{quote(container_fqn)}/children?limit={limit}&offset={offset}"
         resp = self.client.get(path)
         if not isinstance(resp, dict):
             return EntityList(entities=[], total=0)
