@@ -748,20 +748,29 @@ public interface CollectionDAO {
       return listCount(getTableName(), getNameHashColumn(), filter.getQueryParams(), sqlCondition);
     }
 
+    // Root-only listing (?root=true) returns containers that have no parent container.
+    // Earlier versions used a LEFT JOIN + IS NULL anti-join with an inlined subquery, which
+    // Postgres often plans as a hash join over the materialized child-edge set — fine for
+    // small services, painful for ones with thousands of container-to-container edges
+    // (a Tahoe-shaped 5,000-file bucket easily blows past 2s for the COUNT alone). Switching
+    // to NOT EXISTS lets the planner anti-join via the (fromEntity, toEntity, relation, toId)
+    // index instead, so each candidate row's "is this a child?" check is an index lookup.
     @SqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT name,id, ce.json FROM <table> ce "
-                + "LEFT JOIN ("
-                + "  SELECT toId FROM entity_relationship "
-                + "  WHERE fromEntity = 'container' AND toEntity = 'container' AND relation = 0 "
-                + ") er "
-                + "on ce.id = er.toId "
+                + "SELECT name, id, ce.json FROM <table> ce "
                 + "<sqlCondition> AND "
-                + "(name < :beforeName OR (name = :beforeName AND id < :beforeId))  "
-                + "ORDER BY name DESC,id DESC "
+                + "NOT EXISTS ("
+                + "  SELECT 1 FROM entity_relationship er "
+                + "  WHERE er.toId = ce.id "
+                + "    AND er.fromEntity = 'container' "
+                + "    AND er.toEntity = 'container' "
+                + "    AND er.relation = 0"
+                + ") AND "
+                + "(name < :beforeName OR (name = :beforeName AND id < :beforeId)) "
+                + "ORDER BY name DESC, id DESC "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name,id")
+                + ") last_rows_subquery ORDER BY name, id")
     List<String> listBefore(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -773,14 +782,16 @@ public interface CollectionDAO {
     @SqlQuery(
         value =
             "SELECT ce.json FROM <table> ce "
-                + "LEFT JOIN ("
-                + "  SELECT toId FROM entity_relationship "
-                + "  WHERE fromEntity = 'container' AND toEntity = 'container' AND relation = 0 "
-                + ") er "
-                + "on ce.id = er.toId "
                 + "<sqlCondition> AND "
-                + "(name > :afterName OR (name = :afterName AND id > :afterId))  "
-                + "ORDER BY name,id "
+                + "NOT EXISTS ("
+                + "  SELECT 1 FROM entity_relationship er "
+                + "  WHERE er.toId = ce.id "
+                + "    AND er.fromEntity = 'container' "
+                + "    AND er.toEntity = 'container' "
+                + "    AND er.relation = 0"
+                + ") AND "
+                + "(name > :afterName OR (name = :afterName AND id > :afterId)) "
+                + "ORDER BY name, id "
                 + "LIMIT :limit")
     List<String> listAfter(
         @Define("table") String table,
@@ -793,22 +804,26 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(<nameHashColumn>) FROM <table> ce "
-                + "LEFT JOIN ("
-                + "  SELECT toId FROM entity_relationship "
-                + "  WHERE fromEntity = 'container' AND toEntity = 'container' AND relation = 0 "
-                + ") er "
-                + "on ce.id = er.toId "
-                + "<sqlCondition>",
+                + "<sqlCondition> AND "
+                + "NOT EXISTS ("
+                + "  SELECT 1 FROM entity_relationship er "
+                + "  WHERE er.toId = ce.id "
+                + "    AND er.fromEntity = 'container' "
+                + "    AND er.toEntity = 'container' "
+                + "    AND er.relation = 0"
+                + ")",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(*) FROM <table> ce "
-                + "LEFT JOIN ("
-                + "  SELECT toId FROM entity_relationship "
-                + "  WHERE fromEntity = 'container' AND toEntity = 'container' AND relation = 0 "
-                + ") er "
-                + "on ce.id = er.toId "
-                + "<sqlCondition>",
+                + "<sqlCondition> AND "
+                + "NOT EXISTS ("
+                + "  SELECT 1 FROM entity_relationship er "
+                + "  WHERE er.toId = ce.id "
+                + "    AND er.fromEntity = 'container' "
+                + "    AND er.toEntity = 'container' "
+                + "    AND er.relation = 0"
+                + ")",
         connectionType = POSTGRES)
     int listCount(
         @Define("table") String table,
