@@ -114,6 +114,27 @@ class ListCountCacheTest {
   }
 
   @Test
+  void userValuesContainingSeparatorCharsDoNotCauseCollisions() {
+    // The earlier canonical-string approach concatenated entries with `|` and `=`. A user value
+    // containing those characters could craft a string identical to a different filter map.
+    // After switching to length-prefixed digest feeds, the hash is collision-resistant against
+    // any character in keys or values.
+    ListFilter twoKeyMap =
+        new ListFilter(Include.NON_DELETED)
+            .addQueryParam("nameFilter", "foo")
+            .addQueryParam("service", "bar");
+    ListFilter craftedSingleValue =
+        new ListFilter(Include.NON_DELETED).addQueryParam("nameFilter", "foo|service=bar");
+    assertNotEquals(
+        ListCountCache.hashFilter(twoKeyMap), ListCountCache.hashFilter(craftedSingleValue));
+
+    // Same shape with `=` injected
+    ListFilter clean = new ListFilter(Include.NON_DELETED).addQueryParam("k", "v");
+    ListFilter injected = new ListFilter(Include.NON_DELETED).addQueryParam("k=", "v");
+    assertNotEquals(ListCountCache.hashFilter(clean), ListCountCache.hashFilter(injected));
+  }
+
+  @Test
   void queryParamOrderDoesNotAffectHash() {
     // Two filters with the same params added in different order should hit the same cache field;
     // the canonicalization sorts by key.

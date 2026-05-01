@@ -35,10 +35,29 @@ import org.openmetadata.service.jdbi3.ListFilter;
  * applied. Each underlying DAO call (which IS a SqlObject) auto-commits independently, and
  * invalidation runs after those commits. The window between a DAO commit and the Redis DEL is
  * sub-millisecond; any concurrent reader caching post-commit state sees the live count.
- * {@link CacheConfig#listCountTtlSeconds} is the upper bound on staleness if invalidation itself
- * fails (e.g. Redis briefly unavailable). The actual listing data is always live —
- * {@code dao.listAfter} reads from the DB on every call — only {@code paging.total} can ever be
- * briefly stale. Falls back transparently to the supplier when Redis is disabled or unavailable.
+ *
+ * <p><b>TTL semantics — important caveats</b>: {@link CacheProvider#hset} applies {@code EXPIRE}
+ * to the entire Redis hash, not per-field. So:
+ * <ul>
+ *   <li>Any write to any field <em>refreshes</em> the TTL for every other field. On a busy
+ *       entity type, the hash effectively never expires via TTL — invalidation hooks
+ *       {@link #invalidate(String)} are the sole mechanism that bounds staleness in the steady
+ *       state. {@link CacheConfig#listCountTtlSeconds} is the bound only when no other writes
+ *       happen during the TTL window.</li>
+ *   <li>Field count is unbounded: every distinct {@link ListFilter} variant produces a new
+ *       field. For high-cardinality user filters (e.g. {@code nameFilter}, {@code *Regex})
+ *       continuously typed in by users, the hash grows over time. In practice OM listings
+ *       filter by service / database / domain (low cardinality, dozens to hundreds of
+ *       distinct values per tenant), so the working set is bounded — but worth monitoring on
+ *       hash size if you see memory pressure on Redis. Eventual fix: a versioned-key strategy
+ *       where invalidate bumps a version counter and old hashes age out naturally; deferred
+ *       to a follow-up since it adds an extra round trip per read and the in-practice working
+ *       set hasn't justified it yet.</li>
+ * </ul>
+ *
+ * <p>The actual listing data is always live — {@code dao.listAfter} reads from the DB on every
+ * call — only {@code paging.total} can ever be stale. Falls back transparently to the supplier
+ * when Redis is disabled or unavailable.
  */
 @Slf4j
 public final class ListCountCache {
@@ -172,6 +191,13 @@ public final class ListCountCache {
    * predicate at the SQL level) plus the {@code queryParams} map sorted by key. Same-shaped
    * filter regardless of {@code addQueryParam} call order produces the same key.
    *
+   * <p><b>Encoding is length-prefixed</b>, not delimiter-based. User-controlled values
+   * (e.g. {@code nameFilter}, {@code *Regex} params) can contain any character, including
+   * whatever separator we'd otherwise pick — concatenating with {@code |} or {@code =} would
+   * let a value like {@code "foo|service=bar"} collide with the two-key map
+   * {@code {nameFilter=foo, service=bar}}. Each key and value is fed to the digest as
+   * {@code [4-byte BE length][bytes]}, so no value can be confused with a key/value separator.
+   *
    * <p><b>Mutation contract</b>: {@link ListFilter#getCondition()} mutates {@code queryParams} as
    * a side-effect (it adds derived bind params like {@code serviceHash}, {@code ownerIdParam},
    * {@code databaseSchemaHashExact}, etc.). The hash is computed from whatever shape
@@ -193,17 +219,31 @@ public final class ListCountCache {
    */
   // Package-private for test access.
   static String hashFilter(ListFilter filter) {
-    StringBuilder canonical = new StringBuilder();
-    canonical.append("include=").append(filter.getInclude());
+    MessageDigest digest = SHA1.get();
+    digest.reset();
+    feed(digest, "include");
+    feed(digest, String.valueOf(filter.getInclude()));
     Map<String, String> params = filter.getQueryParams();
     if (params != null && !params.isEmpty()) {
       params.entrySet().stream()
           .sorted(Map.Entry.comparingByKey())
-          .forEach(e -> canonical.append('|').append(e.getKey()).append('=').append(e.getValue()));
+          .forEach(
+              e -> {
+                feed(digest, e.getKey());
+                feed(digest, e.getValue() == null ? "" : e.getValue());
+              });
     }
-    byte[] input = canonical.toString().getBytes(StandardCharsets.UTF_8);
-    MessageDigest digest = SHA1.get();
-    digest.reset();
-    return HexFormat.of().formatHex(digest.digest(input)).substring(0, 16);
+    return HexFormat.of().formatHex(digest.digest()).substring(0, 16);
+  }
+
+  /** Feed a string to the digest as {@code [4-byte BE length][UTF-8 bytes]} — unambiguous, so no
+   *  user-supplied value can be confused with a separator. */
+  private static void feed(MessageDigest digest, String s) {
+    byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+    digest.update((byte) (bytes.length >>> 24));
+    digest.update((byte) (bytes.length >>> 16));
+    digest.update((byte) (bytes.length >>> 8));
+    digest.update((byte) bytes.length);
+    digest.update(bytes);
   }
 }
