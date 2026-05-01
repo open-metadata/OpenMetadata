@@ -31,6 +31,21 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 import { ContainerChildrenProps } from './ContainerChildren.interface';
 import { useContainerChildrenCountSetter } from './ContainerChildrenCountContext';
 
+// Row shape rendered by the children table: every field used by the columns
+// (id, name, displayName, fullyQualifiedName, description) is structurally
+// satisfied by both the slim Container summaries returned by the /children
+// endpoint and the EntityReference[] the customize-page widget preview feeds
+// in via the parent Container's `children`. Picking this minimum keeps both
+// inputs strongly typed without an unchecked cast and without forcing the
+// preview path to mint synthetic Containers (which would need `service`, etc).
+type ContainerChildRow = {
+  id: string;
+  name?: string;
+  displayName?: string;
+  fullyQualifiedName?: string;
+  description?: string;
+};
+
 const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
   const onChildrenCountChange = useContainerChildrenCountSetter();
   const { t } = useTranslation();
@@ -47,17 +62,17 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
   const { fqn: decodedContainerName } = useFqn();
   const [isChildrenLoading, setIsChildrenLoading] = useState(false);
   const [containerChildrenData, setContainerChildrenData] = useState<
-    Container[]
+    ContainerChildRow[]
   >([]);
 
-  const columns: ColumnsType<Container> = useMemo(
+  const columns: ColumnsType<ContainerChildRow> = useMemo(
     () => [
       {
         title: t('label.name'),
         dataIndex: 'name',
         width: 400,
         key: 'name',
-        sorter: getColumnSorter<Container, 'name'>('name'),
+        sorter: getColumnSorter<ContainerChildRow, 'name'>('name'),
         render: (_, record) => (
           <div className="d-inline-flex w-max-90">
             <Link
@@ -72,7 +87,7 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
           </div>
         ),
       },
-      ...descriptionTableObject<Container>(),
+      ...descriptionTableObject<ContainerChildRow>(),
     ],
     [t]
   );
@@ -128,10 +143,10 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
       return;
     }
     // Read-only mode is used by the customize-page widget preview, which feeds
-    // synthetic data via the parent Container's `children`. Those rows are
-    // EntityReferences but the columns only render id/name/displayName/fqn —
-    // fields shared with Container — so coerce the shape for the table.
-    const children = (container?.children ?? []) as unknown as Container[];
+    // synthetic data via the parent Container's `children` (an EntityReference[]).
+    // Both Container and EntityReference are structurally assignable to
+    // ContainerChildRow, so no cast is needed.
+    const children = container?.children ?? [];
     setContainerChildrenData(children);
     onChildrenCountChange?.(children.length);
   }, [isReadOnly, container?.children, onChildrenCountChange]);
