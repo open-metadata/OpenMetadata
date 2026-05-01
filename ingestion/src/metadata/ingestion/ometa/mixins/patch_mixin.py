@@ -65,6 +65,24 @@ T = TypeVar("T", bound=BaseModel)
 OWNER_TYPES: List[str] = ["user", "team"]  # noqa: UP006
 
 
+def _summarize_patch(patch: Any) -> str:
+    """Return op count and `op:path` list for a JSON Patch, without values.
+
+    Values are intentionally excluded — they may contain descriptions, sample
+    data, or tag content that should not be logged.
+    """
+    if patch is None:
+        return "<patch not built>"
+    try:
+        ops = json.loads(str(patch))
+    except (ValueError, TypeError):
+        return "<unparsable patch>"
+    if not isinstance(ops, list):
+        return "<patch is not a list>"
+    op_paths = [f"{op.get('op', '?')}:{op.get('path', '?')}" for op in ops if isinstance(op, dict)]
+    return f"{len(ops)} op(s) [{', '.join(op_paths)}]"
+
+
 def convert_uuids_to_strings(obj: Any) -> Any:
     """
     Recursively convert UUID objects to strings for JSON serialization
@@ -192,21 +210,19 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            patch_body = str(patch) if patch is not None else "<patch not built>"
+            patch_summary = _summarize_patch(patch)
+            entity_name = get_log_name(source)
             if skip_on_failure:
-                entity_name = get_log_name(source)
                 logger.warning(
                     f"Failed to update {entity_name}. The patch operation was skipped. "
-                    f"Reason: {exc} | Patch body: {patch_body}"
+                    f"Reason: {exc} | Patch ops: {patch_summary}"
                 )
                 return None
-            else:  # noqa: RET505
-                entity_name = get_log_name(source)
-                raise RuntimeError(
-                    f"Failed to update {entity_name}. The patch operation failed. "
-                    f"Set 'skip_on_failure=True' to skip failed patches. "
-                    f"Error: {exc} | Patch body: {patch_body}"
-                ) from exc
+            raise RuntimeError(
+                f"Failed to update {entity_name}. The patch operation failed. "
+                f"Set 'skip_on_failure=True' to skip failed patches. "
+                f"Error: {exc} | Patch ops: {patch_summary}"
+            ) from exc
 
     def patch_description(
         self,
