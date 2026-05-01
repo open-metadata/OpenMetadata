@@ -289,24 +289,6 @@ CREATE TABLE IF NOT EXISTS rdf_index_server_stats (
     INDEX idx_rdf_index_server_stats_job_id (jobId)
 );
 
--- Reapply the 1.8.2 entity-table indexing pass.
---
--- 1.8.2 added composite (deleted, name, id) covering indexes (and (deleted, name)
--- for service tables) and dropped the legacy 1.4.0 (fqnHash, deleted) indexes that
--- they replaced. On at least one production tenant the migration applied only
--- partially: 9 of the 20 entity tables we audited got the new index, 11 did not,
--- and zero of the 18 legacy drops ran. Symptom is a 504 on
--- GET /api/v1/containers?fields=id&limit=1 because count(*) is forced into a
--- parallel seq scan of a 1.5 GB JSON heap.
---
--- Statements below are byte-identical to 1.8.2/mysql/schemaChanges.sql lines
--- 1-147 (only the index DDL portion; not the data migration). The migration
--- runner's per-statement hash dedup (SERVER_MIGRATION_SQL_LOGS) ensures this is
--- a no-op on tenants where 1.8.2 already logged the same statement, and a
--- repair on tenants where it did not. MySQL has no native IF NOT EXISTS /
--- IF EXISTS for indexes; correctness here relies on the runner dedup being
--- the single gate.
-
 CREATE INDEX idx_thread_type_resolved_createdAt ON thread_entity(type, resolved, createdAt DESC);
 
 CREATE INDEX idx_thread_entity_entityId ON thread_entity(entityId);
@@ -455,9 +437,5 @@ CREATE INDEX idx_data_contract_entity_deleted_name_id ON data_contract_entity(de
 
 DROP INDEX index_data_contract_entity_deleted ON data_contract_entity;
 
--- Speeds up the NOT EXISTS anti-join used by ContainerDAO root-only listings
--- (?root=true&service=...). Covers the subquery's filter and projection so the
--- planner can answer "does this container have a parent?" with an index-only
--- scan instead of materializing the child-edge set.
 CREATE INDEX idx_er_fromentity_toentity_relation_toid
     ON entity_relationship (fromEntity, toEntity, relation, toId);
