@@ -39,15 +39,15 @@ import { getBotByName, getBots } from '../../../../rest/botsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
 import {
-    getEntityName,
-    highlightSearchText
+  getEntityName,
+  highlightSearchText,
 } from '../../../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { getBotsPath } from '../../../../utils/RouterUtils';
 import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
-    escapeESReservedCharacters,
-    stringToHTML
+  escapeESReservedCharacters,
+  stringToHTML,
 } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
@@ -112,22 +112,19 @@ const BotListV1 = ({
     []
   );
 
-  const enrichBotWithMatchedUser = useCallback(
-    (bot: Bot, botUser?: User) => {
-      if (!botUser) {
-        return bot;
-      }
+  const enrichBotWithMatchedUser = useCallback((bot: Bot, botUser?: User) => {
+    if (!botUser) {
+      return bot;
+    }
 
-      return {
-        ...bot,
-        botUser: {
-          ...(bot.botUser ?? {}),
-          ...getBotUserFromUser(botUser),
-        } as Bot['botUser'],
-      };
-    },
-    []
-  );
+    return {
+      ...bot,
+      botUser: {
+        ...(bot.botUser ?? {}),
+        ...getBotUserFromUser(botUser),
+      } as Bot['botUser'],
+    };
+  }, []);
 
   const enrichBotsWithBotUsers = async (bots: Bot[]) => {
     if (!bots.length) {

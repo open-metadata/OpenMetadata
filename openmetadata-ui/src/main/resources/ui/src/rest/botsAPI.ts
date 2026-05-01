@@ -16,9 +16,9 @@ import axiosClient from '.';
 import { CreateBot } from '../generated/api/createBot';
 import { Bot } from '../generated/entity/bot';
 import { Include } from '../generated/type/include';
+import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
-import { Paging } from '../generated/type/paging';
 
 const BASE_URL = '/bots';
 

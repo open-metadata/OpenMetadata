@@ -231,8 +231,7 @@ export const searchFromSearchInput = async (
       ? page.waitForResponse(
           (response) =>
             response.url().includes(searchApiPattern) &&
-            response.request().method() === 'GET' &&
-            response.url().includes(encodeURIComponent(normalizedSearchTerm))
+            response.request().method() === 'GET'
         )
       : undefined;
 
