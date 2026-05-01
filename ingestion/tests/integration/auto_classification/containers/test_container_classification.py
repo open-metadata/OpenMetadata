@@ -35,8 +35,11 @@ def test_containers_ingested(
         entity=Container, fqn=f"{service_name}.{bucket_name}", fields=["*"]
     )
     assert bucket is not None
-    assert bucket.children is not None
-    assert len(bucket.children.root) >= 3
+
+    # `children` is no longer inlined into the parent payload — it's an unbounded
+    # collection for object stores. Use the dedicated paginated endpoint.
+    children = metadata.list_container_children(f"{service_name}.{bucket_name}")
+    assert len(children.entities) >= 3
 
     customers_container = metadata.get_by_name(
         entity=Container, fqn=f"{service_name}.{bucket_name}.customers", fields=["*"]

@@ -29,6 +29,8 @@ def test_s3_ingestion(metadata, ingest_s3_storage, service_name):
     # The bucket has children and no dataModel
     assert 7 == len(bucket.children.root)
     assert not bucket.dataModel
+    children = metadata.list_container_children(f"{service_name}.test-bucket")
+    assert 7 == len(children.entities)  # noqa: SIM300
 
     # We can validate the children
     cities: Container = metadata.get_by_name(

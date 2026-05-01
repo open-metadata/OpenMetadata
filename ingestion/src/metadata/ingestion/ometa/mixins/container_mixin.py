@@ -20,6 +20,8 @@ from typing import Optional
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.models import EntityList
+from metadata.ingestion.ometa.utils import quote
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -114,6 +116,38 @@ class OMetaContainerMixin:
                 f"Error trying to PUT sample data for {container.fullyQualifiedName.root}: {exc}"
             )
             return None
+
+    def list_container_children(
+        self,
+        container_fqn: str,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> EntityList[Container]:
+        """
+        Page through the immediate children of a Container via the dedicated
+        ``/v1/containers/name/{fqn}/children`` endpoint. Use this instead of
+        fetching the parent with ``fields=children`` — that field is no longer
+        served because the inline payload is unbounded for buckets with many
+        objects.
+
+        Each row is a slim projection (id, name, displayName, fqn, description,
+        service); ``dataModel``, ``tags``, ``owners``, ``extension`` are not
+        populated. Re-fetch the specific child via :meth:`get_by_name` when
+        full details are needed.
+        """
+        path = f"/containers/name/{quote(container_fqn)}/children?limit={limit}&offset={offset}"
+        resp = self.client.get(path)
+        if not isinstance(resp, dict):
+            return EntityList(entities=[], total=0)
+
+        entities = [Container(**elmt) for elmt in resp.get("data") or []]
+        paging = resp.get("paging") or {}
+        return EntityList(
+            entities=entities,
+            total=paging.get("total", len(entities)),
+            after=paging.get("after"),
+            before=paging.get("before"),
+        )
 
     def get_container_sample_data(self, container: Container) -> Optional[Container]:
         """

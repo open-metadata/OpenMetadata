@@ -21,6 +21,7 @@ import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
+import { ContainerChildrenCountContext } from '../../components/Container/ContainerChildren/ContainerChildrenCountContext';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -221,22 +222,6 @@ const ContainerPage = () => {
       setIsLoading(false);
     }
   };
-
-  // Fetch children count to show it in Tab label
-  const fetchContainerChildren = useCallback(async () => {
-    // Use resolvedEntityFqn for children
-    if (!resolvedEntityFqn) {
-      return;
-    }
-    try {
-      const { paging } = await getContainerChildrenByName(resolvedEntityFqn, {
-        limit: 0,
-      });
-      setChildrenCount(paging.total);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [resolvedEntityFqn]);
 
   const { deleted, version, isUserFollowing } = useMemo(() => {
     return {
@@ -633,10 +618,35 @@ const ContainerPage = () => {
   }, [decodedEntityFqn, resolvedEntityFqn, containerData, activeColumnFqn]);
 
   useEffect(() => {
-    if (resolvedEntityFqn) {
-      fetchContainerChildren();
-      getEntityFeedCount();
+    if (!resolvedEntityFqn) {
+      return;
     }
+    // Reset so a stale value from the previous container isn't shown.
+    setChildrenCount(0);
+    getEntityFeedCount();
+
+    // Eager-fetch the children total so the tab badge is correct even before
+    // the user opens the Children tab. ContainerChildren is lazily mounted, so
+    // its onChildrenCountChange callback only fires once the tab is clicked —
+    // for containers that default to a different tab (e.g. dataModel-bearing
+    // ones that open the Schema tab), the badge would otherwise stay at 0
+    // until the user navigates. limit=0 returns just paging.total without any
+    // row payload.
+    let cancelled = false;
+    getContainerChildrenByName(resolvedEntityFqn, { limit: 0 })
+      .then((resp) => {
+        if (!cancelled) {
+          setChildrenCount(resp?.paging?.total ?? 0);
+        }
+      })
+      .catch(() => {
+        // Non-critical; the count will populate when the user opens the tab
+        // and ContainerChildren reports it via the context setter.
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [resolvedEntityFqn]);
 
   const toggleTabExpanded = () => {
@@ -726,26 +736,28 @@ const ContainerPage = () => {
           permissions={containerPermissions}
           type={EntityType.CONTAINER as CustomizeEntityType}
           onUpdate={handleContainerUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
-            <Tabs
-              activeKey={tab}
-              className="tabs-new"
-              data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={handleTabChange}
-            />
-          </Col>
+          <ContainerChildrenCountContext.Provider value={setChildrenCount}>
+            <Col className="entity-details-page-tabs" span={24}>
+              <Tabs
+                activeKey={tab}
+                className="tabs-new"
+                data-testid="tabs"
+                items={tabs}
+                tabBarExtraContent={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
+                onChange={handleTabChange}
+              />
+            </Col>
+          </ContainerChildrenCountContext.Provider>
         </GenericProvider>
 
         <LimitWrapper resource="container">
