@@ -2934,6 +2934,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (cachedReadBundle != null) {
       cachedReadBundle.invalidate(entityType, id);
     }
+    var ancestorsCache = CacheBundle.getAncestorsCache();
+    if (ancestorsCache != null && fqn != null) {
+      ancestorsCache.invalidate(entityType, fqn);
+    }
+    var childrenPageCache = CacheBundle.getChildrenPageCache();
+    if (childrenPageCache != null && fqn != null) {
+      String parentFqn = org.openmetadata.service.util.FullyQualifiedName.getParentFQN(fqn);
+      if (parentFqn != null) {
+        childrenPageCache.invalidate(entityType, parentFqn);
+      }
+    }
     var pubsub = CacheBundle.getCacheInvalidationPubSub();
     if (pubsub != null) {
       pubsub.publish(entityType, id, fqn, "ref-change");
@@ -3024,6 +3035,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       var ancestorsCache = CacheBundle.getAncestorsCache();
       if (ancestorsCache != null) {
         ancestorsCache.invalidate(entityType, entity.getFullyQualifiedName());
+      }
+
+      // Rotate the children-page version stamp on the entity's parent so cached pages of
+      // the parent's children list become unreachable. No-op when the entity has no parent.
+      var childrenPageCache = CacheBundle.getChildrenPageCache();
+      if (childrenPageCache != null) {
+        String parentFqn =
+            org.openmetadata.service.util.FullyQualifiedName.getParentFQN(
+                entity.getFullyQualifiedName());
+        if (parentFqn != null) {
+          childrenPageCache.invalidate(entityType, parentFqn);
+        }
       }
 
       // Invalidate tag caches

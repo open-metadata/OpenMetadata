@@ -47,6 +47,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.AncestorsCache;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.ChildrenPageCache;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
@@ -545,6 +546,19 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   public ResultList<Container> listChildren(String parentFQN, Integer limit, Integer offset) {
+    int safeLimit = limit != null ? limit : 0;
+    int safeOffset = offset != null ? offset : 0;
+
+    ChildrenPageCache pageCache = CacheBundle.getChildrenPageCache();
+    if (pageCache != null) {
+      ResultList<Container> cached;
+      try (var ignored = RequestLatencyContext.phase("listChildrenCacheGet")) {
+        cached = pageCache.get(CONTAINER, parentFQN, safeLimit, safeOffset);
+      }
+      if (cached != null) {
+        return cached;
+      }
+    }
 
     // Phase markers feed the slow-request log so when a /children call exceeds the
     // latency budget in prod we can tell which step (parent lookup / relationship
@@ -578,7 +592,11 @@ public class ContainerRepository extends EntityRepository<Container> {
       }
 
       if (relationshipRecords.isEmpty()) {
-        return new ResultList<>(new ArrayList<>(), null, null, total);
+        ResultList<Container> empty = new ResultList<>(new ArrayList<>(), null, null, total);
+        if (pageCache != null) {
+          pageCache.put(CONTAINER, parentFQN, safeLimit, safeOffset, empty);
+        }
+        return empty;
       }
 
       // Hydrate the page with a slim projection: id, name, fqn, displayName, description.
@@ -615,7 +633,11 @@ public class ContainerRepository extends EntityRepository<Container> {
         fetchAndSetDefaultService(children);
       }
 
-      return new ResultList<>(children, null, null, total);
+      ResultList<Container> page = new ResultList<>(children, null, null, total);
+      if (pageCache != null) {
+        pageCache.put(CONTAINER, parentFQN, safeLimit, safeOffset, page);
+      }
+      return page;
     } catch (Exception e) {
       throw new RuntimeException(
           String.format(

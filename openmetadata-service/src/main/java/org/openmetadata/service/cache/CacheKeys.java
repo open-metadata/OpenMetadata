@@ -65,4 +65,24 @@ public final class CacheKeys {
     String fqnHash = FullyQualifiedName.buildHash(fqn);
     return ns + ":anc:" + type + ":" + fqnHash;
   }
+
+  /**
+   * Per-parent version stamp for the children-page cache. Bumped on any change to the
+   * parent's children list (a child create / update / delete or move). Old page keys
+   * (which embed the previous version) become unreachable; they TTL-expire.
+   */
+  public String childrenVersion(String type, String parentFqn) {
+    String fqnHash = FullyQualifiedName.buildHash(parentFqn);
+    return ns + ":kidsver:" + type + ":" + fqnHash;
+  }
+
+  /**
+   * Cached page of {@code /v1/&lt;entityType&gt;/name/{parentFqn}/children}. Keyed by the
+   * parent's FQN hash + the per-parent version + page coordinates so a single version bump
+   * orphans every cached page in one shot.
+   */
+  public String childrenPage(String type, String parentFqn, String version, int limit, int offset) {
+    String fqnHash = FullyQualifiedName.buildHash(parentFqn);
+    return ns + ":kids:" + type + ":" + fqnHash + ":v" + version + ":l" + limit + ":o" + offset;
+  }
 }
