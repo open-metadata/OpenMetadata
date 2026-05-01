@@ -125,15 +125,16 @@ class OMetaContainerMixin:
         populated. Re-fetch the specific child via :meth:`get_by_name` when
         full details are needed.
         """
-        suffix = self.get_suffix(Container)
-        path = f"{suffix}/name/{quote(container_fqn)}/children?limit={limit}&offset={offset}"
+        path = (
+            f"/containers/name/{quote(container_fqn)}/children"
+            f"?limit={limit}&offset={offset}"
+        )
         resp = self.client.get(path)
+        if not isinstance(resp, dict):
+            return EntityList(entities=[], total=0)
 
-        if self._use_raw_data:
-            return resp
-
-        entities: list[Container] = [Container(**elmt) for elmt in resp.get("data", [])]
-        paging = resp.get("paging", {}) or {}
+        entities = [Container(**elmt) for elmt in resp.get("data") or []]
+        paging = resp.get("paging") or {}
         return EntityList(
             entities=entities,
             total=paging.get("total", len(entities)),
