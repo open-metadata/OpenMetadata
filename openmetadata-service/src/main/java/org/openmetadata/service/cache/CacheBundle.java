@@ -20,6 +20,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
   private static CachedTagUsageDao cachedTagUsageDao;
   private static CachedReadBundle cachedReadBundle;
   private static AncestorsCache ancestorsCache;
+  private static ChildrenPageCache childrenPageCache;
   private static CacheInvalidationPubSub cacheInvalidationPubSub;
   private static CacheConfig cacheConfig;
 
@@ -70,6 +71,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
           new CachedTagUsageDao(Entity.getCollectionDAO(), cacheProvider, keys, cacheConfig);
       cachedReadBundle = new CachedReadBundle(cacheProvider, keys, cacheConfig);
       ancestorsCache = new AncestorsCache(cacheProvider, keys, cacheConfig);
+      childrenPageCache = new ChildrenPageCache(cacheProvider, keys, cacheConfig);
       cacheInvalidationPubSub = new CacheInvalidationPubSub(cacheConfig);
       cacheInvalidationPubSub.setHandler(
           msg -> {
@@ -81,6 +83,16 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
               }
               if (msg.fqn() != null && ancestorsCache != null) {
                 ancestorsCache.invalidate(msg.type(), msg.fqn());
+              }
+              // Children-page cache rotates by parent FQN. The publisher emits the changed
+              // entity's own FQN, not its parent's, so we derive the parent here. No-op
+              // when the entity has no parent (top-level under a service).
+              if (msg.fqn() != null && childrenPageCache != null) {
+                String parentFqn =
+                    org.openmetadata.service.util.FullyQualifiedName.getParentFQN(msg.fqn());
+                if (parentFqn != null) {
+                  childrenPageCache.invalidate(msg.type(), parentFqn);
+                }
               }
             } catch (Exception e) {
               LOG.debug("Remote invalidation handler failed for {}", msg, e);
@@ -121,6 +133,10 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
 
   public static AncestorsCache getAncestorsCache() {
     return ancestorsCache;
+  }
+
+  public static ChildrenPageCache getChildrenPageCache() {
+    return childrenPageCache;
   }
 
   public static CacheInvalidationPubSub getCacheInvalidationPubSub() {
