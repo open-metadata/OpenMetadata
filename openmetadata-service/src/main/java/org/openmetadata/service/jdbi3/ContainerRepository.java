@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -131,21 +132,8 @@ public class ContainerRepository extends EntityRepository<Container> {
     List<String> entityFQNs = containers.stream().map(Container::getFullyQualifiedName).toList();
     Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
 
-    Map<String, List<TagLabel>> derivedTagsMap;
-    try {
-      List<TagLabel> allContainerTags =
-          tagsMap.values().stream()
-              .filter(tags -> tags != null)
-              .flatMap(List::stream)
-              .collect(Collectors.toList());
-      derivedTagsMap = batchFetchDerivedTags(allContainerTags);
-    } catch (Exception ex) {
-      LOG.warn(
-          "Failed to batch fetch derived tags for {} containers. Falling back to per-container.",
-          containers.size(),
-          ex);
-      derivedTagsMap = null;
-    }
+    Map<String, List<TagLabel>> derivedTagsMap =
+        tryBatchFetchDerivedTags(tagsMap, containers.size() + " containers");
 
     for (Container container : containers) {
       List<TagLabel> containerTags =
@@ -285,11 +273,13 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   private void populateDataModelColumnTags(boolean setTags, List<Column> columns) {
-    List<Column> flattenedColumns = getFlattenedEntityField(columns);
     if (!setTags) {
-      flattenedColumns.forEach(c -> c.setTags(c.getTags()));
+      // Caller didn't ask for tags — leave the column tree untouched. The original
+      // code looped here calling c.setTags(c.getTags()) (a no-op carried over from
+      // Entity.populateEntityFieldTags); skip that pointless walk.
       return;
     }
+    List<Column> flattenedColumns = getFlattenedEntityField(columns);
     if (flattenedColumns.isEmpty()) {
       return;
     }
@@ -308,20 +298,8 @@ public class ContainerRepository extends EntityRepository<Container> {
 
     // Batch-fetch derived tags for every glossary tag across all columns in a single query.
     // Falls back to per-column gracefully on failure to avoid changing existing semantics.
-    Map<String, List<TagLabel>> derivedTagsMap;
-    try {
-      List<TagLabel> allTags =
-          tagsByHash.values().stream()
-              .filter(tags -> tags != null)
-              .flatMap(List::stream)
-              .collect(Collectors.toList());
-      derivedTagsMap = batchFetchDerivedTags(allTags);
-    } catch (Exception ex) {
-      LOG.warn(
-          "Failed to batch fetch derived tags for container columns. Falling back to per-column.",
-          ex);
-      derivedTagsMap = null;
-    }
+    Map<String, List<TagLabel>> derivedTagsMap =
+        tryBatchFetchDerivedTags(tagsByHash, "container columns");
 
     for (Map.Entry<String, Column> entry : hashToColumn.entrySet()) {
       List<TagLabel> columnTags = tagsByHash.get(entry.getKey());
@@ -332,6 +310,30 @@ public class ContainerRepository extends EntityRepository<Container> {
       } else {
         entry.getValue().setTags(addDerivedTagsGracefully(columnTags));
       }
+    }
+  }
+
+  /**
+   * Run a single batched derived-tag lookup across every TagLabel value in {@code tagsByKey},
+   * returning {@code null} on failure so callers can fall back to per-row
+   * {@link #addDerivedTagsGracefully(List)}. Used by both the bulk container path and the
+   * single-container column path so the warn-and-fall-back behavior stays in lockstep.
+   */
+  private Map<String, List<TagLabel>> tryBatchFetchDerivedTags(
+      Map<String, List<TagLabel>> tagsByKey, String contextDescription) {
+    try {
+      List<TagLabel> allTags =
+          tagsByKey.values().stream()
+              .filter(Objects::nonNull)
+              .flatMap(List::stream)
+              .collect(Collectors.toList());
+      return batchFetchDerivedTags(allTags);
+    } catch (Exception ex) {
+      LOG.warn(
+          "Failed to batch fetch derived tags for {}. Falling back to per-row.",
+          contextDescription,
+          ex);
+      return null;
     }
   }
 
