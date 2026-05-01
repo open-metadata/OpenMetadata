@@ -290,22 +290,5 @@ CREATE TABLE IF NOT EXISTS rdf_index_server_stats (
 );
 
 
--- MySQL has no `IF NOT EXISTS` for `CREATE INDEX`, so guard against
--- information_schema.statistics in case the index was already added by a prior
--- partial run, manual repair, or a re-run scenario the runner's checksum log
--- doesn't know about. Same pattern this file uses for the entity_usage index
--- earlier (the `usageDate` block).
-SET @ddl_idx_er_fromentity = (
-    SELECT CASE
-               WHEN COUNT(*) = 0
-                   THEN 'CREATE INDEX idx_er_fromentity_toentity_relation_toid ON entity_relationship (fromEntity, toEntity, relation, toId)'
-               ELSE 'SELECT 1'
-           END
-    FROM information_schema.statistics
-    WHERE table_schema = DATABASE()
-      AND table_name = 'entity_relationship'
-      AND index_name = 'idx_er_fromentity_toentity_relation_toid'
-);
-PREPARE stmt_idx_er_fromentity FROM @ddl_idx_er_fromentity;
-EXECUTE stmt_idx_er_fromentity;
-DEALLOCATE PREPARE stmt_idx_er_fromentity;
+CREATE INDEX idx_er_fromentity_toentity_relation_toid
+    ON entity_relationship (fromEntity, toEntity, relation, toId);
