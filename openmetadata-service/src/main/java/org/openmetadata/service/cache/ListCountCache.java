@@ -26,18 +26,35 @@ import org.openmetadata.service.jdbi3.ListFilter;
  * HSET, and {@link #invalidate(String)} is a single DEL on the hash key — every filter variant
  * is dropped atomically.
  *
- * <p>Best-effort consistency: invalidation runs from
+ * <p>Consistency model: invalidation runs from
  * {@link org.openmetadata.service.jdbi3.EntityRepository EntityRepository} lifecycle hooks
- * (postCreate / postDelete / restoreEntity) which fire <i>inside</i> the JDBI {@code @Transaction}
- * boundary, not after commit. A concurrent reader can therefore observe the pre-write state, miss
- * the cache (because the writer just did a DEL), recompute against the still-uncommitted DB, and
- * cache the pre-write count for up to {@link CacheConfig#listCountTtlSeconds}. The actual listing
- * data is unaffected — {@code dao.listAfter} always reads live state — only the {@code paging.total}
- * field can be briefly stale. The TTL bounds the staleness; tighten it if your workload shows the
- * race in practice. Falls back transparently to the supplier when Redis is disabled or unavailable.
+ * (postCreate / postDelete / restoreEntity). The {@code @Transaction} annotation on those methods
+ * is decorative — {@code EntityRepository} subclasses are instantiated with {@code new ...()} and
+ * registered via {@code Entity.registerEntity(...)}, not obtained via {@code jdbi.onDemand} or
+ * {@code jdbi.attach}, so the JDBI SqlObject proxy that would honor {@code @Transaction} is never
+ * applied. Each underlying DAO call (which IS a SqlObject) auto-commits independently, and
+ * invalidation runs after those commits. The window between a DAO commit and the Redis DEL is
+ * sub-millisecond; any concurrent reader caching post-commit state sees the live count.
+ * {@link CacheConfig#listCountTtlSeconds} is the upper bound on staleness if invalidation itself
+ * fails (e.g. Redis briefly unavailable). The actual listing data is always live —
+ * {@code dao.listAfter} reads from the DB on every call — only {@code paging.total} can ever be
+ * briefly stale. Falls back transparently to the supplier when Redis is disabled or unavailable.
  */
 @Slf4j
 public final class ListCountCache {
+
+  /** Cached per-thread SHA-1 digester. SHA-1 is mandated by every Java SE provider; instantiate
+   * once per thread and reuse via {@link MessageDigest#reset()} to keep the per-call cost out of
+   * hot list endpoints. */
+  private static final ThreadLocal<MessageDigest> SHA1 =
+      ThreadLocal.withInitial(
+          () -> {
+            try {
+              return MessageDigest.getInstance("SHA-1");
+            } catch (NoSuchAlgorithmException e) {
+              throw new IllegalStateException("SHA-1 unavailable from JVM provider", e);
+            }
+          });
 
   private ListCountCache() {}
 
@@ -183,14 +200,8 @@ public final class ListCountCache {
           .forEach(e -> canonical.append('|').append(e.getKey()).append('=').append(e.getValue()));
     }
     byte[] input = canonical.toString().getBytes(StandardCharsets.UTF_8);
-    try {
-      byte[] digest = MessageDigest.getInstance("SHA-1").digest(input);
-      return HexFormat.of().formatHex(digest).substring(0, 16);
-    } catch (NoSuchAlgorithmException e) {
-      // SHA-1 is mandated by every Java SE implementation. If this throws, the JVM is broken in
-      // a way we can't recover from — fail loudly rather than silently fall back to a
-      // variable-length hash that breaks the documented 16-char invariant.
-      throw new IllegalStateException("SHA-1 unavailable from JVM provider", e);
-    }
+    MessageDigest digest = SHA1.get();
+    digest.reset();
+    return HexFormat.of().formatHex(digest.digest(input)).substring(0, 16);
   }
 }
