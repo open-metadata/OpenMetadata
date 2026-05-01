@@ -717,8 +717,12 @@ public interface CollectionDAO {
 
       // The root-only SQL is a NOT EXISTS anti-join — there is no outer `er` alias to refer
       // to here, so the condition is just the regular ListFilter WHERE clause; the new
-      // SQL appends its own NOT EXISTS predicate after this.
-      return listBefore(
+      // SQL appends its own NOT EXISTS predicate after this. Distinct method name
+      // (listRootBefore) is required: a same-signature `listBefore` here would override
+      // EntityDAO's default `listBefore(String, Map, String, int, String, String)` and
+      // make every non-root list call also pick up the NOT EXISTS predicate, silently
+      // filtering out child containers from generic `?service=...` listings.
+      return listRootBefore(
           getTableName(), filter.getQueryParams(), condition, limit, beforeName, beforeId);
     }
 
@@ -731,7 +735,7 @@ public interface CollectionDAO {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
 
-      return listAfter(
+      return listRootAfter(
           getTableName(), filter.getQueryParams(), condition, limit, afterName, afterId);
     }
 
@@ -744,7 +748,8 @@ public interface CollectionDAO {
         return EntityDAO.super.listCount(filter);
       }
 
-      return listCount(getTableName(), getNameHashColumn(), filter.getQueryParams(), condition);
+      return listRootCount(
+          getTableName(), getNameHashColumn(), filter.getQueryParams(), condition);
     }
 
     // Root-only listing (?root=true) returns containers that have no parent container.
@@ -770,7 +775,7 @@ public interface CollectionDAO {
                 + "ORDER BY name DESC, id DESC "
                 + "LIMIT :limit"
                 + ") last_rows_subquery ORDER BY name, id")
-    List<String> listBefore(
+    List<String> listRootBefore(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
         @Define("sqlCondition") String sqlCondition,
@@ -792,7 +797,7 @@ public interface CollectionDAO {
                 + "(name > :afterName OR (name = :afterName AND id > :afterId)) "
                 + "ORDER BY name, id "
                 + "LIMIT :limit")
-    List<String> listAfter(
+    List<String> listRootAfter(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
         @Define("sqlCondition") String sqlCondition,
@@ -824,7 +829,7 @@ public interface CollectionDAO {
                 + "    AND er.relation = 0"
                 + ")",
         connectionType = POSTGRES)
-    int listCount(
+    int listRootCount(
         @Define("table") String table,
         @Define("nameHashColumn") String nameHashColumn,
         @BindMap Map<String, ?> params,
