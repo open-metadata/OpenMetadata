@@ -5,25 +5,23 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Cache for the resolved ancestor chain (root → immediate parent) of a hierarchical entity,
  * keyed by the descendant's FQN.
  *
- * <p>Reads on the breadcrumb path used to do a per-level FQN lookup (or, after the batched
- * rewrite, one indexed {@code findReferencesByFqns} call) — small but executed on every
- * detail-page render. This cache collapses that to a single Redis GET when the chain is warm.
- *
- * <p>Invalidation policy: on entity update/delete the writer drops its own key. Renames are
- * self-healing (the new FQN is a different key, the old key TTL-expires). Display-name drift
- * on a remote ancestor is bounded by the TTL — acceptable since breadcrumb metadata is
- * cosmetic, not authoritative.
+ * <p>Stores only the chain's <em>topology</em> — the ordered list of ancestor FQNs — not their
+ * display metadata. Topology changes only on rename / move (rare); descendants pick up an
+ * ancestor's renamed FQN automatically because rename invalidates everything keyed under the
+ * old FQN. Display names live in the existing write-through per-entity reference cache
+ * ({@code om:rn:} keys, kept fresh on every entity write), so callers rehydrate
+ * {@link org.openmetadata.schema.type.EntityReference}s on read and never see stale display
+ * names — TTL drift on cosmetic fields is gone.
  */
 @Slf4j
 public class AncestorsCache {
-  private static final TypeReference<List<EntityReference>> LIST_REF = new TypeReference<>() {};
+  private static final TypeReference<List<String>> FQN_LIST_REF = new TypeReference<>() {};
 
   private final CacheProvider cache;
   private final CacheKeys keys;
@@ -35,7 +33,7 @@ public class AncestorsCache {
     this.config = config;
   }
 
-  public List<EntityReference> get(String entityType, String fqn) {
+  public List<String> getFqns(String entityType, String fqn) {
     if (fqn == null) {
       return null;
     }
@@ -45,7 +43,7 @@ public class AncestorsCache {
       if (json.isEmpty()) {
         return null;
       }
-      return JsonUtils.readValue(json.get(), LIST_REF);
+      return JsonUtils.readValue(json.get(), FQN_LIST_REF);
     } catch (Exception e) {
       LOG.warn("Bad ancestors cache entry, evicting: {} {}", entityType, fqn, e);
       cache.del(key);
@@ -53,13 +51,13 @@ public class AncestorsCache {
     }
   }
 
-  public void put(String entityType, String fqn, List<EntityReference> ancestors) {
-    if (fqn == null || ancestors == null) {
+  public void putFqns(String entityType, String fqn, List<String> ancestorFqns) {
+    if (fqn == null || ancestorFqns == null) {
       return;
     }
     String key = keys.ancestors(entityType, fqn);
     try {
-      String json = JsonUtils.pojoToJson(ancestors);
+      String json = JsonUtils.pojoToJson(ancestorFqns);
       cache.set(key, json, Duration.ofSeconds(config.entityTtlSeconds));
     } catch (Exception e) {
       LOG.warn("Failed to cache ancestors: {} {}", entityType, fqn, e);

@@ -24,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -655,20 +656,28 @@ public class ContainerRepository extends EntityRepository<Container> {
   public List<EntityReference> getAncestors(String fqn) {
     AncestorsCache ancestorsCache = CacheBundle.getAncestorsCache();
     if (ancestorsCache != null) {
-      List<EntityReference> cached = ancestorsCache.get(CONTAINER, fqn);
-      if (cached != null) {
-        return Collections.unmodifiableList(cached);
+      List<String> cachedFqns = ancestorsCache.getFqns(CONTAINER, fqn);
+      if (cachedFqns != null) {
+        // Topology was warm — hydrate each ancestor's reference through the existing
+        // write-through per-entity reference cache (om:rn:) so display names always
+        // reflect the latest write, not whatever was current when the topology was
+        // first cached. Misses fall through to a single batched DB lookup.
+        return hydrateRefsByFqn(cachedFqns);
       }
     }
 
-    List<EntityReference> ordered = resolveAncestors(fqn);
+    List<String> ancestorFqns = computeAncestorFqns(fqn);
+    if (ancestorFqns.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<EntityReference> ordered = hydrateRefsByFqn(ancestorFqns);
     if (ancestorsCache != null) {
-      ancestorsCache.put(CONTAINER, fqn, ordered);
+      ancestorsCache.putFqns(CONTAINER, fqn, ancestorFqns);
     }
     return ordered;
   }
 
-  private List<EntityReference> resolveAncestors(String fqn) {
+  private List<String> computeAncestorFqns(String fqn) {
     String[] parts = FullyQualifiedName.split(fqn);
     // parts[0] is the storage service; parts[parts.length - 1] is the container itself.
     // Ancestors live at indices 1 .. parts.length - 2.
@@ -690,23 +699,63 @@ public class ContainerRepository extends EntityRepository<Container> {
       current = FullyQualifiedName.add(current, parts[i]);
       ancestorFqns.add(current);
     }
+    return ancestorFqns;
+  }
 
-    // Projection-only batched IN query: pulls just the columns needed to build
-    // an EntityReference (id, name, displayName, fqn, deleted) instead of the
-    // full Container JSON. For a 10-level chain this avoids deserializing
-    // ~10 × 5–50 KB of unused container payload per breadcrumb request.
-    List<EntityReference> ancestors = dao.findReferencesByFqns(ancestorFqns, NON_DELETED);
-
-    // Preserve the root → immediate-parent ordering even if the DAO returns rows out of order.
-    Map<String, EntityReference> byFqn = new HashMap<>();
-    for (EntityReference ancestor : ancestors) {
-      byFqn.put(ancestor.getFullyQualifiedName(), ancestor);
+  /**
+   * Resolve a list of container FQNs to {@link EntityReference}s, ordered to match the input.
+   * Reads first hit the write-through per-entity reference cache so display-name drift after a
+   * remote rename / displayName edit is not visible — the per-entity cache is invalidated and
+   * repopulated on every entity write. Misses are batched into one
+   * {@code findReferencesByFqns} call and warm-up the per-entity cache on the way out.
+   */
+  private List<EntityReference> hydrateRefsByFqn(List<String> fqns) {
+    if (fqns.isEmpty()) {
+      return Collections.emptyList();
     }
-    List<EntityReference> ordered = new ArrayList<>(ancestorFqns.size());
-    for (String ancestorFqn : ancestorFqns) {
-      EntityReference ancestor = byFqn.get(ancestorFqn);
-      if (ancestor != null) {
-        ordered.add(ancestor);
+
+    var entityCache = CacheBundle.getCachedEntityDao();
+    Map<String, EntityReference> byFqn = new HashMap<>();
+    List<String> misses = new ArrayList<>();
+
+    if (entityCache != null) {
+      for (String ancestorFqn : fqns) {
+        Optional<String> hit = entityCache.getReferenceByName(CONTAINER, ancestorFqn);
+        if (hit.isPresent() && !hit.get().isEmpty()) {
+          try {
+            byFqn.put(ancestorFqn, JsonUtils.readValue(hit.get(), EntityReference.class));
+            continue;
+          } catch (Exception e) {
+            LOG.debug(
+                "Bad cached EntityReference for {} {}, falling through", CONTAINER, ancestorFqn, e);
+          }
+        }
+        misses.add(ancestorFqn);
+      }
+    } else {
+      misses.addAll(fqns);
+    }
+
+    if (!misses.isEmpty()) {
+      for (EntityReference ref : dao.findReferencesByFqns(misses, NON_DELETED)) {
+        byFqn.put(ref.getFullyQualifiedName(), ref);
+        // Warm the write-through cache so the next reader is also hydrated cheaply.
+        if (entityCache != null) {
+          try {
+            entityCache.putReferenceByName(
+                CONTAINER, ref.getFullyQualifiedName(), JsonUtils.pojoToJson(ref));
+          } catch (Exception e) {
+            LOG.debug("Failed to warm reference cache for {} {}", CONTAINER, ref.getId(), e);
+          }
+        }
+      }
+    }
+
+    List<EntityReference> ordered = new ArrayList<>(fqns.size());
+    for (String ancestorFqn : fqns) {
+      EntityReference ref = byFqn.get(ancestorFqn);
+      if (ref != null) {
+        ordered.add(ref);
       }
     }
     return Collections.unmodifiableList(ordered);
