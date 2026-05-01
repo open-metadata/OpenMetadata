@@ -4475,7 +4475,8 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     logicalSuiteReq.setName(ns.prefix("logical_for_create"));
     logicalSuiteReq.setDescription("Logical suite for create test");
     TestSuite logicalSuite = client.testSuites().create(logicalSuiteReq);
-    assertFalse(logicalSuite.getBasic());
+    assertFalse(
+        Boolean.TRUE.equals(logicalSuite.getBasic()), "Logical suite must not be a basic suite");
 
     // Create a test case with testSuites pointing to the logical suite
     CreateTestCase request =

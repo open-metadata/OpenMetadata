@@ -56,7 +56,10 @@ export interface CreateTestCase {
      */
     testDefinition: string;
     /**
-     * Fully qualified names of logical test suites to attach this test case to on creation. Only non-basic (logical) test suites are accepted. Ignored on PUT/PATCH.
+     * Fully qualified names of logical test suites to attach this test case to on creation.
+     * Only non-basic (logical) test suites are accepted; basic or non-existent suite FQNs are
+     * rejected. Ignored on PATCH. Note: Suite attachment is performed as a best-effort
+     * operation after test case creation.
      */
     testSuites?: string[];
     /**
