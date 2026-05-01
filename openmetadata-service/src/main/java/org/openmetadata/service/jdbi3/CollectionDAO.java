@@ -815,6 +815,67 @@ public interface CollectionDAO {
         @Define("nameHashColumn") String nameHashColumn,
         @BindMap Map<String, ?> params,
         @Define("sqlCondition") String mysqlCond);
+
+    /**
+     * Lightweight projection used by paginated children listings. Pulls only the columns the
+     * UI's children table needs (id, name, displayName, fqn, description) plus the soft-delete
+     * flag. Skips JSON deserialization of heavy fields like {@code dataModel}, {@code tags},
+     * and {@code owners} which can each carry MBs of column-schema metadata for parquet
+     * containers. The service reference is restored separately by
+     * {@link ContainerRepository#fetchAndSetDefaultService(java.util.List)}.
+     */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, "
+                + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) AS name, "
+                + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
+                + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
+                + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.description')) AS description, "
+                + "deleted "
+                + "FROM storage_container_entity WHERE id IN (<ids>)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, "
+                + "json->>'name' AS name, "
+                + "json->>'displayName' AS displayName, "
+                + "json->>'fullyQualifiedName' AS fqn, "
+                + "json->>'description' AS description, "
+                + "deleted "
+                + "FROM storage_container_entity WHERE id IN (<ids>)",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ContainerSummaryRowMapper.class)
+    List<Container> findContainerSummaryRows(@BindList("ids") List<String> ids);
+
+    default List<Container> findContainerSummariesByIds(List<UUID> ids) {
+      if (ids == null || ids.isEmpty()) {
+        return List.of();
+      }
+      List<String> idStrings = ids.stream().map(UUID::toString).distinct().toList();
+      int maxChunkSize = 30000;
+      if (idStrings.size() <= maxChunkSize) {
+        return findContainerSummaryRows(idStrings);
+      }
+      List<Container> all = new ArrayList<>(idStrings.size());
+      for (int i = 0; i < idStrings.size(); i += maxChunkSize) {
+        List<String> chunk = idStrings.subList(i, Math.min(i + maxChunkSize, idStrings.size()));
+        all.addAll(findContainerSummaryRows(chunk));
+      }
+      return all;
+    }
+  }
+
+  class ContainerSummaryRowMapper implements RowMapper<Container> {
+    @Override
+    public Container map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new Container()
+          .withId(UUID.fromString(rs.getString("id")))
+          .withName(rs.getString("name"))
+          .withDisplayName(rs.getString("displayName"))
+          .withFullyQualifiedName(rs.getString("fqn"))
+          .withDescription(rs.getString("description"))
+          .withDeleted(rs.getBoolean("deleted"));
+    }
   }
 
   interface SearchServiceDAO extends EntityDAO<SearchService> {
@@ -6320,6 +6381,37 @@ public interface CollectionDAO {
                 value = "targetFQNHash",
                 parts = {":targetFQNHashPrefix", ":postfix"})
             String... targetFQNHash);
+
+    @SqlQuery(
+        "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, tu.appliedAt, tu.appliedBy, tu.metadata, "
+            + "CASE "
+            + "  WHEN tu.source = 1 THEN gterm.json "
+            + "  WHEN tu.source = 0 THEN ta.json "
+            + "END as json "
+            + "FROM tag_usage tu "
+            + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
+            + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
+            + "WHERE tu.targetFQNHash IN (<targetFQNHashes>)")
+    @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
+    List<Pair<String, TagLabel>> getTagsInternalByTargetHashes(
+        @BindList("targetFQNHashes") List<String> targetFQNHashes);
+
+    int TAG_BATCH_CHUNK_SIZE = 1000;
+
+    default Map<String, List<TagLabel>> getTagsByTargetFQNHashes(List<String> targetFQNHashes) {
+      Map<String, List<TagLabel>> resultSet = new LinkedHashMap<>();
+      if (targetFQNHashes == null || targetFQNHashes.isEmpty()) {
+        return resultSet;
+      }
+      for (int i = 0; i < targetFQNHashes.size(); i += TAG_BATCH_CHUNK_SIZE) {
+        List<String> chunk =
+            targetFQNHashes.subList(i, Math.min(i + TAG_BATCH_CHUNK_SIZE, targetFQNHashes.size()));
+        for (Pair<String, TagLabel> pair : getTagsInternalByTargetHashes(chunk)) {
+          resultSet.computeIfAbsent(pair.getLeft(), k -> new ArrayList<>()).add(pair.getRight());
+        }
+      }
+      return resultSet;
+    }
 
     @SqlQuery("SELECT * FROM tag_usage")
     @Deprecated(since = "Release 1.1")
