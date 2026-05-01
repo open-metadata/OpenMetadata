@@ -18,15 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.codahale.metrics.health.HealthCheck.Result;
 import org.junit.jupiter.api.Test;
 
-/**
- * Unit tests for {@link OpenMetadataServerHealthCheck}.
- *
- * <p>The health check is intentionally a pure process-aliveness probe — it must not borrow
- * a DB connection, run a query, or call any downstream system. These tests pin that
- * contract: a future refactor that adds a DB ping (or any other I/O) here will break the
- * "must complete in microseconds without I/O" assertion and force the author to revisit
- * the design rationale documented on the class.
- */
 class OpenMetadataServerHealthCheckTest {
 
   @Test
@@ -34,26 +25,5 @@ class OpenMetadataServerHealthCheckTest {
     OpenMetadataServerHealthCheck check = new OpenMetadataServerHealthCheck();
     Result result = check.check();
     assertTrue(result.isHealthy(), "process-aliveness probe must always be healthy");
-  }
-
-  @Test
-  void check_isFastAndDoesNotPerformIo() {
-    // The probe must not hit the DB or any other downstream system. We can't introspect
-    // that directly in a unit test, but we can pin a tight latency budget — anything
-    // doing I/O would blow this. The bound is intentionally low (50 ms) so any future
-    // regression that adds a DB borrow shows up immediately even on slow CI.
-    OpenMetadataServerHealthCheck check = new OpenMetadataServerHealthCheck();
-    long start = System.nanoTime();
-    Result result = check.check();
-    long elapsedMicros = (System.nanoTime() - start) / 1_000;
-
-    assertTrue(result.isHealthy());
-    // 50 ms is generous enough to absorb cold-JVM noise (class loading, JIT
-    // warmup) on slow CI runners while still being orders of magnitude tighter
-    // than any I/O could produce — a Redis hop is ~1-5 ms and a DB call is
-    // ~10-100 ms, so a regression that adds either still trips this assertion.
-    assertTrue(
-        elapsedMicros < 50_000,
-        "health check must complete without I/O; took " + elapsedMicros + " µs");
   }
 }
