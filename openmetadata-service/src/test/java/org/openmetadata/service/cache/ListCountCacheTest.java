@@ -23,8 +23,9 @@ import org.openmetadata.service.jdbi3.ListFilter;
 /**
  * Pins down the {@code (entityType, ListFilter) -> cache field} mapping used by {@link
  * ListCountCache}. The cache stores all filter variants for an entity type as fields under one
- * Redis hash; the field name is a SHA-1 of {@code filter.getCondition() + sorted query params}.
- * If a future refactor accidentally drops a query param from the canonical form, two semantically
+ * Redis hash; the field name is the first 16 hex chars of a SHA-1 over the canonicalized filter
+ * (Include enum + sorted query params, UTF-8). If a future refactor accidentally drops a query
+ * param from the canonical form, or reverts to iterating an unordered HashMap, two semantically
  * different listings would collide on one cache entry — these tests guard against that
  * regression.
  */
@@ -66,14 +67,24 @@ class ListCountCacheTest {
 
   @Test
   void differentIncludeHashDifferently() {
-    // The Include enum drives the deleted predicate inside getCondition(), so it must end up in
-    // the hash even though it isn't in queryParams.
+    // The Include enum drives the deleted predicate at the SQL level, so it must end up in the
+    // hash even though it isn't in queryParams.
     ListFilter nonDeleted = new ListFilter(Include.NON_DELETED);
     ListFilter deleted = new ListFilter(Include.DELETED);
     ListFilter all = new ListFilter(Include.ALL);
     assertNotEquals(ListCountCache.hashFilter(nonDeleted), ListCountCache.hashFilter(deleted));
     assertNotEquals(ListCountCache.hashFilter(nonDeleted), ListCountCache.hashFilter(all));
     assertNotEquals(ListCountCache.hashFilter(deleted), ListCountCache.hashFilter(all));
+  }
+
+  @Test
+  void hashIs16HexChars() {
+    // SHA-1 truncated to 16 hex chars (64 bits). Lock the format so the Redis field width is
+    // stable; downstream tooling and dashboards expect a fixed-width key.
+    String hash = ListCountCache.hashFilter(new ListFilter(Include.NON_DELETED));
+    org.junit.jupiter.api.Assertions.assertEquals(16, hash.length());
+    org.junit.jupiter.api.Assertions.assertTrue(
+        hash.matches("[0-9a-f]{16}"), "expected 16 lowercase hex chars, got: " + hash);
   }
 
   @Test
