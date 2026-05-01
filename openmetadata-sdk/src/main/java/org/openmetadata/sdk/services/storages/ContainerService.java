@@ -1,8 +1,6 @@
 package org.openmetadata.sdk.services.storages;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import org.openmetadata.schema.api.data.CreateContainer;
@@ -44,7 +42,7 @@ public class ContainerService extends EntityServiceBase<Container> {
    */
   public ListResponse<Container> listChildren(String fqn, ListParams params)
       throws OpenMetadataException {
-    String path = basePath + "/name/" + encodeFqn(fqn) + "/children";
+    String path = buildPathWithEncodedName(fqn) + "/children";
     RequestOptions options =
         RequestOptions.builder()
             .queryParams(params != null ? params.toQueryParams() : Collections.emptyMap())
@@ -64,7 +62,7 @@ public class ContainerService extends EntityServiceBase<Container> {
    * top level.
    */
   public List<EntityReference> listAncestors(String fqn) throws OpenMetadataException {
-    String path = basePath + "/name/" + encodeFqn(fqn) + "/ancestors";
+    String path = buildPathWithEncodedName(fqn) + "/ancestors";
     String responseStr = httpClient.executeForString(HttpMethod.GET, path, null, null);
     try {
       return objectMapper.readValue(responseStr, new TypeReference<List<EntityReference>>() {});
@@ -72,9 +70,5 @@ public class ContainerService extends EntityServiceBase<Container> {
       throw new OpenMetadataException(
           "Failed to deserialize ancestors response: " + e.getMessage(), e);
     }
-  }
-
-  private static String encodeFqn(String fqn) {
-    return URLEncoder.encode(fqn, StandardCharsets.UTF_8);
   }
 }
