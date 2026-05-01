@@ -3711,7 +3711,11 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
   private void awaitSuggestionTaskDeleted(UUID creatorId, String aboutEntity, UUID taskId) {
     Awaitility.await("suggestion task cleanup for creator " + creatorId)
-        .atMost(Duration.ofSeconds(15))
+        // 30s window gives the bot-delete cascade headroom under heavy parallel load. The
+        // cleanup is synchronous in postDelete, but the bot+user cascade itself runs through
+        // the entity-cache hot path — under the postgres-os-redis profile it can take 2–3s
+        // for the bot delete alone, which leaves little slack inside a 15s budget.
+        .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofMillis(250))
         .untilAsserted(
             () -> {
