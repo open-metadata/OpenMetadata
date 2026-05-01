@@ -19,6 +19,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
   private static CachedRelationshipDao cachedRelationshipDao;
   private static CachedTagUsageDao cachedTagUsageDao;
   private static CachedReadBundle cachedReadBundle;
+  private static AncestorsCache ancestorsCache;
   private static CacheInvalidationPubSub cacheInvalidationPubSub;
   private static CacheConfig cacheConfig;
 
@@ -68,6 +69,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       cachedTagUsageDao =
           new CachedTagUsageDao(Entity.getCollectionDAO(), cacheProvider, keys, cacheConfig);
       cachedReadBundle = new CachedReadBundle(cacheProvider, keys, cacheConfig);
+      ancestorsCache = new AncestorsCache(cacheProvider, keys, cacheConfig);
       cacheInvalidationPubSub = new CacheInvalidationPubSub(cacheConfig);
       cacheInvalidationPubSub.setHandler(
           msg -> {
@@ -76,6 +78,9 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
                   msg.type(), msg.id(), msg.fqn());
               if (msg.id() != null && cachedReadBundle != null) {
                 cachedReadBundle.invalidate(msg.type(), msg.id());
+              }
+              if (msg.fqn() != null && ancestorsCache != null) {
+                ancestorsCache.invalidate(msg.type(), msg.fqn());
               }
             } catch (Exception e) {
               LOG.debug("Remote invalidation handler failed for {}", msg, e);
@@ -112,6 +117,10 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
 
   public static CachedReadBundle getCachedReadBundle() {
     return cachedReadBundle;
+  }
+
+  public static AncestorsCache getAncestorsCache() {
+    return ancestorsCache;
   }
 
   public static CacheInvalidationPubSub getCacheInvalidationPubSub() {
