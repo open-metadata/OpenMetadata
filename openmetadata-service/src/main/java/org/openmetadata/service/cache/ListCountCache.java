@@ -99,7 +99,10 @@ public final class ListCountCache {
     return new CacheKeys(config.redis.keyspace).listCount(entityType);
   }
 
-  private static String hashFilter(ListFilter filter) {
+  // Package-private for test access. Two filters with different query params
+  // (notably ?root=true vs no root) must hash to different cache fields so they
+  // get cached under separate entries within the per-entityType Redis hash.
+  static String hashFilter(ListFilter filter) {
     StringBuilder canonical = new StringBuilder(filter.getCondition());
     Map<String, String> params = filter.getQueryParams();
     if (params != null && !params.isEmpty()) {
