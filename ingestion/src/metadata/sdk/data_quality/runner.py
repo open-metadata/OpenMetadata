@@ -12,7 +12,7 @@
 """Class that allows running data quality checks by code"""
 # pyright: reportCallIssue=false, reportRedeclaration=false
 
-from typing import Any, List, Optional, cast
+from typing import Any, List, Optional, cast  # noqa: UP035
 
 import yaml
 from typing_extensions import Self
@@ -65,7 +65,7 @@ class TestRunner:
     def __init__(
         self,
         table_fqn: str,
-        client: Optional[OMeta[Any, Any]] = None,
+        client: Optional[OMeta[Any, Any]] = None,  # noqa: UP045
     ) -> None:
         """Initialize TestRunner with table FQN and optional OpenMetadata client.
 
@@ -111,14 +111,14 @@ class TestRunner:
         )
 
     @property
-    def test_definitions(self) -> List[TestCaseDefinition]:
+    def test_definitions(self) -> List[TestCaseDefinition]:  # noqa: UP006
         return self.config_builder.test_definitions
 
     @classmethod
     def for_table(
         cls,
         table_fqn: str,
-        client: Optional[OMeta[Any, Any]] = None,
+        client: Optional[OMeta[Any, Any]] = None,  # noqa: UP045
     ) -> Self:
         """Initialize runner for a specific table FQN.
 
@@ -143,46 +143,44 @@ class TestRunner:
     def from_yaml(
         cls,
         *,
-        yaml_string: Optional[str] = None,
-        file_path: Optional[str] = None,
+        yaml_string: Optional[str] = None,  # noqa: UP045
+        file_path: Optional[str] = None,  # noqa: UP045
         use_connection_from_yaml: bool = False,
-        client: Optional[OMeta[Any, Any]] = None,
+        client: Optional[OMeta[Any, Any]] = None,  # noqa: UP045
     ) -> Self:
         """Build TestRunner from a YAML workflow string."""
 
-        assert (
-            yaml_string is not None or file_path is not None
-        ), "`TestRunner.from_yaml` expects either `yaml_string` or `file_path` to be provided."
+        assert yaml_string is not None or file_path is not None, (
+            "`TestRunner.from_yaml` expects either `yaml_string` or `file_path` to be provided."
+        )
 
         if file_path is not None:
-            with open(file_path, "r", encoding="utf-8") as stream:
+            with open(file_path, "r", encoding="utf-8") as stream:  # noqa: PTH123
                 yaml_string = stream.read()
 
-        data = yaml.safe_load(cast(str, yaml_string))
+        data = yaml.safe_load(cast(str, yaml_string))  # noqa: TC006
 
         config = OpenMetadataWorkflowConfig(**data)
         source = config.source
 
-        assert (
-            source.type == TestSuiteConfigType.TestSuite.value
-        ), f"Can't create test suite for source type: {source.type}"
+        assert source.type == TestSuiteConfigType.TestSuite.value, (
+            f"Can't create test suite for source type: {source.type}"
+        )
 
         source_config = source.sourceConfig.config
-        assert isinstance(
-            source_config, TestSuitePipeline
-        ), f"Can't create test suite for source config type: {type(source.sourceConfig.config)}"
-        assert (
-            source_config.entityFullyQualifiedName is not None
-        ), "TestSuitePipeline config must have entity fully qualified name"
+        assert isinstance(source_config, TestSuitePipeline), (
+            f"Can't create test suite for source config type: {type(source.sourceConfig.config)}"
+        )
+        assert source_config.entityFullyQualifiedName is not None, (
+            "TestSuitePipeline config must have entity fully qualified name"
+        )
 
         if use_connection_from_yaml:
             client = OMeta(config=config.workflowConfig.openMetadataServerConfig)
 
-        runner = cls.for_table(
-            source_config.entityFullyQualifiedName.root, client=client
-        )
+        runner = cls.for_table(source_config.entityFullyQualifiedName.root, client=client)
 
-        processor: Optional[TestSuiteProcessorConfig] = None
+        processor: Optional[TestSuiteProcessorConfig] = None  # noqa: UP045
         if config.processor and config.processor.config:
             processor = TestSuiteProcessorConfig(**config.processor.config.model_dump())
 
@@ -215,9 +213,7 @@ class TestRunner:
         Returns:
             Self for method chaining
         """
-        self.config_builder = self.config_builder.add_test_definition(
-            test_definition.to_test_case_definition()
-        )
+        self.config_builder = self.config_builder.add_test_definition(test_definition.to_test_case_definition())
 
     def add_tests(self, *test_definitions: BaseTest) -> None:
         """Add multiple test definitions at once.
@@ -237,7 +233,7 @@ class TestRunner:
         for test_definition in test_definitions:
             self.add_test(test_definition)
 
-    def run(self) -> List[TestCaseResultResponse]:
+    def run(self) -> List[TestCaseResultResponse]:  # noqa: UP006
         """Execute all added tests and return results.
 
         Returns:

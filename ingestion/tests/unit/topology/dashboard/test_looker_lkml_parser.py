@@ -11,6 +11,7 @@
 """
 Test the lkml parser
 """
+
 from pathlib import Path
 from unittest import TestCase
 
@@ -47,9 +48,7 @@ class TestLkmlParser(TestCase):
         reader = LocalReader(BASE_PATH)
         parser = LkmlParser(reader)
 
-        view = parser.find_view(
-            view_name=ViewName("birds"), path=Includes("cats.explore.lkml")
-        )
+        view = parser.find_view(view_name=ViewName("birds"), path=Includes("cats.explore.lkml"))
 
         self.assertIsNotNone(view)
         self.assertEqual(view.name, "birds")
@@ -71,9 +70,7 @@ class TestLkmlParser(TestCase):
         reader = LocalReader(BASE_PATH)
         parser = LkmlParser(reader)
 
-        view = parser.find_view(
-            view_name=ViewName("cats"), path=Includes("cats.explore.lkml")
-        )
+        view = parser.find_view(view_name=ViewName("cats"), path=Includes("cats.explore.lkml"))
 
         self.assertIsNotNone(view)
         self.assertEqual(view.name, "cats")
@@ -96,9 +93,7 @@ class TestLkmlParser(TestCase):
         reader = LocalReader(BASE_PATH)
         parser = LkmlParser(reader)
 
-        view = parser.find_view(
-            view_name=ViewName("dogs"), path=Includes("cats.explore.lkml")
-        )
+        view = parser.find_view(view_name=ViewName("dogs"), path=Includes("cats.explore.lkml"))
 
         self.assertIsNotNone(view)
         self.assertEqual(view.name, "dogs")
@@ -126,9 +121,7 @@ class TestLkmlParser(TestCase):
         reader = LocalReader(BASE_PATH)
         parser = LkmlParser(reader)
 
-        view = parser.find_view(
-            view_name=ViewName("cats"), path=Includes("kittens.explore.lkml")
-        )
+        view = parser.find_view(view_name=ViewName("cats"), path=Includes("kittens.explore.lkml"))
 
         self.assertIsNotNone(view)
         self.assertEqual(view.name, "cats")
@@ -159,9 +152,7 @@ class TestLkmlParser(TestCase):
         )
         self.assertIsNotNone(view)
 
-        view = parser.find_view(
-            view_name=ViewName("recursive"), path=Includes("recursive.explore.lkml")
-        )
+        view = parser.find_view(view_name=ViewName("recursive"), path=Includes("recursive.explore.lkml"))
         self.assertIsNotNone(view)
 
     def test_get_path_from_link(self):
@@ -172,14 +163,10 @@ class TestLkmlParser(TestCase):
         self.assertEqual(get_path_from_link(simple_link), "hello.explore.lkml")
 
         link = "/projects/my_project/files/hello%2Fexplores%2Fmy_explore.explore.lkml?line=13"
-        self.assertEqual(
-            get_path_from_link(link), "hello/explores/my_explore.explore.lkml"
-        )
+        self.assertEqual(get_path_from_link(link), "hello/explores/my_explore.explore.lkml")
 
         link_no_files = "hello%2Fexplores%2Fmy_explore.explore.lkml?line=13"
-        self.assertEqual(
-            get_path_from_link(link_no_files), "hello/explores/my_explore.explore.lkml"
-        )
+        self.assertEqual(get_path_from_link(link_no_files), "hello/explores/my_explore.explore.lkml")
 
     def test_expand(self):
         """
@@ -260,9 +247,7 @@ class TestLkmlParser(TestCase):
         reader = LocalReader(BASE_PATH)
         parser = LkmlParser(reader)
 
-        view = parser.find_view(
-            view_name=ViewName("cats"), path=Includes("kittens.explore.lkml")
-        )
+        view = parser.find_view(view_name=ViewName("cats"), path=Includes("kittens.explore.lkml"))
 
         cols = get_columns_from_model(view)
         expected_cols = [

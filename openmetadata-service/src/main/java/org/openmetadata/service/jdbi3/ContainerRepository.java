@@ -9,9 +9,10 @@ import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
-import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
-import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
+import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -19,10 +20,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -43,6 +47,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.storages.ContainerResource;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -71,10 +76,11 @@ public class ContainerRepository extends EntityRepository<Container> {
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
 
+    allowedFields.remove("children");
+
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_PARENT, this::fetchAndSetParents);
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetDataModelColumnTags);
-    fieldFetchers.put("children", this::fetchAndSetChildren);
   }
 
   @Override
@@ -83,13 +89,9 @@ public class ContainerRepository extends EntityRepository<Container> {
     setDefaultFields(container);
     container.setParent(
         fields.contains(FIELD_PARENT) ? getContainerParent(container) : container.getParent());
-    container.setChildren(
-        fields.contains("children") ? getChildren(container) : container.getChildren());
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(
-          fields.contains(FIELD_TAGS),
-          container.getFullyQualifiedName(),
-          container.getDataModel().getColumns());
+          fields.contains(FIELD_TAGS), container.getDataModel().getColumns());
     }
   }
 
@@ -119,22 +121,30 @@ public class ContainerRepository extends EntityRepository<Container> {
       return;
     }
 
-    // First, fetch container-level tags (important for search indexing)
+    // Container-level tags. Important for search indexing where we may process 100k+
+    // containers in a single bulk batch — we must not issue a derived-tag DB query per
+    // container, so collect all tags up front and batch derived tags once.
     List<String> entityFQNs = containers.stream().map(Container::getFullyQualifiedName).toList();
     Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
+
+    Map<String, List<TagLabel>> derivedTagsMap =
+        tryBatchFetchDerivedTags(tagsMap, containers.size() + " containers");
+
     for (Container container : containers) {
-      container.setTags(
-          addDerivedTagsGracefully(
-              tagsMap.getOrDefault(container.getFullyQualifiedName(), Collections.emptyList())));
+      List<TagLabel> containerTags =
+          tagsMap.getOrDefault(container.getFullyQualifiedName(), Collections.emptyList());
+      if (derivedTagsMap != null) {
+        container.setTags(addDerivedTagsWithPreFetched(containerTags, derivedTagsMap));
+      } else {
+        container.setTags(addDerivedTagsGracefully(containerTags));
+      }
     }
 
     // Then, if dataModel field is requested, also fetch data model column tags
     if (fields.contains("dataModel")) {
       // Filter containers that have data models and use bulk tag fetching
       List<Container> containersWithDataModels =
-          containers.stream()
-              .filter(c -> c.getDataModel() != null)
-              .collect(java.util.stream.Collectors.toList());
+          containers.stream().filter(c -> c.getDataModel() != null).collect(Collectors.toList());
 
       if (!containersWithDataModels.isEmpty()) {
         bulkPopulateEntityFieldTags(containersWithDataModels, c -> c.getDataModel().getColumns());
@@ -230,14 +240,22 @@ public class ContainerRepository extends EntityRepository<Container> {
             .relationshipDAO()
             .findFromBatch(entityListToStrings(containers), Relationship.CONTAINS.ordinal());
 
+    // De-dupe service IDs before resolving them to references. In any practical paged
+    // listing the children are all under the same storage service, so the naive loop
+    // below would call getEntityReferenceById N times for the same service id —
+    // each call hits CACHE_WITH_ID (or DB) for the full StorageService JSON. Cache one
+    // ref per unique service id and fan it back out to every child.
+    Map<UUID, EntityReference> serviceRefById = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID containerId = UUID.fromString(record.getToId());
-      if (STORAGE_SERVICE.equals(record.getFromEntity())) {
-        EntityReference serviceRef =
-            getEntityReferenceById(
-                STORAGE_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-        serviceMap.put(containerId, serviceRef);
+      if (!STORAGE_SERVICE.equals(record.getFromEntity())) {
+        continue;
       }
+      UUID containerId = UUID.fromString(record.getToId());
+      UUID serviceId = UUID.fromString(record.getFromId());
+      EntityReference serviceRef =
+          serviceRefById.computeIfAbsent(
+              serviceId, id -> getEntityReferenceById(STORAGE_SERVICE, id, NON_DELETED));
+      serviceMap.put(containerId, serviceRef);
     }
 
     return serviceMap;
@@ -249,9 +267,69 @@ public class ContainerRepository extends EntityRepository<Container> {
     container.withDataModel(fields.contains("dataModel") ? container.getDataModel() : null);
   }
 
-  private void populateDataModelColumnTags(
-      boolean setTags, String fqnPrefix, List<Column> columns) {
-    populateEntityFieldTags(entityType, columns, fqnPrefix, setTags);
+  private void populateDataModelColumnTags(boolean setTags, List<Column> columns) {
+    if (!setTags) {
+      // Caller didn't ask for tags — leave the column tree untouched. The original
+      // code looped here calling c.setTags(c.getTags()) (a no-op carried over from
+      // Entity.populateEntityFieldTags); skip that pointless walk.
+      return;
+    }
+    List<Column> flattenedColumns = getFlattenedEntityField(columns);
+    if (flattenedColumns.isEmpty()) {
+      return;
+    }
+    Map<String, Column> hashToColumn =
+        flattenedColumns.stream()
+            .collect(
+                Collectors.toMap(
+                    c -> FullyQualifiedName.buildHash(c.getFullyQualifiedName()),
+                    c -> c,
+                    (a, b) -> a,
+                    LinkedHashMap::new));
+    Map<String, List<TagLabel>> tagsByHash =
+        daoCollection
+            .tagUsageDAO()
+            .getTagsByTargetFQNHashes(new ArrayList<>(hashToColumn.keySet()));
+
+    // Batch-fetch derived tags for every glossary tag across all columns in a single query.
+    // Falls back to per-column gracefully on failure to avoid changing existing semantics.
+    Map<String, List<TagLabel>> derivedTagsMap =
+        tryBatchFetchDerivedTags(tagsByHash, "container columns");
+
+    for (Map.Entry<String, Column> entry : hashToColumn.entrySet()) {
+      List<TagLabel> columnTags = tagsByHash.get(entry.getKey());
+      if (columnTags == null) {
+        entry.getValue().setTags(new ArrayList<>());
+      } else if (derivedTagsMap != null) {
+        entry.getValue().setTags(addDerivedTagsWithPreFetched(columnTags, derivedTagsMap));
+      } else {
+        entry.getValue().setTags(addDerivedTagsGracefully(columnTags));
+      }
+    }
+  }
+
+  /**
+   * Run a single batched derived-tag lookup across every TagLabel value in {@code tagsByKey},
+   * returning {@code null} on failure so callers can fall back to per-row
+   * {@link #addDerivedTagsGracefully(List)}. Used by both the bulk container path and the
+   * single-container column path so the warn-and-fall-back behavior stays in lockstep.
+   */
+  private Map<String, List<TagLabel>> tryBatchFetchDerivedTags(
+      Map<String, List<TagLabel>> tagsByKey, String contextDescription) {
+    try {
+      List<TagLabel> allTags =
+          tagsByKey.values().stream()
+              .filter(Objects::nonNull)
+              .flatMap(List::stream)
+              .collect(Collectors.toList());
+      return batchFetchDerivedTags(allTags);
+    } catch (Exception ex) {
+      LOG.warn(
+          "Failed to batch fetch derived tags for {}. Falling back to per-row.",
+          contextDescription,
+          ex);
+      return null;
+    }
   }
 
   private void setDefaultFields(Container container) {
@@ -466,36 +544,73 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   public ResultList<Container> listChildren(String parentFQN, Integer limit, Integer offset) {
 
-    Container parentContainer = dao.findEntityByName(parentFQN);
+    // Phase markers feed the slow-request log so when a /children call exceeds the
+    // latency budget in prod we can tell which step (parent lookup / relationship
+    // fetch / count / slim hydration / service restore) was responsible.
+    Container parentContainer;
+    try (var ignored = RequestLatencyContext.phase("listChildrenParent")) {
+      parentContainer = dao.findEntityByName(parentFQN);
+    }
 
     try {
-      List<CollectionDAO.EntityRelationshipRecord> relationshipRecords =
-          daoCollection
-              .relationshipDAO()
-              .findToWithOffset(
-                  parentContainer.getId(),
-                  CONTAINER,
-                  List.of(Relationship.CONTAINS.ordinal()),
-                  offset,
-                  limit);
+      List<CollectionDAO.EntityRelationshipRecord> relationshipRecords;
+      try (var ignored = RequestLatencyContext.phase("listChildrenRelationships")) {
+        relationshipRecords =
+            daoCollection
+                .relationshipDAO()
+                .findToWithOffset(
+                    parentContainer.getId(),
+                    CONTAINER,
+                    List.of(Relationship.CONTAINS.ordinal()),
+                    offset,
+                    limit);
+      }
 
-      int total =
-          daoCollection
-              .relationshipDAO()
-              .countFindTo(
-                  parentContainer.getId(), CONTAINER, List.of(Relationship.CONTAINS.ordinal()));
+      int total;
+      try (var ignored = RequestLatencyContext.phase("listChildrenCount")) {
+        total =
+            daoCollection
+                .relationshipDAO()
+                .countFindTo(
+                    parentContainer.getId(), CONTAINER, List.of(Relationship.CONTAINS.ordinal()));
+      }
 
       if (relationshipRecords.isEmpty()) {
         return new ResultList<>(new ArrayList<>(), null, null, total);
       }
 
-      List<EntityReference> refs = getEntityReferences(relationshipRecords);
-      List<Container> children = new ArrayList<>();
-
-      for (EntityReference ref : refs) {
-        Container container =
-            Entity.getEntity(ref, EntityUtil.Fields.EMPTY_FIELDS.toString(), Include.ALL);
-        children.add(container);
+      // Hydrate the page with a slim projection: id, name, fqn, displayName, description.
+      // Heavy fields like dataModel, tags, owners, extension are intentionally skipped —
+      // the UI's children table only renders name and description, and parquet
+      // containers can carry multi-MB column schemas in dataModel.
+      //
+      // The IDs come straight from the relationship rows we already loaded in
+      // findToWithOffset — we deliberately do NOT call EntityUtil.getEntityReferences
+      // here because that path round-trips through Entity.getEntityReferencesByIds →
+      // EntityRepository.find → CACHE_WITH_ID, which materialises the FULL Container
+      // JSON (dataModel, tags, owners, extension) for every child just to extract its
+      // EntityReference. For 15 parquet rows that single call alone can dominate the
+      // listing latency.
+      List<UUID> ids = relationshipRecords.stream().map(r -> r.getId()).toList();
+      Map<UUID, Container> byId = new HashMap<>();
+      try (var ignored = RequestLatencyContext.phase("listChildrenHydrate")) {
+        for (Container c : ((CollectionDAO.ContainerDAO) dao).findContainerSummariesByIds(ids)) {
+          byId.put(c.getId(), c);
+        }
+      }
+      // Preserve relationship-offset ordering returned by findToWithOffset; drop
+      // any rows that no longer resolve (deleted between the relationship lookup and
+      // the bulk fetch) rather than failing the whole page.
+      List<Container> children = new ArrayList<>(ids.size());
+      for (UUID id : ids) {
+        Container container = byId.get(id);
+        if (container != null) {
+          children.add(container);
+        }
+      }
+      // service is stripped from stored JSON; restore via batched relationship lookup.
+      try (var ignored = RequestLatencyContext.phase("listChildrenService")) {
+        fetchAndSetDefaultService(children);
       }
 
       return new ResultList<>(children, null, null, total);
@@ -505,6 +620,56 @@ public class ContainerRepository extends EntityRepository<Container> {
               "Failed to fetch children for container [%s]: %s", parentFQN, e.getMessage()),
           e);
     }
+  }
+
+  /**
+   * Return the parent chain for the given container, ordered from root container (immediate
+   * child of the storage service) down to the immediate parent. Empty when the container is at
+   * the top level. Resolves the entire chain in a single batched DB lookup so the UI does not
+   * need to issue one parent fetch per breadcrumb level.
+   */
+  public List<EntityReference> getAncestors(String fqn) {
+    String[] parts = FullyQualifiedName.split(fqn);
+    // parts[0] is the storage service; parts[parts.length - 1] is the container itself.
+    // Ancestors live at indices 1 .. parts.length - 2.
+    if (parts.length < 3) {
+      return Collections.emptyList();
+    }
+
+    // FullyQualifiedName.split preserves each segment as it appears in the source
+    // FQN (quoted segments stay quoted, unquoted stay unquoted). We still round-trip
+    // every segment through FullyQualifiedName.add — its quoteName step is idempotent,
+    // and it reapplies quotes to any unquoted segment that needs them so the
+    // reconstructed prefix matches the canonical FQN stored in the DB. Naively
+    // concatenating raw parts with '.' would skip that re-quoting step and break the
+    // IN-by-fqnHash lookup for any container whose name (or ancestor's name) contains
+    // an FQN-separator character.
+    List<String> ancestorFqns = new ArrayList<>(parts.length - 2);
+    String current = FullyQualifiedName.quoteName(parts[0]);
+    for (int i = 1; i < parts.length - 1; i++) {
+      current = FullyQualifiedName.add(current, parts[i]);
+      ancestorFqns.add(current);
+    }
+
+    // Projection-only batched IN query: pulls just the columns needed to build
+    // an EntityReference (id, name, displayName, fqn, deleted) instead of the
+    // full Container JSON. For a 10-level chain this avoids deserializing
+    // ~10 × 5–50 KB of unused container payload per breadcrumb request.
+    List<EntityReference> ancestors = dao.findReferencesByFqns(ancestorFqns, NON_DELETED);
+
+    // Preserve the root → immediate-parent ordering even if the DAO returns rows out of order.
+    Map<String, EntityReference> byFqn = new HashMap<>();
+    for (EntityReference ancestor : ancestors) {
+      byFqn.put(ancestor.getFullyQualifiedName(), ancestor);
+    }
+    List<EntityReference> ordered = new ArrayList<>(ancestorFqns.size());
+    for (String ancestorFqn : ancestorFqns) {
+      EntityReference ancestor = byFqn.get(ancestorFqn);
+      if (ancestor != null) {
+        ordered.add(ancestor);
+      }
+    }
+    return Collections.unmodifiableList(ordered);
   }
 
   private TableData getSampleDataInternal(UUID containerId) {
@@ -558,11 +723,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     setFieldsInternal(container, Fields.EMPTY_FIELDS);
 
     if (!authorizePII && container.getDataModel() != null) {
-      populateEntityFieldTags(
-          entityType,
-          container.getDataModel().getColumns(),
-          container.getFullyQualifiedName(),
-          true);
+      populateDataModelColumnTags(true, container.getDataModel().getColumns());
       container.setTags(getTags(container));
       return PIIMasker.getSampleData(container);
     }

@@ -70,21 +70,15 @@ def test_yield_cross_database_lineage_finds_uppercase_source_table():
     trino_table.fullyQualifiedName.root = "repro_trino.postgres.source_schema.customer"
     trino_table.name.root = "customer"
     trino_table.databaseSchema.name.root = "source_schema"
-    trino_table.databaseSchema.fullyQualifiedName.root = (
-        "repro_trino.postgres.source_schema"
-    )
+    trino_table.databaseSchema.fullyQualifiedName.root = "repro_trino.postgres.source_schema"
     trino_table.columns = [_mock_column("id"), _mock_column("name")]
 
     source_table = MagicMock()
     source_table.id.root = "22222222-2222-2222-2222-222222222222"
-    source_table.fullyQualifiedName.root = (
-        "repro_postgres.source_db.SOURCE_SCHEMA.CUSTOMER"
-    )
+    source_table.fullyQualifiedName.root = "repro_postgres.source_db.SOURCE_SCHEMA.CUSTOMER"
     source_table.name.root = "CUSTOMER"
     source_table.databaseSchema.name.root = "SOURCE_SCHEMA"
-    source_table.databaseSchema.fullyQualifiedName.root = (
-        "repro_postgres.source_db.SOURCE_SCHEMA"
-    )
+    source_table.databaseSchema.fullyQualifiedName.root = "repro_postgres.source_db.SOURCE_SCHEMA"
     source_table.columns = [_mock_column("id"), _mock_column("name")]
 
     def list_all_entities_side_effect(entity, params=None, **_kwargs):
@@ -101,17 +95,21 @@ def test_yield_cross_database_lineage_finds_uppercase_source_table():
 
     lineage_source = TrinoLineageSourceTestDouble(metadata)
 
-    with patch.object(
-        TrinoLineageSource,
-        "get_cross_database_lineage",
-        return_value=Either(right="cross-database-edge"),
-    ) as mock_get_cross_database_lineage, patch(
-        "metadata.ingestion.source.database.trino.lineage.fqn.search_database_schema_from_es",
-        return_value=[source_schema],
-    ) as mock_search_database_schema, patch(
-        "metadata.ingestion.source.database.trino.lineage.fqn.search_table_from_es",
-        return_value=[source_table],
-    ) as mock_search_table:
+    with (
+        patch.object(
+            TrinoLineageSource,
+            "get_cross_database_lineage",
+            return_value=Either(right="cross-database-edge"),
+        ) as mock_get_cross_database_lineage,
+        patch(
+            "metadata.ingestion.source.database.trino.lineage.fqn.search_database_schema_from_es",
+            return_value=[source_schema],
+        ) as mock_search_database_schema,
+        patch(
+            "metadata.ingestion.source.database.trino.lineage.fqn.search_table_from_es",
+            return_value=[source_table],
+        ) as mock_search_table,
+    ):
         result = list(lineage_source.yield_cross_database_lineage())
 
     assert len(result) == 1
@@ -142,9 +140,7 @@ def test_get_cross_database_schema_fqn_parses_quoted_schema_from_fqn():
 
     trino_table = MagicMock()
     trino_table.databaseSchema = None
-    trino_table.fullyQualifiedName.root = (
-        'repro_trino.postgres."source.schema".customer'
-    )
+    trino_table.fullyQualifiedName.root = 'repro_trino.postgres."source.schema".customer'
 
     lineage_source = TrinoLineageSourceTestDouble(metadata)
 
