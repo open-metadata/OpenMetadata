@@ -436,6 +436,57 @@ public class ContainerRepository extends EntityRepository<Container> {
     updated.withService(original.getService()).withParent(original.getParent());
   }
 
+  // ----------------------------------------------------------------------------------------
+  // Derived cache invalidation: AncestorsCache + ChildrenPageCache are container-specific
+  // (only the /containers/{fqn}/ancestors and /containers/{fqn}/children endpoints exist
+  // today), so the invalidation lives here, not in the generic EntityRepository. Hooks fire
+  // on every container create / update / delete so a parent's cached children pages can't
+  // outlive a mutation, and a renamed container doesn't leave its old descendants serving
+  // stale display names. Cross-instance invalidation is handled separately by the pubsub
+  // handler in CacheBundle (gated to entityType=container).
+  // ----------------------------------------------------------------------------------------
+
+  @Override
+  protected void postCreate(Container entity) {
+    super.postCreate(entity);
+    invalidateContainerDerivedCaches(entity.getFullyQualifiedName());
+  }
+
+  @Override
+  protected void postUpdate(Container original, Container updated) {
+    super.postUpdate(original, updated);
+    invalidateContainerDerivedCaches(updated.getFullyQualifiedName());
+    String originalFqn = original.getFullyQualifiedName();
+    if (originalFqn != null && !originalFqn.equals(updated.getFullyQualifiedName())) {
+      // Rename / move: the old FQN's parent loses the row, descendants of the old FQN had
+      // an entry in their ancestors chain that no longer exists. Drop both.
+      invalidateContainerDerivedCaches(originalFqn);
+    }
+  }
+
+  @Override
+  protected void invalidateCache(Container entity) {
+    super.invalidateCache(entity);
+    invalidateContainerDerivedCaches(entity.getFullyQualifiedName());
+  }
+
+  private static void invalidateContainerDerivedCaches(String fqn) {
+    if (fqn == null) {
+      return;
+    }
+    AncestorsCache ancestorsCache = CacheBundle.getAncestorsCache();
+    if (ancestorsCache != null) {
+      ancestorsCache.invalidate(CONTAINER, fqn);
+    }
+    ChildrenPageCache childrenPageCache = CacheBundle.getChildrenPageCache();
+    if (childrenPageCache != null) {
+      String parentFqn = FullyQualifiedName.getParentFQN(fqn);
+      if (parentFqn != null) {
+        childrenPageCache.invalidate(CONTAINER, parentFqn);
+      }
+    }
+  }
+
   @Override
   protected void clearEntitySpecificRelationshipsForMany(List<Container> entities) {
     if (entities.isEmpty()) return;
