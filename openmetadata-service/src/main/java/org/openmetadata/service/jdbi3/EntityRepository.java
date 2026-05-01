@@ -2871,7 +2871,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     var cachedEntityDao = CacheBundle.getCachedEntityDao();
     var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
     var cachedReadBundle = CacheBundle.getCachedReadBundle();
+    var ancestorsCache = CacheBundle.getAncestorsCache();
+    var childrenPageCache = CacheBundle.getChildrenPageCache();
     var pubsub = CacheBundle.getCacheInvalidationPubSub();
+    // The renamed entity's OLD parent loses a child (the row's old FQN moved out from under it).
+    // Rotate that parent's children-page version once up front so a /children call against the
+    // old parent doesn't continue serving the moved row from cache.
+    if (childrenPageCache != null) {
+      String oldParentFqn =
+          org.openmetadata.service.util.FullyQualifiedName.getParentFQN(oldPrefix);
+      if (oldParentFqn != null) {
+        childrenPageCache.invalidate(entityType, oldParentFqn);
+      }
+    }
     for (EntityDAO.EntityIdFqnPair row : affected) {
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, row.id));
       if (row.fqn != null) {
@@ -2890,6 +2902,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       if (cachedReadBundle != null) {
         cachedReadBundle.invalidate(entityType, row.id);
+      }
+      if (ancestorsCache != null && row.fqn != null) {
+        ancestorsCache.invalidate(entityType, row.fqn);
       }
       if (pubsub != null) {
         pubsub.publish(entityType, row.id, row.fqn, "rename-cascade");
@@ -3325,6 +3340,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
       writeJsonToRedis(cachedEntityDao, entity.getId(), entity.getFullyQualifiedName(), json);
     } catch (Exception e) {
       LOG.debug("Write-through cache failed: {} {}", entityType, entity.getId(), e);
+    }
+    invalidateDerivedParentCaches(entityType, entity.getFullyQualifiedName());
+  }
+
+  /**
+   * Drop the derived caches whose entries are keyed by an <em>ancestor</em> of {@code fqn} —
+   * the entity's own ancestors entry (its descendants' chains may now be stale) and its
+   * parent's children-page cache (the parent's child list now has a new/updated/removed row).
+   * Idempotent; safe to call from create / update / delete / rename-cascade paths.
+   */
+  static void invalidateDerivedParentCaches(String entityType, String fqn) {
+    if (fqn == null) {
+      return;
+    }
+    var ancestorsCache = CacheBundle.getAncestorsCache();
+    if (ancestorsCache != null) {
+      ancestorsCache.invalidate(entityType, fqn);
+    }
+    var childrenPageCache = CacheBundle.getChildrenPageCache();
+    if (childrenPageCache != null) {
+      String parentFqn = org.openmetadata.service.util.FullyQualifiedName.getParentFQN(fqn);
+      if (parentFqn != null) {
+        childrenPageCache.invalidate(entityType, parentFqn);
+      }
     }
   }
 
@@ -8379,6 +8418,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       var cachedReadBundle = CacheBundle.getCachedReadBundle();
       if (cachedReadBundle != null) {
         cachedReadBundle.invalidate(entityType, id);
+      }
+
+      // Move / rename: the old FQN's parent loses a row that the new FQN's parent gains.
+      // writeThroughCache below catches the NEW parent (via the entity's current FQN); we
+      // catch the OLD parent here while originalFqn is still in scope. No-op when the FQN
+      // didn't change.
+      if (originalFqn != null && !originalFqn.equals(fqn)) {
+        invalidateDerivedParentCaches(entityType, originalFqn);
       }
 
       // Synchronous repopulate: the write path holds the request thread until Redis is updated,

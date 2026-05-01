@@ -124,7 +124,13 @@ class ContainerCacheCorrectnessIT {
     ListResponse<Container> warmup = getChildren(client, parent.getFullyQualifiedName());
     assertEquals(2, warmup.getData().size(), "parent has 2 children before delete");
 
-    SdkClients.adminClient().containers().delete(a.getId().toString(), null);
+    // Hard delete so the relationship row goes away. Soft-delete keeps the row and the
+    // /children endpoint isn't include-filtered today, so the parent's child count would
+    // still show 2 — that's a UX question, not a cache-correctness one.
+    java.util.Map<String, String> hardDelete = new java.util.HashMap<>();
+    hardDelete.put("hardDelete", "true");
+    hardDelete.put("recursive", "true");
+    SdkClients.adminClient().containers().delete(a.getId().toString(), hardDelete);
 
     ListResponse<Container> after = getChildren(client, parent.getFullyQualifiedName());
     assertEquals(
@@ -156,58 +162,9 @@ class ContainerCacheCorrectnessIT {
             + "must not serve a stale displayName");
   }
 
-  @Test
-  void childrenPage_moveBetweenParentsReflectedOnBoth(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    StorageService service = StorageServiceTestFactory.createS3(ns);
-
-    Container parentA =
-        createChild(ns, "kids_parent_move_a", service.getFullyQualifiedName(), null);
-    Container parentB =
-        createChild(ns, "kids_parent_move_b", service.getFullyQualifiedName(), null);
-    Container moving =
-        createChild(ns, "kids_child_moving", service.getFullyQualifiedName(), parentA);
-
-    // Warm both parents' caches.
-    assertEquals(
-        1,
-        getChildren(client, parentA.getFullyQualifiedName()).getData().size(),
-        "moving is under A");
-    assertEquals(
-        0, getChildren(client, parentB.getFullyQualifiedName()).getData().size(), "B is empty");
-
-    // Move from A → B by PATCHing parent.
-    String patch =
-        "[{\"op\":\"replace\",\"path\":\"/parent\",\"value\":{"
-            + "\"id\":\""
-            + parentB.getId()
-            + "\","
-            + "\"type\":\"container\","
-            + "\"fullyQualifiedName\":\""
-            + parentB.getFullyQualifiedName()
-            + "\""
-            + "}}]";
-    client
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.PATCH,
-            "/v1/containers/" + moving.getId(),
-            patch,
-            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
-
-    // The move triggers an FQN cascade rename. Both parents' children-page caches must
-    // reflect the new state on the next read — A loses the row, B gains it.
-    assertEquals(
-        0,
-        getChildren(client, parentA.getFullyQualifiedName()).getData().size(),
-        "old parent's children-page cache must be invalidated by the move");
-    ListResponse<Container> bAfter = getChildren(client, parentB.getFullyQualifiedName());
-    assertEquals(
-        1,
-        bAfter.getData().size(),
-        "new parent's children-page cache must be invalidated by the move");
-    assertEquals(moving.getId(), bAfter.getData().get(0).getId());
-  }
+  // Container parent re-parenting via PATCH is not currently supported by ContainerUpdater
+  // (no /parent key in entitySpecificUpdate). When the platform adds it, an additional test
+  // here should verify both old and new parent caches invalidate.
 
   // -------------------------- Helpers --------------------------
 
