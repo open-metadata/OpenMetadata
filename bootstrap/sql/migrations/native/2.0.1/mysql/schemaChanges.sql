@@ -9,3 +9,10 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
     PRIMARY KEY (old_thread_id),
     KEY idx_task_migration_mapping_new_task_id (new_task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Speeds up the NOT EXISTS anti-join used by ContainerDAO root-only listings
+-- (?root=true&service=...). Covers the subquery's filter and projection so the
+-- planner can answer "does this container have a parent?" with an index-only
+-- scan instead of materializing the child-edge set.
+CREATE INDEX idx_er_fromentity_toentity_relation_toid
+    ON entity_relationship (fromEntity, toEntity, relation, toId);
