@@ -224,15 +224,17 @@ export const searchFromSearchInput = async (
     waitForSearchApi = false,
     searchApiPattern = '/api/v1/search/query',
   } = options;
+  const normalizedSearchTerm = searchTerm.trim();
 
-  const searchResponsePromise = waitForSearchApi
-    ? page.waitForResponse(
-        (response) =>
-          response.url().includes(searchApiPattern) &&
-          response.request().method() === 'GET' &&
-          response.url().includes(encodeURIComponent(searchTerm))
-      )
-    : undefined;
+  const searchResponsePromise =
+    waitForSearchApi && normalizedSearchTerm
+      ? page.waitForResponse(
+          (response) =>
+            response.url().includes(searchApiPattern) &&
+            response.request().method() === 'GET' &&
+            response.url().includes(encodeURIComponent(normalizedSearchTerm))
+        )
+      : undefined;
 
   await updateSearchInputAndWait(page, searchInput, searchTerm);
 

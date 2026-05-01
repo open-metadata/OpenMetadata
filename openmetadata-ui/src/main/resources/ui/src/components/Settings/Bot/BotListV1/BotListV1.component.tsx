@@ -39,15 +39,15 @@ import { getBotByName, getBots } from '../../../../rest/botsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
 import {
-  getEntityName,
-  highlightSearchText,
+    getEntityName,
+    highlightSearchText
 } from '../../../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { getBotsPath } from '../../../../utils/RouterUtils';
 import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
-  escapeESReservedCharacters,
-  stringToHTML,
+    escapeESReservedCharacters,
+    stringToHTML
 } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
@@ -67,6 +67,13 @@ const BOT_SEARCH_PAGE_SIZE = 100;
 const BOT_SEARCH_CONCURRENCY = 10;
 const MAX_BOT_SEARCH_PAGES = 5;
 const MAX_BOT_USER_RESOLUTION = BOT_SEARCH_PAGE_SIZE * MAX_BOT_SEARCH_PAGES;
+const getBotUserFromUser = (botUser: User): NonNullable<Bot['botUser']> => ({
+  id: botUser.id,
+  name: botUser.name,
+  displayName: botUser.displayName,
+  fullyQualifiedName: botUser.fullyQualifiedName,
+  email: botUser.email,
+});
 
 const BotListV1 = ({
   showDeleted,
@@ -105,14 +112,6 @@ const BotListV1 = ({
     []
   );
 
-  const getBotUserFromUser = (botUser: User): NonNullable<Bot['botUser']> => ({
-    id: botUser.id,
-    name: botUser.name,
-    displayName: botUser.displayName,
-    fullyQualifiedName: botUser.fullyQualifiedName,
-    email: botUser.email,
-  });
-
   const enrichBotWithMatchedUser = useCallback(
     (bot: Bot, botUser?: User) => {
       if (!botUser) {
@@ -127,7 +126,7 @@ const BotListV1 = ({
         } as Bot['botUser'],
       };
     },
-    [getBotUserFromUser]
+    []
   );
 
   const enrichBotsWithBotUsers = async (bots: Bot[]) => {

@@ -16,8 +16,8 @@ import { Operation } from 'fast-json-patch';
 
 import { PagingResponse, RestoreRequestType } from 'Models';
 import {
-  AuthenticationMechanism,
-  CreateUser,
+    AuthenticationMechanism,
+    CreateUser
 } from '../generated/api/teams/createUser';
 import { PersonalAccessToken } from '../generated/auth/personalAccessToken';
 import { Bot } from '../generated/entity/bot';
@@ -26,6 +26,7 @@ import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
+export { getBotByName } from './botsAPI';
 
 export interface UsersQueryParams {
   fields?: string;
