@@ -27,7 +27,6 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
 )
 from metadata.generated.schema.type.basic import ProfileSampleType
-from metadata.generated.schema.type.dynamicSamplingConfig import DynamicSamplingConfig
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
@@ -152,25 +151,6 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             if self.partition_details:
                 query = self.get_partitioned_query(query)
             return query
-
-    def _get_sample_config(self) -> StaticSamplingConfig | None:
-        """Get the sampling config from the sample config object"""
-        static: StaticSamplingConfig | None = self.sample_config.get_config(StaticSamplingConfig)
-        dynamic: DynamicSamplingConfig | None = self.sample_config.get_config(DynamicSamplingConfig)
-        if dynamic:
-            row_count = self._get_asset_row_count()
-            if not dynamic.smartSampling and dynamic.thresholds is not None:
-                for threshold in sorted(dynamic.thresholds, key=lambda t: t.rowCountThreshold, reverse=True):
-                    if row_count >= threshold.rowCountThreshold:
-                        static = StaticSamplingConfig(
-                            profileSample=threshold.profileSample,
-                            profileSampleType=threshold.profileSampleType,
-                            samplingMethodType=threshold.samplingMethodType,
-                        )
-            if dynamic.smartSampling:
-                static = self._get_tiered_sample(row_count)
-
-        return static
 
     def _get_asset_row_count(self) -> int:
         """Get the row count for the table.

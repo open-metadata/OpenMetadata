@@ -81,8 +81,8 @@ class NoSQLSampler(SamplerInterface):
         )
 
     def _get_limit(self) -> Optional[int]:  # noqa: UP045
-        num_rows = self.client.item_count(self.raw_dataset)
-        static = self.sample_config.get_static_config()
+        num_rows = self._row_count if self._row_count is not None else self._get_asset_row_count()
+        static = self._get_sample_config()
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
             limit = num_rows * (static.profileSample or 100 / 100)
         elif static and static.profileSampleType == ProfileSampleType.ROWS:
@@ -90,6 +90,18 @@ class NoSQLSampler(SamplerInterface):
         else:
             limit = SAMPLE_DATA_DEFAULT_COUNT
         return limit
+
+    def _get_asset_row_count(self) -> int:
+        """Get the total number of rows in the asset.
+
+        Returns:
+            int: The total number of rows in the asset.
+        """
+        self._row_count = self.client.item_count(self.raw_dataset)
+        if not self._row_count:
+            self._row_count = SAMPLE_DATA_DEFAULT_COUNT
+
+        return self._row_count
 
     @staticmethod
     def transpose_records(

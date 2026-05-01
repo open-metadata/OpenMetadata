@@ -37,7 +37,6 @@ from metadata.generated.schema.entity.services.storageService import StorageConn
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     ProcessingEngine,
 )
-from metadata.generated.schema.type.dynamicSamplingConfig import DynamicSamplingConfig
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.types import ClassifiableEntityType
@@ -49,6 +48,7 @@ from metadata.sampler.config import (
     get_profile_sample_config,
     get_sample_data_count_config,
     get_sample_query,
+    resolve_static_sampling_config,
 )
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.partition import get_partition_details
@@ -179,47 +179,11 @@ class SamplerInterface(ABC):
 
         return self._columns
 
-    def _get_tiered_sample(self, row_count: int) -> StaticSamplingConfig:
-        """
-        Get the appropriate sampling config based on the row count
-        and the defined thresholds.
-
-        Args:
-            row_count (int): the row count of the table
-        """
-        if row_count <= 100_000:
-            return StaticSamplingConfig(
-                profileSample=100,
-                profileSampleType="percentage",
-            )  # type: ignore
-        if row_count <= 1_000_000:
-            return StaticSamplingConfig(profileSample=50, profileSampleType="percentage")  # type: ignore
-        if row_count <= 10_000_000:
-            return StaticSamplingConfig(profileSample=10, profileSampleType="percentage")  # type: ignore
-        if row_count <= 100_000_000:
-            return StaticSamplingConfig(profileSample=5, profileSampleType="percentage")  # type: ignore
-        if row_count <= 1_000_000_000:
-            return StaticSamplingConfig(profileSample=1, profileSampleType="percentage")  # type: ignore
-        return StaticSamplingConfig(profileSample=0.1, profileSampleType="percentage")  # type: ignore
-
     def _get_sample_config(self) -> StaticSamplingConfig | None:
-        """Get the sampling config from the sample config object"""
-        static: StaticSamplingConfig | None = self.sample_config.get_config(StaticSamplingConfig)
-        dynamic: DynamicSamplingConfig | None = self.sample_config.get_config(DynamicSamplingConfig)
-        if dynamic:
-            row_count = self._get_asset_row_count()
-            if not dynamic.smartSampling and dynamic.thresholds is not None:
-                for threshold in sorted(dynamic.thresholds, key=lambda t: t.rowCountThreshold, reverse=True):
-                    if row_count >= threshold.rowCountThreshold:
-                        static = StaticSamplingConfig(
-                            profileSample=threshold.profileSample,
-                            profileSampleType=threshold.profileSampleType,
-                            samplingMethodType=threshold.samplingMethodType,
-                        )
-            if dynamic.smartSampling:
-                static = self._get_tiered_sample(row_count)
-
-        return static
+        return resolve_static_sampling_config(
+            sample_config=self.sample_config.profileSampleConfig,
+            row_count=self._get_asset_row_count(),
+        )
 
     def _get_excluded_columns(self) -> set[str]:
         """Get excluded  columns for table being profiled"""

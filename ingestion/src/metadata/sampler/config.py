@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
     DataStorageConfig,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.type.dynamicSamplingConfig import DynamicSamplingConfig
 from metadata.generated.schema.type.samplingConfig import (
     ProfileSampleConfig,
     SampleConfigType,
@@ -255,3 +256,55 @@ def get_exclude_columns(entity, entity_config: Optional[TableConfig]) -> Optiona
         return entity.tableProfilerConfig.excludeColumns
 
     return None
+
+
+def get_tiered_sample(row_count: int) -> StaticSamplingConfig:
+    """
+    Get the appropriate sampling config based on the row count
+    and the defined thresholds.
+
+    Args:
+        row_count (int): the row count of the table
+    """
+    if row_count <= 100_000:
+        return StaticSamplingConfig(
+            profileSample=100,
+            profileSampleType="percentage",
+        )  # type: ignore
+    if row_count <= 1_000_000:
+        return StaticSamplingConfig(profileSample=50, profileSampleType="percentage")  # type: ignore
+    if row_count <= 10_000_000:
+        return StaticSamplingConfig(profileSample=10, profileSampleType="percentage")  # type: ignore
+    if row_count <= 100_000_000:
+        return StaticSamplingConfig(profileSample=5, profileSampleType="percentage")  # type: ignore
+    if row_count <= 1_000_000_000:
+        return StaticSamplingConfig(profileSample=1, profileSampleType="percentage")  # type: ignore
+    return StaticSamplingConfig(profileSample=0.1, profileSampleType="percentage")  # type: ignore
+
+
+def resolve_static_sampling_config(
+    sample_config: ProfileSampleConfig | None,
+    row_count: int | None = None,
+) -> StaticSamplingConfig | None:
+    """Get the sampling config from the sample config object"""
+    if not sample_config:
+        return None
+    if sample_config.sampleConfigType == SampleConfigType.DYNAMIC and isinstance(
+        sample_config.config, DynamicSamplingConfig
+    ):
+        dynamic: DynamicSamplingConfig = sample_config.config
+        row_count = row_count or 0
+        if not dynamic.smartSampling and dynamic.thresholds is not None:
+            for threshold in sorted(dynamic.thresholds, key=lambda t: t.rowCountThreshold, reverse=True):
+                if row_count >= threshold.rowCountThreshold:
+                    return StaticSamplingConfig(
+                        profileSample=threshold.profileSample,
+                        profileSampleType=threshold.profileSampleType,
+                        samplingMethodType=threshold.samplingMethodType,
+                    )
+        if dynamic.smartSampling:
+            return get_tiered_sample(row_count)
+
+        return None
+
+    return sample_config.config if isinstance(sample_config.config, StaticSamplingConfig) else None
