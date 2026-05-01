@@ -113,7 +113,7 @@ class EntityRepositoryCertificationTest {
     tagEntry.setLabelType(TagLabel.LabelType.AUTOMATED.ordinal());
     tagEntry.setState(TagLabel.State.CONFIRMED.ordinal());
 
-    when(tagUsageDAO.getCertTagsInternalBatch(anyList(), anyString()))
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
         .thenReturn(List.of(tagEntry));
 
     AssetCertification cert = repo.getCertification(entity);
@@ -130,7 +130,8 @@ class EntityRepositoryCertificationTest {
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline");
 
-    when(tagUsageDAO.getCertTagsInternalBatch(anyList(), anyString())).thenReturn(List.of());
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
+        .thenReturn(List.of());
 
     AssetCertification cert = repo.getCertification(entity);
 
@@ -206,7 +207,7 @@ class EntityRepositoryCertificationTest {
     existingEntry.setLabelType(TagLabel.LabelType.AUTOMATED.ordinal());
     existingEntry.setState(TagLabel.State.CONFIRMED.ordinal());
 
-    when(tagUsageDAO.getCertTagsInternalBatch(anyList(), anyString()))
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
         .thenReturn(List.of(existingEntry));
 
     assertDoesNotThrow(() -> repo.applyCertification(entity));
@@ -227,7 +228,8 @@ class EntityRepositoryCertificationTest {
             .withFullyQualifiedName("service.my-pipeline")
             .withCertification(incoming);
 
-    when(tagUsageDAO.getCertTagsInternalBatch(anyList(), anyString())).thenReturn(List.of());
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
+        .thenReturn(List.of());
 
     assertDoesNotThrow(() -> repo.applyCertification(entity));
 
@@ -282,7 +284,8 @@ class EntityRepositoryCertificationTest {
             .withFullyQualifiedName("service.my-pipeline")
             .withCertification(null);
 
-    when(tagUsageDAO.getCertTagsInternalBatch(anyList(), anyString())).thenReturn(List.of());
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
+        .thenReturn(List.of());
 
     assertDoesNotThrow(() -> repo.storeRelationshipsInternal(List.of(entity)));
   }
@@ -393,7 +396,8 @@ class EntityRepositoryCertificationTest {
             .withFullyQualifiedName("service.my-pipeline")
             .withCertification(null);
 
-    when(tagUsageDAO.getCertTagsInternalBatch(anyList(), anyString())).thenReturn(List.of());
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
+        .thenReturn(List.of());
 
     assertDoesNotThrow(() -> repo.storeRelationshipsInternal(entity));
   }
@@ -415,7 +419,7 @@ class EntityRepositoryCertificationTest {
     tagEntry.setState(TagLabel.State.CONFIRMED.ordinal());
     tagEntry.setTargetFQNHash(FullyQualifiedName.buildHash("service.my-pipeline"));
 
-    when(tagUsageDAO.getCertTagsInternalBatch(anyList(), anyString()))
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
         .thenReturn(List.of(tagEntry));
 
     Fields certFields = new Fields(Set.of("certification"));
@@ -433,7 +437,7 @@ class EntityRepositoryCertificationTest {
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline");
 
-    when(tagUsageDAO.getCertTagsInternalBatch(anyList(), anyString()))
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
         .thenThrow(new RuntimeException("DB error"))
         .thenReturn(List.of());
 
@@ -568,7 +572,8 @@ class EntityRepositoryCertificationTest {
             .withUpdatedBy("alice")
             .withCertification(new AssetCertification().withTagLabel(tagLabel));
 
-    when(tagUsageDAO.getCertTagsInternalBatch(anyList(), anyString())).thenReturn(List.of());
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
+        .thenReturn(List.of());
 
     assertDoesNotThrow(() -> repo.applyCertification(entity));
 

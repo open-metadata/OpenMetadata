@@ -632,6 +632,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerHealthCheck(Environment environment) {
+    // Liveness probe target — pure process-aliveness, intentionally NOT coupled to
+    // any downstream system. See OpenMetadataServerHealthCheck for the design rationale.
     environment
         .healthChecks()
         .register("OpenMetadataServerHealthCheck", new OpenMetadataServerHealthCheck());
