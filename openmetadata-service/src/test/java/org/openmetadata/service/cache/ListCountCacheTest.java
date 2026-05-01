@@ -93,10 +93,8 @@ class ListCountCacheTest {
     // Two listings filtered by different entityFQNHash values must NOT collide on a single cache
     // field — that would return the wrong paging.total. Earlier we filtered out any
     // *Hash-suffixed key as "derived", which was wrong: this test pins the correct behavior.
-    ListFilter a =
-        new ListFilter(Include.NON_DELETED).addQueryParam("entityFQNHash", "deadbeef");
-    ListFilter b =
-        new ListFilter(Include.NON_DELETED).addQueryParam("entityFQNHash", "cafef00d");
+    ListFilter a = new ListFilter(Include.NON_DELETED).addQueryParam("entityFQNHash", "deadbeef");
+    ListFilter b = new ListFilter(Include.NON_DELETED).addQueryParam("entityFQNHash", "cafef00d");
     assertNotEquals(ListCountCache.hashFilter(a), ListCountCache.hashFilter(b));
   }
 
@@ -112,8 +110,7 @@ class ListCountCacheTest {
         new ListFilter(Include.NON_DELETED)
             .addQueryParam("service", "aws_s3")
             .addQueryParam("serviceHash", "deadbeef.%"); // simulates getCondition() side-effect
-    assertNotEquals(
-        ListCountCache.hashFilter(pristine), ListCountCache.hashFilter(contaminated));
+    assertNotEquals(ListCountCache.hashFilter(pristine), ListCountCache.hashFilter(contaminated));
   }
 
   @Test
