@@ -3300,7 +3300,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
           Entity.WORKFLOW_DEFINITION,
           Entity.WORKFLOW_INSTANCE,
           Entity.WORKFLOW_INSTANCE_STATE,
-          Entity.TEST_CASE_RESOLUTION_STATUS);
+          Entity.TEST_CASE_RESOLUTION_STATUS,
+          // Bot deletes cascade-clean their open suggestion tasks; a stale cached bot entry
+          // makes the cleanup poll see the bot as still alive and skip the cascade
+          // (TaskResourceIT.testDeletingBotCreatorCleansUpOpenSuggestionTasks).
+          Entity.BOT,
+          // Domain / data-product moves run through bulk-asset paths that re-read the asset
+          // immediately after the relationship row is rewritten; a stale cached domain ref
+          // makes the verification step see the old domain
+          // (DomainBulkAssetsDryRunIT.test_actualAdd_withoutDryRun_movesAsset).
+          Entity.DOMAIN,
+          Entity.DATA_PRODUCT);
 
   static boolean isCacheableEntityType(String entityType) {
     return entityType != null && !UNCACHED_ENTITY_TYPES.contains(entityType);
