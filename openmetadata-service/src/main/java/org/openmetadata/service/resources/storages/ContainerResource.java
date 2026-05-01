@@ -758,6 +758,10 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @QueryParam("offset")
           @Min(value = 0, message = "must be greater than or equal to 0")
           Integer offset) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    ResourceContext<Container> resourceContext = getResourceContextByName(fqn);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return repository.listChildren(fqn, limit, offset);
   }
 
