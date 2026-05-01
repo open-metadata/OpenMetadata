@@ -168,18 +168,21 @@ public final class ListCountCache {
    * Build a deterministic 16-hex-char field key for a filter. Two filters that hit the same SQL
    * count must produce the same key; two that hit different counts must not.
    *
-   * <p>Canonicalization is intentionally NOT {@link ListFilter#getCondition()} — that string is
-   * built by iterating an unordered {@code HashMap} and is not guaranteed stable across JVM
-   * iterations. Instead we use {@link ListFilter#getInclude()} (the Include enum drives the
-   * deleted predicate) and the {@code queryParams} map sorted by key. Same-shaped filter
-   * regardless of {@code addQueryParam} call order produces the same key.
+   * <p>Canonicalization uses {@link ListFilter#getInclude()} (the Include enum drives the deleted
+   * predicate at the SQL level) plus the {@code queryParams} map sorted by key. Same-shaped
+   * filter regardless of {@code addQueryParam} call order produces the same key.
    *
-   * <p>Derived bind params with the {@code Hash} suffix are excluded — those get added as a
-   * side-effect of {@link ListFilter#getCondition()} (e.g. {@code serviceHash},
-   * {@code databaseSchemaHash}) and would otherwise make the same logical filter hash differently
-   * depending on whether the caller has already invoked {@code dao.listAfter / listBefore} (which
-   * triggers the mutation) before {@link #getOrCompute}. The user-set inputs are stable; the
-   * derived hashes aren't.
+   * <p><b>Mutation contract</b>: {@link ListFilter#getCondition()} mutates {@code queryParams} as
+   * a side-effect (it adds derived bind params like {@code serviceHash}, {@code ownerIdParam},
+   * {@code databaseSchemaHashExact}, etc.). The hash is computed from whatever shape
+   * {@code queryParams} has at the moment {@code hashFilter} is called. Callers must therefore
+   * invoke {@link #getOrCompute} BEFORE any code path that calls {@link ListFilter#getCondition()}
+   * — i.e. before {@code dao.listAfter / listBefore / listCount}. {@link
+   * org.openmetadata.service.jdbi3.EntityRepository EntityRepository}'s list methods follow this
+   * ordering. Inside {@link #getOrCompute} itself, hashing happens before the supplier runs, so
+   * the supplier's own {@code dao.listCount(filter)} mutation does not affect the hash for this
+   * call. Subsequent calls in the same request see post-mutation queryParams; that's fine —
+   * each request gets a fresh {@link ListFilter} instance.
    *
    * <p>Bytes are hashed under {@link StandardCharsets#UTF_8} so cross-environment / cross-JVM
    * deployments produce identical keys regardless of platform default charset.
@@ -195,7 +198,6 @@ public final class ListCountCache {
     Map<String, String> params = filter.getQueryParams();
     if (params != null && !params.isEmpty()) {
       params.entrySet().stream()
-          .filter(e -> !e.getKey().endsWith("Hash"))
           .sorted(Map.Entry.comparingByKey())
           .forEach(e -> canonical.append('|').append(e.getKey()).append('=').append(e.getValue()));
     }

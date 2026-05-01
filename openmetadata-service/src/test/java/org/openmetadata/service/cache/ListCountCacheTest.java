@@ -88,19 +88,32 @@ class ListCountCacheTest {
   }
 
   @Test
-  void hashIgnoresDerivedHashSuffixedParams() {
-    // ListFilter.getCondition() adds bind params like "serviceHash" / "databaseSchemaHash" as a
-    // side-effect when called via dao.listAfter / dao.listBefore. The same logical filter must
-    // hash to the same field whether or not getCondition has run yet (matters for the order of
-    // count vs listBefore in EntityRepository.listBefore).
-    ListFilter beforeMutation =
-        new ListFilter(Include.NON_DELETED).addQueryParam("service", "aws_s3");
-    ListFilter afterMutation =
+  void userSuppliedEntityFqnHashAffectsHash() {
+    // entityFQNHash is a user-supplied filter param (see ListFilter.getEntityFQNHashCondition).
+    // Two listings filtered by different entityFQNHash values must NOT collide on a single cache
+    // field — that would return the wrong paging.total. Earlier we filtered out any
+    // *Hash-suffixed key as "derived", which was wrong: this test pins the correct behavior.
+    ListFilter a =
+        new ListFilter(Include.NON_DELETED).addQueryParam("entityFQNHash", "deadbeef");
+    ListFilter b =
+        new ListFilter(Include.NON_DELETED).addQueryParam("entityFQNHash", "cafef00d");
+    assertNotEquals(ListCountCache.hashFilter(a), ListCountCache.hashFilter(b));
+  }
+
+  @Test
+  void derivedBindParamsThatLeakIntoFilterDoChangeHash() {
+    // Documented contract: hashFilter is called BEFORE filter.getCondition() runs (callers in
+    // EntityRepository.listAfter / listBefore / listAfterWithOffset arrange this). If a derived
+    // bind param ends up in queryParams (because getCondition was somehow called first), it WILL
+    // change the hash. This test documents that — it's not a "wrong" hash, it's a sentinel that
+    // the caller violated the ordering contract. Cache hit rate suffers but correctness doesn't.
+    ListFilter pristine = new ListFilter(Include.NON_DELETED).addQueryParam("service", "aws_s3");
+    ListFilter contaminated =
         new ListFilter(Include.NON_DELETED)
             .addQueryParam("service", "aws_s3")
-            .addQueryParam("serviceHash", "deadbeef.%");
-    assertEquals(
-        ListCountCache.hashFilter(beforeMutation), ListCountCache.hashFilter(afterMutation));
+            .addQueryParam("serviceHash", "deadbeef.%"); // simulates getCondition() side-effect
+    assertNotEquals(
+        ListCountCache.hashFilter(pristine), ListCountCache.hashFilter(contaminated));
   }
 
   @Test
