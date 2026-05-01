@@ -15,7 +15,7 @@ Utility functions for testing
 from contextlib import contextmanager
 
 
-class MultipleException(Exception):
+class MultipleException(Exception):  # noqa: N818
     def __init__(self, exceptions):
         self.exceptions = exceptions
         super().__init__(f"Multiple exceptions occurred: {exceptions}")

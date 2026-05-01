@@ -2,7 +2,7 @@
 StoredProcedures entity SDK with fluent API
 """
 
-from typing import Type
+from typing import Type  # noqa: UP035
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -15,6 +15,6 @@ class StoredProcedures(BaseEntity[StoredProcedure, CreateStoredProcedureRequest]
     """StoredProcedures SDK class - plural to avoid conflict with generated StoredProcedure entity"""
 
     @classmethod
-    def entity_type(cls) -> Type[StoredProcedure]:
+    def entity_type(cls) -> Type[StoredProcedure]:  # noqa: UP006
         """Return the StoredProcedure entity type"""
         return StoredProcedure

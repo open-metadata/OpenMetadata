@@ -15,7 +15,7 @@ Kafka configuration parser for Databricks DLT pipelines
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from metadata.utils.logger import ingestion_logger
 
@@ -81,9 +81,9 @@ S3_PATH_PATTERN = re.compile(
 class KafkaSourceConfig:
     """Model for Kafka source configuration extracted from DLT code"""
 
-    bootstrap_servers: Optional[str] = None
-    topics: List[str] = field(default_factory=list)
-    group_id_prefix: Optional[str] = None
+    bootstrap_servers: Optional[str] = None  # noqa: UP045
+    topics: List[str] = field(default_factory=list)  # noqa: UP006
+    group_id_prefix: Optional[str] = None  # noqa: UP045
 
 
 @dataclass
@@ -91,10 +91,10 @@ class DLTTableDependency:
     """Model for DLT table dependencies"""
 
     table_name: str
-    depends_on: List[str] = field(default_factory=list)
+    depends_on: List[str] = field(default_factory=list)  # noqa: UP006
     reads_from_kafka: bool = False
     reads_from_s3: bool = False
-    s3_locations: List[str] = field(default_factory=list)
+    s3_locations: List[str] = field(default_factory=list)  # noqa: UP006
 
 
 def _extract_variables(source_code: str) -> dict:
@@ -128,7 +128,7 @@ def _extract_variables(source_code: str) -> dict:
     return variables
 
 
-def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:
+def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:  # noqa: UP006
     """
     Extract Kafka topic configurations from DLT source code
 
@@ -214,7 +214,7 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:
     return kafka_configs
 
 
-def _extract_option(config_block: str, option_name: str, variables: dict = None) -> Optional[str]:
+def _extract_option(config_block: str, option_name: str, variables: dict = None) -> Optional[str]:  # noqa: RUF013, UP045
     """
     Extract a single option value from Kafka configuration block
     Supports both string literals and variable references
@@ -239,7 +239,7 @@ def _extract_option(config_block: str, option_name: str, variables: dict = None)
             if var_name in variables:
                 logger.debug(f"Resolved variable {var_name} = {variables[var_name]} for option {option_name}")
                 return variables[var_name]
-            else:
+            else:  # noqa: RET505
                 logger.debug(f"Variable {var_name} referenced but not found in source code")
 
     except Exception as exc:
@@ -247,7 +247,7 @@ def _extract_option(config_block: str, option_name: str, variables: dict = None)
     return None
 
 
-def extract_dlt_table_names(source_code: str) -> List[str]:
+def extract_dlt_table_names(source_code: str) -> List[str]:  # noqa: UP006
     """
     Extract DLT table names from @dlt.table decorators
 
@@ -290,7 +290,7 @@ def extract_dlt_table_names(source_code: str) -> List[str]:
     return table_names
 
 
-def _infer_table_name_from_function(function_call: str, source_code: str) -> Optional[str]:
+def _infer_table_name_from_function(function_call: str, source_code: str) -> Optional[str]:  # noqa: UP045
     """
     Infer table name from function call pattern
 
@@ -340,7 +340,7 @@ def _infer_table_name_from_function(function_call: str, source_code: str) -> Opt
     return None
 
 
-def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]:
+def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]:  # noqa: C901, UP006
     """
     Extract DLT table dependencies by analyzing @dlt.table decorators and dlt.read_stream calls
 
@@ -414,7 +414,7 @@ def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]
                 # Materializer pattern: materializer.build_event_log_dataframe()
                 # This method internally reads from Kafka, so if we find this pattern
                 # and the table name matches event_log pattern, mark as Kafka reader
-                if not reads_from_kafka and "materializer.build_event_log_dataframe" in function_block:
+                if not reads_from_kafka and "materializer.build_event_log_dataframe" in function_block:  # noqa: SIM102
                     if "event_log" in table_name:
                         reads_from_kafka = True
                         logger.debug(f"Table {table_name} reads from Kafka via Materializer")
@@ -510,7 +510,7 @@ def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]
     return dependencies
 
 
-def get_pipeline_libraries(pipeline_config: dict, client=None) -> List[str]:
+def get_pipeline_libraries(pipeline_config: dict, client=None) -> List[str]:  # noqa: UP006
     """
     Extract notebook and file paths from pipeline configuration
     Safely handles missing or malformed configuration

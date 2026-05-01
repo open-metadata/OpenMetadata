@@ -88,6 +88,7 @@ export const TABLE_DEFAULT_TABS = [
   EntityTabs.CUSTOM_PROPERTIES,
   EntityTabs.PROFILER,
   EntityTabs.LINEAGE,
+  ...(process.env.PLAYWRIGHT_IS_OSS ? [] : [EntityTabs.ER_DIAGRAM]),
   EntityTabs.TABLE_QUERIES,
   EntityTabs.SAMPLE_DATA,
   EntityTabs.SCHEMA,
@@ -179,6 +180,7 @@ export const DATABASE_SCHEMA_DEFAULT_TABS = [
   EntityTabs.STORED_PROCEDURE,
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.CONTRACT,
+  ...(process.env.PLAYWRIGHT_IS_OSS ? [] : [EntityTabs.ER_DIAGRAM]),
   EntityTabs.CUSTOM_PROPERTIES,
 ];
 

@@ -46,9 +46,9 @@ class TestZeroThresholdEdgeCases(unittest.TestCase):
 
         new_passed, new_failed = calculate_less_than_failure_fixed(threshold, len_rows, row_count)
 
-        print(f"Bug case - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")
-        print(f"Old: passed={old_passed}, failed={old_failed}")
-        print(f"New: passed={new_passed}, failed={new_failed}")
+        print(f"Bug case - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")  # noqa: T201
+        print(f"Old: passed={old_passed}, failed={old_failed}")  # noqa: T201
+        print(f"New: passed={new_passed}, failed={new_failed}")  # noqa: T201
 
         self.assertEqual(old_passed, 1)
         self.assertEqual(old_failed, 0)
@@ -65,9 +65,9 @@ class TestZeroThresholdEdgeCases(unittest.TestCase):
         old_passed, old_failed = calculate_less_than_failure_old(threshold, len_rows, row_count)
         new_passed, new_failed = calculate_less_than_failure_fixed(threshold, len_rows, row_count)
 
-        print(f"Negative threshold - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")
-        print(f"Old: passed={old_passed}, failed={old_failed}")
-        print(f"New: passed={new_passed}, failed={new_failed}")
+        print(f"Negative threshold - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")  # noqa: T201
+        print(f"Old: passed={old_passed}, failed={old_failed}")  # noqa: T201
+        print(f"New: passed={new_passed}, failed={new_failed}")  # noqa: T201
 
         self.assertEqual(old_passed, 94)
         self.assertEqual(old_failed, 6)
@@ -84,9 +84,9 @@ class TestZeroThresholdEdgeCases(unittest.TestCase):
         old_passed, old_failed = calculate_less_than_failure_old(threshold, len_rows, row_count)
         new_passed, new_failed = calculate_less_than_failure_fixed(threshold, len_rows, row_count)
 
-        print(f"Zero threshold, no results - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")
-        print(f"Old: passed={old_passed}, failed={old_failed}")
-        print(f"New: passed={new_passed}, failed={new_failed}")
+        print(f"Zero threshold, no results - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")  # noqa: T201
+        print(f"Old: passed={old_passed}, failed={old_failed}")  # noqa: T201
+        print(f"New: passed={new_passed}, failed={new_failed}")  # noqa: T201
 
         self.assertEqual(old_passed, 50)
         self.assertEqual(old_failed, 0)
@@ -103,9 +103,9 @@ class TestZeroThresholdEdgeCases(unittest.TestCase):
         old_passed, old_failed = calculate_less_than_failure_old(threshold, len_rows, row_count)
         new_passed, new_failed = calculate_less_than_failure_fixed(threshold, len_rows, row_count)
 
-        print(f"Normal case - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")
-        print(f"Old: passed={old_passed}, failed={old_failed}")
-        print(f"New: passed={new_passed}, failed={new_failed}")
+        print(f"Normal case - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")  # noqa: T201
+        print(f"Old: passed={old_passed}, failed={old_failed}")  # noqa: T201
+        print(f"New: passed={new_passed}, failed={new_failed}")  # noqa: T201
 
         self.assertEqual(old_passed, new_passed)
         self.assertEqual(old_failed, new_failed)
@@ -121,8 +121,8 @@ class TestZeroThresholdEdgeCases(unittest.TestCase):
 
         new_passed, new_failed = calculate_less_than_failure_fixed(threshold, len_rows, row_count)
 
-        print(f"No row count - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")
-        print(f"New: passed={new_passed}, failed={new_failed}")
+        print(f"No row count - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")  # noqa: T201
+        print(f"New: passed={new_passed}, failed={new_failed}")  # noqa: T201
 
         self.assertEqual(new_passed, 0)
         self.assertEqual(new_failed, 1)
@@ -136,9 +136,9 @@ class TestZeroThresholdEdgeCases(unittest.TestCase):
         old_passed, old_failed = calculate_less_than_failure_old(threshold, len_rows, row_count)
         new_passed, new_failed = calculate_less_than_failure_fixed(threshold, len_rows, row_count)
 
-        print(f"<= 0 with results - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")
-        print(f"Old: passed={old_passed}, failed={old_failed}")
-        print(f"New: passed={new_passed}, failed={new_failed}")
+        print(f"<= 0 with results - len_rows={len_rows}, threshold={threshold}, row_count={row_count}")  # noqa: T201
+        print(f"Old: passed={old_passed}, failed={old_failed}")  # noqa: T201
+        print(f"New: passed={new_passed}, failed={new_failed}")  # noqa: T201
 
         self.assertEqual(old_passed, 17)
         self.assertEqual(old_failed, 3)

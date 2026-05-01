@@ -51,7 +51,7 @@ def get_table_comment(
     self,
     connection,
     table_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -70,7 +70,7 @@ def get_view_definition(
     self,
     connection,
     view_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -146,7 +146,7 @@ def _get_col_type(self, coltype, precision, scale, length, colname):  # pylint: 
 
 # pylint: disable=too-many-locals
 @reflection.cache
-def get_columns(self, connection, table_name, schema=None, **kw):
+def get_columns(self, connection, table_name, schema=None, **kw):  # noqa: C901
     """
 
     Dialect method overridden to add raw data type
@@ -328,7 +328,7 @@ def _get_constraint_data(self, connection, table_name, schema=None, dblink="", *
 
     rp = connection.execute(sql.text(text), params)
     constraint_data = rp.fetchall()
-    return constraint_data
+    return constraint_data  # noqa: RET504
 
 
 # ---------------------------------------------------------------------------
@@ -362,7 +362,7 @@ def get_table_comment_preserve_case(
     self,
     connection,
     table_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -385,7 +385,7 @@ def get_view_definition_preserve_case(
     self,
     connection,
     view_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -404,7 +404,7 @@ def get_view_definition_preserve_case(
 
 
 @reflection.cache
-def get_indexes_preserve_case(
+def get_indexes_preserve_case(  # noqa: C901
     self,
     connection,
     table_name,
@@ -493,8 +493,8 @@ def get_indexes_preserve_case(
         info_cache=kw.get("info_cache"),
     )
 
-    uniqueness = dict(NONUNIQUE=False, UNIQUE=True)
-    enabled = dict(DISABLED=False, ENABLED=True)
+    uniqueness = dict(NONUNIQUE=False, UNIQUE=True)  # noqa: C408
+    enabled = dict(DISABLED=False, ENABLED=True)  # noqa: C408
     oracle_sys_col = re.compile(r"SYS_NC\d+\$", re.IGNORECASE)
 
     index = None
@@ -507,7 +507,7 @@ def get_indexes_preserve_case(
             continue
 
         if raw_index_name != last_index_name:
-            index = dict(
+            index = dict(  # noqa: C408
                 name=index_name_normalized,
                 column_names=[],
                 dialect_options={},

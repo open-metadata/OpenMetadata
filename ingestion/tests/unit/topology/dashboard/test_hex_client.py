@@ -75,7 +75,7 @@ class TestHexApiClient(TestCase):
             call_args = mock_rest.call_args[0][0]
 
             # Test auth token function for workspace token
-            token, expiry = call_args.auth_token()
+            token, expiry = call_args.auth_token()  # noqa: RUF059
             self.assertEqual(token, "workspace_token_789")
 
     def test_get_projects_single_page(self):

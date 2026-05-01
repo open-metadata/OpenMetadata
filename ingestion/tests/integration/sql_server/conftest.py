@@ -21,7 +21,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 
-from ..conftest import ingestion_config as base_ingestion_config  # noqa: F401
+from ..conftest import ingestion_config as base_ingestion_config  # noqa: F401, TID252
 
 
 @pytest.fixture(scope="package")
@@ -38,10 +38,10 @@ class CustomSqlServerContainer(SqlServerContainer):
             RUN chown mssql /data
             USER mssql
             """
-        temp_dir = os.path.join(tempfile.gettempdir(), "mssql")
-        os.makedirs(temp_dir, exist_ok=True)
-        temp_dockerfile_path = os.path.join(temp_dir, "Dockerfile")
-        with open(temp_dockerfile_path, "w") as temp_dockerfile:
+        temp_dir = os.path.join(tempfile.gettempdir(), "mssql")  # noqa: PTH118
+        os.makedirs(temp_dir, exist_ok=True)  # noqa: PTH103
+        temp_dockerfile_path = os.path.join(temp_dir, "Dockerfile")  # noqa: PTH118
+        with open(temp_dockerfile_path, "w") as temp_dockerfile:  # noqa: PTH123
             temp_dockerfile.write(dockerfile)
         self.get_docker_client().build(temp_dir, tag=self.image)
         return super().start()
@@ -56,10 +56,10 @@ def mssql_container(tmp_path_factory, db_name):
     container = CustomSqlServerContainer("mcr.microsoft.com/mssql/server:2022-latest", dbname="master")
     data_dir = tmp_path_factory.mktemp("data")
     shutil.copy(
-        os.path.join(os.path.dirname(__file__), "data", f"{db_name}.bak"),
+        os.path.join(os.path.dirname(__file__), "data", f"{db_name}.bak"),  # noqa: PTH118, PTH120
         str(data_dir),
     )
-    with open(data_dir / "install.sql", "w") as f:
+    with open(data_dir / "install.sql", "w") as f:  # noqa: PTH123
         f.write(
             f"""
 USE [master]
@@ -99,7 +99,7 @@ GO
             ]
         )
         if res[0] != 0:
-            raise Exception("Failed to create mssql database:" + res[1].decode("utf-8"))
+            raise Exception("Failed to create mssql database:" + res[1].decode("utf-8"))  # noqa: TRY002
         engine = create_engine(
             "mssql+pytds://" + container.get_connection_url().split("://")[1],
             connect_args={"autocommit": True},
