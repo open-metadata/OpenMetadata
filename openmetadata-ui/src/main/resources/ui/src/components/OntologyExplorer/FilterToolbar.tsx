@@ -39,7 +39,13 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
   onFiltersChange,
   onViewModeChange,
   onClearAll,
+  onLoadMore,
   viewModeDisabled = false,
+  isLoading = false,
+  isLoadingMore = false,
+  hasMoreTerms = false,
+  loadedTermCount,
+  totalTermCount,
 }) => {
   const { t } = useTranslation();
 
@@ -147,11 +153,13 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
 
   return (
     <div className="tw:flex tw:w-full tw:items-center tw:gap-5 tw:pl-2">
-      {/* View Mode dropdown — disabled in data mode */}
+      {/* View Mode dropdown — disabled in data mode or while loading */}
       <div
         className={
           'tw:flex tw:shrink-0 tw:items-center tw:gap-2' +
-          (viewModeDisabled ? ' tw:pointer-events-none tw:opacity-50' : '')
+          (viewModeDisabled || isLoading
+            ? ' tw:pointer-events-none tw:opacity-50'
+            : '')
         }>
         <Typography
           as="span"
@@ -164,7 +172,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
           className="tw:w-36"
           data-testid="view-mode-select"
           fontSize="sm"
-          isDisabled={viewModeDisabled}
+          isDisabled={viewModeDisabled || isLoading}
           items={viewModeItems}
           size="sm"
           value={filters.viewMode}
@@ -184,7 +192,10 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
 
       {/* Glossary filter */}
       <div
-        className="tw:flex tw:shrink-0 tw:items-center"
+        className={
+          'tw:flex tw:shrink-0 tw:items-center' +
+          (isLoading ? ' tw:pointer-events-none tw:opacity-50' : '')
+        }
         data-testid="glossary-filter-section">
         <SearchDropdown
           hideCounts
@@ -200,7 +211,10 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
       </div>
 
       <div
-        className="tw:flex tw:shrink-0 tw:items-center"
+        className={
+          'tw:flex tw:shrink-0 tw:items-center' +
+          (isLoading ? ' tw:pointer-events-none tw:opacity-50' : '')
+        }
         data-testid="relation-type-filter-section">
         <SearchDropdown
           hideCounts
@@ -215,9 +229,10 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
         />
       </div>
 
-      {/* Isolated toggle */}
+      {/* Isolated toggle — disabled while loading or when Cross Glossary view removes all non-connected nodes */}
       <Toggle
         data-testid="ontology-isolated-toggle"
+        isDisabled={isLoading || filters.showCrossGlossaryOnly}
         isSelected={filters.showIsolatedNodes}
         label={t('label.isolated')}
         size="sm"
@@ -226,18 +241,43 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
         }
       />
 
-      {onClearAll && hasActiveFilters && (
-        <>
-          <div className="tw:ml-auto" />
+      <div className="tw:ml-auto tw:flex tw:items-center">
+        {onLoadMore !== undefined &&
+          loadedTermCount !== undefined &&
+          totalTermCount !== undefined && (
+            <Typography
+              as="span"
+              className="tw:whitespace-nowrap tw:pr-1 tw:text-(--color-text-tertiary)"
+              size="text-sm">
+              {t('label.loaded-x-of-y-entity', {
+                loaded: loadedTermCount,
+                total: totalTermCount,
+                entity: t('label.term-plural'),
+              })}
+            </Typography>
+          )}
+        {onLoadMore !== undefined && (
+          <Button
+            className="tw:text-brand-600"
+            color="tertiary"
+            data-testid="ontology-load-more-btn"
+            isDisabled={!hasMoreTerms || isLoading || isLoadingMore}
+            size="sm"
+            onClick={onLoadMore}>
+            {t('label.load-more')}
+          </Button>
+        )}
+        {onClearAll && hasActiveFilters && (
           <Button
             color="tertiary"
             data-testid="ontology-clear-all-btn"
+            isDisabled={isLoading}
             size="sm"
             onClick={onClearAll}>
             {t('label.clear-entity', { entity: t('label.all-lowercase') })}
           </Button>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 };

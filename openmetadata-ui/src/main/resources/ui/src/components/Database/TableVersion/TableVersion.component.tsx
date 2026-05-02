@@ -68,9 +68,6 @@ const TableVersion: React.FC<TableVersionProp> = ({
   tier,
   slashedTableName,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -385,12 +382,9 @@ const TableVersion: React.FC<TableVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={toString(version)}
         entityType={EntityType.TABLE}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );
