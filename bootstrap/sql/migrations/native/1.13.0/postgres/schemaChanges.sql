@@ -361,6 +361,12 @@ CREATE INDEX IF NOT EXISTS idx_er_fromentity_toentity_relation_toid
 --    WHERE version = '1.13.0'
 --      AND sqlstatement LIKE '%idx\_<table>\_fqnhash\_pattern%' ESCAPE '\';
 --
+-- `pipeline_entity` is intentionally excluded: ListFilter.getServiceCondition
+-- special-cases `pipeline_entity` to an EXISTS join on
+-- `pipeline_service_entity` by service name (not `fqnHash LIKE`), and
+-- PipelineResource.list exposes no other prefix-LIKE filter, so a pattern
+-- index on `pipeline_entity.fqnHash` would be unused write overhead.
+--
 -- MySQL is unaffected: every entity-table `fqnHash` column ships with
 -- `CHARACTER SET ascii COLLATE ascii_bin`, a binary collation that already
 -- permits prefix scans on the unique index. This pass is Postgres-only.
@@ -382,8 +388,6 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_metric_entity_fqnhash_pattern
     ON metric_entity (fqnHash varchar_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ml_model_entity_fqnhash_pattern
     ON ml_model_entity (fqnHash varchar_pattern_ops);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pipeline_entity_fqnhash_pattern
-    ON pipeline_entity (fqnHash varchar_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_policy_entity_fqnhash_pattern
     ON policy_entity (fqnHash varchar_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_query_entity_fqnhash_pattern
