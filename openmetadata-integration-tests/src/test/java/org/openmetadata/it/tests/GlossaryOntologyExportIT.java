@@ -48,11 +48,14 @@ import org.testcontainers.utility.DockerImageName;
  * <p>Two layers of isolation, both required:
  *
  * <ul>
- *   <li>The class is in the failsafe {@code sequential-tests} execution group so CI runs it with
- *       {@code parallel.enabled=false}, alone in the JVM.
+ *   <li>The class is in the failsafe {@code sequential-tests} execution group so CI runs it
+ *       with {@code parallel.enabled=false}. The group includes a handful of other IT classes
+ *       that also need serial execution; those still run in the same JVM, but never
+ *       concurrently with each other or with this class — which is what matters for the
+ *       RdfUpdater singleton.
  *   <li>{@code @Isolated} + {@code @Execution(SAME_THREAD)} keep the test safe under
- *       {@code junit-platform.properties} defaults (parallel + concurrent classes), which is what
- *       you get when running from an IDE or any future profile that doesn't route through
+ *       {@code junit-platform.properties} defaults (parallel + concurrent classes), which is
+ *       what you get when running from an IDE or any future profile that doesn't route through
  *       {@code sequential-tests}.
  * </ul>
  */
