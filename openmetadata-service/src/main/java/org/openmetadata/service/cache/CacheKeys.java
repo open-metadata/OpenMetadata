@@ -56,6 +56,15 @@ public final class CacheKeys {
   }
 
   /**
+   * Redis hash key holding cached listing totals for an entity type. Each ListFilter variant
+   * lives as a field (hash of its WHERE clause + bound params) under this single key, so a
+   * single DEL atomically clears every filter variant on create/delete/restore.
+   */
+  public String listCount(String entityType) {
+    return ns + ":lc:" + entityType;
+  }
+
+  /**
    * Cached ancestor chain (topology only) for hierarchical entities, keyed by the descendant's
    * FQN hash. The value is the ordered list of ancestor FQNs.
    *
