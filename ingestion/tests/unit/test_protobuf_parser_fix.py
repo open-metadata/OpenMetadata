@@ -16,14 +16,19 @@ Run with:
 
 import sys
 import types
-from unittest.mock import MagicMock,patch,mock_open
+from unittest.mock import MagicMock, patch, mock_open
 from enum import Enum
 import pytest
 import grpc_tools.protoc
 import os
 
 # ---- PATH FIRST ----
-sys.path.insert(0, r"F:\OpenMetadata\ingestion\src\metadata\parsers")
+sys.path.insert(
+    0,
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../src/metadata/parsers")
+    ),
+)
 
 # ---- STUBS (minimal, single source of truth) ----
 
@@ -46,7 +51,12 @@ table_mod.DataType = DataType
 table_mod.Column = Column
 
 # metadata.generated.schema.type.schema
-schema_mod = types.ModuleType("metadata.generated.schema.type.schema")
+class FieldModel:
+    def __init__(self, name=None, dataType=None, children=None):
+        self.name = name
+        self.dataType = dataType
+        self.children = children
+        schema_mod.FieldModel = FieldModel
 
 class DataTypeTopic(Enum):
     FIXED = "FIXED"
@@ -55,7 +65,7 @@ class FieldModel:
     def __init__(self, name=None, children=None):
         self.name = name
         self.children = children or []
-from unittest.mock import MagicMock
+
 schema_mod.DataTypeTopic = DataTypeTopic
 schema_mod.FieldModel = MagicMock()
 

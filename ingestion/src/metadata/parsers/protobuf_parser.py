@@ -240,9 +240,8 @@ class ProtobufParser:
             module_name = Path(py_file).stem
             message = importlib.import_module(module_name)
 
-            # get the class and create a object instance
-            class_ = getattr(message, snake_to_camel(self.config.schema_name))
-            instance = class_()
+           
+            instance = _resolve_message_class(message, self.config.schema_name)
             return instance  # noqa: RET504, TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
