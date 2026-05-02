@@ -1085,18 +1085,14 @@ export enum TranslogDurability {
  *
  * Index settings applied to live (post-promote) search indexes. Tune for read freshness,
  * durability, and HA. These do not affect bulk reindex throughput; bulkIndexOverrides
- * controls that.
+ * controls that. number_of_shards is intentionally omitted — it can only be set at index
+ * creation time and the staged-index reindex flow uses the static mapping JSON for creation.
  */
 export interface IndexSettings {
     /**
      * Replica shard count. 1 for HA on multi-node clusters; 0 for single-node.
      */
     numberOfReplicas?: number;
-    /**
-     * Primary shard count. Cannot be changed after creation. Aim for 10-50 GB per shard; 1 is
-     * correct for most OpenMetadata indexes.
-     */
-    numberOfShards?: number;
     /**
      * How often new writes become searchable. '1s' = near-real-time (default; required if
      * users/agents read-after-write). Higher values reduce CPU/segment churn but delay search
