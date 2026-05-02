@@ -61,9 +61,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   tier,
   slashedPipelineName,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -314,12 +311,9 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={version ?? ''}
         entityType={EntityType.PIPELINE}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );
