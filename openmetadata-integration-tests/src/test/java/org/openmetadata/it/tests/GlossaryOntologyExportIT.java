@@ -15,9 +15,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
@@ -40,16 +37,13 @@ import org.testcontainers.utility.DockerImageName;
  * <p>Tests verify that glossaries can be exported as RDF ontologies in various formats (Turtle,
  * RDF/XML, N-Triples, JSON-LD) with proper SKOS vocabulary mapping.
  *
- * <p>Test isolation: Uses TestNamespace for unique entity naming.
- *
- * <p>Parallelization: Annotated {@code @Isolated} because {@link RdfUpdater} is a JVM-wide
- * singleton. {@code @BeforeAll} flips it on, so any test class running concurrently starts doing
- * synchronous Fuseki writes on every entity create — saturating the Dropwizard thread pool and
- * causing 60s request timeouts (see issue #27649). {@code @Execution(SAME_THREAD)} alone only
- * serializes within this class and does not prevent that cross-class leakage.
+ * <p>{@link RdfUpdater} is a JVM-wide singleton; {@code @BeforeAll} flips it on and makes every
+ * entity create in the same JVM do a synchronous Fuseki write. Running concurrently with other
+ * IT classes saturates the Dropwizard thread pool and produces 60s request timeouts (issue
+ * #27649). This class is registered in the failsafe {@code sequential-tests} execution group so
+ * it runs alone with {@code parallel.enabled=false}; that is what actually prevents the
+ * cross-class leakage. {@code @Isolated} on the class is insufficient.
  */
-@Isolated
-@Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(TestNamespaceExtension.class)
 public class GlossaryOntologyExportIT {
 
