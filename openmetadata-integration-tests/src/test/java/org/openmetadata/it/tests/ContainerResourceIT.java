@@ -845,6 +845,38 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     boolean childInRootList =
         rootContainers.getData().stream().anyMatch(c -> c.getId().equals(child.getId()));
     assertFalse(childInRootList, "Child container should not appear in root containers list");
+
+    // Default `?service=...` listing (no root flag) MUST include child containers.
+    // Regression guard: a previous JDBI override on ContainerDAO that shared its Java
+    // signature with the EntityDAO base accidentally applied the root-only NOT EXISTS
+    // predicate to every list call, silently dropping children. That broke
+    // `metadata.list_all_entities(Container, ...)` in the Python ingestion side and
+    // produced 0-record auto-classification runs.
+    ListParams allParams = new ListParams();
+    allParams.setService(service.getFullyQualifiedName());
+
+    ListResponse<Container> allContainers = listEntities(allParams);
+    assertNotNull(allContainers);
+    assertNotNull(allContainers.getData());
+
+    boolean childInAllList =
+        allContainers.getData().stream().anyMatch(c -> c.getId().equals(child.getId()));
+    assertTrue(
+        childInAllList,
+        "Child container must appear in default `?service=...` listing (without root=true)");
+
+    long allMatchingCount =
+        allContainers.getData().stream()
+            .filter(
+                c ->
+                    c.getId().equals(root1.getId())
+                        || c.getId().equals(root2.getId())
+                        || c.getId().equals(child.getId()))
+            .count();
+    assertEquals(
+        3,
+        allMatchingCount,
+        "`?service=...` must return roots and children (got " + allMatchingCount + ")");
   }
 
   @Test
