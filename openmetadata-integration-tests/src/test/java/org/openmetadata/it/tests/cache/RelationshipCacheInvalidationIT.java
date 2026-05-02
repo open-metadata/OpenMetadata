@@ -41,13 +41,11 @@ import org.openmetadata.sdk.network.RequestOptions;
  * End-to-end coverage for the inline cache invalidation added to the relationship mutation path
  * (Bug B in the cache audit). Exercises the round-trip: assign a domain to a table via PATCH,
  * read it back, remove the domain, read it back. The PATCH path goes through
- * {@code addRelationship} / {@code deleteRelationship}; without the fix, the source-side bundle
- * cache (here: the domain's) keeps stale data — pre-fix this manifests as the cached list of
- * domain-tagged refs not picking up the latest asset assignment.
- *
- * <p>Both sides of the relationship are read after each mutation. Assertions check that the
- * domains field on the table matches the latest state — without the fix the inline mutation path
- * wouldn't drop the table's bundle and a cache read would surface the previous value.
+ * {@code addRelationship} / {@code deleteRelationship}; the assertion is on the *table* side
+ * (the cacheable entity) — without the fix the inline mutation path wouldn't drop the table's
+ * bundle / domains relationship cache, and a cache read would surface the previous {@code
+ * domains} field. Domain itself is in {@code UNCACHED_ENTITY_TYPES}, so its cached refs aren't
+ * the variable being tested here.
  *
  * <p>Tests are skipped without a Redis cache provider.
  */

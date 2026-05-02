@@ -2979,7 +2979,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * documents. Run this BEFORE the async search reindex starts so the search query still matches
    * documents by the old tag FQN.
    *
-   * <p>Recently-tagged entities not yet in search are missed; they fall back to the entity TTL.
+   * <p><b>Consistency tradeoff:</b> coverage is bounded by search-index freshness. Entities
+   * tagged recently enough that the indexer hasn't picked them up are missed and fall back to
+   * the entity TTL (default 48h). On busy clusters with replication lag this can be minutes.
+   * If strict consistency is ever required, a direct {@code tag_usage} table query joined back
+   * to each candidate entity table would be more reliable at the cost of one round-trip per
+   * candidate type.
    */
   public static int invalidateCacheForTaggedEntities(String tagFqn) {
     if (nullOrEmpty(tagFqn)) {

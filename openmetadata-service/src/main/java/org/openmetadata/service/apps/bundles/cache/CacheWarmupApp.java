@@ -75,20 +75,29 @@ import org.quartz.JobExecutionContext;
  *       worst case is redundant SETs of identical JSON.</li>
  * </ul>
  *
- * <p>The more expensive {@code bundle:{<uuid>}:<type>} entries are populated on first read via
- * {@link org.openmetadata.service.cache.CachedReadBundle}; pre-warming the bundle would require
- * full relationship hydration (the thing this app is trying to avoid) and is intentionally not
- * done here.
+ * <p>The {@code bundle:{<uuid>}:<type>} entries are pre-warmed by default via
+ * {@link org.openmetadata.service.cache.BundleWarmupBatcher}, which uses the cheap batched
+ * tag_usage query to populate tags + certification (the parts of the bundle that don't require
+ * full relationship hydration). Relations are left null so the {@link
+ * org.openmetadata.service.cache.CachedReadBundle} read path lazily populates them on first
+ * read. Set {@code warmBundles=false} in the app config (or
+ * {@code -Dom.cache.warmBundles=false} at JVM start) to skip the bundle pass for very large
+ * installs.
+ *
+ * <p>Optional opt-in {@code enableDistributedClaim=true} adds a Redis SETNX-based per-entity-
+ * type claim so multi-instance deployments avoid redundant DB scans. Per-entity-type checkpoints
+ * persist warmup progress across restarts; an aborted run resumes from the last successfully
+ * pipelined offset.
  */
 @Slf4j
 public class CacheWarmupApp extends AbstractNativeApplication {
   private static final String ALL = "all";
   private static final int DEFAULT_BATCH_SIZE = 1000;
-  // Per-entity-type checkpoint keys live under their own namespace so we can list/clear them
-  // without colliding with normal cache traffic. TTL is one day — long enough for ops staff to
-  // notice and resume a stuck warmup, short enough that abandoned checkpoints self-clean.
-  private static final String CHECKPOINT_KEY_PREFIX = "om:warmup:checkpoint:";
-  private static final String CLAIM_KEY_PREFIX = "om:warmup:claim:";
+  // Built per-instance from cacheConfig.redis.keyspace so multi-environment deployments sharing
+  // one Redis with different keyspaces don't collide on warmup metadata. TTL is one day for
+  // checkpoints (long enough for ops staff to notice and resume a stuck warmup, short enough
+  // that abandoned checkpoints self-clean). Claim TTL is short enough to limit the
+  // stop-the-world hold if an instance dies mid-warm.
   private static final Duration CHECKPOINT_TTL = Duration.ofDays(1);
   private static final Duration CLAIM_TTL = Duration.ofMinutes(10);
 
@@ -98,12 +107,15 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   private CacheKeys keys;
   private CacheConfig cacheConfig;
   private BundleWarmupBatcher bundleBatcher;
+  // Set during initCacheComponents from cacheConfig.redis.keyspace.
+  private String checkpointKeyPrefix;
+  private String claimKeyPrefix;
   private final String instanceId = generateInstanceId();
-  // Toggle bundle warmup off via -Dom.cache.warmBundles=false at JVM start. Defaults to true so
-  // production deployments get the first-read benefit without config changes.
-  private final boolean warmBundles =
+  // Read in initJobData from the user-supplied app config (cacheWarmupAppConfig schema). System
+  // properties remain a fallback for cases where the app record isn't editable (e.g. bootstrap).
+  private boolean warmBundles =
       Boolean.parseBoolean(System.getProperty("om.cache.warmBundles", "true"));
-  private final boolean enableDistributedClaim =
+  private boolean enableDistributedClaim =
       Boolean.parseBoolean(System.getProperty("om.cache.warmup.distributedClaim", "false"));
 
   private JobExecutionContext jobExecutionContext;
@@ -120,6 +132,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   public void init(App app) {
     super.init(app);
     jobData = JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class);
+    readAppConfigFlags();
   }
 
   @Override
@@ -153,9 +166,40 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     cacheConfig = CacheBundle.getCacheConfig();
     if (cacheConfig != null) {
       keys = new CacheKeys(cacheConfig.redis.keyspace);
+      String ks = cacheConfig.redis.keyspace == null ? "om:prod" : cacheConfig.redis.keyspace;
+      checkpointKeyPrefix = ks + ":warmup:checkpoint:";
+      claimKeyPrefix = ks + ":warmup:claim:";
     }
     if (warmBundles && cacheProvider != null && keys != null) {
       bundleBatcher = new BundleWarmupBatcher(collectionDAO, cacheProvider, keys);
+    }
+  }
+
+  /**
+   * Pull the user-supplied warmBundles / enableDistributedClaim flags out of the raw app config
+   * map. The runtime parses the same payload as {@link EventPublisherJob}, which doesn't include
+   * these fields, so we read them from the original map rather than trying to extend the
+   * EventPublisherJob schema.
+   */
+  private void readAppConfigFlags() {
+    if (getApp() == null || getApp().getAppConfiguration() == null) {
+      return;
+    }
+    try {
+      Map<?, ?> raw = JsonUtils.convertValue(getApp().getAppConfiguration(), Map.class);
+      if (raw == null) {
+        return;
+      }
+      Object wb = raw.get("warmBundles");
+      if (wb instanceof Boolean) {
+        warmBundles = (Boolean) wb;
+      }
+      Object dc = raw.get("enableDistributedClaim");
+      if (dc instanceof Boolean) {
+        enableDistributedClaim = (Boolean) dc;
+      }
+    } catch (Exception e) {
+      LOG.debug("Could not read warmBundles / enableDistributedClaim from app config", e);
     }
   }
 
@@ -328,34 +372,48 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   }
 
   private boolean claimEntityType(String entityType) {
-    if (cacheProvider == null || !cacheProvider.available()) {
+    if (cacheProvider == null || !cacheProvider.available() || claimKeyPrefix == null) {
       return true;
     }
     try {
-      return cacheProvider.setIfAbsent(CLAIM_KEY_PREFIX + entityType, instanceId, CLAIM_TTL);
+      return cacheProvider.setIfAbsent(claimKeyPrefix + entityType, instanceId, CLAIM_TTL);
     } catch (Exception e) {
       LOG.debug("Claim attempt failed, proceeding without lock for {}", entityType, e);
       return true;
     }
   }
 
+  /**
+   * Compare-and-delete release. If our claim's TTL expired and another instance acquired the key
+   * mid-warm, we must NOT delete their lock. We GET the current owner and only DEL when it
+   * still matches our {@link #instanceId}. This is a non-atomic check (a second instance could
+   * still acquire between our GET and DEL), but the resulting cost is at most one redundant
+   * concurrent warm — the Redis writes are idempotent.
+   */
   private void releaseClaim(String entityType) {
-    if (cacheProvider == null || !cacheProvider.available()) {
+    if (cacheProvider == null || !cacheProvider.available() || claimKeyPrefix == null) {
       return;
     }
+    String key = claimKeyPrefix + entityType;
     try {
-      cacheProvider.del(CLAIM_KEY_PREFIX + entityType);
+      String owner = cacheProvider.get(key).orElse(null);
+      if (instanceId.equals(owner)) {
+        cacheProvider.del(key);
+      } else if (owner != null) {
+        LOG.debug(
+            "Skipping release of claim {} — owner {} != self {}", entityType, owner, instanceId);
+      }
     } catch (Exception e) {
       LOG.debug("Failed to release claim for {}", entityType, e);
     }
   }
 
   private int readCheckpoint(String entityType) {
-    if (cacheProvider == null || !cacheProvider.available()) {
+    if (cacheProvider == null || !cacheProvider.available() || checkpointKeyPrefix == null) {
       return 0;
     }
     try {
-      return cacheProvider.get(CHECKPOINT_KEY_PREFIX + entityType).map(Integer::parseInt).orElse(0);
+      return cacheProvider.get(checkpointKeyPrefix + entityType).map(Integer::parseInt).orElse(0);
     } catch (Exception e) {
       LOG.debug("Failed to read checkpoint for {}", entityType, e);
       return 0;
@@ -363,23 +421,22 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   }
 
   private void writeCheckpoint(String entityType, int offset) {
-    if (cacheProvider == null || !cacheProvider.available()) {
+    if (cacheProvider == null || !cacheProvider.available() || checkpointKeyPrefix == null) {
       return;
     }
     try {
-      cacheProvider.set(
-          CHECKPOINT_KEY_PREFIX + entityType, Integer.toString(offset), CHECKPOINT_TTL);
+      cacheProvider.set(checkpointKeyPrefix + entityType, Integer.toString(offset), CHECKPOINT_TTL);
     } catch (Exception e) {
       LOG.debug("Failed to write checkpoint for {} at {}", entityType, offset, e);
     }
   }
 
   private void clearCheckpoint(String entityType) {
-    if (cacheProvider == null || !cacheProvider.available()) {
+    if (cacheProvider == null || !cacheProvider.available() || checkpointKeyPrefix == null) {
       return;
     }
     try {
-      cacheProvider.del(CHECKPOINT_KEY_PREFIX + entityType);
+      cacheProvider.del(checkpointKeyPrefix + entityType);
     } catch (Exception e) {
       LOG.debug("Failed to clear checkpoint for {}", entityType, e);
     }
@@ -401,17 +458,40 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     if (total <= 0) {
       return;
     }
-    double coverage = (double) success / total;
+    // Prefer the actual Redis key count when the provider supports it — this gives the true
+    // end-state coverage including pages warmed by prior resumed runs. Fall back to the
+    // current-run success count when SCAN is unsupported (negative return). Same reasoning for
+    // the bundle pass below.
+    long entityKeys = scanEntityKeyCount(entityType);
+    double coverage = entityKeys >= 0 ? (double) entityKeys / total : (double) success / total;
     metrics.recordCoverage(entityType, coverage);
     if (coverage < 0.95) {
       LOG.warn(
           "Cache coverage below threshold for {}: {}/{} ({}%)",
-          entityType, success, total, Math.round(coverage * 100));
+          entityType, entityKeys >= 0 ? entityKeys : success, total, Math.round(coverage * 100));
     }
     if (bundleBatcher != null) {
-      double bundleCoverage = (double) bundlesWritten / total;
+      long bundleKeys = scanBundleKeyCount(entityType);
+      double bundleCoverage =
+          bundleKeys >= 0 ? (double) bundleKeys / total : (double) bundlesWritten / total;
       metrics.recordBundleCoverage(entityType, bundleCoverage);
     }
+  }
+
+  private long scanEntityKeyCount(String entityType) {
+    if (cacheProvider == null || cacheConfig == null || !cacheProvider.available()) {
+      return -1L;
+    }
+    return cacheProvider.scanCount(cacheConfig.redis.keyspace + ":e:" + entityType + ":*");
+  }
+
+  private long scanBundleKeyCount(String entityType) {
+    if (cacheProvider == null || cacheConfig == null || !cacheProvider.available()) {
+      return -1L;
+    }
+    // CacheKeys.bundle wraps the id portion in {} for hash-tag colocation:
+    // om:<ks>:bundle:{<id>}:<type> — match all those for this type.
+    return cacheProvider.scanCount(cacheConfig.redis.keyspace + ":bundle:*:" + entityType);
   }
 
   private static String generateInstanceId() {
