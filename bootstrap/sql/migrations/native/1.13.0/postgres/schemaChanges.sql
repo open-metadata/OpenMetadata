@@ -316,3 +316,68 @@ CREATE INDEX IF NOT EXISTS idx_rdf_index_server_stats_job_id ON rdf_index_server
 -- scan instead of materializing the child-edge set.
 CREATE INDEX IF NOT EXISTS idx_er_fromentity_toentity_relation_toid
     ON entity_relationship (fromEntity, toEntity, relation, toId);
+
+-- Speed up `?service=` / `?database=` / `?databaseSchema=` / `?parent=` /
+-- `?apiCollection=` / `?spreadsheet=` / `?testSuite=` listings on entity
+-- tables. ListFilter.getFqnPrefixCondition turns each of these query params
+-- into a `<table>.fqnHash LIKE :prefix%` predicate. The unique B-tree index
+-- on `fqnHash` uses the default `text_ops` opclass, and the column inherits
+-- the database default collation (typically `en_US.UTF-8` on managed Postgres
+-- / RDS). Neither qualifies the planner to use the index for `LIKE 'prefix%'`,
+-- so count(*) and the page query degrade to a parallel seq scan over the
+-- JSONB heap — observed at ~3s on a ~580k-row storage_container_entity table
+-- even with ANALYZE / VACUUM tuned. A `text_pattern_ops` index supports
+-- LIKE-prefix lookups regardless of column collation, dropping cold count(*)
+-- on a service-filtered listing from seconds to tens of milliseconds.
+--
+-- MySQL is unaffected: every entity-table `fqnHash` column ships with
+-- `CHARACTER SET ascii COLLATE ascii_bin`, a binary collation that already
+-- permits prefix scans on the unique index. This pass is Postgres-only.
+CREATE INDEX IF NOT EXISTS idx_chart_entity_fqnhash_pattern
+    ON chart_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_dashboard_entity_fqnhash_pattern
+    ON dashboard_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_dashboard_data_model_entity_fqnhash_pattern
+    ON dashboard_data_model_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_database_entity_fqnhash_pattern
+    ON database_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_database_schema_entity_fqnhash_pattern
+    ON database_schema_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_glossary_term_entity_fqnhash_pattern
+    ON glossary_term_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_ingestion_pipeline_entity_fqnhash_pattern
+    ON ingestion_pipeline_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_metric_entity_fqnhash_pattern
+    ON metric_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_ml_model_entity_fqnhash_pattern
+    ON ml_model_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_pipeline_entity_fqnhash_pattern
+    ON pipeline_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_policy_entity_fqnhash_pattern
+    ON policy_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_query_entity_fqnhash_pattern
+    ON query_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_report_entity_fqnhash_pattern
+    ON report_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_search_index_entity_fqnhash_pattern
+    ON search_index_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_storage_container_entity_fqnhash_pattern
+    ON storage_container_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_table_entity_fqnhash_pattern
+    ON table_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_test_case_fqnhash_pattern
+    ON test_case (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_topic_entity_fqnhash_pattern
+    ON topic_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_api_collection_entity_fqnhash_pattern
+    ON api_collection_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_api_endpoint_entity_fqnhash_pattern
+    ON api_endpoint_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_directory_entity_fqnhash_pattern
+    ON directory_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_file_entity_fqnhash_pattern
+    ON file_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_spreadsheet_entity_fqnhash_pattern
+    ON spreadsheet_entity (fqnHash text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_worksheet_entity_fqnhash_pattern
+    ON worksheet_entity (fqnHash text_pattern_ops);
