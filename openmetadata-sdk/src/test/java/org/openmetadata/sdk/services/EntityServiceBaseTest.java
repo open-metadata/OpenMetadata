@@ -268,6 +268,87 @@ class EntityServiceBaseTest {
   }
 
   @Test
+  void testUpsertThenUpdate_usesSnapshotFromUpsertResponse() {
+    String tableId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+    Table upserted = new Table();
+    upserted.setId(java.util.UUID.fromString(tableId));
+    upserted.setName("t");
+    upserted.setDescription("from-upsert");
+
+    when(mockHttpClient.execute(
+            eq(HttpMethod.PUT), eq("/v1/tables"), eq(upserted), eq(Table.class)))
+        .thenReturn(upserted);
+    when(mockHttpClient.execute(
+            eq(HttpMethod.PATCH),
+            eq("/v1/tables/" + tableId),
+            any(JsonNode.class),
+            eq(Table.class),
+            any()))
+        .thenReturn(upserted);
+
+    Table response = tableService.upsert(upserted);
+    response.setDescription("changed");
+    tableService.update(tableId, response);
+
+    verify(mockHttpClient, never())
+        .execute(eq(HttpMethod.GET), eq("/v1/tables/" + tableId), isNull(), eq(Table.class));
+    verify(mockHttpClient, never())
+        .execute(
+            eq(HttpMethod.GET),
+            eq("/v1/tables/" + tableId),
+            isNull(),
+            eq(Table.class),
+            any(RequestOptions.class));
+  }
+
+  @Test
+  void testRawPatchThenUpdate_usesSnapshotFromPatchResponse() {
+    String tableId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+    Table afterPatch = new Table();
+    afterPatch.setId(java.util.UUID.fromString(tableId));
+    afterPatch.setName("t");
+    afterPatch.setDescription("from-raw-patch");
+
+    com.fasterxml.jackson.databind.node.ObjectNode patchOp =
+        new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode();
+    patchOp.put("op", "replace");
+    patchOp.put("path", "/description");
+    patchOp.put("value", "from-raw-patch");
+    com.fasterxml.jackson.databind.node.ArrayNode patchDoc =
+        new com.fasterxml.jackson.databind.ObjectMapper().createArrayNode().add(patchOp);
+
+    when(mockHttpClient.execute(
+            eq(HttpMethod.PATCH),
+            eq("/v1/tables/" + tableId),
+            eq(patchDoc),
+            eq(Table.class),
+            any()))
+        .thenReturn(afterPatch);
+    when(mockHttpClient.execute(
+            eq(HttpMethod.PATCH),
+            eq("/v1/tables/" + tableId),
+            any(JsonNode.class),
+            eq(Table.class),
+            any()))
+        .thenReturn(afterPatch);
+
+    tableService.patch(tableId, patchDoc);
+
+    afterPatch.setDescription("changed-again");
+    tableService.update(tableId, afterPatch);
+
+    verify(mockHttpClient, never())
+        .execute(eq(HttpMethod.GET), eq("/v1/tables/" + tableId), isNull(), eq(Table.class));
+    verify(mockHttpClient, never())
+        .execute(
+            eq(HttpMethod.GET),
+            eq("/v1/tables/" + tableId),
+            isNull(),
+            eq(Table.class),
+            any(RequestOptions.class));
+  }
+
+  @Test
   void testList() {
     // Create JSON response string that matches what the API would return
     String jsonResponse =
