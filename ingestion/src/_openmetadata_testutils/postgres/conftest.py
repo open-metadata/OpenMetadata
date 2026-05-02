@@ -22,7 +22,7 @@ def config_logging():
 def postgres_container(tmp_path_factory):
     """Start a PostgreSQL container with the dvdrental database."""
     data_dir = tmp_path_factory.mktemp("data")
-    dvd_rental_zip = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "dvdrental.zip")
+    dvd_rental_zip = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "dvdrental.zip")  # noqa: PTH118, PTH120
     zipfile.ZipFile(dvd_rental_zip, "r").extractall(str(data_dir))
     container = PostgresContainer("postgres:15", dbname="dvdrental")
     container._command = [

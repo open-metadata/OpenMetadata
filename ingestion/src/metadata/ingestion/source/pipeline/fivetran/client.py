@@ -13,7 +13,7 @@ Client to interact with fivetran apis
 """
 
 import base64
-from typing import Iterable
+from typing import Iterable  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,

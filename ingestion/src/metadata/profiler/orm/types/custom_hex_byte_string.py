@@ -39,7 +39,7 @@ class HexByteString(TypeDecorator):
         return str
 
     @staticmethod
-    def validate(value: Union[bytes, bytearray, memoryview]):
+    def validate(value: Union[bytes, bytearray, memoryview]):  # noqa: UP007
         """
         Make sure the data is of correct type
         """
@@ -49,7 +49,7 @@ class HexByteString(TypeDecorator):
                 f" Received {type(value).__name__}."
             )
 
-    def process_result_value(self, value: Optional[Union[bytes, bytearray, memoryview]], dialect) -> Optional[str]:
+    def process_result_value(self, value: Optional[Union[bytes, bytearray, memoryview]], dialect) -> Optional[str]:  # noqa: UP007, UP045
         """This is executed during result retrieval
 
         Args:
@@ -73,7 +73,7 @@ class HexByteString(TypeDecorator):
                 # Replace NULL_BYTE with empty string to avoid errors with
                 # the database client (should be O(n))
                 str_value = str_value.replace(NULL_BYTE, "") if NULL_BYTE in str_value else str_value
-                return str_value
+                return str_value  # noqa: RET504, TRY300
             except Exception as exc:
                 logger.debug("Failed to parse bytes value as string: %s", exc)
                 logger.debug(traceback.format_exc())

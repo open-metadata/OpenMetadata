@@ -12,7 +12,7 @@
 """Athena utils module"""
 
 from copy import deepcopy
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional  # noqa: UP035
 
 from pyathena.sqlalchemy.util import _HashableDict
 from sqlalchemy import text, types
@@ -70,7 +70,7 @@ def _get_column_type(self, type_):
     if name in ["decimal", "char", "varchar"]:
         col_type = col_map[name]
         if length:
-            args = [int(l) for l in length.split(",")]
+            args = [int(l) for l in length.split(",")]  # noqa: E741
     elif type_.startswith("array"):
         parsed_type = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
             type_
@@ -92,7 +92,7 @@ def _get_column_type(self, type_):
 
 
 # pylint: disable=unused-argument
-def _get_projection_details(columns: List[Dict], projection_parameters: Dict) -> List[Dict]:
+def _get_projection_details(columns: List[Dict], projection_parameters: Dict) -> List[Dict]:  # noqa: UP006
     """Get the projection details for the columns
 
     Args:
@@ -142,7 +142,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             if key_.startswith("projection") and key_.endswith("type")
         }
         columns = _get_projection_details(columns, projection_parameters)
-        return columns
+        return columns  # noqa: RET504
 
     # Check if this is an Iceberg table
     if metadata.parameters.get("table_type") == "ICEBERG":
@@ -193,7 +193,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     )
 
             columns += current_columns
-            return columns
+            return columns  # noqa: TRY300
 
         except Exception as e:
             # If we can't get Glue metadata, fall back to the original method
@@ -241,8 +241,8 @@ def get_table_options(
     self,
     connection: "Connection",  # noqa: F821
     table_name: str,
-    schema: Optional[str] = None,
-    **kw,  # noqa: F821
+    schema: Optional[str] = None,  # noqa: UP045
+    **kw,  # noqa: F821, RUF100
 ):
     metadata = self._get_table(connection, table_name, schema=schema, **kw)
     return {

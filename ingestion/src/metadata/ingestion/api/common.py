@@ -33,7 +33,7 @@ class ConfigModel(BaseModel):
 
 class DynamicTypedConfig(ConfigModel):
     type: str
-    config: Optional[Any] = None
+    config: Optional[Any] = None  # noqa: UP045
 
 
 class WorkflowExecutionError(Exception):

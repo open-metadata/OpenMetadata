@@ -17,7 +17,7 @@ EXASOL_SQL_STATEMENT = textwrap.dedent(
     AND start_time between TO_TIMESTAMP('{start_time}') and TO_TIMESTAMP('{end_time}')
     {filters}
     LIMIT {result_limit}
-    """
+    """  # noqa: W291
 )
 
 EXASOL_TEST_GET_QUERIES = """

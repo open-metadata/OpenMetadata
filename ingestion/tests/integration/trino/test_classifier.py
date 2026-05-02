@@ -45,7 +45,7 @@ def _run_classifier_with_retry(
                 max_retries,
             )
             run_workflow(AutoClassificationWorkflow, classifier_config)
-            return
+            return  # noqa: TRY300
         except Exception as e:
             last_error = e
 

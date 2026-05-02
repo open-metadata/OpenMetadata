@@ -61,9 +61,6 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
   tier,
   breadCrumbList,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -290,12 +287,9 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={toString(version)}
         entityType={EntityType.CONTAINER}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );
