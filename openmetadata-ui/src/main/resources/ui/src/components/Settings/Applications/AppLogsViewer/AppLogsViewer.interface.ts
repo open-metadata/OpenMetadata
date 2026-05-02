@@ -67,8 +67,10 @@ export interface EntityStatsData {
   successRecords: number;
   failedRecords: number;
   vectorEmbeddings: number | null;
+  readerAvgMs: string;
+  processAvgMs: string;
   sinkAvgMs: string;
-  sinkThroughput: string;
+  vectorAvgMs: string;
 }
 
 export interface ServerStats {

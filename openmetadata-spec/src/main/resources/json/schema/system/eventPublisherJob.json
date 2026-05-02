@@ -54,6 +54,34 @@
           "existingJavaType": "java.lang.Long",
           "default": 0,
           "minimum": 0
+        },
+        "readerTimeMs": {
+          "description": "Per-entity Reader (DB) cumulative time in ms. Populated only on per-entity StepStats inside Stats.entityStats so the UI can show Reader latency per entity. Job-level Reader time uses Stats.readerStats.totalTimeMs.",
+          "type": "integer",
+          "existingJavaType": "java.lang.Long",
+          "default": 0,
+          "minimum": 0
+        },
+        "processTimeMs": {
+          "description": "Per-entity Process (doc-build) cumulative time in ms.",
+          "type": "integer",
+          "existingJavaType": "java.lang.Long",
+          "default": 0,
+          "minimum": 0
+        },
+        "sinkTimeMs": {
+          "description": "Per-entity Sink (OpenSearch / Elasticsearch bulk) cumulative time in ms.",
+          "type": "integer",
+          "existingJavaType": "java.lang.Long",
+          "default": 0,
+          "minimum": 0
+        },
+        "vectorTimeMs": {
+          "description": "Per-entity Vector (embedding API) cumulative time in ms.",
+          "type": "integer",
+          "existingJavaType": "java.lang.Long",
+          "default": 0,
+          "minimum": 0
         }
       }
     },

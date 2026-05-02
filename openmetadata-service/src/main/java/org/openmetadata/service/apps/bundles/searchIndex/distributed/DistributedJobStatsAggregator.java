@@ -363,11 +363,13 @@ public class DistributedJobStatsAggregator {
         stepStats.setTotalRecords(safeToInt(es.getTotalRecords()));
         stepStats.setSuccessRecords(safeToInt(es.getSuccessRecords()));
         stepStats.setFailedRecords(safeToInt(es.getFailedRecords()));
-        // Per-entity stage timing — Sink time is the dominant signal here, since each entity
-        // type writes a distinct OS index and Sink latency separates OS-side back-pressure
-        // from upstream reader/process. We expose Sink as the entity StepStats.totalTimeMs
-        // so the per-entity table can show "how long is this entity's bulk write taking".
-        stepStats.setTotalTimeMs(es.getSinkTimeMs());
+        // Per-entity stage timing — surface ALL four stage timings on the entity-level
+        // StepStats so the UI table can render Reader / Process / Sink / Vector avg latencies
+        // side-by-side. Job-level totals still use the per-stage StepStats.totalTimeMs.
+        stepStats.setReaderTimeMs(es.getReaderTimeMs());
+        stepStats.setProcessTimeMs(es.getProcessTimeMs());
+        stepStats.setSinkTimeMs(es.getSinkTimeMs());
+        stepStats.setVectorTimeMs(es.getVectorTimeMs());
 
         CollectionDAO.SearchIndexServerStatsDAO.EntityStats vectorEntityStats =
             vectorByEntity.get(entry.getKey());

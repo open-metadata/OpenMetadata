@@ -400,10 +400,12 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
         if (entityStats != null) {
           entityStats.setSuccessRecords(saturatedToInt(entry.getValue().getSuccessRecords()));
           entityStats.setFailedRecords(saturatedToInt(entry.getValue().getFailedRecords()));
-          // Surface per-entity sink time as the entity's totalTimeMs (same convention as the
-          // periodic aggregator) so the per-entity table renders OS-side latency consistently
-          // before and after job completion.
-          entityStats.setTotalTimeMs(entry.getValue().getSinkTimeMs());
+          // Surface all four stage timings on the entity-level StepStats so the UI per-entity
+          // table can show Reader / Process / Sink / Vector avg latencies side-by-side.
+          entityStats.setReaderTimeMs(entry.getValue().getReaderTimeMs());
+          entityStats.setProcessTimeMs(entry.getValue().getProcessTimeMs());
+          entityStats.setSinkTimeMs(entry.getValue().getSinkTimeMs());
+          entityStats.setVectorTimeMs(entry.getValue().getVectorTimeMs());
         }
       }
     }

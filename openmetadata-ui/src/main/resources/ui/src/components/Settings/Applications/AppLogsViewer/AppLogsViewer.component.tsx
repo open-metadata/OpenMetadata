@@ -315,7 +315,27 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
               ]
             : []),
           {
-            title: t('label.sink-avg-latency'),
+            title: t('label.reader-avg'),
+            dataIndex: 'readerAvgMs',
+            key: 'readerAvgMs',
+            render: (value: string) => (
+              <Typography.Text data-testid="entity-reader-avg">
+                {value}
+              </Typography.Text>
+            ),
+          },
+          {
+            title: t('label.process-avg'),
+            dataIndex: 'processAvgMs',
+            key: 'processAvgMs',
+            render: (value: string) => (
+              <Typography.Text data-testid="entity-process-avg">
+                {value}
+              </Typography.Text>
+            ),
+          },
+          {
+            title: t('label.sink-avg'),
             dataIndex: 'sinkAvgMs',
             key: 'sinkAvgMs',
             render: (value: string) => (
@@ -324,16 +344,20 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
               </Typography.Text>
             ),
           },
-          {
-            title: t('label.sink-throughput'),
-            dataIndex: 'sinkThroughput',
-            key: 'sinkThroughput',
-            render: (value: string) => (
-              <Typography.Text data-testid="entity-sink-throughput">
-                {value}
-              </Typography.Text>
-            ),
-          },
+          ...(successContext?.stats?.vectorStats?.totalRecords
+            ? [
+                {
+                  title: t('label.vector-avg'),
+                  dataIndex: 'vectorAvgMs',
+                  key: 'vectorAvgMs',
+                  render: (value: string) => (
+                    <Typography.Text data-testid="entity-vector-avg">
+                      {value}
+                    </Typography.Text>
+                  ),
+                },
+              ]
+            : []),
         ];
   }, [successContext, failureContext]);
 

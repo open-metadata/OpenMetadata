@@ -99,16 +99,25 @@ export const getEntityStatsData = (data: {
           vectorEmbeddings: isVectorIndexable
             ? stats.vectorSuccessRecords ?? 0
             : null,
-          // Sink time per entity — populated by the backend's per-entity step stats so
-          // the per-entity table can show OS-side latency for each entity. Other stage
-          // timings live on the top-level reader/process/sink/vector stats cards.
-          sinkAvgMs: formatLatencyAverage(
-            stats.totalTimeMs,
+          // Per-entity stage timing — backend populates all four on the entity StepStats
+          // so the table can show Reader / Process / Sink / Vector avg latencies
+          // side-by-side. Reader avg climbing for one entity = DB read for that entity is
+          // dragging; Sink avg climbing = OS write for that entity is dragging.
+          readerAvgMs: formatLatencyAverage(
+            stats.readerTimeMs,
             stats.successRecords
           ),
-          sinkThroughput: formatThroughput(
-            stats.totalTimeMs,
+          processAvgMs: formatLatencyAverage(
+            stats.processTimeMs,
             stats.successRecords
+          ),
+          sinkAvgMs: formatLatencyAverage(
+            stats.sinkTimeMs,
+            stats.successRecords
+          ),
+          vectorAvgMs: formatLatencyAverage(
+            stats.vectorTimeMs,
+            stats.vectorSuccessRecords
           ),
         },
       ];
