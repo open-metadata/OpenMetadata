@@ -98,7 +98,8 @@ public final class ListCountCache {
     }
 
     int count = supplier.getAsInt();
-    writeCachedCount(provider, hashKey, filterHash, count, config, entityType);
+    writeCachedCount(
+        provider, hashKey, filterHash, count, Duration.ofSeconds(config.listCountTtlSeconds));
     return count;
   }
 
@@ -140,19 +141,11 @@ public final class ListCountCache {
   }
 
   private static void writeCachedCount(
-      CacheProvider provider,
-      String hashKey,
-      String filterHash,
-      int count,
-      CacheConfig config,
-      String entityType) {
+      CacheProvider provider, String hashKey, String filterHash, int count, Duration ttl) {
     try {
-      provider.hset(
-          hashKey,
-          Map.of(filterHash, String.valueOf(count)),
-          Duration.ofSeconds(config.listCountTtlSeconds));
+      provider.hset(hashKey, Map.of(filterHash, String.valueOf(count)), ttl);
     } catch (Exception e) {
-      LOG.debug("listCount cache write failed for {}: {}", entityType, e.getMessage());
+      LOG.debug("listCount cache write failed for {}: {}", hashKey, e.getMessage());
     }
   }
 
