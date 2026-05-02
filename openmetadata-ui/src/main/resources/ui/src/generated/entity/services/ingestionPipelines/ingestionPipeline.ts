@@ -1695,8 +1695,6 @@ export interface CollateAIAppConfig {
     autoTune?: boolean;
     /**
      * Number of threads to use for reindexing
-     *
-     * Number of parallel threads for processing entities and warming cache.
      */
     consumerThreads?: number;
     /**
@@ -1736,8 +1734,6 @@ export interface CollateAIAppConfig {
     producerThreads?: number;
     /**
      * Queue Size to user internally for reindexing.
-     *
-     * Internal queue size for entity processing pipeline.
      */
     queueSize?: number;
     /**
@@ -1765,9 +1761,20 @@ export interface CollateAIAppConfig {
      */
     useDistributedIndexing?: boolean;
     /**
+     * In multi-instance deployments, claim each entity type via Redis SETNX so only one
+     * instance warms it. Disable to let every instance warm independently (idempotent but
+     * redundant).
+     */
+    enableDistributedClaim?: boolean;
+    /**
      * Force cache warmup even if another instance is detected (use with caution).
      */
     force?: boolean;
+    /**
+     * Pre-warm the per-entity bundle cache (tags + certification) so the first read after
+     * deploy doesn't fan out to the DB. Disable for very large installs.
+     */
+    warmBundles?: boolean;
     /**
      * Enter the retention period for Activity Threads of type = 'Conversation' records in days
      * (e.g., 30 for one month, 60 for two months).

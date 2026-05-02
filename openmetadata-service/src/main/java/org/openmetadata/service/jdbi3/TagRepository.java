@@ -962,6 +962,9 @@ public class TagRepository extends EntityRepository<Tag> {
         LOG.info("Tag FQN changed from {} to {}", oldFqn, newFqn);
         // Drop cache entries for every child tag under this renamed tag BEFORE the DB rewrite.
         invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
+        // Drop cached entity JSON / bundle for every entity tagged with this tag (or any
+        // descendant). Done BEFORE the DB rename so the search lookup still matches by old FQN.
+        invalidateCacheForTaggedEntitiesAndDescendants(Entity.TAG, oldFqn);
         daoCollection.tagDAO().updateFqn(oldFqn, newFqn);
         daoCollection.tagUsageDAO().rename(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
 
