@@ -207,8 +207,8 @@ class ProtobufParser:
             file_path = f"{self.proto_interface_dir}/{self.config.schema_name}.proto"
             with open(file_path, "w", encoding="UTF-8") as file:  # noqa: PTH123
                 file.write(self.config.schema_text)
-            proto_path = "generated=" + self.proto_interface_dir
-            return proto_path, file_path  # noqa: TRY300
+            proto_path = self.proto_interface_dir
+            return proto_path, file_path
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}")
@@ -233,7 +233,8 @@ class ProtobufParser:
             )
 
             # import the python file
-            sys.path.append(self.generated_src_dir)
+            if self.generated_src_dir not in sys.path:
+                sys.path.insert(0, self.generated_src_dir)  # Ensure generated_src_dir is in sys.path
             generated_src_dir_path = Path(self.generated_src_dir)
             py_file = glob.glob(str(generated_src_dir_path.joinpath(f"{self.config.schema_name}_pb2.py")))[0]  # noqa: PTH207
             module_name = Path(py_file).stem
@@ -254,28 +255,49 @@ class ProtobufParser:
         """
 
         try:
-            proto_path, file_path = self.create_proto_files()
-            instance = self.get_protobuf_python_object(proto_path=proto_path, file_path=file_path)
+            result = self.create_proto_files()
+            if result is None:
+                logger.warning(
+                    f"Failed to create proto files for '{self.config.schema_name}'"
+                )
+                return None
+
+            proto_path, file_path = result
+
+            instance = self.get_protobuf_python_object(
+                proto_path=proto_path, file_path=file_path
+            )
+
+            if instance is None:
+                logger.warning(
+                    f"Could not resolve a Protobuf message class for schema '{self.config.schema_name}'."
+                )
+                return None
 
             field_models = [
                 cls(
                     name=instance.DESCRIPTOR.name,
-                    dataType="RECORD",
-                    children=self.get_protobuf_fields(instance.DESCRIPTOR.fields, cls=cls),
+                    dataType=DataType.RECORD.value,
+                    children=self.get_protobuf_fields(
+                        instance.DESCRIPTOR.fields, cls=cls
+                    ),
                 )
             ]
 
-            # Clean up the tmp folder
-            if Path(self.config.base_file_path).exists():
-                shutil.rmtree(self.config.base_file_path)
+            return field_models
 
-            return field_models  # noqa: TRY300
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}")
+            logger.warning(
+                f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}"
+            )
+        
+        finally:
+            if Path(self.config.base_file_path).exists():
+                shutil.rmtree(self.config.base_file_path, ignore_errors=True)
         return None
-
-    def _get_field_type(self, type_: int, cls: Type[BaseModel] = FieldModel) -> str:  # noqa: UP006
+ 
+    def _get_field_type(self, type_: int, cls: Type[BaseModel] = FieldModel) -> str:
         if type_ > 18:
             return DataType.UNKNOWN.value
         data_type = ProtobufDataTypes(type_).name
@@ -306,6 +328,9 @@ class ProtobufParser:
                 )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unable to parse the protobuf schema into models: {exc}")
+                logger.warning(
+                    f"Unable to parse the protobuf schema into models: {exc}"
+                )
+        return None if not field_models else field_models
 
-        return field_models
+
