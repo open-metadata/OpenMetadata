@@ -185,7 +185,6 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                 </span>
               </div>
               {stepStats.totalTimeMs !== undefined &&
-                stepStats.totalTimeMs > 0 &&
                 stepStats.successRecords !== undefined &&
                 stepStats.successRecords > 0 && (
                   <>

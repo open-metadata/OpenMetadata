@@ -2,6 +2,7 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -9,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.BulkIndexOverrides;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexSettings;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
@@ -35,11 +37,11 @@ import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
 @Slf4j
 public class DefaultRecreateHandler implements RecreateIndexHandler {
 
-  private static final String SHARDS = "number_of_shards";
   private static final String REPLICAS = "number_of_replicas";
   private static final String REFRESH_INTERVAL = "refresh_interval";
-  private static final String TRANSLOG_DURABILITY = "translog.durability";
-  private static final String TRANSLOG_SYNC_INTERVAL = "translog.sync_interval";
+  private static final String TRANSLOG = "translog";
+  private static final String DURABILITY = "durability";
+  private static final String SYNC_INTERVAL = "sync_interval";
 
   private EventPublisherJob jobData;
 
@@ -570,24 +572,27 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     String translogDurability = pickTranslogDurability(live, bulk);
     String translogSyncInterval = pickTranslogSyncInterval(live, bulk);
 
-    StringBuilder body = new StringBuilder("{");
-    boolean first = true;
+    ObjectNode body = JsonUtils.getObjectNode();
     if (replicas != null) {
-      first = appendNumber(body, REPLICAS, replicas, first);
+      body.put(REPLICAS, replicas);
     }
     if (refresh != null) {
-      first = appendString(body, REFRESH_INTERVAL, refresh, first);
+      body.put(REFRESH_INTERVAL, refresh);
     }
+    ObjectNode translog = null;
     if (translogDurability != null) {
-      first = appendString(body, TRANSLOG_DURABILITY, translogDurability, first);
+      translog = body.putObject(TRANSLOG);
+      translog.put(DURABILITY, translogDurability);
     }
     if (translogSyncInterval != null) {
-      first = appendString(body, TRANSLOG_SYNC_INTERVAL, translogSyncInterval, first);
+      if (translog == null) {
+        translog = body.putObject(TRANSLOG);
+      }
+      translog.put(SYNC_INTERVAL, translogSyncInterval);
     }
-    if (first) {
+    if (body.size() == 0) {
       return null;
     }
-    body.append('}');
     return body.toString();
   }
 
@@ -655,47 +660,36 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
   /**
    * Build the OS/ES PUT _settings JSON body for bulk-build phase. Returns null if no overrides
    * are configured (in which case the index keeps the cluster defaults from creation time).
+   * Uses Jackson so admin-supplied string values (refreshInterval, syncInterval) are properly
+   * escaped, and translog fields land in a nested object — the shape the typed OS/ES
+   * {@code IndexSettings} model expects when {@code _DESERIALIZER} parses the body.
    */
   static String buildBulkSettingsJson(BulkIndexOverrides overrides) {
     if (overrides == null) {
       return null;
     }
-    StringBuilder body = new StringBuilder("{");
-    boolean first = true;
+    ObjectNode body = JsonUtils.getObjectNode();
     if (overrides.getNumberOfReplicas() != null) {
-      first = appendNumber(body, REPLICAS, overrides.getNumberOfReplicas(), first);
+      body.put(REPLICAS, overrides.getNumberOfReplicas());
     }
     if (overrides.getRefreshInterval() != null) {
-      first = appendString(body, REFRESH_INTERVAL, overrides.getRefreshInterval(), first);
+      body.put(REFRESH_INTERVAL, overrides.getRefreshInterval());
     }
+    ObjectNode translog = null;
     if (overrides.getTranslogDurability() != null) {
-      first =
-          appendString(body, TRANSLOG_DURABILITY, overrides.getTranslogDurability().value(), first);
+      translog = body.putObject(TRANSLOG);
+      translog.put(DURABILITY, overrides.getTranslogDurability().value());
     }
     if (overrides.getTranslogSyncInterval() != null) {
-      first = appendString(body, TRANSLOG_SYNC_INTERVAL, overrides.getTranslogSyncInterval(), first);
+      if (translog == null) {
+        translog = body.putObject(TRANSLOG);
+      }
+      translog.put(SYNC_INTERVAL, overrides.getTranslogSyncInterval());
     }
-    if (first) {
+    if (body.size() == 0) {
       return null;
     }
-    body.append('}');
     return body.toString();
   }
 
-
-  private static boolean appendString(StringBuilder body, String key, String value, boolean first) {
-    if (!first) {
-      body.append(',');
-    }
-    body.append('"').append(key).append("\":\"").append(value).append('"');
-    return false;
-  }
-
-  private static boolean appendNumber(StringBuilder body, String key, Number value, boolean first) {
-    if (!first) {
-      body.append(',');
-    }
-    body.append('"').append(key).append("\":").append(value);
-    return false;
-  }
 }

@@ -958,7 +958,7 @@ class DefaultRecreateHandlerTest {
       assertTrue(json.contains("\"refresh_interval\":\"30s\""));
       assertTrue(json.contains("\"number_of_replicas\":2"));
       // No bulk → no implicit safety fields
-      assertFalse(json.contains("translog.durability"));
+      assertFalse(json.contains("\"translog\""));
     }
 
     @Test
@@ -976,8 +976,11 @@ class DefaultRecreateHandlerTest {
       // Every field bulk touched gets a safe live default — never the bulk value.
       assertTrue(json.contains("\"refresh_interval\":\"1s\""));
       assertTrue(json.contains("\"number_of_replicas\":1"));
-      assertTrue(json.contains("\"translog.durability\":\"request\""));
-      assertTrue(json.contains("\"translog.sync_interval\":\"5s\""));
+      // Translog fields land in a nested object — what the OS/ES typed IndexSettings
+      // model expects when its _DESERIALIZER parses the body.
+      assertTrue(json.contains("\"translog\":{"));
+      assertTrue(json.contains("\"durability\":\"request\""));
+      assertTrue(json.contains("\"sync_interval\":\"5s\""));
     }
 
     @Test
@@ -1001,8 +1004,28 @@ class DefaultRecreateHandlerTest {
       assertNotNull(json);
       assertTrue(json.contains("\"refresh_interval\":\"1s\""));
       assertTrue(json.contains("\"number_of_replicas\":1"));
-      assertTrue(json.contains("\"translog.durability\":\"request\""));
-      assertTrue(json.contains("\"translog.sync_interval\":\"5s\""));
+      // Translog fields land in a nested object — what the OS/ES typed IndexSettings
+      // model expects when its _DESERIALIZER parses the body.
+      assertTrue(json.contains("\"translog\":{"));
+      assertTrue(json.contains("\"durability\":\"request\""));
+      assertTrue(json.contains("\"sync_interval\":\"5s\""));
+    }
+
+    @Test
+    @DisplayName("Bulk JSON properly escapes admin-supplied string values")
+    void bulkSettingsEscapesQuotesInValues() {
+      // Hostile / unusual but legal admin input — quote, backslash, newline. Naive string
+      // concatenation would produce invalid JSON; Jackson must escape these.
+      org.openmetadata.schema.system.BulkIndexOverrides bulk =
+          new org.openmetadata.schema.system.BulkIndexOverrides()
+              .withRefreshInterval("3s\"; \\rogue")
+              .withTranslogSyncInterval("60s\n");
+      String json = DefaultRecreateHandler.buildBulkSettingsJson(bulk);
+      assertNotNull(json);
+      // Must round-trip parse — the strongest evidence escaping worked.
+      org.openmetadata.schema.utils.JsonUtils.readTree(json);
+      assertTrue(json.contains("\\\"")); // escaped quote present
+      assertTrue(json.contains("\\\\")); // escaped backslash present
     }
   }
 }
