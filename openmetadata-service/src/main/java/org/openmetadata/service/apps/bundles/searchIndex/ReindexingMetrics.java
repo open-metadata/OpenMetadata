@@ -324,6 +324,11 @@ public class ReindexingMetrics {
         .increment();
   }
 
+  public long getCircuitBreakerTripCount(String transition) {
+    Counter counter = circuitBreakerCounters.get(transition);
+    return counter != null ? (long) counter.count() : 0L;
+  }
+
   // --- Vector timeouts ---
 
   public void recordVectorTimeout(int pendingCount) {

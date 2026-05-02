@@ -221,6 +221,12 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
+                    <include>**/SearchIndexHappyPathIT.java</include>
+                    <include>**/SearchIndexStopIT.java</include>
+                    <include>**/SearchIndexStatsIT.java</include>
+                    <include>**/SearchIndexFailureRecoveryIT.java</include>
+                    <include>**/SearchIndexPayloadGuardIT.java</include>
+                    <include>**/SearchIndexCircuitBreakerIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -256,6 +262,12 @@
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
+                    <exclude>**/SearchIndexHappyPathIT.java</exclude>
+                    <exclude>**/SearchIndexStopIT.java</exclude>
+                    <exclude>**/SearchIndexStatsIT.java</exclude>
+                    <exclude>**/SearchIndexFailureRecoveryIT.java</exclude>
+                    <exclude>**/SearchIndexPayloadGuardIT.java</exclude>
+                    <exclude>**/SearchIndexCircuitBreakerIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -310,6 +322,12 @@
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
+                    <include>**/SearchIndexHappyPathIT.java</include>
+                    <include>**/SearchIndexStopIT.java</include>
+                    <include>**/SearchIndexStatsIT.java</include>
+                    <include>**/SearchIndexFailureRecoveryIT.java</include>
+                    <include>**/SearchIndexPayloadGuardIT.java</include>
+                    <include>**/SearchIndexCircuitBreakerIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -346,6 +364,12 @@
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
+                    <exclude>**/SearchIndexHappyPathIT.java</exclude>
+                    <exclude>**/SearchIndexStopIT.java</exclude>
+                    <exclude>**/SearchIndexStatsIT.java</exclude>
+                    <exclude>**/SearchIndexFailureRecoveryIT.java</exclude>
+                    <exclude>**/SearchIndexPayloadGuardIT.java</exclude>
+                    <exclude>**/SearchIndexCircuitBreakerIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -492,6 +516,12 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
+                    <include>**/SearchIndexHappyPathIT.java</include>
+                    <include>**/SearchIndexStopIT.java</include>
+                    <include>**/SearchIndexStatsIT.java</include>
+                    <include>**/SearchIndexFailureRecoveryIT.java</include>
+                    <include>**/SearchIndexPayloadGuardIT.java</include>
+                    <include>**/SearchIndexCircuitBreakerIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -527,6 +557,12 @@
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
+                    <exclude>**/SearchIndexHappyPathIT.java</exclude>
+                    <exclude>**/SearchIndexStopIT.java</exclude>
+                    <exclude>**/SearchIndexStatsIT.java</exclude>
+                    <exclude>**/SearchIndexFailureRecoveryIT.java</exclude>
+                    <exclude>**/SearchIndexPayloadGuardIT.java</exclude>
+                    <exclude>**/SearchIndexCircuitBreakerIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -581,6 +617,12 @@
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
+                    <include>**/SearchIndexHappyPathIT.java</include>
+                    <include>**/SearchIndexStopIT.java</include>
+                    <include>**/SearchIndexStatsIT.java</include>
+                    <include>**/SearchIndexFailureRecoveryIT.java</include>
+                    <include>**/SearchIndexPayloadGuardIT.java</include>
+                    <include>**/SearchIndexCircuitBreakerIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -617,6 +659,12 @@
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
+                    <exclude>**/SearchIndexHappyPathIT.java</exclude>
+                    <exclude>**/SearchIndexStopIT.java</exclude>
+                    <exclude>**/SearchIndexStatsIT.java</exclude>
+                    <exclude>**/SearchIndexFailureRecoveryIT.java</exclude>
+                    <exclude>**/SearchIndexPayloadGuardIT.java</exclude>
+                    <exclude>**/SearchIndexCircuitBreakerIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>

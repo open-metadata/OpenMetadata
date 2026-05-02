@@ -153,7 +153,7 @@ public class ElasticSearchBulkSink implements BulkSink {
         concurrentRequests,
         maxPayloadSizeBytes / (1024 * 1024));
 
-    BulkCircuitBreaker circuitBreaker = new BulkCircuitBreaker(5, 30_000, 10_000);
+    BulkCircuitBreaker circuitBreaker = new BulkCircuitBreaker(5, 30_000, 10_000, "entity-sink");
     return new CustomBulkProcessor(
         searchClient,
         bulkActions,
@@ -170,7 +170,7 @@ public class ElasticSearchBulkSink implements BulkSink {
   }
 
   private CustomBulkProcessor createColumnBulkProcessor(long maxPayloadSizeBytes) {
-    BulkCircuitBreaker circuitBreaker = new BulkCircuitBreaker(5, 30_000, 10_000);
+    BulkCircuitBreaker circuitBreaker = new BulkCircuitBreaker(5, 30_000, 10_000, "column-sink");
     return new CustomBulkProcessor(
         searchClient,
         500, // larger batch for small column docs

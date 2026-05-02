@@ -23,12 +23,14 @@ public class BulkCircuitBreaker {
   private final int failureThreshold;
   private final long windowMs;
   private final long halfOpenProbeMs;
+  private final String context;
 
   private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
   private final ConcurrentLinkedDeque<Long> failureTimestamps = new ConcurrentLinkedDeque<>();
   private volatile long openedAt;
 
-  public BulkCircuitBreaker(int failureThreshold, long windowMs, long halfOpenProbeMs) {
+  public BulkCircuitBreaker(
+      int failureThreshold, long windowMs, long halfOpenProbeMs, String context) {
     if (failureThreshold <= 0) {
       throw new IllegalArgumentException("failureThreshold must be > 0");
     }
@@ -41,6 +43,11 @@ public class BulkCircuitBreaker {
     this.failureThreshold = failureThreshold;
     this.windowMs = windowMs;
     this.halfOpenProbeMs = halfOpenProbeMs;
+    this.context = context != null ? context : "unknown";
+  }
+
+  public BulkCircuitBreaker(int failureThreshold, long windowMs, long halfOpenProbeMs) {
+    this(failureThreshold, windowMs, halfOpenProbeMs, "unknown");
   }
 
   public boolean allowRequest() {
@@ -54,7 +61,7 @@ public class BulkCircuitBreaker {
     // OPEN: check if probe interval has elapsed
     if (System.currentTimeMillis() - openedAt >= halfOpenProbeMs) {
       if (state.compareAndSet(State.OPEN, State.HALF_OPEN)) {
-        LOG.warn("Circuit breaker transitioning OPEN → HALF_OPEN (probe request allowed)");
+        LOG.warn("[circuit-breaker][{}] OPEN → HALF_OPEN (probe request allowed)", context);
         recordTransition("open_to_half_open");
       }
       return true;
@@ -65,7 +72,7 @@ public class BulkCircuitBreaker {
   public void recordSuccess() {
     if (state.compareAndSet(State.HALF_OPEN, State.CLOSED)) {
       failureTimestamps.clear();
-      LOG.warn("Circuit breaker transitioning HALF_OPEN → CLOSED (probe succeeded)");
+      LOG.warn("[circuit-breaker][{}] HALF_OPEN → CLOSED (probe succeeded)", context);
       recordTransition("half_open_to_closed");
     }
   }
@@ -77,7 +84,7 @@ public class BulkCircuitBreaker {
     if (current == State.HALF_OPEN) {
       if (state.compareAndSet(State.HALF_OPEN, State.OPEN)) {
         openedAt = now;
-        LOG.warn("Circuit breaker transitioning HALF_OPEN → OPEN (probe failed)");
+        LOG.warn("[circuit-breaker][{}] HALF_OPEN → OPEN (probe failed)", context);
         recordTransition("half_open_to_open");
       }
       return;
@@ -90,7 +97,8 @@ public class BulkCircuitBreaker {
         && state.compareAndSet(State.CLOSED, State.OPEN)) {
       openedAt = now;
       LOG.warn(
-          "Circuit breaker transitioning CLOSED → OPEN ({} failures in {}ms window)",
+          "[circuit-breaker][{}] CLOSED → OPEN ({} failures in {}ms window)",
+          context,
           failureThreshold,
           windowMs);
       recordTransition("closed_to_open");
