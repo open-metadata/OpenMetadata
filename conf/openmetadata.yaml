@@ -194,22 +194,6 @@ logging:
           archivedFileCount: 7
           timeZone: UTC
           maxFileSize: 50MB
-    org.openmetadata.slowrequest:
-      level: ${SLOW_REQUEST_LOG_LEVEL:-OFF}
-      additive: false
-      appenders:
-        - type: file
-          layout:
-            type: om-event-layout
-            format: ${LOG_FORMAT:-text}
-            pattern: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-            appendLineSeparator: true
-          threshold: WARN
-          currentLogFilename: ./logs/slow-requests.log
-          archivedLogFilenamePattern: ./logs/slow-requests-%d{yyyy-MM-dd}-%i.log.gz
-          archivedFileCount: 7
-          timeZone: UTC
-          maxFileSize: 50MB
     org.openmetadata.service.util.OpenMetadataSetup:
       level: INFO
       appenders:
@@ -765,6 +749,8 @@ cache:
     # Connection pool settings
     poolSize: ${CACHE_REDIS_POOL_SIZE:-64}
     connectTimeoutMs: ${CACHE_REDIS_CONNECT_TIMEOUT:-2000}
+    # Per-command timeout. Bounds request-thread blocking when Redis is slow.
+    commandTimeoutMs: ${CACHE_REDIS_COMMAND_TIMEOUT:-300}
 
     # AWS ElastiCache IAM Authentication (only if using ElastiCache)
     aws:

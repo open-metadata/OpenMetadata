@@ -111,7 +111,6 @@ const ActivityFeedCardV2 = ({
             </Col>
             <Col span={24}>
               <FeedCardBodyV1
-                announcement={!isPost ? feed.announcement : undefined}
                 feed={feed}
                 isEditPost={isEditPost}
                 isPost={isPost}

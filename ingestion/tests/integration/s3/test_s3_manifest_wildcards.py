@@ -15,6 +15,7 @@ Runs against MinIO using the same fixtures as ``test_s3_storage.py``.
 Each test uses a unique service name and a unique bucket so manifests
 don't collide between scenarios.
 """
+
 import json
 import uuid
 from io import BytesIO
@@ -97,19 +98,13 @@ def _cleanup_service(metadata, service_name: str) -> None:
         )
 
 
-def _copy_parquet_files(
-    minio_client, src_bucket: str, src_prefix: str, dst_bucket: str, dst_prefix: str
-) -> None:
+def _copy_parquet_files(minio_client, src_bucket: str, src_prefix: str, dst_bucket: str, dst_prefix: str) -> None:
     """Copy all objects from ``src_bucket/src_prefix`` into
     ``dst_bucket/dst_prefix``. Used so each test bucket has fresh sample
     data independent of the shared ``test-bucket`` fixture."""
     for obj in minio_client.list_objects(src_bucket, prefix=src_prefix, recursive=True):
         relative = obj.object_name[len(src_prefix) :].lstrip("/")
-        dst_key = (
-            f"{dst_prefix.rstrip('/')}/{relative}".lstrip("/")
-            if relative
-            else dst_prefix
-        )
+        dst_key = f"{dst_prefix.rstrip('/')}/{relative}".lstrip("/") if relative else dst_prefix
         response = minio_client.get_object(src_bucket, obj.object_name)
         try:
             body = response.read()
@@ -138,9 +133,7 @@ def wildcard_bucket(minio, bucket_name, create_data):
     # distinct logical paths to exercise the glob expansion.
     _copy_parquet_files(minio_client, bucket_name, "cities/", bucket, "data/sales/")
     _copy_parquet_files(minio_client, bucket_name, "cities/", bucket, "data/orders/")
-    _copy_parquet_files(
-        minio_client, bucket_name, "cities/", bucket, "archive/old_sales/"
-    )
+    _copy_parquet_files(minio_client, bucket_name, "cities/", bucket, "archive/old_sales/")
 
     yield bucket
 
@@ -158,9 +151,7 @@ def wildcard_bucket(minio, bucket_name, create_data):
 class TestBucketManifestWildcards:
     """A bucket with an openmetadata.json whose dataPath is a glob."""
 
-    def test_glob_datapath_resolves_to_multiple_containers(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_glob_datapath_resolves_to_multiple_containers(self, minio, metadata, wildcard_bucket):
         _, minio_client = minio
         service_name = f"wc-glob-{uuid.uuid4().hex[:8]}"
 
@@ -186,9 +177,7 @@ class TestBucketManifestWildcards:
             service_name=service_name,
             minio_container=minio[0],
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             _run_workflow(config)
@@ -219,9 +208,7 @@ class TestBucketManifestWildcards:
 
             # Auto partition detection should surface State as a partition col.
             col_names = {c.name.root for c in (sales.dataModel.columns or [])}
-            assert (
-                "State" in col_names
-            ), "autoPartitionDetection should infer the Hive partition column"
+            assert "State" in col_names, "autoPartitionDetection should infer the Hive partition column"
             assert sales.dataModel.isPartitioned is True
         finally:
             _cleanup_service(metadata, service_name)
@@ -231,9 +218,7 @@ class TestDefaultManifestFallback:
     """defaultManifest on the pipeline config is applied when a bucket
     has no openmetadata.json of its own."""
 
-    def test_default_manifest_used_when_bucket_has_no_file(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_default_manifest_used_when_bucket_has_no_file(self, minio, metadata, wildcard_bucket):
         service_name = f"wc-default-{uuid.uuid4().hex[:8]}"
 
         default_manifest = json.dumps(
@@ -253,9 +238,7 @@ class TestDefaultManifestFallback:
             minio_container=minio[0],
             default_manifest_json=default_manifest,
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             _run_workflow(config)
@@ -320,9 +303,7 @@ class TestBucketFileWinsOverDefault:
             minio_container=minio[0],
             default_manifest_json=default_manifest,
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             _run_workflow(config)
@@ -339,8 +320,7 @@ class TestBucketFileWinsOverDefault:
             )
             assert sales is not None, "bucket manifest defines data/sales"
             assert orders is None, (
-                "orders must NOT appear — it's only in defaultManifest, and the "
-                "bucket's openmetadata.json should win."
+                "orders must NOT appear — it's only in defaultManifest, and the bucket's openmetadata.json should win."
             )
         finally:
             _cleanup_service(metadata, service_name)
@@ -351,9 +331,7 @@ class TestLiteralPathBackwardsCompat:
     shared ``ingest_s3_storage`` flow against the full fixture manifest
     (all literal paths) and spot-checks a couple of containers."""
 
-    def test_legacy_manifest_still_works(
-        self, metadata, ingest_s3_storage, service_name
-    ):
+    def test_legacy_manifest_still_works(self, metadata, ingest_s3_storage, service_name):
         cities = metadata.get_by_name(
             entity=Container,
             fqn=f"{service_name}.test-bucket.cities",
@@ -376,9 +354,7 @@ class TestInvalidDefaultManifest:
     """Invalid JSON in defaultManifest must be ignored rather than
     breaking the whole ingestion. The bucket file, if any, still wins."""
 
-    def test_invalid_default_manifest_is_ignored(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_invalid_default_manifest_is_ignored(self, minio, metadata, wildcard_bucket):
         _, minio_client = minio
         service_name = f"wc-bad-{uuid.uuid4().hex[:8]}"
 
@@ -404,9 +380,7 @@ class TestInvalidDefaultManifest:
             minio_container=minio[0],
             default_manifest_json="this is not valid json {",
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             # Must not raise — invalid JSON is logged & skipped.
@@ -461,9 +435,7 @@ class TestMalformedBucketManifest:
             minio_container=minio[0],
             default_manifest_json=default_manifest,
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             # Must not raise.
@@ -475,15 +447,11 @@ class TestMalformedBucketManifest:
                 fqn=f"{service_name}.{wildcard_bucket}.data/sales",
                 fields=["*"],
             )
-            assert (
-                sales is not None
-            ), "malformed bucket manifest should fall back to defaultManifest"
+            assert sales is not None, "malformed bucket manifest should fall back to defaultManifest"
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_invalid_json_no_default_still_gets_bucket_container(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_invalid_json_no_default_still_gets_bucket_container(self, minio, metadata, wildcard_bucket):
         """Without a defaultManifest, a broken bucket file leaves only the
         top-level bucket container. Ingestion MUST NOT abort."""
         _, minio_client = minio
@@ -500,9 +468,7 @@ class TestMalformedBucketManifest:
             service_name=service_name,
             minio_container=minio[0],
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             _run_workflow(config)
@@ -525,9 +491,7 @@ class TestMalformedBucketManifest:
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_schema_violation_in_bucket_manifest(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_schema_violation_in_bucket_manifest(self, minio, metadata, wildcard_bucket):
         """Valid JSON but schema violation (entry missing required
         ``dataPath``). Pydantic should flag; ingestion falls back."""
         _, minio_client = minio
@@ -559,9 +523,7 @@ class TestMalformedBucketManifest:
             minio_container=minio[0],
             default_manifest_json=default_manifest,
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             _run_workflow(config)
@@ -570,10 +532,7 @@ class TestMalformedBucketManifest:
                 fqn=f"{service_name}.{wildcard_bucket}.data/sales",
                 fields=["*"],
             )
-            assert sales is not None, (
-                "schema violation in bucket manifest should fall back to "
-                "defaultManifest"
-            )
+            assert sales is not None, "schema violation in bucket manifest should fall back to defaultManifest"
         finally:
             _cleanup_service(metadata, service_name)
 
@@ -607,9 +566,7 @@ class TestMalformedBucketManifest:
             minio_container=minio[0],
             default_manifest_json=default_manifest,
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             _run_workflow(config)
@@ -621,9 +578,7 @@ class TestMalformedBucketManifest:
                 fqn=f"{service_name}.{wildcard_bucket}.data/sales",
                 fields=["*"],
             )
-            assert (
-                sales is not None
-            ), "empty bucket entries should fall back to defaultManifest"
+            assert sales is not None, "empty bucket entries should fall back to defaultManifest"
         finally:
             _cleanup_service(metadata, service_name)
 
@@ -638,9 +593,7 @@ class TestFileReadEdgeCases:
     issues — corrupt content, unknown extensions, etc. These exercise
     ``expand_entry`` / schema extraction error isolation."""
 
-    def test_corrupt_file_does_not_break_other_tables(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_corrupt_file_does_not_break_other_tables(self, minio, metadata, wildcard_bucket):
         """One unreadable parquet in one table should not block other
         tables matched by the same glob."""
         _, minio_client = minio
@@ -674,9 +627,7 @@ class TestFileReadEdgeCases:
             service_name=service_name,
             minio_container=minio[0],
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             # Workflow may log schema-extraction failures for the corrupt
@@ -689,15 +640,11 @@ class TestFileReadEdgeCases:
                 fqn=f"{service_name}.{wildcard_bucket}.data/sales",
                 fields=["*"],
             )
-            assert (
-                sales is not None
-            ), "a corrupt file in one table must not block others"
+            assert sales is not None, "a corrupt file in one table must not block others"
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_glob_matches_no_files_yields_only_bucket(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_glob_matches_no_files_yields_only_bucket(self, minio, metadata, wildcard_bucket):
         """Glob pattern matches zero files — ingestion succeeds, bucket
         container exists, no nested containers are created."""
         _, minio_client = minio
@@ -722,9 +669,7 @@ class TestFileReadEdgeCases:
             service_name=service_name,
             minio_container=minio[0],
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             _run_workflow(config)
@@ -744,9 +689,7 @@ class TestFileReadEdgeCases:
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_glob_without_structureformat_and_unknown_extension_is_skipped(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_glob_without_structureformat_and_unknown_extension_is_skipped(self, minio, metadata, wildcard_bucket):
         """When the file extension is not recognized and no
         ``structureFormat`` is set, the expand step should skip the
         container (WARNING log) rather than crash."""
@@ -784,9 +727,7 @@ class TestFileReadEdgeCases:
             service_name=service_name,
             minio_container=minio[0],
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             _run_workflow(config)
@@ -803,15 +744,11 @@ class TestFileReadEdgeCases:
                 fqn=f"{service_name}.{wildcard_bucket}.blobs",
                 fields=["*"],
             )
-            assert (
-                blobs is None
-            ), "unknown extension without structureFormat must be skipped"
+            assert blobs is None, "unknown extension without structureFormat must be skipped"
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_unstructured_catalogs_one_container_per_file(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_unstructured_catalogs_one_container_per_file(self, minio, metadata, wildcard_bucket):
         """With ``unstructuredData: true`` each matched file becomes its
         own container (no schema extraction)."""
         _, minio_client = minio
@@ -819,9 +756,7 @@ class TestFileReadEdgeCases:
 
         _put_object(minio_client, wildcard_bucket, "images/a.png", b"\x89PNG\x00")
         _put_object(minio_client, wildcard_bucket, "images/b.png", b"\x89PNG\x00")
-        _put_object(
-            minio_client, wildcard_bucket, "images/nested/c.png", b"\x89PNG\x00"
-        )
+        _put_object(minio_client, wildcard_bucket, "images/nested/c.png", b"\x89PNG\x00")
 
         manifest = {
             "entries": [
@@ -842,9 +777,7 @@ class TestFileReadEdgeCases:
             service_name=service_name,
             minio_container=minio[0],
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             _run_workflow(config)
@@ -865,9 +798,7 @@ class TestFileReadEdgeCases:
             names = {c.name.root for c in all_containers}
             # At least the three .png files should show up as names.
             png_names = {n for n in names if n.endswith(".png")}
-            assert (
-                png_names
-            ), "unstructured mode should catalog each .png file as its own container"
+            assert png_names, "unstructured mode should catalog each .png file as its own container"
             # Leaf containers have no dataModel.
             for c in all_containers:
                 if c.name.root.endswith(".png"):
@@ -880,9 +811,7 @@ class TestReIngestionIdempotency:
     """Running the same manifest twice must update the same entity, not
     create duplicates. This is the migration guarantee — FQN stability."""
 
-    def test_glob_re_ingestion_preserves_entity_id(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_glob_re_ingestion_preserves_entity_id(self, minio, metadata, wildcard_bucket):
         _, minio_client = minio
         service_name = f"wc-idemp-{uuid.uuid4().hex[:8]}"
 
@@ -906,9 +835,7 @@ class TestReIngestionIdempotency:
             service_name=service_name,
             minio_container=minio[0],
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             _run_workflow(config)
@@ -928,15 +855,11 @@ class TestReIngestionIdempotency:
                 fields=["*"],
             )
             assert second is not None
-            assert (
-                second.id.root == first_id
-            ), "re-ingestion must update the same entity, not duplicate"
+            assert second.id.root == first_id, "re-ingestion must update the same entity, not duplicate"
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_literal_to_glob_migration_preserves_entity_id(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_literal_to_glob_migration_preserves_entity_id(self, minio, metadata, wildcard_bucket):
         """A user starts with a literal-path manifest. Later they switch
         to a glob that resolves to the *same* container name. FQNs must
         match so existing lineage/tags/descriptions are preserved."""
@@ -964,9 +887,7 @@ class TestReIngestionIdempotency:
             service_name=service_name,
             minio_container=minio[0],
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             _run_workflow(config)
@@ -1004,8 +925,7 @@ class TestReIngestionIdempotency:
             )
             assert phase2 is not None
             assert phase2.id.root == phase1_id, (
-                "migrating literal → glob must preserve the entity ID "
-                "so lineage / tags / descriptions survive"
+                "migrating literal → glob must preserve the entity ID so lineage / tags / descriptions survive"
             )
         finally:
             _cleanup_service(metadata, service_name)
@@ -1021,9 +941,7 @@ class TestPerEntryResilience:
     bad regex, runtime error in our code) must NOT block the other
     entries in the same manifest."""
 
-    def test_bad_entry_does_not_block_good_entry(
-        self, minio, metadata, wildcard_bucket, monkeypatch
-    ):
+    def test_bad_entry_does_not_block_good_entry(self, minio, metadata, wildcard_bucket, monkeypatch):
         """Simulate: one entry triggers an exception deep in expand_entry;
         the other entry is a clean literal path that must still
         produce its container."""
@@ -1066,9 +984,7 @@ class TestPerEntryResilience:
             service_name=service_name,
             minio_container=minio[0],
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             # Must not raise — the literal entry should still succeed.
@@ -1079,9 +995,7 @@ class TestPerEntryResilience:
                 fqn=f"{service_name}.{wildcard_bucket}.data/sales",
                 fields=["*"],
             )
-            assert (
-                sales is not None
-            ), "a failure in one entry must not block sibling entries"
+            assert sales is not None, "a failure in one entry must not block sibling entries"
         finally:
             _cleanup_service(metadata, service_name)
 
@@ -1096,16 +1010,12 @@ class TestSpecialCharsInPaths:
     brackets, plus). A literal dataPath containing such chars MUST be
     matched exactly — pattern_to_regex should escape them."""
 
-    def test_path_with_regex_special_chars_matches_literally(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_path_with_regex_special_chars_matches_literally(self, minio, metadata, wildcard_bucket):
         _, minio_client = minio
         service_name = f"wc-special-{uuid.uuid4().hex[:8]}"
 
         # Upload a parquet into a directory whose name contains a '+'.
-        _copy_parquet_files(
-            minio_client, "test-bucket", "cities/", wildcard_bucket, "rare+data/"
-        )
+        _copy_parquet_files(minio_client, "test-bucket", "cities/", wildcard_bucket, "rare+data/")
 
         # Literal dataPath — passes through expand_entry unchanged.
         manifest = {
@@ -1128,9 +1038,7 @@ class TestSpecialCharsInPaths:
             service_name=service_name,
             minio_container=minio[0],
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             _run_workflow(config)
@@ -1140,8 +1048,7 @@ class TestSpecialCharsInPaths:
                 fields=["*"],
             )
             assert container is not None, (
-                "literal dataPath with '+' must match the real folder, "
-                "not be interpreted as a regex quantifier"
+                "literal dataPath with '+' must match the real folder, not be interpreted as a regex quantifier"
             )
         finally:
             _cleanup_service(metadata, service_name)
@@ -1159,9 +1066,7 @@ class TestContainerFilterPatternAgainstManifestPaths:
     inference. Both paths now go through ``filter_manifest_entries``
     and ``_is_excluded_artifact``."""
 
-    def test_success_sentinel_in_manifest_is_skipped(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_success_sentinel_in_manifest_is_skipped(self, minio, metadata, wildcard_bucket):
         """A manifest that accidentally lists ``_SUCCESS`` (or a path
         containing ``_SUCCESS``) must NOT produce a container."""
         _, minio_client = minio
@@ -1189,9 +1094,7 @@ class TestContainerFilterPatternAgainstManifestPaths:
             service_name=service_name,
             minio_container=minio[0],
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             _run_workflow(config)
@@ -1214,15 +1117,11 @@ class TestContainerFilterPatternAgainstManifestPaths:
                 fqn=f"{service_name}.{wildcard_bucket}.data/sales/_SUCCESS",
                 fields=["*"],
             )
-            assert (
-                nested is None
-            ), "entries whose dataPath contains a _SUCCESS segment must be skipped"
+            assert nested is None, "entries whose dataPath contains a _SUCCESS segment must be skipped"
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_container_filter_excludes_applies_to_manifest_paths(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_container_filter_excludes_applies_to_manifest_paths(self, minio, metadata, wildcard_bucket):
         """``containerFilterPattern.excludes`` set on the pipeline
         config must drop matching entries from a bucket manifest, not
         just top-level buckets."""
@@ -1254,16 +1153,12 @@ class TestContainerFilterPatternAgainstManifestPaths:
             service_name=service_name,
             minio_container=minio[0],
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
         # Exclude orders at the pipeline level. containerFilterPattern
         # uses left-anchored regex — ``.*orders`` matches any path that
         # ends with 'orders' (or contains it, since patterns aren't
         # right-anchored either).
-        config["source"]["sourceConfig"]["config"]["containerFilterPattern"] = {
-            "excludes": [".*orders"]
-        }
+        config["source"]["sourceConfig"]["config"]["containerFilterPattern"] = {"excludes": [".*orders"]}
 
         try:
             _run_workflow(config)
@@ -1279,15 +1174,12 @@ class TestContainerFilterPatternAgainstManifestPaths:
             )
             assert sales is not None, "sales must be ingested"
             assert orders is None, (
-                "containerFilterPattern.excludes must drop manifest "
-                "entries matching the exclude pattern"
+                "containerFilterPattern.excludes must drop manifest entries matching the exclude pattern"
             )
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_container_filter_includes_applies_to_manifest_paths(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_container_filter_includes_applies_to_manifest_paths(self, minio, metadata, wildcard_bucket):
         """Likewise ``containerFilterPattern.includes`` restricts which
         manifest entries become containers."""
         _, minio_client = minio
@@ -1318,13 +1210,9 @@ class TestContainerFilterPatternAgainstManifestPaths:
             service_name=service_name,
             minio_container=minio[0],
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
         # Left-anchored regex: ``.*sales`` matches any path that contains 'sales'.
-        config["source"]["sourceConfig"]["config"]["containerFilterPattern"] = {
-            "includes": [".*sales"]
-        }
+        config["source"]["sourceConfig"]["config"]["containerFilterPattern"] = {"includes": [".*sales"]}
 
         try:
             _run_workflow(config)
@@ -1343,9 +1231,7 @@ class TestContainerFilterPatternAgainstManifestPaths:
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_filter_applies_after_glob_expansion(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_filter_applies_after_glob_expansion(self, minio, metadata, wildcard_bucket):
         """End-to-end: a glob ``dataPath`` plus a pipeline-level
         ``containerFilterPattern`` must expand the glob THEN drop the
         matching excludes. Without this ordering, an innocent
@@ -1374,13 +1260,9 @@ class TestContainerFilterPatternAgainstManifestPaths:
             service_name=service_name,
             minio_container=minio[0],
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
         # Drop orders even though the glob would match it.
-        config["source"]["sourceConfig"]["config"]["containerFilterPattern"] = {
-            "excludes": [".*orders"]
-        }
+        config["source"]["sourceConfig"]["config"]["containerFilterPattern"] = {"excludes": [".*orders"]}
 
         try:
             _run_workflow(config)
@@ -1394,19 +1276,14 @@ class TestContainerFilterPatternAgainstManifestPaths:
                 fqn=f"{service_name}.{wildcard_bucket}.data/orders",
                 fields=["*"],
             )
-            assert (
-                sales is not None
-            ), "sales was in the glob expansion and must be ingested"
+            assert sales is not None, "sales was in the glob expansion and must be ingested"
             assert orders is None, (
-                "orders was in the glob expansion but matches the "
-                "containerFilterPattern exclude — must be dropped"
+                "orders was in the glob expansion but matches the containerFilterPattern exclude — must be dropped"
             )
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_success_file_in_sample_directory_is_not_picked(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_success_file_in_sample_directory_is_not_picked(self, minio, metadata, wildcard_bucket):
         """Sample-file selection must skip ``_SUCCESS`` so pyarrow
         doesn't crash on a 0-byte sentinel (original reported crash)."""
         _, minio_client = minio
@@ -1446,9 +1323,7 @@ class TestContainerFilterPatternAgainstManifestPaths:
             service_name=service_name,
             minio_container=minio[0],
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             # Must not raise — if _SUCCESS were sampled, pyarrow would
@@ -1462,9 +1337,7 @@ class TestContainerFilterPatternAgainstManifestPaths:
             )
             assert sales is not None
             assert sales.dataModel is not None
-            assert (
-                sales.dataModel.columns
-            ), "columns must come from a real parquet file, not _SUCCESS"
+            assert sales.dataModel.columns, "columns must come from a real parquet file, not _SUCCESS"
         finally:
             _cleanup_service(metadata, service_name)
 
@@ -1472,9 +1345,7 @@ class TestContainerFilterPatternAgainstManifestPaths:
 class TestMalformedDefaultManifest:
     """Symmetric coverage for defaultManifest parse errors."""
 
-    def test_default_manifest_schema_violation_is_ignored(
-        self, minio, metadata, wildcard_bucket
-    ):
+    def test_default_manifest_schema_violation_is_ignored(self, minio, metadata, wildcard_bucket):
         """Valid JSON but wrong schema — e.g. an entry missing required
         ``containerName`` / ``dataPath``. Must be logged & skipped."""
         service_name = f"wc-bad-default-{uuid.uuid4().hex[:8]}"
@@ -1486,9 +1357,7 @@ class TestMalformedDefaultManifest:
             minio_container=minio[0],
             default_manifest_json=default_manifest,
         )
-        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
-            wildcard_bucket
-        ]
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
         try:
             _run_workflow(config)
@@ -1503,8 +1372,6 @@ class TestMalformedDefaultManifest:
                 fqn=f"{service_name}.{wildcard_bucket}.data/sales",
                 fields=["*"],
             )
-            assert (
-                sales is None
-            ), "invalid defaultManifest should not produce containers"
+            assert sales is None, "invalid defaultManifest should not produce containers"
         finally:
             _cleanup_service(metadata, service_name)

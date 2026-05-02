@@ -35,7 +35,17 @@ const UploadFile: FC<UploadFileProps> = ({
   const handleUpload: UploadProps['customRequest'] = useCallback(
     (options: UploadRequestOption) => {
       setUploading(true);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setUploading(false);
+        onCSVUploaded(e);
+      };
+      reader.onerror = () => {
+        setUploading(false);
+        showErrorToast(new Error(t('server.unexpected-error')) as AxiosError);
+      };
       try {
+<<<<<<< HEAD
         const reader = new FileReader();
         reader.onload = async (event) => {
           try {
@@ -53,7 +63,12 @@ const UploadFile: FC<UploadFileProps> = ({
         reader.readAsText(options.file as Blob, 'utf-8');
       } catch (error) {
         showErrorToast(error as AxiosError);
+=======
+        reader.readAsText(options.file as Blob);
+      } catch (error) {
+>>>>>>> origin/main
         setUploading(false);
+        showErrorToast(error as AxiosError);
       }
     },
     [onCSVUploaded, t]
@@ -71,24 +86,25 @@ const UploadFile: FC<UploadFileProps> = ({
       disabled={disabled}
       multiple={false}
       showUploadList={false}>
-      <Space
-        align="center"
-        className="w-full justify-center"
-        direction="vertical"
-        size={42}>
-        <ImportIcon height={86} width={86} />
-        <Typography.Text>
-          <Transi18next
-            i18nKey="message.drag-and-drop-or-browse-csv-files-here"
-            renderElement={<span className="browse-text" />}
-            values={{
-              text: t('label.browse'),
-            }}
-          />
-        </Typography.Text>
-      </Space>
-    </Dragger>
-  );
+      try {
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          try {
+            await onCSVUploaded(event);
+          } catch (error) {
+            showErrorToast(error as AxiosError);
+          } finally {
+            setUploading(false);
+          }
+        };
+        reader.onerror = () => {
+          showErrorToast(reader.error?.message ?? t('server.unexpected-error'));
+          setUploading(false);
+        };
+        reader.readAsText(options.file as Blob, 'utf-8');
+      } catch (error) {
+        setUploading(false);
+        showErrorToast(error as AxiosError);
 };
 
 export default UploadFile;

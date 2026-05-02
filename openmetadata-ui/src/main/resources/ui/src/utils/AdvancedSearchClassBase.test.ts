@@ -73,6 +73,7 @@ describe('AdvancedSearchClassBase', () => {
       'tags.labelType',
       'tier.labelType',
       'createdBy',
+      EntityFields.ENTITY_STATUS,
     ]);
   });
 });
@@ -177,10 +178,7 @@ describe('getEntitySpecificQueryBuilderFields', () => {
       SearchIndex.GLOSSARY_TERM,
     ]);
 
-    expect(Object.keys(result)).toEqual([
-      EntityFields.GLOSSARY_TERM_STATUS,
-      EntityFields.GLOSSARY,
-    ]);
+    expect(Object.keys(result)).toEqual([EntityFields.GLOSSARY]);
   });
 
   it('should return databaseSchema specific fields', () => {
@@ -648,16 +646,16 @@ describe('getCustomPropertiesSubFields', () => {
 
     expect(result).toHaveLength(3);
 
-    expect(result[0].subfieldsKey).toBe('testTable.rows.Col1.keyword');
+    expect(result[0].subfieldsKey).toBe('testTable.rows.Col1');
     expect(result[0].dataObject.type).toBe('text');
     expect(result[0].dataObject.label).toContain('Col1');
     expect(result[0].dataObject.operators).toBe(TEXT_FIELD_OPERATORS);
     expect(result[0].dataObject.valueSources).toEqual(['value']);
 
-    expect(result[1].subfieldsKey).toBe('testTable.rows.Col2.keyword');
+    expect(result[1].subfieldsKey).toBe('testTable.rows.Col2');
     expect(result[1].dataObject.label).toContain('Col2');
 
-    expect(result[2].subfieldsKey).toBe('testTable.rows.Col3.keyword');
+    expect(result[2].subfieldsKey).toBe('testTable.rows.Col3');
     expect(result[2].dataObject.label).toContain('Col3');
   });
 
