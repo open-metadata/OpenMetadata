@@ -543,8 +543,8 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       summary = "Export glossary in CSV format",
       responses = {
         @ApiResponse(
-            responseCode = "200",
-            description = "Exported csv with glossary terms",
+            responseCode = "202",
+            description = "Export initiated successfully",
             content =
                 @Content(
                     mediaType = "application/json",

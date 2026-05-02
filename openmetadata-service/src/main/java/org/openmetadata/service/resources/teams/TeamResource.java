@@ -719,15 +719,15 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @GET
   @Path("/name/{name}/exportAsync")
-  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
+  @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
       operationId = "exportTeams",
       summary = "Export teams in CSV format",
       responses = {
         @ApiResponse(
-            responseCode = "200",
-            description = "Exported csv with teams information",
+            responseCode = "202",
+            description = "Export initiated successfully",
             content =
                 @Content(
                     mediaType = "application/json",

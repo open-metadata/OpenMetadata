@@ -86,6 +86,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.MoveGlossaryTermResponse;
@@ -1255,10 +1256,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema =
-                        @Schema(
-                            implementation =
-                                org.openmetadata.service.util.CSVExportResponse.class)))
+                    schema = @Schema(implementation = CSVExportResponse.class)))
       })
   public Response exportCsvAsync(
       @Context SecurityContext securityContext,
