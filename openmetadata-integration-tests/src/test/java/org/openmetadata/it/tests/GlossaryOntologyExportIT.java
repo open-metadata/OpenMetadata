@@ -15,6 +15,9 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
@@ -40,10 +43,21 @@ import org.testcontainers.utility.DockerImageName;
  * <p>{@link RdfUpdater} is a JVM-wide singleton; {@code @BeforeAll} flips it on and makes every
  * entity create in the same JVM do a synchronous Fuseki write. Running concurrently with other
  * IT classes saturates the Dropwizard thread pool and produces 60s request timeouts (issue
- * #27649). This class is registered in the failsafe {@code sequential-tests} execution group so
- * it runs alone with {@code parallel.enabled=false}; that is what actually prevents the
- * cross-class leakage. {@code @Isolated} on the class is insufficient.
+ * #27649).
+ *
+ * <p>Two layers of isolation, both required:
+ *
+ * <ul>
+ *   <li>The class is in the failsafe {@code sequential-tests} execution group so CI runs it with
+ *       {@code parallel.enabled=false}, alone in the JVM.
+ *   <li>{@code @Isolated} + {@code @Execution(SAME_THREAD)} keep the test safe under
+ *       {@code junit-platform.properties} defaults (parallel + concurrent classes), which is what
+ *       you get when running from an IDE or any future profile that doesn't route through
+ *       {@code sequential-tests}.
+ * </ul>
  */
+@Isolated
+@Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(TestNamespaceExtension.class)
 public class GlossaryOntologyExportIT {
 
