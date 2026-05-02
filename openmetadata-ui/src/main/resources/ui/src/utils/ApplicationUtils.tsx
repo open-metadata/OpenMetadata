@@ -154,6 +154,7 @@ export const formatLatencyAverage = (
   if (avgMs < 1000) {
     return `${avgMs.toFixed(1)} ms`;
   }
+
   return `${(avgMs / 1000).toFixed(2)} s`;
 };
 
@@ -184,5 +185,6 @@ export const formatThroughput = (
   if (rps >= 100) {
     return `${rps.toFixed(0)} r/s`;
   }
+
   return `${rps.toFixed(1)} r/s`;
 };
