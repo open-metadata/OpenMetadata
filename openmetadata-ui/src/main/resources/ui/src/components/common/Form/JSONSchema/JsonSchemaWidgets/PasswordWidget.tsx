@@ -97,7 +97,7 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
   const getSavedPasswordIndicator = useCallback(
     () => (
       <Space className="password-saved-indicator" direction="vertical" size={4}>
-        <Space size={8}>          
+        <Space size={8}>
           <Typography.Text className="password-saved-text" type="secondary">
             {t('message.password-saved')}
           </Typography.Text>

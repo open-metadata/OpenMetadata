@@ -60,20 +60,28 @@ describe('Test PasswordWidget Component', () => {
   it('Should show saved indicator when value is masked', async () => {
     render(<PasswordWidget {...mockProps} />);
 
-    expect(screen.getByTestId('password-update-btn-root/password')).toBeInTheDocument();
-    expect(screen.queryByTestId('password-input-widget-root/password')).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('password-update-btn-root/password')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('password-input-widget-root/password')
+    ).not.toBeInTheDocument();
   });
 
   it('Should show remove button when field is not required and value is masked', async () => {
     render(<PasswordWidget {...mockProps} required={false} />);
 
-    expect(screen.getByTestId('password-remove-btn-root/password')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('password-remove-btn-root/password')
+    ).toBeInTheDocument();
   });
 
   it('Should not show remove button when field is required', async () => {
     render(<PasswordWidget {...mockProps} required />);
 
-    expect(screen.queryByTestId('password-remove-btn-root/password')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('password-remove-btn-root/password')
+    ).not.toBeInTheDocument();
   });
 
   it('Should show password input after clicking Update', async () => {
@@ -81,18 +89,28 @@ describe('Test PasswordWidget Component', () => {
 
     fireEvent.click(screen.getByTestId('password-update-btn-root/password'));
 
-    expect(screen.getByTestId('password-input-widget-root/password')).toBeInTheDocument();
-    expect(screen.getByTestId('password-cancel-edit-btn-root/password')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('password-input-widget-root/password')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('password-cancel-edit-btn-root/password')
+    ).toBeInTheDocument();
   });
 
   it('Should return to saved indicator after clicking Cancel', async () => {
     render(<PasswordWidget {...mockProps} />);
 
     fireEvent.click(screen.getByTestId('password-update-btn-root/password'));
-    fireEvent.click(screen.getByTestId('password-cancel-edit-btn-root/password'));
+    fireEvent.click(
+      screen.getByTestId('password-cancel-edit-btn-root/password')
+    );
 
-    expect(screen.getByTestId('password-update-btn-root/password')).toBeInTheDocument();
-    expect(screen.queryByTestId('password-input-widget-root/password')).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('password-update-btn-root/password')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('password-input-widget-root/password')
+    ).not.toBeInTheDocument();
   });
 
   it('Should call onChange with empty string when Remove is clicked', async () => {
@@ -108,7 +126,9 @@ describe('Test PasswordWidget Component', () => {
 
     fireEvent.click(screen.getByTestId('password-update-btn-root/password'));
 
-    const passwordInput = screen.getByTestId('password-input-widget-root/password');
+    const passwordInput = screen.getByTestId(
+      'password-input-widget-root/password'
+    );
 
     expect(passwordInput).toBeDisabled();
   });
@@ -116,10 +136,14 @@ describe('Test PasswordWidget Component', () => {
   it('Should render password input directly when value is not masked', async () => {
     render(<PasswordWidget {...mockPropsUnmasked} />);
 
-    const passwordInput = screen.getByTestId('password-input-widget-root/password');
+    const passwordInput = screen.getByTestId(
+      'password-input-widget-root/password'
+    );
 
     expect(passwordInput).toBeInTheDocument();
-    expect(screen.queryByTestId('password-update-btn-root/password')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('password-update-btn-root/password')
+    ).not.toBeInTheDocument();
   });
 
   it('Should call onChange after clicking Update and typing', async () => {
@@ -127,7 +151,9 @@ describe('Test PasswordWidget Component', () => {
 
     fireEvent.click(screen.getByTestId('password-update-btn-root/password'));
 
-    const passwordInput = screen.getByTestId('password-input-widget-root/password');
+    const passwordInput = screen.getByTestId(
+      'password-input-widget-root/password'
+    );
     fireEvent.change(passwordInput, { target: { value: 'newpassword' } });
 
     expect(mockOnChange).toHaveBeenCalledWith('newpassword');
@@ -138,7 +164,9 @@ describe('Test PasswordWidget Component', () => {
 
     fireEvent.click(screen.getByTestId('password-update-btn-root/password'));
 
-    const passwordInput = screen.getByTestId('password-input-widget-root/password');
+    const passwordInput = screen.getByTestId(
+      'password-input-widget-root/password'
+    );
     fireEvent.focus(passwordInput);
 
     expect(mockOnFocus).toHaveBeenCalled();
@@ -149,7 +177,9 @@ describe('Test PasswordWidget Component', () => {
 
     fireEvent.click(screen.getByTestId('password-update-btn-root/password'));
 
-    const passwordInput = screen.getByTestId('password-input-widget-root/password');
+    const passwordInput = screen.getByTestId(
+      'password-input-widget-root/password'
+    );
     fireEvent.blur(passwordInput);
 
     expect(mockOnBlur).toHaveBeenCalled();
