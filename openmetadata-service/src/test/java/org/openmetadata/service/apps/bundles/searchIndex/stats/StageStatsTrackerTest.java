@@ -450,7 +450,8 @@ class StageStatsTrackerTest {
       assertEquals(0L, tracker.getSink().getTotalTimeNanos().get());
 
       // DAO was called with the converted ms values (positions 14 reader, 16 sink)
-      org.mockito.ArgumentCaptor<Long> readerTimeMs = org.mockito.ArgumentCaptor.forClass(Long.class);
+      org.mockito.ArgumentCaptor<Long> readerTimeMs =
+          org.mockito.ArgumentCaptor.forClass(Long.class);
       org.mockito.ArgumentCaptor<Long> sinkTimeMs = org.mockito.ArgumentCaptor.forClass(Long.class);
       verify(statsDAO)
           .incrementStats(

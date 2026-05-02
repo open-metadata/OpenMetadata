@@ -647,9 +647,7 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       ForcemergeRequest request =
           ForcemergeRequest.of(
               b ->
-                  b.index(indexName)
-                      .maxNumSegments((long) maxNumSegments)
-                      .waitForCompletion(true));
+                  b.index(indexName).maxNumSegments((long) maxNumSegments).waitForCompletion(true));
       ForcemergeResponse response = client.indices().forcemerge(request);
       int failedShards = response.shards() != null ? (int) response.shards().failed() : 0;
       LOG.info(

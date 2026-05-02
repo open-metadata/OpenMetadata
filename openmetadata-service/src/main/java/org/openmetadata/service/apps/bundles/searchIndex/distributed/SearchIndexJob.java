@@ -125,12 +125,16 @@ public class SearchIndexJob {
     private int totalPartitions;
     private int completedPartitions;
     private int failedPartitions;
+
     /** Cumulative time (ms) spent in the Reader stage for this entity (DB read latency). */
     @Builder.Default private long readerTimeMs = 0;
+
     /** Cumulative time (ms) spent building search docs for this entity (CPU). */
     @Builder.Default private long processTimeMs = 0;
+
     /** Cumulative time (ms) spent in OpenSearch / Elasticsearch bulk writes for this entity. */
     @Builder.Default private long sinkTimeMs = 0;
+
     /** Cumulative time (ms) spent generating embeddings for this entity. */
     @Builder.Default private long vectorTimeMs = 0;
 

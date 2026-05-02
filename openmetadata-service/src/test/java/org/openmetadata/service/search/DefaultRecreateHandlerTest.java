@@ -984,7 +984,8 @@ class DefaultRecreateHandlerTest {
     }
 
     @Test
-    @DisplayName("Partial live + full bulk: live values win, bulk-only fields fall back to defaults")
+    @DisplayName(
+        "Partial live + full bulk: live values win, bulk-only fields fall back to defaults")
     void partialLiveOverridesBulk() {
       // Admin only set translogDurability on live; bulk disabled refresh, replicas, both translog
       // fields. Expectation: translogDurability comes from live; the rest fall back to safe

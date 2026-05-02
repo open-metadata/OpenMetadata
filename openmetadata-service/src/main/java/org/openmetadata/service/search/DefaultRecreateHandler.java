@@ -544,7 +544,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
   private void applyLiveServingSettings(
       SearchClient searchClient, String stagedIndex, String entityType) {
     IndexSettings settings = resolveLiveSettings(entityType);
-    String json = buildRevertJson(settings, jobData != null ? jobData.getBulkIndexSettings() : null);
+    String json =
+        buildRevertJson(settings, jobData != null ? jobData.getBulkIndexSettings() : null);
     if (json == null) {
       return;
     }
@@ -647,13 +648,13 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     return jobData.getLiveIndexSettings();
   }
 
-  private void maybeForceMerge(
-      SearchClient searchClient, String stagedIndex, String entityType) {
+  private void maybeForceMerge(SearchClient searchClient, String stagedIndex, String entityType) {
     BulkIndexOverrides overrides = jobData != null ? jobData.getBulkIndexSettings() : null;
     if (overrides == null || !Boolean.TRUE.equals(overrides.getForceMergeOnPromote())) {
       return;
     }
-    LOG.info("Force-merging staged index '{}' (entity '{}') before promotion", stagedIndex, entityType);
+    LOG.info(
+        "Force-merging staged index '{}' (entity '{}') before promotion", stagedIndex, entityType);
     searchClient.forceMerge(stagedIndex, 1);
   }
 
@@ -691,5 +692,4 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     }
     return body.toString();
   }
-
 }

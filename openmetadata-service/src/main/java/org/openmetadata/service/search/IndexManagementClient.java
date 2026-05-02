@@ -139,10 +139,13 @@ public interface IndexManagementClient {
    * during a reindex. number_of_shards cannot be changed and must be set at creation time.
    *
    * @param indexName the name of the index to update
-   * @param settingsJson a flat JSON object containing only the inner settings to apply (no
-   *     {@code "index"} wrapper), e.g. {@code {"refresh_interval": "1s", "number_of_replicas": 1,
-   *     "translog.durability": "request"}}. Implementations bind this to the search client's
-   *     {@code IndexSettings} type and submit via {@code PutIndicesSettings}.
+   * @param settingsJson the inner settings object the OS/ES typed {@code IndexSettings} model
+   *     accepts (no outer {@code "index"} wrapper), e.g.
+   *     {@code {"refresh_interval": "1s", "number_of_replicas": 1,
+   *     "translog": {"durability": "request", "sync_interval": "5s"}}}. Translog fields are
+   *     a nested object (NOT dot notation) — the typed {@code IndexSettings._DESERIALIZER}
+   *     does not parse {@code "translog.durability"} keys. Implementations bind this to the
+   *     search client's {@code IndexSettings} type and submit via {@code PutIndicesSettings}.
    */
   default void updateIndexSettings(String indexName, String settingsJson) {
     throw new UnsupportedOperationException(
@@ -158,8 +161,7 @@ public interface IndexManagementClient {
    * @param maxNumSegments target segment count (typically 1 for fully-merged)
    */
   default void forceMerge(String indexName, int maxNumSegments) {
-    throw new UnsupportedOperationException(
-        "forceMerge is not implemented for this search client");
+    throw new UnsupportedOperationException("forceMerge is not implemented for this search client");
   }
 
   record IndexStats(

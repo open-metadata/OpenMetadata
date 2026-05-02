@@ -571,9 +571,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       ForcemergeRequest request =
           ForcemergeRequest.of(
               b ->
-                  b.index(indexName)
-                      .maxNumSegments((long) maxNumSegments)
-                      .waitForCompletion(true));
+                  b.index(indexName).maxNumSegments((long) maxNumSegments).waitForCompletion(true));
       ForcemergeResponse response = client.indices().forcemerge(request);
       LOG.info(
           "Force-merged index '{}' to {} segments in {}ms (failed shards: {})",
