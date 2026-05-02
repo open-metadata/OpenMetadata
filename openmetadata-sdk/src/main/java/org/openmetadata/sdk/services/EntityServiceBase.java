@@ -78,12 +78,16 @@ public abstract class EntityServiceBase<T> {
   }
 
   public T create(T entity) throws OpenMetadataException {
-    return httpClient.execute(HttpMethod.POST, basePath, entity, getEntityClass());
+    T result = httpClient.execute(HttpMethod.POST, basePath, entity, getEntityClass());
+    storeSnapshot(null, result);
+    return result;
   }
 
   public T upsert(T entity) throws OpenMetadataException {
     // PUT without ID for create-or-update operations
-    return httpClient.execute(HttpMethod.PUT, basePath, entity, getEntityClass());
+    T result = httpClient.execute(HttpMethod.PUT, basePath, entity, getEntityClass());
+    storeSnapshot(null, result);
+    return result;
   }
 
   public BulkOperationResult bulkCreateOrUpdate(List<?> createRequests)
@@ -287,8 +291,11 @@ public abstract class EntityServiceBase<T> {
         options = RequestOptions.builder().header("If-Match", etag).build();
       }
 
-      return httpClient.execute(
-          HttpMethod.PATCH, basePath + "/" + id, patch, getEntityClass(), options);
+      T result =
+          httpClient.execute(
+              HttpMethod.PATCH, basePath + "/" + id, patch, getEntityClass(), options);
+      storeSnapshot(id, result);
+      return result;
     } catch (Exception e) {
       throw new OpenMetadataException("Failed to update entity: " + e.getMessage(), e);
     }
@@ -367,8 +374,11 @@ public abstract class EntityServiceBase<T> {
     if (etag != null) {
       options = RequestOptions.builder().header("If-Match", etag).build();
     }
-    return httpClient.execute(
-        HttpMethod.PATCH, basePath + "/" + id, patchDocument, getEntityClass(), options);
+    T result =
+        httpClient.execute(
+            HttpMethod.PATCH, basePath + "/" + id, patchDocument, getEntityClass(), options);
+    storeSnapshot(id, result);
+    return result;
   }
 
   public void delete(UUID id) throws OpenMetadataException {
