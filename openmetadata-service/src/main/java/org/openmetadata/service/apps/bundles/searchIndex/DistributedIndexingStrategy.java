@@ -346,6 +346,12 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
       readerStats.setSuccessRecords(saturatedToInt(readerSuccess));
       readerStats.setFailedRecords(saturatedToInt(readerFailed));
       readerStats.setWarningRecords(saturatedToInt(readerWarnings));
+      // Carry stage timing forward into the final ExecutionResult stats. Without this the
+      // periodic aggregator's totalTimeMs (visible while running) gets clobbered to 0 here,
+      // and OmAppJobListener picks up the zero on the SUCCESS transition.
+      if (serverStatsAggr != null) {
+        readerStats.setTotalTimeMs(serverStatsAggr.readerTimeMs());
+      }
     }
 
     StepStats processStats = stats.getProcessStats();
@@ -355,6 +361,7 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
       processStats.setTotalRecords(saturatedToInt(processSuccess + processFailed));
       processStats.setSuccessRecords(saturatedToInt(processSuccess));
       processStats.setFailedRecords(saturatedToInt(processFailed));
+      processStats.setTotalTimeMs(serverStatsAggr.processTimeMs());
     }
 
     StepStats sinkStats = stats.getSinkStats();
@@ -366,6 +373,7 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
         sinkStats.setTotalRecords(saturatedToInt(actualSinkTotal));
         sinkStats.setSuccessRecords(saturatedToInt(sinkSuccess));
         sinkStats.setFailedRecords(saturatedToInt(sinkFailed));
+        sinkStats.setTotalTimeMs(serverStatsAggr.sinkTimeMs());
       } else {
         long sinkTotal = distributedJob.getTotalRecords();
         sinkStats.setTotalRecords(saturatedToInt(sinkTotal));
@@ -381,6 +389,7 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
       vectorStats.setTotalRecords(saturatedToInt(vectorSuccess + vectorFailed));
       vectorStats.setSuccessRecords(saturatedToInt(vectorSuccess));
       vectorStats.setFailedRecords(saturatedToInt(vectorFailed));
+      vectorStats.setTotalTimeMs(serverStatsAggr.vectorTimeMs());
     }
 
     if (distributedJob.getEntityStats() != null && stats.getEntityStats() != null) {
@@ -391,6 +400,10 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
         if (entityStats != null) {
           entityStats.setSuccessRecords(saturatedToInt(entry.getValue().getSuccessRecords()));
           entityStats.setFailedRecords(saturatedToInt(entry.getValue().getFailedRecords()));
+          // Surface per-entity sink time as the entity's totalTimeMs (same convention as the
+          // periodic aggregator) so the per-entity table renders OS-side latency consistently
+          // before and after job completion.
+          entityStats.setTotalTimeMs(entry.getValue().getSinkTimeMs());
         }
       }
     }
