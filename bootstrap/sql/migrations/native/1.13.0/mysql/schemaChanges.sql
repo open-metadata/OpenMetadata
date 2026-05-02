@@ -296,8 +296,8 @@ CREATE TABLE IF NOT EXISTS rdf_index_server_stats (
 CREATE INDEX idx_er_fromentity_toentity_relation_toid
     ON entity_relationship (fromEntity, toEntity, relation, toId);
 
--- The Postgres counterpart to this file adds a `text_pattern_ops` index on
--- `fqnHash` for every entity table to make `?service=` / `?database=` /
+-- The Postgres counterpart to this file adds a `varchar_pattern_ops` index
+-- on `fqnHash` for every entity table to make `?service=` / `?database=` /
 -- `?databaseSchema=` / `?parent=` listings (which compile to
 -- `fqnHash LIKE 'prefix%'`) index-driven instead of seq-scan-driven on RDS.
 -- MySQL does not need an equivalent: every entity-table `fqnHash` column is
