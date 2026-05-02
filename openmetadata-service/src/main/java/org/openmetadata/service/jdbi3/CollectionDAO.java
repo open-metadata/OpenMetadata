@@ -748,8 +748,7 @@ public interface CollectionDAO {
         return EntityDAO.super.listCount(filter);
       }
 
-      return listRootCount(
-          getTableName(), getNameHashColumn(), filter.getQueryParams(), condition);
+      return listRootCount(getTableName(), getNameHashColumn(), filter.getQueryParams(), condition);
     }
 
     // Root-only listing (?root=true) returns containers that have no parent container.
