@@ -334,6 +334,10 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       LOG.info("Classification FQN changed from {} to {}", oldFqn, newFqn);
       // Drop cache entries for every tag under this classification BEFORE we rewrite the DB.
       invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
+      // Drop cached entity JSON / bundle for every entity tagged with any tag under this
+      // classification. Tags live in the TAG entity table with FQNs starting with the
+      // classification FQN, so the descendant helper finds them correctly.
+      invalidateCacheForTaggedEntitiesAndDescendants(Entity.TAG, oldFqn);
       daoCollection.tagDAO().updateFqn(oldFqn, newFqn);
       daoCollection
           .tagUsageDAO()
