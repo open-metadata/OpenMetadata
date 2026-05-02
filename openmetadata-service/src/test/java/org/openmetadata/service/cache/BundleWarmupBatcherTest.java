@@ -11,7 +11,6 @@
 package org.openmetadata.service.cache;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -32,7 +31,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.TagLabel;
@@ -189,15 +187,5 @@ class BundleWarmupBatcherTest {
     List<String> hashesPassed = new ArrayList<>(hashesCaptor.getValue());
     assertEquals(1, hashesPassed.size());
     assertEquals(FullyQualifiedName.buildHash(t1.getFullyQualifiedName()), hashesPassed.get(0));
-  }
-
-  @Test
-  @SuppressWarnings("unused")
-  /** Sanity: empty list to suppress unused-variable warning on the EntityInterface import. */
-  void typeCompatibility() {
-    List<EntityInterface> empty = Collections.emptyList();
-    BundleWarmupBatcher.BatchResult result =
-        batcher.warmupBatch("table", empty, Duration.ofSeconds(60));
-    assertFalse(result.success() > 0);
   }
 }

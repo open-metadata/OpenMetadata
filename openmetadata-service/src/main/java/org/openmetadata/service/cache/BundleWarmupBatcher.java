@@ -94,6 +94,7 @@ public class BundleWarmupBatcher {
         bundleKeyValues.put(keys.bundle(entityType, entity.getId()), JsonUtils.pojoToJson(dto));
       } catch (Exception e) {
         failed++;
+        LOG.debug("Bundle warmup row failed: type={} id={}", entityType, entity.getId(), e);
       }
     }
     if (bundleKeyValues.isEmpty()) {

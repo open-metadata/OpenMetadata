@@ -346,12 +346,32 @@ public class CacheWarmupApp extends AbstractNativeApplication {
         success += pageSuccess;
         failed += pageFailed;
         updateEntityStats(entityType, pageSuccess, pageFailed);
+        boolean bundleOk = true;
         if (bundleBatcher != null && !parsedEntities.isEmpty()) {
           BundleWarmupBatcher.BatchResult bundleResult =
               bundleBatcher.warmupBatch(entityType, parsedEntities, ttl);
           bundlesWritten += bundleResult.success();
+          // Whole-page bundle failure (Redis pipeline error / DB tag fetch error) means the
+          // bundles for this page are cold despite the entity JSON being warm. Hold the
+          // checkpoint so the next run retries the page; advance only on partial-or-better
+          // success. This trades an occasional duplicate entity write for not silently leaving
+          // bundle keys stale.
+          if (bundleResult.success() == 0 && bundleResult.failed() > 0) {
+            bundleOk = false;
+            LOG.warn(
+                "Bundle warmup pass failed for {} batch at offset {} ({} rows); holding"
+                    + " checkpoint so the next run retries.",
+                entityType,
+                offset,
+                bundleResult.failed());
+          }
         }
-        writeCheckpoint(entityType, offset + page.size());
+        if (bundleOk) {
+          writeCheckpoint(entityType, offset + page.size());
+        }
+        // Refresh the distributed claim TTL on every successful page — large entity types can
+        // outlast CLAIM_TTL, and without refresh another instance could acquire mid-warm.
+        refreshClaim(entityType);
       } catch (RuntimeException e) {
         // Redis rejected the batch. Count every row in this page as failed so warmup progress and
         // the WebSocket status reflect the actual state — the cache is not warm for these rows.
@@ -390,6 +410,31 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     } catch (Exception e) {
       LOG.debug("Claim attempt failed, proceeding without lock for {}", entityType, e);
       return true;
+    }
+  }
+
+  /**
+   * Refresh the claim TTL after a successful page so a long-running warm doesn't lose the lock
+   * mid-flight. Compare-and-set: GET the current owner; if it's still us, SET with a fresh
+   * TTL. If somebody else now owns it (our TTL expired), don't fight — just stop refreshing.
+   * The warmup itself continues to completion regardless; the worst case is the other instance
+   * does redundant work (Redis writes are idempotent).
+   */
+  private void refreshClaim(String entityType) {
+    if (!enableDistributedClaim
+        || cacheProvider == null
+        || !cacheProvider.available()
+        || claimKeyPrefix == null) {
+      return;
+    }
+    String key = claimKeyPrefix + entityType;
+    try {
+      String owner = cacheProvider.get(key).orElse(null);
+      if (instanceId.equals(owner)) {
+        cacheProvider.set(key, instanceId, CLAIM_TTL);
+      }
+    } catch (Exception e) {
+      LOG.debug("Failed to refresh claim for {}", entityType, e);
     }
   }
 
