@@ -6415,4 +6415,87 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         thrown.getMessage().contains("404") || thrown.getMessage().contains("not found"),
         "Should get 404 for non-existent entity, got: " + thrown.getMessage());
   }
+
+  // ===================================================================
+  // Redis cache write-through correctness — fire on every entity subclass
+  // when the suite is configured with cacheProvider=redis. With Redis
+  // disabled these are no-ops. Each test warms the cache (by-id and
+  // by-name), mutates the entity, and re-reads to confirm the cached
+  // path returns the latest value rather than a pre-mutation snapshot.
+  // ===================================================================
+
+  @Test
+  void cache_displayNameUpdateReflectedOnReadById(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        org.openmetadata.it.bootstrap.TestSuiteBootstrap.isRedisEnabled(),
+        "Skipped — cache write-through tests require cacheProvider=redis");
+
+    K request = createMinimalRequest(ns);
+    T created = createEntity(request);
+    String id = created.getId().toString();
+
+    // Warm by-id and by-name caches.
+    T warmById = getEntity(id);
+    getEntityByName(created.getFullyQualifiedName());
+
+    String newDisplayName = "cache-it-" + System.nanoTime();
+    warmById.setDisplayName(newDisplayName);
+    T patched = patchEntity(id, warmById);
+    assertEquals(
+        newDisplayName, patched.getDisplayName(), "PATCH response itself must show the update");
+
+    T fetchedById = getEntity(id);
+    assertEquals(
+        newDisplayName,
+        fetchedById.getDisplayName(),
+        "GET-by-id after PATCH must serve the new displayName, not a stale Redis snapshot");
+  }
+
+  @Test
+  void cache_displayNameUpdateReflectedOnReadByName(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        org.openmetadata.it.bootstrap.TestSuiteBootstrap.isRedisEnabled(),
+        "Skipped — cache write-through tests require cacheProvider=redis");
+
+    K request = createMinimalRequest(ns);
+    T created = createEntity(request);
+    String id = created.getId().toString();
+    String fqn = created.getFullyQualifiedName();
+
+    // Warm both caches up front so PATCH's invalidation has something to invalidate.
+    T warm = getEntity(id);
+    getEntityByName(fqn);
+
+    String newDisplayName = "cache-by-name-" + System.nanoTime();
+    warm.setDisplayName(newDisplayName);
+    patchEntity(id, warm);
+
+    T fetchedByName = getEntityByName(fqn);
+    assertEquals(
+        newDisplayName,
+        fetchedByName.getDisplayName(),
+        "GET-by-name after PATCH must serve the new displayName, not a stale Redis snapshot");
+  }
+
+  @Test
+  void cache_hardDeleteReflectedOnReadById(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        org.openmetadata.it.bootstrap.TestSuiteBootstrap.isRedisEnabled(),
+        "Skipped — cache write-through tests require cacheProvider=redis");
+
+    K request = createMinimalRequest(ns);
+    T created = createEntity(request);
+    String id = created.getId().toString();
+
+    // Warm the cache, then hard-delete.
+    getEntity(id);
+    hardDeleteEntity(id);
+
+    // Subsequent reads must 404 — a stale cache entry would let the entity stay
+    // resolvable until TTL.
+    Exception thrown = assertThrows(Exception.class, () -> getEntity(id));
+    assertTrue(
+        thrown.getMessage().contains("404") || thrown.getMessage().contains("not found"),
+        "GET-by-id after hard delete must 404, got: " + thrown.getMessage());
+  }
 }
