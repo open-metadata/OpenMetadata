@@ -41,6 +41,15 @@ public interface CacheProvider extends AutoCloseable {
 
   Map<String, Object> getStats();
 
+  /**
+   * Count keys matching a glob-style pattern (e.g. {@code "om:prod:e:table:*"}). Implementations
+   * use a server-side SCAN cursor to avoid blocking with KEYS. Default returns -1 for providers
+   * without a scan implementation; callers must treat negative values as "unsupported".
+   */
+  default long scanCount(String pattern) {
+    return -1L;
+  }
+
   @Override
   void close();
 }

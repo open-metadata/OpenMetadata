@@ -17,7 +17,9 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET
 import static org.openmetadata.service.socket.WebSocketManager.CACHE_WARMUP_JOB_BROADCAST_CHANNEL;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import java.net.InetAddress;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,9 +41,11 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.cache.BundleWarmupBatcher;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheKeys;
+import org.openmetadata.service.cache.CacheMetrics;
 import org.openmetadata.service.cache.CacheProvider;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -80,12 +84,27 @@ import org.quartz.JobExecutionContext;
 public class CacheWarmupApp extends AbstractNativeApplication {
   private static final String ALL = "all";
   private static final int DEFAULT_BATCH_SIZE = 1000;
+  // Per-entity-type checkpoint keys live under their own namespace so we can list/clear them
+  // without colliding with normal cache traffic. TTL is one day — long enough for ops staff to
+  // notice and resume a stuck warmup, short enough that abandoned checkpoints self-clean.
+  private static final String CHECKPOINT_KEY_PREFIX = "om:warmup:checkpoint:";
+  private static final String CLAIM_KEY_PREFIX = "om:warmup:claim:";
+  private static final Duration CHECKPOINT_TTL = Duration.ofDays(1);
+  private static final Duration CLAIM_TTL = Duration.ofMinutes(10);
 
   @Getter private EventPublisherJob jobData;
 
   private CacheProvider cacheProvider;
   private CacheKeys keys;
   private CacheConfig cacheConfig;
+  private BundleWarmupBatcher bundleBatcher;
+  private final String instanceId = generateInstanceId();
+  // Toggle bundle warmup off via -Dom.cache.warmBundles=false at JVM start. Defaults to true so
+  // production deployments get the first-read benefit without config changes.
+  private final boolean warmBundles =
+      Boolean.parseBoolean(System.getProperty("om.cache.warmBundles", "true"));
+  private final boolean enableDistributedClaim =
+      Boolean.parseBoolean(System.getProperty("om.cache.warmup.distributedClaim", "false"));
 
   private JobExecutionContext jobExecutionContext;
   private volatile boolean stopped = false;
@@ -134,6 +153,9 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     cacheConfig = CacheBundle.getCacheConfig();
     if (cacheConfig != null) {
       keys = new CacheKeys(cacheConfig.redis.keyspace);
+    }
+    if (warmBundles && cacheProvider != null && keys != null) {
+      bundleBatcher = new BundleWarmupBatcher(collectionDAO, cacheProvider, keys);
     }
   }
 
@@ -187,12 +209,20 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       jobData.setStatus(EventPublisherJob.Status.STOPPED);
     } else {
       jobData.setStatus(EventPublisherJob.Status.COMPLETED);
+      CacheMetrics metrics = CacheMetrics.getInstance();
+      if (metrics != null) {
+        metrics.recordWarmupCompleted();
+      }
     }
   }
 
   private void warmupEntityType(String entityType, int batchSize, Duration ttl) {
     if (Entity.USER.equals(entityType)) {
       LOG.debug("Skipping user entity type — not cached by design");
+      return;
+    }
+    if (enableDistributedClaim && !claimEntityType(entityType)) {
+      LOG.info("Skipping {} — claimed by another instance", entityType);
       return;
     }
     EntityRepository<?> repository;
@@ -207,8 +237,12 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       return;
     }
 
-    int offset = 0;
+    int offset = readCheckpoint(entityType);
+    if (offset > 0) {
+      LOG.info("Resuming {} warmup from checkpoint offset {}", entityType, offset);
+    }
     int success = 0;
+    int bundlesWritten = 0;
     int failed = 0;
     long start = System.currentTimeMillis();
     while (!stopped) {
@@ -231,6 +265,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
 
       Map<String, Map<String, String>> hsetBatch = new HashMap<>(page.size() * 2);
       Map<String, String> setBatch = new HashMap<>(page.size());
+      List<EntityInterface> parsedEntities = new ArrayList<>(page.size());
       // Per-page deltas — updateEntityStats adds to the running totals, so passing cumulative
       // counts would double-count entries from earlier pages.
       int pageSuccess = 0;
@@ -245,6 +280,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
           }
           hsetBatch.put(keys.entity(entityType, entity.getId()), Map.of("base", json));
           setBatch.put(keys.entityByName(entityType, entity.getFullyQualifiedName()), json);
+          parsedEntities.add(entity);
           pageSuccess++;
         } catch (Exception e) {
           pageFailed++;
@@ -256,6 +292,12 @@ public class CacheWarmupApp extends AbstractNativeApplication {
         success += pageSuccess;
         failed += pageFailed;
         updateEntityStats(entityType, pageSuccess, pageFailed);
+        if (bundleBatcher != null && !parsedEntities.isEmpty()) {
+          BundleWarmupBatcher.BatchResult bundleResult =
+              bundleBatcher.warmupBatch(entityType, parsedEntities, ttl);
+          bundlesWritten += bundleResult.success();
+        }
+        writeCheckpoint(entityType, offset + page.size());
       } catch (RuntimeException e) {
         // Redis rejected the batch. Count every row in this page as failed so warmup progress and
         // the WebSocket status reflect the actual state — the cache is not warm for these rows.
@@ -270,7 +312,118 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     }
     long elapsed = System.currentTimeMillis() - start;
     LOG.info(
-        "Warmed {} entities (type={}, failed={}) in {} ms", success, entityType, failed, elapsed);
+        "Warmed {} entities (type={}, failed={}, bundles={}) in {} ms",
+        success,
+        entityType,
+        failed,
+        bundlesWritten,
+        elapsed);
+    if (!stopped) {
+      reportCoverage(entityType, dao, success, bundlesWritten);
+      clearCheckpoint(entityType);
+    }
+    if (enableDistributedClaim) {
+      releaseClaim(entityType);
+    }
+  }
+
+  private boolean claimEntityType(String entityType) {
+    if (cacheProvider == null || !cacheProvider.available()) {
+      return true;
+    }
+    try {
+      return cacheProvider.setIfAbsent(CLAIM_KEY_PREFIX + entityType, instanceId, CLAIM_TTL);
+    } catch (Exception e) {
+      LOG.debug("Claim attempt failed, proceeding without lock for {}", entityType, e);
+      return true;
+    }
+  }
+
+  private void releaseClaim(String entityType) {
+    if (cacheProvider == null || !cacheProvider.available()) {
+      return;
+    }
+    try {
+      cacheProvider.del(CLAIM_KEY_PREFIX + entityType);
+    } catch (Exception e) {
+      LOG.debug("Failed to release claim for {}", entityType, e);
+    }
+  }
+
+  private int readCheckpoint(String entityType) {
+    if (cacheProvider == null || !cacheProvider.available()) {
+      return 0;
+    }
+    try {
+      return cacheProvider.get(CHECKPOINT_KEY_PREFIX + entityType).map(Integer::parseInt).orElse(0);
+    } catch (Exception e) {
+      LOG.debug("Failed to read checkpoint for {}", entityType, e);
+      return 0;
+    }
+  }
+
+  private void writeCheckpoint(String entityType, int offset) {
+    if (cacheProvider == null || !cacheProvider.available()) {
+      return;
+    }
+    try {
+      cacheProvider.set(
+          CHECKPOINT_KEY_PREFIX + entityType, Integer.toString(offset), CHECKPOINT_TTL);
+    } catch (Exception e) {
+      LOG.debug("Failed to write checkpoint for {} at {}", entityType, offset, e);
+    }
+  }
+
+  private void clearCheckpoint(String entityType) {
+    if (cacheProvider == null || !cacheProvider.available()) {
+      return;
+    }
+    try {
+      cacheProvider.del(CHECKPOINT_KEY_PREFIX + entityType);
+    } catch (Exception e) {
+      LOG.debug("Failed to clear checkpoint for {}", entityType, e);
+    }
+  }
+
+  private void reportCoverage(
+      String entityType, EntityDAO<?> dao, int success, int bundlesWritten) {
+    CacheMetrics metrics = CacheMetrics.getInstance();
+    if (metrics == null) {
+      return;
+    }
+    int total;
+    try {
+      total = dao.listTotalCount();
+    } catch (Exception e) {
+      LOG.debug("Failed to fetch total count for coverage metric: {}", entityType, e);
+      return;
+    }
+    if (total <= 0) {
+      return;
+    }
+    double coverage = (double) success / total;
+    metrics.recordCoverage(entityType, coverage);
+    if (coverage < 0.95) {
+      LOG.warn(
+          "Cache coverage below threshold for {}: {}/{} ({}%)",
+          entityType, success, total, Math.round(coverage * 100));
+    }
+    if (bundleBatcher != null) {
+      double bundleCoverage = (double) bundlesWritten / total;
+      metrics.recordBundleCoverage(entityType, bundleCoverage);
+    }
+  }
+
+  private static String generateInstanceId() {
+    try {
+      return InetAddress.getLocalHost().getHostName()
+          + ":"
+          + ProcessHandle.current().pid()
+          + ":"
+          + System.currentTimeMillis();
+    } catch (Exception e) {
+      return "warmup:" + System.currentTimeMillis();
+    }
   }
 
   private Set<String> resolveEntityTypes() {
