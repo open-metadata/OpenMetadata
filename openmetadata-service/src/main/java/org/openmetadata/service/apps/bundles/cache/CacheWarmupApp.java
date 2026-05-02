@@ -190,17 +190,27 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       if (raw == null) {
         return;
       }
-      Object wb = raw.get("warmBundles");
-      if (wb instanceof Boolean) {
-        warmBundles = (Boolean) wb;
-      }
-      Object dc = raw.get("enableDistributedClaim");
-      if (dc instanceof Boolean) {
-        enableDistributedClaim = (Boolean) dc;
-      }
+      // Accept both native Boolean and string forms — depending on how the config arrives
+      // (typed POJO, raw JSON, YAML env-var override, API string body) the same logical value
+      // can land here as Boolean.TRUE or "true". An instanceof Boolean check would silently
+      // ignore the string form and fall back to JVM system properties, which surprises
+      // operators who set the flag in the UI.
+      warmBundles = parseBooleanFlag(raw.get("warmBundles"), warmBundles);
+      enableDistributedClaim =
+          parseBooleanFlag(raw.get("enableDistributedClaim"), enableDistributedClaim);
     } catch (Exception e) {
       LOG.debug("Could not read warmBundles / enableDistributedClaim from app config", e);
     }
+  }
+
+  private static boolean parseBooleanFlag(Object value, boolean fallback) {
+    if (value == null) {
+      return fallback;
+    }
+    if (value instanceof Boolean) {
+      return (Boolean) value;
+    }
+    return Boolean.parseBoolean(String.valueOf(value));
   }
 
   private void initJobData(JobExecutionContext ctx) {
