@@ -631,6 +631,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
         }
 
+        // The asset's stored entity JSON has `dataProducts` stripped
+        // (FIELDS_STORED_AS_RELATIONSHIPS) and re-derived from entity_relationship on read.
+        // Drop every cached variant of the asset so the next read rebuilds it from the
+        // freshly-written relationships.
+        invalidateCacheForEntity(ref.getType(), ref.getId(), ref.getFullyQualifiedName());
+
         success.add(new BulkResponse().withRequest(ref));
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 

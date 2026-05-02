@@ -297,6 +297,13 @@ public class DomainRepository extends EntityRepository<Domain> {
         LineageUtil.addDomainLineage(entityId, ref.getType(), domainRef);
       }
 
+      // The asset's stored entity JSON has `domains` stripped (FIELDS_STORED_AS_RELATIONSHIPS)
+      // and re-derived from entity_relationship on read. The relationship row is fresh, but
+      // the asset's cached entity bundle and the per-field domains/owners hash entry both
+      // hold the previous-domain view. Drop every cached variant so the next read rebuilds
+      // it from the freshly-written relationships.
+      invalidateCacheForEntity(ref.getType(), ref.getId(), ref.getFullyQualifiedName());
+
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
