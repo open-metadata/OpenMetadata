@@ -15,8 +15,8 @@ import classNames from 'classnames';
 import DocumentTitle from 'components/common/DocumentTitle/DocumentTitle';
 import 'components/common/ResizablePanels/resizable-panels.less';
 import React, { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
-import i18n from 'utils/i18next/LocalUtil';
 import './knowledge-center-layout.less';
 
 interface KnowledgeCenterLayoutProps {
@@ -42,6 +42,7 @@ const KnowledgeCenterLayout: FC<KnowledgeCenterLayoutProps> = ({
   leftSidebarExtra,
   rightSidebarExtra,
 }) => {
+  const { i18n } = useTranslation();
   const isLeftPanelCollapsed = false;
   const isRightPanelCollapsed = !rightSidebar;
 
