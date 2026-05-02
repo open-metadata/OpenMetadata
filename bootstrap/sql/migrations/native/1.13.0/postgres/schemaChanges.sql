@@ -338,6 +338,29 @@ CREATE INDEX IF NOT EXISTS idx_er_fromentity_toentity_relation_toid
 -- outside an implicit transaction, which the OpenMetadata native migration
 -- runner already supports — see 1.11.0/postgres/schemaChanges.sql.
 --
+-- OPERATOR RUNBOOK — interrupted CONCURRENTLY builds.
+-- If a `CREATE INDEX CONCURRENTLY` is interrupted (deploy timeout, lock
+-- contention, OOM, connection drop), Postgres leaves an INVALID index
+-- behind. With `IF NOT EXISTS` here (kept for idempotency on re-deploys
+-- and force-mode reruns), a retry would silently skip the rebuild and
+-- leave the table without a usable pattern index — the symptom would be
+-- a service-filtered listing reverting to seq-scan latency on that one
+-- table. The MigrationProcessImpl runner caches statements by SQL text
+-- hash, so an embedded cleanup step cannot be made to re-run on retry —
+-- this is a known pattern-level gap (also present in 1.11.0).
+--
+-- Detection (run on the affected tenant):
+--   SELECT c.relname FROM pg_class c
+--    JOIN pg_index i ON i.indexrelid = c.oid
+--    WHERE NOT i.indisvalid
+--      AND c.relname LIKE 'idx\_%\_fqnhash\_pattern' ESCAPE '\';
+-- Remediation: `DROP INDEX CONCURRENTLY <relname>;` for each row, then
+-- delete the corresponding row from server_migration_sql_logs so the
+-- runner re-attempts the CREATE on the next deploy:
+--   DELETE FROM server_migration_sql_logs
+--    WHERE version = '1.13.0'
+--      AND sqlstatement LIKE '%idx\_<table>\_fqnhash\_pattern%' ESCAPE '\';
+--
 -- MySQL is unaffected: every entity-table `fqnHash` column ships with
 -- `CHARACTER SET ascii COLLATE ascii_bin`, a binary collation that already
 -- permits prefix scans on the unique index. This pass is Postgres-only.
