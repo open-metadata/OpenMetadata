@@ -320,13 +320,6 @@ class EntityServiceBaseTest {
     when(mockHttpClient.execute(
             eq(HttpMethod.PATCH),
             eq("/v1/tables/" + tableId),
-            eq(patchDoc),
-            eq(Table.class),
-            any()))
-        .thenReturn(afterPatch);
-    when(mockHttpClient.execute(
-            eq(HttpMethod.PATCH),
-            eq("/v1/tables/" + tableId),
             any(JsonNode.class),
             eq(Table.class),
             any()))
