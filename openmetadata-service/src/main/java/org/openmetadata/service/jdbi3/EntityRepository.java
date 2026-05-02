@@ -220,6 +220,7 @@ import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CachedEntityDao;
 import org.openmetadata.service.cache.CachedReadBundle;
 import org.openmetadata.service.cache.CachedRelationshipDao;
+import org.openmetadata.service.cache.ListCountCache;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -2126,7 +2127,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public ResultList<T> listAfter(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
-    int total = dao.listCount(filter);
+    int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
@@ -2155,7 +2156,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public ResultList<T> listAfterWithOffset(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limit, int offset) {
-    int total = dao.listCount(filter);
+    int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
     List<String> jsons = dao.listAfter(filter, limit, offset);
 
     List<T> entities = listInternal(jsons, fields, uriInfo);
@@ -2239,6 +2240,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public ResultList<T> listBefore(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) {
+    // Compute the cached total BEFORE dao.listBefore so the cache field hash is taken from
+    // pre-mutation queryParams. dao.listBefore internally calls filter.getCondition() which
+    // adds derived bind params (serviceHash, ownerIdParam, etc.); hashing after would put
+    // the same logical filter under a different cache field than listAfter / listAfterWithOffset.
+    int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
+
     // Reverse scrolling - Get one extra result used for computing before cursor
     Map<String, String> cursorMap = parseCursorMap(RestUtil.decodeCursor(before));
     String beforeName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
@@ -2248,8 +2255,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<T> entities = JsonUtils.readObjects(jsons, entityClass);
     setFieldsInBulk(fields, entities);
     entities.forEach(entity -> withHref(uriInfo, entity));
-
-    int total = dao.listCount(filter);
 
     String beforeCursor = null;
     String afterCursor;
@@ -3243,6 +3248,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
     }
     RdfUpdater.updateEntity(entity);
+    ListCountCache.invalidate(entityType);
   }
 
   /**
@@ -3414,6 +3420,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (T entity : uniqueEntities) {
       RdfUpdater.updateEntity(entity);
     }
+    ListCountCache.invalidate(entityType);
   }
 
   @SuppressWarnings("unused")
@@ -3882,6 +3889,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (hardDelete) {
       RdfUpdater.deleteEntity(entity.getEntityReference());
     }
+    // Both hard and soft delete change the count of non-deleted entities returned by listings.
+    ListCountCache.invalidate(entityType);
   }
 
   public final void deleteFromSearch(T entity, boolean hardDelete) {
@@ -5369,6 +5378,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updated.setUpdatedAt(System.currentTimeMillis());
       EntityUpdater updater = getUpdater(original, updated, Operation.PUT, null);
       updater.update();
+      // Restore moves the row from deleted=true to deleted=false, changing the listing total.
+      ListCountCache.invalidate(entityType);
       return new PutResponse<>(Status.OK, updated, ENTITY_RESTORED);
     } catch (EntityNotFoundException e) {
       LOG.info("Entity is not in deleted state {} {}", entityType, id);
