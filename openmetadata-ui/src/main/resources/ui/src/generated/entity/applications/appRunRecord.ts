@@ -270,6 +270,11 @@ export interface StepStats {
      */
     totalRecords?: number;
     /**
+     * Cumulative time (ms) spent in this stage. UI computes avg latency = totalTimeMs /
+     * successRecords and throughput = successRecords / (totalTimeMs / 1000).
+     */
+    totalTimeMs?: number;
+    /**
      * Count of records with failed vector embeddings
      */
     vectorFailedRecords?: number;
