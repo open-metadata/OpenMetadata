@@ -194,7 +194,6 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
-import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -219,6 +218,7 @@ import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CachedEntityDao;
 import org.openmetadata.service.cache.CachedReadBundle;
 import org.openmetadata.service.cache.CachedRelationshipDao;
+import org.openmetadata.service.cache.ListCountCache;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -259,7 +259,6 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
-import org.openmetadata.service.util.VersionFieldChangeUtil;
 import software.amazon.awssdk.utils.Either;
 
 /**
@@ -422,9 +421,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               });
 
   private final String collectionPath;
-  private static final long VERSION_FIELD_METADATA_RETRY_MILLIS = 30_000L;
-  private static volatile boolean versionFieldMetadataColumnsAvailable = true;
-  private static volatile long nextVersionFieldMetadataRetryAt;
   @Getter public final Class<T> entityClass;
   @Getter protected final String entityType;
   @Getter protected final EntityDAO<T> dao;
@@ -2138,7 +2134,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public ResultList<T> listAfter(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
-    int total = dao.listCount(filter);
+    int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
@@ -2167,7 +2163,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public ResultList<T> listAfterWithOffset(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limit, int offset) {
-    int total = dao.listCount(filter);
+    int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
     List<String> jsons = dao.listAfter(filter, limit, offset);
 
     List<T> entities = listInternal(jsons, fields, uriInfo);
@@ -2251,6 +2247,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public ResultList<T> listBefore(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) {
+    // Compute the cached total BEFORE dao.listBefore so the cache field hash is taken from
+    // pre-mutation queryParams. dao.listBefore internally calls filter.getCondition() which
+    // adds derived bind params (serviceHash, ownerIdParam, etc.); hashing after would put
+    // the same logical filter under a different cache field than listAfter / listAfterWithOffset.
+    int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
+
     // Reverse scrolling - Get one extra result used for computing before cursor
     Map<String, String> cursorMap = parseCursorMap(RestUtil.decodeCursor(before));
     String beforeName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
@@ -2260,8 +2262,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<T> entities = JsonUtils.readObjects(jsons, entityClass);
     setFieldsInBulk(fields, entities);
     entities.forEach(entity -> withHref(uriInfo, entity));
-
-    int total = dao.listCount(filter);
 
     String beforeCursor = null;
     String afterCursor;
@@ -2319,319 +2319,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final EntityHistoryWithOffset listVersionsWithOffset(UUID id, int limit, int offset) {
-    return listVersionsWithOffset(id, limit, offset, null);
-  }
-
-  public final EntityHistoryWithOffset listVersionsWithOffset(
-      UUID id, int limit, int offset, String fieldChanged) {
-    T latest = getLatestVersionEntity(id);
-    if (hasFieldChangedFilter(fieldChanged)) {
-      return listVersionsWithFieldFilter(id, latest, limit, offset, fieldChanged);
-    }
-    return listAllVersionsWithOffset(id, latest, limit, offset);
-  }
-
-  private EntityHistoryWithOffset listAllVersionsWithOffset(
-      UUID id, T latest, int limit, int offset) {
-    List<Object> versions = new ArrayList<>();
-    String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
-    HistoryWindow historyWindow = buildHistoryWindow(true, latest, limit, offset, versions);
-    addExtensionRecords(versions, getHistoricalVersionPage(id, extensionPrefix, historyWindow));
-    int extensionCount = daoCollection.entityExtensionDAO().getExtensionCount(id, extensionPrefix);
-    return buildEntityHistoryWithOffset(versions, offset, limit, extensionCount + 1);
-  }
-
-  private EntityHistoryWithOffset listVersionsWithFieldFilter(
-      UUID id, T latest, int limit, int offset, String rawFieldChanged) {
-    List<Object> versions = new ArrayList<>();
-    boolean latestMatches = latestVersionMatchesFieldChanged(latest, rawFieldChanged);
-    HistoryWindow historyWindow =
-        buildHistoryWindow(latestMatches, latest, limit, offset, versions);
-    FieldChangedHistoryPage historicalVersions =
-        getFieldChangedHistoryPage(id, rawFieldChanged, historyWindow);
-    addExtensionRecords(versions, historicalVersions.records());
-    int total = historicalVersions.total() + (latestMatches ? 1 : 0);
-    return buildEntityHistoryWithOffset(versions, offset, limit, total);
-  }
-
-  private boolean latestVersionMatchesFieldChanged(T latest, String fieldChanged) {
-    return VersionFieldChangeUtil.matchesFieldChanged(latest.getChangeDescription(), fieldChanged);
-  }
-
-  private T getLatestVersionEntity(UUID id) {
     T latest = setFieldsInternal(find(id, ALL), putFields);
     setInheritedFields(latest, putFields);
-    return latest;
-  }
-
-  private boolean hasFieldChangedFilter(String fieldChanged) {
-    return fieldChanged != null && !fieldChanged.isEmpty();
-  }
-
-  private HistoryWindow buildHistoryWindow(
-      boolean includeLatest, T latest, int limit, int offset, List<Object> versions) {
-    int historicalOffset = includeLatest ? Math.max(0, offset - 1) : offset;
-    int historicalLimit = limit;
-    if (includeLatest && offset == 0) {
-      versions.add(JsonUtils.pojoToJson(latest));
-      historicalLimit = limit - 1;
-    }
-    return new HistoryWindow(historicalLimit, historicalOffset);
-  }
-
-  private List<ExtensionRecord> getHistoricalVersionPage(
-      UUID id, String extensionPrefix, HistoryWindow historyWindow) {
-    if (!historyWindow.hasItems()) {
-      return List.of();
-    }
-    return readVersionHistory(
-        () ->
-            daoCollection
-                .entityExtensionDAO()
-                .getExtensionsWithOffset(
-                    id, extensionPrefix, historyWindow.limit(), historyWindow.offset()),
-        () ->
-            daoCollection
-                .entityExtensionDAO()
-                .getExtensionsWithOffsetLegacy(
-                    id, extensionPrefix, historyWindow.limit(), historyWindow.offset()));
-  }
-
-  private FieldChangedHistoryPage getFieldChangedHistoryPage(
-      UUID id, String fieldChanged, HistoryWindow historyWindow) {
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
-    return readVersionHistory(
-        () -> getIndexedFieldChangedHistoryPage(id, extensionPrefix, fieldChanged, historyWindow),
-        () -> getLegacyFieldChangedHistoryPage(id, extensionPrefix, fieldChanged, historyWindow));
-  }
-
-  private FieldChangedHistoryPage getIndexedFieldChangedHistoryPage(
-      UUID id, String extensionPrefix, String fieldChanged, HistoryWindow historyWindow) {
-    int total =
-        daoCollection
-            .entityExtensionDAO()
-            .getExtensionCountByFieldChanged(id, extensionPrefix, fieldChanged);
-    if (!historyWindow.isInRange(total)) {
-      return new FieldChangedHistoryPage(total, List.of());
-    }
     List<ExtensionRecord> records =
         daoCollection
             .entityExtensionDAO()
-            .getExtensionsWithFieldChanged(
-                id, extensionPrefix, fieldChanged, historyWindow.limit(), historyWindow.offset());
-    return new FieldChangedHistoryPage(total, records);
-  }
+            .getExtensionsWithOffset(id, extensionPrefix, limit, offset);
+    List<EntityVersionPair> oldVersions = new ArrayList<>();
+    records.forEach(r -> oldVersions.add(new EntityVersionPair(r)));
+    oldVersions.sort(EntityUtil.compareVersion.reversed());
 
-  private FieldChangedHistoryPage getLegacyFieldChangedHistoryPage(
-      UUID id, String extensionPrefix, String fieldChanged, HistoryWindow historyWindow) {
-    int total =
-        daoCollection
-            .entityExtensionDAO()
-            .getExtensionCountByFieldChangedLegacy(id, extensionPrefix, fieldChanged);
-    if (!historyWindow.isInRange(total)) {
-      return new FieldChangedHistoryPage(total, List.of());
-    }
-    List<ExtensionRecord> records =
-        daoCollection
-            .entityExtensionDAO()
-            .getExtensionsWithFieldChangedLegacy(
-                id, extensionPrefix, fieldChanged, historyWindow.limit(), historyWindow.offset());
-    return new FieldChangedHistoryPage(total, records);
-  }
+    final List<Object> versions = new ArrayList<>();
 
-  private void addExtensionRecords(List<Object> versions, List<ExtensionRecord> records) {
-    records.forEach(record -> versions.add(new EntityVersionPair(record).getEntityJson()));
-  }
-
-  private <R> R readVersionHistory(Supplier<R> indexedRead, Supplier<R> legacyRead) {
-    if (!shouldUseVersionFieldMetadata()) {
-      return legacyRead.get();
-    }
-    try {
-      R result = indexedRead.get();
-      markVersionFieldMetadataAvailable();
-      return result;
-    } catch (RuntimeException e) {
-      if (!handleMissingVersionFieldMetadata(e)) {
-        throw e;
-      }
-      return legacyRead.get();
-    }
-  }
-
-  private boolean shouldUseVersionFieldMetadata() {
-    return versionFieldMetadataColumnsAvailable
-        || System.currentTimeMillis() >= nextVersionFieldMetadataRetryAt;
-  }
-
-  private static void markVersionFieldMetadataAvailable() {
-    versionFieldMetadataColumnsAvailable = true;
-    nextVersionFieldMetadataRetryAt = 0L;
-  }
-
-  private static void markVersionFieldMetadataUnavailable() {
-    versionFieldMetadataColumnsAvailable = false;
-    nextVersionFieldMetadataRetryAt =
-        System.currentTimeMillis() + VERSION_FIELD_METADATA_RETRY_MILLIS;
-  }
-
-  private EntityHistoryWithOffset buildEntityHistoryWithOffset(
-      List<Object> versions, int offset, int limit, int total) {
-    Paging paging = new Paging();
-    paging.setOffset(offset);
-    paging.setLimit(limit);
-    paging.setTotal(total);
-    EntityHistory entityHistory =
-        new EntityHistory().withEntityType(entityType).withVersions(versions).withPaging(paging);
-    return new EntityHistoryWithOffset(entityHistory, Math.min(offset + limit, total));
-  }
-
-  private boolean handleMissingVersionFieldMetadata(RuntimeException e) {
-    if (!isMissingVersionFieldMetadataColumnException(e)) {
-      return false;
-    }
-    markVersionFieldMetadataUnavailable();
-    return true;
-  }
-
-  private boolean isMissingVersionFieldMetadataColumnException(Throwable throwable) {
-    SQLException sqlException = findSqlException(throwable);
-    return sqlException != null && isMissingColumnSqlState(sqlException.getSQLState());
-  }
-
-  private static SQLException findSqlException(Throwable throwable) {
-    while (throwable != null) {
-      if (throwable instanceof SQLException sqlException) {
-        return sqlException;
-      }
-      throwable = throwable.getCause();
-    }
-    return null;
-  }
-
-  private static boolean isMissingColumnSqlState(String sqlState) {
-    return "42S22".equals(sqlState) || "42703".equals(sqlState);
-  }
-
-  private record FieldChangedHistoryPage(int total, List<ExtensionRecord> records) {}
-
-  private record HistoryWindow(int limit, int offset) {
-    private boolean hasItems() {
-      return limit > 0;
+    if (offset == 0) {
+      versions.add(JsonUtils.pojoToJson(latest));
     }
 
-    private boolean isInRange(int total) {
-      return hasItems() && offset < total;
-    }
-  }
-
-  private VersionFieldChangeUtil.VersionExtensionRecord buildVersionExtensionRecord(
-      UUID id,
-      String extensionName,
-      String entityJson,
-      Double version,
-      ChangeDescription changeDescription) {
-    return new VersionFieldChangeUtil.VersionExtensionRecord(
-        id,
-        extensionName,
-        entityType,
-        entityJson,
-        version,
-        VersionFieldChangeUtil.getChangedFieldKeysJson(changeDescription));
-  }
-
-  private void insertVersionExtensionRecord(
-      VersionFieldChangeUtil.VersionExtensionRecord versionExtensionRecord) {
-    writeVersionHistory(
-        () -> insertVersionExtensionWithMetadata(versionExtensionRecord),
-        () -> insertVersionExtensionLegacy(versionExtensionRecord));
-  }
-
-  private void insertVersionExtensionRecords(
-      List<VersionFieldChangeUtil.VersionExtensionRecord> versionExtensionRecords) {
-    writeVersionHistory(
-        () -> insertVersionExtensionsWithMetadata(versionExtensionRecords),
-        () -> insertVersionExtensionsLegacy(versionExtensionRecords));
-  }
-
-  private void writeVersionHistory(Runnable indexedWrite, Runnable legacyWrite) {
-    if (!shouldUseVersionFieldMetadata()) {
-      legacyWrite.run();
-      return;
-    }
-    try {
-      indexedWrite.run();
-      markVersionFieldMetadataAvailable();
-    } catch (RuntimeException e) {
-      if (!handleMissingVersionFieldMetadata(e)) {
-        throw e;
-      }
-      legacyWrite.run();
-    }
-  }
-
-  private void insertVersionExtensionWithMetadata(
-      VersionFieldChangeUtil.VersionExtensionRecord versionExtensionRecord) {
-    daoCollection
-        .entityExtensionDAO()
-        .insertVersionExtension(
-            versionExtensionRecord.getId(),
-            versionExtensionRecord.getExtension(),
-            versionExtensionRecord.getJsonSchema(),
-            versionExtensionRecord.getJson(),
-            versionExtensionRecord.getVersionNum(),
-            versionExtensionRecord.getChangedFieldKeys());
-  }
-
-  private void insertVersionExtensionLegacy(
-      VersionFieldChangeUtil.VersionExtensionRecord versionExtensionRecord) {
-    daoCollection
-        .entityExtensionDAO()
-        .insert(
-            versionExtensionRecord.getId(),
-            versionExtensionRecord.getExtension(),
-            versionExtensionRecord.getJsonSchema(),
-            versionExtensionRecord.getJson());
-  }
-
-  private void insertVersionExtensionsWithMetadata(
-      List<VersionFieldChangeUtil.VersionExtensionRecord> versionExtensionRecords) {
-    daoCollection
-        .entityExtensionDAO()
-        .insertVersionExtensions(
-            versionExtensionRecords.stream()
-                .map(VersionFieldChangeUtil.VersionExtensionRecord::getId)
-                .toList(),
-            versionExtensionRecords.stream()
-                .map(VersionFieldChangeUtil.VersionExtensionRecord::getExtension)
-                .toList(),
-            entityType,
-            versionExtensionRecords.stream()
-                .map(VersionFieldChangeUtil.VersionExtensionRecord::getJson)
-                .toList(),
-            versionExtensionRecords.stream()
-                .map(VersionFieldChangeUtil.VersionExtensionRecord::getVersionNum)
-                .toList(),
-            versionExtensionRecords.stream()
-                .map(VersionFieldChangeUtil.VersionExtensionRecord::getChangedFieldKeys)
-                .toList());
-  }
-
-  private void insertVersionExtensionsLegacy(
-      List<VersionFieldChangeUtil.VersionExtensionRecord> versionExtensionRecords) {
-    daoCollection
-        .entityExtensionDAO()
-        .insertMany(
-            versionExtensionRecords.stream()
-                .map(VersionFieldChangeUtil.VersionExtensionRecord::getId)
-                .toList(),
-            versionExtensionRecords.stream()
-                .map(VersionFieldChangeUtil.VersionExtensionRecord::getExtension)
-                .toList(),
-            entityType,
-            versionExtensionRecords.stream()
-                .map(VersionFieldChangeUtil.VersionExtensionRecord::getJson)
-                .toList());
+    oldVersions.forEach(version -> versions.add(version.getEntityJson()));
+    return new EntityHistoryWithOffset(
+        new EntityHistory().withEntityType(entityType).withVersions(versions), offset + limit);
   }
 
   public final ResultList<T> listWithOffset(
@@ -3548,6 +3255,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
     }
     RdfUpdater.updateEntity(entity);
+    ListCountCache.invalidate(entityType);
   }
 
   /**
@@ -3567,6 +3275,54 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * Entity types deliberately routed around Redis. Caching them costs more than it saves:
+   *
+   * <ul>
+   *   <li><b>user</b> — already excluded historically; user lookups are dominated by auth-time
+   *       reads that talk to a different code path.
+   *   <li><b>THREAD / task</b> — feeds and tasks are write-heavy (every mutation creates a
+   *       thread), the JSON is small, and the workflow engine ({@link
+   *       org.openmetadata.service.governance.workflows.WorkflowHandler Flowable}) polls
+   *       these tables on a tight loop. Stale-by-cache-window data here breaks workflow
+   *       transitions and the IT suite (TaskResourceIT / IncidentTaskIntegrationIT /
+   *       ChangeSummaryResourceIT all timed out under Redis until this exclusion landed).
+   *   <li><b>workflow / workflowDefinition / workflowInstance / workflowInstanceState</b> —
+   *       same reason as task: the engine reads these on every async-job tick and relies on
+   *       transactional read-after-write.
+   *   <li><b>testCaseResolutionStatus</b> — incidents flip state through the same workflow
+   *       path and exhibit the same timeout pattern when cached.
+   * </ul>
+   *
+   * Container-specific derived caches ({@link org.openmetadata.service.cache.AncestorsCache},
+   * {@link org.openmetadata.service.cache.ChildrenPageCache}) live in
+   * {@link org.openmetadata.service.jdbi3.ContainerRepository} and aren't gated here.
+   */
+  private static final Set<String> UNCACHED_ENTITY_TYPES =
+      Set.of(
+          Entity.USER,
+          Entity.THREAD,
+          Entity.TASK,
+          Entity.WORKFLOW,
+          Entity.WORKFLOW_DEFINITION,
+          Entity.WORKFLOW_INSTANCE,
+          Entity.WORKFLOW_INSTANCE_STATE,
+          Entity.TEST_CASE_RESOLUTION_STATUS,
+          // Bot deletes cascade-clean their open suggestion tasks; a stale cached bot entry
+          // makes the cleanup poll see the bot as still alive and skip the cascade
+          // (TaskResourceIT.testDeletingBotCreatorCleansUpOpenSuggestionTasks).
+          Entity.BOT,
+          // Domain / data-product moves run through bulk-asset paths that re-read the asset
+          // immediately after the relationship row is rewritten; a stale cached domain ref
+          // makes the verification step see the old domain
+          // (DomainBulkAssetsDryRunIT.test_actualAdd_withoutDryRun_movesAsset).
+          Entity.DOMAIN,
+          Entity.DATA_PRODUCT);
+
+  static boolean isCacheableEntityType(String entityType) {
+    return entityType != null && !UNCACHED_ENTITY_TYPES.contains(entityType);
+  }
+
+  /**
    * Validates entity has required fields for caching
    */
   private static boolean isValidEntityForCache(EntityInterface entity) {
@@ -3575,7 +3331,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected void writeThroughCache(T entity, boolean update) {
     var cachedEntityDao = CacheBundle.getCachedEntityDao();
-    if (cachedEntityDao == null || !isValidEntityForCache(entity) || "user".equals(entityType)) {
+    if (cachedEntityDao == null
+        || !isValidEntityForCache(entity)
+        || !isCacheableEntityType(entityType)) {
       return;
     }
     // Populate synchronously on the write path. A previous async version raced on rapid updates:
@@ -3601,7 +3359,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (cachedEntityDao == null || entities == null || entities.isEmpty()) {
       return;
     }
-    if ("user".equals(entityType)) {
+    if (!isCacheableEntityType(entityType)) {
       return;
     }
     for (T entity : entities) {
@@ -3669,6 +3427,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (T entity : uniqueEntities) {
       RdfUpdater.updateEntity(entity);
     }
+    ListCountCache.invalidate(entityType);
   }
 
   @SuppressWarnings("unused")
@@ -4138,6 +3897,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (hardDelete) {
       RdfUpdater.deleteEntity(entity.getEntityReference());
     }
+    // Both hard and soft delete change the count of non-deleted entities returned by listings.
+    ListCountCache.invalidate(entityType);
   }
 
   public final void deleteFromSearch(T entity, boolean hardDelete) {
@@ -4479,7 +4240,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
               // Delete all the threads that are about this entity
               Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
 
-              // Remove entity from the cache
+              // Drop cached state before the DB row goes away. A concurrent read arriving
+              // between this invalidate and the dao.delete below would still observe the
+              // entity in the DB; the post-commit invalidate below closes that window.
               invalidate(entityInterface);
 
               // Finally, delete the entity
@@ -4487,6 +4250,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
               return null;
             });
+    // Re-invalidate after the transaction commits. Any read that slipped in between the
+    // pre-delete invalidate and the commit could have re-populated the cache from the
+    // still-visible DB row; clearing again here guarantees the next read goes back to the
+    // (now empty) DB and observes the deletion.
+    invalidate(entityInterface);
   }
 
   protected void entitySpecificCleanup(T entityInterface) {}
@@ -5266,7 +5034,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         daoCollection
             .tagUsageDAO()
             .getCertTagsInternalBatch(
-                List.of(entity.getFullyQualifiedName()), certClassification + ".%");
+                TagLabel.TagSource.CLASSIFICATION.ordinal(),
+                List.of(entity.getFullyQualifiedName()),
+                FullyQualifiedName.buildHash(certClassification) + ".%");
     if (nullOrEmpty(certTags)) return null;
     return buildCertificationFromCertTag(certTags.get(0).toTagLabel());
   }
@@ -5616,6 +5386,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updated.setUpdatedAt(System.currentTimeMillis());
       EntityUpdater updater = getUpdater(original, updated, Operation.PUT, null);
       updater.update();
+      // Restore moves the row from deleted=true to deleted=false, changing the listing total.
+      ListCountCache.invalidate(entityType);
       return new PutResponse<>(Status.OK, updated, ENTITY_RESTORED);
     } catch (EntityNotFoundException e) {
       LOG.info("Entity is not in deleted state {} {}", entityType, id);
@@ -6515,6 +6287,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       } else {
         deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
       }
+
+      // The asset's stored JSON embeds inherited fields driven by the relationship we just
+      // wrote (domains, dataProducts, owners, ...). The relationship row is fresh, but the
+      // asset's cached entity JSON is now stale — a follow-up read served from Redis would
+      // still show the old domain. Drop the asset's cache so the next read reloads from DB
+      // and re-derives the inherited view. Same is true for the by-name cache and the
+      // shared per-pod Guava caches; invalidateCacheForEntity does all of them.
+      invalidateCacheForEntity(ref.getType(), ref.getId(), ref.getFullyQualifiedName());
 
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
@@ -8577,13 +8357,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void storeEntityHistory() {
       String extensionName = EntityUtil.getVersionExtension(entityType, original.getVersion());
-      insertVersionExtensionRecord(
-          buildVersionExtensionRecord(
-              original.getId(),
-              extensionName,
-              JsonUtils.pojoToJson(original),
-              original.getVersion(),
-              original.getChangeDescription()));
+      daoCollection
+          .entityExtensionDAO()
+          .insert(original.getId(), extensionName, entityType, JsonUtils.pojoToJson(original));
     }
 
     private void removeEntityHistory(Double version) {
@@ -8978,8 +8754,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
           Entity.getEntityRepository(entityType);
       EntityDAO<?> dao = repository.getDao();
 
-      // Try to load from external cache first (read-through) for non-user entities
-      if (!"user".equals(entityType)) {
+      // Try to load from external cache first (read-through) for cacheable entity types.
+      if (isCacheableEntityType(entityType)) {
         var cachedEntityDao = CacheBundle.getCachedEntityDao();
         if (cachedEntityDao != null) {
           Optional<String> cachedJson = cachedEntityDao.getByName(entityType, fqn);
@@ -9041,7 +8817,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       // Populate Redis on miss so subsequent reads (incl. cross-instance) can hit cache
-      if (!"user".equals(entityType)) {
+      if (isCacheableEntityType(entityType)) {
         var cachedEntityDao = CacheBundle.getCachedEntityDao();
         if (cachedEntityDao != null) {
           try {
@@ -9068,8 +8844,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
           Entity.getEntityRepository(entityType);
       EntityDAO<?> dao = repository.getDao();
 
-      // Try to load from external cache first (read-through) for non-user entities
-      if (!"user".equals(entityType)) {
+      // Try to load from external cache first (read-through) for cacheable entity types.
+      if (isCacheableEntityType(entityType)) {
         var cachedEntityDao = CacheBundle.getCachedEntityDao();
         if (cachedEntityDao != null) {
           String cachedJson = cachedEntityDao.getBase(id, entityType);
@@ -9944,7 +9720,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> certTags;
     try {
       certTags =
-          daoCollection.tagUsageDAO().getCertTagsInternalBatch(fqnList, certClassification + ".%");
+          daoCollection
+              .tagUsageDAO()
+              .getCertTagsInternalBatch(
+                  TagLabel.TagSource.CLASSIFICATION.ordinal(),
+                  fqnList,
+                  FullyQualifiedName.buildHash(certClassification) + ".%");
     } catch (Exception e) {
       LOG.warn(
           "batchFetchCertification: batch query failed, falling back to individual fetch: {}",
@@ -10532,13 +10313,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Store history of the previous version
     String extensionName = EntityUtil.getVersionExtension(entityType, original.getVersion());
-    insertVersionExtensionRecord(
-        buildVersionExtensionRecord(
-            original.getId(),
-            extensionName,
-            JsonUtils.pojoToJson(original),
-            original.getVersion(),
-            original.getChangeDescription()));
+    daoCollection
+        .entityExtensionDAO()
+        .insert(original.getId(), extensionName, entityType, JsonUtils.pojoToJson(original));
 
     // Directly update the entity in the database without calling other versioning methods
     dao.update(updated.getId(), updated.getFullyQualifiedName(), JsonUtils.pojoToJson(updated));
@@ -10803,20 +10580,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try {
       try (var ignored = phase("batchDbWrites")) {
         // Batch version history inserts
-        List<VersionFieldChangeUtil.VersionExtensionRecord> historyRecords = new ArrayList<>();
-        for (EntityUpdater updater : updaters) {
+        List<UUID> historyIds = new ArrayList<>();
+        List<String> historyExtensions = new ArrayList<>();
+        List<String> historyJsons = new ArrayList<>();
+        for (EntityUpdater updater : changedUpdaters) {
           if (updater.isVersionChanged()) {
-            historyRecords.add(
-                buildVersionExtensionRecord(
-                    updater.getOriginal().getId(),
-                    EntityUtil.getVersionExtension(entityType, updater.getOriginal().getVersion()),
-                    JsonUtils.pojoToJson(updater.getOriginal()),
-                    updater.getOriginal().getVersion(),
-                    updater.getOriginal().getChangeDescription()));
+            historyIds.add(updater.getOriginal().getId());
+            historyExtensions.add(
+                EntityUtil.getVersionExtension(entityType, updater.getOriginal().getVersion()));
+            historyJsons.add(JsonUtils.pojoToJson(updater.getOriginal()));
           }
         }
-        if (!historyRecords.isEmpty()) {
-          insertVersionExtensionRecords(historyRecords);
+        if (!historyIds.isEmpty()) {
+          daoCollection
+              .entityExtensionDAO()
+              .insertMany(historyIds, historyExtensions, entityType, historyJsons);
         }
 
         // Batch entity row updates
