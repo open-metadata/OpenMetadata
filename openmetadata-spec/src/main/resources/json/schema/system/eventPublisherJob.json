@@ -137,17 +137,11 @@
       ]
     },
     "indexSettings": {
-      "description": "Index settings applied to live (post-promote) search indexes. Tune for read freshness, durability, and HA. These do not affect bulk reindex throughput; bulkIndexOverrides controls that.",
+      "description": "Index settings applied to live (post-promote) search indexes. Tune for read freshness, durability, and HA. These do not affect bulk reindex throughput; bulkIndexOverrides controls that. number_of_shards is intentionally omitted — it can only be set at index creation time and the staged-index reindex flow uses the static mapping JSON for creation.",
       "javaType": "org.openmetadata.schema.system.IndexSettings",
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "numberOfShards": {
-          "title": "Number of Shards",
-          "description": "Primary shard count. Cannot be changed after creation. Aim for 10-50 GB per shard; 1 is correct for most OpenMetadata indexes.",
-          "type": "integer",
-          "minimum": 1
-        },
         "numberOfReplicas": {
           "title": "Number of Replicas",
           "description": "Replica shard count. 1 for HA on multi-node clusters; 0 for single-node.",

@@ -139,8 +139,10 @@ public interface IndexManagementClient {
    * during a reindex. number_of_shards cannot be changed and must be set at creation time.
    *
    * @param indexName the name of the index to update
-   * @param settingsJson a JSON object with the settings to apply, e.g.
-   *     {@code {"index": {"refresh_interval": "1s", "number_of_replicas": 1}}}
+   * @param settingsJson a flat JSON object containing only the inner settings to apply (no
+   *     {@code "index"} wrapper), e.g. {@code {"refresh_interval": "1s", "number_of_replicas": 1,
+   *     "translog.durability": "request"}}. Implementations bind this to the search client's
+   *     {@code IndexSettings} type and submit via {@code PutIndicesSettings}.
    */
   default void updateIndexSettings(String indexName, String settingsJson) {
     throw new UnsupportedOperationException(

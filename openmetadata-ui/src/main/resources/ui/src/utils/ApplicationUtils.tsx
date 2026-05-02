@@ -139,11 +139,13 @@ export const formatLatencyAverage = (
   totalTimeMs?: number,
   successRecords?: number
 ): string => {
+  // No timing recorded yet (legacy non-distributed path) or no records to divide by.
+  // totalTimeMs === 0 with successRecords > 0 is a valid sub-millisecond batch and
+  // falls through to the "<1 ms" branch.
   if (
     totalTimeMs === undefined ||
     successRecords === undefined ||
-    !totalTimeMs ||
-    !successRecords
+    successRecords <= 0
   ) {
     return '—';
   }
@@ -166,25 +168,26 @@ export const formatThroughput = (
   totalTimeMs?: number,
   successRecords?: number
 ): string => {
+  // Same fallback semantics as formatLatencyAverage. Sub-millisecond batches
+  // (totalTimeMs === 0 with successRecords > 0) report as ">N r/s" using a 1ms floor
+  // rather than hiding the value, so callers can still see fast stages don't disappear.
   if (
     totalTimeMs === undefined ||
     successRecords === undefined ||
-    !totalTimeMs ||
-    !successRecords
+    successRecords <= 0
   ) {
     return '—';
   }
-  const seconds = totalTimeMs / 1000;
-  if (seconds <= 0) {
-    return '—';
-  }
+  const effectiveMs = totalTimeMs > 0 ? totalTimeMs : 1;
+  const seconds = effectiveMs / 1000;
   const rps = successRecords / seconds;
+  const prefix = totalTimeMs > 0 ? '' : '>';
   if (rps >= 1000) {
-    return `${(rps / 1000).toFixed(1)}k r/s`;
+    return `${prefix}${(rps / 1000).toFixed(1)}k r/s`;
   }
   if (rps >= 100) {
-    return `${rps.toFixed(0)} r/s`;
+    return `${prefix}${rps.toFixed(0)} r/s`;
   }
 
-  return `${rps.toFixed(1)} r/s`;
+  return `${prefix}${rps.toFixed(1)} r/s`;
 };

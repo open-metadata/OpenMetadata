@@ -113,14 +113,7 @@ $$
 $$section
 ### Live Index Settings $(id="liveIndexSettings")
 
-Settings applied to staged indexes before alias swap (live serving values). Tune for read freshness and HA. Defaults preserve current near-real-time read-after-write behavior.
-
-$$
-
-$$section
-### Number of Shards $(id="liveIndexSettings.numberOfShards")
-
-Primary shard count. Cannot be changed after creation. Aim for 10-50 GB per shard; 1 is correct for most OpenMetadata indexes.
+Settings applied to staged indexes before alias swap (live serving values). Tune for read freshness and HA. Defaults preserve current near-real-time read-after-write behavior. number_of_shards is omitted — it can only be set at index creation time, not via PUT _settings, and the staged-index reindex flow uses the static mapping JSON for creation.
 
 $$
 

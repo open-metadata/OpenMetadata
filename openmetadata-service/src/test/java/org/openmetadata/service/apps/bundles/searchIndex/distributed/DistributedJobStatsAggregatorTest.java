@@ -580,9 +580,9 @@ class DistributedJobStatsAggregatorTest {
                         .totalRecords(100L)
                         .successRecords(80L)
                         .failedRecords(0L)
-                        // Per-entity timings — the aggregator surfaces sinkTimeMs as the
-                        // entity's StepStats.totalTimeMs (OS-side latency, the most
-                        // diagnostic value at the entity level).
+                        // Per-entity timings — the aggregator surfaces all four stage
+                        // timings on the entity StepStats so the UI table can show Reader
+                        // / Process / Sink / Vector avg latencies side-by-side.
                         .readerTimeMs(2500L)
                         .processTimeMs(80L)
                         .sinkTimeMs(7200L)
@@ -612,11 +612,14 @@ class DistributedJobStatsAggregatorTest {
     assertEquals(12000L, stats.getSinkStats().getTotalTimeMs());
     assertEquals(0L, stats.getVectorStats().getTotalTimeMs());
 
-    // Per-entity (container) totalTimeMs is the sink-time, since that's the most
-    // diagnostic per-entity signal (which entity's docs are dragging OS write).
+    // Per-entity StepStats now exposes all four stage timings as separate fields so the
+    // UI can render Reader / Process / Sink / Vector columns side-by-side.
     StepStats containerStats = stats.getEntityStats().getAdditionalProperties().get("container");
     assertNotNull(containerStats);
-    assertEquals(7200L, containerStats.getTotalTimeMs());
+    assertEquals(2500L, containerStats.getReaderTimeMs());
+    assertEquals(80L, containerStats.getProcessTimeMs());
+    assertEquals(7200L, containerStats.getSinkTimeMs());
+    assertEquals(0L, containerStats.getVectorTimeMs());
   }
 
   @Test

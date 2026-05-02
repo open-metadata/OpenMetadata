@@ -531,25 +531,18 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
    * read settings (refresh interval, replica count, durable translog). Per-entity overrides take
    * precedence over the global liveIndexSettings.
    *
-   * <p>Safety guarantee: if bulk overrides were applied during the build (refresh=-1, replicas=0,
-   * etc.) but the admin did not configure {@code liveIndexSettings}, this still applies a minimal
-   * revert ({@code refresh_interval=1s}, {@code number_of_replicas=1}) so the promoted index does
-   * not silently inherit unsearchable bulk-build values. Admins can override with explicit
-   * {@code liveIndexSettings} in the SearchIndexing app config.
+   * <p>Safety guarantee: every bulk-override field gets a corresponding revert. If the admin's
+   * configured {@code liveIndexSettings} is missing fields that {@code bulkIndexSettings}
+   * disabled (e.g. bulk sets {@code refresh_interval=-1} and {@code translog.durability=async}
+   * but {@code liveIndexSettings} only sets {@code translogDurability=request}), this method
+   * fills the gaps with safe live defaults so the promoted index never inherits unsearchable
+   * or non-durable bulk values. The merge order is: built-in safety defaults, then admin's
+   * {@code liveIndexSettings}, last-write-wins.
    */
   private void applyLiveServingSettings(
       SearchClient searchClient, String stagedIndex, String entityType) {
     IndexSettings settings = resolveLiveSettings(entityType);
-    String json = buildLiveSettingsJson(settings);
-    if (json == null && bulkOverridesWereApplied()) {
-      json = buildSafetyRevertJson();
-      LOG.warn(
-          "Bulk index overrides were applied but no liveIndexSettings configured for entity '{}'. "
-              + "Applying safety revert {} to keep the promoted index searchable. Configure "
-              + "liveIndexSettings in the SearchIndexing app to customize.",
-          entityType,
-          json);
-    }
+    String json = buildRevertJson(settings, jobData != null ? jobData.getBulkIndexSettings() : null);
     if (json == null) {
       return;
     }
@@ -561,14 +554,81 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     searchClient.updateIndexSettings(stagedIndex, json);
   }
 
-  private boolean bulkOverridesWereApplied() {
-    return jobData != null
-        && jobData.getBulkIndexSettings() != null
-        && buildBulkSettingsJson(jobData.getBulkIndexSettings()) != null;
+  /**
+   * Compose the live-revert JSON. For every field that the bulk overrides actually applied,
+   * ensure the live JSON sets a value — falling back to safe defaults (refresh=1s,
+   * replicas=1, durability=request) if the admin's liveIndexSettings doesn't supply one.
+   * Fields the bulk phase did not touch only appear in the output if the admin explicitly
+   * set them on liveIndexSettings (no-change otherwise).
+   */
+  static String buildRevertJson(IndexSettings live, BulkIndexOverrides bulk) {
+    if (live == null && bulk == null) {
+      return null;
+    }
+    String refresh = pickRefreshInterval(live, bulk);
+    Integer replicas = pickReplicas(live, bulk);
+    String translogDurability = pickTranslogDurability(live, bulk);
+    String translogSyncInterval = pickTranslogSyncInterval(live, bulk);
+
+    StringBuilder body = new StringBuilder("{");
+    boolean first = true;
+    if (replicas != null) {
+      first = appendNumber(body, REPLICAS, replicas, first);
+    }
+    if (refresh != null) {
+      first = appendString(body, REFRESH_INTERVAL, refresh, first);
+    }
+    if (translogDurability != null) {
+      first = appendString(body, TRANSLOG_DURABILITY, translogDurability, first);
+    }
+    if (translogSyncInterval != null) {
+      first = appendString(body, TRANSLOG_SYNC_INTERVAL, translogSyncInterval, first);
+    }
+    if (first) {
+      return null;
+    }
+    body.append('}');
+    return body.toString();
   }
 
-  private static String buildSafetyRevertJson() {
-    return "{\"" + REFRESH_INTERVAL + "\":\"1s\",\"" + REPLICAS + "\":1}";
+  private static String pickRefreshInterval(IndexSettings live, BulkIndexOverrides bulk) {
+    if (live != null && live.getRefreshInterval() != null) {
+      return live.getRefreshInterval();
+    }
+    if (bulk != null && bulk.getRefreshInterval() != null) {
+      return "1s"; // bulk disabled refresh; restore near-real-time default
+    }
+    return null;
+  }
+
+  private static Integer pickReplicas(IndexSettings live, BulkIndexOverrides bulk) {
+    if (live != null && live.getNumberOfReplicas() != null) {
+      return live.getNumberOfReplicas();
+    }
+    if (bulk != null && bulk.getNumberOfReplicas() != null) {
+      return 1; // bulk dropped replicas; restore HA default
+    }
+    return null;
+  }
+
+  private static String pickTranslogDurability(IndexSettings live, BulkIndexOverrides bulk) {
+    if (live != null && live.getTranslogDurability() != null) {
+      return live.getTranslogDurability().value();
+    }
+    if (bulk != null && bulk.getTranslogDurability() != null) {
+      return "request"; // bulk used async; restore durable default
+    }
+    return null;
+  }
+
+  private static String pickTranslogSyncInterval(IndexSettings live, BulkIndexOverrides bulk) {
+    if (live != null && live.getTranslogSyncInterval() != null) {
+      return live.getTranslogSyncInterval();
+    }
+    if (bulk != null && bulk.getTranslogSyncInterval() != null) {
+      return "5s"; // bulk used relaxed sync; restore default
+    }
+    return null;
   }
 
   private IndexSettings resolveLiveSettings(String entityType) {
@@ -622,36 +682,6 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     return body.toString();
   }
 
-  /**
-   * Build the OS/ES PUT _settings JSON body for live-serving phase. number_of_shards is
-   * intentionally not included — it cannot be changed on an existing index and must be set at
-   * creation time via the mapping JSON.
-   */
-  static String buildLiveSettingsJson(IndexSettings settings) {
-    if (settings == null) {
-      return null;
-    }
-    StringBuilder body = new StringBuilder("{");
-    boolean first = true;
-    if (settings.getNumberOfReplicas() != null) {
-      first = appendNumber(body, REPLICAS, settings.getNumberOfReplicas(), first);
-    }
-    if (settings.getRefreshInterval() != null) {
-      first = appendString(body, REFRESH_INTERVAL, settings.getRefreshInterval(), first);
-    }
-    if (settings.getTranslogDurability() != null) {
-      first =
-          appendString(body, TRANSLOG_DURABILITY, settings.getTranslogDurability().value(), first);
-    }
-    if (settings.getTranslogSyncInterval() != null) {
-      first = appendString(body, TRANSLOG_SYNC_INTERVAL, settings.getTranslogSyncInterval(), first);
-    }
-    if (first) {
-      return null;
-    }
-    body.append('}');
-    return body.toString();
-  }
 
   private static boolean appendString(StringBuilder body, String key, String value, boolean first) {
     if (!first) {
