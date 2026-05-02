@@ -85,6 +85,93 @@ class ProtobufParserConfig(BaseModel):
     schema_text: str
     base_file_path: Optional[str] = "/tmp/protobuf_openmetadata"
 
+def _resolve_message_class(module, schema_name: str):
+    """
+    Resolve the top-level Protobuf message class from a compiled _pb2 module.
+ 
+    FIX for issue #15274:
+    The old code did getattr(module, snake_to_camel(schema_name)) which only
+    worked when the Protobuf message name matched the topic/schema name exactly.
+    If they differed (e.g. topic='loans', message='MyLoanRecord'), getattr
+    returned None and downstream code crashed with:
+        'NoneType' object has no attribute 'DESCRIPTOR'
+ 
+    New strategy (two-step with fallback):
+ 
+    Step 1 — Legacy exact-name match (backward compatible):
+        Try snake_to_camel(schema_name) first.
+        If it resolves to a valid class, use it — zero regression for
+        existing setups where message name matches topic name.
+ 
+    Step 2 — DESCRIPTOR introspection (the actual fix):
+        Ask the compiled module itself what messages are defined inside it
+        using pb2_module.DESCRIPTOR.message_types_by_name.
+        Pick the first declared message — no guessing, no string manipulation.
+ 
+    :param module: The compiled _pb2 Python module
+    :param schema_name: The Kafka topic / schema name (e.g. "loans")
+    :return: An instantiated Protobuf message object, or None on failure
+    """
+    from google.protobuf.message import Message  # already a required dep
+ 
+    # ------------------------------------------------------------------
+    # Step 1: Legacy path — try PascalCase of schema_name (old behavior)
+    # ------------------------------------------------------------------
+    camel_name = snake_to_camel(schema_name)
+    candidate = getattr(module, camel_name, None)
+    if (
+        candidate is not None
+        and isinstance(candidate, type)
+        and issubclass(candidate, Message)
+    ):
+        logger.debug(
+            f"Resolved protobuf message '{camel_name}' via name match for schema '{schema_name}'"
+        )
+        return candidate()
+ 
+    # ------------------------------------------------------------------
+    # Step 2: DESCRIPTOR introspection — works regardless of message name
+    # ------------------------------------------------------------------
+    file_descriptor = getattr(module, "DESCRIPTOR", None)
+    if file_descriptor is None:
+        logger.warning(
+            f"Unable to resolve protobuf message for '{schema_name}': "
+            "compiled pb2 module has no DESCRIPTOR attribute."
+        )
+        return None
+ 
+    declared_messages = list(file_descriptor.message_types_by_name.keys())
+ 
+    if not declared_messages:
+        logger.warning(
+            f"Unable to resolve protobuf message for '{schema_name}': "
+            "DESCRIPTOR reports no top-level messages in schema."
+        )
+        return None
+ 
+    # If multiple top-level messages exist, log which one we pick so
+    # operators can debug if the wrong one is chosen.
+    chosen_name = declared_messages[0]
+    if len(declared_messages) > 1:
+        logger.debug(
+            f"Schema '{schema_name}' defines multiple top-level messages "
+            f"{declared_messages}. Using '{chosen_name}' for field extraction."
+        )
+ 
+    message_class = getattr(module, chosen_name, None)
+    if message_class is None:
+        logger.warning(
+            f"Unable to resolve protobuf message for '{schema_name}': "
+            f"DESCRIPTOR lists '{chosen_name}' but it is not an attribute of the pb2 module."
+        )
+        return None
+ 
+    logger.debug(
+        f"Resolved protobuf message '{chosen_name}' via DESCRIPTOR introspection "
+        f"for schema '{schema_name}' (message name differs from schema name)"
+    )
+    return message_class()
+
 
 class ProtobufParser:
     """
@@ -132,6 +219,9 @@ class ProtobufParser:
     def get_protobuf_python_object(self, proto_path: str, file_path: str):
         """
         Method to create protobuf python module and get object
+        FIX (#15274): Replaced direct getattr(message, snake_to_camel(schema_name))
+        with _resolve_message_class() which falls back to DESCRIPTOR introspection
+        when the message name does not match the schema/topic name.
         """
         try:
             # compile the .proto file and create python class
@@ -155,9 +245,7 @@ class ProtobufParser:
             module_name = Path(py_file).stem
             message = importlib.import_module(module_name)
 
-            # get the class and create a object instance
-            class_ = getattr(message, snake_to_camel(self.config.schema_name))
-            instance = class_()
+            instance = _resolve_message_class(message, self.config.schema_name)
             return instance
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
