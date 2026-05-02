@@ -63,4 +63,49 @@ public final class CacheKeys {
   public String listCount(String entityType) {
     return ns + ":lc:" + entityType;
   }
+
+  /**
+   * Cached ancestor chain (topology only) for hierarchical entities, keyed by the descendant's
+   * FQN hash. The value is the ordered list of ancestor FQNs.
+   *
+   * <p><b>What stays fresh:</b> ancestor display names. The {@code List<String>} of FQNs is
+   * resolved per-read into {@link org.openmetadata.schema.type.EntityReference}s through
+   * {@link #refByName} (the write-through per-entity reference cache, invalidated on every
+   * entity write), so an edit to an ancestor's displayName shows up on the next breadcrumb
+   * call.
+   *
+   * <p><b>What does NOT stay fresh:</b> if an ancestor's FQN itself changes (rename), the
+   * cached chain still references the old FQN. Hydration drops that entry and the chain
+   * comes back shorter until the descendant's own ancestors key expires. There is no
+   * reverse index from ancestor → descendant, so we don't proactively invalidate
+   * descendants on an ancestor rename — TTL is the backstop.
+   *
+   * <p><b>Invalidation:</b> descendant-local — each writer drops the key for the FQN it
+   * wrote. A rename of the descendant itself is self-healing: the descendant's own FQN
+   * changes, so the old key is orphaned and TTL-expires while the new FQN starts cold.
+   */
+  public String ancestors(String type, String fqn) {
+    String fqnHash = FullyQualifiedName.buildHash(fqn);
+    return ns + ":anc:" + type + ":" + fqnHash;
+  }
+
+  /**
+   * Per-parent version stamp for the children-page cache. Bumped on any change to the
+   * parent's children list (a child create / update / delete or move). Old page keys
+   * (which embed the previous version) become unreachable; they TTL-expire.
+   */
+  public String childrenVersion(String type, String parentFqn) {
+    String fqnHash = FullyQualifiedName.buildHash(parentFqn);
+    return ns + ":kidsver:" + type + ":" + fqnHash;
+  }
+
+  /**
+   * Cached page of {@code /v1/&lt;entityType&gt;/name/{parentFqn}/children}. Keyed by the
+   * parent's FQN hash + the per-parent version + page coordinates so a single version bump
+   * orphans every cached page in one shot.
+   */
+  public String childrenPage(String type, String parentFqn, String version, int limit, int offset) {
+    String fqnHash = FullyQualifiedName.buildHash(parentFqn);
+    return ns + ":kids:" + type + ":" + fqnHash + ":v" + version + ":l" + limit + ":o" + offset;
+  }
 }

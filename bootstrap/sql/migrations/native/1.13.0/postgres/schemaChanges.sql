@@ -310,6 +310,9 @@ CREATE TABLE IF NOT EXISTS rdf_index_server_stats (
 
 CREATE INDEX IF NOT EXISTS idx_rdf_index_server_stats_job_id ON rdf_index_server_stats(jobId);
 
-
+-- Speeds up the NOT EXISTS anti-join used by ContainerDAO root-only listings
+-- (?root=true&service=...). Covers the subquery's filter and projection so the
+-- planner can answer "does this container have a parent?" with an index-only
+-- scan instead of materializing the child-edge set.
 CREATE INDEX IF NOT EXISTS idx_er_fromentity_toentity_relation_toid
     ON entity_relationship (fromEntity, toEntity, relation, toId);

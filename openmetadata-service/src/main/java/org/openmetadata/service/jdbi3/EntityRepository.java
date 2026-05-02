@@ -3275,6 +3275,54 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * Entity types deliberately routed around Redis. Caching them costs more than it saves:
+   *
+   * <ul>
+   *   <li><b>user</b> — already excluded historically; user lookups are dominated by auth-time
+   *       reads that talk to a different code path.
+   *   <li><b>THREAD / task</b> — feeds and tasks are write-heavy (every mutation creates a
+   *       thread), the JSON is small, and the workflow engine ({@link
+   *       org.openmetadata.service.governance.workflows.WorkflowHandler Flowable}) polls
+   *       these tables on a tight loop. Stale-by-cache-window data here breaks workflow
+   *       transitions and the IT suite (TaskResourceIT / IncidentTaskIntegrationIT /
+   *       ChangeSummaryResourceIT all timed out under Redis until this exclusion landed).
+   *   <li><b>workflow / workflowDefinition / workflowInstance / workflowInstanceState</b> —
+   *       same reason as task: the engine reads these on every async-job tick and relies on
+   *       transactional read-after-write.
+   *   <li><b>testCaseResolutionStatus</b> — incidents flip state through the same workflow
+   *       path and exhibit the same timeout pattern when cached.
+   * </ul>
+   *
+   * Container-specific derived caches ({@link org.openmetadata.service.cache.AncestorsCache},
+   * {@link org.openmetadata.service.cache.ChildrenPageCache}) live in
+   * {@link org.openmetadata.service.jdbi3.ContainerRepository} and aren't gated here.
+   */
+  private static final Set<String> UNCACHED_ENTITY_TYPES =
+      Set.of(
+          Entity.USER,
+          Entity.THREAD,
+          Entity.TASK,
+          Entity.WORKFLOW,
+          Entity.WORKFLOW_DEFINITION,
+          Entity.WORKFLOW_INSTANCE,
+          Entity.WORKFLOW_INSTANCE_STATE,
+          Entity.TEST_CASE_RESOLUTION_STATUS,
+          // Bot deletes cascade-clean their open suggestion tasks; a stale cached bot entry
+          // makes the cleanup poll see the bot as still alive and skip the cascade
+          // (TaskResourceIT.testDeletingBotCreatorCleansUpOpenSuggestionTasks).
+          Entity.BOT,
+          // Domain / data-product moves run through bulk-asset paths that re-read the asset
+          // immediately after the relationship row is rewritten; a stale cached domain ref
+          // makes the verification step see the old domain
+          // (DomainBulkAssetsDryRunIT.test_actualAdd_withoutDryRun_movesAsset).
+          Entity.DOMAIN,
+          Entity.DATA_PRODUCT);
+
+  static boolean isCacheableEntityType(String entityType) {
+    return entityType != null && !UNCACHED_ENTITY_TYPES.contains(entityType);
+  }
+
+  /**
    * Validates entity has required fields for caching
    */
   private static boolean isValidEntityForCache(EntityInterface entity) {
@@ -3283,7 +3331,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected void writeThroughCache(T entity, boolean update) {
     var cachedEntityDao = CacheBundle.getCachedEntityDao();
-    if (cachedEntityDao == null || !isValidEntityForCache(entity) || "user".equals(entityType)) {
+    if (cachedEntityDao == null
+        || !isValidEntityForCache(entity)
+        || !isCacheableEntityType(entityType)) {
       return;
     }
     // Populate synchronously on the write path. A previous async version raced on rapid updates:
@@ -3309,7 +3359,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (cachedEntityDao == null || entities == null || entities.isEmpty()) {
       return;
     }
-    if ("user".equals(entityType)) {
+    if (!isCacheableEntityType(entityType)) {
       return;
     }
     for (T entity : entities) {
@@ -4190,7 +4240,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
               // Delete all the threads that are about this entity
               Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
 
-              // Remove entity from the cache
+              // Drop cached state before the DB row goes away. A concurrent read arriving
+              // between this invalidate and the dao.delete below would still observe the
+              // entity in the DB; the post-commit invalidate below closes that window.
               invalidate(entityInterface);
 
               // Finally, delete the entity
@@ -4198,6 +4250,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
               return null;
             });
+    // Re-invalidate after the transaction commits. Any read that slipped in between the
+    // pre-delete invalidate and the commit could have re-populated the cache from the
+    // still-visible DB row; clearing again here guarantees the next read goes back to the
+    // (now empty) DB and observes the deletion.
+    invalidate(entityInterface);
   }
 
   protected void entitySpecificCleanup(T entityInterface) {}
@@ -6230,6 +6287,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       } else {
         deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
       }
+
+      // The asset's stored JSON embeds inherited fields driven by the relationship we just
+      // wrote (domains, dataProducts, owners, ...). The relationship row is fresh, but the
+      // asset's cached entity JSON is now stale — a follow-up read served from Redis would
+      // still show the old domain. Drop the asset's cache so the next read reloads from DB
+      // and re-derives the inherited view. Same is true for the by-name cache and the
+      // shared per-pod Guava caches; invalidateCacheForEntity does all of them.
+      invalidateCacheForEntity(ref.getType(), ref.getId(), ref.getFullyQualifiedName());
 
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
@@ -8689,8 +8754,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
           Entity.getEntityRepository(entityType);
       EntityDAO<?> dao = repository.getDao();
 
-      // Try to load from external cache first (read-through) for non-user entities
-      if (!"user".equals(entityType)) {
+      // Try to load from external cache first (read-through) for cacheable entity types.
+      if (isCacheableEntityType(entityType)) {
         var cachedEntityDao = CacheBundle.getCachedEntityDao();
         if (cachedEntityDao != null) {
           Optional<String> cachedJson = cachedEntityDao.getByName(entityType, fqn);
@@ -8752,7 +8817,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       // Populate Redis on miss so subsequent reads (incl. cross-instance) can hit cache
-      if (!"user".equals(entityType)) {
+      if (isCacheableEntityType(entityType)) {
         var cachedEntityDao = CacheBundle.getCachedEntityDao();
         if (cachedEntityDao != null) {
           try {
@@ -8779,8 +8844,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
           Entity.getEntityRepository(entityType);
       EntityDAO<?> dao = repository.getDao();
 
-      // Try to load from external cache first (read-through) for non-user entities
-      if (!"user".equals(entityType)) {
+      // Try to load from external cache first (read-through) for cacheable entity types.
+      if (isCacheableEntityType(entityType)) {
         var cachedEntityDao = CacheBundle.getCachedEntityDao();
         if (cachedEntityDao != null) {
           String cachedJson = cachedEntityDao.getBase(id, entityType);
