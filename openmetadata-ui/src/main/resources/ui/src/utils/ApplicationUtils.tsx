@@ -99,6 +99,17 @@ export const getEntityStatsData = (data: {
           vectorEmbeddings: isVectorIndexable
             ? stats.vectorSuccessRecords ?? 0
             : null,
+          // Sink time per entity — populated by the backend's per-entity step stats so
+          // the per-entity table can show OS-side latency for each entity. Other stage
+          // timings live on the top-level reader/process/sink/vector stats cards.
+          sinkAvgMs: formatLatencyAverage(
+            stats.totalTimeMs,
+            stats.successRecords
+          ),
+          sinkThroughput: formatThroughput(
+            stats.totalTimeMs,
+            stats.successRecords
+          ),
         },
       ];
     },
@@ -108,4 +119,61 @@ export const getEntityStatsData = (data: {
   return result.sort((a: EntityStatsData, b: EntityStatsData) =>
     a.name.localeCompare(b.name)
   );
+};
+
+/**
+ * Format avg stage latency as a short human string. Returns "—" when no records or no time
+ * has been recorded yet (e.g. fresh job, or stages that haven't reported timing because the
+ * legacy non-distributed path is in use). Below 1 ms shows "<1 ms" rather than rounding to 0.
+ */
+export const formatLatencyAverage = (
+  totalTimeMs?: number,
+  successRecords?: number
+): string => {
+  if (
+    totalTimeMs === undefined ||
+    successRecords === undefined ||
+    !totalTimeMs ||
+    !successRecords
+  ) {
+    return '—';
+  }
+  const avgMs = totalTimeMs / successRecords;
+  if (avgMs < 1) {
+    return '<1 ms';
+  }
+  if (avgMs < 1000) {
+    return `${avgMs.toFixed(1)} ms`;
+  }
+  return `${(avgMs / 1000).toFixed(2)} s`;
+};
+
+/**
+ * Format throughput in records per second derived from the same total-time / success-records
+ * pair. Useful as a secondary signal next to avg latency when comparing entities or runs.
+ */
+export const formatThroughput = (
+  totalTimeMs?: number,
+  successRecords?: number
+): string => {
+  if (
+    totalTimeMs === undefined ||
+    successRecords === undefined ||
+    !totalTimeMs ||
+    !successRecords
+  ) {
+    return '—';
+  }
+  const seconds = totalTimeMs / 1000;
+  if (seconds <= 0) {
+    return '—';
+  }
+  const rps = successRecords / seconds;
+  if (rps >= 1000) {
+    return `${(rps / 1000).toFixed(1)}k r/s`;
+  }
+  if (rps >= 100) {
+    return `${rps.toFixed(0)} r/s`;
+  }
+  return `${rps.toFixed(1)} r/s`;
 };

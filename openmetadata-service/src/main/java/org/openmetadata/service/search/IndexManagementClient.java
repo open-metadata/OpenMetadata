@@ -133,6 +133,33 @@ public interface IndexManagementClient {
    */
   Set<String> listIndicesByPrefix(String prefix);
 
+  /**
+   * Update mutable index settings on an existing index. Used to flip refresh_interval,
+   * number_of_replicas, and translog durability between bulk-build and live-serving values
+   * during a reindex. number_of_shards cannot be changed and must be set at creation time.
+   *
+   * @param indexName the name of the index to update
+   * @param settingsJson a JSON object with the settings to apply, e.g.
+   *     {@code {"index": {"refresh_interval": "1s", "number_of_replicas": 1}}}
+   */
+  default void updateIndexSettings(String indexName, String settingsJson) {
+    throw new UnsupportedOperationException(
+        "updateIndexSettings is not implemented for this search client");
+  }
+
+  /**
+   * Force-merge an index down to the given number of segments. Should be called only on
+   * read-mostly or freshly-built indexes (e.g. a staged reindex output, just before alias
+   * swap). Force-merging a live, write-heavy index hurts performance.
+   *
+   * @param indexName the index to force-merge
+   * @param maxNumSegments target segment count (typically 1 for fully-merged)
+   */
+  default void forceMerge(String indexName, int maxNumSegments) {
+    throw new UnsupportedOperationException(
+        "forceMerge is not implemented for this search client");
+  }
+
   record IndexStats(
       String name,
       long documents,

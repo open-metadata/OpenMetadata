@@ -29,7 +29,11 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ICON_DIMENSION, STATUS_ICON } from '../../../../constants/constants';
 import { StepStats } from '../../../../generated/entity/applications/appRunRecord';
-import { getEntityStatsData } from '../../../../utils/ApplicationUtils';
+import {
+  formatLatencyAverage,
+  formatThroughput,
+  getEntityStatsData,
+} from '../../../../utils/ApplicationUtils';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import { formatJsonString } from '../../../../utils/StringsUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
@@ -180,6 +184,28 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                   </Space>
                 </span>
               </div>
+              {stepStats.totalTimeMs !== undefined &&
+                stepStats.totalTimeMs > 0 &&
+                stepStats.successRecords !== undefined &&
+                stepStats.successRecords > 0 && (
+                  <>
+                    <Divider type="vertical" />
+                    <div className="flex">
+                      <span className="text-grey-muted">{`${t(
+                        'label.latency'
+                      )}:`}</span>
+                      <span className="m-l-xs" data-testid="stage-latency">
+                        {`${formatLatencyAverage(
+                          stepStats.totalTimeMs,
+                          stepStats.successRecords
+                        )} · ${formatThroughput(
+                          stepStats.totalTimeMs,
+                          stepStats.successRecords
+                        )}`}
+                      </span>
+                    </div>
+                  </>
+                )}
               {showStatus && (
                 <>
                   <Divider type="vertical" />
@@ -288,6 +314,26 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                 },
               ]
             : []),
+          {
+            title: t('label.sink-avg-latency'),
+            dataIndex: 'sinkAvgMs',
+            key: 'sinkAvgMs',
+            render: (value: string) => (
+              <Typography.Text data-testid="entity-sink-avg">
+                {value}
+              </Typography.Text>
+            ),
+          },
+          {
+            title: t('label.sink-throughput'),
+            dataIndex: 'sinkThroughput',
+            key: 'sinkThroughput',
+            render: (value: string) => (
+              <Typography.Text data-testid="entity-sink-throughput">
+                {value}
+              </Typography.Text>
+            ),
+          },
         ];
   }, [successContext, failureContext]);
 

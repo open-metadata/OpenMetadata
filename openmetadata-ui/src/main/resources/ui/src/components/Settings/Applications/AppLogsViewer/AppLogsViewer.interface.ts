@@ -67,6 +67,8 @@ export interface EntityStatsData {
   successRecords: number;
   failedRecords: number;
   vectorEmbeddings: number | null;
+  sinkAvgMs: string;
+  sinkThroughput: string;
 }
 
 export interface ServerStats {

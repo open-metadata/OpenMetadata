@@ -21,9 +21,13 @@ import os.org.opensearch.client.opensearch.indices.CreateIndexResponse;
 import os.org.opensearch.client.opensearch.indices.DeleteIndexRequest;
 import os.org.opensearch.client.opensearch.indices.DeleteIndexResponse;
 import os.org.opensearch.client.opensearch.indices.ExistsRequest;
+import os.org.opensearch.client.opensearch.indices.ForcemergeRequest;
+import os.org.opensearch.client.opensearch.indices.ForcemergeResponse;
 import os.org.opensearch.client.opensearch.indices.GetAliasRequest;
 import os.org.opensearch.client.opensearch.indices.GetAliasResponse;
 import os.org.opensearch.client.opensearch.indices.IndexSettings;
+import os.org.opensearch.client.opensearch.indices.PutIndicesSettingsRequest;
+import os.org.opensearch.client.opensearch.indices.PutIndicesSettingsResponse;
 import os.org.opensearch.client.opensearch.indices.PutMappingRequest;
 import os.org.opensearch.client.opensearch.indices.UpdateAliasesRequest;
 import os.org.opensearch.client.opensearch.indices.UpdateAliasesResponse;
@@ -605,5 +609,67 @@ public class OpenSearchIndexManager implements IndexManagementClient {
               indexName, docs, primaryShards, replicaShards, sizeBytes, health, aliases));
     }
     return result;
+  }
+
+  @Override
+  public void updateIndexSettings(String indexName, String settingsJson) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot update settings for {}.", indexName);
+      return;
+    }
+    if (settingsJson == null || settingsJson.isBlank()) {
+      LOG.debug("No settings to apply for index {}, skipping.", indexName);
+      return;
+    }
+    try {
+      IndexSettings settings = parseIndexSettingsFromJson(settingsJson);
+      PutIndicesSettingsRequest request =
+          PutIndicesSettingsRequest.of(b -> b.index(indexName).settings(settings));
+      PutIndicesSettingsResponse response = client.indices().putSettings(request);
+      LOG.info(
+          "Updated settings on index '{}' acknowledged={} settings={}",
+          indexName,
+          response.acknowledged(),
+          settingsJson);
+    } catch (Exception e) {
+      LOG.error("Failed to update settings on index {}: {}", indexName, e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void forceMerge(String indexName, int maxNumSegments) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot force-merge {}.", indexName);
+      return;
+    }
+    try {
+      long start = System.currentTimeMillis();
+      ForcemergeRequest request =
+          ForcemergeRequest.of(
+              b ->
+                  b.index(indexName)
+                      .maxNumSegments((long) maxNumSegments)
+                      .waitForCompletion(true));
+      ForcemergeResponse response = client.indices().forcemerge(request);
+      int failedShards = response.shards() != null ? (int) response.shards().failed() : 0;
+      LOG.info(
+          "Force-merged index '{}' to {} segments in {}ms (failed shards: {})",
+          indexName,
+          maxNumSegments,
+          System.currentTimeMillis() - start,
+          failedShards);
+    } catch (Exception e) {
+      LOG.error("Failed to force-merge index {}: {}", indexName, e.getMessage(), e);
+    }
+  }
+
+  private IndexSettings parseIndexSettingsFromJson(String settingsJson) {
+    JsonParser parser =
+        client
+            ._transport()
+            .jsonpMapper()
+            .jsonProvider()
+            .createParser(new StringReader(settingsJson));
+    return IndexSettings._DESERIALIZER.deserialize(parser, client._transport().jsonpMapper());
   }
 }

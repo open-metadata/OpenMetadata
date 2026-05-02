@@ -32,6 +32,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.SearchIndex
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.search.DefaultRecreateHandler;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
@@ -136,6 +137,9 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
             config.batchSize(), config.maxConcurrentRequests(), config.payloadSize());
 
     RecreateIndexHandler recreateIndexHandler = searchRepository.createReindexHandler();
+    if (recreateIndexHandler instanceof DefaultRecreateHandler defaultHandler) {
+      defaultHandler.withJobData(jobData);
+    }
     ReindexContext recreateContext = null;
 
     if (config.recreateIndex()) {
