@@ -285,8 +285,8 @@ class MetabaseUnitTest(TestCase):
         results = list(self.metabase.yield_dashboard(MOCK_DASHBOARD_DETAILS))
         self.assertEqual(EXPECTED_DASHBOARD, [res.right for res in results])
 
-    @patch.object(fqn, "build", return_value=None)
     @patch.object(OpenMetadata, "search_in_any_service", return_value=EXAMPLE_TABLE)
+    @patch.object(MetabaseSource, "_get_chart_entity", return_value=EXAMPLE_CHART)
     @patch.object(MetabaseSource, "_get_database_service", return_value=MOCK_DATABASE_SERVICE)
     def test_yield_lineage(self, *_):
         """
@@ -295,11 +295,11 @@ class MetabaseUnitTest(TestCase):
         self.metabase.client.get_database = lambda *_: None
         self.metabase.client.get_table = lambda *_: MetabaseTable(schema="test_schema", display_name="test_table")
 
-        # _yield_lineage_from_api (card 1) + _yield_lineage_from_query (card 2): 4 get_by_name calls
+        # _yield_lineage_from_api (card 1) + _yield_lineage_from_query (card 2): 2 dashboard lookups
         with patch.object(
             OpenMetadata,
             "get_by_name",
-            side_effect=[EXAMPLE_DASHBOARD, EXAMPLE_CHART, EXAMPLE_DASHBOARD, EXAMPLE_CHART],
+            side_effect=[EXAMPLE_DASHBOARD, EXAMPLE_DASHBOARD],
         ):
             result = self.metabase.yield_dashboard_lineage_details(
                 dashboard_details=MOCK_DASHBOARD_DETAILS, db_service_prefix=None
@@ -308,11 +308,11 @@ class MetabaseUnitTest(TestCase):
             self.assertIn(EXPECTED_LINEAGE, lineage_results)
             self.assertIn(EXPECTED_CHART_LINEAGE, lineage_results)
 
-        # test out _yield_lineage_from_api (card 1 only): 2 get_by_name calls
+        # test out _yield_lineage_from_api (card 1 only): 1 dashboard lookup
         with patch.object(
             OpenMetadata,
             "get_by_name",
-            side_effect=[EXAMPLE_DASHBOARD, EXAMPLE_CHART],
+            side_effect=[EXAMPLE_DASHBOARD],
         ):
             mock_dashboard = deepcopy(MOCK_DASHBOARD_DETAILS)
             mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[0]]
@@ -324,11 +324,11 @@ class MetabaseUnitTest(TestCase):
             self.assertIn(EXPECTED_LINEAGE, lineage_results)
             self.assertIn(EXPECTED_CHART_LINEAGE, lineage_results)
 
-        # test out _yield_lineage_from_query (card 2 only): 2 get_by_name calls
+        # test out _yield_lineage_from_query (card 2 only): 1 dashboard lookup
         with patch.object(
             OpenMetadata,
             "get_by_name",
-            side_effect=[EXAMPLE_DASHBOARD, EXAMPLE_CHART],
+            side_effect=[EXAMPLE_DASHBOARD],
         ):
             mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[1]]
             result = self.metabase.yield_dashboard_lineage_details(

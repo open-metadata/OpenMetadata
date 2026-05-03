@@ -335,13 +335,15 @@ class MetabaseSource(DashboardServiceSource):
             return None
         return self.metadata.get_by_name(DatabaseService, db_service_name)
 
-    def _get_chart_entity(self, chart_details: MetabaseChart):
+    def _get_chart_entity(self, chart_details: MetabaseChart) -> Optional[LineageChart]:
         chart_fqn = fqn.build(
             self.metadata,
             entity_type=LineageChart,
             service_name=self.config.serviceName,
             chart_name=str(chart_details.id),
         )
+        if not chart_fqn:
+            return None
         return self.metadata.get_by_name(
             entity=LineageChart,
             fqn=chart_fqn,
@@ -395,9 +397,13 @@ class MetabaseSource(DashboardServiceSource):
             service_name=self.config.serviceName,
             dashboard_name=dashboard_name,
         )
-        to_entity = self.metadata.get_by_name(
-            entity=LineageDashboard,
-            fqn=to_fqn,
+        to_entity = (
+            self.metadata.get_by_name(
+                entity=LineageDashboard,
+                fqn=to_fqn,
+            )
+            if to_fqn
+            else None
         )
         chart_entity = self._get_chart_entity(chart_details)
 
@@ -430,7 +436,13 @@ class MetabaseSource(DashboardServiceSource):
             )
 
             for from_entity in from_entities or []:
-                yield self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
+                if to_entity:
+                    dashboard_lineage = self._get_add_lineage_request(
+                        to_entity=to_entity,
+                        from_entity=from_entity,
+                    )
+                    if dashboard_lineage:
+                        yield dashboard_lineage
                 if chart_entity and isinstance(from_entity, Table):
                     chart_lineage = self._get_add_lineage_request(to_entity=chart_entity, from_entity=from_entity)
                     if chart_lineage:
@@ -487,14 +499,24 @@ class MetabaseSource(DashboardServiceSource):
             dashboard_name=dashboard_name,
         )
 
-        to_entity = self.metadata.get_by_name(
-            entity=LineageDashboard,
-            fqn=to_fqn,
+        to_entity = (
+            self.metadata.get_by_name(
+                entity=LineageDashboard,
+                fqn=to_fqn,
+            )
+            if to_fqn
+            else None
         )
         chart_entity = self._get_chart_entity(chart_details)
 
         for from_entity in from_entities or []:
-            yield self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
+            if to_entity:
+                dashboard_lineage = self._get_add_lineage_request(
+                    to_entity=to_entity,
+                    from_entity=from_entity,
+                )
+                if dashboard_lineage:
+                    yield dashboard_lineage
             if chart_entity and isinstance(from_entity, Table):
                 chart_lineage = self._get_add_lineage_request(to_entity=chart_entity, from_entity=from_entity)
                 if chart_lineage:
