@@ -987,6 +987,12 @@ export interface Pipeline {
      */
     extractJsonSchema?: boolean;
     /**
+     * Optional configuration to toggle the ingestion of source-specific custom properties (e.g.
+     * Iceberg table properties) onto the entity extension. When disabled, no custom property
+     * definitions are registered and no extension values are set.
+     */
+    includeCustomProperties?: boolean;
+    /**
      * Optional configuration to toggle the DDL Statements ingestion.
      */
     includeDDL?: boolean;
@@ -1688,9 +1694,14 @@ export interface CollateAIAppConfig {
      */
     autoTune?: boolean;
     /**
+     * Overrides applied to staged indexes during bulk reindex. Reverted to liveIndexSettings
+     * before alias swap. Nothing reads from staged indexes, so refresh=-1 and replicas=0 are
+     * safe. Defaults: refresh=-1, replicas=0, durability=async, syncInterval=30s,
+     * forceMergeOnPromote=false.
+     */
+    bulkIndexSettings?: BulkIndexOverrides;
+    /**
      * Number of threads to use for reindexing
-     *
-     * Number of parallel threads for processing entities and warming cache.
      */
     consumerThreads?: number;
     /**
@@ -1703,6 +1714,19 @@ export interface CollateAIAppConfig {
      * Initial backoff time in milliseconds
      */
     initialBackoff?: number;
+    /**
+     * Settings applied to staged indexes before alias swap (live serving values). Tune for read
+     * freshness and HA. Defaults: refresh=1s (near-real-time, required if users/agents
+     * read-after-write), replicas=1, shards=1, durability=request.
+     */
+    liveIndexSettings?: IndexSettings;
+    /**
+     * Override liveIndexSettings for specific entity types. Useful for large or specialized
+     * entities (e.g. 'container' on instances with 500k+ assets, 'queryCostRecord' for
+     * high-cardinality time series). Keys are entity type names; values override the global
+     * liveIndexSettings.
+     */
+    liveIndexSettingsByEntity?: { [key: string]: IndexSettings };
     /**
      * Maximum backoff time in milliseconds
      */
@@ -1730,8 +1754,6 @@ export interface CollateAIAppConfig {
     producerThreads?: number;
     /**
      * Queue Size to user internally for reindexing.
-     *
-     * Internal queue size for entity processing pipeline.
      */
     queueSize?: number;
     /**
@@ -1759,9 +1781,20 @@ export interface CollateAIAppConfig {
      */
     useDistributedIndexing?: boolean;
     /**
+     * In multi-instance deployments, claim each entity type via Redis SETNX so only one
+     * instance warms it. Disable to let every instance warm independently (idempotent but
+     * redundant).
+     */
+    enableDistributedClaim?: boolean;
+    /**
      * Force cache warmup even if another instance is detected (use with caution).
      */
     force?: boolean;
+    /**
+     * Pre-warm the per-entity bundle cache (tags + certification) so the first read after
+     * deploy doesn't fan out to the DB. Disable for very large installs.
+     */
+    warmBundles?: boolean;
     /**
      * Enter the retention period for Activity Threads of type = 'Conversation' records in days
      * (e.g., 30 for one month, 60 for two months).
@@ -2520,6 +2553,69 @@ export interface BackfillConfiguration {
      */
     startDate?: Date;
     [property: string]: any;
+}
+
+/**
+ * Overrides applied to staged indexes during bulk reindex. Reverted to liveIndexSettings
+ * before alias swap. Nothing reads from staged indexes, so refresh=-1 and replicas=0 are
+ * safe. Defaults: refresh=-1, replicas=0, durability=async, syncInterval=30s,
+ * forceMergeOnPromote=false.
+ *
+ * Overrides applied to a staged index DURING bulk reindex for write throughput. Reverted to
+ * indexSettings before alias swap. Nothing reads from the staged index, so refresh=-1 and
+ * replicas=0 are safe here.
+ */
+export interface BulkIndexOverrides {
+    /**
+     * Run _forcemerge to 1 segment before swapping the alias. Improves post-reindex query
+     * performance at the cost of build time.
+     */
+    forceMergeOnPromote?:  boolean;
+    numberOfReplicas?:     number;
+    refreshInterval?:      string;
+    translogDurability?:   TranslogDurability;
+    translogSyncInterval?: string;
+}
+
+/**
+ * 'request' = fsync per write (durable). 'async' = fsync on interval (faster, can lose
+ * <syncInterval seconds on crash).
+ */
+export enum TranslogDurability {
+    Async = "async",
+    Request = "request",
+}
+
+/**
+ * Settings applied to staged indexes before alias swap (live serving values). Tune for read
+ * freshness and HA. Defaults: refresh=1s (near-real-time, required if users/agents
+ * read-after-write), replicas=1, shards=1, durability=request.
+ *
+ * Index settings applied to live (post-promote) search indexes. Tune for read freshness,
+ * durability, and HA. These do not affect bulk reindex throughput; bulkIndexOverrides
+ * controls that. number_of_shards is intentionally omitted — it can only be set at index
+ * creation time and the staged-index reindex flow uses the static mapping JSON for creation.
+ */
+export interface IndexSettings {
+    /**
+     * Replica shard count. 1 for HA on multi-node clusters; 0 for single-node.
+     */
+    numberOfReplicas?: number;
+    /**
+     * How often new writes become searchable. '1s' = near-real-time (default; required if
+     * users/agents read-after-write). Higher values reduce CPU/segment churn but delay search
+     * visibility.
+     */
+    refreshInterval?: string;
+    /**
+     * 'request' = fsync per write (durable). 'async' = fsync on interval (faster, can lose
+     * <syncInterval seconds on crash).
+     */
+    translogDurability?: TranslogDurability;
+    /**
+     * Translog fsync cadence when durability=async. Ignored when durability=request.
+     */
+    translogSyncInterval?: string;
 }
 
 /**
@@ -3603,6 +3699,8 @@ export interface ServiceConnection {
  *
  * Salesforce Connection Config
  *
+ * SAP SuccessFactors Connection Config
+ *
  * SingleStore Database Connection Config
  *
  * Snowflake Connection Config
@@ -3887,6 +3985,8 @@ export interface ConfigObject {
      *
      * client_id for Sigma.
      *
+     * OAuth2 Client ID. Required when authType is OAuth2Credentials.
+     *
      * Azure Application (client) ID for service principal authentication.
      *
      * Azure Application (client) ID for Service Principal authentication.
@@ -4118,6 +4218,8 @@ export interface ConfigObject {
      *
      * Password to connect to Salesforce.
      *
+     * Password for BasicAuth authentication. Required when authType is BasicAuth.
+     *
      * Password to connect to SingleStore.
      *
      * Password to connect to Snowflake.
@@ -4216,6 +4318,11 @@ export interface ConfigObject {
      *
      * Username to connect to Salesforce. This user should have privileges to read all the
      * metadata in Salesforce.
+     *
+     * SAP SuccessFactors user login name. For BasicAuth: used as the credential username. For
+     * OAuth2Credentials: used as the SAML NameID — the user on whose behalf the token is
+     * requested. The user must exist in the SF system and be permitted to use the OAuth2
+     * application.
      *
      * Username to connect to SingleStore. This user should have privileges to read all the
      * metadata in MySQL.
@@ -4356,6 +4463,8 @@ export interface ConfigObject {
      *
      * ThoughtSpot API version to use
      *
+     * SAP SuccessFactors OData API version.
+     *
      * OpenMetadata server API version to use.
      *
      * Airbyte API version.
@@ -4372,6 +4481,8 @@ export interface ConfigObject {
      * Choose Auth Config Type.
      *
      * Choose Auth Configuration Type.
+     *
+     * Choose how to authenticate with SAP SuccessFactors OData API.
      *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
@@ -4950,6 +5061,26 @@ export interface ConfigObject {
      */
     sobjectNames?: string[];
     /**
+     * SAP SuccessFactors OData API base URL. For example: https://api4.successfactors.com
+     */
+    baseUrl?: string;
+    /**
+     * SAP SuccessFactors Company ID (tenant identifier). Required for all API calls.
+     */
+    companyId?: string;
+    /**
+     * PEM-encoded RSA private key used to sign SAML assertions for OAuth2 SAML Bearer flow.
+     * Required when authType is OAuth2Credentials.
+     *
+     * Connection to Snowflake instance via Private Key
+     */
+    privateKey?: string;
+    /**
+     * OAuth2 Token endpoint URL. Required when authType is OAuth2Credentials. For example:
+     * https://api4.successfactors.com/oauth/token
+     */
+    tokenUrl?: string;
+    /**
      * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
      * account is xyz1234.us-east-1.gcp
      *
@@ -4985,10 +5116,6 @@ export interface ConfigObject {
      * TRANSIENT tables.
      */
     includeTransientTables?: boolean;
-    /**
-     * Connection to Snowflake instance via Private Key
-     */
-    privateKey?: string;
     /**
      * Session query tag used to monitor usage on snowflake. To use a query tag snowflake user
      * should have enough privileges to alter the session.
@@ -6194,10 +6321,16 @@ export enum CloudRegion {
 }
 
 /**
+ * Choose how to authenticate with SAP SuccessFactors OData API.
+ *
+ * Authentication type to connect to SAP SuccessFactors.
+ *
  * Database Authentication types not requiring config.
  */
 export enum NoConfigAuthenticationTypes {
+    BasicAuth = "BasicAuth",
     OAuth2 = "OAuth2",
+    OAuth2Credentials = "OAuth2Credentials",
 }
 
 /**
@@ -8057,6 +8190,7 @@ export enum PurpleType {
     SapERP = "SapErp",
     SapHana = "SapHana",
     SapS4Hana = "SapS4Hana",
+    SapSuccessFactors = "SapSuccessFactors",
     ServiceNow = "ServiceNow",
     SharePoint = "SharePoint",
     Sigma = "Sigma",

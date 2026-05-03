@@ -109,8 +109,6 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 @Slf4j
 @LatencyPhase
 public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {
-  private static final int DEFAULT_FIELD_CHANGED_VERSION_LIMIT = 100;
-
   protected final Class<T> entityClass;
   protected final String entityType;
   protected final Set<String> allowedFields;
@@ -390,54 +388,16 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) {
-    return listVersionsInternal(securityContext, id, 0, 0, null);
-  }
-
-  protected EntityHistory listVersionsInternal(
-      SecurityContext securityContext, UUID id, int limit, int offset) {
-    return listVersionsInternal(securityContext, id, limit, offset, null);
-  }
-
-  protected EntityHistory listVersionsInternal(
-      SecurityContext securityContext, UUID id, int limit, int offset, String fieldChanged) {
     OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
-    return listVersionsInternal(
-        securityContext,
-        id,
-        limit,
-        offset,
-        fieldChanged,
-        operationContext,
-        getResourceContextById(id));
+    return listVersionsInternal(securityContext, id, operationContext, getResourceContextById(id));
   }
 
   protected EntityHistory listVersionsInternal(
       SecurityContext securityContext,
       UUID id,
-      OperationContext operationContext,
-      ResourceContextInterface resourceContext) {
-    return listVersionsInternal(securityContext, id, 0, 0, null, operationContext, resourceContext);
-  }
-
-  protected EntityHistory listVersionsInternal(
-      SecurityContext securityContext,
-      UUID id,
-      int limit,
-      int offset,
-      String fieldChanged,
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    if (!nullOrEmpty(fieldChanged)) {
-      int effectiveLimit = limit > 0 ? limit : DEFAULT_FIELD_CHANGED_VERSION_LIMIT;
-      return repository
-          .listVersionsWithOffset(id, effectiveLimit, offset, fieldChanged)
-          .entityHistory();
-    }
-    if (limit > 0 || offset > 0) {
-      int effectiveLimit = limit > 0 ? limit : DEFAULT_FIELD_CHANGED_VERSION_LIMIT;
-      return repository.listVersionsWithOffset(id, effectiveLimit, offset, null).entityHistory();
-    }
     return repository.listVersions(id);
   }
 

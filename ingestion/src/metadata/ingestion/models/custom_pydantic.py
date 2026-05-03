@@ -15,16 +15,17 @@ This classes are used in the generated module, which should have NO
 dependencies against any other metadata package. This class should
 be self-sufficient with only pydantic at import time.
 """
+
 import json
 import logging
-from typing import Any, Callable, Dict, Literal, Optional, Union
+from typing import Any, Callable, Dict, Literal, Optional, Union  # noqa: UP035
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import WrapSerializer, model_validator
 from pydantic.main import IncEx
 from pydantic.types import SecretStr
 from pydantic_core.core_schema import SerializationInfo
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.ingestion.models.custom_basemodel_validation import transform_entity_names
 
@@ -55,7 +56,7 @@ class BaseModel(PydanticBaseModel):
                 return
             for field in self.__pydantic_fields__:
                 if field.endswith("FilterPattern"):
-                    from metadata.generated.schema.type.filterPattern import (
+                    from metadata.generated.schema.type.filterPattern import (  # noqa: PLC0415
                         FilterPattern,
                     )
 
@@ -85,18 +86,18 @@ class BaseModel(PydanticBaseModel):
     def model_dump_json(  # pylint: disable=too-many-arguments
         self,
         *,
-        mask_secrets: Optional[bool] = None,
-        indent: Optional[int] = None,
+        mask_secrets: Optional[bool] = None,  # noqa: UP045
+        indent: Optional[int] = None,  # noqa: UP045
         include: IncEx = None,
         exclude: IncEx = None,
-        context: Optional[Dict[str, Any]] = None,
+        context: Optional[Dict[str, Any]] = None,  # noqa: UP006, UP045
         by_alias: bool = False,
         exclude_unset: bool = True,
         exclude_defaults: bool = False,
         exclude_none: bool = True,
         round_trip: bool = False,
-        warnings: Union[bool, Literal["none", "warn", "error"]] = "none",
-        fallback: Optional[Callable[[Any], Any]] = None,
+        warnings: Union[bool, Literal["none", "warn", "error"]] = "none",  # noqa: UP007
+        fallback: Optional[Callable[[Any], Any]] = None,  # noqa: UP045
         serialize_as_any: bool = False,
     ) -> str:
         """
@@ -139,9 +140,9 @@ class BaseModel(PydanticBaseModel):
         self,
         *,
         mask_secrets: bool = False,
-        warnings: Union[bool, Literal["none", "warn", "error"]] = "none",
+        warnings: Union[bool, Literal["none", "warn", "error"]] = "none",  # noqa: UP007
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, Any]:  # noqa: UP006
         if mask_secrets:
             context = kwargs.pop("context", None) or {}
             context["mask_secrets"] = True
@@ -176,7 +177,7 @@ class _CustomSecretStr(SecretStr):
         will pick up the object with all the necessary info already in it.
         """
         # Importing inside function to avoid circular import error
-        from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
+        from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import  # noqa: PLC0415
             SecretsManagerFactory,
         )
 
@@ -188,15 +189,9 @@ class _CustomSecretStr(SecretStr):
             secret_id = self._secret_value.replace(SECRET, "")
             logger.info(f"Getting secret value for {secret_id}")
             try:
-                return (
-                    SecretsManagerFactory()
-                    .get_secrets_manager()
-                    .get_string_value(secret_id)
-                )
+                return SecretsManagerFactory().get_secrets_manager().get_string_value(secret_id)
             except Exception as exc:
-                logger.error(
-                    f"Secret value [{secret_id}] not present in the configured secrets manager: {exc}"
-                )
+                logger.error(f"Secret value [{secret_id}] not present in the configured secrets manager: {exc}")
         return self._secret_value
 
 
@@ -229,10 +224,7 @@ def format_validation_error(exc: Exception) -> str:
     """
     errors = getattr(exc, "errors", None)
     if callable(errors):
-        return "; ".join(
-            f"{'.'.join(str(p) for p in err.get('loc', ()))}: {err.get('msg', '')}"
-            for err in errors()
-        )
+        return "; ".join(f"{'.'.join(str(p) for p in err.get('loc', ()))}: {err.get('msg', '')}" for err in errors())
     return str(exc)
 
 
@@ -240,6 +232,4 @@ def ignore_type_decoder(type_: Any) -> None:
     """Given a type_, add a custom decoder to the BaseModel
     to ignore any decoding errors for that type_."""
     # We don't import the constants from the constants module to avoid circular imports
-    BaseModel.model_config[JSON_ENCODERS][type_] = {
-        lambda v: v.decode("utf-8", "ignore")
-    }
+    BaseModel.model_config[JSON_ENCODERS][type_] = {lambda v: v.decode("utf-8", "ignore")}

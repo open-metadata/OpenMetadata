@@ -136,7 +136,13 @@ export interface FilterToolbarProps {
   onFiltersChange: (filters: GraphFilters) => void;
   onViewModeChange?: (viewMode: GraphViewMode) => void;
   onClearAll?: () => void;
+  onLoadMore?: () => void;
   viewModeDisabled?: boolean;
+  isLoading?: boolean;
+  isLoadingMore?: boolean;
+  hasMoreTerms?: boolean;
+  loadedTermCount?: number;
+  totalTermCount?: number;
 }
 
 export interface GraphSettingsPanelProps {

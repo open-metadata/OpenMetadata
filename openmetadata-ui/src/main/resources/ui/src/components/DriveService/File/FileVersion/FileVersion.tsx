@@ -53,9 +53,6 @@ const FileVersion = ({
   tier,
   breadCrumbList,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -251,12 +248,9 @@ const FileVersion = ({
       <EntityVersionTimeLine
         currentVersion={toString(version)}
         entityType={EntityType.FILE}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );

@@ -13,11 +13,12 @@
 ExecutionTimeTracker implementation to help track the execution time of different parts
 of the code.
 """
+
 import threading
 from copy import deepcopy
 from functools import wraps
 from time import perf_counter
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -33,8 +34,8 @@ class ExecutionTimeMetrics(BaseModel):
 
     total_time: float = 0.0
     call_count: int = 0
-    min_time: Optional[float] = None
-    max_time: Optional[float] = None
+    min_time: Optional[float] = None  # noqa: UP045
+    max_time: Optional[float] = None  # noqa: UP045
 
     @property
     def average_time(self) -> float:
@@ -66,36 +67,30 @@ class ExecutionTimeTrackerContextMap(metaclass=Singleton):
 
     def __init__(self):
         """Initializes the map."""
-        self.map: dict[int, List[ExecutionTimeTrackerContext]] = {}
+        self.map: dict[int, List[ExecutionTimeTrackerContext]] = {}  # noqa: UP006
 
-    def copy_from_parent(self, parent_thread_id: int, thread_id: Optional[int] = None):
+    def copy_from_parent(self, parent_thread_id: int, thread_id: Optional[int] = None):  # noqa: UP045
         """Copy the ExecutionTimeTrackerContext from Parent."""
         thread_id = thread_id or threading.get_ident()
 
         self.map[thread_id] = deepcopy(self.map.get(parent_thread_id, []))
 
-    def get_last_stored_context_level(
-        self, thread_id: Optional[int] = None
-    ) -> Optional[str]:
+    def get_last_stored_context_level(self, thread_id: Optional[int] = None) -> Optional[str]:  # noqa: UP045
         """Gets the last stored context level for a given thread."""
         thread_id = thread_id or threading.get_ident()
 
-        stored_context = [
-            context for context in self.map.get(thread_id, []) if context.stored
-        ]
+        stored_context = [context for context in self.map.get(thread_id, []) if context.stored]
 
         if stored_context:
             return stored_context[-1].name
         return None
 
-    def append(
-        self, context: ExecutionTimeTrackerContext, thread_id: Optional[int] = None
-    ):
+    def append(self, context: ExecutionTimeTrackerContext, thread_id: Optional[int] = None):  # noqa: UP045
         """Appends a new context level for a given thread."""
         thread_id = thread_id or threading.get_ident()
         self.map.setdefault(thread_id, []).append(context)
 
-    def pop(self, thread_id: Optional[int] = None) -> ExecutionTimeTrackerContext:
+    def pop(self, thread_id: Optional[int] = None) -> ExecutionTimeTrackerContext:  # noqa: UP045
         """Removes the information of a given thread."""
         thread_id = thread_id or threading.get_ident()
         return self.map.get(thread_id, []).pop()
@@ -106,7 +101,7 @@ class ExecutionTimeTrackerState(metaclass=Singleton):
 
     def __init__(self):
         """Initializes the state and the lock."""
-        self.state: Dict[str, ExecutionTimeMetrics] = {}
+        self.state: Dict[str, ExecutionTimeMetrics] = {}  # noqa: UP006
         self.lock = threading.Lock()
 
     def add(self, context: ExecutionTimeTrackerContext, elapsed: float):
@@ -116,7 +111,7 @@ class ExecutionTimeTrackerState(metaclass=Singleton):
                 self.state[context.name] = ExecutionTimeMetrics()
             self.state[context.name].update(elapsed)
 
-    def get_metrics(self, context_name: str) -> Optional[ExecutionTimeMetrics]:
+    def get_metrics(self, context_name: str) -> Optional[ExecutionTimeMetrics]:  # noqa: UP045
         """Get metrics by name."""
         return self.state.get(context_name)
 
@@ -129,7 +124,7 @@ class ExecutionTimeTrackerMeta(Singleton):
     the existing instance without calling __init__.
     """
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls, *args, **kwargs):  # noqa: N805
         """Override to update enabled flag on existing singleton instance."""
         instance = super().__call__(*args, **kwargs)
 
@@ -172,8 +167,8 @@ class ExecutionTimeTracker(metaclass=ExecutionTimeTrackerMeta):
 
         # Thread-local pending context storage to fix race conditions
         # between __call__ and __enter__ in multi-threaded environments
-        self._pending_context: Dict[int, str] = {}
-        self._pending_store: Dict[int, bool] = {}
+        self._pending_context: Dict[int, str] = {}  # noqa: UP006
+        self._pending_store: Dict[int, bool] = {}  # noqa: UP006
 
     def __call__(self, context: str, store: bool = True):
         """At every point we open a new Context Manager we can pass the current 'context' and
@@ -183,13 +178,7 @@ class ExecutionTimeTracker(metaclass=ExecutionTimeTrackerMeta):
         in multi-threaded environments.
         """
         thread_id = threading.get_ident()
-        new_context = ".".join(
-            [
-                part
-                for part in [self.context_map.get_last_stored_context_level(), context]
-                if part
-            ]
-        )
+        new_context = ".".join([part for part in [self.context_map.get_last_stored_context_level(), context] if part])
         self._pending_context[thread_id] = new_context
         self._pending_store[thread_id] = store
 
@@ -204,11 +193,7 @@ class ExecutionTimeTracker(metaclass=ExecutionTimeTrackerMeta):
             new_context = self._pending_context.pop(thread_id, "")
             store = self._pending_store.pop(thread_id, True)
 
-            self.context_map.append(
-                ExecutionTimeTrackerContext(
-                    name=new_context, start=perf_counter(), stored=store
-                )
-            )
+            self.context_map.append(ExecutionTimeTrackerContext(name=new_context, start=perf_counter(), stored=store))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """If enabled, when exiting the context, we calculate the elapsed time and log to debug.
@@ -231,11 +216,11 @@ class ExecutionTimeTracker(metaclass=ExecutionTimeTrackerMeta):
             if context.stored:
                 self.state.add(context, elapsed)
 
-    def get_summary(self) -> Dict[str, ExecutionTimeMetrics]:
+    def get_summary(self) -> Dict[str, ExecutionTimeMetrics]:  # noqa: UP006
         """Get all metrics."""
         return dict(self.state.state)
 
-    def get_context_metrics(self, context_name: str) -> Optional[ExecutionTimeMetrics]:
+    def get_context_metrics(self, context_name: str) -> Optional[ExecutionTimeMetrics]:  # noqa: UP045
         """Get metrics by name."""
         return self.state.get_metrics(context_name)
 
@@ -245,7 +230,7 @@ class ExecutionTimeTracker(metaclass=ExecutionTimeTrackerMeta):
             self.state.state.clear()
 
 
-def calculate_execution_time(context: Optional[str] = None, store: bool = True):
+def calculate_execution_time(context: Optional[str] = None, store: bool = True):  # noqa: UP045
     """Utility decorator to be able to use the ExecutionTimeTracker on a function.
 
     It receives the context and if it should store it.
@@ -265,16 +250,14 @@ def calculate_execution_time(context: Optional[str] = None, store: bool = True):
             with execution_time(context or func.__name__, store):
                 result = func(*args, **kwargs)
 
-            return result
+            return result  # noqa: RET504
 
         return inner
 
     return decorator
 
 
-def calculate_execution_time_generator(
-    context: Optional[str] = None, store: bool = True
-):
+def calculate_execution_time_generator(context: Optional[str] = None, store: bool = True):  # noqa: UP045
     """Utility decorator to be able to use the ExecutionTimeTracker on a generator function.
 
     It receives the context and if it should store it.

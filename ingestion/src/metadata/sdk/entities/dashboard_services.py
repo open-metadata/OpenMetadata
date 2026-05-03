@@ -1,7 +1,8 @@
 """DashboardServices entity SDK."""
+
 from __future__ import annotations
 
-from typing import Type
+from typing import Type  # noqa: UP035
 
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
@@ -14,5 +15,5 @@ class DashboardServices(BaseEntity[DashboardService, CreateDashboardServiceReque
     """Fluent facade for dashboard service operations."""
 
     @classmethod
-    def entity_type(cls) -> Type[DashboardService]:
+    def entity_type(cls) -> Type[DashboardService]:  # noqa: UP006
         return DashboardService

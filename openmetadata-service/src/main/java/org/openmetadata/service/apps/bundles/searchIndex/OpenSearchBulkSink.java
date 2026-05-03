@@ -11,9 +11,11 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -247,6 +249,12 @@ public class OpenSearchBulkSink implements BulkSink {
                 TARGET_INDEX_KEY, indexMapping.getIndexName(searchRepository.getClusterAlias()));
 
     try {
+      // Process timing wraps the batch's parallel doc-build join. Each entity's runAsync builds
+      // a search doc (Jackson serialize + tag enrichment) and submits to the bulk processor;
+      // the actual OS bulk write is timed separately at the bulk-request site. So this is
+      // pure CPU/serialization time per batch, isolated from upstream DB read and downstream
+      // OS write.
+      long processStartNanos = System.nanoTime();
       // Check if these are time series entities
       if (!entities.isEmpty() && entities.get(0) instanceof EntityTimeSeriesInterface) {
         List<EntityTimeSeriesInterface> tsEntities = (List<EntityTimeSeriesInterface>) entities;
@@ -309,6 +317,10 @@ public class OpenSearchBulkSink implements BulkSink {
           }
           pendingColumnFutures.removeIf(CompletableFuture::isDone);
         }
+      }
+      if (tracker != null) {
+        tracker.addStageTime(
+            StageStatsTracker.Stage.PROCESS, System.nanoTime() - processStartNanos);
       }
     } catch (Exception e) {
       LOG.error("Failed to write {} entities of type {}", entities.size(), entityType, e);
@@ -1118,6 +1130,13 @@ public class OpenSearchBulkSink implements BulkSink {
       io.micrometer.core.instrument.Timer.Sample bulkTimerSample =
           metrics != null ? metrics.startBulkRequestTimer() : null;
 
+      // Sink timing wraps the bulk HTTP round-trip — pure OpenSearch latency, isolated from
+      // upstream Reader (DB) and Process (doc build). Resolve the set of trackers
+      // participating in this bulk before submit (without removing), so the completion handler
+      // can attribute the wall-clock to each participating entity tracker.
+      long bulkStartNanos = System.nanoTime();
+      Set<StageStatsTracker> participatingTrackers = collectTrackers(operations);
+
       CompletableFuture<BulkResponse> future;
       try {
         future = asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
@@ -1140,6 +1159,10 @@ public class OpenSearchBulkSink implements BulkSink {
 
       future.whenComplete(
           (response, error) -> {
+            long bulkElapsedNanos = System.nanoTime() - bulkStartNanos;
+            for (StageStatsTracker tracker : participatingTrackers) {
+              tracker.addStageTime(StageStatsTracker.Stage.SINK, bulkElapsedNanos);
+            }
             boolean retryScheduled = false;
             try {
               if (error != null) {
@@ -1179,6 +1202,28 @@ public class OpenSearchBulkSink implements BulkSink {
               }
             }
           });
+    }
+
+    /**
+     * Resolve the distinct set of trackers represented in this bulk by walking each operation's
+     * docId. Used to charge Sink wall-clock time to every participating entity. Each tracker
+     * gets the full bulk-request elapsed time, which slightly overcounts when a single bulk
+     * mixes entity types but is fine for diagnostic comparison ("which entity's docs are
+     * spending the most time in OS bulk requests"). In practice batches are usually
+     * homogeneous because the producer fills bulks per-entity.
+     */
+    private Set<StageStatsTracker> collectTrackers(List<BulkOperation> operations) {
+      Set<StageStatsTracker> trackers = new HashSet<>();
+      for (BulkOperation op : operations) {
+        String docId = getDocId(op);
+        if (docId != null) {
+          StageStatsTracker tracker = docIdToTracker.get(docId);
+          if (tracker != null) {
+            trackers.add(tracker);
+          }
+        }
+      }
+      return trackers;
     }
 
     private boolean handleBulkFailure(

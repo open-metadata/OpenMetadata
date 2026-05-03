@@ -25,7 +25,7 @@
  * so cleanup always runs in afterAll even when a test fails mid-way.
  */
 
-import { expect, test } from '@playwright/test';
+import { APIRequestContext, expect, test } from '@playwright/test';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import {
   CP_BASE_VALUES,
@@ -72,6 +72,7 @@ import {
 import {
   addCustomPropertiesForEntity,
   createCustomPropertyForEntity,
+  CustomProperty,
   CustomPropertyTypeByName,
   deleteCreatedProperty,
   editCreatedProperty,
@@ -131,6 +132,21 @@ type OtherTypes = GlossaryTerm | Domain | DataProduct;
 type CRUDEntity = {
   key: keyof typeof CUSTOM_PROPERTIES_ENTITIES;
   makeInstance: (() => AssetTypes | OtherTypes) | null;
+};
+
+type ColumnsTestData = {
+  customPropertyValue: Record<
+    string,
+    {
+      value: string;
+      newValue: string;
+      property: CustomProperty;
+    }
+  >;
+  cleanupUser: (apiContext: APIRequestContext) => Promise<void>;
+  users: Record<string, string>;
+  columnFqn: string;
+  tableFqn: string;
 };
 
 const BASIC_PROPERTIES = [
@@ -303,7 +319,6 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
       if (makeInstance !== null) {
-        await mainEntity.cleanupCustomProperty(apiContext);
         await mainEntity.delete(apiContext);
         if (key === 'entity_dataProduct') {
           for (const domain of (mainEntity as DataProduct).getDomains()) {
@@ -336,6 +351,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
     BASIC_PROPERTIES.forEach((property) => {
       test(property, async ({ page }) => {
+        test.slow();
         const propertyName = `cp-${uuid()}-${entity.name}`;
 
         await settingClick(
@@ -427,7 +443,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
     if (makeInstance !== null) {
       test(`Set & Update all CP types on ${entity.name}`, async ({ page }) => {
-        test.slow(true);
+        // 5 minutes timeout since the test handles set->update operation on all
+        // custom property types sequentially
+        test.setTimeout(300000);
         const properties = Object.values(CustomPropertyTypeByName);
 
         await test.step('Set all CP types', async () => {
@@ -495,9 +513,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await editButton.click();
 
           await page.locator("pre[role='presentation']").last().click();
-          await page.keyboard.type(
-            "SELECT id, name, email\nFROM users\nWHERE active = true\nAND department = 'engineering'\nORDER BY created_at DESC\nLIMIT 100"
-          );
+          const value =
+            "SELECT id, name, email\nFROM users\nWHERE active = true\nAND department = 'engineering'\nORDER BY created_at DESC\nLIMIT 100";
+          await page.keyboard.type(value + '\n' + value);
 
           const patchResponse = page.waitForResponse(
             `/api/v1/${entity.entityApiType}/*`
@@ -608,6 +626,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       test('User visible in right panel when added as entityReferenceList custom property', async ({
         page,
       }) => {
+        test.slow();
         const { apiContext, afterAction } = await getApiContext(page);
         const propertyName =
           mainEntity.customPropertyValue[
@@ -1063,6 +1082,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       test('should show No Data placeholder when hyperlink has no value', async ({
         page,
       }) => {
+        test.slow();
         const propertyName =
           mainEntity.customPropertyValue[CustomPropertyTypeByName.HYPERLINK_CP]
             .property.name;
@@ -1083,6 +1103,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       test('should reject javascript: protocol URLs for XSS protection', async ({
         page,
       }) => {
+        test.slow();
         const propertyName =
           mainEntity.customPropertyValue[CustomPropertyTypeByName.HYPERLINK_CP]
             .property.name;
@@ -1108,6 +1129,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       });
 
       test('should accept valid http and https URLs', async ({ page }) => {
+        test.slow();
         const propertyName =
           mainEntity.customPropertyValue[CustomPropertyTypeByName.HYPERLINK_CP]
             .property.name;
@@ -1147,6 +1169,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       test('should display URL when no display text is provided', async ({
         page,
       }) => {
+        test.slow();
         const propertyName =
           mainEntity.customPropertyValue[CustomPropertyTypeByName.HYPERLINK_CP]
             .property.name;
@@ -2772,6 +2795,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('Table CP - Name column with all operators', async ({ page }) => {
+          test.slow();
           const value = CP_BASE_VALUES.tableCp.rows[0]['Name'];
           const partialValue = value.substring(1, 4);
           const basePropertyName = propertyNames['table-cp'];
@@ -2866,6 +2890,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('Table CP - Role column with all operators', async ({ page }) => {
+          test.slow();
           const value = CP_BASE_VALUES.tableCp.rows[0]['Role'];
           const partialValue = value.substring(1, 4);
           const basePropertyName = propertyNames['table-cp'];
@@ -2960,6 +2985,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('Table CP - Sr No column with all operators', async ({ page }) => {
+          test.slow();
           const value = CP_BASE_VALUES.tableCp.rows[1]['Sr No'];
           const basePropertyName = propertyNames['table-cp'];
           const columnPropertyName = `${basePropertyName} - Sr No`;
@@ -3330,43 +3356,50 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     // ── TableColumn-specific extra test ────────────────────────────────────
 
     if (key === 'entity_tableColumn') {
-      test('Set & update column-level custom property', async ({ page }) => {
-        // 5 minutes timeout for this test since it handles all cp types
-        test.setTimeout(300000);
+      test.describe('Set & update column-level custom property', async () => {
+        const testData: ColumnsTestData = {} as ColumnsTestData;
 
-        const { apiContext, afterAction } = await getApiContext(page);
+        test.beforeAll(async ({ browser }) => {
+          const { apiContext, afterAction } = await createNewPage(browser);
 
-        const data = await createCustomPropertyForEntity(
-          apiContext,
-          EntityTypeEndpoint.TableColumn
-        );
-        const customPropertyValue = data.customProperties;
-        const cleanupUser = data.cleanupUser;
-        const users = data.userNames;
+          const data = await createCustomPropertyForEntity(
+            apiContext,
+            EntityTypeEndpoint.TableColumn
+          );
+          testData.customPropertyValue = data.customProperties;
+          testData.cleanupUser = data.cleanupUser;
+          testData.users = data.userNames;
 
-        const columnFqn =
-          tableForColumnTest?.entityResponseData.columns[0]
-            .fullyQualifiedName ?? '';
-        const tableFqn =
-          tableForColumnTest?.entityResponseData.fullyQualifiedName ?? '';
+          testData.columnFqn =
+            tableForColumnTest?.entityResponseData.columns[0]
+              .fullyQualifiedName ?? '';
+          testData.tableFqn =
+            tableForColumnTest?.entityResponseData.fullyQualifiedName ?? '';
 
-        const properties = Object.values(CustomPropertyTypeByName);
+          await afterAction();
+        });
 
-        for (const type of properties) {
-          await test.step(`Set ${type} custom property on column and verify in UI`, async () => {
+        test.afterAll(async ({ browser }) => {
+          const { apiContext, afterAction } = await createNewPage(browser);
+
+          await testData.cleanupUser?.(apiContext);
+          await afterAction();
+        });
+
+        for (const type of Object.values(CustomPropertyTypeByName)) {
+          test(`Set ${type} custom property on column and verify in UI`, async ({
+            page,
+          }) => {
             await verifyTableColumnCustomPropertyPersistence({
               page,
-              columnFqn,
-              tableFqn,
-              propertyName: customPropertyValue[type].property.name,
+              columnFqn: testData.columnFqn,
+              tableFqn: testData.tableFqn,
+              propertyName: testData.customPropertyValue[type].property.name,
               propertyType: type,
-              users,
+              users: testData.users,
             });
           });
         }
-
-        await cleanupUser(apiContext);
-        await afterAction();
       });
     }
 

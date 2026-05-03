@@ -371,7 +371,9 @@ class PartitionWorkerTest {
       assertEquals("next-cursor", batchResult.nextCursor());
     }
 
-    verify(statsTracker).recordReaderBatch(2, 1, 3);
+    // Reader batch is now reported with the wall-clock duration (System.nanoTime delta).
+    // Match the count args exactly; allow any duration since it's environment-dependent.
+    verify(statsTracker).recordReaderBatch(eq(2), eq(1), eq(3), anyLong());
     verify(failureRecorder)
         .recordReaderEntityFailure("table", errorEntityId.toString(), null, "reader failure");
 

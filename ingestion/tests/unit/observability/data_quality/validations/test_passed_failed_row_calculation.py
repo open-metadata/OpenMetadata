@@ -10,7 +10,7 @@ def calculate_passed_failed_rows(
     operator: str,
     threshold: int,
     actual_rows: int,
-    total_rows: int = None,
+    total_rows: int = None,  # noqa: RUF013
 ):
     """
     Calculate passed and failed rows based on test result, operator, threshold, and actual row count.
@@ -21,7 +21,7 @@ def calculate_passed_failed_rows(
     if total_rows is None:
         if test_passed:
             return actual_rows, 0
-        else:
+        else:  # noqa: RET505
             if operator in (">", ">="):
                 failed_rows = 0
                 passed_rows = actual_rows
@@ -37,10 +37,7 @@ def calculate_passed_failed_rows(
 
             return max(0, passed_rows), max(0, failed_rows)
     else:
-
-        raise NotImplementedError(
-            "Use test_row_count_logic_with_total.py for total row count tests"
-        )
+        raise NotImplementedError("Use test_row_count_logic_with_total.py for total row count tests")
 
 
 class TestPassedFailedRowCalculation(unittest.TestCase):
