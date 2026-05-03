@@ -11,6 +11,7 @@
 """
 Microsoft Fabric query parser module
 """
+
 from abc import ABC
 from typing import Optional
 
@@ -37,13 +38,11 @@ class MicrosoftFabricQueryParserSource(QueryParserSource, ABC):
         cls,
         config_dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # pylint: disable=unused-argument
+        pipeline_name: Optional[str] = None,  # pylint: disable=unused-argument  # noqa: UP045
     ):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: MicrosoftFabricConnection = config.serviceConnection.root.config
         if not isinstance(connection, MicrosoftFabricConnection):
-            raise InvalidSourceException(
-                f"Expected MicrosoftFabricConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected MicrosoftFabricConnection, but got {connection}")
         return cls(config, metadata)

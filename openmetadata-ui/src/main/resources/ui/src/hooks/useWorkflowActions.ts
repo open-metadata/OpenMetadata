@@ -261,6 +261,7 @@ export const useWorkflowActions = ({
     handleConnectionSave: edgeManagement.handleConnectionSave,
     handleConnectionCancel: edgeManagement.handleConnectionCancel,
     handleEdgeClick: edgeManagement.handleEdgeClick,
+    handleEdgeDelete: edgeManagement.handleEdgeDelete,
     handleWorkflowMetadataUpdate,
     fixMissingEdgeLabels: edgeManagement.fixMissingEdgeLabels,
     fixInvalidEdgeConditions: edgeManagement.fixInvalidEdgeConditions,

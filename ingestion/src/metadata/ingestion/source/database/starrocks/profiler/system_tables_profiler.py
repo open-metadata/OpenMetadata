@@ -15,8 +15,9 @@ Uses StarRocks system tables for efficient statistics gathering:
 - information_schema.tables: row count, data size, create/update time
 - _statistics_.column_statistics: column-level statistics (requires ANALYZE)
 """
+
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Type
+from typing import Any, Dict, List, Optional, Set, Type  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -39,23 +40,23 @@ logger = profiler_logger()
 class StarRocksColumnStats(BaseModel):
     """Column statistics from _statistics_.column_statistics"""
 
-    column_name: Optional[str] = None
-    row_count: Optional[int] = None
-    data_size: Optional[int] = None
-    distinct_count: Optional[int] = None
-    null_count: Optional[int] = None
-    min_value: Optional[str] = None
-    max_value: Optional[str] = None
+    column_name: Optional[str] = None  # noqa: UP045
+    row_count: Optional[int] = None  # noqa: UP045
+    data_size: Optional[int] = None  # noqa: UP045
+    distinct_count: Optional[int] = None  # noqa: UP045
+    null_count: Optional[int] = None  # noqa: UP045
+    min_value: Optional[str] = None  # noqa: UP045
+    max_value: Optional[str] = None  # noqa: UP045
 
 
 class StarRocksTableStats(BaseModel):
     """Table statistics from information_schema.tables"""
 
-    row_count: Optional[int] = None
-    data_size: Optional[int] = None
-    create_time: Optional[datetime] = None
-    update_time: Optional[datetime] = None
-    columns: Dict[str, StarRocksColumnStats] = {}
+    row_count: Optional[int] = None  # noqa: UP045
+    data_size: Optional[int] = None  # noqa: UP045
+    create_time: Optional[datetime] = None  # noqa: UP045
+    update_time: Optional[datetime] = None  # noqa: UP045
+    columns: Dict[str, StarRocksColumnStats] = {}  # noqa: RUF012, UP006
 
 
 # Query to get table statistics from information_schema
@@ -91,10 +92,10 @@ WHERE table_name = :full_table_name
 class StarRocksStoredStatisticsSource(StoredStatisticsSource):
     """StarRocks system profile source using stored statistics"""
 
-    metrics: Inject[Type[MetricRegistry]]
+    metrics: Inject[Type[MetricRegistry]]  # noqa: UP006
 
     @classmethod
-    def get_metric_stats_map(cls) -> Dict[MetricRegistry, str]:
+    def get_metric_stats_map(cls) -> Dict[MetricRegistry, str]:  # noqa: UP006
         """Map OpenMetadata metrics to StarRocks statistics column names"""
         return {
             cls.metrics.rowCount: "row_count",
@@ -105,19 +106,17 @@ class StarRocksStoredStatisticsSource(StoredStatisticsSource):
         }
 
     @classmethod
-    def get_metric_stats_by_name(cls) -> Dict[str, str]:
+    def get_metric_stats_by_name(cls) -> Dict[str, str]:  # noqa: UP006
         return {k.name: v for k, v in cls.get_metric_stats_map().items()}
 
-    def get_statistics_metrics(self) -> Set[MetricRegistry]:
+    def get_statistics_metrics(self) -> Set[MetricRegistry]:  # noqa: UP006
         return set(self.get_metric_stats_map().keys())
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.stats_cache = LRUCache(capacity=LRU_CACHE_SIZE)
 
-    def get_column_statistics(
-        self, metric: List[Metric], schema: str, table_name: str, column: str
-    ) -> Dict[str, Any]:
+    def get_column_statistics(self, metric: List[Metric], schema: str, table_name: str, column: str) -> Dict[str, Any]:  # noqa: UP006
         """Get column-level statistics from _statistics_.column_statistics"""
         table_stats = self._get_cached_stats(schema, table_name)
 
@@ -139,9 +138,7 @@ class StarRocksStoredStatisticsSource(StoredStatisticsSource):
 
         return result
 
-    def get_table_statistics(
-        self, metric: List[Metric], schema: str, table_name: str
-    ) -> Dict[str, Any]:
+    def get_table_statistics(self, metric: List[Metric], schema: str, table_name: str) -> Dict[str, Any]:  # noqa: UP006
         """Get table-level statistics from information_schema.tables"""
         table_stats = self._get_cached_stats(schema, table_name)
         result = {}
@@ -193,9 +190,7 @@ class StarRocksStoredStatisticsSource(StoredStatisticsSource):
                         column_name=row.column_name,
                         row_count=row.row_count,
                         data_size=row.data_size,
-                        distinct_count=(
-                            int(row.distinct_count) if row.distinct_count else None
-                        ),
+                        distinct_count=(int(row.distinct_count) if row.distinct_count else None),
                         null_count=row.null_count,
                         min_value=row.min_value,
                         max_value=row.max_value,

@@ -16,24 +16,11 @@ import { Download01 } from '@untitledui/icons';
 import React, { useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-
-export enum ExportFormat {
-  PNG = 'png',
-  SVG = 'svg',
-  JSONLD = 'jsonld',
-  TURTLE = 'turtle',
-  RDFXML = 'rdfxml',
-}
-
-export interface ExportGraphPanelProps {
-  supportedExports?: ExportFormat[];
-  onExportPng: () => Promise<void>;
-  onExportSvg?: () => Promise<void>;
-  onExportJsonLd?: () => Promise<void>;
-  onExportTurtle?: () => Promise<void>;
-  onExportRdfXml?: () => Promise<void>;
-  'data-testid'?: string;
-}
+import { showErrorToast } from '../../utils/ToastUtils';
+import {
+  ExportFormat,
+  ExportGraphPanelProps,
+} from './ExportGraphPanel.interface';
 
 const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
   onExportPng,
@@ -46,6 +33,7 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
 }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const items = [
     { id: ExportFormat.PNG, label: t('label.png-uppercase') },
@@ -69,18 +57,24 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
       : items.filter((item) => supportedExports.includes(item.id));
 
   const handleAction = async (key: Key) => {
-    setOpen(false);
-
-    if (key === ExportFormat.PNG) {
-      await onExportPng();
-    } else if (key === ExportFormat.SVG) {
-      await onExportSvg?.();
-    } else if (key === ExportFormat.JSONLD) {
-      await onExportJsonLd?.();
-    } else if (key === ExportFormat.TURTLE) {
-      await onExportTurtle?.();
-    } else if (key === ExportFormat.RDFXML) {
-      await onExportRdfXml?.();
+    setExporting(true);
+    try {
+      if (key === ExportFormat.PNG) {
+        await onExportPng();
+      } else if (key === ExportFormat.SVG) {
+        await onExportSvg?.();
+      } else if (key === ExportFormat.JSONLD) {
+        await onExportJsonLd?.();
+      } else if (key === ExportFormat.TURTLE) {
+        await onExportTurtle?.();
+      } else if (key === ExportFormat.RDFXML) {
+        await onExportRdfXml?.();
+      }
+      setOpen(false);
+    } catch (error) {
+      showErrorToast(String(error), t('server.entity-fetch-error'));
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -90,6 +84,8 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
         color="secondary"
         data-testid={testId}
         iconLeading={<Download01 height={20} width={20} />}
+        isDisabled={exporting}
+        isLoading={exporting}
         size="sm">
         {t('label.export-graph')}
       </Button>

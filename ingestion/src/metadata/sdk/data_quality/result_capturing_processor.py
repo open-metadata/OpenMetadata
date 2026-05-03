@@ -12,8 +12,9 @@
 """
 Processor wrapper that captures test case results without modifying the processor.
 """
+
 # pylint: disable=W0212
-from typing import Any, List, Optional, cast
+from typing import Any, List, Optional, cast  # noqa: UP035
 
 from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
 from metadata.ingestion.api.models import Either, Entity
@@ -33,7 +34,7 @@ class ResultCapturingProcessor(Processor):
     def __init__(self, processor: Processor):
         super().__init__()
         self._processor: Processor = processor
-        self._collected_results: List[TestCaseResultResponse] = []
+        self._collected_results: List[TestCaseResultResponse] = []  # noqa: UP006
 
     def __getattr__(self, name: str) -> Any:
         """Delegate all attributes to wrapped processor."""
@@ -47,7 +48,7 @@ class ResultCapturingProcessor(Processor):
         TestCaseResultResponse objects from TestCaseResults for storage.
         """
         result = cast(
-            Either[Any],
+            Either[Any],  # noqa: TC006
             self._processor._run(record),  # pyright: ignore[reportUnknownMemberType]
         )
 
@@ -63,7 +64,7 @@ class ResultCapturingProcessor(Processor):
         cls,
         config_dict: dict[str, Any],
         metadata: OpenMetadata[Any, Any],
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ) -> "ResultCapturingProcessor":
         """Not used - ResultCapturingProcessor wraps existing processors."""
         raise NotImplementedError(
@@ -75,6 +76,6 @@ class ResultCapturingProcessor(Processor):
         """Delegate close to wrapped processor."""
         self._processor.close()
 
-    def get_results(self) -> List[TestCaseResultResponse]:
+    def get_results(self) -> List[TestCaseResultResponse]:  # noqa: UP006
         """Return all captured test case results."""
         return self._collected_results

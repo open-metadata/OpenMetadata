@@ -43,29 +43,27 @@ import {
 } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
-import { Container } from '../../../generated/entity/data/container';
 import {
   ContractExecutionStatus,
   DataContract,
 } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityRules } from '../../../hooks/useEntityRules';
+import {
+  AnnouncementEntity,
+  getActiveAnnouncements,
+} from '../../../rest/announcementsAPI';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
-import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
-import { getContainerByName } from '../../../rest/storageAPI';
+import { getContainerAncestors } from '../../../rest/storageAPI';
 import {
   getDataAssetsHeaderInfo,
   isDataAssetsWithServiceField,
@@ -151,7 +149,9 @@ export const DataAssetsHeader = ({
   const { customizedPage } = useCustomPages(
     ENTITY_PAGE_TYPE_MAP[entityType as CustomizeEntityType]
   );
-  const [parentContainers, setParentContainers] = useState<Container[]>([]);
+  const [parentContainers, setParentContainers] = useState<EntityReference[]>(
+    []
+  );
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
@@ -225,7 +225,8 @@ export const DataAssetsHeader = ({
 
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
-  const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
+  const [activeAnnouncement, setActiveAnnouncement] =
+    useState<AnnouncementEntity>();
 
   const fetchDQFailureCount = async () => {
     if (!tableClassBase.getAlertEnableStatus() || !isDqAlertSupported) {
@@ -321,7 +322,7 @@ export const DataAssetsHeader = ({
 
   const fetchActiveAnnouncement = async () => {
     try {
-      const announcements = await getActiveAnnouncement(
+      const announcements = await getActiveAnnouncements(
         getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? '')
       );
 
@@ -333,27 +334,21 @@ export const DataAssetsHeader = ({
     }
   };
 
-  const fetchContainerParent = async (
-    parentName: string,
-    parents = [] as Container[]
-  ) => {
-    if (isEmpty(parentName)) {
+  const fetchContainerAncestors = async (containerFqn: string) => {
+    // Always reset state at the top so a navigation to a container without an FQN
+    // (or to one whose ancestor fetch fails) doesn't keep painting the previous
+    // container's breadcrumbs. Without this reset, switching between containers
+    // could leave stale ancestors visible after either an early return or an error.
+    setParentContainers([]);
+    if (isEmpty(containerFqn)) {
       return;
     }
     setIsBreadcrumbLoading(true);
     try {
-      const response = await getContainerByName(parentName, {
-        fields: TabSpecificField.PARENT,
-      });
-      const updatedParent = [response, ...parents];
-      if (response?.parent?.fullyQualifiedName) {
-        await fetchContainerParent(
-          response.parent.fullyQualifiedName,
-          updatedParent
-        );
-      } else {
-        setParentContainers(updatedParent);
-      }
+      // Single batched server call replaces what used to be one
+      // getContainerByName per ancestor level.
+      const ancestors = await getContainerAncestors(containerFqn);
+      setParentContainers(ancestors ?? []);
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
     } finally {
@@ -367,10 +362,9 @@ export const DataAssetsHeader = ({
       fetchDQFailureCount();
     }
     if (entityType === EntityType.CONTAINER && !isCustomizedView) {
-      const asset = dataAsset;
-      fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
+      fetchContainerAncestors(dataAsset.fullyQualifiedName ?? '');
     }
-  }, [dataAsset.fullyQualifiedName, isTourPage, isCustomizedView]);
+  }, [dataAsset.fullyQualifiedName, entityType, isTourPage, isCustomizedView]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(
     () =>

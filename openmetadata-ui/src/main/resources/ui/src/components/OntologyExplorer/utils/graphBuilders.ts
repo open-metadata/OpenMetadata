@@ -19,7 +19,7 @@ import { Metric } from '../../../generated/entity/data/metric';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { TermRelation } from '../../../generated/type/termRelation';
-import { GraphData } from '../../../rest/rdfAPI';
+import { GraphData } from '../../../rest/rdfAPI.interface';
 import {
   OntologyEdge,
   OntologyExplorerProps,
@@ -183,7 +183,7 @@ export function convertRdfGraphToOntologyGraph(
 
 export function buildGraphFromAllTerms(
   terms: GlossaryTerm[],
-  glossaryList: Glossary[],
+  _glossaryList: Glossary[],
   t: TFunction
 ): OntologyGraphData {
   const nodesMap = new Map<string, OntologyNode>();
@@ -207,7 +207,7 @@ export function buildGraphFromAllTerms(
       fullyQualifiedName: term.fullyQualifiedName,
       description: term.description,
       glossaryId: term.glossary?.id,
-      group: glossaryList.find((g) => g.id === term.glossary?.id)?.name,
+      group: term.glossary?.displayName || term.glossary?.name,
       owners: term.owners,
     });
 

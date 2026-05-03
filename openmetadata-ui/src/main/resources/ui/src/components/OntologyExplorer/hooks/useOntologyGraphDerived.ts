@@ -36,7 +36,10 @@ import {
   GLOSSARY_COLORS,
   METRIC_NODE_TYPE,
 } from '../utils/graphBuilders';
-import { computeGraphSearchHighlight } from '../utils/graphSearchHighlight';
+import {
+  computeGraphSearchHighlight,
+  ontologyEdgeKey,
+} from '../utils/graphSearchHighlight';
 import { buildHierarchyGraphs } from '../utils/hierarchyGraphBuilder';
 import { computeGlossaryGroupPositions } from '../utils/layoutCalculations';
 
@@ -51,6 +54,7 @@ export interface UseOntologyGraphDerivedOptions {
   relationTypes: GlossaryTermRelationType[];
   settings: GraphSettings;
   scope: OntologyExplorerProps['scope'];
+  entityId?: string;
   glossaryId?: string;
   termGlossaryId?: string;
   dataSource: 'rdf' | 'database';
@@ -67,6 +71,7 @@ export function useOntologyGraphDerived({
   relationTypes,
   settings,
   scope,
+  entityId,
   glossaryId,
   termGlossaryId,
   dataSource,
@@ -211,6 +216,16 @@ export function useOntologyGraphDerived({
 
     if (relationTypeFilterIds.length > 0) {
       const nodeTypeMap = new Map(filteredNodes.map((n) => [n.id, n.type]));
+
+      // Snapshot which nodes have any edge before relation-type filtering.
+      // This distinguishes truly isolated nodes (never had an edge) from nodes
+      // that are connected but whose edge type doesn't match the active filter.
+      const nodesWithAnyEdge = new Set<string>();
+      filteredEdges.forEach((e) => {
+        nodesWithAnyEdge.add(e.from);
+        nodesWithAnyEdge.add(e.to);
+      });
+
       filteredEdges = filteredEdges.filter((e) => {
         const fromType = nodeTypeMap.get(e.from);
         const toType = nodeTypeMap.get(e.to);
@@ -226,6 +241,25 @@ export function useOntologyGraphDerived({
 
         return relationTypeFilterIds.includes(e.relationType);
       });
+
+      const connectedByRelationType = new Set<string>();
+      filteredEdges.forEach((e) => {
+        connectedByRelationType.add(e.from);
+        connectedByRelationType.add(e.to);
+      });
+      // Keep a node when:
+      //   - it has a matching-type edge, OR
+      //   - showIsolatedNodes is on AND it had no edges at all before this filter
+      //     (a truly isolated term, not a term whose edges were just filtered away)
+      // Glossary root nodes are never kept here — they are structural labels with
+      // no edges; the glossary filter block already controls their visibility.
+      filteredNodes = filteredNodes.filter(
+        (n) =>
+          connectedByRelationType.has(n.id) ||
+          (filters.showIsolatedNodes &&
+            n.type !== 'glossary' &&
+            !nodesWithAnyEdge.has(n.id))
+      );
     }
 
     if (filters.showCrossGlossaryOnly) {
@@ -256,10 +290,26 @@ export function useOntologyGraphDerived({
       );
     }
 
-    return { nodes: filteredNodes, edges: filteredEdges };
-  }, [combinedGraphData, filters, explorationMode]);
+    if (scope === 'term' && entityId) {
+      const termEdges = filteredEdges.filter(
+        (e) => e.from === entityId || e.to === entityId
+      );
+      const visibleNodeIds = new Set<string>([entityId]);
+      termEdges.forEach((e) => {
+        visibleNodeIds.add(e.from);
+        visibleNodeIds.add(e.to);
+      });
+      filteredNodes = filteredNodes.filter((n) => visibleNodeIds.has(n.id));
+      filteredEdges = termEdges;
+    }
 
-  const isHierarchyView = filters.viewMode === 'hierarchy';
+    return { nodes: filteredNodes, edges: filteredEdges };
+  }, [combinedGraphData, filters, explorationMode, scope, entityId]);
+
+  const isHierarchyView = useMemo(
+    () => filters.viewMode === 'hierarchy',
+    [filters.viewMode]
+  );
 
   const hierarchyGraphData = useMemo(() => {
     if (!isHierarchyView || !filteredGraphData) {
@@ -289,22 +339,6 @@ export function useOntologyGraphDerived({
     });
   }, [isHierarchyView, filteredGraphData, relationTypes, glossaries]);
 
-  const graphDataToShow = useMemo(() => {
-    if (isHierarchyView && hierarchyGraphData) {
-      return {
-        nodes: hierarchyGraphData.nodes,
-        edges: hierarchyGraphData.edges.map((e) => ({
-          from: e.from,
-          to: e.to,
-          relationType: e.relationType,
-          label: e.relationType,
-        })),
-      };
-    }
-
-    return filteredGraphData;
-  }, [isHierarchyView, hierarchyGraphData, filteredGraphData]);
-
   const hierarchyBakedPositions = useMemo(() => {
     if (!isHierarchyView || !hierarchyGraphData) {
       return undefined;
@@ -318,18 +352,65 @@ export function useOntologyGraphDerived({
   }, [hierarchyGraphData, isHierarchyView, settings.layout]);
 
   const graphSearchHighlight = useMemo(() => {
-    if (!graphDataToShow) {
+    const baseData =
+      isHierarchyView && hierarchyGraphData
+        ? hierarchyGraphData
+        : filteredGraphData;
+
+    if (!baseData) {
       return null;
     }
 
     return computeGraphSearchHighlight(
-      graphDataToShow.nodes,
-      graphDataToShow.edges,
+      baseData.nodes,
+      baseData.edges,
       filters.searchQuery,
       glossaries,
       relationTypes
     );
-  }, [graphDataToShow, filters.searchQuery, glossaries, relationTypes]);
+  }, [
+    filteredGraphData,
+    hierarchyGraphData,
+    isHierarchyView,
+    filters.searchQuery,
+    glossaries,
+    relationTypes,
+  ]);
+
+  const graphDataToShow = useMemo(() => {
+    let data: OntologyGraphData | null;
+
+    if (isHierarchyView && hierarchyGraphData) {
+      data = {
+        nodes: hierarchyGraphData.nodes,
+        edges: hierarchyGraphData.edges.map((e) => ({
+          from: e.from,
+          to: e.to,
+          relationType: e.relationType,
+          label: e.relationType,
+        })),
+      };
+    } else {
+      data = filteredGraphData;
+    }
+
+    if (!data || !graphSearchHighlight) {
+      return data;
+    }
+
+    const visibleNodeIds = new Set(graphSearchHighlight.highlightedNodeIds);
+    const visibleEdgeKeys = new Set(graphSearchHighlight.highlightedEdgeKeys);
+
+    return {
+      nodes: data.nodes.filter((n) => visibleNodeIds.has(n.id)),
+      edges: data.edges.filter((e) => visibleEdgeKeys.has(ontologyEdgeKey(e))),
+    };
+  }, [
+    isHierarchyView,
+    hierarchyGraphData,
+    filteredGraphData,
+    graphSearchHighlight,
+  ]);
 
   const exportableGlossaryId =
     scope === 'glossary'
@@ -383,6 +464,7 @@ export function useOntologyGraphDerived({
   }, [graphDataToShow, dataSource, explorationMode, t]);
 
   return {
+    combinedGraphData,
     filteredGraphData,
     hierarchyGraphData,
     graphDataToShow,

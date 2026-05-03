@@ -64,6 +64,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
       return (
         <div className="m-b-md" key={`tabledatacard${index}`}>
           <ExploreSearchCard
+            showEntityIcon
             className={classNames(
               table.id === selectedEntityId && isSummaryPanelVisible
                 ? 'highlight-card'

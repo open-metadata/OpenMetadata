@@ -12,6 +12,7 @@
 """
 Define constants useful for the metadata ingestion
 """
+
 from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.chart import Chart
@@ -159,9 +160,7 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "eventSubscription": EventSubscription,
 }
 
-ENTITY_REFERENCE_TYPE_MAP = {
-    value.__name__: key for key, value in ENTITY_REFERENCE_CLASS_MAP.items()
-}
+ENTITY_REFERENCE_TYPE_MAP = {value.__name__: key for key, value in ENTITY_REFERENCE_CLASS_MAP.items()}
 
 CUSTOM_CONNECTOR_PREFIX = "custom"
 

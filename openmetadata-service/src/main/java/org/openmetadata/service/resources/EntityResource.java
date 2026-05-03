@@ -70,6 +70,8 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheProvider;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -309,7 +311,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String includeRelations) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
-    RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
+    Include resolvedInclude = include != null ? include : Include.NON_DELETED;
+    RelationIncludes relationIncludes = new RelationIncludes(resolvedInclude, includeRelations);
     return getInternal(
         uriInfo,
         securityContext,
@@ -347,7 +350,25 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.get(uriInfo, id, fields, relationIncludes, false));
+    return addHref(
+        uriInfo,
+        repository.get(uriInfo, id, fields, relationIncludes, isDistributedCacheEnabled()));
+  }
+
+  /**
+   * REST GETs consult the entity cache only when a distributed cache (Redis) is configured *and*
+   * currently reachable. With Redis, invalidation in {@code EntityRepository.invalidateCache}
+   * keeps all instances coherent so cached reads stay fresh. If Redis isn't wired, or the
+   * provider flipped to unavailable after a connection loss, we fall back to {@code
+   * fromCache=false} to avoid serving stale reads from a per-instance Guava cache in a
+   * multi-instance deployment.
+   */
+  private static boolean isDistributedCacheEnabled() {
+    if (CacheBundle.getCachedEntityDao() == null) {
+      return false;
+    }
+    CacheProvider provider = CacheBundle.getCacheProvider();
+    return provider != null && provider.available();
   }
 
   public T getVersionInternal(SecurityContext securityContext, UUID id, String version) {
@@ -412,7 +433,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String includeRelations) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
-    RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
+    Include resolvedInclude = include != null ? include : Include.NON_DELETED;
+    RelationIncludes relationIncludes = new RelationIncludes(resolvedInclude, includeRelations);
     return getByNameInternal(
         uriInfo,
         securityContext,
@@ -450,7 +472,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.getByName(uriInfo, name, fields, relationIncludes, false));
+    return addHref(
+        uriInfo,
+        repository.getByName(uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled()));
   }
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {

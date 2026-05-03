@@ -3,6 +3,7 @@ package org.openmetadata.sdk.fluent;
 import java.util.*;
 import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 
 /**
@@ -39,6 +40,13 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  * list()
  *     .limit(50)
  *     .forEach(container -> process(container));
+ *
+ * // Page through immediate children of a container (slim projection — no
+ * // dataModel/tags/owners) via the dedicated endpoint
+ * List&lt;Container&gt; kids = listChildren(parentFqn).limit(50).offset(0).fetch();
+ *
+ * // Walk the ancestor chain (root → immediate parent) in one call
+ * List&lt;EntityReference&gt; chain = listAncestors(parentFqn);
  * </pre>
  */
 public final class Containers {
@@ -86,6 +94,28 @@ public final class Containers {
 
   public static ContainerLister list() {
     return new ContainerLister(getClient());
+  }
+
+  // ==================== Children / Ancestors ====================
+
+  /**
+   * Page through the immediate children of a container via the dedicated
+   * {@code /v1/containers/name/{fqn}/children} endpoint. Use this instead of fetching the
+   * parent with {@code fields=children} — that field is no longer served because the inline
+   * payload is unbounded for buckets with many objects.
+   */
+  public static ContainerChildrenLister listChildren(String parentFqn) {
+    return new ContainerChildrenLister(getClient(), parentFqn);
+  }
+
+  /**
+   * Resolve the full ancestor chain for a container in a single call. Returns
+   * {@link EntityReference}s ordered from the root container (immediate child of the storage
+   * service) down to the immediate parent of {@code fqn}. Empty list when the container is at
+   * the top level.
+   */
+  public static List<EntityReference> listAncestors(String fqn) {
+    return getClient().containers().listAncestors(fqn);
   }
 
   // ==================== Creator ====================
@@ -252,6 +282,41 @@ public final class Containers {
     }
   }
 
+  // ==================== Children / Ancestors Lister ====================
+
+  public static class ContainerChildrenLister {
+    private final OpenMetadataClient client;
+    private final String parentFqn;
+    private Integer limit;
+    private Integer offset;
+
+    ContainerChildrenLister(OpenMetadataClient client, String parentFqn) {
+      this.client = client;
+      this.parentFqn = parentFqn;
+    }
+
+    public ContainerChildrenLister limit(int limit) {
+      this.limit = limit;
+      return this;
+    }
+
+    public ContainerChildrenLister offset(int offset) {
+      this.offset = offset;
+      return this;
+    }
+
+    public List<Container> fetch() {
+      var params = new org.openmetadata.sdk.models.ListParams();
+      if (limit != null) params.setLimit(limit);
+      if (offset != null) params.setOffset(offset);
+      return client.containers().listChildren(parentFqn, params).getData();
+    }
+
+    public void forEach(java.util.function.Consumer<Container> action) {
+      fetch().forEach(action);
+    }
+  }
+
   // ==================== Fluent Entity ====================
 
   public static class FluentContainer {
@@ -287,6 +352,20 @@ public final class Containers {
         modified = false;
       }
       return this;
+    }
+
+    /**
+     * Page this container's immediate children via the dedicated paginated endpoint, using
+     * the parent's FQN. Returned containers are slim projections; re-fetch via
+     * {@link Containers#findByName(String)} for full details.
+     */
+    public ContainerChildrenLister children() {
+      return new ContainerChildrenLister(client, container.getFullyQualifiedName());
+    }
+
+    /** Walk this container's ancestor chain (root → immediate parent) in one server call. */
+    public List<EntityReference> ancestors() {
+      return client.containers().listAncestors(container.getFullyQualifiedName());
     }
 
     public ContainerDeleter delete() {

@@ -1,0 +1,319 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.task-form-settings-page {
+  padding-bottom: 32px;
+}
+
+.task-form-settings-shell {
+  align-items: start;
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  margin-top: 20px;
+}
+
+.task-form-settings-sidebar {
+  position: sticky;
+  top: 24px;
+}
+
+.task-form-settings-sidebar-card,
+.task-form-settings-card {
+  border: 1px solid #dbe4ff;
+  border-radius: 20px;
+  box-shadow: 0 16px 44px rgba(15, 23, 42, 0.06);
+}
+
+.task-form-settings-sidebar-card {
+  background: linear-gradient(180deg, #f8faff 0%, #f1f5ff 100%);
+}
+
+.task-form-settings-schema-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  max-height: calc(100vh - 280px);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.task-form-settings-schema-item {
+  background: #fff;
+  border: 1px solid #dbe4ff;
+  border-radius: 16px;
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  text-align: left;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    border-color: #5b8def;
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.12);
+    transform: translateY(-1px);
+  }
+}
+
+.task-form-settings-schema-item--active {
+  border-color: #2563eb;
+  box-shadow: inset 3px 0 0 #2563eb, 0 14px 32px rgba(37, 99, 235, 0.12);
+}
+
+.task-form-settings-schema-item__title {
+  color: #102a72;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.task-form-settings-schema-item__meta {
+  color: #52607a;
+  font-size: 13px;
+}
+
+.task-form-settings-sidebar-action {
+  border-radius: 14px;
+  height: 44px;
+}
+
+.task-form-settings-main {
+  display: grid;
+  gap: 24px;
+}
+
+.task-form-settings-hero {
+  align-items: start;
+  background: linear-gradient(135deg, #f8faff 0%, #eef4ff 100%);
+  border: 1px solid #dbe4ff;
+  border-radius: 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px 32px;
+}
+
+.task-form-settings-hero__copy {
+  display: grid;
+  gap: 8px;
+}
+
+.task-form-settings-hero__eyebrow {
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.task-form-settings-hero__title.ant-typography {
+  color: #102a72;
+  margin-bottom: 0;
+}
+
+.task-form-settings-hero__description.ant-typography {
+  color: #52607a;
+  font-size: 16px;
+  margin-bottom: 0;
+  max-width: 760px;
+}
+
+.task-form-settings-hero__meta {
+  color: #102a72;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.task-form-settings-hero__actions {
+  flex-shrink: 0;
+}
+
+.task-form-settings-config-grid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 2fr) minmax(300px, 360px);
+}
+
+.task-form-settings-card {
+  background: #fff;
+}
+
+.task-form-settings-card--sidebar {
+  background: linear-gradient(180deg, #fbfcff 0%, #f4f7ff 100%);
+}
+
+.task-form-settings-card__stack {
+  display: grid;
+  gap: 16px;
+}
+
+.task-form-settings-form-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.task-form-settings-form-grid__span-2 {
+  grid-column: 1 / -1;
+}
+
+.task-form-settings-workspace {
+  overflow: hidden;
+}
+
+.task-form-settings-primary-tabs > .ant-tabs-nav,
+.task-form-settings-secondary-tabs > .ant-tabs-nav {
+  margin-bottom: 24px;
+}
+
+.task-form-settings-designer-pane,
+.task-form-settings-json-pane {
+  display: grid;
+  gap: 24px;
+}
+
+.task-form-settings-designer-pane__alert {
+  border-radius: 16px;
+}
+
+.task-form-settings-transition-pane,
+.task-form-settings-stage-pane {
+  display: grid;
+  gap: 20px;
+}
+
+.task-form-settings-section-header {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.task-form-settings-transition-list,
+.task-form-settings-stage-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.task-form-settings-stage-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.task-form-settings-transition-card,
+.task-form-settings-stage-card {
+  border: 1px solid #e5ebff;
+  border-radius: 18px;
+}
+
+.task-form-builder-section {
+  display: grid;
+  gap: 20px;
+}
+
+.task-form-builder-section__header {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.task-form-builder-section__workspace {
+  align-items: start;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.9fr);
+}
+
+.task-form-builder-section__fields {
+  display: grid;
+  gap: 16px;
+}
+
+.task-form-builder-section__field-card {
+  border: 1px solid #e5ebff;
+  border-radius: 18px;
+}
+
+.task-form-builder-section__field-heading {
+  display: grid;
+  gap: 2px;
+}
+
+.task-form-builder-section__field-title {
+  color: #102a72;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.task-form-builder-section__field-meta {
+  color: #6b7a99;
+  font-size: 13px;
+}
+
+.task-form-builder-section__field-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.task-form-builder-section__preview {
+  position: sticky;
+  top: 24px;
+}
+
+.task-form-builder-section__preview .ant-card {
+  border: 1px dashed #c9d7ff;
+  border-radius: 18px;
+  box-shadow: none;
+}
+
+@media (max-width: 1440px) {
+  .task-form-settings-config-grid,
+  .task-form-builder-section__workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .task-form-builder-section__preview,
+  .task-form-settings-sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 1120px) {
+  .task-form-settings-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .task-form-settings-hero {
+    flex-direction: column;
+  }
+
+  .task-form-settings-form-grid,
+  .task-form-builder-section__field-grid {
+    grid-template-columns: 1fr;
+  }
+}
