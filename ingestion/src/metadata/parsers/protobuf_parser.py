@@ -19,7 +19,7 @@ import sys
 import traceback
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union , Type
 
 import grpc_tools.protoc
 from google.protobuf.message import Message
@@ -239,7 +239,7 @@ class ProtobufParser:
             return instance
         return None
 
-    def parse_protobuf_schema(self, cls: type[BaseModel] = FieldModel) -> Optional[list[Union[FieldModel, Column]]]:  # noqa: UP007, UP045
+    def parse_protobuf_schema(self, cls: Type[FieldModel] | Type[Column] = FieldModel) -> list[FieldModel | Column ] | None:  # noqa: UP007, UP045
         """
         Method to parse the protobuf schema
         """
@@ -273,7 +273,7 @@ class ProtobufParser:
                 shutil.rmtree(self.config.base_file_path, ignore_errors=True)
         return field_models or None
 
-    def _get_field_type(self, type_: int, cls: type[BaseModel] = FieldModel) -> str:
+    def _get_field_type(self, type_: int, cls: Type[FieldModel] | Type[Column]) -> str:
         if type_ > 18:
             return DataType.UNKNOWN.value
         data_type = ProtobufDataTypes(type_).name
@@ -284,12 +284,12 @@ class ProtobufParser:
     def get_protobuf_fields(
         self,
         fields,
-        cls: type[BaseModel] = FieldModel,
-    ) -> Optional[list[Union[FieldModel, Column]]]:  # noqa: UP007, UP045
+        cls: Type[FieldModel] | Type[Column] = FieldModel,
+    ) -> list[FieldModel | Column] | None :  # noqa: UP007, UP045
         """
         Recursively convert the parsed schema into required models
         """
-        field_models: list[FieldModel | Column] = []
+        field_models: list[FieldModel | Column] =[]
 
         for field in fields:
             try:
