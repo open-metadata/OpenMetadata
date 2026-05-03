@@ -11,17 +11,12 @@
  *  limitations under the License.
  */
 import {
-  Box,
+  Button,
   Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControl,
-  InputLabel,
-  MenuItem,
+  Modal,
+  ModalOverlay,
   Select,
-} from '@mui/material';
-import { Button } from '@openmetadata/ui-core-components';
+} from '@openmetadata/ui-core-components';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -36,7 +31,7 @@ import {
 } from '../../../generated/entity/domains/dataProduct';
 import { DataProductMetadataModalProps } from './DataProductMetadataModal.interface';
 
-// MUI Select treats an empty string "" as "no selection" (matches the
+// react-aria Select treats an empty string key as "no selection" (matches the
 // undefined-means-unset semantics of our DataProduct fields).
 const NONE = '';
 
@@ -78,106 +73,96 @@ const DataProductMetadataModal = ({
     }
   };
 
+  const dataProductTypeItems = [
+    { id: NONE, label: t('label.none') },
+    ...Object.values(DataProductType).map((v) => ({
+      id: v,
+      label: t(DATA_PRODUCT_TYPE_LABEL_KEYS[v]),
+    })),
+  ];
+
+  const visibilityItems = [
+    { id: NONE, label: t('label.none') },
+    ...Object.values(Visibility).map((v) => ({
+      id: v,
+      label: t(VISIBILITY_LABEL_KEYS[v]),
+    })),
+  ];
+
+  const portfolioPriorityItems = [
+    { id: NONE, label: t('label.none') },
+    ...Object.values(PortfolioPriority).map((v) => ({
+      id: v,
+      label: t(PORTFOLIO_PRIORITY_LABEL_KEYS[v]),
+    })),
+  ];
+
   return (
-    <Dialog
-      fullWidth
-      data-testid="data-product-metadata-modal"
-      maxWidth="sm"
-      open={open}
-      onClose={onCancel}>
-      <DialogTitle>
-        {t('label.edit-entity', { entity: t('label.data-product') })}
-      </DialogTitle>
-      <DialogContent>
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2,
-            pt: 1,
-          }}>
-          <FormControl fullWidth>
-            <InputLabel id="type-label">{t('label.type')}</InputLabel>
-            <Select
-              data-testid="type-select"
-              inputProps={{ 'data-testid': 'type-select-input' }}
-              label={t('label.type')}
-              labelId="type-label"
-              value={dataProductType}
-              onChange={(e) => setDataProductType(e.target.value as string)}>
-              <MenuItem value={NONE}>
-                <em>{t('label.none')}</em>
-              </MenuItem>
-              {Object.values(DataProductType).map((v) => (
-                <MenuItem key={v} value={v}>
-                  {t(DATA_PRODUCT_TYPE_LABEL_KEYS[v])}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl fullWidth>
-            <InputLabel id="visibility-label">
-              {t('label.visibility')}
-            </InputLabel>
-            <Select
-              data-testid="visibility-select"
-              inputProps={{ 'data-testid': 'visibility-select-input' }}
-              label={t('label.visibility')}
-              labelId="visibility-label"
-              value={visibility}
-              onChange={(e) => setVisibility(e.target.value as string)}>
-              <MenuItem value={NONE}>
-                <em>{t('label.none')}</em>
-              </MenuItem>
-              {Object.values(Visibility).map((v) => (
-                <MenuItem key={v} value={v}>
-                  {t(VISIBILITY_LABEL_KEYS[v])}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl fullWidth>
-            <InputLabel id="priority-label">
-              {t('label.portfolio-priority')}
-            </InputLabel>
-            <Select
-              data-testid="priority-select"
-              inputProps={{ 'data-testid': 'priority-select-input' }}
-              label={t('label.portfolio-priority')}
-              labelId="priority-label"
-              value={portfolioPriority}
-              onChange={(e) => setPortfolioPriority(e.target.value as string)}>
-              <MenuItem value={NONE}>
-                <em>{t('label.none')}</em>
-              </MenuItem>
-              {Object.values(PortfolioPriority).map((v) => (
-                <MenuItem key={v} value={v}>
-                  {t(PORTFOLIO_PRIORITY_LABEL_KEYS[v])}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button
-          color="tertiary"
-          data-testid="metadata-modal-cancel"
-          isDisabled={submitting}
-          size="sm"
-          onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>
-        <Button
-          color="primary"
-          data-testid="metadata-modal-save"
-          isLoading={submitting}
-          size="sm"
-          onClick={handleSave}>
-          {t('label.save')}
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <ModalOverlay
+      isDismissable={!submitting}
+      isOpen={open}
+      onOpenChange={(isOpen) => !isOpen && !submitting && onCancel()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          data-testid="data-product-metadata-modal"
+          title={t('label.edit-entity', { entity: t('label.data-product') })}
+          width={520}
+          onClose={onCancel}>
+          <Dialog.Content>
+            <div className="tw:flex tw:flex-col tw:gap-4">
+              <Select
+                data-testid="type-select"
+                label={t('label.type')}
+                value={dataProductType}
+                onChange={(key) => setDataProductType(String(key ?? ''))}>
+                {dataProductTypeItems.map((opt) => (
+                  <Select.Item id={opt.id} key={opt.id} label={opt.label} />
+                ))}
+              </Select>
+              <Select
+                data-testid="visibility-select"
+                label={t('label.visibility')}
+                value={visibility}
+                onChange={(key) => setVisibility(String(key ?? ''))}>
+                {visibilityItems.map((opt) => (
+                  <Select.Item id={opt.id} key={opt.id} label={opt.label} />
+                ))}
+              </Select>
+              <Select
+                data-testid="priority-select"
+                label={t('label.portfolio-priority')}
+                value={portfolioPriority}
+                onChange={(key) => setPortfolioPriority(String(key ?? ''))}>
+                {portfolioPriorityItems.map((opt) => (
+                  <Select.Item id={opt.id} key={opt.id} label={opt.label} />
+                ))}
+              </Select>
+            </div>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <div className="tw:col-span-2 tw:flex tw:justify-end tw:gap-3">
+              <Button
+                color="tertiary"
+                data-testid="metadata-modal-cancel"
+                isDisabled={submitting}
+                size="sm"
+                onPress={onCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="metadata-modal-save"
+                isLoading={submitting}
+                size="sm"
+                onPress={handleSave}>
+                {t('label.save')}
+              </Button>
+            </div>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

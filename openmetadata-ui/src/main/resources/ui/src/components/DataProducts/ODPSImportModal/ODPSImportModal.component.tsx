@@ -13,19 +13,15 @@
 
 import {
   Alert,
-  AlertTitle,
-  Box,
+  Button,
   Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControlLabel,
-  Radio,
+  Modal,
+  ModalOverlay,
+  RadioButton,
   RadioGroup,
-  TextField,
+  TextArea,
   Typography,
-} from '@mui/material';
-import { Button } from '@openmetadata/ui-core-components';
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isNil } from 'lodash';
 import { ChangeEvent, useCallback, useRef, useState } from 'react';
@@ -95,13 +91,10 @@ const ODPSImportModal = ({
     []
   );
 
-  const handleTextChange = useCallback(
-    (event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
-      setYamlContent(event.target.value);
-      setValidation(null);
-    },
-    []
-  );
+  const handleTextChange = useCallback((value: string) => {
+    setYamlContent(value);
+    setValidation(null);
+  }, []);
 
   const handleValidate = useCallback(async () => {
     if (!yamlContent.trim()) {
@@ -156,140 +149,138 @@ const ODPSImportModal = ({
   };
 
   return (
-    <Dialog
-      fullWidth
-      data-testid="odps-import-modal"
-      maxWidth="md"
-      open={open}
-      onClose={handleClose}>
-      <DialogTitle>
-        {t('label.import-entity', { entity: t('label.odps-data-product') })}
-      </DialogTitle>
-      <DialogContent>
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2,
-            pt: 1,
-          }}>
-          <Typography variant="body2">
-            {t('message.odps-import-description')}
-          </Typography>
+    <ModalOverlay
+      isDismissable={!isImporting}
+      isOpen={open}
+      onOpenChange={(isOpen) => !isOpen && !isImporting && handleClose()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          data-testid="odps-import-modal"
+          title={t('label.import-entity', {
+            entity: t('label.odps-data-product'),
+          })}
+          width={720}
+          onClose={handleClose}>
+          <Dialog.Content>
+            <div className="tw:flex tw:flex-col tw:gap-4">
+              <Typography as="p" size="text-sm">
+                {t('message.odps-import-description')}
+              </Typography>
 
-          <Box>
-            {/* Hidden native file input; triggered by the styled core-components
-                Button above. Avoids the AntD Upload widget and keeps the YAML
-                payload entirely in local state. */}
-            <input
-              accept=".yaml,.yml"
-              data-testid="odps-yaml-file-input"
-              ref={fileInputRef}
-              style={{ display: 'none' }}
-              type="file"
-              onChange={handleFileChange}
-            />
-            <Button
-              color="secondary"
-              data-testid="odps-upload-button"
-              size="sm"
-              onClick={triggerFilePicker}>
-              {t('label.upload-yaml-file')}
-            </Button>
-          </Box>
+              <div>
+                {/* Hidden native file input; triggered by the styled
+                    core-components Button below. Avoids the AntD Upload widget
+                    and keeps the YAML payload entirely in local state. */}
+                <input
+                  accept=".yaml,.yml"
+                  data-testid="odps-yaml-file-input"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  type="file"
+                  onChange={handleFileChange}
+                />
+                <Button
+                  color="secondary"
+                  data-testid="odps-upload-button"
+                  size="sm"
+                  onPress={triggerFilePicker}>
+                  {t('label.upload-yaml-file')}
+                </Button>
+              </div>
 
-          <TextField
-            fullWidth
-            multiline
-            InputProps={{
-              inputProps: { 'data-testid': 'odps-yaml-content' },
-            }}
-            maxRows={20}
-            minRows={10}
-            placeholder={t('message.paste-odps-yaml-here')}
-            value={yamlContent}
-            onChange={handleTextChange}
-          />
-
-          {existingDataProduct && (
-            <RadioGroup
-              value={strategy}
-              onChange={(e) =>
-                setStrategy(e.target.value as ODPSImportStrategy)
-              }>
-              <FormControlLabel
-                control={<Radio data-testid="odps-strategy-merge" />}
-                label={
-                  <Typography variant="body2">
-                    <strong>{t('label.merge')}</strong>{' '}
-                    <Typography component="span" variant="caption">
-                      — {t('message.odps-merge-description')}
-                    </Typography>
-                  </Typography>
-                }
-                value="merge"
+              <TextArea
+                data-testid="odps-yaml-content"
+                placeholder={t('message.paste-odps-yaml-here')}
+                rows={10}
+                value={yamlContent}
+                onChange={handleTextChange}
               />
-              <FormControlLabel
-                control={<Radio data-testid="odps-strategy-replace" />}
-                label={
-                  <Typography variant="body2">
-                    <strong>{t('label.replace')}</strong>{' '}
-                    <Typography component="span" variant="caption">
-                      — {t('message.odps-replace-description')}
-                    </Typography>
-                  </Typography>
-                }
-                value="replace"
-              />
-            </RadioGroup>
-          )}
 
-          <Box>
-            <Button
-              color="secondary"
-              data-testid="odps-validate-button"
-              isDisabled={!yamlContent.trim()}
-              isLoading={isValidating}
-              size="sm"
-              onClick={handleValidate}>
-              {t('label.validate')}
-            </Button>
-          </Box>
+              {existingDataProduct && (
+                <RadioGroup
+                  value={strategy}
+                  onChange={(value) =>
+                    setStrategy(value as ODPSImportStrategy)
+                  }>
+                  <RadioButton
+                    data-testid="odps-strategy-merge"
+                    label={
+                      <span>
+                        <strong>{t('label.merge')}</strong>{' '}
+                        <Typography as="span" size="text-xs">
+                          — {t('message.odps-merge-description')}
+                        </Typography>
+                      </span>
+                    }
+                    value="merge"
+                  />
+                  <RadioButton
+                    data-testid="odps-strategy-replace"
+                    label={
+                      <span>
+                        <strong>{t('label.replace')}</strong>{' '}
+                        <Typography as="span" size="text-xs">
+                          — {t('message.odps-replace-description')}
+                        </Typography>
+                      </span>
+                    }
+                    value="replace"
+                  />
+                </RadioGroup>
+              )}
 
-          {validation && validation.valid && (
-            <Alert severity="success">
-              <AlertTitle>{t('label.valid')}</AlertTitle>
-              {t('message.odps-yaml-valid-description', {
-                version: validation.version ?? '4.1',
-                languages: validation.languages ?? 'en',
-              })}
-            </Alert>
-          )}
-          {validation && validation.valid === false && (
-            <Alert severity="error">{t('message.odps-yaml-invalid')}</Alert>
-          )}
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button
-          color="tertiary"
-          data-testid="odps-import-cancel"
-          isDisabled={isImporting}
-          size="sm"
-          onClick={handleClose}>
-          {t('label.cancel')}
-        </Button>
-        <Button
-          color="primary"
-          data-testid="odps-import-submit"
-          isDisabled={!yamlContent.trim()}
-          isLoading={isImporting}
-          size="sm"
-          onClick={handleImport}>
-          {t('label.import')}
-        </Button>
-      </DialogActions>
-    </Dialog>
+              <div>
+                <Button
+                  color="secondary"
+                  data-testid="odps-validate-button"
+                  isDisabled={!yamlContent.trim()}
+                  isLoading={isValidating}
+                  size="sm"
+                  onPress={handleValidate}>
+                  {t('label.validate')}
+                </Button>
+              </div>
+
+              {validation && validation.valid && (
+                <Alert title={t('label.valid')} variant="success">
+                  {t('message.odps-yaml-valid-description', {
+                    version: validation.version ?? '4.1',
+                    languages: validation.languages ?? 'en',
+                  })}
+                </Alert>
+              )}
+              {validation && validation.valid === false && (
+                <Alert title={t('label.invalid')} variant="error">
+                  {t('message.odps-yaml-invalid')}
+                </Alert>
+              )}
+            </div>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <div className="tw:col-span-2 tw:flex tw:justify-end tw:gap-3">
+              <Button
+                color="tertiary"
+                data-testid="odps-import-cancel"
+                isDisabled={isImporting}
+                size="sm"
+                onPress={handleClose}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="odps-import-submit"
+                isDisabled={!yamlContent.trim()}
+                isLoading={isImporting}
+                size="sm"
+                onPress={handleImport}>
+                {t('label.import')}
+              </Button>
+            </div>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 
