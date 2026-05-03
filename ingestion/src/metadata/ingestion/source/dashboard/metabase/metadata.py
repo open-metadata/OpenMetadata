@@ -335,6 +335,18 @@ class MetabaseSource(DashboardServiceSource):
             return None
         return self.metadata.get_by_name(DatabaseService, db_service_name)
 
+    def _get_chart_entity(self, chart_details: MetabaseChart):
+        chart_fqn = fqn.build(
+            self.metadata,
+            entity_type=LineageChart,
+            service_name=self.config.serviceName,
+            chart_name=str(chart_details.id),
+        )
+        return self.metadata.get_by_name(
+            entity=LineageChart,
+            fqn=chart_fqn,
+        )
+
     # pylint: disable=too-many-locals
     def _yield_lineage_from_query(
         self,
@@ -377,6 +389,18 @@ class MetabaseSource(DashboardServiceSource):
             logger.debug(f"[{query_hash}] Database {database_name} does not match prefix {prefix_database_name}")
             return
 
+        to_fqn = fqn.build(
+            self.metadata,
+            entity_type=LineageDashboard,
+            service_name=self.config.serviceName,
+            dashboard_name=dashboard_name,
+        )
+        to_entity = self.metadata.get_by_name(
+            entity=LineageDashboard,
+            fqn=to_fqn,
+        )
+        chart_entity = self._get_chart_entity(chart_details)
+
         for table in lineage_parser.source_tables:
             database_schema_name, table = fqn.split(str(table))[-2:]  # noqa: PLW2901
             database_schema_name = self.check_database_schema_name(database_schema_name)
@@ -403,27 +427,6 @@ class MetabaseSource(DashboardServiceSource):
                 entity_type=Table,
                 fqn_search_string=fqn_search_string,
                 fetch_multiple_entities=True,
-            )
-            to_fqn = fqn.build(
-                self.metadata,
-                entity_type=LineageDashboard,
-                service_name=self.config.serviceName,
-                dashboard_name=dashboard_name,
-            )
-            to_entity = self.metadata.get_by_name(
-                entity=LineageDashboard,
-                fqn=to_fqn,
-            )
-
-            chart_fqn = fqn.build(
-                self.metadata,
-                entity_type=LineageChart,
-                service_name=self.config.serviceName,
-                chart_name=str(chart_details.id),
-            )
-            chart_entity = self.metadata.get_by_name(
-                entity=LineageChart,
-                fqn=chart_fqn,
             )
 
             for from_entity in from_entities or []:
@@ -485,17 +488,7 @@ class MetabaseSource(DashboardServiceSource):
             entity=LineageDashboard,
             fqn=to_fqn,
         )
-
-        chart_fqn = fqn.build(
-            self.metadata,
-            entity_type=LineageChart,
-            service_name=self.config.serviceName,
-            chart_name=str(chart_details.id),
-        )
-        chart_entity = self.metadata.get_by_name(
-            entity=LineageChart,
-            fqn=chart_fqn,
-        )
+        chart_entity = self._get_chart_entity(chart_details)
 
         for from_entity in from_entities or []:
             yield self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
