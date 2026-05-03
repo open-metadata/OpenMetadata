@@ -917,9 +917,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
                 "container",
                 Relationship.CONTAINS.ordinal());
     assertEquals(
-        1,
-        rowsRemoved,
-        "Setup: should have removed exactly one (parent, CONTAINS, child) row");
+        1, rowsRemoved, "Setup: should have removed exactly one (parent, CONTAINS, child) row");
 
     ListParams rootParams = new ListParams();
     rootParams.addFilter("root", "true");
@@ -954,6 +952,11 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     parentRequest.setService(service.getFullyQualifiedName());
     Container parent = createEntity(parentRequest);
 
+    // Sequential creation is deliberate: each child must round-trip through the regular
+    // POST /containers path so ContainerRepository.storeRelationships writes a real
+    // (parent, CONTAINS, child) row — that's the row whose cleanup we're stress-testing.
+    // A bulk create that bypassed storeRelationships would exercise the wrong code path.
+    // 101 is one above the 100-child threshold that gates batchDeleteChildren.
     int childCount = 101;
     List<UUID> childIds = new ArrayList<>(childCount);
     for (int i = 0; i < childCount; i++) {
@@ -974,9 +977,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     SdkClients.adminClient().containers().delete(parent.getId().toString(), deleteParams);
 
     assertThrows(
-        Exception.class,
-        () -> getEntity(parent.getId().toString()),
-        "Parent must be hard-deleted");
+        Exception.class, () -> getEntity(parent.getId().toString()), "Parent must be hard-deleted");
 
     for (UUID childId : childIds) {
       assertThrows(

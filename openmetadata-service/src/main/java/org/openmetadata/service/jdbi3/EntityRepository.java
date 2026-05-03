@@ -4255,13 +4255,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * {@code children.size() > 100}; the soft-delete and small-batch paths stay on the
    * sequential {@link Entity#deleteEntity} flow.
    *
-   * <p>Each child is removed via its own {@link #cleanup} call, which already deletes
-   * the entity row, all (id, *) / (*, id) entity_relationship rows, extensions, tag
-   * usage, threads, and caches inside its own JDBI transaction. Any failure propagates
-   * so the surrounding {@code @Transaction} on this method (and on the parent
-   * {@link #delete}) rolls back — preventing the orphan-with-multi-segment-FQN pattern
-   * that previously appeared when an exception in this loop was swallowed after the
-   * relationships had already been wiped.
+   * <p>Each child is removed via {@link #cleanup}, which deletes the entity row, all
+   * {@code (id, *)} and {@code (*, id)} entity_relationship rows, extensions, tag usage,
+   * threads, and caches as one atomic unit per child (cleanup opens its own JDBI
+   * transaction via {@code Entity.getJdbi().inTransaction(...)}). The previous
+   * implementation pre-deleted relationships in two batched queries before this loop and
+   * swallowed exceptions in the per-child cleanup, which is exactly what produced the
+   * orphan pattern: a failed cleanup left an entity row alive after its relationships
+   * had been wiped, surfacing in {@code /containers?root=true} and breaking
+   * {@code /children} traversal.
+   *
+   * <p><b>Failure semantics:</b> per-child atomicity, not whole-batch atomicity. If
+   * cleanup for child <em>k</em> throws, children {@code 0..k-1} have already committed
+   * via their own transactions and cannot be rolled back by the {@code @Transaction} on
+   * this method (cleanup's inner transaction is independent). The exception propagates
+   * so the loop stops; children {@code k..N-1} keep both their rows and their parent
+   * CONTAINS relationships intact. The retry path is to reissue the recursive delete on
+   * the parent — remaining children re-enter this loop. Crucially, no orphan-without-
+   * relationships row can result from an exception in this method, which is the bug
+   * this change exists to fix; achieving true all-or-nothing rollback across the batch
+   * would require sharing one JDBI handle across every cleanup call, a wider refactor
+   * deliberately scoped out of this fix.
    */
   @Transaction
   private void processDeletionBatch(
@@ -4296,13 +4310,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // cleanup() per entity is the source of truth: it removes the row, its relationships
     // (deleteAllFrom + deleteAllTo on (id, *) and (*, id)), extensions, tag usage, feed
-    // threads, and caches within one JDBI transaction. The previous implementation
-    // pre-deleted relationships in two batched queries before this loop — which was both
-    // redundant (cleanup re-runs deleteAll) and unsafe: if a per-child cleanup failed and
-    // the catch below swallowed it, the entity row survived without any relationship row,
-    // surfacing later as an orphan in /containers?root=true and breaking /children
-    // traversal. We now let cleanup own both halves atomically and let exceptions
-    // propagate so the surrounding @Transaction rolls the whole batch back.
+    // threads, and caches within ONE JDBI transaction owned by cleanup itself. The
+    // previous pre-batch-delete of relationships made the row-and-relationship pairing
+    // non-atomic across the loop, which is why a swallowed mid-loop exception produced
+    // the orphan-without-relationships pattern. Letting cleanup own both halves and
+    // letting exceptions propagate stops the loop early on failure; see the failure
+    // semantics note in the Javadoc above for what "stops the loop" actually guarantees.
     @SuppressWarnings("rawtypes")
     EntityRepository repository = Entity.getEntityRepository(entityType);
     for (UUID entityId : entityIds) {
