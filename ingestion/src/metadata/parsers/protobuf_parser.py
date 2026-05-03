@@ -12,6 +12,7 @@
 """
 Utils module to parse the protobuf schema
 """
+
 import importlib
 import shutil
 import sys
@@ -117,14 +118,8 @@ def _resolve_message_class(module, schema_name: str):
     # ------------------------------------------------------------------
     camel_name = snake_to_camel(schema_name)
     candidate = getattr(module, camel_name, None)
-    if (
-        candidate is not None
-        and isinstance(candidate, type)
-        and issubclass(candidate, Message)
-    ):
-        logger.debug(
-            f"Resolved protobuf message '{camel_name}' via name match for schema '{schema_name}'"
-        )
+    if candidate is not None and isinstance(candidate, type) and issubclass(candidate, Message):
+        logger.debug(f"Resolved protobuf message '{camel_name}' via name match for schema '{schema_name}'")
         return candidate()
 
     # ------------------------------------------------------------------
@@ -133,8 +128,7 @@ def _resolve_message_class(module, schema_name: str):
     file_descriptor = getattr(module, "DESCRIPTOR", None)
     if file_descriptor is None:
         logger.warning(
-            f"Unable to resolve protobuf message for '{schema_name}': "
-            "compiled pb2 module has no DESCRIPTOR attribute."
+            f"Unable to resolve protobuf message for '{schema_name}': compiled pb2 module has no DESCRIPTOR attribute."
         )
         return None
 
@@ -208,9 +202,7 @@ class ProtobufParser:
             proto_path = self.proto_interface_dir
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}"
-            )
+            logger.warning(f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}")
         else:
             return proto_path, file_path
         return None
@@ -233,29 +225,21 @@ class ProtobufParser:
 
             # import the python file
             if self.generated_src_dir not in sys.path:
-                sys.path.insert(
-                    0, self.generated_src_dir
-                )  # ensure generated src dir is on sys.path for imports
+                sys.path.insert(0, self.generated_src_dir)  # ensure generated src dir is on sys.path for imports
             generated_src_dir_path = Path(self.generated_src_dir)
-            py_file = next(
-                generated_src_dir_path.glob(f"{self.config.schema_name}_pb2.py")
-            )
+            py_file = next(generated_src_dir_path.glob(f"{self.config.schema_name}_pb2.py"))
             module_name = Path(py_file).stem
             message = importlib.import_module(module_name)
             # get the class and create a object instance
             instance = _resolve_message_class(message, self.config.schema_name)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unable to create protobuf python module for {self.config.schema_name}: {exc}"
-            )
+            logger.warning(f"Unable to create protobuf python module for {self.config.schema_name}: {exc}")
         else:
             return instance
         return None
 
-    def parse_protobuf_schema(
-        self, cls: type[BaseModel] = FieldModel
-    ) -> Optional[list[Union[FieldModel, Column]]]:  # noqa: UP007, UP045
+    def parse_protobuf_schema(self, cls: type[BaseModel] = FieldModel) -> Optional[list[Union[FieldModel, Column]]]:  # noqa: UP007, UP045
         """
         Method to parse the protobuf schema
         """
@@ -263,37 +247,27 @@ class ProtobufParser:
         try:
             result = self.create_proto_files()
             if result is None:
-                logger.warning(
-                    f"Failed to create proto files for '{self.config.schema_name}'"
-                )
+                logger.warning(f"Failed to create proto files for '{self.config.schema_name}'")
                 return None
 
             proto_path, file_path = result
 
-            instance = self.get_protobuf_python_object(
-                proto_path=proto_path, file_path=file_path
-            )
+            instance = self.get_protobuf_python_object(proto_path=proto_path, file_path=file_path)
 
             if instance is None:
-                logger.warning(
-                    f"Could not resolve a Protobuf message class for schema '{self.config.schema_name}'."
-                )
+                logger.warning(f"Could not resolve a Protobuf message class for schema '{self.config.schema_name}'.")
                 return None
 
             field_models = [
                 cls(
                     name=instance.DESCRIPTOR.name,
                     dataType=DataType.RECORD.value,
-                    children=self.get_protobuf_fields(
-                        instance.DESCRIPTOR.fields, cls=cls
-                    ),
+                    children=self.get_protobuf_fields(instance.DESCRIPTOR.fields, cls=cls),
                 )
             ]
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}"
-            )
+            logger.warning(f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}")
         finally:
             if Path(self.config.base_file_path).exists():
                 shutil.rmtree(self.config.base_file_path, ignore_errors=True)
@@ -315,7 +289,7 @@ class ProtobufParser:
         """
         Recursively convert the parsed schema into required models
         """
-        field_models = []
+        field_models: list[FieldModel | Column] = []
 
         for field in fields:
             try:
@@ -324,16 +298,12 @@ class ProtobufParser:
                         name=field.name,
                         dataType=self._get_field_type(field.type, cls=cls),
                         children=(
-                            self.get_protobuf_fields(field.message_type.fields, cls=cls)
-                            if field.type == 11
-                            else None
+                            self.get_protobuf_fields(field.message_type.fields, cls=cls) if field.type == 11 else None
                         ),
                     )
                 )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unable to parse the protobuf schema into models: {exc}"
-                )
+                logger.warning(f"Unable to parse the protobuf schema into models: {exc}")
 
         return field_models or None

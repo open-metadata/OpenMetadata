@@ -16,9 +16,9 @@ Protobuf parser tests
 import os
 
 import pytest
-
 from metadata.generated.schema.entity.data.table import Column
-from metadata.parsers.protobuf_parser import ProtobufParser, ProtobufParserConfig
+from metadata.parsers.protobuf_parser import (ProtobufParser,
+                                              ProtobufParserConfig)
 from metadata.utils.messaging_utils import merge_and_clean_protobuf_schema
 
 
@@ -107,12 +107,35 @@ class ProtobufParserTests:
         field_types = {str(field.dataType.name) for field in parsed_schema[0].children}
         assert field_types == {"INT", "ENUM", "RECORD", "STRING", "BOOLEAN"}
 
+    def test_descriptor_fallback_when_message_name_differs(self):
+        schema = """
+        syntax = "proto3";
+
+        message MyLoanRecord {
+            int32 amount = 1;
+        }
+        """
+
+        parser = ProtobufParser(
+            ProtobufParserConfig(
+                schema_name="loans",  # mismatch on purpose
+                schema_text=schema,
+            )
+        )
+
+        result = parser.parse_protobuf_schema()
+
+        assert result is not None
+        assert result[0].name.root == "MyLoanRecord"
+
     def test_complex_protobuf_schema_files(self, protobuf_base_path):
         """
         We'll read the files under ./ingestion/tests/unit/resources/protobuf_parser and parse them
         This will be similar in way to how we get the data from kafka source
         """
-        resource_path = f"{os.path.dirname(__file__)}/resources/protobuf_parser/"  # noqa: PTH120
+        resource_path = (
+            f"{os.path.dirname(__file__)}/resources/protobuf_parser/"  # noqa: PTH120
+        )
         schema_name = "employee"
         file_list = os.listdir(resource_path)  # noqa: PTH208
         schema_text = ""
