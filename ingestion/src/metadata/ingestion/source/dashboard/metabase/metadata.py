@@ -434,8 +434,9 @@ class MetabaseSource(DashboardServiceSource):
                 fqn_search_string=fqn_search_string,
                 fetch_multiple_entities=True,
             )
+            from_tables = [from_entities] if isinstance(from_entities, Table) else from_entities or []
 
-            for from_entity in from_entities or []:
+            for from_entity in from_tables:
                 if to_entity:
                     dashboard_lineage = self._get_add_lineage_request(
                         to_entity=to_entity,
@@ -492,6 +493,7 @@ class MetabaseSource(DashboardServiceSource):
             fqn_search_string=fqn_search_string,
             fetch_multiple_entities=True,
         )
+        from_tables = [from_entities] if isinstance(from_entities, Table) else from_entities or []
         to_fqn = fqn.build(
             self.metadata,
             entity_type=LineageDashboard,
@@ -509,7 +511,7 @@ class MetabaseSource(DashboardServiceSource):
         )
         chart_entity = self._get_chart_entity(chart_details)
 
-        for from_entity in from_entities or []:
+        for from_entity in from_tables:
             if to_entity:
                 dashboard_lineage = self._get_add_lineage_request(
                     to_entity=to_entity,
