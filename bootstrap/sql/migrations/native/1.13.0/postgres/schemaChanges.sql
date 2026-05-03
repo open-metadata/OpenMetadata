@@ -240,6 +240,17 @@ CREATE INDEX IF NOT EXISTS idx_rdf_index_server_stats_job_id ON rdf_index_server
 CREATE INDEX IF NOT EXISTS idx_er_fromentity_toentity_relation_toid
     ON entity_relationship (fromEntity, toEntity, relation, toId);
 
+-- Add per-stage cumulative timing columns to search_index_server_stats so the
+-- distributed aggregator can surface where reindex latency is being spent
+-- (DB read in Reader, doc-build in Process, OpenSearch bulk in Sink, embeddings
+-- in Vector). Stored as BIGINT milliseconds; UI computes avg latency and
+-- throughput client-side from totalTimeMs / successRecords.
+ALTER TABLE search_index_server_stats
+  ADD COLUMN IF NOT EXISTS readerTimeMs BIGINT NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS processTimeMs BIGINT NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS sinkTimeMs BIGINT NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS vectorTimeMs BIGINT NOT NULL DEFAULT 0;
+
 -- Speed up `?service=` / `?database=` / `?databaseSchema=` / `?parent=` /
 -- `?apiCollection=` / `?spreadsheet=` / `?testSuite=` listings on entity
 -- tables. ListFilter.getFqnPrefixCondition turns each of these query params
