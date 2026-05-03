@@ -1046,11 +1046,11 @@ export const editColumnCustomProperty = async (
         response.status() === 200
     );
     await page.getByTestId(value).click();
-    await page.keyboard.press('Escape');
 
     // Verify selection is applied before saving
     // The selection usually appears as a tag or text in the container
     await expect(page.getByTestId('asset-select-list')).toContainText(value);
+    await page.keyboard.press('Escape');
   } else if (['date-cp', 'time-cp', 'dateTime-cp'].includes(propertyType)) {
     // Ant Design Pickers
     const picker = page.getByTestId(
