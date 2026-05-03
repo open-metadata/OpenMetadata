@@ -201,7 +201,9 @@ const waitForTableContractState = async (
             name?: string;
           };
 
-          return `${contract.inherited ? 'inherited' : 'direct'}:${contract.name ?? ''}`;
+          return `${contract.inherited ? 'inherited' : 'direct'}:${
+            contract.name ?? ''
+          }`;
         },
         {
           timeout: 60000,
