@@ -19,7 +19,7 @@ import sys
 import traceback
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union , Type
+from typing import Optional, Union,Type
 
 import grpc_tools.protoc
 from google.protobuf.message import Message
@@ -86,7 +86,7 @@ class ProtobufParserConfig(BaseModel):
     base_file_path: Optional[str] = "/tmp/protobuf_openmetadata"  # noqa: UP045
 
 
-def _resolve_message_class(module, schema_name: str):
+def _resolve_message_class(module: object, schema_name: str):
     """
     Resolve the top-level Protobuf message class from a compiled _pb2 module.
 
@@ -239,7 +239,7 @@ class ProtobufParser:
             return instance
         return None
 
-    def parse_protobuf_schema(self, cls: Type[FieldModel] | Type[Column] = FieldModel) -> list[FieldModel | Column ] | None:  # noqa: UP007, UP045
+    def parse_protobuf_schema(self, cls: Type[FieldModel] | Type[Column] = FieldModel) -> list[FieldModel | Column] | None:  # noqa: UP007, UP045
         """
         Method to parse the protobuf schema
         """
@@ -258,13 +258,44 @@ class ProtobufParser:
                 logger.warning(f"Could not resolve a Protobuf message class for schema '{self.config.schema_name}'.")
                 return None
 
-            field_models = [
-                cls(
-                    name=instance.DESCRIPTOR.name,
-                    dataType=DataType.RECORD.value,
-                    children=self.get_protobuf_fields(instance.DESCRIPTOR.fields, cls=cls),
-                )
-            ]
+            if cls == Column:
+                field_models = [
+                    Column(
+                        name=instance.DESCRIPTOR.name,
+                        displayName=instance.DESCRIPTOR.name,
+                        dataType=DataType.RECORD.value,
+                        arrayDataType=None,
+                        dataLength=None,
+                        precision=None,
+                        scale=None,
+                        dataTypeDisplay=None,
+                        description=None,
+                        tags=None,
+                        constraint=None,
+                        ordinalPosition=None,
+                        jsonSchema=None,
+                        profile=None,
+                        customMetrics=None,
+                        extension=None,
+                        children=self.get_protobuf_fields(
+                            instance.DESCRIPTOR.fields, cls=cls
+                        ),
+                    )
+                ]
+            else:
+                field_models = [
+                    FieldModel(
+                        name=instance.DESCRIPTOR.name,
+                        displayName=instance.DESCRIPTOR.name,
+                        dataType=DataType.RECORD.value,
+                        dataTypeDisplay=None,
+                        description=None,
+                        tags=None,
+                        children=self.get_protobuf_fields(
+                            instance.DESCRIPTOR.fields, cls=cls
+                        ),
+                    )
+                ]
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}")
@@ -289,19 +320,52 @@ class ProtobufParser:
         """
         Recursively convert the parsed schema into required models
         """
-        field_models: list[FieldModel | Column] =[]
+        field_models: list[FieldModel | Column] = []
 
         for field in fields:
             try:
-                field_models.append(
-                    cls(
-                        name=field.name,
-                        dataType=self._get_field_type(field.type, cls=cls),
-                        children=(
-                            self.get_protobuf_fields(field.message_type.fields, cls=cls) if field.type == 11 else None
-                        ),
+                if cls == Column:
+                    field_models.append(
+                        Column(
+                            name=field.name,
+                            displayName=field.name,
+                            dataType=self._get_field_type(field.type, cls=cls),
+                            arrayDataType=None,
+                            dataLength=None,
+                            precision=None,
+                            scale=None,
+                            dataTypeDisplay=None,
+                            description=None,
+                            tags=None,
+                            constraint=None,
+                            ordinalPosition=None,
+                            jsonSchema=None,
+                            profile=None,
+                            customMetrics=None,
+                            extension=None,
+                            children=(
+                                self.get_protobuf_fields(field.message_type.fields, cls=cls)
+                                if field.type == 11
+                                else None
+                            ),
+                        )
                     )
-                )
+                else:
+                    field_models.append(
+                        FieldModel(
+                            name=field.name,
+                            displayName=field.name,
+                            dataType=self._get_field_type(field.type, cls=cls),
+                            dataTypeDisplay=None,
+                            description=None,
+                            tags=None,
+                            children=(
+                                self.get_protobuf_fields(field.message_type.fields, cls=cls)
+                                if field.type == 11
+                                else None
+                            ),
+                        )
+                    )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unable to parse the protobuf schema into models: {exc}")
