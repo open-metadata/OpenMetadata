@@ -432,6 +432,26 @@ public class RedisCacheProvider implements CacheProvider {
   }
 
   @Override
+  public long scanCount(String pattern) {
+    if (!available || pattern == null || pattern.isEmpty()) {
+      return -1L;
+    }
+    try {
+      io.lettuce.core.ScanArgs args = io.lettuce.core.ScanArgs.Builder.matches(pattern).limit(1000);
+      io.lettuce.core.KeyScanCursor<String> cursor = syncCommands.scan(args);
+      long count = cursor.getKeys().size();
+      while (!cursor.isFinished()) {
+        cursor = syncCommands.scan(cursor, args);
+        count += cursor.getKeys().size();
+      }
+      return count;
+    } catch (Exception e) {
+      LOG.warn("scanCount failed for pattern={}", pattern, e);
+      return -1L;
+    }
+  }
+
+  @Override
   public void close() {
     try {
       if (healthChecker != null) {
