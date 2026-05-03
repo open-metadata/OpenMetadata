@@ -396,8 +396,13 @@ describe('transformDomainFormData', () => {
     glossaryTerms: [],
     owners: [],
     experts: [],
+    reviewers: [],
     domainType: null,
     domains: undefined,
+    dataProductType: null,
+    visibility: null,
+    portfolioPriority: null,
+    extension: {},
   };
 
   it('maps a populated DOMAIN form into a CreateDomain payload', () => {
