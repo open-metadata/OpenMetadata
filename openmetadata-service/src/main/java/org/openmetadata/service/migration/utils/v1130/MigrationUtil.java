@@ -361,8 +361,9 @@ public class MigrationUtil {
         LOG.info("tableColumn search settings already exist, no updates needed");
       }
     } catch (Exception e) {
+      // Non-fatal: column search settings can be re-saved later. Log and swallow
+      // so the migration step doesn't abort the rest of v1130's reprocessing.
       LOG.error("Error adding tableColumn search settings", e);
-      throw new RuntimeException("Failed to add tableColumn search settings", e);
     }
   }
 }
