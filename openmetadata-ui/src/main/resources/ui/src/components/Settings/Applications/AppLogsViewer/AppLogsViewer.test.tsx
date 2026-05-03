@@ -57,6 +57,10 @@ jest.mock('antd', () => ({
 }));
 
 jest.mock('../../../../utils/ApplicationUtils', () => ({
+  // Use the real formatters so the wall-clock regression test asserts
+  // the same display strings the user sees. getEntityStatsData stays
+  // mocked because the existing tests assert on a specific shape.
+  ...jest.requireActual('../../../../utils/ApplicationUtils'),
   getEntityStatsData: jest.fn().mockReturnValue([
     {
       name: 'chart',
@@ -429,5 +433,52 @@ describe('AppLogsViewer component', () => {
     expect(
       screen.queryByTestId('stats-component-label.vector-stat-plural')
     ).not.toBeInTheDocument();
+  });
+
+  // Regression: the overall card must derive Latency / throughput from
+  // wall-clock (endTime - startTime) and NOT from jobStats.totalTimeMs,
+  // which is never populated and previously produced a misleading
+  // "<1 ms · >Nk r/s" reading. See PR #27872.
+  it('overall stats card uses wall-clock not jobStats.totalTimeMs', () => {
+    const wallClockProps = {
+      data: {
+        ...mockProps1.data,
+        // 10 second wall-clock window.
+        startTime: 1_700_000_000_000,
+        endTime: 1_700_000_010_000,
+        successContext: {
+          stats: {
+            jobStats: {
+              totalRecords: 100,
+              successRecords: 100,
+              failedRecords: 0,
+              // Deliberately 0 — this is the misleading source we are
+              // moving away from. With wall-clock math (10s, 100 records)
+              // the rate must be 10.0 r/s, not the >100k r/s the old
+              // code produced when it divided by a 1ms floor.
+              totalTimeMs: 0,
+            },
+          },
+        },
+      },
+    };
+
+    render(<AppLogsViewer {...wallClockProps} />);
+
+    const overall = screen.getByTestId(
+      'stats-component-label.overall-stat-plural'
+    );
+
+    // Label is the wall-clock variant, not "Latency".
+    expect(overall).toHaveTextContent('label.wall-clock');
+    expect(overall).not.toHaveTextContent('label.latency');
+
+    // wall-clock = 10000ms, 100 records → 100 ms per record · 10.0 r/s.
+    // If the component regresses to using jobStats.totalTimeMs (= 0)
+    // the displayed rate would be ">100k r/s" via the 1ms floor, which
+    // these assertions catch.
+    expect(overall).toHaveTextContent('100.0 ms');
+    expect(overall).toHaveTextContent('10.0 r/s');
+    expect(overall).not.toHaveTextContent(/k r\/s/);
   });
 });
