@@ -30,5 +30,13 @@ public class Migration extends MigrationProcessImpl {
     } catch (Exception e) {
       LOG.error("v1130 glossaryTerm version relatedTerms transform failed; re-run to retry.", e);
     }
+    try {
+      MigrationUtil.addTableColumnSearchSettings();
+    } catch (Exception e) {
+      LOG.error(
+          "v1130 tableColumn search settings migration failed; column search may be unavailable "
+              + "until SearchSettings is re-saved.",
+          e);
+    }
   }
 }
