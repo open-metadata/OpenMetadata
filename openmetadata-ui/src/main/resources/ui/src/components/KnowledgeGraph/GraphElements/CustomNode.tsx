@@ -13,11 +13,13 @@
 
 import { NodeData } from '@antv/g6';
 import { Box, Typography } from '@openmetadata/ui-core-components';
+import React from 'react';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import './custom-node.less';
 
 export interface CustomNodeProps {
   nodeData: NodeData;
+  nodeRenderKey: string;
 }
 
 function CustomNode({ nodeData }: Readonly<CustomNodeProps>) {
@@ -64,4 +66,12 @@ function CustomNode({ nodeData }: Readonly<CustomNodeProps>) {
   );
 }
 
-export default CustomNode;
+// The G6 node object is mutable and can be updated in place.
+// In a custom memo comparator, prev.nodeData.data and next.nodeData.data
+// can end up reading the same already-mutated object
+// Hence adding nodeRenderKey which is derived from nodeData but is a string
+// and won't be affected by mutations to the nodeData object
+export default React.memo(
+  CustomNode,
+  (prev, next) => prev.nodeRenderKey === next.nodeRenderKey
+);

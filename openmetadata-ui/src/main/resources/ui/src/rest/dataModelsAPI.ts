@@ -71,13 +71,10 @@ export const removeDataModelFollower = async (id: string, userId: string) => {
   return response.data;
 };
 
-export const getDataModelVersionsList = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getDataModelVersionsList = async (id: string) => {
   const url = `${URL}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };

@@ -34,6 +34,7 @@ import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.configuration.AdminOpsConfiguration;
 import org.openmetadata.schema.configuration.AiPlatformConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
+import org.openmetadata.schema.configuration.SentryConfiguration;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -165,6 +166,16 @@ public class OpenMetadataApplicationConfig extends Configuration {
       adminOpsConfiguration.setEnabled(false);
     }
     return adminOpsConfiguration;
+  }
+
+  @JsonProperty("sentry")
+  private SentryConfiguration sentryConfiguration;
+
+  public SentryConfiguration getSentryConfiguration() {
+    if (sentryConfiguration == null) {
+      sentryConfiguration = new SentryConfiguration();
+    }
+    return sentryConfiguration;
   }
 
   @JsonProperty("mcpConfiguration")

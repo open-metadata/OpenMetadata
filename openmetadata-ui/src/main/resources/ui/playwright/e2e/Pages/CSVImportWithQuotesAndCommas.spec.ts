@@ -19,6 +19,7 @@ import {
   validateImportStatus,
   waitForImportGridLoadMaskToDisappear,
 } from '../../utils/importUtils';
+import { setupCsvImportListener } from '../../utils/websocket';
 
 const cleanupTempFile = (filePath: string | undefined): void => {
   if (filePath && fs.existsSync(filePath)) {
@@ -40,7 +41,10 @@ const CSV_WITH_QUOTES_AND_COMMAS = `parent,name*,displayName,description,synonym
 ,"TermWithComma,AndQuote","Display name with ""quoted"" text, and comma","<p>Description with ""quotes"" and, commas</p>",,,,,,user:admin,Approved,,,`;
 
 test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
+  let createCsvImportPromise: () => Promise<void>;
+
   test.beforeEach(async ({ page }) => {
+    createCsvImportPromise = await setupCsvImportListener(page);
     await redirectToHomePage(page);
   });
 
@@ -67,6 +71,7 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
           {
             isContentString: true,
             tempFileName: `temp-quotes-commas-${uuid()}.csv`,
+            csvImportCompletedPromise: createCsvImportPromise(),
           }
         );
         tempFilePath = tempFile;
@@ -148,7 +153,9 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
       await page.click('[data-testid="import-button-description"]');
 
       try {
-        await uploadCSVAndWaitForGrid(page, exportedCsvPath);
+        await uploadCSVAndWaitForGrid(page, exportedCsvPath, {
+          csvImportCompletedPromise: createCsvImportPromise(),
+        });
 
         await expect(
           page.getByRole('gridcell', { name: 'Term1' }).first()
