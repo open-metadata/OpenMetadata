@@ -50,7 +50,8 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
   const { t } = useTranslation();
   const [showFailuresDrawer, setShowFailuresDrawer] = useState(false);
 
-  const { successContext, failureContext, timestamp, status } = data;
+  const { successContext, failureContext, timestamp, status, startTime, endTime } =
+    data;
 
   const hasFailures = useMemo(() => {
     const jobStats =
@@ -58,6 +59,22 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
 
     return (jobStats?.failedRecords ?? 0) > 0;
   }, [successContext, failureContext]);
+
+  // Wall-clock duration of the run, used as the rate basis on the overall
+  // stats card. Stage cards keep using stepStats.totalTimeMs (stage-CPU time)
+  // so engineers can still see per-stage cost. The overall card answers the
+  // operator question "how fast is reindex actually going?" — which is
+  // successRecords / wall_clock, not the inflated stage-CPU rate that sums
+  // parallel worker time. For in-flight runs (no endTime yet) we extrapolate
+  // from now() so the displayed rate moves with the job.
+  const wallClockMs = useMemo<number | undefined>(() => {
+    if (!startTime) {
+      return undefined;
+    }
+    const end = endTime ?? Date.now();
+
+    return Math.max(0, end - startTime);
+  }, [startTime, endTime]);
 
   const handleJumpToEnd = () => {
     const logsBody = document.getElementsByClassName(
@@ -105,7 +122,13 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
   );
 
   const statsRender = useCallback(
-    (stepStats: StepStats, title?: string, showStatus = true) => (
+    (
+      stepStats: StepStats,
+      title?: string,
+      showStatus = true,
+      effectiveTimeMs?: number,
+      latencyLabelKey?: string
+    ) => (
       <Card
         data-testid={`stats-component${title ? `-${title.toLowerCase()}` : ''}`}
         size="small"
@@ -184,27 +207,41 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                   </Space>
                 </span>
               </div>
-              {stepStats.totalTimeMs !== undefined &&
-                stepStats.successRecords !== undefined &&
-                stepStats.successRecords > 0 && (
+              {(() => {
+                // effectiveTimeMs (e.g. wall-clock for the overall card) takes
+                // precedence over stepStats.totalTimeMs (stage-CPU time). This
+                // is also what avoids the misleading ">85k r/s" the overall
+                // card would otherwise show when jobStats.totalTimeMs is 0
+                // because stage timings aren't aggregated up to the job level.
+                const timeMs = effectiveTimeMs ?? stepStats.totalTimeMs;
+                if (
+                  timeMs === undefined ||
+                  stepStats.successRecords === undefined ||
+                  stepStats.successRecords <= 0
+                ) {
+                  return null;
+                }
+
+                return (
                   <>
                     <Divider type="vertical" />
                     <div className="flex">
                       <span className="text-grey-muted">{`${t(
-                        'label.latency'
+                        latencyLabelKey ?? 'label.latency'
                       )}:`}</span>
                       <span className="m-l-xs" data-testid="stage-latency">
                         {`${formatLatencyAverage(
-                          stepStats.totalTimeMs,
+                          timeMs,
                           stepStats.successRecords
                         )} · ${formatThroughput(
-                          stepStats.totalTimeMs,
+                          timeMs,
                           stepStats.successRecords
                         )}`}
                       </span>
                     </div>
                   </>
-                )}
+                );
+              })()}
               {showStatus && (
                 <>
                   <Divider type="vertical" />
@@ -534,12 +571,18 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       {successContext?.stats?.jobStats &&
         statsRender(
           successContext?.stats.jobStats,
-          t('label.overall-stat-plural')
+          t('label.overall-stat-plural'),
+          true,
+          wallClockMs,
+          'label.wall-clock'
         )}
       {failureContext?.stats?.jobStats &&
         statsRender(
           failureContext?.stats.jobStats,
-          t('label.overall-stat-plural')
+          t('label.overall-stat-plural'),
+          true,
+          wallClockMs,
+          'label.wall-clock'
         )}
 
       <Row className="m-t-md" gutter={[16, 16]}>
