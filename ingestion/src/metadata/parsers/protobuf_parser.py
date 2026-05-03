@@ -12,17 +12,16 @@
 """
 Utils module to parse the protobuf schema
 """
-
-import glob
 import importlib
 import shutil
 import sys
 import traceback
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional, Type, Union  # noqa: UP035
+from typing import Optional, Union
 
 import grpc_tools.protoc
+from google.protobuf.message import Message
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import Column, DataType
@@ -86,6 +85,92 @@ class ProtobufParserConfig(BaseModel):
     base_file_path: Optional[str] = "/tmp/protobuf_openmetadata"  # noqa: UP045
 
 
+def _resolve_message_class(module, schema_name: str):
+    """
+    Resolve the top-level Protobuf message class from a compiled _pb2 module.
+
+    FIX for issue #15274:
+    The old code did getattr(module, snake_to_camel(schema_name)) which only
+    worked when the Protobuf message name matched the topic/schema name exactly.
+    If they differed (e.g. topic='loans', message='MyLoanRecord'), getattr
+    returned None and downstream code crashed with:
+        'NoneType' object has no attribute 'DESCRIPTOR'
+
+    New strategy (two-step with fallback):
+
+    Step 1 — Legacy exact-name match (backward compatible):
+        Try snake_to_camel(schema_name) first.
+        If it resolves to a valid class, use it — zero regression for
+        existing setups where message name matches topic name.
+
+    Step 2 — DESCRIPTOR introspection (the actual fix):
+        Ask the compiled module itself what messages are defined inside it
+        using pb2_module.DESCRIPTOR.message_types_by_name.
+        Pick the first declared message — no guessing, no string manipulation.
+
+    :param module: The compiled _pb2 Python module
+    :param schema_name: The Kafka topic / schema name (e.g. "loans")
+    :return: An instantiated Protobuf message object, or None on failure
+    """
+    # ------------------------------------------------------------------
+    # Step 1: Legacy path — try PascalCase of schema_name (old behavior)
+    # ------------------------------------------------------------------
+    camel_name = snake_to_camel(schema_name)
+    candidate = getattr(module, camel_name, None)
+    if (
+        candidate is not None
+        and isinstance(candidate, type)
+        and issubclass(candidate, Message)
+    ):
+        logger.debug(
+            f"Resolved protobuf message '{camel_name}' via name match for schema '{schema_name}'"
+        )
+        return candidate()
+
+    # ------------------------------------------------------------------
+    # Step 2: DESCRIPTOR introspection — works regardless of message name
+    # ------------------------------------------------------------------
+    file_descriptor = getattr(module, "DESCRIPTOR", None)
+    if file_descriptor is None:
+        logger.warning(
+            f"Unable to resolve protobuf message for '{schema_name}': "
+            "compiled pb2 module has no DESCRIPTOR attribute."
+        )
+        return None
+
+    declared_messages = list(file_descriptor.message_types_by_name.keys())
+
+    if not declared_messages:
+        logger.warning(
+            f"Unable to resolve protobuf message for '{schema_name}': "
+            "DESCRIPTOR reports no top-level messages in schema."
+        )
+        return None
+
+    # If multiple top-level messages exist, log which one we pick so
+    # operators can debug if the wrong one is chosen.
+    chosen_name = declared_messages[0]
+    if len(declared_messages) > 1:
+        logger.debug(
+            f"Schema '{schema_name}' defines multiple top-level messages "
+            f"{declared_messages}. Using '{chosen_name}' for field extraction."
+        )
+
+    message_class = getattr(module, chosen_name, None)
+    if message_class is None:
+        logger.warning(
+            f"Unable to resolve protobuf message for '{schema_name}': "
+            f"DESCRIPTOR lists '{chosen_name}' but it is not an attribute of the pb2 module."
+        )
+        return None
+
+    logger.debug(
+        f"Resolved protobuf message '{chosen_name}' via DESCRIPTOR introspection "
+        f"for schema '{schema_name}' (message name differs from schema name)"
+    )
+    return message_class()
+
+
 class ProtobufParser:
     """
     Protobuf Parser class
@@ -120,17 +205,19 @@ class ProtobufParser:
             file_path = f"{self.proto_interface_dir}/{self.config.schema_name}.proto"
             with open(file_path, "w", encoding="UTF-8") as file:  # noqa: PTH123
                 file.write(self.config.schema_text)
-            proto_path = "generated=" + self.proto_interface_dir
-            return proto_path, file_path  # noqa: TRY300
+            proto_path = self.proto_interface_dir
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}")
+        else:
+            return proto_path, file_path
         return None
 
     def get_protobuf_python_object(self, proto_path: str, file_path: str):
-        """
-        Method to create protobuf python module and get object
-        """
+        """Method to create protobuf python module and get object
+        FIX (#15274): Replaced direct getattr(message, snake_to_camel(schema_name))
+        with _resolve_message_class() which falls back to DESCRIPTOR introspection
+        when the message name does not match the schema/topic name."""
         try:
             # compile the .proto file and create python class
             grpc_tools.protoc.main(
@@ -143,49 +230,69 @@ class ProtobufParser:
             )
 
             # import the python file
-            sys.path.append(self.generated_src_dir)
+            if self.generated_src_dir not in sys.path:
+                sys.path.insert(0, self.generated_src_dir)  # ensure generated src dir is on sys.path for imports
             generated_src_dir_path = Path(self.generated_src_dir)
-            py_file = glob.glob(str(generated_src_dir_path.joinpath(f"{self.config.schema_name}_pb2.py")))[0]  # noqa: PTH207
+            py_file = next(generated_src_dir_path.glob(f"{self.config.schema_name}_pb2.py"))
             module_name = Path(py_file).stem
             message = importlib.import_module(module_name)
-
             # get the class and create a object instance
-            class_ = getattr(message, snake_to_camel(self.config.schema_name))
-            instance = class_()
-            return instance  # noqa: RET504, TRY300
+            instance = _resolve_message_class(message, self.config.schema_name)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to create protobuf python module for {self.config.schema_name}: {exc}")
+        else:
+            return instance
         return None
 
-    def parse_protobuf_schema(self, cls: Type[BaseModel] = FieldModel) -> Optional[List[Union[FieldModel, Column]]]:  # noqa: UP006, UP007, UP045
+    def parse_protobuf_schema(
+        self, cls: type[BaseModel] = FieldModel
+    ) -> Optional[list[Union[FieldModel, Column]]]:  # noqa: UP007, UP045
         """
         Method to parse the protobuf schema
         """
-
         try:
-            proto_path, file_path = self.create_proto_files()
-            instance = self.get_protobuf_python_object(proto_path=proto_path, file_path=file_path)
+            result = self.create_proto_files()
+            if result is None:
+                logger.warning(
+                    f"Failed to create proto files for '{self.config.schema_name}'"
+                )
+                return None
+
+            proto_path, file_path = result
+
+            instance = self.get_protobuf_python_object(
+                proto_path=proto_path, file_path=file_path
+            )
+
+            if instance is None:
+                logger.warning(
+                    f"Could not resolve a Protobuf message class for schema '{self.config.schema_name}'."
+                )
+                return None
 
             field_models = [
                 cls(
                     name=instance.DESCRIPTOR.name,
-                    dataType="RECORD",
-                    children=self.get_protobuf_fields(instance.DESCRIPTOR.fields, cls=cls),
+                    dataType=DataType.RECORD.value,
+                    children=self.get_protobuf_fields(
+                        instance.DESCRIPTOR.fields, cls=cls
+                    ),
                 )
             ]
-
-            # Clean up the tmp folder
-            if Path(self.config.base_file_path).exists():
-                shutil.rmtree(self.config.base_file_path)
-
-            return field_models  # noqa: TRY300
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}")
-        return None
+            logger.warning(
+                f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}"
+            )
+        finally:
+            if Path(self.config.base_file_path).exists():
+                shutil.rmtree(self.config.base_file_path, ignore_errors=True)
+        return field_models or None
 
-    def _get_field_type(self, type_: int, cls: Type[BaseModel] = FieldModel) -> str:  # noqa: UP006
+    def _get_field_type(
+        self, type_: int, cls: type[BaseModel] = FieldModel
+    ) -> str:
         if type_ > 18:
             return DataType.UNKNOWN.value
         data_type = ProtobufDataTypes(type_).name
@@ -196,8 +303,8 @@ class ProtobufParser:
     def get_protobuf_fields(
         self,
         fields,
-        cls: Type[BaseModel] = FieldModel,  # noqa: UP006
-    ) -> Optional[List[Union[FieldModel, Column]]]:  # noqa: UP006, UP007, UP045
+        cls: type[BaseModel] = FieldModel,
+    ) -> Optional[list[Union[FieldModel, Column]]]:  # noqa: UP007, UP045
         """
         Recursively convert the parsed schema into required models
         """
@@ -209,13 +316,17 @@ class ProtobufParser:
                     cls(
                         name=field.name,
                         dataType=self._get_field_type(field.type, cls=cls),
-                        children=self.get_protobuf_fields(field.message_type.fields, cls=cls)
-                        if field.type == 11
-                        else None,
+                        children=(
+                            self.get_protobuf_fields(field.message_type.fields, cls=cls)
+                            if field.type == 11
+                            else None
+                        ),
                     )
                 )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unable to parse the protobuf schema into models: {exc}")
+                logger.warning(
+                    f"Unable to parse the protobuf schema into models: {exc}"
+                )
 
-        return field_models
+        return field_models or None
