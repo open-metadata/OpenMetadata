@@ -659,16 +659,16 @@ const AddDomainForm = ({
     [nativeRequiredFieldsByPath, t]
   );
 
-  const intakeFormRequiredRule = useCallback(
-    (fieldPath: string): RegisterOptions | undefined => {
+  const intakeFormRequiredMessage = useCallback(
+    (fieldPath: string): string | undefined => {
       const rf = nativeRequiredFieldsByPath.get(fieldPath);
       if (!rf) {
         return undefined;
       }
-      const message =
-        rf.errorMessage || t('label.field-required', { field: rf.fieldLabel });
 
-      return { required: message };
+      return (
+        rf.errorMessage || t('label.field-required', { field: rf.fieldLabel })
+      );
     },
     [nativeRequiredFieldsByPath, t]
   );
@@ -1041,20 +1041,20 @@ const AddDomainForm = ({
     });
   }, [extensionRequiredFields, customProperties, t]);
 
-  const descriptionRequiredRule = useMemo(() => {
-    return (
-      intakeFormRequiredRule('description') ?? {
-        required: t('label.field-required', {
-          field: t('label.description'),
-        }),
-      }
-    );
-  }, [intakeFormRequiredRule, t]);
-
-  const glossaryTermsRequiredRule = useMemo(
-    () => intakeFormRequiredRule('glossaryTerms'),
-    [intakeFormRequiredRule]
+  const descriptionRequiredRule = useMemo(
+    () => ({
+      required:
+        intakeFormRequiredMessage('description') ??
+        t('label.field-required', { field: t('label.description') }),
+    }),
+    [intakeFormRequiredMessage, t]
   );
+
+  const glossaryTermsRequiredRule = useMemo(() => {
+    const message = intakeFormRequiredMessage('glossaryTerms');
+
+    return message ? { required: message } : undefined;
+  }, [intakeFormRequiredMessage]);
 
   const isDataProduct = type === DomainFormType.DATA_PRODUCT;
   const isDomain =
