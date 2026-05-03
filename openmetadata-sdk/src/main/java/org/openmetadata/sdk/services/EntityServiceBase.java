@@ -157,7 +157,7 @@ public abstract class EntityServiceBase<T> {
    * @param name The entity name or FQN, which may contain quotes and special characters
    * @return The properly encoded path string
    */
-  private String buildPathWithEncodedName(String name) {
+  protected String buildPathWithEncodedName(String name) {
     // Use HttpUrl.Builder to properly encode the name as a path segment
     // This handles special characters, quotes, and Unicode properly
     HttpUrl baseUrl = HttpUrl.parse("http://localhost" + basePath + "/name");
