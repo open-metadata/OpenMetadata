@@ -335,7 +335,7 @@ class MetabaseSource(DashboardServiceSource):
             return None
         return self.metadata.get_by_name(DatabaseService, db_service_name)
 
-    def _get_chart_entity(self, chart_details: MetabaseChart) -> Optional[LineageChart]:
+    def _get_chart_entity(self, chart_details: MetabaseChart) -> LineageChart | None:
         chart_fqn = fqn.build(
             self.metadata,
             entity_type=LineageChart,

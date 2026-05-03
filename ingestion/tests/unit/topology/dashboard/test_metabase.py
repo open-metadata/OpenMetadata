@@ -54,7 +54,6 @@ from metadata.ingestion.source.dashboard.metabase.models import (
     MetabaseTable,
     Native,
 )
-from metadata.utils import fqn
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
@@ -339,6 +338,43 @@ class MetabaseUnitTest(TestCase):
             self.assertIn(EXPECTED_LINEAGE, lineage_results)
             self.assertIn(EXPECTED_CHART_LINEAGE, lineage_results)
 
+        # test out missing chart entity: dashboard lineage should still be yielded
+        with (
+            patch.object(
+                MetabaseSource,
+                "_get_chart_entity",
+                return_value=None,
+            ),
+            patch.object(
+                OpenMetadata,
+                "get_by_name",
+                side_effect=[EXAMPLE_DASHBOARD],
+            ),
+        ):
+            mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[0]]
+            result = self.metabase.yield_dashboard_lineage_details(
+                dashboard_details=mock_dashboard,
+                db_service_prefix=f"{MOCK_DATABASE_SERVICE.name}",
+            )
+            lineage_results = [r.right for r in result if r.right is not None]
+            self.assertIn(EXPECTED_LINEAGE, lineage_results)
+            self.assertNotIn(EXPECTED_CHART_LINEAGE, lineage_results)
+
+        # test out missing dashboard entity: chart lineage should still be yielded
+        with patch.object(
+            OpenMetadata,
+            "get_by_name",
+            return_value=None,
+        ):
+            mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[0]]
+            result = self.metabase.yield_dashboard_lineage_details(
+                dashboard_details=mock_dashboard,
+                db_service_prefix=f"{MOCK_DATABASE_SERVICE.name}",
+            )
+            lineage_results = [r.right for r in result if r.right is not None]
+            self.assertNotIn(EXPECTED_LINEAGE, lineage_results)
+            self.assertIn(EXPECTED_CHART_LINEAGE, lineage_results)
+
         # test out if no query type
         with patch.object(OpenMetadata, "get_by_name", return_value=EXAMPLE_DASHBOARD):
             mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[2]]
@@ -465,7 +501,7 @@ class MetabaseUnitTest(TestCase):
         self.metabase.chart_source_state = set()
         list(self.metabase.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS))
         assert len(self.metabase.chart_source_state) == 3
-        for fqn in self.metabase.chart_source_state:  # noqa: F402
+        for fqn in self.metabase.chart_source_state:
             assert "mock_metabase" in fqn
 
         # Test 8: New format with stages but no native query
