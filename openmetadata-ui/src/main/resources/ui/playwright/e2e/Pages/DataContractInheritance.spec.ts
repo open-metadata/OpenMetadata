@@ -177,6 +177,58 @@ const openContractTab = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
 };
 
+const waitForTableContractState = async (
+  page: Page,
+  table: TableClass,
+  expectedState: string
+) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  try {
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(
+            `/api/v1/dataContracts/entity?entityId=${table.entityResponseData.id}&entityType=table&fields=owners`
+          );
+
+          if (!response.ok()) {
+            return 'absent';
+          }
+
+          const contract = (await response.json()) as {
+            inherited?: boolean;
+            name?: string;
+          };
+
+          return `${contract.inherited ? 'inherited' : 'direct'}:${contract.name ?? ''}`;
+        },
+        {
+          timeout: 60000,
+          intervals: [1000, 2000, 5000],
+        }
+      )
+      .toBe(expectedState);
+  } finally {
+    await afterAction();
+  }
+};
+
+const visitTableContractTab = async ({
+  page,
+  table,
+  expectedContractState,
+}: {
+  page: Page;
+  table: TableClass;
+  expectedContractState: string;
+}) => {
+  await table.visitEntityPage(page);
+  await waitForTableContractState(page, table, expectedContractState);
+  await openContractTab(page);
+  await waitForAllLoadersToDisappear(page);
+};
+
 const startAddingContract = async (page: Page) => {
   await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
   await expect(page.getByTestId('add-contract-button')).toBeVisible();
@@ -836,10 +888,11 @@ test.describe('Data Contract Inheritance', () => {
     });
 
     await test.step('Navigate to asset and verify inherited contract', async () => {
-      await tableForEditInheritedTest.visitEntityPage(page);
-      await openContractTab(page);
-
-      await waitForAllLoadersToDisappear(page);
+      await visitTableContractTab({
+        page,
+        table: tableForEditInheritedTest,
+        expectedContractState: `inherited:${DP_CONTRACT_DETAILS.name}`,
+      });
 
       // Verify the inherited contract is displayed
       await expect(page.getByTestId('contract-title')).toContainText(
@@ -973,10 +1026,11 @@ test.describe('Data Contract Inheritance', () => {
     });
 
     await test.step('Navigate to asset and verify delete is disabled for inherited contract', async () => {
-      await tableForDeleteDisabledTest.visitEntityPage(page);
-      await openContractTab(page);
-
-      await waitForAllLoadersToDisappear(page);
+      await visitTableContractTab({
+        page,
+        table: tableForDeleteDisabledTest,
+        expectedContractState: `inherited:${DP_CONTRACT_DETAILS.name}`,
+      });
 
       // Verify the inherited contract is displayed
       await expect(page.getByTestId('contract-title')).toContainText(
@@ -1045,10 +1099,11 @@ test.describe('Data Contract Inheritance', () => {
     });
 
     await test.step('Navigate to asset and run validation on inherited contract', async () => {
-      await tableForRunValidationTest.visitEntityPage(page);
-      await openContractTab(page);
-
-      await waitForAllLoadersToDisappear(page);
+      await visitTableContractTab({
+        page,
+        table: tableForRunValidationTest,
+        expectedContractState: `inherited:${DP_CONTRACT_DETAILS.name}`,
+      });
 
       // Verify the inherited contract is displayed
       await expect(page.getByTestId('contract-title')).toContainText(
@@ -1126,10 +1181,11 @@ test.describe('Data Contract Inheritance', () => {
     });
 
     await test.step('Verify asset shows inherited contract', async () => {
-      await tableForRemoveAssetTest.visitEntityPage(page);
-      await openContractTab(page);
-
-      await waitForAllLoadersToDisappear(page);
+      await visitTableContractTab({
+        page,
+        table: tableForRemoveAssetTest,
+        expectedContractState: `inherited:${DP_CONTRACT_DETAILS.name}`,
+      });
 
       // Verify the inherited contract is displayed
       await expect(page.getByTestId('contract-title')).toContainText(
@@ -1166,6 +1222,7 @@ test.describe('Data Contract Inheritance', () => {
 
     await test.step('Verify asset no longer shows inherited contract', async () => {
       await tableForRemoveAssetTest.visitEntityPage(page);
+      await waitForTableContractState(page, tableForRemoveAssetTest, 'absent');
       await openContractTab(page);
 
       await waitForAllLoadersToDisappear(page);
@@ -1223,10 +1280,11 @@ test.describe('Data Contract Inheritance', () => {
     });
 
     await test.step('Create asset own contract', async () => {
-      await tableForDeleteFallbackTest.visitEntityPage(page);
-      await openContractTab(page);
-
-      await waitForAllLoadersToDisappear(page);
+      await visitTableContractTab({
+        page,
+        table: tableForDeleteFallbackTest,
+        expectedContractState: `inherited:${DP_CONTRACT_DETAILS.name}`,
+      });
 
       // Click edit to add asset's own contract
       await page.getByTestId('manage-contract-actions').click();
@@ -1301,6 +1359,11 @@ test.describe('Data Contract Inheritance', () => {
     await test.step('Verify asset now shows inherited contract from Data Product', async () => {
       // Wait for contract to reload after deletion
       await waitForAllLoadersToDisappear(page);
+      await waitForTableContractState(
+        page,
+        tableForDeleteFallbackTest,
+        `inherited:${DP_CONTRACT_DETAILS.name}`
+      );
 
       // Refresh the page to ensure we get the latest contract state
       await page.reload();
