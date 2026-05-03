@@ -295,3 +295,12 @@ CREATE TABLE IF NOT EXISTS rdf_index_server_stats (
 -- scan instead of materializing the child-edge set.
 CREATE INDEX idx_er_fromentity_toentity_relation_toid
     ON entity_relationship (fromEntity, toEntity, relation, toId);
+
+-- The Postgres counterpart to this file adds a `varchar_pattern_ops` index
+-- on `fqnHash` for every entity table to make `?service=` / `?database=` /
+-- `?databaseSchema=` / `?parent=` listings (which compile to
+-- `fqnHash LIKE 'prefix%'`) index-driven instead of seq-scan-driven on RDS.
+-- MySQL does not need an equivalent: every entity-table `fqnHash` column is
+-- already declared `CHARACTER SET ascii COLLATE ascii_bin`, a binary
+-- collation that lets the existing unique B-tree on `fqnHash` answer LIKE
+-- prefix predicates directly. No change required on the MySQL side.
