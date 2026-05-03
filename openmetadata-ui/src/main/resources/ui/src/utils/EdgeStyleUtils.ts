@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import { Edge } from 'reactflow';
+import { getCSSVar } from './CSSUtils';
 
-const EDGE_COLOR_BRAND = 'var(--tw-color-brand-600)';
-const EDGE_COLOR_INDIGO = 'var(--tw-color-indigo-600)';
-const EDGE_COLOR_ERROR = 'var(--tw-color-error-600)';
+const EDGE_COLOR_BRAND = getCSSVar('--tw-color-brand-600');
+const EDGE_COLOR_INDIGO = getCSSVar('--tw-color-indigo-600');
+const EDGE_COLOR_ERROR = getCSSVar('--tw-color-error-600');
 const EDGE_COLOR_DEFAULT = 'rgb(177, 177, 183)';
 
 export interface EdgeStyle {
