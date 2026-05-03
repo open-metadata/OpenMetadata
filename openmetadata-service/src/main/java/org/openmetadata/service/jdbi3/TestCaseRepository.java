@@ -1470,6 +1470,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           () ->
               recordChange(
                   "testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult()));
+      compareAndUpdate(
+          INCIDENTS_FIELD,
+          () -> recordChange(INCIDENTS_FIELD, original.getIncidentId(), updated.getIncidentId()));
     }
   }
 

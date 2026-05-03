@@ -207,6 +207,10 @@ class StageStatsTrackerTest {
               anyLong(),
               anyLong(),
               anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
               anyInt(),
               anyInt(),
               anyLong());
@@ -225,6 +229,10 @@ class StageStatsTrackerTest {
               anyString(),
               anyString(),
               anyString(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
               anyLong(),
               anyLong(),
               anyLong(),
@@ -267,6 +275,10 @@ class StageStatsTrackerTest {
               anyLong(),
               anyLong(),
               anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
               anyInt(),
               anyInt(),
               anyLong());
@@ -292,6 +304,10 @@ class StageStatsTrackerTest {
               anyString(),
               anyString(),
               anyString(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
               anyLong(),
               anyLong(),
               anyLong(),
@@ -382,6 +398,158 @@ class StageStatsTrackerTest {
               + tracker.getSink().getSuccess().get()
               + tracker.getVector().getSuccess().get();
       assertEquals(threadCount * recordsPerThread, total);
+    }
+  }
+
+  @Nested
+  @DisplayName("Timing Tests")
+  class TimingTests {
+
+    @Test
+    @DisplayName("Reader batch with duration accumulates time correctly")
+    void testReaderBatchAccumulatesTime() {
+      tracker.recordReaderBatch(10, 0, 0, 5_000_000L);
+      tracker.recordReaderBatch(20, 0, 0, 7_000_000L);
+
+      assertEquals(30, tracker.getReader().getSuccess().get());
+      assertEquals(12_000_000L, tracker.getReader().getTotalTimeNanos().get());
+    }
+
+    @Test
+    @DisplayName("addStageTime adds time only, leaves counters untouched")
+    void testAddStageTimeOnly() {
+      // Per-record success counts coming from per-callback recordSink (single result),
+      // batch-level wall-clock time added separately via addStageTime — must not double count.
+      tracker.recordSink(StatsResult.SUCCESS);
+      tracker.recordSink(StatsResult.SUCCESS);
+      tracker.addStageTime(StageStatsTracker.Stage.SINK, 50_000_000L);
+
+      assertEquals(2, tracker.getSink().getSuccess().get());
+      assertEquals(50_000_000L, tracker.getSink().getTotalTimeNanos().get());
+    }
+
+    @Test
+    @DisplayName("addStageTime ignores non-positive durations")
+    void testAddStageTimeIgnoresZeroAndNegative() {
+      tracker.addStageTime(StageStatsTracker.Stage.SINK, 0L);
+      tracker.addStageTime(StageStatsTracker.Stage.SINK, -1L);
+
+      assertEquals(0L, tracker.getSink().getTotalTimeNanos().get());
+    }
+
+    @Test
+    @DisplayName("Flush converts accumulated nanos to ms and resets counter")
+    void testFlushConvertsTimingToMs() {
+      tracker.recordReaderBatch(5, 0, 0, 250_000_000L); // 250 ms in nanos
+      tracker.recordSinkBatch(5, 0, 800_000_000L); // 800 ms in nanos
+
+      tracker.flush();
+
+      // After flush, internal nanos counter is reset to zero
+      assertEquals(0L, tracker.getReader().getTotalTimeNanos().get());
+      assertEquals(0L, tracker.getSink().getTotalTimeNanos().get());
+
+      // DAO was called with the converted ms values (positions 14 reader, 16 sink)
+      org.mockito.ArgumentCaptor<Long> readerTimeMs =
+          org.mockito.ArgumentCaptor.forClass(Long.class);
+      org.mockito.ArgumentCaptor<Long> sinkTimeMs = org.mockito.ArgumentCaptor.forClass(Long.class);
+      verify(statsDAO)
+          .incrementStats(
+              anyString(),
+              anyString(),
+              anyString(),
+              anyString(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              readerTimeMs.capture(),
+              anyLong(),
+              sinkTimeMs.capture(),
+              anyLong(),
+              anyInt(),
+              anyInt(),
+              anyLong());
+      assertEquals(250L, readerTimeMs.getValue().longValue());
+      assertEquals(800L, sinkTimeMs.getValue().longValue());
+    }
+
+    @Test
+    @DisplayName("Flush with only timing data still flushes")
+    void testFlushOnlyTiming() {
+      // addStageTime only — no counts. Should still trigger a flush so timing isn't lost.
+      tracker.addStageTime(StageStatsTracker.Stage.SINK, 100_000_000L); // 100 ms
+
+      tracker.flush();
+
+      // Either the flush was a no-op (counters all zero) OR the DAO got called with 100 ms.
+      // The current behavior: the flush guard checks counts AND timing — if any are nonzero,
+      // it flushes. This test pins that behavior so a future refactor doesn't silently drop
+      // timing-only flushes (which would happen on quiet windows where stages had latency
+      // recorded but no records yet).
+      verify(statsDAO, times(1))
+          .incrementStats(
+              anyString(),
+              anyString(),
+              anyString(),
+              anyString(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyInt(),
+              anyInt(),
+              anyLong());
+    }
+
+    @Test
+    @DisplayName("Flush failure restores both counts and timing")
+    void testFlushFailureRestoresTiming() {
+      org.mockito.Mockito.doThrow(new RuntimeException("DB down"))
+          .when(statsDAO)
+          .incrementStats(
+              anyString(),
+              anyString(),
+              anyString(),
+              anyString(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyInt(),
+              anyInt(),
+              anyLong());
+
+      tracker.recordReaderBatch(7, 0, 0, 42_000_000L);
+      tracker.flush();
+
+      // After flush failure, both count and timing must be restored so the next flush
+      // doesn't silently drop them.
+      assertEquals(7L, tracker.getReader().getSuccess().get());
+      assertEquals(42_000_000L, tracker.getReader().getTotalTimeNanos().get());
     }
   }
 }
