@@ -1046,6 +1046,7 @@ export const editColumnCustomProperty = async (
         response.status() === 200
     );
     await page.getByTestId(value).click();
+    await page.keyboard.press('Escape');
 
     // Verify selection is applied before saving
     // The selection usually appears as a tag or text in the container
