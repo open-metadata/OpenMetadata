@@ -239,3 +239,103 @@ CREATE INDEX IF NOT EXISTS idx_rdf_index_server_stats_job_id ON rdf_index_server
 -- scan instead of materializing the child-edge set.
 CREATE INDEX IF NOT EXISTS idx_er_fromentity_toentity_relation_toid
     ON entity_relationship (fromEntity, toEntity, relation, toId);
+
+-- Speed up `?service=` / `?database=` / `?databaseSchema=` / `?parent=` /
+-- `?apiCollection=` / `?spreadsheet=` / `?testSuite=` listings on entity
+-- tables. ListFilter.getFqnPrefixCondition turns each of these query params
+-- into a `<table>.fqnHash LIKE :prefix%` predicate. The unique B-tree index
+-- on `fqnHash` uses the default operator class, and the column inherits the
+-- database default collation (typically `en_US.UTF-8` on managed Postgres /
+-- RDS). Neither qualifies the planner to use the index for `LIKE 'prefix%'`,
+-- so count(*) and the page query degrade to a parallel seq scan over the
+-- JSONB heap — observed at ~3s on a ~580k-row storage_container_entity table
+-- even with ANALYZE / VACUUM tuned. A `varchar_pattern_ops` index supports
+-- LIKE-prefix lookups regardless of column collation, dropping cold count(*)
+-- on a service-filtered listing from seconds to tens of milliseconds.
+-- `varchar_pattern_ops` matches the actual column type (`VARCHAR(768)` /
+-- `VARCHAR(256)`); `text_pattern_ops` would also work via implicit casting
+-- but the type-matched opclass is the canonical choice.
+--
+-- Built CONCURRENTLY so the migration does not take a write lock on these
+-- tables (matches the 1.11.0 `idx_tag_usage_*` pattern). Each statement runs
+-- outside an implicit transaction, which the OpenMetadata native migration
+-- runner already supports — see 1.11.0/postgres/schemaChanges.sql.
+--
+-- OPERATOR RUNBOOK — interrupted CONCURRENTLY builds.
+-- If a `CREATE INDEX CONCURRENTLY` is interrupted (deploy timeout, lock
+-- contention, OOM, connection drop), Postgres leaves an INVALID index
+-- behind. With `IF NOT EXISTS` here (kept for idempotency on re-deploys
+-- and force-mode reruns), a retry would silently skip the rebuild and
+-- leave the table without a usable pattern index — the symptom would be
+-- a service-filtered listing reverting to seq-scan latency on that one
+-- table. The MigrationProcessImpl runner caches statements by SQL text
+-- hash, so an embedded cleanup step cannot be made to re-run on retry —
+-- this is a known pattern-level gap (also present in 1.11.0).
+--
+-- Detection (run on the affected tenant):
+--   SELECT c.relname FROM pg_class c
+--    JOIN pg_index i ON i.indexrelid = c.oid
+--    WHERE NOT i.indisvalid
+--      AND c.relname LIKE 'idx\_%\_fqnhash\_pattern' ESCAPE '\';
+-- Remediation: `DROP INDEX CONCURRENTLY <relname>;` for each row, then
+-- delete the corresponding row from server_migration_sql_logs so the
+-- runner re-attempts the CREATE on the next deploy:
+--   DELETE FROM server_migration_sql_logs
+--    WHERE version = '1.13.0'
+--      AND sqlstatement LIKE '%idx\_<table>\_fqnhash\_pattern%' ESCAPE '\';
+--
+-- `pipeline_entity` is intentionally excluded: ListFilter.getServiceCondition
+-- special-cases `pipeline_entity` to an EXISTS join on
+-- `pipeline_service_entity` by service name (not `fqnHash LIKE`), and
+-- PipelineResource.list exposes no other prefix-LIKE filter, so a pattern
+-- index on `pipeline_entity.fqnHash` would be unused write overhead.
+--
+-- MySQL is unaffected: every entity-table `fqnHash` column ships with
+-- `CHARACTER SET ascii COLLATE ascii_bin`, a binary collation that already
+-- permits prefix scans on the unique index. This pass is Postgres-only.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_chart_entity_fqnhash_pattern
+    ON chart_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dashboard_entity_fqnhash_pattern
+    ON dashboard_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dashboard_data_model_entity_fqnhash_pattern
+    ON dashboard_data_model_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_database_entity_fqnhash_pattern
+    ON database_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_database_schema_entity_fqnhash_pattern
+    ON database_schema_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_glossary_term_entity_fqnhash_pattern
+    ON glossary_term_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ingestion_pipeline_entity_fqnhash_pattern
+    ON ingestion_pipeline_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_metric_entity_fqnhash_pattern
+    ON metric_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ml_model_entity_fqnhash_pattern
+    ON ml_model_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_policy_entity_fqnhash_pattern
+    ON policy_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_query_entity_fqnhash_pattern
+    ON query_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_report_entity_fqnhash_pattern
+    ON report_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_search_index_entity_fqnhash_pattern
+    ON search_index_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_storage_container_entity_fqnhash_pattern
+    ON storage_container_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_table_entity_fqnhash_pattern
+    ON table_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_test_case_fqnhash_pattern
+    ON test_case (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_topic_entity_fqnhash_pattern
+    ON topic_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_api_collection_entity_fqnhash_pattern
+    ON api_collection_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_api_endpoint_entity_fqnhash_pattern
+    ON api_endpoint_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_directory_entity_fqnhash_pattern
+    ON directory_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_file_entity_fqnhash_pattern
+    ON file_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_spreadsheet_entity_fqnhash_pattern
+    ON spreadsheet_entity (fqnHash varchar_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_worksheet_entity_fqnhash_pattern
+    ON worksheet_entity (fqnHash varchar_pattern_ops);
