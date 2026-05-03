@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.ContainerFileFormat;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
@@ -36,6 +37,8 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
  * Integration tests for Container entity operations.
@@ -877,6 +880,122 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
         3,
         allMatchingCount,
         "`?service=...` must return roots and children (got " + allMatchingCount + ")");
+  }
+
+  @Test
+  void test_rootListingExcludesOrphanedChild(TestNamespace ns) {
+    // Reproduce the production symptom on aws_s3 where leaf parquet / integration-dataset
+    // containers leaked into ?root=true&service=... listings. The leak happens when a child
+    // container exists in storage_container_entity with a multi-segment FQN but the
+    // (parent, CONTAINS, child) row is missing from entity_relationship — so the previous
+    // NOT EXISTS-only predicate treated it as a root. We simulate that state by deleting
+    // the relationship row directly and assert the root listing now excludes the orphan.
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer parentRequest = new CreateContainer();
+    parentRequest.setName(ns.prefix("orphan_parent"));
+    parentRequest.setService(service.getFullyQualifiedName());
+    Container parent = createEntity(parentRequest);
+
+    CreateContainer childRequest = new CreateContainer();
+    childRequest.setName(ns.prefix("orphan_child"));
+    childRequest.setService(service.getFullyQualifiedName());
+    childRequest.setParent(
+        new EntityReference()
+            .withId(parent.getId())
+            .withType("container")
+            .withFullyQualifiedName(parent.getFullyQualifiedName()));
+    Container child = createEntity(childRequest);
+
+    int rowsRemoved =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .delete(
+                parent.getId(),
+                "container",
+                child.getId(),
+                "container",
+                Relationship.CONTAINS.ordinal());
+    assertEquals(
+        1,
+        rowsRemoved,
+        "Setup: should have removed exactly one (parent, CONTAINS, child) row");
+
+    ListParams rootParams = new ListParams();
+    rootParams.addFilter("root", "true");
+    rootParams.setService(service.getFullyQualifiedName());
+    ListResponse<Container> rootContainers = listEntities(rootParams);
+
+    boolean parentInRoot =
+        rootContainers.getData().stream().anyMatch(c -> c.getId().equals(parent.getId()));
+    assertTrue(parentInRoot, "Real root container must still appear in ?root=true listing");
+
+    boolean orphanInRoot =
+        rootContainers.getData().stream().anyMatch(c -> c.getId().equals(child.getId()));
+    assertFalse(
+        orphanInRoot,
+        "Orphaned child (multi-segment FQN, no parent CONTAINS row) must be excluded from "
+            + "?root=true listing — fqnHash depth predicate is the safety net.");
+  }
+
+  @Test
+  void test_recursiveHardDelete_largeBatch_leavesNoOrphans(TestNamespace ns) {
+    // Force the batchDeleteChildren / processDeletionBatch path: deleteChildren only
+    // takes the batch path when hardDelete=true AND children.size() > 100. Previously
+    // that path pre-deleted relationships in two batched queries before iterating
+    // cleanup() per child, and swallowed any per-child exception in the loop — so a
+    // single failed cleanup left an entity row alive with all its relationship rows
+    // already wiped (orphan). The fix routes everything through cleanup() per entity
+    // and lets exceptions propagate so the surrounding @Transaction rolls back.
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer parentRequest = new CreateContainer();
+    parentRequest.setName(ns.prefix("batch_parent"));
+    parentRequest.setService(service.getFullyQualifiedName());
+    Container parent = createEntity(parentRequest);
+
+    int childCount = 101;
+    List<UUID> childIds = new ArrayList<>(childCount);
+    for (int i = 0; i < childCount; i++) {
+      CreateContainer childRequest = new CreateContainer();
+      childRequest.setName(ns.prefix("batch_child_" + i));
+      childRequest.setService(service.getFullyQualifiedName());
+      childRequest.setParent(
+          new EntityReference()
+              .withId(parent.getId())
+              .withType("container")
+              .withFullyQualifiedName(parent.getFullyQualifiedName()));
+      childIds.add(createEntity(childRequest).getId());
+    }
+
+    java.util.Map<String, String> deleteParams = new java.util.HashMap<>();
+    deleteParams.put("hardDelete", "true");
+    deleteParams.put("recursive", "true");
+    SdkClients.adminClient().containers().delete(parent.getId().toString(), deleteParams);
+
+    assertThrows(
+        Exception.class,
+        () -> getEntity(parent.getId().toString()),
+        "Parent must be hard-deleted");
+
+    for (UUID childId : childIds) {
+      assertThrows(
+          Exception.class,
+          () -> getEntity(childId.toString()),
+          "Child " + childId + " must be hard-deleted (no orphan entity row)");
+    }
+
+    List<String> childIdStrings = childIds.stream().map(UUID::toString).toList();
+    List<CollectionDAO.EntityRelationshipObject> orphanParentRows =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .findFromBatch(childIdStrings, Relationship.CONTAINS.ordinal());
+    assertTrue(
+        orphanParentRows.isEmpty(),
+        "No (parent, CONTAINS, child) entity_relationship rows must survive — "
+            + "found "
+            + orphanParentRows.size()
+            + " orphan rows after recursive hard delete of >100 children");
   }
 
   @Test

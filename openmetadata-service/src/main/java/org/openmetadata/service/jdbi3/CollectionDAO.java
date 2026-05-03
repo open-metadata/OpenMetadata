@@ -758,11 +758,20 @@ public interface CollectionDAO {
     // (a Tahoe-shaped 5,000-file bucket easily blows past 2s for the COUNT alone). Switching
     // to NOT EXISTS lets the planner anti-join via the (fromEntity, toEntity, relation, toId)
     // index instead, so each candidate row's "is this a child?" check is an index lookup.
+    //
+    // The depth predicate (LENGTH(fqnHash) - LENGTH(REPLACE(fqnHash, '.', ''))) = 1 makes
+    // the listing self-healing against entity_relationship drift: fqnHash is built as
+    // per-segment MD5 hex joined by '.', so a true service-level root has exactly one
+    // separator. Without this, an orphan container whose parent CONTAINS row was lost
+    // (delete cascade error, partial cleanup, manual DB surgery) would surface here even
+    // though its FQN is several levels deep — exactly the bug observed on aws_s3 where
+    // leaf parquet/integration-dataset containers showed up alongside real buckets.
     @SqlQuery(
         value =
             "SELECT json FROM ("
                 + "SELECT name, id, ce.json FROM <table> ce "
                 + "<sqlCondition> AND "
+                + "(LENGTH(fqnHash) - LENGTH(REPLACE(fqnHash, '.', ''))) = 1 AND "
                 + "NOT EXISTS ("
                 + "  SELECT 1 FROM entity_relationship er "
                 + "  WHERE er.toId = ce.id "
@@ -786,6 +795,7 @@ public interface CollectionDAO {
         value =
             "SELECT ce.json FROM <table> ce "
                 + "<sqlCondition> AND "
+                + "(LENGTH(fqnHash) - LENGTH(REPLACE(fqnHash, '.', ''))) = 1 AND "
                 + "NOT EXISTS ("
                 + "  SELECT 1 FROM entity_relationship er "
                 + "  WHERE er.toId = ce.id "
@@ -808,6 +818,7 @@ public interface CollectionDAO {
         value =
             "SELECT count(<nameHashColumn>) FROM <table> ce "
                 + "<sqlCondition> AND "
+                + "(LENGTH(fqnHash) - LENGTH(REPLACE(fqnHash, '.', ''))) = 1 AND "
                 + "NOT EXISTS ("
                 + "  SELECT 1 FROM entity_relationship er "
                 + "  WHERE er.toId = ce.id "
@@ -820,6 +831,7 @@ public interface CollectionDAO {
         value =
             "SELECT count(*) FROM <table> ce "
                 + "<sqlCondition> AND "
+                + "(LENGTH(fqnHash) - LENGTH(REPLACE(fqnHash, '.', ''))) = 1 AND "
                 + "NOT EXISTS ("
                 + "  SELECT 1 FROM entity_relationship er "
                 + "  WHERE er.toId = ce.id "

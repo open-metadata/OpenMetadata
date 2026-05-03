@@ -4250,7 +4250,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * Process a batch of entities for deletion
+   * Process a batch of entities for hard deletion. Entered only via
+   * {@link #batchDeleteChildren}, which only fires for {@code hardDelete=true} and
+   * {@code children.size() > 100}; the soft-delete and small-batch paths stay on the
+   * sequential {@link Entity#deleteEntity} flow.
+   *
+   * <p>Each child is removed via its own {@link #cleanup} call, which already deletes
+   * the entity row, all (id, *) / (*, id) entity_relationship rows, extensions, tag
+   * usage, threads, and caches inside its own JDBI transaction. Any failure propagates
+   * so the surrounding {@code @Transaction} on this method (and on the parent
+   * {@link #delete}) rolls back — preventing the orphan-with-multi-segment-FQN pattern
+   * that previously appeared when an exception in this loop was swallowed after the
+   * relationships had already been wiped.
    */
   @Transaction
   private void processDeletionBatch(
@@ -4283,36 +4294,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
       deleteChildren(allGrandchildren, hardDelete, updatedBy);
     }
 
-    // Now batch delete the entities at this level (reuse stringIds from above)
-    // Only delete relationships for hard delete
-    // For soft delete, relationships must be preserved for restoration
-    if (hardDelete) {
-      // Batch delete relationships for all entities
-      daoCollection.relationshipDAO().batchDeleteFrom(stringIds, entityType);
-      daoCollection.relationshipDAO().batchDeleteTo(stringIds, entityType);
-    }
-
-    // Delete or soft-delete the entities themselves
+    // cleanup() per entity is the source of truth: it removes the row, its relationships
+    // (deleteAllFrom + deleteAllTo on (id, *) and (*, id)), extensions, tag usage, feed
+    // threads, and caches within one JDBI transaction. The previous implementation
+    // pre-deleted relationships in two batched queries before this loop — which was both
+    // redundant (cleanup re-runs deleteAll) and unsafe: if a per-child cleanup failed and
+    // the catch below swallowed it, the entity row survived without any relationship row,
+    // surfacing later as an orphan in /containers?root=true and breaking /children
+    // traversal. We now let cleanup own both halves atomically and let exceptions
+    // propagate so the surrounding @Transaction rolls the whole batch back.
+    @SuppressWarnings("rawtypes")
+    EntityRepository repository = Entity.getEntityRepository(entityType);
     for (UUID entityId : entityIds) {
-      try {
-        @SuppressWarnings("rawtypes")
-        EntityRepository repository = Entity.getEntityRepository(entityType);
-        if (repository.supportsSoftDelete && !hardDelete) {
-          // Soft delete
-          EntityInterface entity = repository.find(entityId, Include.ALL);
-          entity.setUpdatedBy(updatedBy);
-          entity.setUpdatedAt(System.currentTimeMillis());
-          entity.setDeleted(true);
-          repository.dao.update(entity);
-          invalidateCacheForEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
-        } else {
-          // Hard delete
-          EntityInterface entity = repository.find(entityId, Include.ALL);
-          repository.cleanup(entity);
-        }
-      } catch (Exception e) {
-        LOG.error("Error deleting entity {} of type {}: {}", entityId, entityType, e.getMessage());
-      }
+      EntityInterface entity = repository.find(entityId, Include.ALL);
+      repository.cleanup(entity);
     }
   }
 
