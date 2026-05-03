@@ -208,7 +208,9 @@ class ProtobufParser:
             proto_path = self.proto_interface_dir
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}")
+            logger.warning(
+                f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}"
+            )
         else:
             return proto_path, file_path
         return None
@@ -231,16 +233,22 @@ class ProtobufParser:
 
             # import the python file
             if self.generated_src_dir not in sys.path:
-                sys.path.insert(0, self.generated_src_dir)  # ensure generated src dir is on sys.path for imports
+                sys.path.insert(
+                    0, self.generated_src_dir
+                )  # ensure generated src dir is on sys.path for imports
             generated_src_dir_path = Path(self.generated_src_dir)
-            py_file = next(generated_src_dir_path.glob(f"{self.config.schema_name}_pb2.py"))
+            py_file = next(
+                generated_src_dir_path.glob(f"{self.config.schema_name}_pb2.py")
+            )
             module_name = Path(py_file).stem
             message = importlib.import_module(module_name)
             # get the class and create a object instance
             instance = _resolve_message_class(message, self.config.schema_name)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to create protobuf python module for {self.config.schema_name}: {exc}")
+            logger.warning(
+                f"Unable to create protobuf python module for {self.config.schema_name}: {exc}"
+            )
         else:
             return instance
         return None
@@ -251,6 +259,7 @@ class ProtobufParser:
         """
         Method to parse the protobuf schema
         """
+        field_models = None
         try:
             result = self.create_proto_files()
             if result is None:
@@ -290,9 +299,7 @@ class ProtobufParser:
                 shutil.rmtree(self.config.base_file_path, ignore_errors=True)
         return field_models or None
 
-    def _get_field_type(
-        self, type_: int, cls: type[BaseModel] = FieldModel
-    ) -> str:
+    def _get_field_type(self, type_: int, cls: type[BaseModel] = FieldModel) -> str:
         if type_ > 18:
             return DataType.UNKNOWN.value
         data_type = ProtobufDataTypes(type_).name

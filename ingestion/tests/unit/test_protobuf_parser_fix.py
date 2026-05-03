@@ -14,7 +14,6 @@ Run with:
     pytest tests/unit/test_protobuf_parser.py -v
 """
 
-
 import sys
 import types
 from enum import Enum
@@ -22,13 +21,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
-
-
-# ---- PATH FIRST ----
-sys.path.insert(
-    0,
-    str(Path(__file__).resolve().parent.parent.parent / "src/metadata/parsers"),
-)
 
 # ---- STUBS (minimal, single source of truth) ----
 
@@ -111,14 +103,11 @@ sys.modules.update(
 )
 
 
-
 # Now safe to import
-from protobuf_parser import (
-    ProtobufDataTypes,
-    ProtobufParser,
-    ProtobufParserConfig,
-    _resolve_message_class,
-)
+from metadata.parsers.protobuf_parser import (ProtobufDataTypes,
+                                              ProtobufParser,
+                                              ProtobufParserConfig,
+                                              _resolve_message_class)
 
 # ---------------------------------------------------------------------------
 # Helpers: build fake pb2 modules for testing _resolve_message_class
@@ -503,7 +492,7 @@ class TestCreateProtoFiles:
         )
         self.parser = ProtobufParser(config)
 
-    @patch("protobuf_parser.Path")
+    @patch("metadata.parsers.protobuf_parser.Path")
     @patch("builtins.open", new_callable=mock_open)
     def test_creates_directories_and_proto_file(self, mock_file, MockPath):
         """Should create both directory paths and write schema_text to .proto file."""
@@ -522,12 +511,11 @@ class TestCreateProtoFiles:
             "syntax = 'proto3'; message MyLoanRecord {}"
         )
 
-
         assert result is not None
         _, file_path = result
         assert "loans.proto" in file_path
 
-    @patch("protobuf_parser.Path")
+    @patch("metadata.parsers.protobuf_parser.Path")
     def test_returns_none_on_exception(self, MockPath):
         """If directory creation raises, should return None without crashing."""
         MockPath.return_value.mkdir.side_effect = PermissionError("no access")
@@ -555,11 +543,10 @@ class TestGetProtobufPythonObject:
         )
         self.parser = ProtobufParser(config)
 
-    @patch("protobuf_parser._resolve_message_class")
-    @patch("protobuf_parser.importlib.import_module")
-    @patch("protobuf_parser.Path.glob")
+    @patch("metadata.parsers.protobuf_parser._resolve_message_class")
+    @patch("metadata.parsers.protobuf_parser.importlib.import_module")
+    @patch("metadata.parsers.protobuf_parser.Path.glob")
     @patch("grpc_tools.protoc.main")
-
     def test_calls_resolve_message_class(
         self,
         mock_protoc,
@@ -572,7 +559,9 @@ class TestGetProtobufPythonObject:
         and the schema_name — verifying the fix is wired in.
         """
         mock_protoc.return_value = 0
-        mock_glob.return_value = iter([Path("/tmp/test_protobuf/generated/loans_pb2.py")])
+        mock_glob.return_value = iter(
+            [Path("/tmp/test_protobuf/generated/loans_pb2.py")]
+        )
         fake_module = MagicMock()
         mock_import.return_value = fake_module
         fake_instance = MagicMock()
@@ -587,7 +576,8 @@ class TestGetProtobufPythonObject:
         assert result is fake_instance
 
     @patch(
-        "protobuf_parser.grpc_tools.protoc.main", side_effect=Exception("protoc failed")
+        "metadata.parsers.protobuf_parser.grpc_tools.protoc.main",
+        side_effect=Exception("protoc failed"),
     )
     def test_returns_none_on_compile_error(self, mock_protoc):
         """If protoc fails, should return None without raising."""
@@ -614,8 +604,8 @@ class TestParseProtobufSchema:
         )
         self.parser = ProtobufParser(config)
 
-    @patch("protobuf_parser.shutil.rmtree")
-    @patch("protobuf_parser.Path")
+    @patch("metadata.parsers.protobuf_parser.shutil.rmtree")
+    @patch("metadata.parsers.protobuf_parser.Path")
     def test_returns_field_models_on_success(self, MockPath, mock_rmtree):
         """
         GIVEN a valid instance returned by get_protobuf_python_object
@@ -636,7 +626,9 @@ class TestParseProtobufSchema:
         fake_instance = MagicMock()
         fake_instance.DESCRIPTOR = fake_descriptor
 
-        with patch.object(self.parser, "create_proto_files", return_value=("pp", "fp")), patch.object(
+        with patch.object(
+            self.parser, "create_proto_files", return_value=("pp", "fp")
+        ), patch.object(
             self.parser, "get_protobuf_python_object", return_value=fake_instance
         ):
             result = self.parser.parse_protobuf_schema()
@@ -647,8 +639,8 @@ class TestParseProtobufSchema:
         # Cleanup must always be called
         mock_rmtree.assert_called_once()
 
-    @patch("protobuf_parser.shutil.rmtree")
-    @patch("protobuf_parser.Path")
+    @patch("metadata.parsers.protobuf_parser.shutil.rmtree")
+    @patch("metadata.parsers.protobuf_parser.Path")
     def test_returns_none_when_instance_is_none(self, MockPath, mock_rmtree):
         """
         GIVEN get_protobuf_python_object returns None (e.g. message name mismatch
@@ -658,14 +650,14 @@ class TestParseProtobufSchema:
         """
         MockPath.return_value.exists.return_value = False
 
-        with patch.object(self.parser, "create_proto_files", return_value=("pp", "fp")), patch.object(
-            self.parser, "get_protobuf_python_object", return_value=None
-        ):
+        with patch.object(
+            self.parser, "create_proto_files", return_value=("pp", "fp")
+        ), patch.object(self.parser, "get_protobuf_python_object", return_value=None):
             result = self.parser.parse_protobuf_schema()
 
         assert result is None
 
-    @patch("protobuf_parser.Path")
+    @patch("metadata.parsers.protobuf_parser.Path")
     def test_returns_none_when_create_proto_files_fails(self, MockPath):
         """If create_proto_files returns None, parse should return None gracefully."""
         with patch.object(self.parser, "create_proto_files", return_value=None):
@@ -673,8 +665,8 @@ class TestParseProtobufSchema:
 
         assert result is None
 
-    @patch("protobuf_parser.shutil.rmtree")
-    @patch("protobuf_parser.Path")
+    @patch("metadata.parsers.protobuf_parser.shutil.rmtree")
+    @patch("metadata.parsers.protobuf_parser.Path")
     def test_cleanup_runs_even_after_success(self, MockPath, mock_rmtree):
         """The tmp directory should always be cleaned up after parsing."""
         MockPath.return_value.exists.return_value = True
@@ -683,7 +675,9 @@ class TestParseProtobufSchema:
         fake_instance.DESCRIPTOR.name = "MyLoanRecord"
         fake_instance.DESCRIPTOR.fields = []
 
-        with patch.object(self.parser, "create_proto_files", return_value=("pp", "fp")), patch.object(
+        with patch.object(
+            self.parser, "create_proto_files", return_value=("pp", "fp")
+        ), patch.object(
             self.parser, "get_protobuf_python_object", return_value=fake_instance
         ):
             self.parser.parse_protobuf_schema()
