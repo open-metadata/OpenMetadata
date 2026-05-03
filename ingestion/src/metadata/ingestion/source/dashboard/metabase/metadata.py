@@ -431,7 +431,10 @@ class MetabaseSource(DashboardServiceSource):
 
             for from_entity in from_entities or []:
                 yield self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
-                yield self._get_add_lineage_request(to_entity=chart_entity, from_entity=from_entity)
+                if chart_entity and isinstance(from_entity, Table):
+                    chart_lineage = self._get_add_lineage_request(to_entity=chart_entity, from_entity=from_entity)
+                    if chart_lineage:
+                        yield chart_lineage
 
     def _yield_lineage_from_api(
         self,
@@ -492,4 +495,7 @@ class MetabaseSource(DashboardServiceSource):
 
         for from_entity in from_entities or []:
             yield self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
-            yield self._get_add_lineage_request(to_entity=chart_entity, from_entity=from_entity)
+            if chart_entity and isinstance(from_entity, Table):
+                chart_lineage = self._get_add_lineage_request(to_entity=chart_entity, from_entity=from_entity)
+                if chart_lineage:
+                    yield chart_lineage
