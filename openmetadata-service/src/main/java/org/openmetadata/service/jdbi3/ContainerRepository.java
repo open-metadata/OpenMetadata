@@ -24,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -45,6 +46,9 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.AncestorsCache;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.ChildrenPageCache;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
@@ -432,6 +436,63 @@ public class ContainerRepository extends EntityRepository<Container> {
     updated.withService(original.getService()).withParent(original.getParent());
   }
 
+  // ----------------------------------------------------------------------------------------
+  // Derived cache invalidation: AncestorsCache + ChildrenPageCache are container-specific
+  // (only the /containers/{fqn}/ancestors and /containers/{fqn}/children endpoints exist
+  // today), so the invalidation lives here, not in the generic EntityRepository. Hooks fire
+  // on every container create / update / delete so a parent's cached children pages can't
+  // outlive a mutation. Display-name edits on an ancestor are picked up automatically: the
+  // ancestors cache stores topology only (a List<String> of ancestor FQNs); display names
+  // are rehydrated per-read through the existing write-through per-entity reference cache,
+  // which is invalidated on every entity write. Cross-instance invalidation is handled
+  // separately by the pubsub handler in CacheBundle (gated to entityType=container).
+  // ----------------------------------------------------------------------------------------
+
+  @Override
+  protected void postCreate(Container entity) {
+    super.postCreate(entity);
+    invalidateContainerDerivedCaches(entity.getFullyQualifiedName());
+  }
+
+  @Override
+  protected void postUpdate(Container original, Container updated) {
+    super.postUpdate(original, updated);
+    invalidateContainerDerivedCaches(updated.getFullyQualifiedName());
+    String originalFqn = original.getFullyQualifiedName();
+    if (originalFqn != null && !originalFqn.equals(updated.getFullyQualifiedName())) {
+      // Rename / move: the old FQN's parent loses the row, descendants of the old FQN had
+      // an entry in their ancestors chain that no longer exists. Drop both.
+      invalidateContainerDerivedCaches(originalFqn);
+    }
+  }
+
+  @Override
+  protected void invalidateCache(Container entity) {
+    super.invalidateCache(entity);
+    invalidateContainerDerivedCaches(entity.getFullyQualifiedName());
+  }
+
+  private static void invalidateContainerDerivedCaches(String fqn) {
+    if (fqn == null) {
+      return;
+    }
+    AncestorsCache ancestorsCache = CacheBundle.getAncestorsCache();
+    if (ancestorsCache != null) {
+      ancestorsCache.invalidate(CONTAINER, fqn);
+    }
+    ChildrenPageCache childrenPageCache = CacheBundle.getChildrenPageCache();
+    if (childrenPageCache != null) {
+      // Rotate the container's own children-page first — when the container is itself a
+      // parent (typical for buckets/folders), a delete or rename leaves cached pages
+      // serving the stale child list until TTL otherwise.
+      childrenPageCache.invalidate(CONTAINER, fqn);
+      String parentFqn = FullyQualifiedName.getParentFQN(fqn);
+      if (parentFqn != null) {
+        childrenPageCache.invalidate(CONTAINER, parentFqn);
+      }
+    }
+  }
+
   @Override
   protected void clearEntitySpecificRelationshipsForMany(List<Container> entities) {
     if (entities.isEmpty()) return;
@@ -543,6 +604,19 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   public ResultList<Container> listChildren(String parentFQN, Integer limit, Integer offset) {
+    int safeLimit = limit != null ? limit : 0;
+    int safeOffset = offset != null ? offset : 0;
+
+    ChildrenPageCache pageCache = CacheBundle.getChildrenPageCache();
+    if (pageCache != null) {
+      ResultList<Container> cached;
+      try (var ignored = RequestLatencyContext.phase("listChildrenCacheGet")) {
+        cached = pageCache.get(CONTAINER, parentFQN, safeLimit, safeOffset);
+      }
+      if (cached != null) {
+        return cached;
+      }
+    }
 
     // Phase markers feed the slow-request log so when a /children call exceeds the
     // latency budget in prod we can tell which step (parent lookup / relationship
@@ -562,8 +636,8 @@ public class ContainerRepository extends EntityRepository<Container> {
                     parentContainer.getId(),
                     CONTAINER,
                     List.of(Relationship.CONTAINS.ordinal()),
-                    offset,
-                    limit);
+                    safeOffset,
+                    safeLimit);
       }
 
       int total;
@@ -576,7 +650,11 @@ public class ContainerRepository extends EntityRepository<Container> {
       }
 
       if (relationshipRecords.isEmpty()) {
-        return new ResultList<>(new ArrayList<>(), null, null, total);
+        ResultList<Container> empty = new ResultList<>(new ArrayList<>(), null, null, total);
+        if (pageCache != null) {
+          pageCache.put(CONTAINER, parentFQN, safeLimit, safeOffset, empty);
+        }
+        return empty;
       }
 
       // Hydrate the page with a slim projection: id, name, fqn, displayName, description.
@@ -613,7 +691,11 @@ public class ContainerRepository extends EntityRepository<Container> {
         fetchAndSetDefaultService(children);
       }
 
-      return new ResultList<>(children, null, null, total);
+      ResultList<Container> page = new ResultList<>(children, null, null, total);
+      if (pageCache != null) {
+        pageCache.put(CONTAINER, parentFQN, safeLimit, safeOffset, page);
+      }
+      return page;
     } catch (Exception e) {
       throw new RuntimeException(
           String.format(
@@ -629,6 +711,30 @@ public class ContainerRepository extends EntityRepository<Container> {
    * need to issue one parent fetch per breadcrumb level.
    */
   public List<EntityReference> getAncestors(String fqn) {
+    AncestorsCache ancestorsCache = CacheBundle.getAncestorsCache();
+    if (ancestorsCache != null) {
+      List<String> cachedFqns = ancestorsCache.getFqns(CONTAINER, fqn);
+      if (cachedFqns != null) {
+        // Topology was warm — hydrate each ancestor's reference through the existing
+        // write-through per-entity reference cache (om:rn:) so display names always
+        // reflect the latest write, not whatever was current when the topology was
+        // first cached. Misses fall through to a single batched DB lookup.
+        return hydrateRefsByFqn(cachedFqns);
+      }
+    }
+
+    List<String> ancestorFqns = computeAncestorFqns(fqn);
+    if (ancestorFqns.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<EntityReference> ordered = hydrateRefsByFqn(ancestorFqns);
+    if (ancestorsCache != null) {
+      ancestorsCache.putFqns(CONTAINER, fqn, ancestorFqns);
+    }
+    return ordered;
+  }
+
+  private List<String> computeAncestorFqns(String fqn) {
     String[] parts = FullyQualifiedName.split(fqn);
     // parts[0] is the storage service; parts[parts.length - 1] is the container itself.
     // Ancestors live at indices 1 .. parts.length - 2.
@@ -650,23 +756,79 @@ public class ContainerRepository extends EntityRepository<Container> {
       current = FullyQualifiedName.add(current, parts[i]);
       ancestorFqns.add(current);
     }
+    return ancestorFqns;
+  }
 
-    // Projection-only batched IN query: pulls just the columns needed to build
-    // an EntityReference (id, name, displayName, fqn, deleted) instead of the
-    // full Container JSON. For a 10-level chain this avoids deserializing
-    // ~10 × 5–50 KB of unused container payload per breadcrumb request.
-    List<EntityReference> ancestors = dao.findReferencesByFqns(ancestorFqns, NON_DELETED);
-
-    // Preserve the root → immediate-parent ordering even if the DAO returns rows out of order.
-    Map<String, EntityReference> byFqn = new HashMap<>();
-    for (EntityReference ancestor : ancestors) {
-      byFqn.put(ancestor.getFullyQualifiedName(), ancestor);
+  /**
+   * Resolve a list of container FQNs to {@link EntityReference}s, ordered to match the input.
+   * Reads first hit the write-through per-entity reference cache, which is invalidated and
+   * repopulated on every entity write — so the displayName returned here always reflects the
+   * latest write, not whatever was current when the topology chain was first cached. Misses
+   * are batched into one {@code findReferencesByFqns} call and warm the per-entity cache on
+   * the way out.
+   */
+  private List<EntityReference> hydrateRefsByFqn(List<String> fqns) {
+    if (fqns.isEmpty()) {
+      return Collections.emptyList();
     }
-    List<EntityReference> ordered = new ArrayList<>(ancestorFqns.size());
-    for (String ancestorFqn : ancestorFqns) {
-      EntityReference ancestor = byFqn.get(ancestorFqn);
-      if (ancestor != null) {
-        ordered.add(ancestor);
+
+    var entityCache = CacheBundle.getCachedEntityDao();
+    Map<String, EntityReference> byFqn = new HashMap<>();
+    List<String> misses = new ArrayList<>();
+
+    if (entityCache != null) {
+      for (String ancestorFqn : fqns) {
+        Optional<String> hit = entityCache.getReferenceByName(CONTAINER, ancestorFqn);
+        if (hit.isPresent() && !hit.get().isEmpty()) {
+          try {
+            byFqn.put(ancestorFqn, JsonUtils.readValue(hit.get(), EntityReference.class));
+            continue;
+          } catch (Exception e) {
+            // Evict the corrupt entry up front so a transient warm-write failure below
+            // doesn't leave the bad JSON pinned in Redis until TTL — every subsequent
+            // breadcrumb call would re-hit it, parse-fail, and round-trip the DB.
+            try {
+              entityCache.invalidateReferenceByName(CONTAINER, ancestorFqn);
+            } catch (Exception evictError) {
+              LOG.debug(
+                  "Failed to evict bad reference cache entry for {} {}",
+                  CONTAINER,
+                  ancestorFqn,
+                  evictError);
+            }
+            LOG.debug(
+                "Bad cached EntityReference for {} {}, evicted and falling through",
+                CONTAINER,
+                ancestorFqn,
+                e);
+          }
+        }
+        misses.add(ancestorFqn);
+      }
+    } else {
+      misses.addAll(fqns);
+    }
+
+    if (!misses.isEmpty()) {
+      for (EntityReference ref : dao.findReferencesByFqns(misses, NON_DELETED)) {
+        byFqn.put(ref.getFullyQualifiedName(), ref);
+        // Warm the write-through cache so the next reader is also hydrated cheaply.
+        if (entityCache != null) {
+          try {
+            entityCache.putReferenceByName(
+                CONTAINER, ref.getFullyQualifiedName(), JsonUtils.pojoToJson(ref));
+          } catch (Exception e) {
+            LOG.debug("Failed to warm reference cache for {} {}", CONTAINER, ref.getId(), e);
+          }
+        }
+      }
+    }
+
+    List<EntityReference> ordered = new ArrayList<>(fqns.size());
+    for (String ancestorFqn : fqns) {
+      EntityReference ref = byFqn.get(ancestorFqn);
+      if (ref != null) {
+        ordered.add(ref);
       }
     }
     return Collections.unmodifiableList(ordered);
