@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ReactComponent as IconSuccessBadge } from '../../../../assets/svg/success-badge.svg';
 import {
@@ -480,5 +480,63 @@ describe('AppLogsViewer component', () => {
     expect(overall).toHaveTextContent('100.0 ms');
     expect(overall).toHaveTextContent('10.0 r/s');
     expect(overall).not.toHaveTextContent(/k r\/s/);
+  });
+
+  // Regression: the wall-clock card must keep updating while a run is
+  // in flight (endTime undefined). The component schedules a setInterval
+  // that bumps a `now` state every 5s; if that effect or its dep array
+  // breaks, the displayed rate freezes silently. See PR #27872.
+  it('overall stats card ticks wall-clock for in-flight runs', () => {
+    jest.useFakeTimers();
+    const start = 1_700_000_000_000;
+    const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(start + 1000);
+
+    try {
+      const inflightProps = {
+        data: {
+          ...mockProps1.data,
+          startTime: start,
+          // Deliberately omitted — this is the in-flight branch.
+          endTime: undefined as unknown as number,
+          successContext: {
+            stats: {
+              jobStats: {
+                totalRecords: 0,
+                successRecords: 100,
+                failedRecords: 0,
+              },
+            },
+          },
+        },
+      };
+
+      render(<AppLogsViewer {...inflightProps} />);
+
+      const overall = screen.getByTestId(
+        'stats-component-label.overall-stat-plural'
+      );
+
+      // 1s elapsed, 100 records → 10 ms per record · 100 r/s.
+      // formatThroughput drops the decimal at >=100 r/s (toFixed(0)),
+      // and switches to "Xk r/s" at >=1000 r/s — see ApplicationUtils.
+      expect(overall).toHaveTextContent('10.0 ms');
+      expect(overall).toHaveTextContent('100 r/s');
+      expect(overall).not.toHaveTextContent(/k r\/s/);
+
+      // Tick to 6s elapsed and fire the 5s interval.
+      dateNowSpy.mockReturnValue(start + 6000);
+      act(() => {
+        jest.advanceTimersByTime(5000);
+      });
+
+      // 6s elapsed, 100 records → 60 ms per record · 16.7 r/s.
+      // If the dep array regresses (e.g. drops `now`) or the interval
+      // never fires, the assertions still see the 10ms/100rps reading.
+      expect(overall).toHaveTextContent('60.0 ms');
+      expect(overall).toHaveTextContent('16.7 r/s');
+    } finally {
+      dateNowSpy.mockRestore();
+      jest.useRealTimers();
+    }
   });
 });
