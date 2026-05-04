@@ -133,6 +133,12 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.util.dbtune.AutoTuner;
+import org.openmetadata.service.util.dbtune.DbTuneReport;
+import org.openmetadata.service.util.dbtune.DbTuneResult;
+import org.openmetadata.service.util.dbtune.MysqlAutoTuner;
+import org.openmetadata.service.util.dbtune.PostgresAutoTuner;
+import org.openmetadata.service.util.dbtune.TableRecommendation;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.openmetadata.service.util.jdbi.JdbiUtils;
 import org.slf4j.LoggerFactory;
@@ -175,9 +181,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reembed', 'reindex-rdf', 'reindexdi', 'deploy-pipelines', "
             + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes', "
             + "'setOpenMetadataUrl', 'configureEmailSettings', 'get-security-config', 'update-security-config', 'install-app', 'delete-app', 'create-user', 'reset-password', "
-            + "'syncAlertOffset', 'analyze-tables', 'cleanup-flowable-history', 'regenerate-bot-tokens'");
+            + "'syncAlertOffset', 'analyze-tables', 'db-tune', 'cleanup-flowable-history', 'regenerate-bot-tokens'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
+    LOG.info(
+        "Use 'db-tune' for a per-table autovacuum / InnoDB stats tuning report; add --apply to "
+            + "execute the recommendations and --analyze to refresh planner stats on changed tables");
     LOG.info(
         "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000' for Flowable cleanup with custom options");
     LOG.info(
@@ -2466,6 +2475,99 @@ public class OpenMetadataOperations implements Callable<Integer> {
     } catch (Exception e) {
       LOG.error("Failed to analyze tables due to ", e);
       return 1;
+    }
+  }
+
+  @Command(
+      name = "db-tune",
+      description =
+          "Generate a per-table autovacuum / InnoDB stats tuning report and optionally apply it. "
+              + "Default mode is read-only — pass --apply to execute the ALTER TABLE statements "
+              + "and --analyze to refresh planner stats on changed tables.")
+  public Integer dbTune(
+      @Option(
+              names = {"--apply"},
+              defaultValue = "false",
+              description =
+                  "Apply the recommendations. Without this flag the command only prints the report.")
+          boolean apply,
+      @Option(
+              names = {"--yes", "-y"},
+              defaultValue = "false",
+              description = "Skip the interactive confirmation when applying.")
+          boolean skipPrompt,
+      @Option(
+              names = {"--analyze"},
+              defaultValue = "false",
+              description =
+                  "After --apply, run ANALYZE on each changed table so planner stats reflect the new settings.")
+          boolean runAnalyze) {
+    try {
+      parseConfig();
+      ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+      AutoTuner tuner = autoTunerFor(connType);
+      DbTuneResult result = jdbi.withHandle(tuner::analyze);
+      LOG.info("\n{}", DbTuneReport.render(result));
+      if (!apply) {
+        return 0;
+      }
+      List<TableRecommendation> actionable = result.actionableRecommendations();
+      if (actionable.isEmpty()) {
+        LOG.info(
+            "Nothing to apply — every tracked table already matches its recommended settings.");
+        return 0;
+      }
+      if (!skipPrompt && !confirmApply(tuner, actionable)) {
+        LOG.info("Operation cancelled.");
+        return 0;
+      }
+      applyRecommendations(tuner, actionable, runAnalyze);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("db-tune failed due to ", e);
+      return 1;
+    }
+  }
+
+  private AutoTuner autoTunerFor(final ConnectionType connType) {
+    return switch (connType) {
+      case POSTGRES -> new PostgresAutoTuner();
+      case MYSQL -> new MysqlAutoTuner();
+    };
+  }
+
+  private boolean confirmApply(final AutoTuner tuner, final List<TableRecommendation> actionable) {
+    LOG.info("About to apply {} ALTER statements:", actionable.size());
+    LOG.info("\n{}", DbTuneReport.renderAlterStatements(tuner, actionable));
+    @SuppressWarnings("resource")
+    Scanner scanner = new Scanner(System.in);
+    LOG.info("Apply now? [y/N]: ");
+    String input = scanner.hasNext() ? scanner.next().trim().toLowerCase() : "";
+    return input.equals("y") || input.equals("yes");
+  }
+
+  private void applyRecommendations(
+      final AutoTuner tuner, final List<TableRecommendation> actionable, final boolean runAnalyze) {
+    List<List<String>> rows = new ArrayList<>();
+    for (TableRecommendation rec : actionable) {
+      rows.add(applyOne(tuner, rec, runAnalyze));
+    }
+    printToAsciiTable(
+        List.of("Table", "Action", "Status", "Details"), rows, "No recommendations applied");
+  }
+
+  private List<String> applyOne(
+      final AutoTuner tuner, final TableRecommendation rec, final boolean runAnalyze) {
+    try {
+      jdbi.useHandle(handle -> tuner.apply(handle, rec));
+      if (runAnalyze) {
+        jdbi.useHandle(handle -> tuner.analyzeOne(handle, rec.tableName()));
+        return List.of(rec.tableName(), rec.action().name(), "OK", "Applied + analyzed");
+      }
+      return List.of(rec.tableName(), rec.action().name(), "OK", "Applied");
+    } catch (Exception e) {
+      LOG.error("Failed to apply recommendation for {}: {}", rec.tableName(), e.getMessage());
+      return List.of(rec.tableName(), rec.action().name(), "FAILED", e.getMessage());
     }
   }
 
