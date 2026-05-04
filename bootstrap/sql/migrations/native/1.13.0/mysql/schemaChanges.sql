@@ -307,7 +307,7 @@ ALTER TABLE search_index_server_stats
   ADD COLUMN sinkTimeMs BIGINT NOT NULL DEFAULT 0,
   ADD COLUMN vectorTimeMs BIGINT NOT NULL DEFAULT 0;
 
--- The Postgres counterpart to this file adds a `varchar_pattern_ops` index
+-- The Postgres counterpart to this file adds a `text_pattern_ops` index
 -- on `fqnHash` for every entity table to make `?service=` / `?database=` /
 -- `?databaseSchema=` / `?parent=` listings (which compile to
 -- `fqnHash LIKE 'prefix%'`) index-driven instead of seq-scan-driven on RDS.
