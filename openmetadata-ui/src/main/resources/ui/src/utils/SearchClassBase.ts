@@ -33,7 +33,10 @@ import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
-import { ReactComponent as KnowledgeCenterIcon } from '../assets/svg/knowledge-center.svg';
+import {
+  ReactComponent as KnowledgeCenterIcon,
+  ReactComponent as KnowledgeCenterIconComponent,
+} from '../assets/svg/knowledge-center.svg';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
@@ -61,8 +64,8 @@ import {
   entitySortingFields,
   INITIAL_SORT_FIELD,
   tableSortingFields,
-  tagSortingFields,
   TAGS_INITIAL_SORT_FIELD,
+  tagSortingFields,
 } from '../constants/explore.constants';
 import {
   Option,
@@ -129,6 +132,7 @@ class SearchClassBase {
       [EntityType.SPREADSHEET]: SearchIndex.SPREADSHEET,
       [EntityType.WORKSHEET]: SearchIndex.WORKSHEET,
       [EntityType.TABLE_COLUMN]: SearchIndex.COLUMN,
+      [EntityType.KNOWLEDGE_PAGE]: SearchIndex.KNOWLEDGE_PAGE_INDEX,
     };
   }
 
@@ -593,6 +597,13 @@ class SearchClassBase {
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.WORKSHEETS,
         icon: MetricIcon,
+      },
+      [SearchIndex.KNOWLEDGE_PAGE_INDEX]: {
+        label: t('label.knowledge-center'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'knowledgePages',
+        icon: KnowledgeCenterIconComponent,
       },
     };
   }

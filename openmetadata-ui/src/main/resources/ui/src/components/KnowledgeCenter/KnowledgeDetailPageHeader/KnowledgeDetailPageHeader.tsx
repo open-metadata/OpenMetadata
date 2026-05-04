@@ -407,7 +407,7 @@ const KnowledgeDetailPageHeader: FC<KnowledgeDetailPageHeaderProps> = ({
                 entityFQN={knowledgePage?.fullyQualifiedName}
                 entityId={knowledgePage?.id}
                 entityName={knowledgePage?.displayName ?? t('label.untitled')}
-                entityType={EntityType.KNOWLEDGE_PAGE as unknown as EntityType}
+                entityType={EntityType.KNOWLEDGE_CENTER}
                 prepareType={false}
                 successMessage={t('server.entity-deleted-successfully', {
                   entity: entityType,

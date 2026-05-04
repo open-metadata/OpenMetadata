@@ -12,7 +12,7 @@
  */
 
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
-import { expect, test as baseTest } from '../../support/fixtures/userPages';
+import { test as baseTest, expect } from '../../support/fixtures/userPages';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -20,14 +20,20 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  getEntityDisplayName,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { performUserLogin } from '../../utils/user';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import {
-  RightPanelPageObject,
   RIGHT_PANEL_TAB,
+  RightPanelPageObject,
 } from '../PageObject/Explore/RightPanelPageObject';
-import { navigateToKCEntity } from '../Utils/ExplorePageRightPanelUtils';
+import {
+  addOwnerInKCPanel,
+  navigateToKCEntity,
+} from '../Utils/ExplorePageRightPanelUtils';
 
 // Test data setup
 export const knowledgeCenter = new KnowledgeCenterClass();
@@ -81,10 +87,6 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
     }
   });
 
-  test.beforeEach(async () => {
-    test.slow(true);
-  });
-
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -109,7 +111,10 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         rightPanel,
         overview,
       }) => {
-        await navigateToKCEntity(adminPage, knowledgeCenter.responseData.name);
+        await navigateToKCEntity(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData)
+        );
         await rightPanel.waitForPanelVisible();
         rightPanel.setEntityConfigByType('knowledgeCenter');
 
@@ -127,7 +132,10 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         rightPanel,
         overview,
       }) => {
-        await navigateToKCEntity(adminPage, knowledgeCenter.responseData.name);
+        await navigateToKCEntity(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData)
+        );
         await rightPanel.waitForPanelVisible();
         rightPanel.setEntityConfigByType('knowledgeCenter');
 
@@ -141,7 +149,10 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         rightPanel,
         overview,
       }) => {
-        await navigateToKCEntity(adminPage, knowledgeCenter.responseData.name);
+        await navigateToKCEntity(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData)
+        );
         await rightPanel.waitForPanelVisible();
         rightPanel.setEntityConfigByType('knowledgeCenter');
 
@@ -154,12 +165,15 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         rightPanel,
         overview,
       }) => {
-        await navigateToKCEntity(adminPage, knowledgeCenter.responseData.name);
+        await navigateToKCEntity(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData)
+        );
         await rightPanel.waitForPanelLoaded();
         await rightPanel.waitForPanelVisible();
         rightPanel.setEntityConfigByType('knowledgeCenter');
 
-        await overview.addOwnerWithoutValidation(user1.getUserDisplayName());
+        await addOwnerInKCPanel(adminPage, user1.getUserDisplayName());
         await overview.shouldShowOwner(user1.getUserDisplayName());
       });
     });
@@ -169,7 +183,10 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         adminPage,
         rightPanel,
       }) => {
-        await navigateToKCEntity(adminPage, knowledgeCenter.responseData.name);
+        await navigateToKCEntity(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData)
+        );
         await rightPanel.waitForPanelLoaded();
         rightPanel.setEntityConfigByType('knowledgeCenter');
 
@@ -195,7 +212,10 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         rightPanel,
         overview,
       }) => {
-        await navigateToKCEntity(adminPage, knowledgeCenter.responseData.name);
+        await navigateToKCEntity(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData)
+        );
         await rightPanel.waitForPanelVisible();
         rightPanel.setEntityConfigByType('knowledgeCenter');
 
@@ -206,7 +226,10 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         await overview.removeTag([tagToUpdate]);
         await waitForAllLoadersToDisappear(adminPage);
 
-        await navigateToKCEntity(adminPage, knowledgeCenter.responseData.name);
+        await navigateToKCEntity(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData)
+        );
         const tagElement = adminPage.getByTestId(
           `tag-${testClassification.data.name}.${testTag.data.name}`
         );
@@ -218,7 +241,10 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         rightPanel,
         overview,
       }) => {
-        await navigateToKCEntity(adminPage, knowledgeCenter.responseData.name);
+        await navigateToKCEntity(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData)
+        );
         await rightPanel.waitForPanelVisible();
         rightPanel.setEntityConfigByType('knowledgeCenter');
 
@@ -228,7 +254,10 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         await overview.removeGlossaryTerm([glossaryTermToUpdate]);
         await waitForAllLoadersToDisappear(adminPage);
 
-        await navigateToKCEntity(adminPage, knowledgeCenter.responseData.name);
+        await navigateToKCEntity(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData)
+        );
         const glossarySection = adminPage.locator('.glossary-terms-section');
         await expect(
           glossarySection.getByText(glossaryTermToUpdate)
@@ -240,17 +269,23 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         rightPanel,
         overview,
       }) => {
-        await navigateToKCEntity(adminPage, knowledgeCenter.responseData.name);
-        await rightPanel.waitForPanelVisible();
+        await navigateToKCEntity(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData)
+        );
+        await rightPanel.waitForPanelLoaded();
         rightPanel.setEntityConfigByType('knowledgeCenter');
 
-        await overview.addOwnerWithoutValidation(user1.getUserDisplayName());
+        await addOwnerInKCPanel(adminPage, user1.getUserDisplayName());
         await overview.shouldShowOwner(user1.getUserDisplayName());
 
         await overview.removeOwner([user1.getUserDisplayName()], 'Users');
         await waitForAllLoadersToDisappear(adminPage);
 
-        await navigateToKCEntity(adminPage, knowledgeCenter.responseData.name);
+        await navigateToKCEntity(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData)
+        );
         const ownerElement = adminPage
           .locator('.owners-section')
           .getByText(user1.getUserDisplayName());
@@ -273,19 +308,17 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
 
           await navigateToKCEntity(
             adminPage,
-            knowledgeCenter.responseData.name
+            getEntityDisplayName(knowledgeCenter.responseData)
           );
-          await rightPanel.waitForPanelVisible();
+          await rightPanel.waitForPanelLoaded();
           rightPanel.setEntityConfigByType('knowledgeCenter');
 
-          await overview.addOwnerWithoutValidation(
-            deletedUser.getUserDisplayName()
-          );
+          await addOwnerInKCPanel(adminPage, deletedUser.getUserDisplayName());
           await overview.shouldShowOwner(deletedUser.getUserDisplayName());
 
           await deletedUser.delete(apiContext);
           await adminPage.reload();
-          await rightPanel.waitForPanelVisible();
+          await rightPanel.waitForPanelLoaded();
 
           const deletedOwnerLocator =
             await overview.verifyDeletedOwnerNotVisible(
@@ -319,7 +352,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
 
           await navigateToKCEntity(
             adminPage,
-            knowledgeCenter.responseData.name
+            getEntityDisplayName(knowledgeCenter.responseData)
           );
           await rightPanel.waitForPanelVisible();
           rightPanel.setEntityConfigByType('knowledgeCenter');
@@ -330,7 +363,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
           await deletedTag.delete(apiContext);
           await deletedClassification.delete(apiContext);
           await adminPage.reload();
-          await rightPanel.waitForPanelVisible();
+          await rightPanel.waitForPanelLoaded();
 
           const deletedTagLocator = await overview.verifyDeletedTagNotVisible(
             deletedTagDisplayName
@@ -361,7 +394,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
 
           await navigateToKCEntity(
             adminPage,
-            knowledgeCenter.responseData.name
+            getEntityDisplayName(knowledgeCenter.responseData)
           );
           await rightPanel.waitForPanelVisible();
           rightPanel.setEntityConfigByType('knowledgeCenter');
@@ -372,7 +405,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
           await deletedGlossaryTerm.delete(apiContext);
           await deletedGlossary.delete(apiContext);
           await adminPage.reload();
-          await rightPanel.waitForPanelVisible();
+          await rightPanel.waitForPanelLoaded();
 
           const deletedTermLocator =
             await overview.verifyDeletedGlossaryTermNotVisible(
@@ -391,12 +424,11 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
       }) => {
         await navigateToKCEntity(
           dataStewardPage,
-          knowledgeCenter.responseData.name
+          getEntityDisplayName(knowledgeCenter.responseData)
         );
-        await dataStewardPage.waitForSelector(
-          '[data-testid="entity-summary-panel-container"]',
-          { state: 'visible' }
-        );
+        await dataStewardPage
+          .locator('[data-testid="entity-summary-panel-container"]')
+          .waitFor({ state: 'visible' });
 
         const rightPanelDS = new RightPanelPageObject(dataStewardPage);
         rightPanelDS.setEntityConfigByType('knowledgeCenter');
@@ -415,19 +447,16 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
       }) => {
         await navigateToKCEntity(
           dataStewardPage,
-          knowledgeCenter.responseData.name
-        );
-        await dataStewardPage.waitForSelector(
-          '[data-testid="entity-summary-panel-container"]',
-          { state: 'visible' }
+          getEntityDisplayName(knowledgeCenter.responseData)
         );
 
         const rightPanelDS = new RightPanelPageObject(dataStewardPage);
+        await rightPanelDS.waitForPanelLoaded();
         rightPanelDS.setEntityConfigByType('knowledgeCenter');
         rightPanelDS.setRolePermissions('DataSteward');
 
         const overviewDS = new OverviewPageObject(rightPanelDS);
-        await overviewDS.addOwnerWithoutValidation(user1.getUserDisplayName());
+        await addOwnerInKCPanel(dataStewardPage, user1.getUserDisplayName());
         await overviewDS.shouldShowOwner(user1.getUserDisplayName());
       });
 
@@ -436,12 +465,11 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
       }) => {
         await navigateToKCEntity(
           dataStewardPage,
-          knowledgeCenter.responseData.name
+          getEntityDisplayName(knowledgeCenter.responseData)
         );
-        await dataStewardPage.waitForSelector(
-          '[data-testid="entity-summary-panel-container"]',
-          { state: 'visible' }
-        );
+        await dataStewardPage
+          .locator('[data-testid="entity-summary-panel-container"]')
+          .waitFor({ state: 'visible' });
 
         const rightPanelDS = new RightPanelPageObject(dataStewardPage);
         rightPanelDS.setEntityConfigByType('knowledgeCenter');
@@ -457,12 +485,11 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
       }) => {
         await navigateToKCEntity(
           dataStewardPage,
-          knowledgeCenter.responseData.name
+          getEntityDisplayName(knowledgeCenter.responseData)
         );
-        await dataStewardPage.waitForSelector(
-          '[data-testid="entity-summary-panel-container"]',
-          { state: 'visible' }
-        );
+        await dataStewardPage
+          .locator('[data-testid="entity-summary-panel-container"]')
+          .waitFor({ state: 'visible' });
 
         const rightPanelDS = new RightPanelPageObject(dataStewardPage);
         rightPanelDS.setEntityConfigByType('knowledgeCenter');
@@ -478,12 +505,11 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
       }) => {
         await navigateToKCEntity(
           dataStewardPage,
-          knowledgeCenter.responseData.name
+          getEntityDisplayName(knowledgeCenter.responseData)
         );
-        await dataStewardPage.waitForSelector(
-          '[data-testid="entity-summary-panel-container"]',
-          { state: 'visible' }
-        );
+        await dataStewardPage
+          .locator('[data-testid="entity-summary-panel-container"]')
+          .waitFor({ state: 'visible' });
 
         const rightPanelDS = new RightPanelPageObject(dataStewardPage);
         rightPanelDS.setEntityConfigByType('knowledgeCenter');
@@ -510,12 +536,11 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
       }) => {
         await navigateToKCEntity(
           dataConsumerPage,
-          knowledgeCenter.responseData.name
+          getEntityDisplayName(knowledgeCenter.responseData)
         );
-        await dataConsumerPage.waitForSelector(
-          '[data-testid="entity-summary-panel-container"]',
-          { state: 'visible' }
-        );
+        await dataConsumerPage
+          .locator('[data-testid="entity-summary-panel-container"]')
+          .waitFor({ state: 'visible' });
 
         const rightPanelDC = new RightPanelPageObject(dataConsumerPage);
         rightPanelDC.setEntityConfigByType('knowledgeCenter');
@@ -534,12 +559,11 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
       }) => {
         await navigateToKCEntity(
           dataConsumerPage,
-          knowledgeCenter.responseData.name
+          getEntityDisplayName(knowledgeCenter.responseData)
         );
-        await dataConsumerPage.waitForSelector(
-          '[data-testid="entity-summary-panel-container"]',
-          { state: 'visible' }
-        );
+        await dataConsumerPage
+          .locator('[data-testid="entity-summary-panel-container"]')
+          .waitFor({ state: 'visible' });
 
         const rightPanelDC = new RightPanelPageObject(dataConsumerPage);
         rightPanelDC.setEntityConfigByType('knowledgeCenter');
@@ -555,12 +579,11 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
       }) => {
         await navigateToKCEntity(
           dataConsumerPage,
-          knowledgeCenter.responseData.name
+          getEntityDisplayName(knowledgeCenter.responseData)
         );
-        await dataConsumerPage.waitForSelector(
-          '[data-testid="entity-summary-panel-container"]',
-          { state: 'visible' }
-        );
+        await dataConsumerPage
+          .locator('[data-testid="entity-summary-panel-container"]')
+          .waitFor({ state: 'visible' });
 
         const rightPanelDC = new RightPanelPageObject(dataConsumerPage);
         rightPanelDC.setEntityConfigByType('knowledgeCenter');
@@ -582,12 +605,11 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         try {
           await navigateToKCEntity(
             dataConsumerPage,
-            knowledgeCenter.responseData.name
+            getEntityDisplayName(knowledgeCenter.responseData)
           );
-          await dataConsumerPage.waitForSelector(
-            '[data-testid="entity-summary-panel-container"]',
-            { state: 'visible' }
-          );
+          await dataConsumerPage
+            .locator('[data-testid="entity-summary-panel-container"]')
+            .waitFor({ state: 'visible' });
 
           const rightPanelDC = new RightPanelPageObject(dataConsumerPage);
           rightPanelDC.setEntityConfigByType('knowledgeCenter');
@@ -624,7 +646,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         try {
           await navigateToKCEntity(
             authenticatedPage,
-            knowledgeCenter.responseData.name
+            getEntityDisplayName(knowledgeCenter.responseData)
           );
           await rightPanel.waitForPanelVisible();
           rightPanel.setEntityConfigByType('knowledgeCenter');
@@ -637,7 +659,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
 
           await navigateToKCEntity(
             authenticatedPage,
-            knowledgeCenter.responseData.name
+            getEntityDisplayName(knowledgeCenter.responseData)
           );
           await rightPanel.waitForPanelVisible();
 
@@ -663,7 +685,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         try {
           await navigateToKCEntity(
             authenticatedPage,
-            knowledgeCenter.responseData.name
+            getEntityDisplayName(knowledgeCenter.responseData)
           );
           await rightPanel.waitForPanelVisible();
           rightPanel.setEntityConfigByType('knowledgeCenter');

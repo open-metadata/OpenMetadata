@@ -1291,6 +1291,19 @@ export const getEntityBreadcrumbs = (
     case EntityType.KPI:
       return getBreadCrumbForKpi(entity as Kpi);
 
+    case EntityType.KNOWLEDGE_PAGE:
+      return [
+        {
+          name: i18n.t('label.knowledge-center'),
+          url: ROUTES.KNOWLEDGE_CENTER,
+        },
+        {
+          name: getEntityName(entity),
+          url: '',
+          activeTitle: Boolean(includeCurrent),
+        },
+      ];
+
     case EntityType.TABLE_COLUMN: {
       // Column breadcrumb: Service > Database > Schema > Table > Column
       const columnData = entity as TableColumnSearchSource;
@@ -1748,6 +1761,7 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.WORKSHEET]: t('label.worksheet'),
   [EntityType.NOTIFICATION_TEMPLATE]: t('label.notification-template'),
   [EntityType.TABLE_COLUMN]: t('label.column'),
+  [EntityType.KNOWLEDGE_CENTER]: t('label.knowledge-center'),
 };
 
 export const hasSchemaTab = (entityType: EntityType): boolean =>

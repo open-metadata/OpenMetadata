@@ -16,6 +16,7 @@ import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
 import GlossaryIcon from '../assets/svg/book.svg';
 import ChartIcon from '../assets/svg/chart.svg';
+import KnowledgePageIcon from '../assets/svg/ic-articles.svg';
 import DataProductIcon from '../assets/svg/ic-data-product.svg';
 import DatabaseIcon from '../assets/svg/ic-database.svg';
 import DatabaseSchemaIcon from '../assets/svg/ic-schema.svg';
@@ -379,6 +380,8 @@ class ServiceUtilClassBase {
           return MetricIcon;
         case EntityType.DATA_PRODUCT:
           return DataProductIcon;
+        case EntityType.KNOWLEDGE_PAGE:
+          return KnowledgePageIcon;
         default:
           return this.getServiceLogo('');
       }

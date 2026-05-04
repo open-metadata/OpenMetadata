@@ -80,6 +80,7 @@ import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint
 import { ReactComponent as APIServiceIcon } from '../assets/svg/ic-api-service-default.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
+import { ReactComponent as KnowledgePageIcon } from '../assets/svg/ic-articles.svg';
 import { ReactComponent as IconTestCase } from '../assets/svg/ic-checklist.svg';
 import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
@@ -500,6 +501,7 @@ const entityIconMapping: Record<string, SvgComponent> = {
   [EntityType.SPREADSHEET]: SpreadsheetIcon,
   [EntityType.WORKSHEET]: WorksheetIcon,
   [EntityType.DRIVE_SERVICE]: DriveServiceIcon,
+  [EntityType.KNOWLEDGE_PAGE]: KnowledgePageIcon,
 };
 
 export const getEntityIcon = (
