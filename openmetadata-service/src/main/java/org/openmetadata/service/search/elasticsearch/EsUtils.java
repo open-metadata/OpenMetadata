@@ -559,15 +559,22 @@ public class EsUtils {
 
     int dimension = searchRepository.getEmbeddingClient().getDimension();
 
+    // dense_vector.dims is immutable on an existing ES index. If the client now reports
+    // a different dimension than what the index was built with, silently rewriting dims
+    // would either be rejected by ES (putMapping) or produce a mapping that disagrees
+    // with stored vectors. Hard-fail so the operator runs an explicit reindex.
     JsonNode existingMeta = rootNode.path("mappings").path("_meta");
     if (!existingMeta.isMissingNode() && existingMeta.has("embedding_dimension")) {
       int metaDimension = existingMeta.get("embedding_dimension").asInt();
       if (metaDimension != dimension) {
-        LOG.warn(
-            "Embedding dimension mismatch: _meta says {} but embedding client reports {}. "
-                + "Using embedding client dimension. A reindex may be required.",
-            metaDimension,
-            dimension);
+        throw new IllegalStateException(
+            String.format(
+                "Embedding dimension mismatch: index _meta=%d, embedding client=%d. "
+                    + "dense_vector.dims is immutable on an existing Elasticsearch index. "
+                    + "Run a reindex (drop + recreate via SearchIndexing app) to align "
+                    + "the index with the new embedding model.",
+                metaDimension,
+                dimension));
       }
     }
 

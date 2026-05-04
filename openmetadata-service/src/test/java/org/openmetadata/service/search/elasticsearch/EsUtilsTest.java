@@ -555,9 +555,11 @@ class EsUtilsTest {
   }
 
   @Test
-  void enrichIndexMappingWarnsAndUsesClientDimensionWhenMetaDimensionMismatches() {
-    // Existing index was built with dimension 384 (e.g. DJL all-MiniLM-L6-v2),
-    // but the embedding client now reports 1536 (e.g. user switched to OpenAI).
+  void enrichIndexMappingThrowsWhenMetaDimensionMismatchesClient() {
+    // dense_vector.dims is immutable on an existing ES index. If the embedding
+    // client reports a different dimension than what the index was built with,
+    // silently rewriting dims would either be rejected by ES (putMapping) or
+    // produce a mapping that disagrees with stored vectors. Must hard-fail.
     String mapping =
         "{\"mappings\":{"
             + "\"_meta\":{\"embedding_model\":\"old-model\",\"embedding_dimension\":384},"
@@ -568,12 +570,6 @@ class EsUtilsTest {
         org.mockito.Mockito.mock(
             org.openmetadata.service.search.vector.client.EmbeddingClient.class);
     org.mockito.Mockito.when(mockEmbeddingClient.getDimension()).thenReturn(1536);
-    org.mockito.Mockito.when(mockEmbeddingClient.getModelId()).thenReturn("new-model");
-
-    Logger esUtilsLogger = (Logger) org.slf4j.LoggerFactory.getLogger(EsUtils.class);
-    ListAppender<ILoggingEvent> logCapture = new ListAppender<>();
-    logCapture.start();
-    esUtilsLogger.addAppender(logCapture);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
@@ -581,34 +577,16 @@ class EsUtilsTest {
       org.mockito.Mockito.when(searchRepository.getEmbeddingClient())
           .thenReturn(mockEmbeddingClient);
 
-      String result = EsUtils.enrichIndexMappingForElasticsearch(mapping);
-
-      // Client dimension wins: index field uses 1536, _meta is rewritten with the new values.
+      IllegalStateException ex =
+          assertThrows(
+              IllegalStateException.class,
+              () -> EsUtils.enrichIndexMappingForElasticsearch(mapping));
       assertTrue(
-          result.contains("\"dims\":1536"),
-          "embedding.dims should reflect the embedding client (not stale _meta)");
+          ex.getMessage().contains("384") && ex.getMessage().contains("1536"),
+          "Exception message must include both old and new dimensions");
       assertTrue(
-          result.contains("\"embedding_dimension\":1536"),
-          "_meta.embedding_dimension should be rewritten to the client value");
-      assertTrue(
-          result.contains("\"embedding_model\":\"new-model\""),
-          "_meta.embedding_model should be rewritten to the client value");
-      assertFalse(
-          result.contains("\"embedding_dimension\":384"),
-          "Stale _meta.embedding_dimension must not survive");
-
-      // Verify a WARN was emitted explaining the mismatch.
-      boolean warned =
-          logCapture.list.stream()
-              .anyMatch(
-                  e ->
-                      e.getLevel() == Level.WARN
-                          && e.getFormattedMessage().contains("Embedding dimension mismatch")
-                          && e.getFormattedMessage().contains("384")
-                          && e.getFormattedMessage().contains("1536"));
-      assertTrue(warned, "A WARN log should be emitted on dimension mismatch");
-    } finally {
-      esUtilsLogger.detachAppender(logCapture);
+          ex.getMessage().toLowerCase().contains("reindex"),
+          "Exception message must direct the operator to reindex");
     }
   }
 
