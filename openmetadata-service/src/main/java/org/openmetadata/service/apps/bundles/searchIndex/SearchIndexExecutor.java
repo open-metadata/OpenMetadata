@@ -1329,10 +1329,14 @@ public class SearchIndexExecutor implements AutoCloseable {
   }
 
   private List<String> getSearchIndexFields(String entityType) {
-    if (TIME_SERIES_ENTITIES.contains(entityType)) {
-      return List.of();
-    }
-    return List.of("*");
+    // Delegate to the shared helper so single-server (this executor) and distributed
+    // (PartitionWorker) reindex paths request the same minimal field set. Otherwise
+    // setFieldsInBulk runs every registered fieldFetcher — including expensive ones like
+    // fetchAndSetOwns on Team/User — even though the search document drops most of them
+    // via getExcludedFields. PR #27723 originally fixed this for EntityReader; the
+    // executor was the missing piece.
+    return org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSearchIndexFields(
+        entityType);
   }
 
   @SuppressWarnings("unchecked")

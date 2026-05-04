@@ -315,6 +315,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     int bundlesWritten = 0;
     int failed = 0;
     int unavailableAttempts = 0;
+    boolean bailedOut = false;
     long start = System.currentTimeMillis();
     while (!stopped) {
       if (!cacheProvider.available()) {
@@ -330,6 +331,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
               unavailableAttempts,
               (MAX_UNAVAILABLE_RETRIES * UNAVAILABLE_BACKOFF_MS) / 1000);
           partiallyWarmed = true;
+          bailedOut = true;
           break;
         }
         try {
@@ -429,7 +431,13 @@ public class CacheWarmupApp extends AbstractNativeApplication {
         elapsed);
     if (!stopped) {
       reportCoverage(entityType, dao, success, bundlesWritten);
-      clearCheckpoint(entityType);
+      // Only clear the checkpoint when this entity type fully completed. If we bailed because
+      // the cache went unavailable, the saved offset is the last successfully pipelined page
+      // and the next run should resume from there — clearing it would force a restart from
+      // offset 0 and re-warm everything we already wrote.
+      if (!bailedOut) {
+        clearCheckpoint(entityType);
+      }
     }
     if (distributedClaimEnabled()) {
       releaseClaim(entityType);

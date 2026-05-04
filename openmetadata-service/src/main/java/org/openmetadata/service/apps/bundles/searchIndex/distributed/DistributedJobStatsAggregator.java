@@ -236,19 +236,22 @@ public class DistributedJobStatsAggregator {
       // Convert to WebSocket message format
       AppRunRecord appRecord = convertToAppRunRecord(job, serverStats);
 
-      // Broadcast via WebSocket — but skip during the user-initiated STOPPING phase. The
-      // {@code AppScheduler.updateAndBroadcastStoppedStatus} path already wrote
-      // AppRunRecord.status=STOPPED and pushed it on this same WebSocket channel. If we keep
-      // broadcasting AppRunRecord built from the search_index_job row (still STOPPING), we
-      // overwrite that STOPPED in the UI for the entire drain period and the user's Stop click
-      // looks like it did nothing. Once the job actually transitions to a terminal state we
-      // resume broadcasting so the UI shows the final outcome.
+      // Broadcast via WebSocket AND notify progress listener — but skip both during the user-
+      // initiated STOPPING phase. The {@code AppScheduler.updateAndBroadcastStoppedStatus} path
+      // already wrote AppRunRecord.status=STOPPED. If we keep building AppRunRecord from the
+      // search_index_job row (still STOPPING), we overwrite that STOPPED in the UI for the
+      // entire drain period and the user's Stop click looks like it did nothing.
+      //
+      // The progress listener has its own override path: {@code QuartzProgressListener.
+      // onProgressUpdate} flips the in-memory status back to RUNNING when {@code pendingErrors
+      // > 0} and broadcasts a fresh AppRunRecord — so we have to skip it too, not just
+      // {@code broadcastStats}. STOPPING is non-terminal in {@code notifyProgressListener}'s
+      // switch, so skipping it doesn't drop any onJobStopped/onJobCompleted callbacks; those
+      // fire when the job moves to STOPPED/COMPLETED and we resume notifying.
       if (status != IndexJobStatus.STOPPING) {
         broadcastStats(appRecord);
+        notifyProgressListener(job, serverStats);
       }
-
-      // Notify progress listener
-      notifyProgressListener(job, serverStats);
 
       if (job.isTerminal()) {
         LOG.info(
