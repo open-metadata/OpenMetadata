@@ -14,7 +14,7 @@ import json
 import re
 import traceback
 from copy import deepcopy
-from typing import Any, Iterable, Optional, Tuple, Union  # noqa: UP035
+from typing import Iterable, Optional, Tuple, Union  # noqa: UP035
 
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
@@ -49,6 +49,13 @@ from metadata.ingestion.source.database.column_type_parser import create_sqlalch
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.databricks.models import (
+    ColumnDescriptions,
+    DescribeJsonPayload,
+    DescribeJsonType,
+    NestedDescriptions,
+    NestedFieldPath,
 )
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_DDL,
@@ -126,7 +133,7 @@ def _fetch_nested_descriptions_via_describe_json(
     db_name: str | None,
     schema: str | None,
     table_name: str,
-) -> dict[str, dict[tuple[str, ...], str]]:
+) -> ColumnDescriptions:
     """Run ``DESCRIBE TABLE EXTENDED <fqn> AS JSON`` and return a per-column
     map of ``{field_path_tuple: comment}``.
 
@@ -156,58 +163,59 @@ def _fetch_nested_descriptions_via_describe_json(
 
 
 def _build_column_descriptions_map(
-    payload: Any,
-) -> dict[str, dict[tuple[str, ...], str]]:
+    payload: object,
+) -> ColumnDescriptions:
     """From a DESCRIBE-AS-JSON payload, return ``{column_name: {path: comment}}``
-    for every top-level column whose type contains commented nested fields."""
-    if not isinstance(payload, dict):
+    for every top-level column whose type contains commented nested fields.
+
+    Accepts a raw JSON-decoded value (``object``) and validates it into a
+    ``DescribeJsonPayload``. On any validation failure (older runtime,
+    schema variation, malformed JSON) returns an empty dict so the caller
+    cleanly degrades to top-level-only descriptions."""
+    try:
+        validated = DescribeJsonPayload.model_validate(payload)
+    except Exception:  # pylint: disable=broad-except
         return {}
-    result: dict[str, dict[tuple[str, ...], str]] = {}
-    for col in payload.get("columns") or []:
-        if not isinstance(col, dict):
+    result: ColumnDescriptions = {}
+    for col in validated.columns:
+        if not col.name:
             continue
-        col_name = col.get("name")
-        if not col_name:
-            continue
-        descriptions: dict[tuple[str, ...], str] = {}
-        _collect_nested_descriptions(col.get("type"), [], descriptions)
+        descriptions: NestedDescriptions = {}
+        _collect_nested_descriptions(col.type, [], descriptions)
         if descriptions:
-            result[col_name] = descriptions
+            result[col.name] = descriptions
     return result
 
 
 def _collect_nested_descriptions(
-    type_node,
+    type_node: DescribeJsonType | None,
     path: list[str],
-    descriptions: dict[tuple[str, ...], str],
+    descriptions: NestedDescriptions,
 ) -> None:
     """Walk a JSON ``type`` node, collecting comments from struct fields.
 
     OM does not surface map values as named children, so map types are not
     descended. Array wrappers do not add a path level — children of an
     ``array<struct<...>>`` column are the struct's fields directly."""
-    if not isinstance(type_node, dict):
+    if type_node is None or not type_node.name:
         return
-    type_name = (type_node.get("name") or "").lower()
+    type_name = type_node.name.lower()
     if type_name == "struct":
-        for field in type_node.get("fields") or []:
-            if not isinstance(field, dict):
+        for field in type_node.fields or []:
+            if not field.name:
                 continue
-            field_name = field.get("name")
-            if not field_name:
-                continue
-            field_path = path + [field_name]
-            if field.get("comment"):
-                descriptions[tuple(field_path)] = field["comment"]
-            _collect_nested_descriptions(field.get("type"), field_path, descriptions)
+            field_path = path + [field.name]
+            if field.comment:
+                descriptions[tuple(field_path)] = field.comment
+            _collect_nested_descriptions(field.type, field_path, descriptions)
     elif type_name == "array":
-        _collect_nested_descriptions(type_node.get("element_type"), path, descriptions)
+        _collect_nested_descriptions(type_node.element_type, path, descriptions)
 
 
 def _apply_nested_descriptions(
     column: "Column",
-    descriptions: dict[tuple[str, ...], str],
-    path: tuple[str, ...],
+    descriptions: NestedDescriptions,
+    path: NestedFieldPath,
 ) -> None:
     """Walk a parsed Column tree and assign descriptions from a path-keyed
     map. Path matches struct-field-name nesting; arrays do not add a level
@@ -283,7 +291,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     # Lazily populated on the first struct / array<struct> column — most tables
     # are primitives-only and shouldn't pay the AS JSON round-trip, and map
     # values aren't surfaced as named children so they don't need it either.
-    nested_descriptions_by_column: dict[str, dict[tuple[str, ...], str]] | None = None
+    nested_descriptions_by_column: ColumnDescriptions | None = None
     result = []
     for col_name, col_type, _comment in rows:
         # DESCRIBE TABLE EXTENDED emits real columns first, then '#'-prefixed
