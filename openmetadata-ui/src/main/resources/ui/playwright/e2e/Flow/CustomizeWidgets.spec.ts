@@ -203,7 +203,8 @@ test('Activity Feed Widget', async ({ page }) => {
   await test.step('Test widget filters', async () => {
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    expect(await page.getByTestId('task-feed-card').count()).toBeGreaterThan(0);
+    // wait for first card visible before applying filters
+    await expect(page.getByTestId('task-feed-card').first()).toBeVisible();
     await verifyActivityFeedFilters(page, widgetKey);
   });
 
