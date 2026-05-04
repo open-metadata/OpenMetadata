@@ -475,14 +475,14 @@ class DatabricksConnectionTest(TestCase):
     def test_get_connection_url(self):
         """Test get_connection_url function"""
         connection = self.DatabricksConnection(
-            scheme=self.DatabricksScheme.databricks_connector,
+            scheme=self.DatabricksScheme.databricks,
             hostPort="test-host:443",
             authType=PersonalAccessToken(token="test-token"),
             httpPath="/sql/1.0/warehouses/test",
         )
 
         url = self.get_connection_url(connection)
-        expected_url = "databricks+connector://test-host:443"
+        expected_url = "databricks://test-host:443"
         self.assertEqual(url, expected_url)
 
     @patch(
@@ -491,7 +491,7 @@ class DatabricksConnectionTest(TestCase):
     def test_get_connection(self, mock_create_connection):
         """Test get_connection function"""
         connection = self.DatabricksConnection(
-            scheme=self.DatabricksScheme.databricks_connector,
+            scheme=self.DatabricksScheme.databricks,
             hostPort="test-host:443",
             authType=PersonalAccessToken(token="test-token"),
             httpPath="/sql/1.0/warehouses/test",
@@ -847,7 +847,7 @@ class DatabricksConnectionTest(TestCase):
 
         # Create test connection
         service_connection = DatabricksConnection(
-            scheme=DatabricksScheme.databricks_connector,
+            scheme=DatabricksScheme.databricks,
             hostPort="test-host:443",
             authType=PersonalAccessToken(token="test-token"),
             httpPath="/sql/1.0/warehouses/test",
