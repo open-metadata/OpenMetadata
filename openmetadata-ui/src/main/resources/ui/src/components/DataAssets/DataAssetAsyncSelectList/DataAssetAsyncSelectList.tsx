@@ -329,7 +329,6 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         ) {
           return (
             <Autocomplete.Item
-              data-testid={getEntityName(dataAssetItem)}
               id={item.id}
               key={item.id}
               label={getEntityName(dataAssetItem)}>
