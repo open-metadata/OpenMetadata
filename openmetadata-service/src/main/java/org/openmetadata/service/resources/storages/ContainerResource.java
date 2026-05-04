@@ -757,12 +757,18 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @DefaultValue("0")
           @QueryParam("offset")
           @Min(value = 0, message = "must be greater than or equal to 0")
-          Integer offset) {
+          Integer offset,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted children.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     ResourceContext<Container> resourceContext = getResourceContextByName(fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listChildren(fqn, limit, offset);
+    return repository.listChildren(fqn, limit, offset, include);
   }
 
   @GET
