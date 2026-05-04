@@ -306,7 +306,10 @@ export function useOntologyGraphDerived({
     return { nodes: filteredNodes, edges: filteredEdges };
   }, [combinedGraphData, filters, explorationMode, scope, entityId]);
 
-  const isHierarchyView = filters.viewMode === 'hierarchy';
+  const isHierarchyView = useMemo(
+    () => filters.viewMode === 'hierarchy',
+    [filters.viewMode]
+  );
 
   const hierarchyGraphData = useMemo(() => {
     if (!isHierarchyView || !filteredGraphData) {
@@ -461,6 +464,7 @@ export function useOntologyGraphDerived({
   }, [graphDataToShow, dataSource, explorationMode, t]);
 
   return {
+    combinedGraphData,
     filteredGraphData,
     hierarchyGraphData,
     graphDataToShow,

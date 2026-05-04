@@ -67,12 +67,31 @@ public class StageStatsTracker {
   }
 
   public void recordReaderBatch(int successCount, int failedCount, int warningsCount) {
-    reader.add(successCount, failedCount, warningsCount);
+    recordReaderBatch(successCount, failedCount, warningsCount, 0L);
+  }
+
+  /**
+   * Record a Reader batch with the wall-clock duration the batch took. Duration is the total time
+   * spent in the underlying paginated DB read (listAfter + setFieldsInBulk), not including
+   * downstream queue or processing time.
+   */
+  public void recordReaderBatch(
+      int successCount, int failedCount, int warningsCount, long durationNanos) {
+    reader.add(successCount, failedCount, warningsCount, durationNanos);
     checkFlush();
   }
 
   public void recordProcess(StatsResult result) {
     process.record(result);
+    checkFlush();
+  }
+
+  /**
+   * Record a Process batch (doc-build) with the wall-clock duration. Duration is the time taken
+   * for the parallel doc-build join — pure CPU/serialization work, no I/O.
+   */
+  public void recordProcessBatch(int successCount, int failedCount, long durationNanos) {
+    process.add(successCount, failedCount, 0, durationNanos);
     checkFlush();
   }
 
@@ -83,7 +102,16 @@ public class StageStatsTracker {
   }
 
   public void recordSinkBatch(int successCount, int failedCount) {
-    sink.add(successCount, failedCount, 0);
+    recordSinkBatch(successCount, failedCount, 0L);
+  }
+
+  /**
+   * Record a Sink batch (OpenSearch / Elasticsearch bulk request) with the wall-clock round-trip
+   * duration. Duration is measured strictly around the bulk HTTP call, so it isolates the search
+   * cluster's write latency.
+   */
+  public void recordSinkBatch(int successCount, int failedCount, long durationNanos) {
+    sink.add(successCount, failedCount, 0, durationNanos);
     checkFlush();
   }
 
@@ -162,6 +190,33 @@ public class StageStatsTracker {
     checkFlush();
   }
 
+  /**
+   * Record a Vector batch (embedding API call) with the wall-clock duration. Duration isolates
+   * the embedding service round-trip from local doc-build and bulk write.
+   */
+  public void recordVectorBatch(int successCount, int failedCount, long durationNanos) {
+    vector.add(successCount, failedCount, 0, durationNanos);
+    checkFlush();
+  }
+
+  /**
+   * Add wall-clock duration to a stage without changing its success/failed/warning counters.
+   * Used when a stage's count records arrive per-entity (via {@link #recordProcess} /
+   * {@link #recordSink}) but the meaningful timing is the per-batch wall-clock the caller
+   * measured around the parallel join or the bulk request. Avoids double-counting.
+   */
+  public void addStageTime(Stage stage, long durationNanos) {
+    if (durationNanos <= 0) {
+      return;
+    }
+    switch (stage) {
+      case READER -> reader.getTotalTimeNanos().addAndGet(durationNanos);
+      case PROCESS -> process.getTotalTimeNanos().addAndGet(durationNanos);
+      case SINK -> sink.getTotalTimeNanos().addAndGet(durationNanos);
+      case VECTOR -> vector.getTotalTimeNanos().addAndGet(durationNanos);
+    }
+  }
+
   /** Increments operation count and flushes if threshold or time interval is reached. */
   private void checkFlush() {
     long currentOps = operationCount.incrementAndGet();
@@ -184,12 +239,21 @@ public class StageStatsTracker {
     long rSuccess = reader.getSuccess().getAndSet(0);
     long rFailed = reader.getFailed().getAndSet(0);
     long rWarnings = reader.getWarnings().getAndSet(0);
+    long rTimeNanos = reader.getTotalTimeNanos().getAndSet(0);
     long pSuccess = process.getSuccess().getAndSet(0);
     long pFailed = process.getFailed().getAndSet(0);
+    long pTimeNanos = process.getTotalTimeNanos().getAndSet(0);
     long sSuccess = sink.getSuccess().getAndSet(0);
     long sFailed = sink.getFailed().getAndSet(0);
+    long sTimeNanos = sink.getTotalTimeNanos().getAndSet(0);
     long vSuccess = vector.getSuccess().getAndSet(0);
     long vFailed = vector.getFailed().getAndSet(0);
+    long vTimeNanos = vector.getTotalTimeNanos().getAndSet(0);
+
+    long rTimeMs = rTimeNanos / 1_000_000L;
+    long pTimeMs = pTimeNanos / 1_000_000L;
+    long sTimeMs = sTimeNanos / 1_000_000L;
+    long vTimeMs = vTimeNanos / 1_000_000L;
 
     // Skip if nothing to flush
     if (rSuccess == 0
@@ -200,7 +264,11 @@ public class StageStatsTracker {
         && sSuccess == 0
         && sFailed == 0
         && vSuccess == 0
-        && vFailed == 0) {
+        && vFailed == 0
+        && rTimeMs == 0
+        && pTimeMs == 0
+        && sTimeMs == 0
+        && vTimeMs == 0) {
       operationCount.set(0);
       lastFlushTime = System.currentTimeMillis();
       return;
@@ -234,6 +302,10 @@ public class StageStatsTracker {
           pFailed,
           vSuccess,
           vFailed,
+          rTimeMs,
+          pTimeMs,
+          sTimeMs,
+          vTimeMs,
           0, // partitionsCompleted - tracked separately
           0, // partitionsFailed - tracked separately
           System.currentTimeMillis());
@@ -242,29 +314,37 @@ public class StageStatsTracker {
       lastFlushTime = System.currentTimeMillis();
 
       LOG.debug(
-          "Flushed stats for job {} entity {} on server {}: reader={}/{}, process={}/{}, sink={}/{}, vector={}/{}",
+          "Flushed stats for job {} entity {} on server {}: reader={}/{} ({}ms), process={}/{} ({}ms), sink={}/{} ({}ms), vector={}/{} ({}ms)",
           jobId,
           entityType,
           serverId,
           rSuccess,
           rFailed,
+          rTimeMs,
           pSuccess,
           pFailed,
+          pTimeMs,
           sSuccess,
           sFailed,
+          sTimeMs,
           vSuccess,
-          vFailed);
+          vFailed,
+          vTimeMs);
     } catch (Exception e) {
       // On failure, add the values back so they're not lost
       reader.getSuccess().addAndGet(rSuccess);
       reader.getFailed().addAndGet(rFailed);
       reader.getWarnings().addAndGet(rWarnings);
+      reader.getTotalTimeNanos().addAndGet(rTimeNanos);
       process.getSuccess().addAndGet(pSuccess);
       process.getFailed().addAndGet(pFailed);
+      process.getTotalTimeNanos().addAndGet(pTimeNanos);
       sink.getSuccess().addAndGet(sSuccess);
       sink.getFailed().addAndGet(sFailed);
+      sink.getTotalTimeNanos().addAndGet(sTimeNanos);
       vector.getSuccess().addAndGet(vSuccess);
       vector.getFailed().addAndGet(vFailed);
+      vector.getTotalTimeNanos().addAndGet(vTimeNanos);
       LOG.error(
           "Failed to flush stats for job {} on server {}: {}", jobId, serverId, e.getMessage(), e);
     }

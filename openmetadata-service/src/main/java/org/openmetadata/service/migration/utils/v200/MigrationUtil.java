@@ -10,11 +10,9 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
-import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
-import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -23,7 +21,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -31,62 +29,14 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class MigrationUtil {
 
-  private static final String TABLE_COLUMN_ASSET_TYPE = "tableColumn";
-
   private MigrationUtil() {}
-
-  public static void addTableColumnSearchSettings() {
-    try {
-      LOG.info("Adding tableColumn search settings configuration for column search support");
-
-      Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
-
-      if (searchSettings == null) {
-        LOG.warn(
-            "Search settings not found in database. "
-                + "Default settings will be loaded on next startup which includes tableColumn.");
-        return;
-      }
-
-      SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
-      SearchSettings defaultSettings = SearchSettingsMergeUtil.loadSearchSettingsFromFile();
-
-      if (defaultSettings == null) {
-        LOG.error("Failed to load default search settings from file, skipping migration");
-        return;
-      }
-
-      boolean assetTypeAdded =
-          SearchSettingsMergeUtil.addMissingAssetTypeConfiguration(
-              currentSettings, defaultSettings, TABLE_COLUMN_ASSET_TYPE);
-
-      boolean allowedFieldsAdded =
-          SearchSettingsMergeUtil.addMissingAllowedFields(
-              currentSettings, defaultSettings, TABLE_COLUMN_ASSET_TYPE);
-
-      if (assetTypeAdded || allowedFieldsAdded) {
-        SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
-        LOG.info(
-            "Successfully added tableColumn search settings: "
-                + "assetTypeConfiguration={}, allowedFields={}",
-            assetTypeAdded,
-            allowedFieldsAdded);
-      } else {
-        LOG.info("tableColumn search settings already exist, no updates needed");
-      }
-
-    } catch (Exception e) {
-      LOG.error("Error adding tableColumn search settings", e);
-      throw new RuntimeException("Failed to add tableColumn search settings", e);
-    }
-  }
 
   /**
    * Migrate suggestions from the old suggestions table to the new task_entity table. Each
    * suggestion becomes a Task with type=Suggestion and category=MetadataUpdate. The about
    * EntityReference and aboutFqnHash are properly computed from the entityLink.
    */
-  public static void migrateSuggestionsToTaskEntity(Handle handle) {
+  public static void migrateSuggestionsToTaskEntity(Handle handle, ConnectionType connectionType) {
     LOG.info("Starting migration of suggestions to task_entity");
 
     boolean tableExists;
@@ -123,8 +73,23 @@ public class MigrationUtil {
         JsonNode suggestionJson = JsonUtils.readTree(jsonStr);
 
         String suggestionId = suggestionJson.get("id").asText();
+        boolean alreadyExists = taskExists(handle, suggestionId);
 
-        if (taskExists(handle, suggestionId)) {
+        if (alreadyExists) {
+          String createdByUserId = null;
+          if (suggestionJson.has("createdBy")
+              && suggestionJson.get("createdBy").has("id")
+              && !suggestionJson.get("createdBy").get("id").isNull()) {
+            createdByUserId = suggestionJson.get("createdBy").get("id").asText();
+          }
+          ObjectNode aboutJson = JsonUtils.getObjectNode();
+          String entityLinkStr =
+              suggestionJson.has("entityLink") ? suggestionJson.get("entityLink").asText() : null;
+          if (entityLinkStr != null) {
+            setAboutFromEntityLink(aboutJson, entityLinkStr, suggestionJson);
+          }
+          insertTaskLinkRelationships(
+              handle, suggestionId, null, null, null, createdByUserId, aboutJson, connectionType);
           skipped++;
           continue;
         }
@@ -216,8 +181,10 @@ public class MigrationUtil {
         taskJson.put("commentCount", 0);
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
 
-        insertTask(handle, suggestionId, taskJson.toString(), fqnHash);
+        insertTask(handle, suggestionId, taskJson.toString(), fqnHash, connectionType);
         insertTaskDomainRelationships(handle, suggestionId, inheritedDomains);
+        insertTaskLinkRelationships(
+            handle, suggestionId, null, null, null, createdByUserId, taskJson, connectionType);
         migrated++;
       } catch (Exception e) {
         LOG.warn("Error migrating suggestion: {}", e.getMessage());
@@ -234,13 +201,23 @@ public class MigrationUtil {
    * Migrate thread-based tasks from thread_entity to the new task_entity table. Each thread with
    * type='Task' becomes a proper Task entity with correct type mapping, payload, and aboutFqnHash.
    */
-  public static void migrateThreadTasksToTaskEntity(Handle handle) {
+  public static void migrateThreadTasksToTaskEntity(Handle handle, ConnectionType connectionType) {
     LOG.info("Starting migration of thread-based tasks to task_entity");
-
+    String threadTable;
+    if (tableExists(handle, "thread_entity")) {
+      threadTable = "thread_entity";
+    } else if (tableExists(handle, "thread_entity_legacy")) {
+      threadTable = "thread_entity_legacy";
+    } else {
+      LOG.info(
+          "Neither thread_entity nor thread_entity_legacy exists, skipping thread task migration");
+      return;
+    }
     List<Map<String, Object>> threads =
         handle
             .createQuery(
-                "SELECT json FROM thread_entity WHERE type = 'Task' ORDER BY createdAt ASC")
+                String.format(
+                    "SELECT json FROM %s WHERE type = 'Task' ORDER BY createdAt ASC", threadTable))
             .mapToMap()
             .list();
 
@@ -261,11 +238,7 @@ public class MigrationUtil {
         JsonNode threadJson = JsonUtils.readTree(jsonStr);
 
         String threadId = threadJson.get("id").asText();
-
-        if (taskExists(handle, threadId)) {
-          skipped++;
-          continue;
-        }
+        boolean alreadyExists = taskExists(handle, threadId);
 
         JsonNode taskDetails = threadJson.get("task");
         if (taskDetails == null) {
@@ -287,6 +260,24 @@ public class MigrationUtil {
           entityLink = MessageParser.EntityLink.parse(aboutLink);
         } catch (Exception e) {
           LOG.warn("Cannot parse entityLink '{}', skipping thread {}", aboutLink, threadId);
+          skipped++;
+          continue;
+        }
+
+        if (alreadyExists) {
+          String createdByName = threadJson.path("createdBy").asText("system");
+          String createdByUserId = lookupUserId(handle, createdByName);
+          ObjectNode aboutJson = JsonUtils.getObjectNode();
+          setAboutFromEntityLink(aboutJson, aboutLink, threadJson);
+          insertTaskLinkRelationships(
+              handle,
+              threadId,
+              taskDetails.has("assignees") ? taskDetails.get("assignees") : null,
+              taskDetails.has("reviewers") ? taskDetails.get("reviewers") : null,
+              taskDetails.has("watchers") ? taskDetails.get("watchers") : null,
+              createdByUserId,
+              aboutJson,
+              connectionType);
           skipped++;
           continue;
         }
@@ -373,8 +364,17 @@ public class MigrationUtil {
           taskJson.set("resolution", resolution);
         }
 
-        insertTask(handle, threadId, taskJson.toString(), fqnHash);
+        insertTask(handle, threadId, taskJson.toString(), fqnHash, connectionType);
         insertTaskDomainRelationships(handle, threadId, inheritedDomains);
+        insertTaskLinkRelationships(
+            handle,
+            threadId,
+            taskDetails.has("assignees") ? taskDetails.get("assignees") : null,
+            taskDetails.has("reviewers") ? taskDetails.get("reviewers") : null,
+            taskDetails.has("watchers") ? taskDetails.get("watchers") : null,
+            createdByUserId,
+            taskJson,
+            connectionType);
         migrated++;
       } catch (Exception e) {
         LOG.warn("Error migrating thread task: {}", e.getMessage());
@@ -475,7 +475,8 @@ public class MigrationUtil {
    * thread_entity. User conversations stay in thread_entity; only generated activity entries are
    * migrated.
    */
-  public static void migrateLegacyActivityThreadsToActivityStream(Handle handle) {
+  public static void migrateLegacyActivityThreadsToActivityStream(
+      Handle handle, ConnectionType connectionType) {
     LOG.info("Starting migration of legacy thread activity to activity_stream");
 
     if (!tableExists(handle, "thread_entity")) {
@@ -511,7 +512,7 @@ public class MigrationUtil {
           continue;
         }
 
-        insertActivityEvent(handle, event);
+        insertActivityEvent(handle, event, connectionType);
         migrated++;
       } catch (Exception e) {
         LOG.warn("Error migrating legacy activity thread to activity_stream: {}", e.getMessage());
@@ -533,6 +534,10 @@ public class MigrationUtil {
       ObjectNode aboutRef = JsonUtils.getObjectNode();
       if (sourceJson.has("entityId") && !sourceJson.get("entityId").isNull()) {
         aboutRef.put("id", sourceJson.get("entityId").asText());
+      } else if (sourceJson.has("entityRef")
+          && sourceJson.get("entityRef").has("id")
+          && !sourceJson.get("entityRef").get("id").isNull()) {
+        aboutRef.put("id", sourceJson.get("entityRef").get("id").asText());
       }
       aboutRef.put("type", entityType);
       aboutRef.put("fullyQualifiedName", entityFQN);
@@ -911,7 +916,7 @@ public class MigrationUtil {
       handle
           .createQuery(String.format("SELECT 1 FROM %s LIMIT 1", tableName))
           .mapTo(Integer.class)
-          .one();
+          .findFirst();
       return true;
     } catch (Exception e) {
       return false;
@@ -960,7 +965,8 @@ public class MigrationUtil {
         > 0;
   }
 
-  private static void insertActivityEvent(Handle handle, ActivityEvent event) {
+  private static void insertActivityEvent(
+      Handle handle, ActivityEvent event, ConnectionType connectionType) {
     String entityFqnHash =
         event.getEntity().getFullyQualifiedName() != null
             ? FullyQualifiedName.buildHash(event.getEntity().getFullyQualifiedName())
@@ -973,6 +979,8 @@ public class MigrationUtil {
             : JsonUtils.pojoToJson(
                 event.getDomains().stream().map(domain -> domain.getId().toString()).toList());
 
+    String domainsBind = connectionType == ConnectionType.POSTGRES ? ":domains::jsonb" : ":domains";
+    String jsonBind = connectionType == ConnectionType.POSTGRES ? ":json::jsonb" : ":json";
     handle
         .createUpdate(
             "INSERT INTO activity_stream "
@@ -980,7 +988,11 @@ public class MigrationUtil {
                 + "actorId, actorName, timestamp, summary, fieldName, oldValue, newValue, domains, json) "
                 + "VALUES (:id, :eventType, :entityType, :entityId, :entityFqnHash, :about, "
                 + ":aboutFqnHash, :actorId, :actorName, :timestamp, :summary, :fieldName, "
-                + ":oldValue, :newValue, :domains, :json)")
+                + ":oldValue, :newValue, "
+                + domainsBind
+                + ", "
+                + jsonBind
+                + ")")
         .bind("id", event.getId().toString())
         .bind("eventType", event.getEventType().value())
         .bind("entityType", event.getEntity().getType())
@@ -1021,13 +1033,13 @@ public class MigrationUtil {
         > 0;
   }
 
-  private static void insertTask(Handle handle, String id, String json, String fqnHash) {
-    handle
-        .createUpdate("INSERT INTO task_entity (id, json, fqnHash) VALUES (:id, :json, :fqnHash)")
-        .bind("id", id)
-        .bind("json", json)
-        .bind("fqnHash", fqnHash)
-        .execute();
+  private static void insertTask(
+      Handle handle, String id, String json, String fqnHash, ConnectionType connectionType) {
+    String sql =
+        connectionType == ConnectionType.POSTGRES
+            ? "INSERT INTO task_entity (id, json, fqnHash) VALUES (:id, :json::jsonb, :fqnHash)"
+            : "INSERT INTO task_entity (id, json, fqnHash) VALUES (:id, :json, :fqnHash)";
+    handle.createUpdate(sql).bind("id", id).bind("json", json).bind("fqnHash", fqnHash).execute();
   }
 
   private static String lookupUserId(Handle handle, String userName) {
@@ -1150,6 +1162,101 @@ public class MigrationUtil {
       return;
     }
     taskJson.set("domains", JsonUtils.valueToTree(domains));
+  }
+
+  private static void insertEntityRelationship(
+      Handle handle,
+      String fromId,
+      String fromEntity,
+      String toId,
+      String toEntity,
+      Relationship relation,
+      ConnectionType connectionType) {
+    String sql =
+        connectionType == ConnectionType.POSTGRES
+            ? "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) "
+                + "ON CONFLICT (fromId, toId, relation) DO UPDATE SET toEntity = EXCLUDED.toEntity, fromEntity = EXCLUDED.fromEntity"
+            : "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) "
+                + "ON DUPLICATE KEY UPDATE toEntity = VALUES(toEntity), fromEntity = VALUES(fromEntity)";
+    try {
+      handle
+          .createUpdate(sql)
+          .bind("fromId", fromId)
+          .bind("toId", toId)
+          .bind("fromEntity", fromEntity)
+          .bind("toEntity", toEntity)
+          .bind("relation", relation.ordinal())
+          .execute();
+    } catch (Exception e) {
+      LOG.debug(
+          "Could not insert entity_relationship {}->{} relation={}: {}",
+          fromId,
+          toId,
+          relation,
+          e.getMessage());
+    }
+  }
+
+  private static void insertTaskUserListRelationships(
+      Handle handle,
+      String taskId,
+      JsonNode users,
+      Relationship relation,
+      ConnectionType connectionType) {
+    if (users == null || !users.isArray()) {
+      return;
+    }
+    for (JsonNode u : users) {
+      String id = u.path("id").asText(null);
+      if (id == null || id.isEmpty()) {
+        continue;
+      }
+      String type = u.path("type").asText("user");
+      insertEntityRelationship(handle, id, type, taskId, Entity.TASK, relation, connectionType);
+    }
+  }
+
+  private static void insertTaskLinkRelationships(
+      Handle handle,
+      String taskId,
+      JsonNode assignees,
+      JsonNode reviewers,
+      JsonNode watchers,
+      String createdByUserId,
+      ObjectNode taskJson,
+      ConnectionType connectionType) {
+    insertTaskUserListRelationships(
+        handle, taskId, assignees, Relationship.ASSIGNED_TO, connectionType);
+    insertTaskUserListRelationships(
+        handle, taskId, reviewers, Relationship.REVIEWS, connectionType);
+    insertTaskUserListRelationships(handle, taskId, watchers, Relationship.FOLLOWS, connectionType);
+    if (createdByUserId != null) {
+      insertEntityRelationship(
+          handle,
+          createdByUserId,
+          Entity.USER,
+          taskId,
+          Entity.TASK,
+          Relationship.CREATED,
+          connectionType);
+    }
+    JsonNode about = taskJson.get("about");
+    if (about != null && about.has("id") && !about.get("id").isNull() && about.has("type")) {
+      String aboutId = about.get("id").asText();
+      String aboutType = about.get("type").asText();
+      if (!aboutId.isEmpty() && !aboutType.isEmpty()) {
+        insertEntityRelationship(
+            handle,
+            aboutId,
+            aboutType,
+            taskId,
+            Entity.TASK,
+            Relationship.MENTIONED_IN,
+            connectionType);
+      }
+    }
   }
 
   /**

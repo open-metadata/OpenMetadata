@@ -210,7 +210,7 @@ class RestSource(ApiServiceSource):
 
     def _get_fallback_url(self) -> Optional[AnyUrl]:  # noqa: UP045
         """Return openAPISchemaURL if available, otherwise None."""
-        schema_conn = self.config.serviceConnection.root.config.openAPISchemaConnection
+        schema_conn = self.config.serviceConnection.root.config.openAPISchemaConnection  # pyright: ignore[reportAttributeAccessIssue]
         if isinstance(schema_conn, OpenAPISchemaURL):
             return schema_conn.openAPISchemaURL
         return None
@@ -218,7 +218,7 @@ class RestSource(ApiServiceSource):
     def _generate_collection_url(self, collection_name: str) -> Optional[AnyUrl]:  # noqa: UP045
         """generate collection url"""
         try:
-            base_url = self.config.serviceConnection.root.config.docURL
+            base_url = self.config.serviceConnection.root.config.docURL  # pyright: ignore[reportAttributeAccessIssue]
             if not base_url:
                 logger.debug(f"Could not generate collection url for {collection_name} because docURL is not present")
                 return self._get_fallback_url()

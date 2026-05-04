@@ -20,7 +20,8 @@ import {
 } from '@openmetadata/ui-core-components';
 import { SearchMd } from '@untitledui/icons';
 import classNames from 'classnames';
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useGenericContext } from '../Customization/GenericProvider/GenericProvider';
@@ -91,6 +92,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const {
     graphRef,
     loading,
+    fetchError,
     isLoadingMore,
     glossaries,
     relationTypes,
@@ -107,6 +109,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     glossaryColorMap,
     isHierarchyView,
     exportableGlossaryId,
+    hasMoreTerms,
+    loadedTermCount,
+    totalTermCount,
     setFilters,
     setSelectedNode,
     handleZoomIn,
@@ -119,6 +124,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     handleModeChange,
     handleViewModeChange,
     handleRefresh,
+    handleLoadMore,
     handleScrollNearEdge,
     handleSettingsChange,
     handleFiltersChange,
@@ -133,6 +139,24 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     onStatsChange,
     onLoadingChange,
   });
+
+  const [searchInput, setSearchInput] = useState(filters.searchQuery);
+  const searchInputRef = useRef(searchInput);
+  searchInputRef.current = searchInput;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFilters((prev) => ({ ...prev, searchQuery: searchInput }));
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchInput, setFilters]);
+
+  useEffect(() => {
+    if (filters.searchQuery !== searchInputRef.current) {
+      setSearchInput(filters.searchQuery);
+    }
+  }, [filters.searchQuery]);
 
   const renderGraphContent = () => {
     const hasNoVisibleNodes =
@@ -158,6 +182,17 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     });
     const hasNoMatchingRelationEdges =
       hasRelationFilter && termToTermEdges.length === 0;
+
+    if (fetchError && !loading && !graphDataToShow) {
+      return (
+        <GraphEmptyState
+          message={t('server.entity-fetch-error', {
+            entity: t('label.graph'),
+          })}
+          testId="ontology-graph-error"
+        />
+      );
+    }
 
     if (loading && hasNoVisibleNodes) {
       return (
@@ -190,16 +225,22 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     }
 
     if (hasNoVisibleNodes && !loading && graphDataToShow !== null) {
+      if (hasRelationFilter) {
+        return (
+          <GraphEmptyState
+            message={t('message.no-relations-for-selected-filter')}
+            testId="ontology-graph-no-relations"
+          />
+        );
+      }
+
       const hasActiveFilter =
-        withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0 ||
-        hasRelationFilter;
+        withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0;
 
       return (
         <GraphEmptyState
           message={
-            hasRelationFilter
-              ? t('message.no-relations-for-selected-filter')
-              : hasActiveFilter
+            hasActiveFilter
               ? t('message.no-data-available-for-selected-filter')
               : t('message.no-glossary-terms-found')
           }
@@ -223,40 +264,52 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
     return (
       <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0">
-        <OntologyGraph
-          edges={graphDataToShow.edges}
-          expandedTermIds={
-            explorationMode === 'data' ? expandedTermIds : undefined
-          }
-          explorationMode={isHierarchyView ? 'hierarchy' : explorationMode}
-          focusNodeId={
-            explorationMode === 'data' ? selectedNode?.id ?? entityId : entityId
-          }
-          glossaries={glossaries}
-          glossaryColorMap={glossaryColorMap}
-          hierarchyCombos={
-            isHierarchyView && hierarchyGraphData
-              ? hierarchyGraphData.combos.map((c) => ({
-                  glossaryId: c.glossaryId,
-                  id: c.id,
-                  label: c.label,
-                }))
-              : undefined
-          }
-          nodePositions={hierarchyBakedPositions}
-          nodes={graphDataToShow.nodes}
-          ref={graphRef}
-          selectedNodeId={
-            explorationMode === 'data' && expandedTermIds.size > 1
-              ? null
-              : selectedNode?.id
-          }
-          settings={settings}
-          onNodeClick={handleGraphNodeClick}
-          onNodeDoubleClick={handleGraphNodeDoubleClick}
-          onPaneClick={handleGraphPaneClick}
-          onScrollNearEdge={handleScrollNearEdge}
-        />
+        <ErrorBoundary
+          fallback={
+            <GraphEmptyState
+              message={t('server.entity-fetch-error', {
+                entity: t('label.graph'),
+              })}
+              testId="ontology-graph-render-error"
+            />
+          }>
+          <OntologyGraph
+            edges={graphDataToShow.edges}
+            expandedTermIds={
+              explorationMode === 'data' ? expandedTermIds : undefined
+            }
+            explorationMode={isHierarchyView ? 'hierarchy' : explorationMode}
+            focusNodeId={
+              explorationMode === 'data'
+                ? selectedNode?.id ?? entityId
+                : entityId
+            }
+            glossaries={glossaries}
+            glossaryColorMap={glossaryColorMap}
+            hierarchyCombos={
+              isHierarchyView && hierarchyGraphData
+                ? hierarchyGraphData.combos.map((c) => ({
+                    glossaryId: c.glossaryId,
+                    id: c.id,
+                    label: c.label,
+                  }))
+                : undefined
+            }
+            nodePositions={hierarchyBakedPositions}
+            nodes={graphDataToShow.nodes}
+            ref={graphRef}
+            selectedNodeId={
+              explorationMode === 'data' && expandedTermIds.size > 1
+                ? null
+                : selectedNode?.id
+            }
+            settings={settings}
+            onNodeClick={handleGraphNodeClick}
+            onNodeDoubleClick={handleGraphNodeDoubleClick}
+            onPaneClick={handleGraphPaneClick}
+            onScrollNearEdge={handleScrollNearEdge}
+          />
+        </ErrorBoundary>
         {isLoadingMore && (
           <>
             <div className="tw:absolute tw:inset-0 tw:z-1 tw:cursor-wait" />
@@ -278,6 +331,22 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     );
   };
 
+  if (scope === 'term' && !entityId) {
+    return (
+      <div
+        className={classNames(
+          'tw:flex tw:items-center tw:justify-center tw:overflow-hidden',
+          className
+        )}
+        data-testid="ontology-explorer-no-entity"
+        style={{ height }}>
+        <Typography as="p" className="tw:text-center tw:text-tertiary">
+          {t('message.no-glossary-terms-found')}
+        </Typography>
+      </div>
+    );
+  }
+
   return (
     <div
       className={classNames(
@@ -294,10 +363,16 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           <FilterToolbar
             filters={filters}
             glossaries={glossaries}
+            hasMoreTerms={hasMoreTerms && explorationMode !== 'data'}
+            isLoading={loading || isLoadingMore}
+            isLoadingMore={isLoadingMore}
+            loadedTermCount={loadedTermCount}
             relationTypes={relationTypes}
+            totalTermCount={totalTermCount}
             viewModeDisabled={explorationMode === 'data'}
             onClearAll={() => setFilters(DEFAULT_FILTERS)}
             onFiltersChange={handleFiltersChange}
+            onLoadMore={handleLoadMore}
             onViewModeChange={handleViewModeChange}
           />
         </Card>
@@ -344,10 +419,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               icon={SearchMd}
               inputClassName="tw:pl-10"
               placeholder={t('label.search-in-graph')}
-              value={filters.searchQuery}
-              onChange={(value) =>
-                setFilters((prev) => ({ ...prev, searchQuery: value }))
-              }
+              value={searchInput}
+              onChange={setSearchInput}
             />
             <ExportGraphPanel
               onExportPng={handleExportPng}
