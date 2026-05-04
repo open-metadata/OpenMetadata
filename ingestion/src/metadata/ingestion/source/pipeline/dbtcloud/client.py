@@ -13,7 +13,7 @@ Client to interact with DBT Cloud REST APIs
 """
 
 import traceback
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConnection import (
     DBTCloudConnection,
@@ -72,9 +72,9 @@ class DBTCloudClient:
 
     def _get_jobs(
         self,
-        job_id: str = None,
-        project_id: str = None,
-        environment_id: str = None,
+        job_id: str = None,  # noqa: RUF013
+        project_id: str = None,  # noqa: RUF013
+        environment_id: str = None,  # noqa: RUF013
     ) -> Iterable[DBTJob]:
         """
         Fetch jobs for an account in dbt cloud
@@ -125,20 +125,20 @@ class DBTCloudClient:
                 f"environment_id: `{environment_id}` or job_id: `{job_id}` : {exc}"
             )
 
-    def test_get_jobs(self) -> List[DBTJob]:
+    def test_get_jobs(self) -> List[DBTJob]:  # noqa: UP006
         """
         test fetch jobs for an account in dbt cloud
         """
         job_list = self.client.get(f"/accounts/{self.config.accountId}/jobs/")
         return DBTJobList.model_validate(job_list).Jobs
 
-    def test_get_runs(self) -> List[DBTRun]:
+    def test_get_runs(self) -> List[DBTRun]:  # noqa: UP006
         """
         test fetch runs for a job in dbt cloud
         """
         result = self.client.get(f"/accounts/{self.config.accountId}/runs/")
         run_list = DBTRunList.model_validate(result).Runs
-        return run_list
+        return run_list  # noqa: RET504
 
     def get_jobs(self) -> Iterable[DBTJob]:
         """
@@ -175,7 +175,7 @@ class DBTCloudClient:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get job info :{exc}")
 
-    def get_latest_successful_run_id(self, job_id: int) -> Optional[int]:
+    def get_latest_successful_run_id(self, job_id: int) -> Optional[int]:  # noqa: UP045
         """
         Get the latest successful run ID for a given job.
         """
@@ -187,21 +187,17 @@ class DBTCloudClient:
                 "status": "10",  # 10 = Success in dbt Cloud API
             }
 
-            result = self.client.get(
-                f"/accounts/{self.config.accountId}/runs/", data=query_params
-            )
+            result = self.client.get(f"/accounts/{self.config.accountId}/runs/", data=query_params)
             run_list_response = DBTRunList.model_validate(result)
 
             if run_list_response.Runs:
                 return run_list_response.Runs[0].id
 
-            return None
+            return None  # noqa: TRY300
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unable to get latest successful run for job {job_id}: {exc}"
-            )
+            logger.warning(f"Unable to get latest successful run for job {job_id}: {exc}")
             return None
 
     def get_runs(self, job_id: int) -> Iterable[DBTRun]:
@@ -220,9 +216,7 @@ class DBTCloudClient:
                 "order_by": "-created_at",
             }
 
-            result = self.client.get(
-                f"/accounts/{self.config.accountId}/runs/", data=query_params
-            )
+            result = self.client.get(f"/accounts/{self.config.accountId}/runs/", data=query_params)
             run_list_response = DBTRunList.model_validate(result)
 
             for run in run_list_response.Runs or []:
@@ -256,18 +250,15 @@ class DBTCloudClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get run info :{exc}")
+            logger.error(f"Unable to get run info :{exc}")
 
     def get_models_with_lineage(
         self, job_id: int, run_id: int
-    ) -> Tuple[
-        Optional[List[DBTModel]], Optional[List[DBTModel]], Optional[List[DBTModel]]
-    ]:
+    ) -> Tuple[Optional[List[DBTModel]], Optional[List[DBTModel]], Optional[List[DBTModel]]]:  # noqa: UP006, UP045
         """
         Get models with dependsOn and seeds in a single GraphQL call.
         """
         try:
-
             query_params = {
                 "query": DBT_GET_MODELS_WITH_LINEAGE,
                 "variables": {"jobId": job_id, "runId": run_id},
@@ -286,5 +277,5 @@ class DBTCloudClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get models with lineage info: {exc}")
+            logger.error(f"Unable to get models with lineage info: {exc}")
         return None, None, None

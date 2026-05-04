@@ -47,9 +47,7 @@ def test_connection(mock_service_connection):
         def _get_client(self):
             return MagicMock()
 
-        def test_connection(
-            self, metadata, automation_workflow=None, timeout_seconds=None
-        ):
+        def test_connection(self, metadata, automation_workflow=None, timeout_seconds=None):
             return TestConnectionResult(
                 status=StatusType.Successful,
                 steps=[
@@ -73,15 +71,11 @@ def test_connection(mock_service_connection):
 class TestBaseConnection:
     """Test suite for BaseConnection class"""
 
-    def test_service_connection_property(
-        self, test_connection, mock_service_connection
-    ):
+    def test_service_connection_property(self, test_connection, mock_service_connection):
         """Test that service_connection property is properly set"""
         assert test_connection.service_connection == mock_service_connection
 
-    def test_test_connection_implementation(
-        self, test_connection, mock_metadata, mock_workflow
-    ):
+    def test_test_connection_implementation(self, test_connection, mock_metadata, mock_workflow):
         """Test that test_connection implementation works correctly"""
         result = test_connection.test_connection(
             metadata=mock_metadata,
@@ -106,9 +100,7 @@ class TestBaseConnection:
             def _get_client(self):
                 return mock_client
 
-            def test_connection(
-                self, metadata, automation_workflow=None, timeout_seconds=None
-            ):
+            def test_connection(self, metadata, automation_workflow=None, timeout_seconds=None):
                 return TestConnectionResult(
                     status=StatusType.Successful,
                     steps=[

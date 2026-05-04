@@ -488,7 +488,10 @@ const IncidentManager = ({
     (value: TestCaseResolutionStatus) => {
       setTestCaseListData((prev) => {
         const testCaseList = prev.data.map((item) => {
-          if (item.stateId === value.stateId) {
+          if (
+            item.testCaseReference?.fullyQualifiedName ===
+            value.testCaseReference?.fullyQualifiedName
+          ) {
             return value;
           }
 

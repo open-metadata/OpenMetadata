@@ -13,6 +13,7 @@ Mixin class containing Container specific methods
 
 To be used by OpenMetadata class
 """
+
 import base64
 import traceback
 from typing import Optional
@@ -20,6 +21,8 @@ from typing import Optional
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.models import EntityList
+from metadata.ingestion.ometa.utils import quote
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -58,32 +61,25 @@ class OMetaContainerMixin:
         for row in sample_data.rows:
             self._process_sample_data_row(row)
 
-    def _serialize_sample_data(
-        self, sample_data: TableData, container_fqn: str
-    ) -> Optional[str]:
+    def _serialize_sample_data(self, sample_data: TableData, container_fqn: str) -> Optional[str]:  # noqa: UP045
         """Serialize sample data to JSON, returning None on error"""
         try:
             return sample_data.model_dump_json()
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error serializing sample data for {container_fqn}"
-                " please check if the data is valid"
-            )
+            logger.warning(f"Error serializing sample data for {container_fqn} please check if the data is valid")
             return None
 
-    def _parse_response(self, resp: dict, container_fqn: str) -> Optional[TableData]:
+    def _parse_response(self, resp: dict, container_fqn: str) -> Optional[TableData]:  # noqa: UP045
         """Parse response into TableData, returning None on error"""
         try:
             return TableData(**resp["sampleData"])
         except UnicodeError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Cannot parse response from {container_fqn} due to {err}")
+            logger.error(f"Cannot parse response from {container_fqn} due to {err}")
             return None
 
-    def ingest_container_sample_data(
-        self, container: Container, sample_data: TableData
-    ) -> Optional[TableData]:
+    def ingest_container_sample_data(self, container: Container, sample_data: TableData) -> Optional[TableData]:  # noqa: UP045
         """
         PUT sample data for a container
 
@@ -93,9 +89,7 @@ class OMetaContainerMixin:
         try:
             self._process_sample_data_rows(sample_data)
 
-            data = self._serialize_sample_data(
-                sample_data, container.fullyQualifiedName.root
-            )
+            data = self._serialize_sample_data(sample_data, container.fullyQualifiedName.root)
             if data is None:
                 return None
 
@@ -107,15 +101,45 @@ class OMetaContainerMixin:
             if resp:
                 return self._parse_response(resp, container.fullyQualifiedName.root)
 
-            return None
+            return None  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to PUT sample data for {container.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Error trying to PUT sample data for {container.fullyQualifiedName.root}: {exc}")
             return None
 
-    def get_container_sample_data(self, container: Container) -> Optional[Container]:
+    def list_container_children(
+        self,
+        container_fqn: str,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> EntityList[Container]:
+        """
+        Page through the immediate children of a Container via the dedicated
+        ``/v1/containers/name/{fqn}/children`` endpoint. Use this instead of
+        fetching the parent with ``fields=children`` — that field is no longer
+        served because the inline payload is unbounded for buckets with many
+        objects.
+
+        Each row is a slim projection (id, name, displayName, fqn, description,
+        service); ``dataModel``, ``tags``, ``owners``, ``extension`` are not
+        populated. Re-fetch the specific child via :meth:`get_by_name` when
+        full details are needed.
+        """
+        path = f"/containers/name/{quote(container_fqn)}/children?limit={limit}&offset={offset}"
+        resp = self.client.get(path)
+        if not isinstance(resp, dict):
+            return EntityList(entities=[], total=0)
+
+        entities = [Container(**elmt) for elmt in resp.get("data") or []]
+        paging = resp.get("paging") or {}
+        return EntityList(
+            entities=entities,
+            total=paging.get("total", len(entities)),
+            after=paging.get("after"),
+            before=paging.get("before"),
+        )
+
+    def get_container_sample_data(self, container: Container) -> Optional[Container]:  # noqa: UP045
         """
         GET call for the /sampleData endpoint for a given Container
 
@@ -128,9 +152,7 @@ class OMetaContainerMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to GET sample data for {container.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Error trying to GET sample data for {container.fullyQualifiedName.root}: {exc}")
 
         if resp:
             try:

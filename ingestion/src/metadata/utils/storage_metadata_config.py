@@ -11,6 +11,7 @@
 """
 Hosts the singledispatch to get Storage Metadata manifest file
 """
+
 import json
 import traceback
 from functools import singledispatch
@@ -54,7 +55,7 @@ logger = ometa_logger()
 STORAGE_METADATA_MANIFEST_FILE_NAME = "openmetadata_storage_manifest.json"
 
 
-class StorageMetadataConfigException(Exception):
+class StorageMetadataConfigException(Exception):  # noqa: N818
     """
     Raise when encountering errors while extracting storage metadata manifest file
     """
@@ -67,9 +68,7 @@ def get_manifest(config):
     """
 
     if config:
-        raise NotImplementedError(
-            f"Config not implemented for type {type(config)}: {config}"
-        )
+        raise NotImplementedError(f"Config not implemented for type {type(config)}: {config}")
 
 
 @get_manifest.register
@@ -77,15 +76,13 @@ def _(config: StorageMetadataLocalConfig) -> ManifestMetadataConfig:
     try:
         if config.manifestFilePath is not None:
             logger.debug(f"Reading [manifestFilePath] from: {config.manifestFilePath}")
-            with open(config.manifestFilePath, "r", encoding="utf-8") as manifest:
+            with open(config.manifestFilePath, "r", encoding="utf-8") as manifest:  # noqa: PTH123
                 metadata_manifest = manifest.read()
             return ManifestMetadataConfig.model_validate(json.loads(metadata_manifest))
-        raise StorageMetadataConfigException("Manifest file path not provided")
+        raise StorageMetadataConfigException("Manifest file path not provided")  # noqa: TRY301
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise StorageMetadataConfigException(
-            f"Error fetching manifest file from local: {exc}"
-        )
+        raise StorageMetadataConfigException(f"Error fetching manifest file from local: {exc}")  # noqa: B904
 
 
 @get_manifest.register
@@ -96,15 +93,11 @@ def _(config: StorageMetadataHttpConfig) -> ManifestMetadataConfig:
             config.manifestHttpPath
         )
         if not http_manifest:
-            raise StorageMetadataConfigException(
-                "Manifest file not found in file server"
-            )
+            raise StorageMetadataConfigException("Manifest file not found in file server")  # noqa: TRY301
         return ManifestMetadataConfig.model_validate(http_manifest.json())
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise StorageMetadataConfigException(
-            f"Error fetching manifest file from file server: {exc}"
-        )
+        raise StorageMetadataConfigException(f"Error fetching manifest file from file server: {exc}")  # noqa: B904
 
 
 @get_manifest.register
@@ -115,13 +108,9 @@ def _(config: StorageMetadataS3Config) -> ManifestMetadataConfig:
             config.prefixConfig.objectPrefix,
         )
 
-        path = (
-            f"{prefix}/{STORAGE_METADATA_MANIFEST_FILE_NAME}"
-            if prefix
-            else STORAGE_METADATA_MANIFEST_FILE_NAME
-        )
+        path = f"{prefix}/{STORAGE_METADATA_MANIFEST_FILE_NAME}" if prefix else STORAGE_METADATA_MANIFEST_FILE_NAME
 
-        from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel
+        from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
             AWSClient,
         )
 
@@ -135,9 +124,7 @@ def _(config: StorageMetadataS3Config) -> ManifestMetadataConfig:
         return ManifestMetadataConfig.model_validate(json.loads(manifest))
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise StorageMetadataConfigException(
-            f"Error fetching manifest file from s3: {exc}"
-        )
+        raise StorageMetadataConfigException(f"Error fetching manifest file from s3: {exc}")  # noqa: B904
 
 
 @get_manifest.register
@@ -149,11 +136,7 @@ def _(config: StorageMetadataAdlsConfig) -> ManifestMetadataConfig:
             config.prefixConfig.objectPrefix,
         )
 
-        path = (
-            f"{prefix}/{STORAGE_METADATA_MANIFEST_FILE_NAME}"
-            if prefix
-            else STORAGE_METADATA_MANIFEST_FILE_NAME
-        )
+        path = f"{prefix}/{STORAGE_METADATA_MANIFEST_FILE_NAME}" if prefix else STORAGE_METADATA_MANIFEST_FILE_NAME
 
         blob_client = AzureClient(config.securityConfig).create_blob_client()
 
@@ -166,9 +149,7 @@ def _(config: StorageMetadataAdlsConfig) -> ManifestMetadataConfig:
         return ManifestMetadataConfig.model_validate(json.loads(manifest))
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise StorageMetadataConfigException(
-            f"Error fetching manifest file from adls: {exc}"
-        )
+        raise StorageMetadataConfigException(f"Error fetching manifest file from adls: {exc}")  # noqa: B904
 
 
 @get_manifest.register
@@ -179,13 +160,9 @@ def _(config: StorageMetadataGcsConfig) -> ManifestMetadataConfig:
             config.prefixConfig.objectPrefix,
         )
 
-        path = (
-            f"{prefix}/{STORAGE_METADATA_MANIFEST_FILE_NAME}"
-            if prefix
-            else STORAGE_METADATA_MANIFEST_FILE_NAME
-        )
+        path = f"{prefix}/{STORAGE_METADATA_MANIFEST_FILE_NAME}" if prefix else STORAGE_METADATA_MANIFEST_FILE_NAME
 
-        from google.cloud.storage import (  # pylint: disable=import-outside-toplevel
+        from google.cloud.storage import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
             Client,
         )
 
@@ -200,6 +177,4 @@ def _(config: StorageMetadataGcsConfig) -> ManifestMetadataConfig:
         return ManifestMetadataConfig.model_validate(json.loads(manifest))
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise StorageMetadataConfigException(
-            f"Error fetching manifest file from gcs: {exc}"
-        )
+        raise StorageMetadataConfigException(f"Error fetching manifest file from gcs: {exc}")  # noqa: B904

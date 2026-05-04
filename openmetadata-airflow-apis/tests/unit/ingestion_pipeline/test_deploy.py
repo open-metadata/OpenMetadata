@@ -11,6 +11,7 @@
 """
 Test Deploy
 """
+
 import os
 import uuid
 from unittest.mock import patch
@@ -56,7 +57,7 @@ INGESTION_PIPELINE = IngestionPipeline(
 @patch.dict(os.environ, {"AWS_DEFAULT_REGION": "us-east-2", "AIRFLOW_HOME": "/tmp"})
 def test_deploy_ingestion_pipeline():
     """We can dump an ingestion pipeline to a file without exposing secrets"""
-    from openmetadata_managed_apis.operations.deploy import dump_with_safe_jwt
+    from openmetadata_managed_apis.operations.deploy import dump_with_safe_jwt  # noqa: PLC0415
 
     # Instantiate the Secrets Manager
     SecretsManagerFactory.clear_all()
