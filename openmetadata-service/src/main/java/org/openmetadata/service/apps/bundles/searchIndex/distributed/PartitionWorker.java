@@ -491,18 +491,29 @@ public class PartitionWorker {
     ResultList<?> resultList = readEntitiesKeyset(entityType, keysetCursor, batchSize);
     long t1 = System.currentTimeMillis();
 
-    if (resultList == null || resultList.getData() == null || resultList.getData().isEmpty()) {
-      LOG.debug("{} read={}ms returned empty", entityType, t1 - t0);
-      return new BatchResult(0, 0, 0, null);
-    }
-
-    String nextCursor = resultList.getPaging() != null ? resultList.getPaging().getAfter() : null;
-    int readSuccessCount = listOrEmpty(resultList.getData()).size();
-    int readErrorCount = listOrEmpty(resultList.getErrors()).size();
-    int warningsCount = resultList.getWarningsCount() != null ? resultList.getWarningsCount() : 0;
+    int readSuccessCount = resultList != null ? listOrEmpty(resultList.getData()).size() : 0;
+    int readErrorCount = resultList != null ? listOrEmpty(resultList.getErrors()).size() : 0;
+    int warningsCount =
+        (resultList != null && resultList.getWarningsCount() != null)
+            ? resultList.getWarningsCount()
+            : 0;
+    String nextCursor =
+        (resultList != null && resultList.getPaging() != null)
+            ? resultList.getPaging().getAfter()
+            : null;
 
     if (statsTracker != null) {
       statsTracker.recordReaderBatch(readSuccessCount, readErrorCount, warningsCount);
+    }
+
+    if (readSuccessCount == 0) {
+      LOG.debug(
+          "{} read={}ms returned no indexable rows (warnings={}, errors={})",
+          entityType,
+          t1 - t0,
+          warningsCount,
+          readErrorCount);
+      return new BatchResult(0, readErrorCount, warningsCount, nextCursor);
     }
 
     if (failureRecorder != null && readErrorCount > 0) {
