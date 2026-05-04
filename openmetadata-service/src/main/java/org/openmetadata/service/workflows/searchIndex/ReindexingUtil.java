@@ -23,6 +23,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.SneakyThrows;
@@ -98,7 +99,7 @@ public class ReindexingUtil {
    */
   public static List<EntityError> partitionErrors(
       List<EntityError> errors, List<EntityError> warningsOut) {
-    java.util.Objects.requireNonNull(warningsOut, "warningsOut must not be null");
+    Objects.requireNonNull(warningsOut, "warningsOut must not be null");
     if (CommonUtil.nullOrEmpty(errors)) {
       return new ArrayList<>();
     }
