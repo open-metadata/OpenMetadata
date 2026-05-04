@@ -850,8 +850,7 @@ public interface CollectionDAO {
      */
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT id, "
-                + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) AS name, "
+            "SELECT id, name, "
                 + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
                 + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
                 + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.description')) AS description, "
@@ -860,8 +859,7 @@ public interface CollectionDAO {
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT id, "
-                + "json->>'name' AS name, "
+            "SELECT id, name, "
                 + "json->>'displayName' AS displayName, "
                 + "json->>'fullyQualifiedName' AS fqn, "
                 + "json->>'description' AS description, "
@@ -896,8 +894,7 @@ public interface CollectionDAO {
     // tri-state: 'NON_DELETED' (default), 'DELETED', or 'ALL'.
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT id, "
-                + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) AS name, "
+            "SELECT id, name, "
                 + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
                 + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
                 + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.description')) AS description, "
@@ -911,8 +908,7 @@ public interface CollectionDAO {
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT id, "
-                + "json->>'name' AS name, "
+            "SELECT id, name, "
                 + "json->>'displayName' AS displayName, "
                 + "json->>'fullyQualifiedName' AS fqn, "
                 + "json->>'description' AS description, "
