@@ -12,7 +12,7 @@
  */
 
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
-import { test as baseTest, expect } from '../../support/fixtures/userPages';
+import { expect, test as baseTest } from '../../support/fixtures/userPages';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -27,8 +27,8 @@ import {
 import { performUserLogin } from '../../utils/user';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import {
-  RIGHT_PANEL_TAB,
   RightPanelPageObject,
+  RIGHT_PANEL_TAB,
 } from '../PageObject/Explore/RightPanelPageObject';
 import {
   addOwnerInKCPanel,
