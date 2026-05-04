@@ -63,4 +63,3 @@ test('searching for longer description should work', async ({ page }) => {
 
   await expect(page.getByTestId('alert-bar')).not.toBeVisible();
 });
-
