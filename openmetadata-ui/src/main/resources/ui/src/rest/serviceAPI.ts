@@ -164,12 +164,11 @@ export const patchDomainSupportedService = async (
 
 export const getServiceVersions = async (
   serviceCategory: string,
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
+  id: string
 ) => {
   const url = `/services/${serviceCategory}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };

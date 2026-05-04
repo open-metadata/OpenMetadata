@@ -17,6 +17,7 @@ import React, {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { EntityType } from '../../enums/entity.enum';
@@ -43,19 +44,36 @@ export const RuleEnforcementProvider: React.FC<
 > = ({ children }) => {
   const [rules, setRules] = useState<Record<string, ParsedRule[]>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [loadedEntityTypes, setLoadedEntityTypes] = useState<Set<string>>(
-    new Set()
-  );
+  // Refs are used instead of `useState<Set>` for the dedupe state so the
+  // `fetchRulesForEntity` callback can be stable. The previous version put
+  // `loadedEntityTypes` in the deps, which made `fetchRulesForEntity` a fresh
+  // reference whenever the Set changed; consumers' useEffects then re-fired
+  // and issued duplicate `/api/v1/system/settings/entityRulesSettings/{type}`
+  // requests. Tracking *in-flight* promises (not just *completed* fetches)
+  // also collapses the double-mount race when two components mount in the
+  // same tick (e.g. DataAssetsHeader + GenericProvider both calling
+  // useEntityRules('container')).
+  const loadedEntityTypes = useRef<Set<string>>(new Set());
+  const inFlight = useRef<Map<string, Promise<void>>>(new Map());
+  // Counter of *currently* in-flight fetches. Tracked separately from
+  // `inFlight.size` because two concurrent fetches for different entity types
+  // both call setIsLoading; if we only watch the boolean, the first to settle
+  // flips it to false while the second is still running. The counter ensures
+  // `isLoading` stays true until the last fetch resolves.
+  const activeFetchCount = useRef(0);
 
-  const fetchRulesForEntity = useCallback(
-    async (entityType: EntityType) => {
-      // Skip if already loaded
-      if (loadedEntityTypes.has(entityType)) {
-        return;
-      }
+  const fetchRulesForEntity = useCallback(async (entityType: EntityType) => {
+    if (loadedEntityTypes.current.has(entityType)) {
+      return;
+    }
+    const existing = inFlight.current.get(entityType);
+    if (existing) {
+      return existing;
+    }
 
-      setIsLoading(true);
-
+    activeFetchCount.current += 1;
+    setIsLoading(true);
+    const promise = (async () => {
       try {
         const response = await getEntityRules(entityType);
         const parsedRules = response.map(parseRule);
@@ -65,15 +83,21 @@ export const RuleEnforcementProvider: React.FC<
           [entityType]: parsedRules,
         }));
 
-        setLoadedEntityTypes((prev) => new Set([...prev, entityType]));
+        loadedEntityTypes.current.add(entityType);
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {
-        setIsLoading(false);
+        inFlight.current.delete(entityType);
+        activeFetchCount.current -= 1;
+        if (activeFetchCount.current === 0) {
+          setIsLoading(false);
+        }
       }
-    },
-    [loadedEntityTypes]
-  );
+    })();
+    inFlight.current.set(entityType, promise);
+
+    return promise;
+  }, []);
 
   const getRulesForEntity = useCallback(
     (entityType: EntityType): ParsedRule[] => {
