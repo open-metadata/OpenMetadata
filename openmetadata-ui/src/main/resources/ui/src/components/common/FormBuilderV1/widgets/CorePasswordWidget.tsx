@@ -12,25 +12,124 @@
  */
 
 import {
-  Box,
   Button,
   FileTrigger,
+  HintText,
   Label,
   RadioButton,
   RadioGroup,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { UploadCloud01 } from '@untitledui/icons';
+import { Eye, EyeOff, UploadCloud01 } from '@untitledui/icons';
 import { useState } from 'react';
+import {
+  Group as AriaGroup,
+  Input as AriaInput,
+  TextField as AriaTextField,
+} from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { CertificationInputType } from '../../../../enums/PasswordWidget.enum';
-import CoreInputWidget from './CoreInputWidget';
-import { getWidgetLabel } from './coreWidgetUtils';
+import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
+
+interface PasswordInputFieldProps {
+  id: string;
+  value: string | undefined;
+  label?: string;
+  hint?: string;
+  placeholder?: string;
+  required?: boolean;
+  disabled?: boolean;
+  readonly?: boolean;
+  autofocus?: boolean;
+  isInvalid?: boolean;
+  hideLabel?: boolean;
+  onChange: (value: string) => void;
+  onBlur: () => void;
+  onFocus: () => void;
+}
+
+const PasswordInputField = ({
+  id,
+  value,
+  label,
+  hint,
+  placeholder,
+  required,
+  disabled,
+  readonly,
+  autofocus,
+  isInvalid,
+  hideLabel,
+  onChange,
+  onBlur,
+  onFocus,
+}: PasswordInputFieldProps) => {
+  const [showPassword, setShowPassword] = useState(false);
+
+  return (
+    <AriaTextField
+      autoFocus={autofocus}
+      className="tw:flex tw:w-full tw:flex-col tw:gap-1.5"
+      id={id}
+      isDisabled={disabled || readonly}
+      isInvalid={isInvalid}
+      isRequired={required}
+      type={showPassword ? 'text' : 'password'}
+      value={value ?? ''}
+      onBlur={onBlur}
+      onChange={onChange}
+      onFocus={onFocus}>
+      {!hideLabel && label && <Label isRequired={required}>{label}</Label>}
+      <AriaGroup
+        className={({ isFocusWithin, isDisabled, isInvalid: groupInvalid }) =>
+          [
+            'tw:relative tw:flex tw:w-full tw:items-center tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-inset tw:ring-primary tw:transition-shadow tw:duration-100 tw:ease-linear',
+            isFocusWithin && !isDisabled ? 'tw:ring-2 tw:ring-brand' : '',
+            isDisabled
+              ? 'tw:cursor-not-allowed tw:bg-disabled_subtle tw:ring-disabled'
+              : '',
+            groupInvalid ? 'tw:ring-error_subtle' : '',
+            groupInvalid && isFocusWithin ? 'tw:ring-2 tw:ring-error' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')
+        }>
+        <AriaInput
+          className="tw:w-full tw:bg-transparent tw:px-3 tw:py-2 tw:pr-9 tw:text-sm tw:text-primary
+          tw:outline-hidden tw:placeholder:text-placeholder disabled:tw:cursor-not-allowed disabled:tw:text-disabled"
+          placeholder={placeholder}
+        />
+        <button
+          className="tw:absolute tw:right-3 tw:flex tw:cursor-pointer tw:items-center tw:text-fg-quaternary tw:transition-colors tw:duration-200 hover:tw:text-fg-quaternary_hover"
+          tabIndex={-1}
+          type="button"
+          onClick={() => setShowPassword((v) => !v)}>
+          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </AriaGroup>
+      {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
+    </AriaTextField>
+  );
+};
 
 const CorePasswordWidget = (props: WidgetProps) => {
-  const { schema, label, hideLabel, required, disabled, readonly, onChange } =
-    props;
+  const {
+    id,
+    schema,
+    label,
+    hideLabel,
+    required,
+    disabled,
+    readonly,
+    autofocus,
+    value,
+    placeholder,
+    rawErrors,
+    options,
+    onChange,
+    onBlur,
+    onFocus,
+  } = props;
   const { t } = useTranslation();
   const isInputTypeFile = schema.uiFieldType === 'file';
   const isInputTypeFileOrInput = schema.uiFieldType === 'fileOrInput';
@@ -39,6 +138,8 @@ const CorePasswordWidget = (props: WidgetProps) => {
   );
 
   const displayLabel = getWidgetLabel({ hideLabel, label });
+  const hint = getWidgetHint({ rawErrors, schema, options });
+  const isInvalid = !!rawErrors?.length;
 
   const handleFileSelect = (files: FileList | null) => {
     if (!files?.length) {
@@ -59,10 +160,8 @@ const CorePasswordWidget = (props: WidgetProps) => {
         isDisabled={disabled || readonly}
         size="sm"
         type="button">
-        <Box align="center" direction="row" gap={1}>
-          <UploadCloud01 data-icon size={14} />
-          <Typography size="text-sm">{t('message.upload-file')}</Typography>
-        </Box>
+        <UploadCloud01 data-icon size={14} />
+        {t('message.upload-file')}
       </Button>
     </FileTrigger>
   );
@@ -95,10 +194,19 @@ const CorePasswordWidget = (props: WidgetProps) => {
         {inputType === CertificationInputType.FILE_UPLOAD ? (
           fileUploadTrigger
         ) : (
-          <CoreInputWidget
-            {...props}
+          <PasswordInputField
             hideLabel
-            options={{ ...props.options, inputType: 'password' }}
+            autofocus={autofocus}
+            disabled={disabled}
+            hint={hint}
+            id={id}
+            isInvalid={isInvalid}
+            placeholder={placeholder}
+            readonly={readonly}
+            value={value}
+            onBlur={() => onBlur(id, value)}
+            onChange={onChange}
+            onFocus={() => onFocus(id, value)}
           />
         )}
       </div>
@@ -106,9 +214,19 @@ const CorePasswordWidget = (props: WidgetProps) => {
   }
 
   return (
-    <CoreInputWidget
-      {...props}
-      options={{ ...props.options, inputType: 'password' }}
+    <PasswordInputField
+      autofocus={autofocus}
+      disabled={disabled}
+      hint={hint}
+      id={id}
+      isInvalid={isInvalid}
+      label={displayLabel}
+      placeholder={placeholder}
+      readonly={readonly}
+      value={value}
+      onBlur={() => onBlur(id, value)}
+      onChange={onChange}
+      onFocus={() => onFocus(id, value)}
     />
   );
 };
