@@ -113,10 +113,7 @@ jobs:
           SSO_PASSWORD: ${{ vars[format('{0}_SSO_PASSWORD', matrix.provider.env_prefix)] || secrets[format('{0}_SSO_PASSWORD', matrix.provider.env_prefix)] }}
           KEYCLOAK_SAML_BASE_URL: http://localhost:8080
           PLAYWRIGHT_IS_OSS: true
-        run: |
-          npx playwright test playwright/e2e/Auth/SSOLogin.spec.ts \
-            --project=sso-auth \
-            --workers=1
+        run: npx playwright test --project=sso-auth --workers=1
 
       - name: Upload HTML report
         if: always()
