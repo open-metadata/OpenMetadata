@@ -20,6 +20,10 @@ import { useTranslation } from 'react-i18next';
 const ADVANCED_PROPERTIES = new Set([
   'connectionArguments',
   'connectionOptions',
+  'sampleDataStorageConfig',
+  'scheme',
+  'sslConfig',
+  'sslMode',
 ]);
 
 export const CoreObjectFieldTemplate: FunctionComponent<
@@ -51,7 +55,27 @@ export const CoreObjectFieldTemplate: FunctionComponent<
 
   const propertiesContent = (
     <>
-      <div className="tw:flex tw:flex-col tw:gap-4">
+      <div className="tw:flex tw:flex-col tw:gap-8">
+        {!isRoot && schema.additionalProperties && (
+          <div className="tw:flex tw:items-center tw:justify-between">
+            <Typography
+              as="label"
+              className="tw:text-secondary"
+              size="text-xs"
+              weight="medium">
+              {t('label.additional-property-plural')}
+            </Typography>
+            <Button
+              aria-label={t('label.add-entity', { entity: title })}
+              color="primary"
+              data-testid={`add-item-${title}`}
+              id={`${idSchema.$id}`}
+              size="sm"
+              onClick={() => onAddClick(schema)()}>
+              <Plus data-icon size={14} />
+            </Button>
+          </div>
+        )}
         {normalProperties.map((element) => (
           <div key={element.name}>{element.content}</div>
         ))}
@@ -70,7 +94,9 @@ export const CoreObjectFieldTemplate: FunctionComponent<
               className="tw:text-primary"
               size="text-sm"
               weight="medium">
-              {t('label.advanced-config')}
+              {title
+                ? `${title} ${t('label.advanced-config')}`
+                : t('label.advanced-config')}
             </Typography>
             <ChevronDown
               data-icon
@@ -95,32 +121,19 @@ export const CoreObjectFieldTemplate: FunctionComponent<
   if (!isRoot && title) {
     return (
       <div className="tw:flex tw:flex-col tw:gap-4">
-        <div className="tw:flex tw:items-start tw:justify-between">
-          <div className="tw:flex tw:flex-col tw:gap-0.5">
-            <Typography
-              as="label"
-              className="tw:text-primary"
-              id={`${idSchema.$id}__title`}
-              size="text-sm"
-              weight="semibold">
-              {title}
-            </Typography>
-            {description && (
-              <span className="tw:text-xs tw:text-[var(--color-text-secondary)]">
-                {description}
-              </span>
-            )}
-          </div>
-          {schema.additionalProperties && (
-            <Button
-              aria-label={t('label.add-entity', { entity: title })}
-              color="primary"
-              data-testid={`add-item-${title}`}
-              id={`${idSchema.$id}`}
-              size="sm"
-              onClick={() => onAddClick(schema)()}>
-              <Plus data-icon size={14} />
-            </Button>
+        <div className="tw:flex tw:flex-col tw:gap-0.5">
+          <Typography
+            as="label"
+            className="tw:text-primary"
+            id={`${idSchema.$id}__title`}
+            size="text-sm"
+            weight="semibold">
+            {title}
+          </Typography>
+          {description && (
+            <span className="tw:text-xs tw:text-[var(--color-text-secondary)]">
+              {description}
+            </span>
           )}
         </div>
         {propertiesContent}
