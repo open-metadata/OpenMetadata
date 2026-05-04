@@ -533,6 +533,18 @@ public class EsUtils {
    * <p>The embedding dimension is resolved from the active {@link
    * org.openmetadata.service.search.vector.client.EmbeddingClient}. If embeddings are disabled or
    * the client is unavailable the mapping is returned unchanged.
+   *
+   * <p><b>Failure modes:</b>
+   *
+   * <ul>
+   *   <li>{@link IllegalArgumentException} — {@code indexMappingContent} is null or empty.
+   *   <li>{@link IllegalStateException} — the existing mapping declares an embedding dimension
+   *       (via {@code _meta.embedding_dimension} or {@code properties.embedding.dims}) that
+   *       differs from what the active embedding client reports. {@code dense_vector.dims} is
+   *       immutable on an existing Elasticsearch index, so callers must drop and reindex the
+   *       affected index (e.g., by running the SearchIndexing application) before enrichment
+   *       can succeed.
+   * </ul>
    */
   public static String enrichIndexMappingForElasticsearch(String indexMappingContent) {
     if (nullOrEmpty(indexMappingContent)) {

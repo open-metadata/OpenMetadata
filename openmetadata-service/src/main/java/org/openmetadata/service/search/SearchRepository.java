@@ -387,9 +387,14 @@ public class SearchRepository {
           failed++;
           LOG.warn("No mapping content found for entity type: {}", entry.getKey());
         }
+      } catch (IllegalStateException e) {
+        // Embedding dimension mismatch (or similar misconfiguration). Surface immediately so
+        // startup/reindex fails loudly and operators must reindex — silencing this would let
+        // a broken vector setup keep running with mismatched dims.
+        throw e;
       } catch (Exception e) {
         failed++;
-        LOG.warn("Failed to create index template for {}: {}", entry.getKey(), e.getMessage());
+        LOG.warn("Failed to create index template for {}", entry.getKey(), e);
       }
     }
     LOG.info(
