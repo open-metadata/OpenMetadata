@@ -25,9 +25,10 @@ from metadata.ingestion.source.database.lineage_source import LineageSource
 
 class QuestDBLineageSource(LineageSource):
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
+    def create(cls, config_dict: dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: QuestDBConnection = config.serviceConnection.root.config
+        service_conn = config.serviceConnection
+        connection = service_conn.root.config if service_conn is not None else None
         if not isinstance(connection, QuestDBConnection):
             raise InvalidSourceException(f"Expected QuestDBConnection, but got {connection}")
         return cls(config, metadata)

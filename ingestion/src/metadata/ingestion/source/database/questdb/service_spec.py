@@ -11,10 +11,11 @@
 from metadata.ingestion.source.database.questdb.connection import QuestDBConnection
 from metadata.ingestion.source.database.questdb.lineage import QuestDBLineageSource
 from metadata.ingestion.source.database.questdb.metadata import QuestDBSource
+from metadata.utils.importer import get_class_path
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class=QuestDBSource,
-    lineage_source_class=QuestDBLineageSource,
-    connection_class=QuestDBConnection,
+    metadata_source_class=get_class_path(QuestDBSource),
+    lineage_source_class=get_class_path(QuestDBLineageSource),
+    connection_class=get_class_path(QuestDBConnection),
 )

@@ -61,9 +61,10 @@ class QuestDBSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
+    def create(cls, config_dict: dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: QuestDBConnection = config.serviceConnection.root.config
+        service_conn = config.serviceConnection
+        connection = service_conn.root.config if service_conn is not None else None
         if not isinstance(connection, QuestDBConnection):
             raise InvalidSourceException(f"Expected QuestDBConnection, but got {connection}")
         return cls(config, metadata)
@@ -120,7 +121,13 @@ class QuestDBSource(CommonDbSourceService):
                 logger.debug(traceback.format_exc())
                 logger.warning("Skipping view %s: %s", row.name, exc)
 
-    def get_schema_definition(self, table_type, table_name, schema_name, inspector):
+    def get_schema_definition(
+        self,
+        table_type: TableType,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
+    ) -> str | None:
         if table_type == TableType.MaterializedView:
             try:
                 result = get_materialized_view_definition(self.connection, table_name)

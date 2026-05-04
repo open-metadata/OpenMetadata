@@ -22,6 +22,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.questdbConnection import (
     QuestDBConnection as QuestDBConnectionConfig,
 )
+from metadata.generated.schema.entity.services.connections.database.questdbConnection import (
+    QuestDBScheme,
+)
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
@@ -49,7 +52,8 @@ def get_connection_url(connection: QuestDBConnectionConfig) -> str:
     QuestDB exposes a single database named ``qdb`` over the PostgreSQL wire
     protocol. psycopg2 requires a dbname on the URL, so we always target ``qdb``.
     """
-    url = f"{connection.scheme.value}://"
+    scheme = connection.scheme or QuestDBScheme.postgresql_psycopg2
+    url = f"{scheme.value}://"
     if connection.username:
         url += quote_plus(connection.username)
         password = get_password_secret(connection).get_secret_value()
