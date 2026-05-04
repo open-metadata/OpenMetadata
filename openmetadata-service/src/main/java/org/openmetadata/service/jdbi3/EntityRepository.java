@@ -4323,11 +4323,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
         EntityInterface entity = repository.find(entityId, Include.ALL);
         repository.cleanup(entity);
       } catch (RuntimeException e) {
-        // Wrap with entity context before re-throwing so the operator can identify
-        // the row that blocked a large recursive delete. The exception still
-        // propagates — the loop still stops, the failure-semantics contract in the
-        // Javadoc still holds — we just trade an opaque stack trace for one that
-        // names the offending child.
+        LOG.error(
+            "Failed to delete {} '{}' during recursive batch delete: {}",
+            entityType, entityId, e.getMessage(), e);
+        // Wrap with entity context so the operator can identify the row that blocked
+        // a large recursive delete. Original exception is preserved as the cause.
         throw new RuntimeException(
             String.format(
                 "Failed to delete %s '%s' during recursive batch delete: %s",
