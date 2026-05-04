@@ -189,10 +189,11 @@ class SamplerInterface(ABC):
         Returns:
             StaticSamplingConfig | None: _description_
         """
-        return resolve_static_sampling_config(
+        self._sample_config = resolve_static_sampling_config(
             sample_config=self.sample_config.profileSampleConfig,
             row_count=self._get_asset_row_count(),
         )
+        return self._sample_config
 
     def _get_excluded_columns(self) -> set[str]:
         """Get excluded  columns for table being profiled"""

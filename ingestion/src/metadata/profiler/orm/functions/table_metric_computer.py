@@ -1010,18 +1010,22 @@ class TrinoTableMetricComputer(_StatsBasedTableMetricComputer):
 class HiveTableMetricComputer(_StatsBasedTableMetricComputer):
     """Hive Table Metric Computer using DESCRIBE FORMATTED."""
 
-    _NUMROWS_PATTERN = __import__("re").compile(r"numRows\s+(\d+)")
-
     def compute(self):
-        """Parse numRows from DESCRIBE FORMATTED output."""
+        """Parse numRows from DESCRIBE FORMATTED output.
+        Hive returns 3-column rows: (col_name, data_type, comment).
+        After ANALYZE, a row with data_type='numRows' contains the count in comment."""
         query = sa_text(f"DESCRIBE FORMATTED `{self.schema_name}`.`{self.table_name}`")
         rows = self.runner._session.execute(query).fetchall()
         for row in rows:
-            match = self._NUMROWS_PATTERN.search(str(row))
-            if match:
-                num_rows = int(match.group(1))
-                if num_rows >= 0:
-                    return self._build_result(num_rows)
+            try:
+                key = (row[1] or "").strip()
+                value = (row[2] or "").strip() if len(row) > 2 else ""
+                if key == "numRows" and value.isdigit():
+                    num_rows = int(value)
+                    if num_rows >= 0:
+                        return self._build_result(num_rows)
+            except (IndexError, TypeError):
+                continue
         return super().compute()
 
 

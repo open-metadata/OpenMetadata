@@ -483,11 +483,10 @@ class TestHiveTableMetricComputer:
     def test_describe_formatted_extracts_numrows(self):
         session = _build_mock_session()
         rows = [
-            MagicMock(__str__=lambda self: "Table Parameters:"),
-            MagicMock(),
-            MagicMock(__str__=lambda self: "rawDataSize 999"),
+            ("", "Table Parameters:", None),
+            ("", "numRows             ", "12345               "),
+            ("", "rawDataSize         ", "999                 "),
         ]
-        rows[1].__str__ = lambda self: "numRows\t12345"
         session.execute.return_value.fetchall.return_value = rows
 
         computer = _build_computer(session, HiveTableMetricComputer)
@@ -496,11 +495,15 @@ class TestHiveTableMetricComputer:
 
     def test_describe_formatted_no_match_falls_back(self):
         session = _build_mock_session()
-        rows = [MagicMock(__str__=lambda self: "some other output")]
+        rows = [("col_name", "data_type", "comment")]
         session.execute.return_value.fetchall.return_value = rows
 
         computer = _build_computer(session, HiveTableMetricComputer)
-        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=200)):
+        with patch.object(
+            BaseTableMetricComputer,
+            "compute",
+            return_value=MagicMock(rowCount=200),
+        ):
             result = computer.compute()
         assert result.rowCount == 200
 

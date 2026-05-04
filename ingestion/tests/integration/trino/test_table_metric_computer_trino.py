@@ -14,7 +14,7 @@ Integration tests for TrinoTableMetricComputer against a real Trino database.
 Verifies SHOW STATS parsing returns accurate row counts after ANALYZE.
 """
 
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy import Column, Integer, String, create_engine
@@ -24,6 +24,7 @@ from sqlalchemy.orm import DeclarativeBase
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.profiler.orm.functions.table_metric_computer import (
+    BaseTableMetricComputer,
     TrinoTableMetricComputer,
 )
 from metadata.profiler.processor.runner import QueryRunner
@@ -82,23 +83,40 @@ class TestTrinoTableMetricComputer:
     def test_show_stats_returns_row_count(self, trino_session):
         """titanic table has 891 rows; ANALYZE was run by create_test_data."""
         computer = _build_computer(trino_session, TitanicModel)
-        result = computer.compute()
+        with patch.object(
+            BaseTableMetricComputer,
+            "compute",
+            wraps=BaseTableMetricComputer.compute,
+        ) as fallback:
+            result = computer.compute()
         assert result is not None
         assert result.rowCount == 891
+        fallback.assert_not_called()
 
     def test_show_stats_returns_column_metadata(self, trino_session):
         computer = _build_computer(trino_session, TitanicModel)
-        result = computer.compute()
+        with patch.object(
+            BaseTableMetricComputer,
+            "compute",
+            wraps=BaseTableMetricComputer.compute,
+        ) as fallback:
+            result = computer.compute()
         assert result is not None
         assert result.columnCount == 2
         assert "passengerid" in result.columnNames
         assert "name" in result.columnNames
+        fallback.assert_not_called()
 
     def test_empty_table_with_dropped_stats_falls_back(self, trino_session):
         """empty table had stats dropped — SHOW STATS returns NULL row_count.
         Should fall back to COUNT(*)."""
         computer = _build_computer(trino_session, EmptyModel)
-        result = computer.compute()
+        with patch.object(
+            BaseTableMetricComputer,
+            "compute",
+            wraps=BaseTableMetricComputer.compute,
+        ) as fallback:
+            result = computer.compute()
         assert result is not None
-        # Empty table → row count should be 0 (from COUNT(*) fallback)
         assert result.rowCount == 0
+        fallback.assert_called_once()
