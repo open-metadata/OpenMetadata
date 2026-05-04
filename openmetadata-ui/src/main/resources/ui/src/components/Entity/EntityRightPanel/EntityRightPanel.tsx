@@ -64,7 +64,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   customProperties,
   editCustomAttributePermission,
   editDataProductPermission,
-  editAllPermission,
   onDataProductUpdate,
   viewCustomPropertiesPermission,
 }: EntityRightPanelProps<T>) => {
@@ -82,23 +81,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
     reviewers?: EntityReference[];
   }>();
 
-  const {
-    domains,
-    dataProducts,
-    id: entityId,
-    name,
-    displayName,
-    columns,
-    reviewers,
-  } = data ?? {};
-
-  const availableColumns = (columns ?? [])
-    .map((c) => c.fullyQualifiedName ?? c.name)
-    .filter((c): c is string => Boolean(c));
-
-  const reviewerFqns = (reviewers ?? [])
-    .map((r) => r.fullyQualifiedName)
-    .filter((r): r is string => Boolean(r));
+  const { domains, dataProducts, id: entityId } = data ?? {};
 
   return (
     <>
