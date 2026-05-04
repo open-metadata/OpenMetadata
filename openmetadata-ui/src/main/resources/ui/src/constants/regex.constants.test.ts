@@ -168,6 +168,7 @@ describe('Test Regex', () => {
     expect(ENTITY_NAME_REGEX.test('name\nbad')).toEqual(false);
     expect(ENTITY_NAME_REGEX.test('name\rbad')).toEqual(false);
     expect(ENTITY_NAME_REGEX.test('name\x00bad')).toEqual(false);
+    expect(ENTITY_NAME_REGEX.test('name|bad')).toEqual(false);
   });
 
   describe('TAG_NAME_REGEX', () => {
