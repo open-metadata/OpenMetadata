@@ -209,12 +209,18 @@ public class CachedEntityDao {
   }
 
   public void invalidate(UUID entityId, String entityType) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String cacheKey = keys.entity(entityType, entityId);
     cache.del(cacheKey);
     LOG.debug("Invalidated cache for entity: {} -> {}", entityType, entityId);
   }
 
   public void invalidateByName(String entityType, String fqn) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String cacheKeyEntity = keys.entityByName(entityType, fqn);
     String cacheKeyRef = keys.refByName(entityType, fqn);
     cache.del(cacheKeyEntity);
@@ -224,12 +230,18 @@ public class CachedEntityDao {
 
   // Additional invalidation methods for delete operations
   public void invalidateBase(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String cacheKey = keys.entity(entityType, entityId);
     cache.del(cacheKey);
     LOG.debug("Invalidated base cache for entity: {} -> {}", entityType, entityId);
   }
 
   public void invalidateReference(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String cacheKey = keys.entity(entityType, entityId);
     // Remove just the reference field from the hash
     cache.hdel(cacheKey, "ref");
@@ -238,12 +250,18 @@ public class CachedEntityDao {
 
   // Delete methods for evicting corrupted cache entries
   public void deleteBase(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String cacheKey = keys.entity(entityType, entityId);
     cache.del(cacheKey);
     LOG.debug("Deleted corrupted cache entry for entity: {} -> {}", entityType, entityId);
   }
 
   public void deleteByName(String entityType, String fqn) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String entityCacheKey = keys.entityByName(entityType, fqn);
     String refCacheKey = keys.refByName(entityType, fqn);
     cache.del(entityCacheKey);
@@ -252,6 +270,9 @@ public class CachedEntityDao {
   }
 
   public void invalidateReferenceByName(String entityType, String fqn) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String cacheKey = keys.refByName(entityType, fqn);
     cache.del(cacheKey);
     LOG.debug("Invalidated reference cache by name: {} -> {}", entityType, fqn);

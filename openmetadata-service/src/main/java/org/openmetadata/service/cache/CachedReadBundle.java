@@ -82,6 +82,9 @@ public class CachedReadBundle {
   }
 
   public void invalidate(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     cache.del(keys.bundle(entityType, entityId));
   }
 

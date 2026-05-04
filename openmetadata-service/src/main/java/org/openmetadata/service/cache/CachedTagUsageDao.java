@@ -36,6 +36,9 @@ public class CachedTagUsageDao {
   }
 
   public void invalidateTags(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String cacheKey = keys.tags(entityType, entityId);
     cache.del(cacheKey);
     LOG.debug("Invalidated cache for Tags: {} -> {}", entityType, entityId);

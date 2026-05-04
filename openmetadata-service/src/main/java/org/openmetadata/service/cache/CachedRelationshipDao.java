@@ -87,6 +87,9 @@ public class CachedRelationshipDao {
   }
 
   public void invalidate(UUID entityId, String entityType) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     Relationship[] relationships = Relationship.values();
     String[] cacheKeys = new String[relationships.length * 2];
     int i = 0;
@@ -99,12 +102,18 @@ public class CachedRelationshipDao {
   }
 
   public void invalidateOwners(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String cacheKey = keys.entity(entityType, entityId);
     cache.hdel(cacheKey, "owners");
     LOG.debug("Invalidated owners cache for entity: {} -> {}", entityType, entityId);
   }
 
   public void invalidateDomains(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String cacheKey = keys.entity(entityType, entityId);
     cache.hdel(cacheKey, "domains");
     LOG.debug("Invalidated domains cache for entity: {} -> {}", entityType, entityId);
@@ -149,6 +158,9 @@ public class CachedRelationshipDao {
    * when the child entity is written so re-parent operations don't leave a stale ref behind.
    */
   public void invalidateContainer(String childType, UUID childId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     org.openmetadata.schema.type.Relationship[] values =
         org.openmetadata.schema.type.Relationship.values();
     String[] all = new String[values.length];
