@@ -203,6 +203,7 @@ test('Activity Feed Widget', async ({ page }) => {
   await test.step('Test widget filters', async () => {
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    expect(await page.getByTestId('task-feed-card').count()).toBeGreaterThan(0);
     await verifyActivityFeedFilters(page, widgetKey);
   });
 

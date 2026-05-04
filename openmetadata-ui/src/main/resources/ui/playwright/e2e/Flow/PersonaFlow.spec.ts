@@ -307,6 +307,21 @@ test.describe.serial('Default persona setting and removal flow', () => {
     await afterAction();
   });
 
+
+  test.afterAll(
+    'Teardown user for default persona flow',
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await Promise.all([
+        user.delete(apiContext),
+        persona1.delete(apiContext),
+        persona2.delete(apiContext),
+      ]);
+      await afterAction();
+    }
+  );
+
+
   test('Set and remove default persona should work properly', async ({
     adminPage,
     browser,
