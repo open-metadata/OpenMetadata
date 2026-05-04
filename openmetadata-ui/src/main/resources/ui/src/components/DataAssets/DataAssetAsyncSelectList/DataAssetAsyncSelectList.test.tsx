@@ -17,8 +17,71 @@ import { searchQuery } from '../../../rest/searchAPI';
 import DataAssetAsyncSelectList from './DataAssetAsyncSelectList';
 import { DataAssetOption } from './DataAssetAsyncSelectList.interface';
 
+const mockOnItemInserted = jest.fn();
+const mockOnItemCleared = jest.fn();
+const mockOnSearchChange = jest.fn();
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  const MockAutocompleteItem = jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <div {...props}>{children}</div>
+    ));
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const AutocompleteMock: any = jest.fn().mockImplementation((props) => {
+    mockOnItemInserted.mockImplementation(props.onItemInserted);
+    mockOnItemCleared.mockImplementation(props.onItemCleared);
+    mockOnSearchChange.mockImplementation(props.onSearchChange);
+
+    return (
+      <div data-testid="asset-select-list">
+        <input
+          placeholder={props.placeholder}
+          role="searchbox"
+          type="text"
+          onChange={(e) => props.onSearchChange?.(e.target.value)}
+        />
+        <div>
+          {props.selectedItems?.map((item: DataAssetOption) => (
+            <div data-testid={`selected-${item.id}`} key={item.id}>
+              {item.displayName}
+            </div>
+          ))}
+        </div>
+        <div>
+          {props.items?.map((item: DataAssetOption) => {
+            const child = props.children(item);
+
+            return (
+              <button
+                data-testid={child.props['data-testid']}
+                key={item.id}
+                onClick={() => props.onItemInserted?.(item.id)}>
+                {child.props.children || item.displayName}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  });
+
+  AutocompleteMock.Item = MockAutocompleteItem;
+
+  return {
+    Autocomplete: AutocompleteMock,
+  };
+});
+
 jest.mock('../../../rest/searchAPI');
 jest.mock('../../../utils/TableUtils');
+jest.mock('../../../utils/SearchClassBase', () => ({
+  __esModule: true,
+  default: {
+    getEntityIcon: jest.fn().mockReturnValue(null),
+  },
+}));
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test'),
   getEntityReferenceFromEntity: jest
@@ -151,49 +214,47 @@ describe('DataAssetAsyncSelectList', () => {
   it('should call onChange when an option is selected', async () => {
     const mockOnChange = jest.fn();
 
-    const mockOptions: DataAssetOption[] = [
-      {
-        id: 'test-1',
-        displayName: 'Test',
-        label: 'Test',
-        reference: {
-          id: '1',
-          type: 'table',
-          name: 'test 1',
-          deleted: false,
-          description: '',
-          fullyQualifiedName: 'test-1',
-          href: '',
-        },
-        value: 'test-1',
-      },
-    ];
-
     (searchQuery as jest.Mock).mockImplementation(() =>
       Promise.resolve(mockSearchAPIResponse.data)
     );
 
     await act(async () => {
       render(
-        <DataAssetAsyncSelectList multiple onChange={mockOnChange} />
+        <DataAssetAsyncSelectList
+          multiple
+          debounceTimeout={0}
+          onChange={mockOnChange}
+        />
       );
     });
 
     expect(searchQuery).toHaveBeenCalledTimes(1);
 
-    const inputBox = screen.getByRole('combobox');
+    const inputBox = screen.getByRole('searchbox');
 
     await act(async () => {
-      fireEvent.change(inputBox, {
+      fireEvent.input(inputBox, {
         target: { value: 'test 1' },
       });
     });
 
-    const option = screen.getByTestId('option-test-1');
+    const option = await screen.findByTestId('option-test-1');
 
-    fireEvent.click(option);
+    await act(async () => {
+      fireEvent.click(option);
+    });
 
-    expect(mockOnChange).toHaveBeenCalledWith(mockOptions);
+    expect(mockOnChange).toHaveBeenCalled();
+
+    const callArg = mockOnChange.mock.calls[0][0];
+
+    expect(Array.isArray(callArg)).toBe(true);
+    expect(callArg).toHaveLength(1);
+    expect(callArg[0]).toMatchObject({
+      id: 'test-1',
+      displayName: 'Test',
+      value: 'test-1',
+    });
   });
 
   it("should render the placeholder when there's no value", async () => {
@@ -206,8 +267,8 @@ describe('DataAssetAsyncSelectList', () => {
     expect(screen.getByPlaceholderText(placeholder)).toBeInTheDocument();
   });
 
-  it("should render the default value when there's a default value and initial option", async () => {
-    const defaultValue = ['1'];
+  it("should render the value when there's a value and initial option", async () => {
+    const value = ['1'];
     const initialOptions: DataAssetOption[] = [
       {
         id: '1',
@@ -218,42 +279,59 @@ describe('DataAssetAsyncSelectList', () => {
       },
     ];
 
+    (searchQuery as jest.Mock).mockImplementation(() =>
+      Promise.resolve(mockSearchAPIResponse.data)
+    );
+
     await act(async () => {
       render(
         <DataAssetAsyncSelectList
           multiple
-          defaultValue={defaultValue}
           initialOptions={initialOptions}
+          value={value}
         />
       );
     });
 
-    expect(screen.getByText('Test')).toBeInTheDocument();
+    expect(screen.getByTestId('selected-1')).toBeInTheDocument();
+    expect(screen.getByTestId('selected-1')).toHaveTextContent('Test');
   });
 
-  it("should render the default value when there's a value and initial option", async () => {
-    const defaultValue = ['1'];
+  it('should render multiple selected items', async () => {
+    const value = ['test-1', 'test-2'];
     const initialOptions: DataAssetOption[] = [
       {
-        id: '1',
-        displayName: 'Test',
-        label: 'Test',
-        reference: { id: '1', type: 'table' },
-        value: '1',
+        id: 'test-1',
+        displayName: 'Test 1',
+        label: 'Test 1',
+        reference: { id: '1', type: 'table', fullyQualifiedName: 'test-1' },
+        value: 'test-1',
+      },
+      {
+        id: 'test-2',
+        displayName: 'Test 2',
+        label: 'Test 2',
+        reference: { id: '2', type: 'table', fullyQualifiedName: 'test-2' },
+        value: 'test-2',
       },
     ];
+
+    (searchQuery as jest.Mock).mockImplementation(() =>
+      Promise.resolve(mockSearchAPIResponse.data)
+    );
 
     await act(async () => {
       render(
         <DataAssetAsyncSelectList
           multiple
-          defaultValue={defaultValue}
           initialOptions={initialOptions}
+          value={value}
         />
       );
     });
 
-    expect(screen.getByText('Test')).toBeInTheDocument();
+    expect(screen.getByText('Test 1')).toBeInTheDocument();
+    expect(screen.getByText('Test 2')).toBeInTheDocument();
   });
 
   it('searchQuery should be called with queryFilter', async () => {
