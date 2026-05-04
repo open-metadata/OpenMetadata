@@ -1485,7 +1485,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     if (violations == null || violations.isEmpty()) {
       userNameEmailViolation = ValidatorUtil.validateUserNameWithEmailPrefix(csvRecord);
-    } else if (!violations.contains("name must match \"^((?!::)[^><\\\"|\\x00-\\x1f])*$\"")
+    } else if (!violations.contains("name must match \"^((?!::)[^><\"|\\x00-\\x1f])*$\"")
         && !violations.contains("email must be a well-formed email address")) {
       userNameEmailViolation = ValidatorUtil.validateUserNameWithEmailPrefix(csvRecord);
     }
