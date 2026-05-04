@@ -30,6 +30,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
@@ -119,12 +120,21 @@ class ElasticSearchBulkSinkBehaviorTest {
           sink,
           "addEntity",
           new Class<?>[] {
-            EntityInterface.class, String.class, boolean.class, StageStatsTracker.class
+            EntityInterface.class,
+            String.class,
+            boolean.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class
           },
           entity,
           "table_index",
           false,
-          tracker);
+          null,
+          tracker,
+          false,
+          Map.of());
 
       verify(processor)
           .add(any(), eq(entityId.toString()), eq(ENTITY_TYPE), eq(tracker), anyLong());
@@ -159,12 +169,21 @@ class ElasticSearchBulkSinkBehaviorTest {
           sink,
           "addEntity",
           new Class<?>[] {
-            EntityInterface.class, String.class, boolean.class, StageStatsTracker.class
+            EntityInterface.class,
+            String.class,
+            boolean.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class
           },
           entity,
           "table_index",
           true,
-          tracker);
+          null,
+          tracker,
+          false,
+          Map.of());
 
       verify(processorConstruction.constructed().getFirst()).setFailureCallback(failureCallback);
       verify(tracker).recordProcess(StatsResult.FAILED);
