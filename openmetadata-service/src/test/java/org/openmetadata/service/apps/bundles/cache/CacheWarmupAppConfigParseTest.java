@@ -65,25 +65,4 @@ class CacheWarmupAppConfigParseTest {
     assertNotNull(parsed.getBatchSize());
     assertNotNull(parsed.getEntities());
   }
-
-  @Test
-  @DisplayName("strict on unknown fields — guards against future drift")
-  void rejectsUnknownFields() {
-    // additionalProperties: false on the schema means the parser should reject keys we don't
-    // know about. Locking this in so a stray field can't silently survive across versions.
-    Map<String, Object> saved = new LinkedHashMap<>();
-    saved.put("type", "CacheWarmup");
-    saved.put("notARealField", "x");
-    Throwable t = null;
-    try {
-      JsonUtils.convertValue(saved, CacheWarmupAppConfig.class);
-    } catch (Throwable thrown) {
-      t = thrown;
-    }
-    // Either threw, or silently ignored — both behaviours are acceptable for this guard. The
-    // important invariant is that valid keys still parse, which the prior tests cover. This
-    // test exists primarily to surface the parser's semantics in case the project later flips
-    // FAIL_ON_UNKNOWN_PROPERTIES — at that point this test will start asserting something real.
-    assertTrue(t == null || t.getMessage() != null);
-  }
 }

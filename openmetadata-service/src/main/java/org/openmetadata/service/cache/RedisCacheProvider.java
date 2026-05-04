@@ -46,6 +46,11 @@ public class RedisCacheProvider implements CacheProvider {
   private volatile boolean available = false;
   private final ConcurrentLinkedDeque<Long> failureTimestamps = new ConcurrentLinkedDeque<>();
   private final AtomicInteger consecutiveSuccesses = new AtomicInteger(0);
+  // Serializes the recordSuccess / recordFailure / pruneOldFailures state transitions so a
+  // concurrent failure can't slip in between the success path's read of `available` and its
+  // write, and vice versa. The methods themselves are not on the hot path (one call per Redis
+  // op outcome), so the lock cost is negligible compared to the round-trip we're already paying.
+  private final Object stateLock = new Object();
 
   public RedisCacheProvider(CacheConfig config) {
     this.config = config;
@@ -100,20 +105,25 @@ public class RedisCacheProvider implements CacheProvider {
    * failure-window deque. Critical that single-PING-success no longer flips us back: that
    * caused the flapping behaviour where every health-check window let one more real op pay a
    * timeout before going to fast-fail again.
+   *
+   * <p>Synchronized with {@link #recordFailure(Exception)} on {@link #stateLock} so a concurrent
+   * failure can't be racing with the {@code consecutiveSuccesses}/{@code available} transitions.
    */
   private void recordSuccess() {
-    if (!available) {
-      int n = consecutiveSuccesses.incrementAndGet();
-      if (n >= RECOVERY_THRESHOLD) {
-        available = true;
-        failureTimestamps.clear();
-        consecutiveSuccesses.set(0);
-        LOG.info("Redis cache provider recovered after {} consecutive successful ops", n);
+    synchronized (stateLock) {
+      if (!available) {
+        int n = consecutiveSuccesses.incrementAndGet();
+        if (n >= RECOVERY_THRESHOLD) {
+          available = true;
+          failureTimestamps.clear();
+          consecutiveSuccesses.set(0);
+          LOG.info("Redis cache provider recovered after {} consecutive successful ops", n);
+        }
+        return;
       }
-      return;
+      consecutiveSuccesses.set(0);
+      pruneOldFailures(System.currentTimeMillis());
     }
-    consecutiveSuccesses.set(0);
-    pruneOldFailures(System.currentTimeMillis());
   }
 
   /**
@@ -123,30 +133,41 @@ public class RedisCacheProvider implements CacheProvider {
    * transient failures no longer flip the provider — they used to, which combined with eager
    * recovery on the next PING produced the flap pattern that made indexing pay a 300ms timeout
    * per Redis call indefinitely.
+   *
+   * <p>Synchronized with {@link #recordSuccess()} on {@link #stateLock} so a concurrent
+   * success-recovery transition can't observe a half-applied failure (or vice versa).
    */
   private void recordFailure(Exception e) {
-    consecutiveSuccesses.set(0);
-    long now = System.currentTimeMillis();
-    failureTimestamps.addLast(now);
-    pruneOldFailures(now);
-    if (available && failureTimestamps.size() >= FAILURE_THRESHOLD) {
-      available = false;
-      LOG.warn(
-          "Redis cache provider marked unavailable: {} failures within {}ms",
-          failureTimestamps.size(),
-          FAILURE_WINDOW_MS,
-          e);
+    synchronized (stateLock) {
+      consecutiveSuccesses.set(0);
+      long now = System.currentTimeMillis();
+      failureTimestamps.addLast(now);
+      pruneOldFailures(now);
+      if (available && failureTimestamps.size() >= FAILURE_THRESHOLD) {
+        available = false;
+        LOG.warn(
+            "Redis cache provider marked unavailable: {} failures within {}ms",
+            failureTimestamps.size(),
+            FAILURE_WINDOW_MS,
+            e);
+      }
     }
   }
 
+  /**
+   * Drop failure timestamps older than the sliding window. Always called under {@link
+   * #stateLock}. Iterates the entire deque rather than breaking on the first non-stale entry —
+   * concurrent {@code addLast} calls from {@link #recordFailure(Exception)} aren't strictly
+   * ordered (the {@code currentTimeMillis()} sample and the {@code addLast} happen in
+   * separate steps even under the lock, but the bound is small), so a strictly-monotonic
+   * assumption would occasionally leave stale entries behind.
+   */
   private void pruneOldFailures(long now) {
     long cutoff = now - FAILURE_WINDOW_MS;
     Iterator<Long> it = failureTimestamps.iterator();
     while (it.hasNext()) {
       if (it.next() < cutoff) {
         it.remove();
-      } else {
-        break;
       }
     }
   }
