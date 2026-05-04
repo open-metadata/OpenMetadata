@@ -1362,10 +1362,14 @@ const SSOConfigurationFormRJSF = ({
       {isEditMode && showForm && showAdvancedFieldsAccordion && (
         <Accordion className="sso-top-advanced-accordion">
           <AccordionItem id="sso-advanced-fields">
-            <AccordionHeader data-testid="sso-advanced-fields-toggle">
+            <AccordionHeader
+              className="sso-advanced-fields-toggle"
+              data-testid="sso-advanced-fields-toggle">
               {t('label.advanced-fields')}
             </AccordionHeader>
-            <AccordionPanel data-testid="sso-advanced-fields-panel">
+            <AccordionPanel
+              className="sso-advanced-fields-panel"
+              data-testid="sso-advanced-fields-panel">
               <div className="rjsf" ref={setAdvancedFieldsContainer} />
             </AccordionPanel>
           </AccordionItem>
