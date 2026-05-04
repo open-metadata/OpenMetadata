@@ -48,14 +48,22 @@ public class OmAppJobListener implements JobListener {
   }
 
   /**
-   * Populate {@code endTime} and {@code executionTime} on a terminal-state run record. Idempotent
-   * — does nothing if {@code endTime} is already set or if the status is non-terminal — so it is
-   * safe to call from progress listeners that may persist before {@link #jobWasExecuted} runs.
+   * Populate {@code endTime} and {@code executionTime} on a terminal-state run record. Each field
+   * is filled independently and only if currently null:
    *
-   * <p>Without this, mid-flight writes by progress listeners (e.g. {@code QuartzProgressListener}
-   * firing {@code onJobFailed}) persist a terminal status to the DB without timings; if the job
-   * dies before {@code jobWasExecuted} fires, polling consumers see status=FAILED with no
-   * endTime/executionTime.
+   * <ul>
+   *   <li>{@code endTime} defaults to {@code System.currentTimeMillis()} if absent.
+   *   <li>{@code executionTime} is computed from {@code endTime - startTime} if absent and both
+   *       endpoints are available — this means callers that pre-populated {@code endTime} (e.g.
+   *       from {@code job.getCompletedAt()}) still get an accurate {@code executionTime}.
+   * </ul>
+   *
+   * <p>The method is a no-op for non-terminal statuses, so it is safe to call from progress
+   * listeners that may persist before {@link #jobWasExecuted} runs. Without this, mid-flight
+   * writes by progress listeners (e.g. {@code QuartzProgressListener} firing {@code onJobFailed})
+   * would persist a terminal status to the DB without timings; if the job dies before {@code
+   * jobWasExecuted} fires, polling consumers would see {@code status=FAILED} with no
+   * {@code endTime} / {@code executionTime}.
    */
   public static void fillTerminalTimings(AppRunRecord record) {
     if (record == null || record.getStatus() == null || !isTerminalStatus(record.getStatus())) {

@@ -30,6 +30,9 @@ import org.openmetadata.service.workflows.interfaces.Source;
 @Getter
 public class PaginatedEntityTimeSeriesSource
     implements Source<ResultList<? extends EntityTimeSeriesInterface>> {
+  /** Cap on per-error detail messages emitted to logs to avoid flooding under large batches. */
+  private static final int MAX_ERROR_DETAILS_LOGGED = 5;
+
   private final int batchSize;
   private final String entityType;
   private final List<String> fields;
@@ -159,9 +162,18 @@ public class PaginatedEntityTimeSeriesSource
       int warningsCount = filterStaleRelationshipErrors(result);
 
       if (!result.getErrors().isEmpty()) {
+        int errorCount = result.getErrors().size();
         LOG.warn(
-            "[PaginatedEntityTimeSeriesSource] Real errors found: {}", result.getErrors().size());
-        result.getErrors().forEach(error -> LOG.warn("Error: {}", error.getMessage()));
+            "[PaginatedEntityTimeSeriesSource] {} real reader error(s) for entityType={}; "
+                + "first up to {} shown at DEBUG",
+            errorCount,
+            entityType,
+            MAX_ERROR_DETAILS_LOGGED);
+        if (LOG.isDebugEnabled()) {
+          result.getErrors().stream()
+              .limit(MAX_ERROR_DETAILS_LOGGED)
+              .forEach(error -> LOG.debug("Reader error: {}", error.getMessage()));
+        }
         lastFailedCursor = this.cursor.get();
         if (result.getPaging().getAfter() == null) {
           this.cursor.set(null);
@@ -308,7 +320,15 @@ public class PaginatedEntityTimeSeriesSource
    */
   private int filterStaleRelationshipErrors(
       ResultList<? extends EntityTimeSeriesInterface> result) {
-    if (result == null || result.getErrors() == null || result.getErrors().isEmpty()) {
+    if (result == null) {
+      return 0;
+    }
+    // EntityTimeSeriesRepository.getResultList(...) leaves errors=null on the success path.
+    // Normalize so downstream callers (logging, stats) can rely on a non-null list.
+    if (result.getErrors() == null) {
+      result.setErrors(new ArrayList<>());
+    }
+    if (result.getErrors().isEmpty()) {
       return 0;
     }
     List<EntityError> warnings = new ArrayList<>();

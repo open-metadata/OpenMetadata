@@ -87,7 +87,7 @@ public class ReindexingUtil {
     if (error == null || error.getMessage() == null) {
       return false;
     }
-    String message = error.getMessage().toLowerCase();
+    String message = error.getMessage().toLowerCase(java.util.Locale.ROOT);
     return message.contains("instance for")
         || message.contains("entity not found")
         || message.contains("entity with id")
