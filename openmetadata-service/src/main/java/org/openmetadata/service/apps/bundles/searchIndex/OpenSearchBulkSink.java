@@ -906,7 +906,11 @@ public class OpenSearchBulkSink implements BulkSink {
      */
     private static final long DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS = 60L;
 
-    private long semaphoreAcquireTimeoutSeconds = DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS;
+    // Volatile for cross-thread visibility. Read by flushInternal on the scheduler thread and
+    // from any caller that triggers a flush via add(); written by the package-private test
+    // setter from a different thread. Without volatile a stale value could be observed.
+    private volatile long semaphoreAcquireTimeoutSeconds =
+        DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS;
 
     private final OpenSearchAsyncClient asyncClient;
     private final List<BulkOperation> buffer = new ArrayList<>();

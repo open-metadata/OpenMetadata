@@ -81,6 +81,9 @@ public class CachedEntityDao {
    * Write-through cache: Store entity in cache (called after DB write)
    */
   public void putBase(String entityType, UUID entityId, String entityJson) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     if (entityJson == null || entityJson.isEmpty() || "{}".equals(entityJson)) {
       LOG.warn(
           "CACHE: Skipping cache write for empty entity JSON - Type: {}, ID: {}",
@@ -106,6 +109,9 @@ public class CachedEntityDao {
    * Write-through cache: Store entity by name for fast name-based lookups
    */
   public void putByName(String entityType, String fqn, String entityJson) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     if (entityJson == null || entityJson.isEmpty() || "{}".equals(entityJson)) {
       LOG.warn(
           "CACHE: Skipping cache write by name for empty entity JSON - Type: {}, FQN: {}",
@@ -138,7 +144,7 @@ public class CachedEntityDao {
    * Write-through cache: Store entity reference for fast reference lookups
    */
   public void putReference(String entityType, UUID entityId, String refJson) {
-    if (refJson == null || refJson.isEmpty()) {
+    if (refJson == null || refJson.isEmpty() || EntityCacheBypass.isSkipped()) {
       return;
     }
 
@@ -155,7 +161,7 @@ public class CachedEntityDao {
    * Write-through cache: Store entity reference by name
    */
   public void putReferenceByName(String entityType, String fqn, String refJson) {
-    if (refJson == null || refJson.isEmpty()) {
+    if (refJson == null || refJson.isEmpty() || EntityCacheBypass.isSkipped()) {
       return;
     }
 
