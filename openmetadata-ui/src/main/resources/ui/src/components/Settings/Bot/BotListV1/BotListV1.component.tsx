@@ -67,12 +67,16 @@ const BOT_SEARCH_PAGE_SIZE = 100;
 const BOT_SEARCH_CONCURRENCY = 10;
 const MAX_BOT_SEARCH_PAGES = 5;
 const MAX_BOT_USER_RESOLUTION = BOT_SEARCH_PAGE_SIZE * MAX_BOT_SEARCH_PAGES;
-const getBotUserFromUser = (botUser: User): NonNullable<Bot['botUser']> => ({
+const getBotUserFromUser = (
+  botUser: User,
+  existingBotUser?: Bot['botUser']
+): Bot['botUser'] => ({
+  ...existingBotUser,
   id: botUser.id,
   name: botUser.name,
   displayName: botUser.displayName,
   fullyQualifiedName: botUser.fullyQualifiedName,
-  email: botUser.email,
+  type: existingBotUser?.type ?? EntityType.USER,
 });
 
 const BotListV1 = ({
@@ -119,10 +123,7 @@ const BotListV1 = ({
 
     return {
       ...bot,
-      botUser: {
-        ...(bot.botUser ?? {}),
-        ...getBotUserFromUser(botUser),
-      } as Bot['botUser'],
+      botUser: getBotUserFromUser(botUser, bot.botUser),
     };
   }, []);
 
