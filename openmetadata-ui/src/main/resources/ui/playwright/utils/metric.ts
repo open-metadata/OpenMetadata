@@ -169,11 +169,8 @@ export const updateRelatedMetric = async (
 
   await apiPromise;
 
-  await page
-    .locator('.ant-select-item-option-content', {
-      hasText: dataAsset.entity.name,
-    })
-    .click();
+  await page.getByTestId(`option-${dataAsset.entity.name}`).waitFor();
+  await page.getByTestId(`option-${dataAsset.entity.name}`).click();
 
   await page.locator('[data-testid="saveRelatedMetrics"]').click();
 
