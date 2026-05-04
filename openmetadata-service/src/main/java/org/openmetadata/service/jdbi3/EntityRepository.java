@@ -4250,7 +4250,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * Process a batch of entities for deletion
+   * Process a batch of entities for hard deletion. Entered only via
+   * {@link #batchDeleteChildren}, which only fires for {@code hardDelete=true} and
+   * {@code children.size() > 100}; the soft-delete and small-batch paths stay on the
+   * sequential {@link Entity#deleteEntity} flow.
+   *
+   * <p>Each child is removed via {@link #cleanup}, which deletes the entity row, all
+   * {@code (id, *)} and {@code (*, id)} entity_relationship rows, extensions, tag usage,
+   * threads, and caches as one atomic unit per child (cleanup opens its own JDBI
+   * transaction via {@code Entity.getJdbi().inTransaction(...)}). The previous
+   * implementation pre-deleted relationships in two batched queries before this loop and
+   * swallowed exceptions in the per-child cleanup, which is exactly what produced the
+   * orphan pattern: a failed cleanup left an entity row alive after its relationships
+   * had been wiped, surfacing in {@code /containers?root=true} and breaking
+   * {@code /children} traversal.
+   *
+   * <p><b>Failure semantics:</b> per-child atomicity, not whole-batch atomicity. If
+   * cleanup for child <em>k</em> throws, children {@code 0..k-1} have already committed
+   * via their own transactions and cannot be rolled back by the {@code @Transaction} on
+   * this method (cleanup's inner transaction is independent). The exception propagates
+   * so the loop stops; children {@code k..N-1} keep both their rows and their parent
+   * CONTAINS relationships intact. The retry path is to reissue the recursive delete on
+   * the parent — remaining children re-enter this loop. Crucially, no orphan-without-
+   * relationships row can result from an exception in this method, which is the bug
+   * this change exists to fix; achieving true all-or-nothing rollback across the batch
+   * would require sharing one JDBI handle across every cleanup call, a wider refactor
+   * deliberately scoped out of this fix.
    */
   @Transaction
   private void processDeletionBatch(
@@ -4283,36 +4308,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
       deleteChildren(allGrandchildren, hardDelete, updatedBy);
     }
 
-    // Now batch delete the entities at this level (reuse stringIds from above)
-    // Only delete relationships for hard delete
-    // For soft delete, relationships must be preserved for restoration
-    if (hardDelete) {
-      // Batch delete relationships for all entities
-      daoCollection.relationshipDAO().batchDeleteFrom(stringIds, entityType);
-      daoCollection.relationshipDAO().batchDeleteTo(stringIds, entityType);
-    }
-
-    // Delete or soft-delete the entities themselves
+    // cleanup() per entity is the source of truth: it removes the row, its relationships
+    // (deleteAllFrom + deleteAllTo on (id, *) and (*, id)), extensions, tag usage, feed
+    // threads, and caches within ONE JDBI transaction owned by cleanup itself. The
+    // previous pre-batch-delete of relationships made the row-and-relationship pairing
+    // non-atomic across the loop, which is why a swallowed mid-loop exception produced
+    // the orphan-without-relationships pattern. Letting cleanup own both halves and
+    // letting exceptions propagate stops the loop early on failure; see the failure
+    // semantics note in the Javadoc above for what "stops the loop" actually guarantees.
+    @SuppressWarnings("rawtypes")
+    EntityRepository repository = Entity.getEntityRepository(entityType);
     for (UUID entityId : entityIds) {
-      try {
-        @SuppressWarnings("rawtypes")
-        EntityRepository repository = Entity.getEntityRepository(entityType);
-        if (repository.supportsSoftDelete && !hardDelete) {
-          // Soft delete
-          EntityInterface entity = repository.find(entityId, Include.ALL);
-          entity.setUpdatedBy(updatedBy);
-          entity.setUpdatedAt(System.currentTimeMillis());
-          entity.setDeleted(true);
-          repository.dao.update(entity);
-          invalidateCacheForEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
-        } else {
-          // Hard delete
-          EntityInterface entity = repository.find(entityId, Include.ALL);
-          repository.cleanup(entity);
-        }
-      } catch (Exception e) {
-        LOG.error("Error deleting entity {} of type {}: {}", entityId, entityType, e.getMessage());
-      }
+      EntityInterface entity = repository.find(entityId, Include.ALL);
+      repository.cleanup(entity);
     }
   }
 

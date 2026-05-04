@@ -337,12 +337,22 @@ ALTER TABLE search_index_server_stats
 -- RDS). Neither qualifies the planner to use the index for `LIKE 'prefix%'`,
 -- so count(*) and the page query degrade to a parallel seq scan over the
 -- JSONB heap — observed at ~3s on a ~580k-row storage_container_entity table
--- even with ANALYZE / VACUUM tuned. A `varchar_pattern_ops` index supports
--- LIKE-prefix lookups regardless of column collation, dropping cold count(*)
--- on a service-filtered listing from seconds to tens of milliseconds.
--- `varchar_pattern_ops` matches the actual column type (`VARCHAR(768)` /
--- `VARCHAR(256)`); `text_pattern_ops` would also work via implicit casting
--- but the type-matched opclass is the canonical choice.
+-- even with ANALYZE / VACUUM tuned. A pattern-ops index supports LIKE-prefix
+-- lookups regardless of column collation, dropping cold count(*) on a
+-- service-filtered listing from seconds to tens of milliseconds.
+--
+-- Why `text_pattern_ops` and not `varchar_pattern_ops`:
+-- `fqnHash` is declared `VARCHAR(768)` / `VARCHAR(256)`, so on paper
+-- `varchar_pattern_ops` is the type-matched choice. In practice the planner
+-- normalizes `varchar LIKE text` (which is what every JDBC `setString` call
+-- and any `encode(...)`-derived RHS produces) by casting the column to text:
+-- the resulting filter expression is `(fqnhash)::text ~~ ...`. The
+-- `varchar_pattern_ops` opclass does NOT match that cast expression — the
+-- index is silently unused and the table seq-scans. `text_pattern_ops`
+-- matches `(varchar_col)::text ~~ ...` and gets picked up. Confirmed via
+-- EXPLAIN ANALYZE on a 580k-row storage_container_entity: the same query
+-- drops from ~470ms cold (Parallel Seq Scan) to <1ms (Index Scan) after
+-- recreating the index with `text_pattern_ops`.
 --
 -- Built CONCURRENTLY so the migration does not take a write lock on these
 -- tables (matches the 1.11.0 `idx_tag_usage_*` pattern). Each statement runs
@@ -382,48 +392,48 @@ ALTER TABLE search_index_server_stats
 -- `CHARACTER SET ascii COLLATE ascii_bin`, a binary collation that already
 -- permits prefix scans on the unique index. This pass is Postgres-only.
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_chart_entity_fqnhash_pattern
-    ON chart_entity (fqnHash varchar_pattern_ops);
+    ON chart_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dashboard_entity_fqnhash_pattern
-    ON dashboard_entity (fqnHash varchar_pattern_ops);
+    ON dashboard_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dashboard_data_model_entity_fqnhash_pattern
-    ON dashboard_data_model_entity (fqnHash varchar_pattern_ops);
+    ON dashboard_data_model_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_database_entity_fqnhash_pattern
-    ON database_entity (fqnHash varchar_pattern_ops);
+    ON database_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_database_schema_entity_fqnhash_pattern
-    ON database_schema_entity (fqnHash varchar_pattern_ops);
+    ON database_schema_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_glossary_term_entity_fqnhash_pattern
-    ON glossary_term_entity (fqnHash varchar_pattern_ops);
+    ON glossary_term_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ingestion_pipeline_entity_fqnhash_pattern
-    ON ingestion_pipeline_entity (fqnHash varchar_pattern_ops);
+    ON ingestion_pipeline_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_metric_entity_fqnhash_pattern
-    ON metric_entity (fqnHash varchar_pattern_ops);
+    ON metric_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ml_model_entity_fqnhash_pattern
-    ON ml_model_entity (fqnHash varchar_pattern_ops);
+    ON ml_model_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_policy_entity_fqnhash_pattern
-    ON policy_entity (fqnHash varchar_pattern_ops);
+    ON policy_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_query_entity_fqnhash_pattern
-    ON query_entity (fqnHash varchar_pattern_ops);
+    ON query_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_report_entity_fqnhash_pattern
-    ON report_entity (fqnHash varchar_pattern_ops);
+    ON report_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_search_index_entity_fqnhash_pattern
-    ON search_index_entity (fqnHash varchar_pattern_ops);
+    ON search_index_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_storage_container_entity_fqnhash_pattern
-    ON storage_container_entity (fqnHash varchar_pattern_ops);
+    ON storage_container_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_table_entity_fqnhash_pattern
-    ON table_entity (fqnHash varchar_pattern_ops);
+    ON table_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_test_case_fqnhash_pattern
-    ON test_case (fqnHash varchar_pattern_ops);
+    ON test_case (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_topic_entity_fqnhash_pattern
-    ON topic_entity (fqnHash varchar_pattern_ops);
+    ON topic_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_api_collection_entity_fqnhash_pattern
-    ON api_collection_entity (fqnHash varchar_pattern_ops);
+    ON api_collection_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_api_endpoint_entity_fqnhash_pattern
-    ON api_endpoint_entity (fqnHash varchar_pattern_ops);
+    ON api_endpoint_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_directory_entity_fqnhash_pattern
-    ON directory_entity (fqnHash varchar_pattern_ops);
+    ON directory_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_file_entity_fqnhash_pattern
-    ON file_entity (fqnHash varchar_pattern_ops);
+    ON file_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_spreadsheet_entity_fqnhash_pattern
-    ON spreadsheet_entity (fqnHash varchar_pattern_ops);
+    ON spreadsheet_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_worksheet_entity_fqnhash_pattern
-    ON worksheet_entity (fqnHash varchar_pattern_ops);
+    ON worksheet_entity (fqnHash text_pattern_ops);
