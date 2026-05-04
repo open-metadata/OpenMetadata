@@ -41,6 +41,21 @@ public interface CacheProvider extends AutoCloseable {
 
   Map<String, Object> getStats();
 
+  /**
+   * Count keys matching a glob-style pattern (e.g. {@code "om:prod:e:table:*"}). Implementations
+   * use a server-side SCAN cursor to avoid blocking with KEYS. Default returns -1 for providers
+   * without a scan implementation; callers must treat negative values as "unsupported".
+   *
+   * <p><b>Cost:</b> O(n) over the entire keyspace because Redis SCAN visits every key and applies
+   * the pattern filter server-side. Wall time scales linearly with {@code DBSIZE}, not with the
+   * number of matches. Use sparingly — call it on bounded events (post-warmup, periodic
+   * health-check) rather than on the request path. For large keyspaces consider maintaining a
+   * counter key alongside writes / deletes instead.
+   */
+  default long scanCount(String pattern) {
+    return -1L;
+  }
+
   @Override
   void close();
 }
