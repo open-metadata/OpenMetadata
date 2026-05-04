@@ -261,29 +261,6 @@ def random_columns() -> List[Column]:
     return cols
 
 
-def create_one_container(
-    metadata: OpenMetadata,
-    service_name: str,
-    name: str,
-    parent_ref: EntityReference,
-) -> str:
-    """Create a single container and return its FQN."""
-    req = CreateContainerRequest(
-        name=name,
-        service=service_name,
-        parent=parent_ref,
-        description=f"Reindex perf test container {name}",
-        tags=random_tag_labels(1, 3),
-        dataModel=ContainerDataModel(
-            isPartitioned=False, columns=random_columns()
-        ),
-    )
-    created = metadata.create_or_update(req)
-    return created.fullyQualifiedName.root if hasattr(created.fullyQualifiedName, "root") else str(
-        created.fullyQualifiedName
-    )
-
-
 def build_parent_ref(parent_id: str, parent_fqn: str) -> EntityReference:
     return EntityReference(id=parent_id, type="container", fullyQualifiedName=parent_fqn)
 

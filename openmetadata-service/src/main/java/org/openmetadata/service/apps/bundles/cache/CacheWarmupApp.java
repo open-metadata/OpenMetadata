@@ -37,6 +37,7 @@ import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.entity.applications.configuration.internal.CacheWarmupAppConfig;
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -129,6 +130,11 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   private volatile boolean stopped = false;
   private final Stats stats = new Stats().withEntityStats(new EntityStats());
   private volatile boolean partiallyWarmed = false;
+  // Per-entity-type bail-out reasons collected during warmEntity. Surfaced through
+  // jobData.failure → AppRunRecord.failureContext when the run finishes in ACTIVE_ERROR /
+  // FAILED so operators can see which entity types and offsets bailed without trawling logs.
+  private final java.util.Map<String, String> partialWarmupFailures =
+      new java.util.concurrent.ConcurrentHashMap<>();
   private volatile long lastWebSocketUpdate = 0;
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000;
 
@@ -175,9 +181,17 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       if (cacheProvider == null || !cacheProvider.available()) {
         // Surface this as FAILED — initJobData set status to RUNNING above, and the finally block
         // will broadcast the terminal state. Leaving it RUNNING here would pin the job record in
-        // an active state indefinitely.
+        // an active state indefinitely. Populate jobData.failure so the AppRunRecord carries an
+        // actionable reason instead of a bare FAILED status.
         LOG.warn("Cache not available, skipping warmup");
         jobData.setStatus(EventPublisherJob.Status.FAILED);
+        jobData.setFailure(
+            new IndexingError()
+                .withErrorSource(IndexingError.ErrorSource.JOB)
+                .withMessage(
+                    cacheProvider == null
+                        ? "Cache provider not configured — warmup skipped"
+                        : "Redis cache provider unavailable at warmup start — warmup skipped"));
         return;
       }
       runWarmup();
@@ -185,6 +199,10 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       LOG.error("Cache warmup failed", e);
       if (jobData != null) {
         jobData.setStatus(EventPublisherJob.Status.FAILED);
+        jobData.setFailure(
+            new IndexingError()
+                .withErrorSource(IndexingError.ErrorSource.JOB)
+                .withMessage("Cache warmup failed: " + exceptionMessage(e)));
       }
     } finally {
       sendUpdates(jobExecutionContext, true);
@@ -226,6 +244,45 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     return appConfig != null
         && appConfig.getForce() != null
         && Boolean.TRUE.equals(appConfig.getForce());
+  }
+
+  /** Stash a per-entity-type bail-out reason. We append rather than replace so a single
+   *  entity type that hits multiple failure paths during one run keeps the full picture. */
+  private void recordPartialFailure(String entityType, String reason) {
+    partialWarmupFailures.merge(entityType, reason, (a, b) -> a + "; " + b);
+  }
+
+  /** Compose an {@link IndexingError} summarising every entity-type partial failure for
+   *  display in the AppRunRecord's failureContext. The message is bounded so it doesn't blow
+   *  up the websocket payload on degenerate runs. */
+  private IndexingError buildPartialWarmupFailure() {
+    if (partialWarmupFailures.isEmpty()) {
+      return new IndexingError()
+          .withErrorSource(IndexingError.ErrorSource.JOB)
+          .withMessage(
+              "Cache warmup completed with one or more entity types only partially warmed");
+    }
+    StringBuilder sb = new StringBuilder("Partial warmup; per-entity reasons:");
+    int budget = 1024;
+    for (Map.Entry<String, String> e : partialWarmupFailures.entrySet()) {
+      String chunk = String.format(" %s=[%s];", e.getKey(), e.getValue());
+      if (sb.length() + chunk.length() > budget) {
+        sb.append(" (truncated, ")
+            .append(partialWarmupFailures.size())
+            .append(" entity types total)");
+        break;
+      }
+      sb.append(chunk);
+    }
+    return new IndexingError()
+        .withErrorSource(IndexingError.ErrorSource.JOB)
+        .withFailedCount(partialWarmupFailures.size())
+        .withMessage(sb.toString());
+  }
+
+  private static String exceptionMessage(Throwable t) {
+    String msg = t.getMessage();
+    return msg != null ? msg : t.getClass().getSimpleName();
   }
 
   private void initJobData(JobExecutionContext ctx) {
@@ -287,6 +344,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     int batchSize = jobData.getBatchSize();
     Duration ttl = Duration.ofSeconds(cacheConfig.entityTtlSeconds);
     partiallyWarmed = false;
+    partialWarmupFailures.clear();
     for (String entityType : entityTypes) {
       if (stopped) break;
       warmupEntityType(entityType, batchSize, ttl);
@@ -295,6 +353,11 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       jobData.setStatus(EventPublisherJob.Status.STOPPED);
     } else if (partiallyWarmed) {
       jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
+      // Surface the per-entity bail-out reasons in jobData.failure so
+      // updateRecordToDbAndNotify (and the WebSocket payload) carry actionable detail. The UI
+      // shows AppRunRecord.failureContext.failure verbatim, so a human-readable summary here
+      // beats an opaque ACTIVE_ERROR with no clue which entity type or offset failed.
+      jobData.setFailure(buildPartialWarmupFailure());
       LOG.warn("Cache warmup completed with one or more entity types only partially warmed");
     } else {
       jobData.setStatus(EventPublisherJob.Status.COMPLETED);
@@ -356,6 +419,10 @@ public class CacheWarmupApp extends AbstractNativeApplication {
               (MAX_UNAVAILABLE_RETRIES * UNAVAILABLE_BACKOFF_MS) / 1000);
           partiallyWarmed = true;
           bailedOut = true;
+          recordPartialFailure(
+              entityType,
+              String.format(
+                  "cache unavailable after %d retries at offset %d", unavailableAttempts, offset));
           break;
         }
         try {
@@ -379,6 +446,9 @@ public class CacheWarmupApp extends AbstractNativeApplication {
         LOG.warn("Bulk fetch failed for {} at offset {}", entityType, offset, e);
         partiallyWarmed = true;
         bailedOut = true;
+        recordPartialFailure(
+            entityType,
+            String.format("bulk fetch failed at offset %d: %s", offset, exceptionMessage(e)));
         break;
       }
       if (page.isEmpty()) break;
@@ -426,7 +496,15 @@ public class CacheWarmupApp extends AbstractNativeApplication {
             bundleOk = false;
             // Bundle keys are cold even though entity JSON is warm. Surface as partial so
             // the run status reflects the incoherent state and the operator can re-trigger.
+            // Set bailedOut so the end-of-warmEntity block preserves the checkpoint —
+            // otherwise a later success page would advance it past this failed page and the
+            // next retry would skip the still-cold bundles.
             partiallyWarmed = true;
+            bailedOut = true;
+            recordPartialFailure(
+                entityType,
+                String.format(
+                    "bundle warmup failed at offset %d (%d rows)", offset, bundleResult.failed()));
             LOG.warn(
                 "Bundle warmup pass failed for {} batch at offset {} ({} rows); holding"
                     + " checkpoint so the next run retries.",
@@ -446,11 +524,19 @@ public class CacheWarmupApp extends AbstractNativeApplication {
         // the WebSocket status reflect the actual state — the cache is not warm for these rows.
         // Mark partial so the run reports ACTIVE_ERROR rather than COMPLETED — the bundle/key
         // state for these rows is incoherent and a follow-up retry should re-warm them.
+        // bailedOut prevents subsequent success pages from clearing the checkpoint at end-of-
+        // warmEntity, so the next retry resumes at this failed page.
         LOG.warn("Pipelined write failed for {} batch at offset {}", entityType, offset, e);
         int pageTotal = pageSuccess + pageFailed;
         failed += pageTotal;
         updateEntityStats(entityType, 0, pageTotal);
         partiallyWarmed = true;
+        bailedOut = true;
+        recordPartialFailure(
+            entityType,
+            String.format(
+                "pipelined write failed at offset %d (%d rows): %s",
+                offset, pageTotal, exceptionMessage(e)));
       }
       offset += page.size();
       sendUpdates(jobExecutionContext, false);
@@ -524,7 +610,13 @@ public class CacheWarmupApp extends AbstractNativeApplication {
    * concurrent warm — the Redis writes are idempotent.
    */
   private void releaseClaim(String entityType) {
-    if (cacheProvider == null || !cacheProvider.available() || claimKeyPrefix == null) {
+    // Don't gate on cacheProvider.available() here. The common case for needing to release is
+    // exactly when a partial-warm bailed because the provider went unavailable — if the
+    // provider has since recovered, our claim is still in Redis and we'd otherwise leave it
+    // held until CLAIM_TTL (10 min), which makes every follow-up run on any node skip this
+    // entity type for a long window. The DEL is best-effort: if Redis is still down we catch
+    // the exception and let the TTL clean it up.
+    if (cacheProvider == null || claimKeyPrefix == null) {
       return;
     }
     String key = claimKeyPrefix + entityType;
@@ -537,7 +629,11 @@ public class CacheWarmupApp extends AbstractNativeApplication {
             "Skipping release of claim {} — owner {} != self {}", entityType, owner, instanceId);
       }
     } catch (Exception e) {
-      LOG.debug("Failed to release claim for {}", entityType, e);
+      LOG.debug(
+          "Failed to release claim for {} (provider available={}); CLAIM_TTL will clear it",
+          entityType,
+          cacheProvider.available(),
+          e);
     }
   }
 
