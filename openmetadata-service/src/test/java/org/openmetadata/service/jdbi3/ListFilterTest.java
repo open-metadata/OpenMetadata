@@ -158,10 +158,11 @@ class ListFilterTest {
     assertNotNull(hashLike, "serviceHash bind must be set when service is filtered");
     assertNotNull(hashLikeChild, "serviceHashChild bind must be set for depth-aware listings");
 
-    // Both binds share the same prefix (everything up to the first '%'). The child bind
-    // appends ".%" so it matches descendants strictly below the immediate level. fqnHash
-    // segments are MD5 (32 hex chars), so prefix + ".%" excludes direct children and
-    // prefix + ".%.%" excludes grandchildren-and-deeper.
+    // Both binds share the same hashed prefix; only the LIKE-pattern tail differs.
+    // In ContainerDAO.listRoot* the SQL uses them as:
+    //   fqnHash LIKE     :serviceHash       -- '<hash>.%'   matches all descendants
+    //   fqnHash NOT LIKE :serviceHashChild  -- '<hash>.%.%' rejects depth >= 2
+    // so the combination keeps only direct children (depth = 1).
     int prefixEnd = hashLike.indexOf('%');
     assertTrue(prefixEnd > 0, "serviceHash should be of form '<hash>.%', got: " + hashLike);
     String prefix = hashLike.substring(0, prefixEnd);
