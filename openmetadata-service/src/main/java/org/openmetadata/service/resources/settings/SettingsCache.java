@@ -34,6 +34,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -47,6 +48,7 @@ import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
@@ -67,6 +69,7 @@ import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.ConfigSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
@@ -76,11 +79,13 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.system.SearchSettingsHandler;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.util.ConfigSourceResolver;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class SettingsCache {
   private static volatile boolean initialized = false;
+  private static Timestamp applicationStartTime;
   protected static final LoadingCache<String, Settings> CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(1000)
@@ -91,39 +96,39 @@ public class SettingsCache {
     // Private constructor for singleton
   }
 
-  // Expected to be called only once from the DefaultAuthorizer
   public static void initialize(OpenMetadataApplicationConfig config) {
-    if (!initialized) {
-      initialized = true;
+    if (initialized) {
+      return;
+    }
+    synchronized (SettingsCache.class) {
+      if (initialized) {
+        return;
+      }
+      applicationStartTime = ConfigSourceResolver.now();
       createDefaultConfiguration(config);
+      initialized = true;
     }
   }
 
   private static void createDefaultConfiguration(OpenMetadataApplicationConfig applicationConfig) {
-    // Initialise Email Setting
-    Settings storedSettings =
-        Entity.getSystemRepository().getConfigWithKey(EMAIL_CONFIGURATION.toString());
-    if (storedSettings == null) {
-      // Only in case a config doesn't exist in DB we insert it
-      SmtpSettings emailConfig =
-          applicationConfig.getOperationalApplicationConfigProvider().getEmailSettings();
-
-      Settings setting =
-          new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
-      Entity.getSystemRepository().createNewSetting(setting);
+    SmtpSettings emailConfig =
+        applicationConfig.getOperationalApplicationConfigProvider().getEmailSettings();
+    if (emailConfig != null) {
+      ConfigSource configSource =
+          emailConfig.getConfigSource() != null ? emailConfig.getConfigSource() : ConfigSource.ENV;
+      syncConfigWithSource(EMAIL_CONFIGURATION, emailConfig, configSource);
     }
 
     // Initialise OM base url setting
-    Settings storedOpenMetadataBaseUrlConfiguration =
-        Entity.getSystemRepository()
-            .getConfigWithKey(OPEN_METADATA_BASE_URL_CONFIGURATION.toString());
-    if (storedOpenMetadataBaseUrlConfiguration == null) {
-      Settings setting =
-          new Settings()
-              .withConfigType(OPEN_METADATA_BASE_URL_CONFIGURATION)
-              .withConfigValue(
-                  applicationConfig.getOperationalApplicationConfigProvider().getServerUrl());
-      Entity.getSystemRepository().createNewSetting(setting);
+    OpenMetadataBaseUrlConfiguration serverUrlConfig =
+        applicationConfig.getOperationalApplicationConfigProvider().getServerUrl();
+    if (serverUrlConfig != null) {
+      ConfigSource serverUrlConfigSource =
+          serverUrlConfig.getConfigSource() != null
+              ? serverUrlConfig.getConfigSource()
+              : ConfigSource.ENV;
+      syncConfigWithSource(
+          OPEN_METADATA_BASE_URL_CONFIGURATION, serverUrlConfig, serverUrlConfigSource);
     }
 
     // Initialise Theme Setting
@@ -260,33 +265,20 @@ public class SettingsCache {
       Entity.getSystemRepository().createNewSetting(setting);
     }
 
-    // Initialize Authentication Configuration
-    Settings storedAuthConfig =
-        Entity.getSystemRepository().getConfigWithKey(AUTHENTICATION_CONFIGURATION.toString());
-    if (storedAuthConfig == null) {
-      AuthenticationConfiguration authConfig = applicationConfig.getAuthenticationConfiguration();
-      if (authConfig != null) {
-        Settings setting =
-            new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig);
-
-        Entity.getSystemRepository().createNewSetting(setting);
-      }
+    AuthenticationConfiguration authConfig = applicationConfig.getAuthenticationConfiguration();
+    if (authConfig != null) {
+      ConfigSource configSource =
+          authConfig.getConfigSource() != null ? authConfig.getConfigSource() : ConfigSource.ENV;
+      syncConfigWithSource(AUTHENTICATION_CONFIGURATION, authConfig, configSource);
     }
 
-    // Initialize Authorizer Configuration
-    Settings storedAuthzConfig =
-        Entity.getSystemRepository().getConfigWithKey(AUTHORIZER_CONFIGURATION.toString());
-    if (storedAuthzConfig == null) {
-      AuthorizerConfiguration authzConfig = applicationConfig.getAuthorizerConfiguration();
-      if (authzConfig != null) {
-        Settings setting =
-            new Settings().withConfigType(AUTHORIZER_CONFIGURATION).withConfigValue(authzConfig);
-
-        Entity.getSystemRepository().createNewSetting(setting);
-      }
+    AuthorizerConfiguration authzConfig = applicationConfig.getAuthorizerConfiguration();
+    if (authzConfig != null) {
+      ConfigSource configSource =
+          authzConfig.getConfigSource() != null ? authzConfig.getConfigSource() : ConfigSource.ENV;
+      syncConfigWithSource(AUTHORIZER_CONFIGURATION, authzConfig, configSource);
     }
 
-    // Initialize MCP Configuration
     Settings storedMcpConfig =
         Entity.getSystemRepository().getConfigWithKey(MCP_CONFIGURATION.toString());
     if (storedMcpConfig == null) {
@@ -300,15 +292,13 @@ public class SettingsCache {
       }
     }
 
-    Settings storedScimConfig =
-        Entity.getSystemRepository().getConfigWithKey(SCIM_CONFIGURATION.toString());
-    if (storedScimConfig == null) {
-      ScimConfiguration scimConfiguration = applicationConfig.getScimConfiguration();
-      if (scimConfiguration != null) {
-        Settings setting =
-            new Settings().withConfigType(SCIM_CONFIGURATION).withConfigValue(scimConfiguration);
-        Entity.getSystemRepository().createNewSetting(setting);
-      }
+    ScimConfiguration scimConfiguration = applicationConfig.getScimConfiguration();
+    if (scimConfiguration != null) {
+      ConfigSource configSource =
+          scimConfiguration.getConfigSource() != null
+              ? scimConfiguration.getConfigSource()
+              : ConfigSource.ENV;
+      syncConfigWithSource(SCIM_CONFIGURATION, scimConfiguration, configSource);
     }
 
     Settings entityRulesSettings =
@@ -520,6 +510,50 @@ public class SettingsCache {
         .withColor(color)
         .withSourceMax(sourceMax)
         .withTargetMax(targetMax);
+  }
+
+  private static void syncConfigWithSource(
+      SettingsType settingsType, Object envConfigValue, ConfigSource configSource) {
+    if (envConfigValue == null) {
+      return;
+    }
+
+    String currentEnvHash = ConfigSourceResolver.computeHash(envConfigValue);
+    String storedEnvHash = Entity.getSystemRepository().getEnvHash(settingsType.toString());
+    Timestamp dbModifiedTimestamp =
+        Entity.getSystemRepository().getDbModifiedTimestamp(settingsType.toString());
+
+    Settings storedSettings =
+        Entity.getSystemRepository().getConfigWithKey(settingsType.toString());
+
+    if (storedSettings == null) {
+      Settings setting =
+          new Settings().withConfigType(settingsType).withConfigValue(envConfigValue);
+      Entity.getSystemRepository()
+          .syncSetting(setting, currentEnvHash, applicationStartTime, applicationStartTime);
+      return;
+    }
+
+    boolean shouldUseEnv =
+        ConfigSourceResolver.shouldUseEnvValue(
+            configSource,
+            currentEnvHash,
+            storedEnvHash,
+            null,
+            dbModifiedTimestamp,
+            applicationStartTime);
+
+    if (shouldUseEnv) {
+      LOG.info("Config source resolution: using ENV value for {}", settingsType);
+      Settings setting =
+          new Settings().withConfigType(settingsType).withConfigValue(envConfigValue);
+      Entity.getSystemRepository()
+          .syncSetting(setting, currentEnvHash, applicationStartTime, applicationStartTime);
+    } else {
+      if (storedEnvHash == null || !currentEnvHash.equals(storedEnvHash)) {
+        Entity.getSystemRepository().updateEnvHash(settingsType.toString(), currentEnvHash);
+      }
+    }
   }
 
   public static <T> T getSetting(SettingsType settingName, Class<T> clazz) {

@@ -15,6 +15,10 @@
  */
 export interface LineageSettings {
     /**
+     * Determines where this configuration is read from.
+     */
+    configSource?: ConfigSource;
+    /**
      * DownStream Depth for Lineage.
      */
     downstreamDepth: number;
@@ -34,6 +38,17 @@ export interface LineageSettings {
      * Upstream Depth for Lineage.
      */
     upstreamDepth: number;
+}
+
+/**
+ * Determines where this configuration is read from.
+ *
+ * Determines where configuration is read from.
+ */
+export enum ConfigSource {
+    Auto = "AUTO",
+    DB = "DB",
+    Env = "ENV",
 }
 
 /**

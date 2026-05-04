@@ -15,6 +15,10 @@
  */
 export interface WorkflowSettings {
     /**
+     * Determines where this configuration is read from.
+     */
+    configSource?: ConfigSource;
+    /**
      * Used to set up the Workflow Executor Settings.
      */
     executorConfiguration?: ExecutorConfiguration;
@@ -26,6 +30,17 @@ export interface WorkflowSettings {
      * Used to set up the History CleanUp Settings.
      */
     runTimeCleanUpConfiguration?: RunTimeCleanUpConfiguration;
+}
+
+/**
+ * Determines where this configuration is read from.
+ *
+ * Determines where configuration is read from.
+ */
+export enum ConfigSource {
+    Auto = "AUTO",
+    DB = "DB",
+    Env = "ENV",
 }
 
 /**

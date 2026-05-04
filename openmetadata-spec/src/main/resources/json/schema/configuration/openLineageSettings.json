@@ -5,7 +5,13 @@
   "description": "Settings for OpenLineage HTTP API integration. Configure how OpenMetadata receives and processes lineage events from external systems like Spark, Airflow, and Flink.",
   "type": "object",
   "javaType": "org.openmetadata.schema.configuration.OpenLineageSettings",
+  "javaInterfaces": ["org.openmetadata.schema.configuration.OpenMetadataConfig"],
   "properties": {
+    "configSource": {
+      "description": "Determines where this configuration is read from.",
+      "$ref": "../type/configSource.json",
+      "default": "DB"
+    },
     "enabled": {
       "description": "Enable or disable the OpenLineage HTTP API endpoint.",
       "type": "boolean",

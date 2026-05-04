@@ -5,7 +5,13 @@
   "description": "This schema defines the OpenMetadata base URL configuration",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration",
+  "javaInterfaces": ["org.openmetadata.schema.configuration.OpenMetadataConfig"],
   "properties": {
+    "configSource": {
+      "description": "Determines where this configuration is read from.",
+      "$ref": "../type/configSource.json",
+      "default": "AUTO"
+    },
     "openMetadataUrl": {
       "description": "OpenMetadata Server Endpoint",
       "type": "string",

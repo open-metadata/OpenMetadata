@@ -56,6 +56,10 @@ export interface SearchSettings {
      */
     assetTypeConfigurations?: AssetTypeConfiguration[];
     /**
+     * Determines where this configuration is read from.
+     */
+    configSource?: ConfigSource;
+    /**
      * Fallback configuration for any entity/asset not matched in assetTypeConfigurations.
      */
     defaultConfiguration?: AssetTypeConfiguration;
@@ -328,6 +332,17 @@ export interface TermBoost {
      * The exact keyword value to match in the above field.
      */
     value: string;
+}
+
+/**
+ * Determines where this configuration is read from.
+ *
+ * Determines where configuration is read from.
+ */
+export enum ConfigSource {
+    Auto = "AUTO",
+    DB = "DB",
+    Env = "ENV",
 }
 
 export interface GlobalSettings {

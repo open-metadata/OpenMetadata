@@ -3,7 +3,14 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "EntityRuleSettings",
   "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.EntityRulesSettings",
+  "javaInterfaces": ["org.openmetadata.schema.configuration.OpenMetadataConfig"],
   "properties": {
+    "configSource": {
+      "description": "Determines where this configuration is read from.",
+      "$ref": "../type/configSource.json",
+      "default": "DB"
+    },
     "entitySemantics": {
       "description": "Semantics rules defined in the data contract.",
       "type": "array",

@@ -12,9 +12,24 @@
  */
 export interface EntityRulesSettings {
     /**
+     * Determines where this configuration is read from.
+     */
+    configSource?: ConfigSource;
+    /**
      * Semantics rules defined in the data contract.
      */
     entitySemantics: SemanticsRule[];
+}
+
+/**
+ * Determines where this configuration is read from.
+ *
+ * Determines where configuration is read from.
+ */
+export enum ConfigSource {
+    Auto = "AUTO",
+    DB = "DB",
+    Env = "ENV",
 }
 
 /**

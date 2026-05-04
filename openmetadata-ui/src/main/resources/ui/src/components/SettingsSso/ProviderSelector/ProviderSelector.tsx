@@ -23,6 +23,7 @@ import { ProviderSelectorProps } from './ProviderSelector.interface';
 const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   selectedProvider: initialSelectedProvider,
   onProviderSelect,
+  disabled = false,
 }) => {
   const { t } = useTranslation();
   const [selectedProvider, setSelectedProvider] = useState<
@@ -30,11 +31,13 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   >(initialSelectedProvider);
 
   const handleCardClick = (provider: AuthProvider) => {
-    setSelectedProvider(provider);
+    if (!disabled) {
+      setSelectedProvider(provider);
+    }
   };
 
   const handleConfigureClick = () => {
-    if (selectedProvider) {
+    if (selectedProvider && !disabled) {
       onProviderSelect(selectedProvider);
     }
   };
@@ -46,7 +49,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
           {t('label.choose-provider')}
         </Typography.Title>
         <Button
-          disabled={!selectedProvider}
+          disabled={!selectedProvider || disabled}
           type="primary"
           onClick={handleConfigureClick}>
           {t('label.configure')}

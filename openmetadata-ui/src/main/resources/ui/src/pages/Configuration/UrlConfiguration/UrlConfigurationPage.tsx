@@ -22,11 +22,13 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
+import ConfigSourceIndicator from '../../../components/Settings/ConfigSourceIndicator';
 import { NO_DATA_PLACEHOLDER, ROUTES } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { OpenMetadataBaseURLConfiguration } from '../../../generated/configuration/openMetadataBaseUrlConfiguration';
 import { SettingType } from '../../../generated/settings/settings';
+import { ConfigSource } from '../../../generated/type/configSource';
 import { getSettingsConfigFromConfigType } from '../../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
@@ -104,15 +106,22 @@ const UrlConfigurationPage = () => {
               />
             </Col>
             <Col>
-              <Button
-                data-testid="edit-button"
-                icon={<Icon component={IconEdit} size={12} />}
-                onClick={handleEditClick}>
-                {t('label.edit')}
-              </Button>
+              {urlConfig?.configSource !== ConfigSource.Env && (
+                <Button
+                  data-testid="edit-button"
+                  icon={<Icon component={IconEdit} size={12} />}
+                  onClick={handleEditClick}>
+                  {t('label.edit')}
+                </Button>
+              )}
             </Col>
           </Row>
         </Col>
+        {urlConfig?.configSource && (
+          <Col span={24}>
+            <ConfigSourceIndicator configSource={urlConfig.configSource} />
+          </Col>
+        )}
         <Col span={12}>
           <Row align="middle">
             <Col span={24}>

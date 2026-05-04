@@ -21,6 +21,10 @@ export interface OpenLineageSettings {
      */
     autoCreateEntities?: boolean;
     /**
+     * Determines where this configuration is read from.
+     */
+    configSource?: ConfigSource;
+    /**
      * Name of the Pipeline Service to use when auto-creating Pipeline entities from OpenLineage
      * jobs. This service must exist in OpenMetadata.
      */
@@ -40,6 +44,17 @@ export interface OpenLineageSettings {
      * 'prod-postgres'
      */
     namespaceToServiceMapping?: { [key: string]: string };
+}
+
+/**
+ * Determines where this configuration is read from.
+ *
+ * Determines where configuration is read from.
+ */
+export enum ConfigSource {
+    Auto = "AUTO",
+    DB = "DB",
+    Env = "ENV",
 }
 
 export enum EventTypeFilter {

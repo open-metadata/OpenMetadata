@@ -16,6 +16,7 @@ import { AuthProvider } from '../../../generated/settings/settings';
 export interface ProviderSelectorProps {
   selectedProvider?: AuthProvider;
   onProviderSelect: (provider: AuthProvider) => void;
+  disabled?: boolean;
 }
 
 export interface ProviderOption {

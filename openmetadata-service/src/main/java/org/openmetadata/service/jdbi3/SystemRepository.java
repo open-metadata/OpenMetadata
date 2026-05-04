@@ -17,6 +17,7 @@ import com.unboundid.util.ssl.SSLUtil;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -41,6 +42,7 @@ import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
+import org.openmetadata.schema.configuration.OpenMetadataConfig;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -60,6 +62,7 @@ import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.system.StepValidation;
 import org.openmetadata.schema.system.ValidationResponse;
+import org.openmetadata.schema.type.ConfigSource;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -67,8 +70,10 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
@@ -94,6 +99,7 @@ import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
 import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
+import org.openmetadata.service.util.ConfigSourceResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -125,11 +131,205 @@ public class SystemRepository {
   }
 
   private static final String INDEX_NAME = "table_search_index";
+  private static final String CONFIG_SOURCE_FIELD = "configSource";
 
   public SystemRepository() {
     this.dao = Entity.getCollectionDAO().systemDAO();
     Entity.setSystemRepository(this);
     migrationValidationClient = MigrationValidationClient.getInstance();
+  }
+
+  /**
+   * Checks if a setting type is dual-source (exists in both ENV/YAML and DB).
+   * Dual-source settings can have their configSource controlled via ENV/YAML.
+   */
+  public static boolean isDualSourceSetting(SettingsType configType) {
+    return switch (configType) {
+      case AUTHENTICATION_CONFIGURATION,
+          AUTHORIZER_CONFIGURATION,
+          EMAIL_CONFIGURATION,
+          SCIM_CONFIGURATION,
+          OPEN_METADATA_BASE_URL_CONFIGURATION -> true;
+      default -> false;
+    };
+  }
+
+  /**
+   * Gets the configSource from the application config (ENV/YAML) for dual-source settings.
+   * Returns null for DB-only settings.
+   */
+  public static ConfigSource getConfigSourceFromApplicationConfig(
+      SettingsType configType, OpenMetadataApplicationConfig applicationConfig) {
+    if (applicationConfig == null || !isDualSourceSetting(configType)) {
+      return null;
+    }
+
+    return switch (configType) {
+      case AUTHENTICATION_CONFIGURATION -> {
+        AuthenticationConfiguration authConfig = applicationConfig.getAuthenticationConfiguration();
+        yield authConfig != null ? authConfig.getConfigSource() : ConfigSource.AUTO;
+      }
+      case AUTHORIZER_CONFIGURATION -> {
+        AuthorizerConfiguration authzConfig = applicationConfig.getAuthorizerConfiguration();
+        yield authzConfig != null ? authzConfig.getConfigSource() : ConfigSource.AUTO;
+      }
+      case EMAIL_CONFIGURATION -> {
+        SmtpSettings emailConfig =
+            applicationConfig.getOperationalApplicationConfigProvider() != null
+                ? applicationConfig.getOperationalApplicationConfigProvider().getEmailSettings()
+                : null;
+        yield emailConfig != null ? emailConfig.getConfigSource() : ConfigSource.AUTO;
+      }
+      case SCIM_CONFIGURATION -> {
+        ScimConfiguration scimConfig = applicationConfig.getScimConfiguration();
+        yield scimConfig != null ? scimConfig.getConfigSource() : ConfigSource.AUTO;
+      }
+      case OPEN_METADATA_BASE_URL_CONFIGURATION -> {
+        OpenMetadataBaseUrlConfiguration serverUrlConfig =
+            applicationConfig.getOperationalApplicationConfigProvider() != null
+                ? applicationConfig.getOperationalApplicationConfigProvider().getServerUrl()
+                : null;
+        yield serverUrlConfig != null ? serverUrlConfig.getConfigSource() : ConfigSource.AUTO;
+      }
+      default -> null;
+    };
+  }
+
+  /**
+   * Enforces the configSource from the application config onto the setting value.
+   * For dual-source settings, the configSource is always taken from ENV/YAML.
+   * For DB-only settings, the configSource is always DB and cannot be changed.
+   */
+  public static void enforceConfigSource(
+      Settings setting, OpenMetadataApplicationConfig applicationConfig) {
+    if (setting == null || setting.getConfigValue() == null) {
+      return;
+    }
+
+    SettingsType configType = setting.getConfigType();
+    Object configValue = setting.getConfigValue();
+
+    if (isDualSourceSetting(configType)) {
+      // For dual-source settings, always use configSource from application config
+      ConfigSource envConfigSource =
+          getConfigSourceFromApplicationConfig(configType, applicationConfig);
+      if (envConfigSource == null) {
+        envConfigSource = ConfigSource.AUTO; // Default to AUTO if not specified
+      }
+      setConfigSourceOnValue(configValue, envConfigSource, configType);
+    } else {
+      // For DB-only settings, always set configSource to DB
+      setConfigSourceOnValue(configValue, ConfigSource.DB, configType);
+    }
+  }
+
+  private static void setConfigSourceOnValue(
+      Object configValue, ConfigSource configSource, SettingsType configType) {
+    if (configValue instanceof OpenMetadataConfig openMetadataConfig) {
+      openMetadataConfig.setConfigSource(configSource);
+    } else if (configValue instanceof java.util.Map) {
+      @SuppressWarnings("unchecked")
+      java.util.Map<String, Object> map = (java.util.Map<String, Object>) configValue;
+      map.put(CONFIG_SOURCE_FIELD, configSource.value());
+    }
+  }
+
+  public static ConfigSource readConfigSourceFromValue(Object configValue) {
+    if (configValue instanceof OpenMetadataConfig openMetadataConfig) {
+      return openMetadataConfig.getConfigSource();
+    }
+    if (configValue instanceof java.util.Map) {
+      @SuppressWarnings("unchecked")
+      java.util.Map<String, Object> map = (java.util.Map<String, Object>) configValue;
+      Object raw = map.get(CONFIG_SOURCE_FIELD);
+      if (raw instanceof String s) {
+        return ConfigSource.fromValue(s);
+      }
+      if (raw instanceof ConfigSource cs) {
+        return cs;
+      }
+    }
+    return null;
+  }
+
+  public static ConfigSource expectedConfigSource(
+      SettingsType configType, OpenMetadataApplicationConfig applicationConfig) {
+    if (!isDualSourceSetting(configType)) {
+      return ConfigSource.DB;
+    }
+    ConfigSource envConfigSource =
+        getConfigSourceFromApplicationConfig(configType, applicationConfig);
+    return envConfigSource != null ? envConfigSource : ConfigSource.AUTO;
+  }
+
+  public boolean isUpdateAllowed(SettingsType configType) {
+    // Get configSource from the application config (ENV/YAML), not from the DB
+    // This ensures the operator controls whether updates are allowed
+    OpenMetadataApplicationConfig applicationConfig =
+        OpenMetadataApplicationConfigHolder.getInstance();
+    ConfigSource configSource = getConfigSourceFromApplicationConfig(configType, applicationConfig);
+
+    // If it's a dual-source setting, check the configSource from ENV/YAML
+    if (configSource != null) {
+      return configSource != ConfigSource.ENV;
+    }
+
+    // For DB-only settings, updates are always allowed
+    return true;
+  }
+
+  private OpenMetadataConfig convertToOpenMetadataConfig(
+      SettingsType configType, Object configValue) {
+    if (configType == null || configValue == null) {
+      return null;
+    }
+    try {
+      return switch (configType) {
+        case EMAIL_CONFIGURATION -> JsonUtils.convertValue(configValue, SmtpSettings.class);
+        case AUTHENTICATION_CONFIGURATION -> JsonUtils.convertValue(
+            configValue, AuthenticationConfiguration.class);
+        case AUTHORIZER_CONFIGURATION -> JsonUtils.convertValue(
+            configValue, AuthorizerConfiguration.class);
+        case SEARCH_SETTINGS -> JsonUtils.convertValue(configValue, SearchSettings.class);
+        case CUSTOM_UI_THEME_PREFERENCE -> JsonUtils.convertValue(
+            configValue, UiThemePreference.class);
+        case SCIM_CONFIGURATION -> JsonUtils.convertValue(configValue, ScimConfiguration.class);
+        case ASSET_CERTIFICATION_SETTINGS -> JsonUtils.convertValue(
+            configValue, AssetCertificationSettings.class);
+        case WORKFLOW_SETTINGS -> JsonUtils.convertValue(configValue, WorkflowSettings.class);
+        default -> null;
+      };
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  public String getEnvHash(String configType) {
+    return dao.getEnvHash(configType);
+  }
+
+  public Timestamp getEnvSyncTimestamp(String configType) {
+    return dao.getEnvSyncTimestamp(configType);
+  }
+
+  public Timestamp getDbModifiedTimestamp(String configType) {
+    return dao.getDbModifiedTimestamp(configType);
+  }
+
+  public void updateConfigMetadata(
+      String configType,
+      String envHash,
+      Timestamp envSyncTimestamp,
+      Timestamp dbModifiedTimestamp) {
+    dao.updateConfigMetadata(configType, envHash, envSyncTimestamp, dbModifiedTimestamp);
+  }
+
+  public void updateEnvHash(String configType, String envHash) {
+    dao.updateEnvHash(configType, envHash);
+  }
+
+  public void updateDbModifiedTimestamp(String configType, Timestamp dbModifiedTimestamp) {
+    dao.updateDbModifiedTimestamp(configType, dbModifiedTimestamp);
   }
 
   public EntitiesCount getAllEntitiesCount(ListFilter filter) {
@@ -350,60 +550,125 @@ public class SystemRepository {
 
   public void updateSetting(Settings setting) {
     try {
-      if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
-        SmtpSettings emailConfig =
-            JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
-        if (!nullOrEmpty(emailConfig.getPassword())) {
-          setting.setConfigValue(encryptEmailSetting(emailConfig));
-        }
-      } else if (setting.getConfigType() == SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION) {
-        OpenMetadataBaseUrlConfiguration omBaseUrl =
-            JsonUtils.convertValue(
-                setting.getConfigValue(), OpenMetadataBaseUrlConfiguration.class);
-        setting.setConfigValue(omBaseUrl);
-      } else if (setting.getConfigType() == SettingsType.SLACK_APP_CONFIGURATION) {
-        SlackAppConfiguration appConfiguration =
-            JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
-        setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
-      } else if (setting.getConfigType() == SettingsType.SLACK_BOT) {
-        String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
-        setting.setConfigValue(encryptSlackDefaultBotSetting(appConfiguration));
-      } else if (setting.getConfigType() == SettingsType.SLACK_INSTALLER) {
-        String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
-        setting.setConfigValue(encryptSlackDefaultInstallerSetting(appConfiguration));
-      } else if (setting.getConfigType() == SettingsType.SLACK_STATE) {
-        String slackState = JsonUtils.convertValue(setting.getConfigValue(), String.class);
-        setting.setConfigValue(encryptSlackStateSetting(slackState));
-      } else if (setting.getConfigType() == SettingsType.CUSTOM_UI_THEME_PREFERENCE) {
-        JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
-      } else if (setting.getConfigType() == SettingsType.SEARCH_SETTINGS) {
-        JsonUtils.validateJsonSchema(setting.getConfigValue(), SearchSettings.class);
-      } else if (setting.getConfigType() == SettingsType.SCIM_CONFIGURATION) {
-        ScimConfiguration scimConfig =
-            JsonUtils.convertValue(setting.getConfigValue(), ScimConfiguration.class);
-        JsonUtils.validateJsonSchema(setting.getConfigValue(), ScimConfiguration.class);
-        setting.setConfigValue(scimConfig);
-      } else if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
-        AuthenticationConfiguration authConfig =
-            JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
-        setting.setConfigValue(authConfig);
-      } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
-        AuthorizerConfiguration authorizerConfig =
-            JsonUtils.convertValue(setting.getConfigValue(), AuthorizerConfiguration.class);
-        JsonUtils.validateJsonSchema(authorizerConfig, AuthorizerConfiguration.class);
-        setting.setConfigValue(authorizerConfig);
-      }
-      dao.insertSettings(
-          setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
-      // Invalidate Cache
+      rejectConflictingConfigSource(setting);
+      prepareSettingForPersistence(setting);
+      String configType = setting.getConfigType().toString();
+      dao.insertSettings(configType, JsonUtils.pojoToJson(setting.getConfigValue()));
+      Timestamp now = ConfigSourceResolver.now();
+      dao.updateDbModifiedTimestamp(configType, now);
       SettingsCache.invalidateSettings(setting.getConfigType().value());
       postUpdate(setting.getConfigType());
+    } catch (SystemSettingsException ssx) {
+      throw ssx;
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
       throw new CustomExceptionMessage(
           Response.Status.INTERNAL_SERVER_ERROR,
           "FAILED_TO_UPDATE_SLACK_OR_EMAIL",
           ex.getMessage());
+    }
+  }
+
+  private void rejectConflictingConfigSource(Settings setting) {
+    if (setting == null || setting.getConfigValue() == null) {
+      return;
+    }
+    ConfigSource incoming = readConfigSourceFromValue(setting.getConfigValue());
+    if (incoming == null) {
+      return;
+    }
+    ConfigSource expected =
+        expectedConfigSource(
+            setting.getConfigType(), OpenMetadataApplicationConfigHolder.getInstance());
+    if (incoming != expected) {
+      throw SystemSettingsException.forbidden(
+          String.format(
+              "configSource for %s is managed by server configuration (current: %s); "
+                  + "remove configSource from the request payload or change the server config.",
+              setting.getConfigType(), expected));
+    }
+  }
+
+  /**
+   * Persist a setting together with its env-sync metadata in a single UPDATE.
+   * Used by the boot-time sync path so env_hash, env_sync_timestamp, and
+   * db_modified_timestamp stay consistent without a redundant second UPDATE.
+   */
+  public void syncSetting(
+      Settings setting,
+      String envHash,
+      Timestamp envSyncTimestamp,
+      Timestamp dbModifiedTimestamp) {
+    try {
+      prepareSettingForPersistence(setting);
+      String configType = setting.getConfigType().toString();
+      String json = JsonUtils.pojoToJson(setting.getConfigValue());
+      dao.insertSettings(configType, json);
+      dao.updateConfigWithMetadata(
+          configType, json, envHash, envSyncTimestamp, dbModifiedTimestamp);
+      SettingsCache.invalidateSettings(setting.getConfigType().value());
+      postUpdate(setting.getConfigType());
+    } catch (Exception ex) {
+      LOG.error("Failing in sync-updating Setting.", ex);
+      throw new CustomExceptionMessage(
+          Response.Status.INTERNAL_SERVER_ERROR,
+          "FAILED_TO_SYNC_SETTING",
+          ex.getMessage());
+    }
+  }
+
+  private void prepareSettingForPersistence(Settings setting) {
+    // Enforce configSource from application config (ENV/YAML)
+    // For dual-source settings: always use configSource from ENV/YAML
+    // For DB-only settings: always set configSource to DB
+    OpenMetadataApplicationConfig appConfig = OpenMetadataApplicationConfigHolder.getInstance();
+    enforceConfigSource(setting, appConfig);
+
+    prepareTypeSpecificConfigValue(setting);
+  }
+
+  private void prepareTypeSpecificConfigValue(Settings setting) {
+    if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
+      SmtpSettings emailConfig =
+          JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
+      if (!nullOrEmpty(emailConfig.getPassword())) {
+        setting.setConfigValue(encryptEmailSetting(emailConfig));
+      }
+    } else if (setting.getConfigType() == SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION) {
+      OpenMetadataBaseUrlConfiguration omBaseUrl =
+          JsonUtils.convertValue(setting.getConfigValue(), OpenMetadataBaseUrlConfiguration.class);
+      setting.setConfigValue(omBaseUrl);
+    } else if (setting.getConfigType() == SettingsType.SLACK_APP_CONFIGURATION) {
+      SlackAppConfiguration appConfiguration =
+          JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
+      setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
+    } else if (setting.getConfigType() == SettingsType.SLACK_BOT) {
+      String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
+      setting.setConfigValue(encryptSlackDefaultBotSetting(appConfiguration));
+    } else if (setting.getConfigType() == SettingsType.SLACK_INSTALLER) {
+      String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
+      setting.setConfigValue(encryptSlackDefaultInstallerSetting(appConfiguration));
+    } else if (setting.getConfigType() == SettingsType.SLACK_STATE) {
+      String slackState = JsonUtils.convertValue(setting.getConfigValue(), String.class);
+      setting.setConfigValue(encryptSlackStateSetting(slackState));
+    } else if (setting.getConfigType() == SettingsType.CUSTOM_UI_THEME_PREFERENCE) {
+      JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
+    } else if (setting.getConfigType() == SettingsType.SEARCH_SETTINGS) {
+      JsonUtils.validateJsonSchema(setting.getConfigValue(), SearchSettings.class);
+    } else if (setting.getConfigType() == SettingsType.SCIM_CONFIGURATION) {
+      ScimConfiguration scimConfig =
+          JsonUtils.convertValue(setting.getConfigValue(), ScimConfiguration.class);
+      JsonUtils.validateJsonSchema(setting.getConfigValue(), ScimConfiguration.class);
+      setting.setConfigValue(scimConfig);
+    } else if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
+      AuthenticationConfiguration authConfig =
+          JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
+      setting.setConfigValue(authConfig);
+    } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
+      AuthorizerConfiguration authorizerConfig =
+          JsonUtils.convertValue(setting.getConfigValue(), AuthorizerConfiguration.class);
+      JsonUtils.validateJsonSchema(authorizerConfig, AuthorizerConfiguration.class);
+      setting.setConfigValue(authorizerConfig);
     }
   }
 

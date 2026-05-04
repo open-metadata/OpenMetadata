@@ -328,6 +328,7 @@ migrationConfiguration:
 
 # Authorizer Configuration
 authorizerConfiguration:
+  configSource: ${AUTHORIZER_CONFIG_SOURCE:-AUTO}
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
   containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
@@ -342,6 +343,7 @@ authorizerConfiguration:
   defaultOAuthRole: ${AUTHORIZER_DEFAULT_OAUTH_ROLE:-null}
 
 authenticationConfiguration:
+  configSource: ${AUTHENTICATION_CONFIG_SOURCE:-AUTO}
   # For SSO: Set to "confidential" and configure OIDC settings below
   clientType: ${AUTHENTICATION_CLIENT_TYPE:-public}
   # For SSO: Set to "google", "okta", "azure", etc. and configure OIDC credentials
