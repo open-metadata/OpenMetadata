@@ -282,7 +282,7 @@ describe('FormBuilderV1 widgets', () => {
     fireEvent.change(textInput, { target: { value: 'next' } });
     fireEvent.blur(textInput);
 
-    expect(screen.getByText('Widget Label')).toBeInTheDocument();
+    expect(screen.getByText('Widget label')).toBeInTheDocument();
     expect(screen.getByText('Invalid')).toBeInTheDocument();
     expect(onFocus).toHaveBeenCalledWith('widget-id', 'abc');
     expect(onChange).toHaveBeenCalledWith('next');
@@ -330,7 +330,7 @@ describe('FormBuilderV1 widgets', () => {
       />
     );
 
-    expect(screen.getByText('Widget Label')).toBeInTheDocument();
+    expect(screen.getByText('Widget label')).toBeInTheDocument();
     expect(screen.getByText('Required')).toBeInTheDocument();
     expect(screen.getByTestId('selected-key')).toHaveTextContent('1');
     expect(screen.getByText('One')).toBeInTheDocument();
@@ -371,7 +371,11 @@ describe('FormBuilderV1 widgets', () => {
     );
 
     expect(
-      screen.getByText((_, element) => element?.textContent === 'Widget Label*')
+      screen.getByText(
+        (_, element) =>
+          element?.tagName.toLowerCase() === 'div' &&
+          element.textContent?.replace(/\s/g, '') === 'Widgetlabel*'
+      )
     ).toBeInTheDocument();
     expect(screen.getByText('First option')).toBeInTheDocument();
     expect(screen.getByText('Choose one')).toBeInTheDocument();
@@ -394,7 +398,7 @@ describe('FormBuilderV1 widgets', () => {
     );
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Widget Label Checkbox hint' })
+      screen.getByRole('button', { name: 'Widget label Checkbox hint' })
     );
 
     expect(screen.getByText('Checkbox hint')).toBeInTheDocument();
