@@ -104,10 +104,11 @@ public final class CacheKeys {
    * parent's FQN hash + the per-parent version + page coordinates so a single version bump
    * orphans every cached page in one shot.
    *
-   * <p>{@code include} (a 1-2 char tag — "nd" / "all" / "d") is part of the key because the
-   * page result depends on whether soft-deleted children are included. Without this, toggling
-   * the UI's "Deleted" switch would return a stale page from the other side until the
-   * version stamp rotates.
+   * <p>{@code include} (a 1-2 char tag — "nd" / "a" / "d", produced by
+   * {@link org.openmetadata.service.cache.ChildrenPageCache#includeTag}) is part of the key
+   * because the page result depends on whether soft-deleted children are included. Without
+   * this, toggling the UI's "Deleted" switch would return a stale page from the other side
+   * until the version stamp rotates.
    */
   public String childrenPage(
       String type, String parentFqn, String version, int limit, int offset, String includeTag) {

@@ -4319,8 +4319,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
     @SuppressWarnings("rawtypes")
     EntityRepository repository = Entity.getEntityRepository(entityType);
     for (UUID entityId : entityIds) {
-      EntityInterface entity = repository.find(entityId, Include.ALL);
-      repository.cleanup(entity);
+      try {
+        EntityInterface entity = repository.find(entityId, Include.ALL);
+        repository.cleanup(entity);
+      } catch (RuntimeException e) {
+        // Wrap with entity context before re-throwing so the operator can identify
+        // the row that blocked a large recursive delete. The exception still
+        // propagates — the loop still stops, the failure-semantics contract in the
+        // Javadoc still holds — we just trade an opaque stack trace for one that
+        // names the offending child.
+        throw new RuntimeException(
+            String.format(
+                "Failed to delete %s '%s' during recursive batch delete: %s",
+                entityType, entityId, e.getMessage()),
+            e);
+      }
     }
   }
 
