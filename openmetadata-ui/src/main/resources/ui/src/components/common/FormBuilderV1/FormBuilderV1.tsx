@@ -15,7 +15,7 @@ import { Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { forwardRef, useEffect, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { transformErrors } from '../../../utils/formUtils';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
@@ -34,6 +34,25 @@ import CorePasswordWidget from './widgets/CorePasswordWidget';
 import CoreRadioWidget from './widgets/CoreRadioWidget';
 import CoreSelectWidget from './widgets/CoreSelectWidget';
 import CoreTextAreaWidget from './widgets/CoreTextAreaWidget';
+
+const defaultFields = {
+  AnyOfField: CoreOneOfField,
+  BooleanField: CoreBooleanField,
+  OneOfField: CoreOneOfField,
+  LayoutGridField,
+};
+
+const defaultWidgets = {
+  CheckboxWidget: CoreCheckboxWidget,
+  EmailWidget: CoreInputWidget,
+  PasswordWidget: CorePasswordWidget,
+  RadioWidget: CoreRadioWidget,
+  SelectWidget: CoreSelectWidget,
+  TextWidget: CoreInputWidget,
+  TextareaWidget: CoreTextAreaWidget,
+  URLWidget: CoreInputWidget,
+  UpDownWidget: CoreInputWidget,
+};
 
 const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
   (
@@ -79,27 +98,21 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
 
     const isSubmitting = status === 'waiting';
 
-    const mergedFields = {
-      AnyOfField: CoreOneOfField,
-      BooleanField: CoreBooleanField,
-      OneOfField: CoreOneOfField,
-      LayoutGridField,
-      ...(props.fields ?? {}),
-    };
+    const mergedFields = useMemo(
+      () => ({
+        ...defaultFields,
+        ...(props.fields ?? {}),
+      }),
+      [props.fields]
+    );
 
-    const baseWidgets = {
-      CheckboxWidget: CoreCheckboxWidget,
-      EmailWidget: CoreInputWidget,
-      PasswordWidget: CorePasswordWidget,
-      RadioWidget: CoreRadioWidget,
-      SelectWidget: CoreSelectWidget,
-      TextWidget: CoreInputWidget,
-      TextareaWidget: CoreTextAreaWidget,
-      URLWidget: CoreInputWidget,
-      UpDownWidget: CoreInputWidget,
-    };
-
-    const mergedWidgets = { ...baseWidgets, ...(props.widgets ?? {}) };
+    const mergedWidgets = useMemo(
+      () => ({
+        ...defaultWidgets,
+        ...(props.widgets ?? {}),
+      }),
+      [props.widgets]
+    );
 
     return (
       <Form

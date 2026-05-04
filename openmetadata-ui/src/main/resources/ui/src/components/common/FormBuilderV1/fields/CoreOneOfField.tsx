@@ -16,9 +16,13 @@ import {
   RadioGroup,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { FieldProps, RJSFSchema } from '@rjsf/utils';
+import {
+  FieldProps,
+  getDiscriminatorFieldFromSchema,
+  RJSFSchema,
+} from '@rjsf/utils';
 import { startCase } from 'lodash';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const CoreOneOfField = (props: FieldProps) => {
   const {
@@ -53,22 +57,37 @@ const CoreOneOfField = (props: FieldProps) => {
     [schema.oneOf, schema.anyOf]
   );
 
-  const [selectedOption, setSelectedOption] = useState(() => {
-    if (formData !== undefined) {
-      return schemaUtils.getFirstMatchingOption(
-        formData,
-        options,
-        schema.discriminator?.propertyName
-      );
-    }
-
-    return 0;
-  });
-
   const resolvedOptions = useMemo(
     () => options.map((opt) => schemaUtils.retrieveSchema(opt, formData)),
     [options, formData, schemaUtils]
   );
+
+  const getMatchingOption = useCallback(
+    (currentOption: number, data: unknown, fieldOptions: RJSFSchema[]) =>
+      schemaUtils.getClosestMatchingOption(
+        data,
+        fieldOptions,
+        currentOption,
+        getDiscriminatorFieldFromSchema(schema)
+      ),
+    [schema, schemaUtils]
+  );
+
+  const [selectedOption, setSelectedOption] = useState(() =>
+    getMatchingOption(0, formData, resolvedOptions)
+  );
+
+  useEffect(() => {
+    setSelectedOption((currentOption) => {
+      const matchingOption = getMatchingOption(
+        currentOption,
+        formData,
+        resolvedOptions
+      );
+
+      return matchingOption !== currentOption ? matchingOption : currentOption;
+    });
+  }, [formData, getMatchingOption, resolvedOptions]);
 
   const selectedSchema = resolvedOptions[selectedOption] ?? {};
 
@@ -89,10 +108,27 @@ const CoreOneOfField = (props: FieldProps) => {
       return;
     }
 
-    setSelectedOption(newIndex);
     const newSchema = resolvedOptions[newIndex];
+    const currentSchema =
+      selectedOption >= 0 ? resolvedOptions[selectedOption] : undefined;
+    const sanitizedFormData = schemaUtils.sanitizeDataForNewSchema(
+      newSchema,
+      currentSchema,
+      formData
+    );
+    const newFormData = newSchema
+      ? schemaUtils.getDefaultFormState(
+          newSchema,
+          sanitizedFormData,
+          'excludeObjectChildren'
+        )
+      : sanitizedFormData;
+
+    setSelectedOption(newIndex);
     onChange(
-      schemaUtils.getDefaultFormState(newSchema, undefined) ?? undefined
+      newFormData ?? undefined,
+      undefined,
+      `${idSchema.$id}${schema.oneOf ? '__oneof_select' : '__anyof_select'}`
     );
   };
 
