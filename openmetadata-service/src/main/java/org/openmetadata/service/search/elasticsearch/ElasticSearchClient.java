@@ -1105,19 +1105,15 @@ public class ElasticSearchClient implements SearchClient {
                                     .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
                     .query(boolQuery)
                     // Stable sort so from/size pagination cannot miss/duplicate hits.
+                    // fullyQualifiedName is a keyword field with doc_values and is unique per
+                    // page (name is unique within a parent's children), so no tiebreaker is
+                    // needed. _id cannot be used as a sort field on ES 9.x / OpenSearch 3.x
+                    // without setting indices.id_field_data.enabled=true at the cluster level.
                     .sort(
                         sort ->
                             sort.field(
                                 f ->
                                     f.field("fullyQualifiedName")
-                                        .order(
-                                            es.co.elastic.clients.elasticsearch._types.SortOrder
-                                                .Asc)))
-                    .sort(
-                        sort ->
-                            sort.field(
-                                f ->
-                                    f.field("_id")
                                         .order(
                                             es.co.elastic.clients.elasticsearch._types.SortOrder
                                                 .Asc)))
@@ -1154,20 +1150,12 @@ public class ElasticSearchClient implements SearchClient {
                                 org.openmetadata.service.jdbi3.KnowledgePageRepository
                                     .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
                     .query(boolQuery)
-                    // Stable sort so from/size pagination cannot miss/duplicate hits.
+                    // Stable sort by fqn (keyword, unique per page). See note above on _id.
                     .sort(
                         sort ->
                             sort.field(
                                 f ->
                                     f.field("fullyQualifiedName")
-                                        .order(
-                                            es.co.elastic.clients.elasticsearch._types.SortOrder
-                                                .Asc)))
-                    .sort(
-                        sort ->
-                            sort.field(
-                                f ->
-                                    f.field("_id")
                                         .order(
                                             es.co.elastic.clients.elasticsearch._types.SortOrder
                                                 .Asc)))
