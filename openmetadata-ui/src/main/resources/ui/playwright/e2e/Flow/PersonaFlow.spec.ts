@@ -307,7 +307,6 @@ test.describe.serial('Default persona setting and removal flow', () => {
     await afterAction();
   });
 
-
   test.afterAll(
     'Teardown user for default persona flow',
     async ({ browser }) => {
@@ -320,7 +319,6 @@ test.describe.serial('Default persona setting and removal flow', () => {
       await afterAction();
     }
   );
-
 
   test('Set and remove default persona should work properly', async ({
     adminPage,
