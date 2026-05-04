@@ -363,6 +363,13 @@ public class DistributedJobStatsAggregator {
         stepStats.setTotalRecords(safeToInt(es.getTotalRecords()));
         stepStats.setSuccessRecords(safeToInt(es.getSuccessRecords()));
         stepStats.setFailedRecords(safeToInt(es.getFailedRecords()));
+        // Per-entity stage timing — surface ALL four stage timings on the entity-level
+        // StepStats so the UI table can render Reader / Process / Sink / Vector avg latencies
+        // side-by-side. Job-level totals still use the per-stage StepStats.totalTimeMs.
+        stepStats.setReaderTimeMs(es.getReaderTimeMs());
+        stepStats.setProcessTimeMs(es.getProcessTimeMs());
+        stepStats.setSinkTimeMs(es.getSinkTimeMs());
+        stepStats.setVectorTimeMs(es.getVectorTimeMs());
 
         CollectionDAO.SearchIndexServerStatsDAO.EntityStats vectorEntityStats =
             vectorByEntity.get(entry.getKey());
@@ -388,6 +395,7 @@ public class DistributedJobStatsAggregator {
           safeToInt(Math.min(serverStatsAggr.readerSuccess(), partitionTruth)));
       readerStats.setFailedRecords(safeToInt(serverStatsAggr.readerFailed()));
       readerStats.setWarningRecords(safeToInt(serverStatsAggr.readerWarnings()));
+      readerStats.setTotalTimeMs(serverStatsAggr.readerTimeMs());
     } else {
       readerStats.setSuccessRecords(safeToInt(partitionTruth));
       readerStats.setFailedRecords(0);
@@ -402,6 +410,7 @@ public class DistributedJobStatsAggregator {
       processStats.setTotalRecords(safeToInt(processTotal));
       processStats.setSuccessRecords(safeToInt(processSuccess));
       processStats.setFailedRecords(safeToInt(serverStatsAggr.processFailed()));
+      processStats.setTotalTimeMs(serverStatsAggr.processTimeMs());
     } else {
       processStats.setTotalRecords(safeToInt(partitionTruth));
       processStats.setSuccessRecords(safeToInt(partitionTruth));
@@ -416,6 +425,7 @@ public class DistributedJobStatsAggregator {
       sinkStats.setTotalRecords(safeToInt(sinkTotal));
       sinkStats.setSuccessRecords(safeToInt(sinkSuccess));
       sinkStats.setFailedRecords(safeToInt(serverStatsAggr.sinkFailed()));
+      sinkStats.setTotalTimeMs(serverStatsAggr.sinkTimeMs());
     } else {
       sinkStats.setTotalRecords(safeToInt(job.getProcessedRecords()));
       sinkStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
@@ -430,6 +440,7 @@ public class DistributedJobStatsAggregator {
       vectorStats.setTotalRecords(safeToInt(vectorTotal));
       vectorStats.setSuccessRecords(safeToInt(serverStatsAggr.vectorSuccess()));
       vectorStats.setFailedRecords(safeToInt(serverStatsAggr.vectorFailed()));
+      vectorStats.setTotalTimeMs(serverStatsAggr.vectorTimeMs());
     } else {
       vectorStats.setTotalRecords(0);
       vectorStats.setSuccessRecords(0);
