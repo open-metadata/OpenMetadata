@@ -226,8 +226,37 @@ class ReindexingUtilTest {
         Arguments.of(Entity.QUERY, org.openmetadata.schema.entity.data.Query.class),
         Arguments.of(Entity.METRIC, org.openmetadata.schema.entity.data.Metric.class),
         Arguments.of(Entity.DOMAIN, org.openmetadata.schema.entity.domains.Domain.class),
+        Arguments.of(Entity.DATA_PRODUCT, org.openmetadata.schema.entity.domains.DataProduct.class),
+        // Mid-tree assets that share the DataAsset shape — same risk surface as the entries
+        // above, included so the parametrized contract spans every category buildIndex covers.
         Arguments.of(
-            Entity.DATA_PRODUCT, org.openmetadata.schema.entity.domains.DataProduct.class));
+            Entity.API_COLLECTION, org.openmetadata.schema.entity.data.APICollection.class),
+        Arguments.of(Entity.API_ENDPOINT, org.openmetadata.schema.entity.data.APIEndpoint.class),
+        Arguments.of(
+            Entity.DASHBOARD_DATA_MODEL,
+            org.openmetadata.schema.entity.data.DashboardDataModel.class),
+        Arguments.of(Entity.DIRECTORY, org.openmetadata.schema.entity.data.Directory.class),
+        Arguments.of(Entity.FILE, org.openmetadata.schema.entity.data.File.class),
+        Arguments.of(Entity.SPREADSHEET, org.openmetadata.schema.entity.data.Spreadsheet.class),
+        Arguments.of(Entity.WORKSHEET, org.openmetadata.schema.entity.data.Worksheet.class),
+        Arguments.of(Entity.TEST_CASE, org.openmetadata.schema.tests.TestCase.class),
+        Arguments.of(Entity.TEST_SUITE, org.openmetadata.schema.tests.TestSuite.class),
+        // AI/LLM/MCP types — newer additions that need the same parity guarantee.
+        Arguments.of(Entity.AI_APPLICATION, org.openmetadata.schema.entity.ai.AIApplication.class),
+        Arguments.of(
+            Entity.AI_GOVERNANCE_POLICY,
+            org.openmetadata.schema.entity.ai.AIGovernancePolicy.class),
+        Arguments.of(Entity.LLM_MODEL, org.openmetadata.schema.entity.ai.LLMModel.class),
+        Arguments.of(
+            Entity.PROMPT_TEMPLATE, org.openmetadata.schema.entity.ai.PromptTemplate.class),
+        Arguments.of(Entity.MCP_SERVER, org.openmetadata.schema.entity.ai.McpServer.class),
+        Arguments.of(Entity.MCP_EXECUTION, org.openmetadata.schema.entity.ai.McpExecution.class),
+        Arguments.of(Entity.LLM_SERVICE, org.openmetadata.schema.entity.services.LLMService.class),
+        Arguments.of(Entity.MCP_SERVICE, org.openmetadata.schema.entity.services.McpService.class),
+        Arguments.of(
+            Entity.SECURITY_SERVICE, org.openmetadata.schema.entity.services.SecurityService.class),
+        Arguments.of(
+            Entity.DRIVE_SERVICE, org.openmetadata.schema.entity.services.DriveService.class));
   }
 
   private List<String> withAllowedFields(String entityType, Set<String> allowed) {
