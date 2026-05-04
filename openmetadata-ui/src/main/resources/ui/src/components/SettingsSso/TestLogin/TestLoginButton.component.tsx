@@ -96,6 +96,7 @@ const TestLoginButton = ({
   const popupRef = useRef<Window | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeWatchRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resultReceivedRef = useRef(false);
   const [ldapModalOpen, setLdapModalOpen] = useState(false);
   const [ldapModalLoading, setLdapModalLoading] = useState(false);
   const [ldapEmail, setLdapEmail] = useState('');
@@ -117,6 +118,7 @@ const TestLoginButton = ({
 
   const processResultPayload = useCallback(
     (raw: string) => {
+      resultReceivedRef.current = true;
       let data: Record<string, unknown>;
       try {
         data = JSON.parse(raw);
@@ -197,14 +199,24 @@ const TestLoginButton = ({
   const startCloseWatch = useCallback(() => {
     clearCloseWatch();
     closeWatchRef.current = setInterval(() => {
-      if (
-        popupRef.current?.closed &&
-        !localStorage.getItem(TEST_LOGIN_RESULT_KEY)
-      ) {
-        failPopupClosed();
+      if (!popupRef.current?.closed) {
+        return;
       }
+      if (resultReceivedRef.current) {
+        clearCloseWatch();
+
+        return;
+      }
+      const stored = localStorage.getItem(TEST_LOGIN_RESULT_KEY);
+      if (stored) {
+        clearCloseWatch();
+        processResultPayload(stored);
+
+        return;
+      }
+      failPopupClosed();
     }, 500);
-  }, [clearCloseWatch, failPopupClosed]);
+  }, [clearCloseWatch, failPopupClosed, processResultPayload]);
 
   const startSamlTestLogin = useCallback(() => {
     const idp = formData?.samlConfiguration?.idp;
@@ -221,6 +233,7 @@ const TestLoginButton = ({
       return;
     }
 
+    resultReceivedRef.current = false;
     localStorage.removeItem(TEST_LOGIN_RESULT_KEY);
 
     const popup = openCenteredPopup();
@@ -314,6 +327,7 @@ const TestLoginButton = ({
     const callbackUrl =
       oidc?.callbackUrl ?? `${window.location.origin}/callback`;
 
+    resultReceivedRef.current = false;
     localStorage.removeItem(TEST_LOGIN_RESULT_KEY);
 
     const popup = openCenteredPopup();
@@ -343,7 +357,14 @@ const TestLoginButton = ({
     );
 
     timerRef.current = setTimeout(failTimeout, POPUP_TIMEOUT_MS);
-  }, [formData, securityConfig, t, failPopupBlocked, failTimeout, startCloseWatch]);
+  }, [
+    formData,
+    securityConfig,
+    t,
+    failPopupBlocked,
+    failTimeout,
+    startCloseWatch,
+  ]);
 
   const submitLdapTestLogin = useCallback(async () => {
     if (!ldapEmail || !ldapPassword) {

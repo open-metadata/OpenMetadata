@@ -112,10 +112,10 @@ import ClaimSelector from '../TestLogin/ClaimSelector.component';
 import EmailClaimRecommendation from '../TestLogin/EmailClaimRecommendation.component';
 import EmailClaimStatus from '../TestLogin/EmailClaimStatus.component';
 import { TestLoginResult } from '../TestLogin/TestLogin.interface';
+import { claimValueHasEmail } from '../TestLogin/TestLogin.utils';
 import TestLoginButton, {
   TestLoginButtonHandle,
 } from '../TestLogin/TestLoginButton.component';
-import { claimValueHasEmail } from '../TestLogin/TestLogin.utils';
 import './sso-configuration-form.less';
 import {
   FormData,
@@ -1080,8 +1080,9 @@ const SSOConfigurationFormRJSF = ({
 
       // Smart save gate: any lockout-risk field change requires a fresh
       // Test Login. New configs always require it. Safe-only edits skip.
-      const provider = internalData?.authenticationConfiguration
-        ?.provider as string | undefined;
+      const provider = internalData?.authenticationConfiguration?.provider as
+        | string
+        | undefined;
       const isLockoutRiskEdit = hasExistingConfig
         ? hasLockoutRiskChange(savedData, internalData, provider)
         : true;
