@@ -21,7 +21,6 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { PartitionedKeys } from '../../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
-
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import type {
   ExtentionEntities,
