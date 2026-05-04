@@ -130,6 +130,12 @@ FROM user_entity ue, role_entity re
 WHERE ue.name = 'mcpapplicationbot'
   AND re.name = 'ApplicationBotImpersonationRole';
 
+-- Update Databricks and Unity Catalog connection schemes from 'databricks+connector' to 'databricks'
+-- as part of migration from sqlalchemy-databricks to databricks-sqlalchemy package
+UPDATE dbservice_entity
+SET json = JSON_SET(json, '$.connection.config.scheme', 'databricks')
+WHERE serviceType IN ('Databricks', 'UnityCatalog')
+  AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.connection.config.scheme')) = 'databricks+connector';
 
 UPDATE entity_extension
 SET json = JSON_SET(
