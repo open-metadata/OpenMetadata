@@ -52,9 +52,7 @@ describe('getCSSVar', () => {
   });
 
   it('caches independently per variable name', () => {
-    mockGetPropertyValue
-      .mockReturnValueOnce('red')
-      .mockReturnValueOnce('blue');
+    mockGetPropertyValue.mockReturnValueOnce('red').mockReturnValueOnce('blue');
 
     expect(getCSSVar('--color-a')).toBe('red');
     expect(getCSSVar('--color-b')).toBe('blue');

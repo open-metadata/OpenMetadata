@@ -17,6 +17,10 @@ import {
   invalidateEdgeStyles,
 } from './EdgeStyleUtils';
 
+jest.mock('./CSSUtils', () => ({
+  getCSSVar: (name: string) => `var(${name})`,
+}));
+
 const EDGE_COLOR_BRAND = 'var(--tw-color-brand-600)';
 const EDGE_COLOR_INDIGO = 'var(--tw-color-indigo-600)';
 const EDGE_COLOR_ERROR = 'var(--tw-color-error-600)';
