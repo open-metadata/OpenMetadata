@@ -43,16 +43,20 @@ import {
 } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
+import { Container } from '../../../generated/entity/data/container';
 import {
   ContractExecutionStatus,
   DataContract,
 } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
-import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityRules } from '../../../hooks/useEntityRules';
@@ -63,7 +67,15 @@ import {
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
-import { getContainerAncestors } from '../../../rest/storageAPI';
+import {
+  Task,
+  TaskCategory,
+  TaskEntityStatus,
+  TaskEntityType,
+  listMyCreatedTasks,
+} from '../../../rest/tasksAPI';
+import { isExpired } from '../../../utils/DataAccessRequest/DataAccessRequestUtils';
+import { getContainerByName } from '../../../rest/storageAPI';
 import {
   getDataAssetsHeaderInfo,
   isDataAssetsWithServiceField,
@@ -149,9 +161,7 @@ export const DataAssetsHeader = ({
   const { customizedPage } = useCustomPages(
     ENTITY_PAGE_TYPE_MAP[entityType as CustomizeEntityType]
   );
-  const [parentContainers, setParentContainers] = useState<EntityReference[]>(
-    []
-  );
+  const [parentContainers, setParentContainers] = useState<Container[]>([]);
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
@@ -160,6 +170,7 @@ export const DataAssetsHeader = ({
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
   const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
+  const [existingDarTask, setExistingDarTask] = useState<Task | null | undefined>(undefined);
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -169,6 +180,33 @@ export const DataAssetsHeader = ({
       // Do nothing
     }
   };
+
+  const fetchExistingDar = useCallback(async () => {
+    const entityFqn = dataAsset.fullyQualifiedName;
+    if (!entityFqn || entityType !== EntityType.TABLE) {
+      return;
+    }
+
+    try {
+      const res = await listMyCreatedTasks({ fields: 'about,resolution', limit: 50 });
+      const match = (res.data ?? []).find((task) => {
+        if (
+          task.category !== TaskCategory.DataAccess ||
+          task.type !== TaskEntityType.DataAccessRequest
+        ) {
+          return false;
+        }
+
+        return (
+          task.about?.fullyQualifiedName === entityFqn ||
+          task.about?.id === dataAsset.id
+        );
+      });
+      setExistingDarTask(match ?? null);
+    } catch {
+      setExistingDarTask(null);
+    }
+  }, [dataAsset.fullyQualifiedName, dataAsset.id, entityType]);
 
   const icon = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
@@ -334,21 +372,27 @@ export const DataAssetsHeader = ({
     }
   };
 
-  const fetchContainerAncestors = async (containerFqn: string) => {
-    // Always reset state at the top so a navigation to a container without an FQN
-    // (or to one whose ancestor fetch fails) doesn't keep painting the previous
-    // container's breadcrumbs. Without this reset, switching between containers
-    // could leave stale ancestors visible after either an early return or an error.
-    setParentContainers([]);
-    if (isEmpty(containerFqn)) {
+  const fetchContainerParent = async (
+    parentName: string,
+    parents = [] as Container[]
+  ) => {
+    if (isEmpty(parentName)) {
       return;
     }
     setIsBreadcrumbLoading(true);
     try {
-      // Single batched server call replaces what used to be one
-      // getContainerByName per ancestor level.
-      const ancestors = await getContainerAncestors(containerFqn);
-      setParentContainers(ancestors ?? []);
+      const response = await getContainerByName(parentName, {
+        fields: TabSpecificField.PARENT,
+      });
+      const updatedParent = [response, ...parents];
+      if (response?.parent?.fullyQualifiedName) {
+        await fetchContainerParent(
+          response.parent.fullyQualifiedName,
+          updatedParent
+        );
+      } else {
+        setParentContainers(updatedParent);
+      }
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
     } finally {
@@ -362,9 +406,10 @@ export const DataAssetsHeader = ({
       fetchDQFailureCount();
     }
     if (entityType === EntityType.CONTAINER && !isCustomizedView) {
-      fetchContainerAncestors(dataAsset.fullyQualifiedName ?? '');
+      const asset = dataAsset;
+      fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
     }
-  }, [dataAsset.fullyQualifiedName, entityType, isTourPage, isCustomizedView]);
+  }, [dataAsset.fullyQualifiedName, isTourPage, isCustomizedView]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(
     () =>
@@ -581,30 +626,77 @@ export const DataAssetsHeader = ({
     permissions.Trigger,
   ]);
 
+  const isOwner = useMemo(
+    () => dataAsset.owners?.some((o) => o.id === USER_ID) ?? false,
+    [dataAsset.owners, USER_ID]
+  );
+
   const requestDataAccessButton = useMemo(() => {
     if (
       !tableClassBase.getShowRequestDataAccess() ||
       SERVICE_TYPES.includes(entityType) ||
-      deleted
+      entityType !== EntityType.TABLE ||
+      deleted ||
+      isOwner
     ) {
       return null;
     }
 
+    const reapplyStatuses = new Set([
+      TaskEntityStatus.Rejected,
+      TaskEntityStatus.Revoked,
+      TaskEntityStatus.Cancelled,
+      TaskEntityStatus.Failed,
+    ]);
+
+    const isDisabled = (() => {
+      if (!existingDarTask) {
+        return false;
+      }
+      if (reapplyStatuses.has(existingDarTask.status)) {
+        return false;
+      }
+      if (existingDarTask.status === TaskEntityStatus.Approved) {
+        const payload = existingDarTask.payload as
+          | { duration?: string; expirationDate?: number }
+          | undefined;
+
+        return !isExpired(
+          existingDarTask.createdAt,
+          payload?.duration,
+          payload?.expirationDate
+        );
+      }
+
+      return true;
+    })();
+
+    const tooltipTitle = isDisabled
+      ? t('message.data-access-request-already-exists')
+      : undefined;
+
     return (
-      <Button
-        className="source-url-button font-semibold"
-        data-testid="request-data-access-button"
-        onClick={() => setIsRequestDataAccessOpen(true)}>
-        {t('label.request-data-access')}
-      </Button>
+      <Tooltip title={tooltipTitle}>
+        <Button
+          className="source-url-button font-semibold"
+          data-testid="request-data-access-button"
+          disabled={isDisabled}
+          onClick={() => setIsRequestDataAccessOpen(true)}>
+          {t('label.request-data-access')}
+        </Button>
+      </Tooltip>
     );
-  }, [entityType, deleted]);
+  }, [entityType, deleted, isOwner, existingDarTask, t]);
 
   useEffect(() => {
     if (dataAsset.id) {
       fetchDataContract(dataAsset.id);
     }
   }, [dataAsset?.id]);
+
+  useEffect(() => {
+    fetchExistingDar();
+  }, [fetchExistingDar]);
 
   return (
     <>
