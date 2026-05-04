@@ -241,9 +241,14 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     }
     jobData = newRuntimeJobData();
     if (isOnDemand) {
-      // Persist the (typed) user-supplied config back onto the App so subsequent renders see
-      // the same payload. Round-trip through a Map so AbstractNativeApplication's persistence
-      // layer doesn't have to know about CacheWarmupAppConfig directly.
+      // Reflect the (typed) user-supplied config back onto the in-memory App instance so the
+      // rest of THIS execution (status pushes, WebSocket payloads, downstream handlers reading
+      // getApp()) sees the override. Intentionally NOT persisted via AppRepository — on-demand
+      // is meant to be a one-shot override of the stored config, not a permanent edit. The
+      // Configuration page continues to reflect the persisted defaults; users that want a
+      // permanent change save the config explicitly through the API. Round-trip through Map
+      // so AbstractNativeApplication's persistence layer doesn't need to know about
+      // CacheWarmupAppConfig directly.
       Map<String, Object> asMap =
           JsonUtils.convertValue(appConfig, new TypeReference<Map<String, Object>>() {});
       getApp().setAppConfiguration(asMap);

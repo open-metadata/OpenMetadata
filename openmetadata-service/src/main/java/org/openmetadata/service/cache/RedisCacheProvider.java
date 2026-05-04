@@ -32,6 +32,20 @@ public class RedisCacheProvider implements CacheProvider {
   // multiple failures in a sliding window before going unavailable, and multiple consecutive
   // successes (across health-checks AND real ops) before recovering. Same shape as
   // {@code BulkCircuitBreaker}, applied here at the cache layer.
+  //
+  // Tradeoff: the detector intentionally tolerates up to FAILURE_THRESHOLD-1 transient errors
+  // before flipping unavailable. During that admit-window other OM pods that subscribed to
+  // invalidation pubsub may serve stale Guava L1 reads if the failures are invalidation
+  // broadcasts that didn't make it across. We accept this over the previous flap, because:
+  //   1. L1 entries TTL out within the entity TTL anyway (default 30s, well under FAILURE_WINDOW),
+  //   2. the prior single-failure flip caused a much larger correctness gap — every Redis op
+  //      paid 300ms before the provider went unavailable, then the next PING let one more op
+  //      pay it again, indefinitely,
+  //   3. once unavailable, EntityResource fully bypasses cached reads (RECOVERY_THRESHOLD also
+  //      keeps the bypass stable across flaky moments).
+  // If you need stricter L1 coherence (e.g. a deployment that can't tolerate any stale reads),
+  // lower FAILURE_THRESHOLD to 1 — accepting the flap cost — or pair this with a shorter
+  // entity TTL.
   private static final int FAILURE_THRESHOLD = 5;
   private static final long FAILURE_WINDOW_MS = 30_000L;
   private static final int RECOVERY_THRESHOLD = 3;
@@ -56,6 +70,14 @@ public class RedisCacheProvider implements CacheProvider {
     this.config = config;
     this.keys = new CacheKeys(config.redis.keyspace);
     initialize();
+  }
+
+  // Package-private no-arg constructor used by tests that exercise the sliding-window
+  // availability state machine without a live Redis connection. Skips initialize() — no
+  // Lettuce client is opened, no health-checker is started.
+  RedisCacheProvider() {
+    this.config = null;
+    this.keys = null;
   }
 
   private void initialize() {
