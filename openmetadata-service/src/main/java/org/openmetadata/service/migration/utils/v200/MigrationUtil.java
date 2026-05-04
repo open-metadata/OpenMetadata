@@ -10,11 +10,9 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
-import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
-import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -24,7 +22,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -32,55 +29,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class MigrationUtil {
 
-  private static final String TABLE_COLUMN_ASSET_TYPE = "tableColumn";
-
   private MigrationUtil() {}
-
-  public static void addTableColumnSearchSettings() {
-    try {
-      LOG.info("Adding tableColumn search settings configuration for column search support");
-
-      Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
-
-      if (searchSettings == null) {
-        LOG.warn(
-            "Search settings not found in database. "
-                + "Default settings will be loaded on next startup which includes tableColumn.");
-        return;
-      }
-
-      SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
-      SearchSettings defaultSettings = SearchSettingsMergeUtil.loadSearchSettingsFromFile();
-
-      if (defaultSettings == null) {
-        LOG.error("Failed to load default search settings from file, skipping migration");
-        return;
-      }
-
-      boolean assetTypeAdded =
-          SearchSettingsMergeUtil.addMissingAssetTypeConfiguration(
-              currentSettings, defaultSettings, TABLE_COLUMN_ASSET_TYPE);
-
-      boolean allowedFieldsAdded =
-          SearchSettingsMergeUtil.addMissingAllowedFields(
-              currentSettings, defaultSettings, TABLE_COLUMN_ASSET_TYPE);
-
-      if (assetTypeAdded || allowedFieldsAdded) {
-        SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
-        LOG.info(
-            "Successfully added tableColumn search settings: "
-                + "assetTypeConfiguration={}, allowedFields={}",
-            assetTypeAdded,
-            allowedFieldsAdded);
-      } else {
-        LOG.info("tableColumn search settings already exist, no updates needed");
-      }
-
-    } catch (Exception e) {
-      LOG.error("Error adding tableColumn search settings", e);
-      throw new RuntimeException("Failed to add tableColumn search settings", e);
-    }
-  }
 
   /**
    * Migrate suggestions from the old suggestions table to the new task_entity table. Each
