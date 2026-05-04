@@ -22,7 +22,7 @@ from metadata.utils.sqlalchemy_utils import (
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 EXADialect.get_table_comment = get_table_comment
-EXADialect.get_all_table_comments = get_all_table_comments
+EXADialect.get_all_table_comments = get_all_table_comments  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class ExasolSource(CommonDbSourceService):
