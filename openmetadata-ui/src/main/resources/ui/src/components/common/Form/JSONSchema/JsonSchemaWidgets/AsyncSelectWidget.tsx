@@ -33,13 +33,9 @@ const AsyncSelectWidget = ({ onChange, schema, ...props }: WidgetProps) => {
 
   return (
     <DataAssetAsyncSelectList
-      defaultValue={
-        props?.value?.fullyQualifiedName
-          ? [props.value.fullyQualifiedName]
-          : undefined
-      }
       placeholder={schema.placeholder ?? ''}
       searchIndex={schema?.autoCompleteType ?? SearchIndex.TABLE}
+      value={props?.value?.fullyQualifiedName ?? undefined}
       onChange={handleChange}
     />
   );

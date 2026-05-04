@@ -28,8 +28,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <div {...props}>{children}</div>
     ));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const AutocompleteMock: any = jest.fn().mockImplementation((props) => {
+  const AutocompleteMock = jest.fn().mockImplementation((props) => {
     mockOnItemInserted.mockImplementation(props.onItemInserted);
     mockOnItemCleared.mockImplementation(props.onItemCleared);
     mockOnSearchChange.mockImplementation(props.onSearchChange);
