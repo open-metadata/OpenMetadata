@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Ta
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     DataStorageConfig,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.dynamicSamplingConfig import DynamicSamplingConfig
 from metadata.generated.schema.type.samplingConfig import (
@@ -269,17 +270,27 @@ def get_tiered_sample(row_count: int) -> StaticSamplingConfig:
     if row_count <= 100_000:
         return StaticSamplingConfig(
             profileSample=100,
-            profileSampleType="percentage",
-        )  # type: ignore
+            profileSampleType=ProfileSampleType.PERCENTAGE,
+        )
     if row_count <= 1_000_000:
-        return StaticSamplingConfig(profileSample=50, profileSampleType="percentage")  # type: ignore
+        return StaticSamplingConfig(
+            profileSample=50, profileSampleType=ProfileSampleType.PERCENTAGE
+        )
     if row_count <= 10_000_000:
-        return StaticSamplingConfig(profileSample=10, profileSampleType="percentage")  # type: ignore
+        return StaticSamplingConfig(
+            profileSample=10, profileSampleType=ProfileSampleType.PERCENTAGE
+        )
     if row_count <= 100_000_000:
-        return StaticSamplingConfig(profileSample=5, profileSampleType="percentage")  # type: ignore
+        return StaticSamplingConfig(
+            profileSample=5, profileSampleType=ProfileSampleType.PERCENTAGE
+        )
     if row_count <= 1_000_000_000:
-        return StaticSamplingConfig(profileSample=1, profileSampleType="percentage")  # type: ignore
-    return StaticSamplingConfig(profileSample=0.1, profileSampleType="percentage")  # type: ignore
+        return StaticSamplingConfig(
+            profileSample=1, profileSampleType=ProfileSampleType.PERCENTAGE
+        )
+    return StaticSamplingConfig(
+        profileSample=0.1, profileSampleType=ProfileSampleType.PERCENTAGE
+    )
 
 
 def resolve_static_sampling_config(
