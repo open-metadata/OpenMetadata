@@ -12,7 +12,6 @@
  */
 import { ReactNode } from 'react';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
-
 import {
   CUSTOM_PROPERTIES_WIDGET,
   DATA_PRODUCTS_WIDGET,
