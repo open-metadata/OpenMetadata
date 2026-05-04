@@ -563,19 +563,15 @@ public class EsUtils {
     // a different dimension than what the index was built with, silently rewriting dims
     // would either be rejected by ES (putMapping) or produce a mapping that disagrees
     // with stored vectors. Hard-fail so the operator runs an explicit reindex.
+    // Check both _meta.embedding_dimension and properties.embedding.dims — either may
+    // be present on an existing index/template.
     JsonNode existingMeta = rootNode.path("mappings").path("_meta");
     if (!existingMeta.isMissingNode() && existingMeta.has("embedding_dimension")) {
-      int metaDimension = existingMeta.get("embedding_dimension").asInt();
-      if (metaDimension != dimension) {
-        throw new IllegalStateException(
-            String.format(
-                "Embedding dimension mismatch: index _meta=%d, embedding client=%d. "
-                    + "dense_vector.dims is immutable on an existing Elasticsearch index. "
-                    + "Run a reindex (drop + recreate via SearchIndexing app) to align "
-                    + "the index with the new embedding model.",
-                metaDimension,
-                dimension));
-      }
+      assertDimensionMatches(existingMeta.get("embedding_dimension").asInt(), dimension);
+    }
+    JsonNode existingEmbedding = properties.path("embedding");
+    if (!existingEmbedding.isMissingNode() && existingEmbedding.has("dims")) {
+      assertDimensionMatches(existingEmbedding.get("dims").asInt(), dimension);
     }
 
     com.fasterxml.jackson.databind.node.ObjectNode embeddingNode = mapper.createObjectNode();
@@ -600,6 +596,18 @@ public class EsUtils {
       metaNode
           .put("embedding_model", searchRepository.getEmbeddingClient().getModelId())
           .put("embedding_dimension", dimension);
+    }
+  }
+
+  private static void assertDimensionMatches(int existing, int client) {
+    if (existing != client) {
+      throw new IllegalStateException(
+          String.format(
+              "Embedding dimension mismatch: existing=%d, embedding client=%d. "
+                  + "dense_vector.dims is immutable on an existing Elasticsearch index. "
+                  + "Run a reindex (drop + recreate via SearchIndexing app) to align "
+                  + "the index with the new embedding model.",
+              existing, client));
     }
   }
 }

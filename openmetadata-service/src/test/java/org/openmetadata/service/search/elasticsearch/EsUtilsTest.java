@@ -15,10 +15,6 @@ import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KE
 import static org.openmetadata.service.search.SearchUtils.DOWNSTREAM_ENTITY_RELATIONSHIP_KEY;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirectionAggregationField;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
@@ -564,6 +560,44 @@ class EsUtilsTest {
         "{\"mappings\":{"
             + "\"_meta\":{\"embedding_model\":\"old-model\",\"embedding_dimension\":384},"
             + "\"properties\":{\"name\":{\"type\":\"keyword\"},\"fingerprint\":{\"type\":\"keyword\"}}"
+            + "}}";
+
+    org.openmetadata.service.search.vector.client.EmbeddingClient mockEmbeddingClient =
+        org.mockito.Mockito.mock(
+            org.openmetadata.service.search.vector.client.EmbeddingClient.class);
+    org.mockito.Mockito.when(mockEmbeddingClient.getDimension()).thenReturn(1536);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      org.mockito.Mockito.when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+      org.mockito.Mockito.when(searchRepository.getEmbeddingClient())
+          .thenReturn(mockEmbeddingClient);
+
+      IllegalStateException ex =
+          assertThrows(
+              IllegalStateException.class,
+              () -> EsUtils.enrichIndexMappingForElasticsearch(mapping));
+      assertTrue(
+          ex.getMessage().contains("384") && ex.getMessage().contains("1536"),
+          "Exception message must include both old and new dimensions");
+      assertTrue(
+          ex.getMessage().toLowerCase().contains("reindex"),
+          "Exception message must direct the operator to reindex");
+    }
+  }
+
+  @Test
+  void enrichIndexMappingThrowsWhenExistingEmbeddingDimsDiffersFromClient() {
+    // Index already has properties.embedding with dims=384 but no _meta block.
+    // dense_vector.dims is immutable, so we must hard-fail rather than rewrite
+    // (which would either be rejected by ES putMapping or corrupt search).
+    String mapping =
+        "{\"mappings\":{"
+            + "\"properties\":{"
+            + "\"name\":{\"type\":\"keyword\"},"
+            + "\"fingerprint\":{\"type\":\"keyword\"},"
+            + "\"embedding\":{\"type\":\"dense_vector\",\"dims\":384,\"index\":true,\"similarity\":\"cosine\"}"
+            + "}"
             + "}}";
 
     org.openmetadata.service.search.vector.client.EmbeddingClient mockEmbeddingClient =

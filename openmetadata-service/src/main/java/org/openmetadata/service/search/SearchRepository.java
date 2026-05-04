@@ -442,7 +442,7 @@ public class SearchRepository {
         es.co.elastic.clients.elasticsearch.ElasticsearchClient esClient =
             ((ElasticSearchClient) getSearchClient()).getNewClient();
         int knnMultiplier = resolveKnnNumCandidatesMultiplier(cfg);
-        ElasticSearchVectorService.init(esClient, embeddingClient, language, knnMultiplier);
+        ElasticSearchVectorService.init(esClient, embeddingClient, knnMultiplier);
         this.vectorIndexService = ElasticSearchVectorService.getInstance();
       }
 

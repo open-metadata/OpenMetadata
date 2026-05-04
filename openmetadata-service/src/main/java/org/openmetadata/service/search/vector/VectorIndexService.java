@@ -9,7 +9,6 @@ import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 public interface VectorIndexService {
 
   String VECTOR_EMBEDDING_ALIAS = "dataAssetEmbeddings";
-  String VECTOR_INDEX_KEY = "vectorEmbeddings";
 
   Map<String, Object> generateEmbeddingFields(EntityInterface entity);
 

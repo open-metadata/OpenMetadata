@@ -33,35 +33,21 @@ public class ElasticSearchVectorService implements VectorIndexService {
   private final ElasticsearchClient client;
   private final Rest5Client restClient;
   @Getter private final EmbeddingClient embeddingClient;
-  private final String language;
   private final int knnNumCandidatesMultiplier;
 
   public ElasticSearchVectorService(
-      ElasticsearchClient client,
-      EmbeddingClient embeddingClient,
-      String language,
-      int knnNumCandidatesMultiplier) {
+      ElasticsearchClient client, EmbeddingClient embeddingClient, int knnNumCandidatesMultiplier) {
     this.client = client;
     this.restClient = extractRestClient(client);
     this.embeddingClient = embeddingClient;
-    this.language = language != null ? language.toLowerCase(java.util.Locale.ROOT) : "en";
     this.knnNumCandidatesMultiplier =
         knnNumCandidatesMultiplier > 0
             ? knnNumCandidatesMultiplier
             : VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER;
   }
 
-  public ElasticSearchVectorService(
-      ElasticsearchClient client, EmbeddingClient embeddingClient, String language) {
-    this(
-        client,
-        embeddingClient,
-        language,
-        VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER);
-  }
-
   public ElasticSearchVectorService(ElasticsearchClient client, EmbeddingClient embeddingClient) {
-    this(client, embeddingClient, "en");
+    this(client, embeddingClient, VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER);
   }
 
   private static Rest5Client extractRestClient(ElasticsearchClient client) {
@@ -74,17 +60,13 @@ public class ElasticSearchVectorService implements VectorIndexService {
   }
 
   public static synchronized void init(
-      ElasticsearchClient client,
-      EmbeddingClient embeddingClient,
-      String language,
-      int knnNumCandidatesMultiplier) {
+      ElasticsearchClient client, EmbeddingClient embeddingClient, int knnNumCandidatesMultiplier) {
     if (instance != null) {
       LOG.warn("ElasticSearchVectorService already initialized, reinitializing");
       EntityLifecycleEventDispatcher.getInstance().unregisterHandler("VectorEmbeddingHandler");
     }
     ElasticSearchVectorService svc =
-        new ElasticSearchVectorService(
-            client, embeddingClient, language, knnNumCandidatesMultiplier);
+        new ElasticSearchVectorService(client, embeddingClient, knnNumCandidatesMultiplier);
     svc.registerVectorEmbeddingHandler();
     instance = svc;
     LOG.info(
@@ -94,12 +76,8 @@ public class ElasticSearchVectorService implements VectorIndexService {
   }
 
   public static synchronized void init(
-      ElasticsearchClient client, EmbeddingClient embeddingClient, String language) {
-    init(
-        client,
-        embeddingClient,
-        language,
-        VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER);
+      ElasticsearchClient client, EmbeddingClient embeddingClient) {
+    init(client, embeddingClient, VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER);
   }
 
   public static ElasticSearchVectorService getInstance() {

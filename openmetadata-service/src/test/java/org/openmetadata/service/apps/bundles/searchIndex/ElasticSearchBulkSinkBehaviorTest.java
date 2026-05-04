@@ -30,11 +30,11 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.search.IndexMapping;
-import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -311,8 +311,7 @@ class ElasticSearchBulkSinkBehaviorTest {
   void isVectorEmbeddingEnabledForEntityReturnsFalseWhenIndexMappingMissing() {
     try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
             mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
-        MockedStatic<
-                org.openmetadata.service.search.vector.ElasticSearchVectorService>
+        MockedStatic<org.openmetadata.service.search.vector.ElasticSearchVectorService>
             vectorServiceMock =
                 mockStatic(
                     org.openmetadata.service.search.vector.ElasticSearchVectorService.class)) {
@@ -352,8 +351,7 @@ class ElasticSearchBulkSinkBehaviorTest {
 
     try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
             mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
-        MockedStatic<
-                org.openmetadata.service.search.vector.ElasticSearchVectorService>
+        MockedStatic<org.openmetadata.service.search.vector.ElasticSearchVectorService>
             vectorServiceMock =
                 mockStatic(
                     org.openmetadata.service.search.vector.ElasticSearchVectorService.class)) {

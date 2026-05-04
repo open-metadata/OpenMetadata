@@ -456,8 +456,7 @@ class ElasticSearchVectorServiceTest {
     int expectedNumCandidates = 250;
 
     ElasticSearchVectorService svc =
-        new ElasticSearchVectorService(
-            mockEsClient, mockEmbeddingClient, "en", configuredMultiplier);
+        new ElasticSearchVectorService(mockEsClient, mockEmbeddingClient, configuredMultiplier);
 
     List<String> capturedBodies = new java.util.ArrayList<>();
     Response mockResponse = mock(Response.class);

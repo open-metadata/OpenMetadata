@@ -2365,7 +2365,6 @@ class SearchRepositoryBehaviorTest {
                   ElasticSearchVectorService.init(
                       rawClient,
                       embeddingClient,
-                      "en",
                       VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER))
           .thenAnswer(invocation -> null);
       vectorServiceMock.when(ElasticSearchVectorService::getInstance).thenReturn(vectorService);
@@ -2377,7 +2376,6 @@ class SearchRepositoryBehaviorTest {
               ElasticSearchVectorService.init(
                   rawClient,
                   embeddingClient,
-                  "en",
                   VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER));
     }
 
