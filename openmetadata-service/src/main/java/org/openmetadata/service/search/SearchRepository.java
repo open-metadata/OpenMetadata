@@ -2491,6 +2491,12 @@ public class SearchRepository {
           Entity.DRIVE_SERVICE -> searchClient.deleteEntityByFields(
           indexMapping.getChildAliases(clusterAlias),
           List.of(new ImmutablePair<>("service.id", docId)));
+      // Knowledge Center pages are nested via FQN (parent.fqn -> parent.fqn.child),
+      // not via a parent.id field on the child doc. A recursive hard-delete on the
+      // parent must therefore also remove every descendant from search by FQN
+      // prefix; otherwise stale child docs survive in the index and re-appear in
+      // hierarchy / search results until a full reindex.
+      case Entity.PAGE -> deleteEntityByFQNPrefix(entity);
       default -> {
         List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
         if (!indexNames.isEmpty()) {
