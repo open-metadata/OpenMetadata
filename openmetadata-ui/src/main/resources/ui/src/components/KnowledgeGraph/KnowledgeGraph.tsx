@@ -100,6 +100,7 @@ import {
   ZOOM_OUT_FACTOR,
 } from './KnowledgeGraph.constants';
 import {
+  EdgeTooltipState,
   GraphData,
   GraphNode,
   KnowledgeGraphLayout,
@@ -127,6 +128,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   const [selectedDepth, setSelectedDepth] = useState(depth);
   const [layout, setLayout] = useState<KnowledgeGraphLayout>('dagre');
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [edgeTooltip, setEdgeTooltip] = useState<EdgeTooltipState | null>(null);
   const [selectedEntityTypes, setSelectedEntityTypes] = useState<string[]>([]);
   const [selectedRelationshipTypes, setSelectedRelationshipTypes] = useState<
     string[]
@@ -392,6 +394,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
 
       const focusNodeId = entity?.id
         ? (g6Data.nodes ?? []).find(
+            // Server may prefix IDs (e.g. "table::<uuid>"); suffix-match the raw UUID to cover both forms.
             (n) => n.id === entity.id || n.id.endsWith(entity.id)
           )?.id ?? entity.id
         : '';
@@ -544,6 +547,8 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         pendingHighlightRef,
         selectedNodeIdRef,
         setSelectedNode,
+        setEdgeTooltip,
+        canvasRef: containerRef,
       });
 
       resizeObserver = new ResizeObserver(() => {
@@ -727,6 +732,27 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           />
         ))}
       </div>
+
+      {edgeTooltip && (
+        <div
+          aria-hidden="true"
+          className="kg-edge-tooltip"
+          data-testid="edge-tooltip"
+          style={{
+            left: edgeTooltip.x + 12,
+            position: 'fixed',
+            top: edgeTooltip.y + 12,
+          }}>
+          <div className="kg-edge-tooltip__direction">
+            {`${edgeTooltip.sourceLabel} → ${edgeTooltip.targetLabel}`}
+          </div>
+          {edgeTooltip.labels.map((label) => (
+            <div className="kg-edge-tooltip__label" key={label}>
+              {label}
+            </div>
+          ))}
+        </div>
+      )}
 
       {selectedNode?.fullyQualifiedName && (
         <SlideoutMenu
