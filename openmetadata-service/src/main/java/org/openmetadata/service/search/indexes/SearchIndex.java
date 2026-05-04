@@ -67,6 +67,7 @@ public interface SearchIndex {
           "followers",
           "votes",
           "extension",
+          "tags",
           "certification",
           "dataProducts");
 
