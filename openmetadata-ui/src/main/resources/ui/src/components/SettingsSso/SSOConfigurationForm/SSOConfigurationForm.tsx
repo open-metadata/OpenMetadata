@@ -46,6 +46,7 @@ import { compare } from 'fast-json-patch';
 import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
+  getLockoutRiskFields,
   getProviderFieldLayout,
   getSSOUISchema,
   hasAnyAdvancedFields,
@@ -270,9 +271,7 @@ const SSOConfigurationFormRJSF = ({
   const [testLoginResult, setTestLoginResult] =
     useState<TestLoginResult | null>(null);
   const [claimSelectorOpen, setClaimSelectorOpen] = useState<boolean>(false);
-  const [testLoginSnapshot, setTestLoginSnapshot] = useState<string | null>(
-    null
-  );
+  const [testLoginPassed, setTestLoginPassed] = useState<boolean>(false);
   const fieldErrorsRef = useRef<ErrorSchema>({});
   const testLoginTriggerRef = useRef<TestLoginButtonHandle | null>(null);
 
@@ -299,6 +298,7 @@ const SSOConfigurationFormRJSF = ({
 
       setSavedData(configData);
       setInternalData(configData);
+      setTestLoginPassed(false);
       setShowForm(true);
 
       if (forceEditMode) {
@@ -380,6 +380,7 @@ const SSOConfigurationFormRJSF = ({
     // Create fresh form data using utility function
     const freshFormData = createFreshFormData(selectedProvider as AuthProvider);
     setInternalData(freshFormData);
+    setTestLoginPassed(false);
   }, [selectedProvider]);
 
   const scrollToFirstError = useCallback(
@@ -760,6 +761,20 @@ const SSOConfigurationFormRJSF = ({
       }
     }
 
+    // Invalidate Test Login freshness only when the user actually edits a
+    // lockout-risk field. Spurious RJSF re-renders that don't touch
+    // lockout-risk paths leave the flag alone.
+    if (testLoginPassed && internalData) {
+      const provider = newFormData.authenticationConfiguration?.provider as
+        | string
+        | undefined;
+      const lockoutRiskFields = getLockoutRiskFields(provider);
+      const changed = findChangedFields(internalData, newFormData);
+      if (changed.some((f) => lockoutRiskFields.has(f))) {
+        setTestLoginPassed(false);
+      }
+    }
+
     setInternalData(newFormData);
     handleProviderChange(newFormData);
   };
@@ -975,7 +990,7 @@ const SSOConfigurationFormRJSF = ({
         if (next && next !== internalData) {
           setInternalData(next);
         }
-        setTestLoginSnapshot(JSON.stringify(next ?? internalData ?? null));
+        setTestLoginPassed(true);
         setTestLoginResult(null);
         showSuccessToast(t('message.test-login-success'));
 
@@ -997,7 +1012,7 @@ const SSOConfigurationFormRJSF = ({
       if (next && next !== internalData) {
         setInternalData(next);
       }
-      setTestLoginSnapshot(JSON.stringify(next ?? internalData ?? null));
+      setTestLoginPassed(true);
       showSuccessToast(t('message.test-login-success'));
     },
     [internalData, withAuthorizerSuggestionApplied, t]
@@ -1032,7 +1047,7 @@ const SSOConfigurationFormRJSF = ({
       if (next && next !== internalData) {
         setInternalData(next);
       }
-      setTestLoginSnapshot(JSON.stringify(next ?? internalData ?? null));
+      setTestLoginPassed(true);
       setClaimSelectorOpen(false);
       setTestLoginResult(null);
       showSuccessToast(t('message.test-login-success'));
@@ -1070,10 +1085,7 @@ const SSOConfigurationFormRJSF = ({
       const isLockoutRiskEdit = hasExistingConfig
         ? hasLockoutRiskChange(savedData, internalData, provider)
         : true;
-      const isTestLoginFresh =
-        testLoginSnapshot !== null &&
-        testLoginSnapshot === JSON.stringify(internalData);
-      if (isLockoutRiskEdit && !isTestLoginFresh) {
+      if (isLockoutRiskEdit && !testLoginPassed) {
         showErrorToast(t('message.test-login-required-before-save'));
         updateLoadingState(isModalSave, setIsLoading, false);
 
@@ -1124,6 +1136,7 @@ const SSOConfigurationFormRJSF = ({
     // For existing/configured SSO, discard changes and stay on the same page
     if (hasExistingConfig && savedData) {
       setInternalData(savedData);
+      setTestLoginPassed(false);
 
       return;
     }
@@ -1196,6 +1209,7 @@ const SSOConfigurationFormRJSF = ({
     // Create fresh form data using utility function
     const freshFormData = createFreshFormData(provider);
     setInternalData(freshFormData);
+    setTestLoginPassed(false);
   };
 
   if (isInitializing) {
