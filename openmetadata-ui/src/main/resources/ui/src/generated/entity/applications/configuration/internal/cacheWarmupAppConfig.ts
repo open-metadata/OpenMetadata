@@ -19,9 +19,11 @@ export interface CacheWarmupAppConfig {
      */
     batchSize?: number;
     /**
-     * Number of parallel threads for processing entities and warming cache.
+     * In multi-instance deployments, claim each entity type via Redis SETNX so only one
+     * instance warms it. Disable to let every instance warm independently (idempotent but
+     * redundant).
      */
-    consumerThreads?: number;
+    enableDistributedClaim?: boolean;
     /**
      * List of entity types to warm up in cache. Use 'all' to warm up all entity types.
      */
@@ -31,13 +33,14 @@ export interface CacheWarmupAppConfig {
      */
     force?: boolean;
     /**
-     * Internal queue size for entity processing pipeline.
-     */
-    queueSize?: number;
-    /**
      * Application Type
      */
     type?: CacheWarmupType;
+    /**
+     * Pre-warm the per-entity bundle cache (tags + certification) so the first read after
+     * deploy doesn't fan out to the DB. Disable for very large installs.
+     */
+    warmBundles?: boolean;
 }
 
 /**
