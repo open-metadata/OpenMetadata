@@ -3476,6 +3476,7 @@
     "test-definition-sql-expression-tooltip": "תבנית שאילתת SQL המשתמשת במציינים של פרמטרים בסוגריים מסולסלים כפולים (למשל, {{paramName}}). השתמש ב-{table} ו-{column} עבור הפניות ישות בזמן ריצה.",
     "test-definition-sql-query-help": "כתוב תבנית שאילתת SQL עם משתני החלפה. השתמש ב-{table} עבור שם טבלה, {column} עבור שם עמודה (נפתר בזמן ריצה). השתמש ב-{{paramName}} עבור פרמטרי משתמש המוגדרים למטה (למשל, {{minValue}}, {{maxValue}}).",
     "test-login-failed": "Test login failed. Please verify your configuration.",
+    "test-login-popup-closed": "Test Login was not completed. The window was closed before authentication finished. Please try again.",
     "test-login-required-before-save": "Run Test Login to verify this configuration before saving.",
     "test-login-success": "Test login succeeded. Authorizer fields have been pre-filled.",
     "test-login-timeout": "The test login flow timed out. Please try again.",

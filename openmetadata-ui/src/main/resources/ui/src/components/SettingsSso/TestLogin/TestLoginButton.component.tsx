@@ -95,6 +95,7 @@ const TestLoginButton = ({
   const [isLoading, setIsLoading] = useState(false);
   const popupRef = useRef<Window | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeWatchRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [ldapModalOpen, setLdapModalOpen] = useState(false);
   const [ldapModalLoading, setLdapModalLoading] = useState(false);
   const [ldapEmail, setLdapEmail] = useState('');
@@ -104,6 +105,13 @@ const TestLoginButton = ({
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
+    }
+  }, []);
+
+  const clearCloseWatch = useCallback(() => {
+    if (closeWatchRef.current) {
+      clearInterval(closeWatchRef.current);
+      closeWatchRef.current = null;
     }
   }, []);
 
@@ -124,6 +132,7 @@ const TestLoginButton = ({
       }
 
       clearTimer();
+      clearCloseWatch();
       setIsLoading(false);
 
       if (data.success) {
@@ -145,7 +154,7 @@ const TestLoginButton = ({
 
       localStorage.removeItem(TEST_LOGIN_RESULT_KEY);
     },
-    [onSuccess, t, clearTimer]
+    [onSuccess, t, clearTimer, clearCloseWatch]
   );
 
   useEffect(() => {
@@ -160,8 +169,9 @@ const TestLoginButton = ({
     return () => {
       window.removeEventListener('storage', handleStorage);
       clearTimer();
+      clearCloseWatch();
     };
-  }, [processResultPayload, clearTimer]);
+  }, [processResultPayload, clearTimer, clearCloseWatch]);
 
   const failPopupBlocked = useCallback(() => {
     setIsLoading(false);
@@ -169,12 +179,32 @@ const TestLoginButton = ({
   }, [t]);
 
   const failTimeout = useCallback(() => {
+    clearCloseWatch();
     if (popupRef.current && !popupRef.current.closed) {
       popupRef.current.close();
     }
     setIsLoading(false);
     showErrorToast(t('message.test-login-timeout'));
-  }, [t]);
+  }, [clearCloseWatch, t]);
+
+  const failPopupClosed = useCallback(() => {
+    clearTimer();
+    clearCloseWatch();
+    setIsLoading(false);
+    showErrorToast(t('message.test-login-popup-closed'));
+  }, [clearCloseWatch, clearTimer, t]);
+
+  const startCloseWatch = useCallback(() => {
+    clearCloseWatch();
+    closeWatchRef.current = setInterval(() => {
+      if (
+        popupRef.current?.closed &&
+        !localStorage.getItem(TEST_LOGIN_RESULT_KEY)
+      ) {
+        failPopupClosed();
+      }
+    }, 500);
+  }, [clearCloseWatch, failPopupClosed]);
 
   const startSamlTestLogin = useCallback(() => {
     const idp = formData?.samlConfiguration?.idp;
@@ -200,6 +230,7 @@ const TestLoginButton = ({
       return;
     }
     popupRef.current = popup;
+    startCloseWatch();
 
     submitFormToPopup(
       `${window.location.origin}/api/v1/system/config/auth/test-login/saml-initiate`,
@@ -217,7 +248,7 @@ const TestLoginButton = ({
     );
 
     timerRef.current = setTimeout(failTimeout, POPUP_TIMEOUT_MS);
-  }, [formData, t, failPopupBlocked, failTimeout]);
+  }, [formData, t, failPopupBlocked, failTimeout, startCloseWatch]);
 
   const startOidcTestLogin = useCallback(async () => {
     const discoveryUri =
@@ -292,6 +323,7 @@ const TestLoginButton = ({
       return;
     }
     popupRef.current = popup;
+    startCloseWatch();
 
     submitFormToPopup(
       `${window.location.origin}/api/v1/system/config/auth/test-login/initiate`,
@@ -311,7 +343,7 @@ const TestLoginButton = ({
     );
 
     timerRef.current = setTimeout(failTimeout, POPUP_TIMEOUT_MS);
-  }, [formData, securityConfig, t, failPopupBlocked, failTimeout]);
+  }, [formData, securityConfig, t, failPopupBlocked, failTimeout, startCloseWatch]);
 
   const submitLdapTestLogin = useCallback(async () => {
     if (!ldapEmail || !ldapPassword) {
