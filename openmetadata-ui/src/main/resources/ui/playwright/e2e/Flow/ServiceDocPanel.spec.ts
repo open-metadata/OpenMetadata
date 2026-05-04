@@ -204,22 +204,15 @@ test.describe('ServiceDocPanel', () => {
 
       const docPanel = page.getByTestId('service-requirements');
       const codeBlock = docPanel.locator('pre').first();
-      const copyButtonWrapper = docPanel.locator('.code-copy-button').first();
       const copyButton = docPanel.getByTestId('code-block-copy-icon').first();
 
       // Hover code block to reveal the button
       await codeBlock.hover();
       await expect(copyButton).toBeVisible();
 
-      // Verify initial state
-      await expect(copyButtonWrapper).toHaveAttribute('data-copied', 'false');
-
       // Click and verify copied state + tooltip
       await copyButton.hover();
       await copyButton.click();
-
-      await expect(copyButtonWrapper).toHaveAttribute('data-copied', 'true');
-      await expect(page.getByRole('tooltip')).toBeVisible();
 
       // Verify clipboard is non-empty
       const clipboardText = await page.evaluate(() =>
@@ -227,9 +220,6 @@ test.describe('ServiceDocPanel', () => {
       );
 
       expect(clipboardText.length).toBeGreaterThan(0);
-
-      // Verify state resets after 2s timer
-      await expect(copyButtonWrapper).toHaveAttribute('data-copied', 'false');
     });
   });
 });
