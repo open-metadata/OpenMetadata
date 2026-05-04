@@ -25,6 +25,16 @@ import { CoreFieldErrorTemplate } from './CoreFieldErrorTemplate';
 import { CoreFieldTemplate } from './CoreFieldTemplate';
 import { CoreObjectFieldTemplate } from './CoreObjectFieldTemplate';
 
+const wrapIfAdditionalRegistry = {
+  templates: {
+    WrapIfAdditionalTemplate: ({
+      children,
+    }: {
+      children: React.ReactNode;
+    }) => <div>{children}</div>,
+  },
+} as unknown as FieldTemplateProps['registry'];
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest.fn(
     ({
@@ -154,7 +164,7 @@ describe('FormBuilderV1 templates', () => {
       rawErrors: [],
       rawHelp: undefined,
       readonly: false,
-      registry: {} as FieldTemplateProps['registry'],
+      registry: wrapIfAdditionalRegistry,
       required: false,
       schema: { type: 'string' as const },
       onDropPropertyClick: jest.fn(),
@@ -218,7 +228,7 @@ describe('FormBuilderV1 templates', () => {
     expect(onAddClick).toHaveBeenCalledWith({ additionalProperties: true });
 
     const advancedConfigToggle = screen.getByRole('button', {
-      name: 'label.advanced-config',
+      name: 'Connection label.advanced-config',
     });
 
     expect(advancedConfigToggle).toHaveAttribute('aria-expanded', 'false');
