@@ -78,7 +78,7 @@ logger = ingestion_logger()
 class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
     def __init__(self, connection: OracleConnectionConfig):
         super().__init__(connection)
-        self._wallet_temp_dir: str | None = None
+        self._wallet_temp_dir: Optional[str] = None
         self._wallet_cleanup_finalizer: Any = None
 
     def _set_wallet_temp_dir(self, wallet_temp_dir: str) -> None:
