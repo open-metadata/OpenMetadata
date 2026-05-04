@@ -524,9 +524,7 @@ class TestSqlAlchemy2RowCompat:
             _SqlAlchemy2Row(("Comment", "My table description")),
         ]
 
-        result = DatabricksSource.get_table_description(
-            mock_self, "my_schema", "my_table", mock_inspector
-        )
+        result = DatabricksSource.get_table_description(mock_self, "my_schema", "my_table", mock_inspector)
 
         assert result == "My table description"
 
@@ -543,8 +541,6 @@ class TestSqlAlchemy2RowCompat:
             _SqlAlchemy2Row(("Location", "/external/path")),
         ]
 
-        result = DatabricksSource.get_table_description(
-            mock_self, "my_schema", "my_table", mock_inspector
-        )
+        result = DatabricksSource.get_table_description(mock_self, "my_schema", "my_table", mock_inspector)
 
         assert result is None
