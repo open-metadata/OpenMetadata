@@ -10,12 +10,20 @@
 #  limitations under the License.
 
 """Tests for resolve_static_sampling_config, get_tiered_sample,
-and _get_asset_row_count across sampler subclasses."""
+_get_asset_row_count, _resolve_profile_sample_config, and tableDiff dynamic sampling."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    DataType,
+    TableProfilerConfig,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.generated.schema.type.basic import (
     ProfileSampleType,
     SamplingMethodType,
@@ -29,7 +37,12 @@ from metadata.generated.schema.type.samplingConfig import (
     SampleConfigType,
 )
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
-from metadata.sampler.config import get_tiered_sample, resolve_static_sampling_config
+from metadata.sampler.config import (
+    _resolve_profile_sample_config,
+    get_tiered_sample,
+    resolve_static_sampling_config,
+)
+from metadata.sampler.models import SampleConfig, TableConfig
 
 
 
@@ -404,3 +417,370 @@ class TestNoSQLSamplerGetAssetRowCount:
 
         result = NoSQLSampler._get_asset_row_count(sampler)
         assert result == SAMPLE_DATA_DEFAULT_COUNT
+
+
+
+class TestResolveProfileSampleConfigHierarchy:
+    """Tests for _resolve_profile_sample_config — config hierarchy with backward compat."""
+
+    def test_returns_none_when_all_configs_are_none(self):
+        result = _resolve_profile_sample_config(
+            entity_config=None,
+            table_profiler_config=None,
+            schema_profiler_config=None,
+            database_profiler_config=None,
+            default_sample_config=None,
+        )
+        assert result is None
+
+    def test_entity_config_takes_priority(self):
+        entity_cfg = TableConfig(
+            fullyQualifiedName="demo",
+            profileSampleConfig=ProfileSampleConfig(
+                sampleConfigType=SampleConfigType.STATIC,
+                config=StaticSamplingConfig(
+                    profileSample=5.0,
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                ),
+            ),
+        )
+        table_cfg = MagicMock()
+        table_cfg.profileSampleConfig = ProfileSampleConfig(
+            sampleConfigType=SampleConfigType.STATIC,
+            config=StaticSamplingConfig(
+                profileSample=99.0,
+                profileSampleType=ProfileSampleType.PERCENTAGE,
+            ),
+        )
+        result = _resolve_profile_sample_config(
+            entity_config=entity_cfg,
+            table_profiler_config=table_cfg,
+            schema_profiler_config=None,
+            database_profiler_config=None,
+            default_sample_config=None,
+        )
+        assert result.config.profileSample == 5.0
+
+    def test_falls_through_to_table_profiler_config(self):
+        table_cfg = MagicMock()
+        table_cfg.profileSampleConfig = ProfileSampleConfig(
+            sampleConfigType=SampleConfigType.STATIC,
+            config=StaticSamplingConfig(
+                profileSample=30.0,
+                profileSampleType=ProfileSampleType.PERCENTAGE,
+            ),
+        )
+        result = _resolve_profile_sample_config(
+            entity_config=None,
+            table_profiler_config=table_cfg,
+            schema_profiler_config=None,
+            database_profiler_config=None,
+            default_sample_config=None,
+        )
+        assert result.config.profileSample == 30.0
+
+    def test_falls_through_to_schema_config(self):
+        schema_cfg = MagicMock()
+        schema_cfg.profileSampleConfig = ProfileSampleConfig(
+            sampleConfigType=SampleConfigType.DYNAMIC,
+            config=DynamicSamplingConfig(smartSampling=True),
+        )
+        result = _resolve_profile_sample_config(
+            entity_config=None,
+            table_profiler_config=None,
+            schema_profiler_config=schema_cfg,
+            database_profiler_config=None,
+            default_sample_config=None,
+        )
+        assert result.sampleConfigType == SampleConfigType.DYNAMIC
+
+    def test_falls_through_to_database_config(self):
+        db_cfg = MagicMock()
+        db_cfg.profileSampleConfig = ProfileSampleConfig(
+            sampleConfigType=SampleConfigType.STATIC,
+            config=StaticSamplingConfig(
+                profileSample=15.0,
+                profileSampleType=ProfileSampleType.ROWS,
+            ),
+        )
+        result = _resolve_profile_sample_config(
+            entity_config=None,
+            table_profiler_config=None,
+            schema_profiler_config=None,
+            database_profiler_config=db_cfg,
+            default_sample_config=None,
+        )
+        assert result.config.profileSample == 15.0
+
+    def test_falls_through_to_default_sample_config(self):
+        default = SampleConfig(
+            profileSampleConfig=ProfileSampleConfig(
+                sampleConfigType=SampleConfigType.STATIC,
+                config=StaticSamplingConfig(
+                    profileSample=42.0,
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                ),
+            ),
+        )
+        result = _resolve_profile_sample_config(
+            entity_config=None,
+            table_profiler_config=None,
+            schema_profiler_config=None,
+            database_profiler_config=None,
+            default_sample_config=default,
+        )
+        assert result.config.profileSample == 42.0
+
+    def test_backward_compat_flat_fields(self):
+        """When profileSampleConfig is None but flat profileSample is set,
+        it should construct a STATIC ProfileSampleConfig."""
+        entity_cfg = TableConfig(
+            fullyQualifiedName="demo",
+            profileSample=75.0,
+            profileSampleType=ProfileSampleType.PERCENTAGE,
+            samplingMethodType=SamplingMethodType.SYSTEM,
+        )
+        result = _resolve_profile_sample_config(
+            entity_config=entity_cfg,
+            table_profiler_config=None,
+            schema_profiler_config=None,
+            database_profiler_config=None,
+            default_sample_config=None,
+        )
+        assert result.sampleConfigType == SampleConfigType.STATIC
+        assert result.config.profileSample == 75.0
+        assert result.config.profileSampleType == ProfileSampleType.PERCENTAGE
+        assert result.config.samplingMethodType == SamplingMethodType.SYSTEM
+
+    def test_backward_compat_skips_none_profile_sample(self):
+        """If both profileSampleConfig and profileSample are None, skip to next."""
+        entity_cfg = TableConfig(fullyQualifiedName="demo")
+        db_cfg = MagicMock()
+        db_cfg.profileSampleConfig = ProfileSampleConfig(
+            sampleConfigType=SampleConfigType.STATIC,
+            config=StaticSamplingConfig(
+                profileSample=20.0,
+                profileSampleType=ProfileSampleType.PERCENTAGE,
+            ),
+        )
+        result = _resolve_profile_sample_config(
+            entity_config=entity_cfg,
+            table_profiler_config=None,
+            schema_profiler_config=None,
+            database_profiler_config=db_cfg,
+            default_sample_config=None,
+        )
+        assert result.config.profileSample == 20.0
+
+    def test_root_model_unwrap(self):
+        """TableProfilerConfig wraps ProfileSampleConfig in a RootModel.
+        _resolve should unwrap it via .root."""
+        from metadata.generated.schema.entity.data.table import (
+            ProfileSampleConfig as TableProfileSampleConfig,
+        )
+        from metadata.generated.schema.type.samplingConfig import (
+            ProfileSampleConfig as SamplingPSC,
+        )
+
+        inner = SamplingPSC(
+            sampleConfigType=SampleConfigType.STATIC,
+            config=StaticSamplingConfig(
+                profileSample=33.0,
+                profileSampleType=ProfileSampleType.PERCENTAGE,
+            ),
+        )
+        # table.ProfileSampleConfig is a RootModel wrapping samplingConfig.ProfileSampleConfig
+        wrapped = TableProfileSampleConfig(root=inner)
+
+        table_profiler_cfg = MagicMock()
+        table_profiler_cfg.profileSampleConfig = wrapped
+
+        result = _resolve_profile_sample_config(
+            entity_config=None,
+            table_profiler_config=table_profiler_cfg,
+            schema_profiler_config=None,
+            database_profiler_config=None,
+            default_sample_config=None,
+        )
+        assert result.config.profileSample == 33.0
+
+    def test_dynamic_config_propagates_through_hierarchy(self):
+        """Dynamic config at schema level should propagate correctly."""
+        schema_cfg = MagicMock()
+        schema_cfg.profileSampleConfig = ProfileSampleConfig(
+            sampleConfigType=SampleConfigType.DYNAMIC,
+            config=DynamicSamplingConfig(
+                smartSampling=False,
+                thresholds=[
+                    Threshold(rowCountThreshold=1000, profileSample=10.0),
+                ],
+            ),
+        )
+        result = _resolve_profile_sample_config(
+            entity_config=None,
+            table_profiler_config=None,
+            schema_profiler_config=schema_cfg,
+            database_profiler_config=None,
+            default_sample_config=None,
+        )
+        assert result.sampleConfigType == SampleConfigType.DYNAMIC
+        assert isinstance(result.config, DynamicSamplingConfig)
+        assert result.config.thresholds[0].rowCountThreshold == 1000
+ 
+
+class TestTableDiffDynamicSampling:
+    """Tests for tableDiff.py calculate_nounce and sample_where_clause with dynamic configs."""
+
+    def _make_validator(self, table_profile_config, row_count=10_000):
+        from metadata.data_quality.validations.table.sqlalchemy.tableDiff import (
+            TableDiffValidator,
+        )
+        from metadata.data_quality.validations.models import (
+            TableDiffRuntimeParameters,
+            TableParameter,
+        )
+        from metadata.generated.schema.tests.testCase import (
+            TestCase,
+            TestCaseParameterValue,
+        )
+
+        validator = TableDiffValidator(
+            None,
+            TestCase.model_construct(
+                parameterValues=[
+                    TestCaseParameterValue(name="caseSensitiveColumns", value="false")
+                ]
+            ),
+            None,
+        )
+        validator.runtime_params = TableDiffRuntimeParameters.model_construct(
+            **{
+                "table_profile_config": table_profile_config,
+                "table1": TableParameter.model_construct(
+                    **{
+                        "database_service_type": DatabaseServiceType.Postgres,
+                        "columns": [
+                            Column(name="id", dataType=DataType.STRING),
+                        ],
+                        "key_columns": ["id"],
+                    }
+                ),
+                "table2": TableParameter.model_construct(
+                    **{
+                        "database_service_type": DatabaseServiceType.Postgres,
+                        "columns": [
+                            Column(name="id", dataType=DataType.STRING),
+                        ],
+                        "key_columns": ["id"],
+                    }
+                ),
+                "keyColumns": ["id"],
+            }
+        )
+        validator.get_total_row_count = Mock(return_value=row_count)
+        return validator
+
+    def test_calculate_nounce_with_dynamic_smart_sampling(self):
+        """Dynamic smart sampling should resolve to a static config and compute nounce."""
+        config = TableProfilerConfig(
+            profileSampleConfig=ProfileSampleConfig(
+                sampleConfigType=SampleConfigType.DYNAMIC,
+                config=DynamicSamplingConfig(smartSampling=True),
+            ),
+        )
+        # row_count=500_000 → smart sampling tier = 50%
+        validator = self._make_validator(config, row_count=500_000)
+        max_nounce = 2**32 - 1
+        expected = int(max_nounce * 50 / 100)
+        assert validator.calculate_nounce() == expected
+
+    def test_calculate_nounce_with_dynamic_thresholds(self):
+        """Dynamic thresholds should resolve and compute nounce correctly."""
+        config = TableProfilerConfig(
+            profileSampleConfig=ProfileSampleConfig(
+                sampleConfigType=SampleConfigType.DYNAMIC,
+                config=DynamicSamplingConfig(
+                    smartSampling=False,
+                    thresholds=[
+                        Threshold(rowCountThreshold=1000, profileSample=25.0),
+                    ],
+                ),
+            ),
+        )
+        validator = self._make_validator(config, row_count=5_000)
+        max_nounce = 2**32 - 1
+        expected = int(max_nounce * 25 / 100)
+        assert validator.calculate_nounce() == expected
+
+    def test_calculate_nounce_with_dynamic_rows_type(self):
+        """Dynamic thresholds with ROWS type should compute nounce based on row fraction."""
+        config = TableProfilerConfig(
+            profileSampleConfig=ProfileSampleConfig(
+                sampleConfigType=SampleConfigType.DYNAMIC,
+                config=DynamicSamplingConfig(
+                    smartSampling=False,
+                    thresholds=[
+                        Threshold(
+                            rowCountThreshold=100,
+                            profileSample=500,
+                            profileSampleType=ProfileSampleType.ROWS,
+                        ),
+                    ],
+                ),
+            ),
+        )
+        validator = self._make_validator(config, row_count=10_000)
+        max_nounce = 2**32 - 1
+        expected = int(max_nounce * (500 / 10_000))
+        assert validator.calculate_nounce() == expected
+
+    def test_sample_where_clause_with_dynamic_config(self):
+        """sample_where_clause should work end-to-end with dynamic config."""
+        config = TableProfilerConfig(
+            profileSampleConfig=ProfileSampleConfig(
+                sampleConfigType=SampleConfigType.DYNAMIC,
+                config=DynamicSamplingConfig(
+                    smartSampling=False,
+                    thresholds=[
+                        Threshold(rowCountThreshold=100, profileSample=10.0),
+                    ],
+                ),
+            ),
+        )
+        validator = self._make_validator(config, row_count=5_000)
+        with patch("random.choices", Mock(return_value=["a"])):
+            result = validator.sample_where_clause()
+        # 10% of 2^32-1 = 0x19999999
+        assert result[0] == "SUBSTRING(MD5(id || 'a'), 1, 8) < '19999999'"
+        assert result[1] == "SUBSTRING(MD5(id || 'a'), 1, 8) < '19999999'"
+
+    def test_sample_where_clause_dynamic_below_threshold_returns_none(self):
+        """When row_count is below all thresholds, no sampling should be applied."""
+        config = TableProfilerConfig(
+            profileSampleConfig=ProfileSampleConfig(
+                sampleConfigType=SampleConfigType.DYNAMIC,
+                config=DynamicSamplingConfig(
+                    smartSampling=False,
+                    thresholds=[
+                        Threshold(rowCountThreshold=10_000, profileSample=10.0),
+                    ],
+                ),
+            ),
+        )
+        # row_count=500 is below threshold of 10_000 → resolve returns None → no sampling
+        validator = self._make_validator(config, row_count=500)
+        result = validator.sample_where_clause()
+        assert result == (None, None)
+
+    def test_sample_where_clause_dynamic_100pct_returns_none(self):
+        """Smart sampling at <=100K rows returns 100% → no where clause needed."""
+        config = TableProfilerConfig(
+            profileSampleConfig=ProfileSampleConfig(
+                sampleConfigType=SampleConfigType.DYNAMIC,
+                config=DynamicSamplingConfig(smartSampling=True),
+            ),
+        )
+        # row_count=50_000 → smart tier = 100% → should return (None, None)
+        validator = self._make_validator(config, row_count=50_000)
+        result = validator.sample_where_clause()
+        assert result == (None, None)
