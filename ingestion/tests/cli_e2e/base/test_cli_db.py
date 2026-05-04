@@ -12,9 +12,10 @@
 """
 Test database connectors with CLI
 """
+
 from abc import abstractmethod
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple  # noqa: UP035
 from unittest import TestCase
 
 import pytest
@@ -28,8 +29,8 @@ from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase as OMTestCase
 from metadata.ingestion.api.status import Status
 
-from .e2e_types import E2EType
-from .test_cli import CliBase
+from .e2e_types import E2EType  # noqa: TID252
+from .test_cli import CliBase  # noqa: TID252
 
 
 class CliDBBase(TestCase):
@@ -68,9 +69,7 @@ class CliDBBase(TestCase):
             self.create_table_and_view()
             self.build_config_file()
             self.run_command()
-            self.build_config_file(
-                E2EType.PROFILER, {"includes": self.get_includes_schemas()}
-            )
+            self.build_config_file(E2EType.PROFILER, {"includes": self.get_includes_schemas()})
             result = self.run_command("profile")
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_for_table_with_profiler(source_status, sink_status)
@@ -90,9 +89,7 @@ class CliDBBase(TestCase):
             self.create_table_and_view()
             self.build_config_file()
             self.run_command()
-            self.build_config_file(
-                E2EType.AUTO_CLASSIFICATION, {"includes": self.get_includes_schemas()}
-            )
+            self.build_config_file(E2EType.AUTO_CLASSIFICATION, {"includes": self.get_includes_schemas()})
             result = self.run_command("classify")
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_auto_classification_sample_data(source_status, sink_status)
@@ -111,9 +108,7 @@ class CliDBBase(TestCase):
             result = self.run_command()
 
             sink_status, source_status = self.retrieve_statuses(result)
-            self.assert_for_delete_table_is_marked_as_deleted(
-                source_status, sink_status
-            )
+            self.assert_for_delete_table_is_marked_as_deleted(source_status, sink_status)
 
         @pytest.mark.order(5)
         def test_schema_filter_includes(self) -> None:
@@ -156,9 +151,7 @@ class CliDBBase(TestCase):
                 1. build config file for ingest with filters
                 2. run ingest `self.run_command()` defaults to `ingestion`
             """
-            self.build_config_file(
-                E2EType.INGEST_DB_FILTER_TABLE, {"includes": self.get_includes_tables()}
-            )
+            self.build_config_file(E2EType.INGEST_DB_FILTER_TABLE, {"includes": self.get_includes_tables()})
             result = self.run_command()
 
             sink_status, source_status = self.retrieve_statuses(result)
@@ -172,9 +165,7 @@ class CliDBBase(TestCase):
                 1. build config file for ingest with filters
                 2. run ingest `self.run_command()` defaults to `ingestion`
             """
-            self.build_config_file(
-                E2EType.INGEST_DB_FILTER_TABLE, {"excludes": self.get_includes_tables()}
-            )
+            self.build_config_file(E2EType.INGEST_DB_FILTER_TABLE, {"excludes": self.get_includes_tables()})
             result = self.run_command()
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_tables_excludes(source_status, sink_status)
@@ -286,17 +277,13 @@ class CliDBBase(TestCase):
             self.build_config_file()
             self.run_command()
             self.add_table_profile_config()
-            table: Table = self.openmetadata.get_by_name(
-                Table, self.get_data_quality_table(), nullable=False
-            )
+            table: Table = self.openmetadata.get_by_name(Table, self.get_data_quality_table(), nullable=False)
             test_case_definitions = self.get_test_case_definitions()
             self.build_config_file(
                 E2EType.DATA_QUALITY,
                 {
                     "entity_fqn": table.fullyQualifiedName.root,
-                    "test_case_definitions": TypeAdapter(
-                        List[TestCaseDefinition]
-                    ).dump_python(test_case_definitions),
+                    "test_case_definitions": TypeAdapter(List[TestCaseDefinition]).dump_python(test_case_definitions),  # noqa: UP006
                 },
             )
             result = self.run_command("test")
@@ -314,29 +301,23 @@ class CliDBBase(TestCase):
                 ]
                 expected = self.get_expected_test_case_results()
                 try:
-                    for test_case, expected in zip(test_case_entities, expected):
+                    for test_case, expected in zip(test_case_entities, expected):  # noqa: B020, B905
                         assert_equal_pydantic_objects(
-                            expected.model_copy(
-                                update={"timestamp": test_case.testCaseResult.timestamp}
-                            ),
+                            expected.model_copy(update={"timestamp": test_case.testCaseResult.timestamp}),
                             test_case.testCaseResult,
                         )
                 finally:
                     for tc in test_case_entities:
-                        self.openmetadata.delete(
-                            OMTestCase, tc.id, recursive=True, hard_delete=True
-                        )
+                        self.openmetadata.delete(OMTestCase, tc.id, recursive=True, hard_delete=True)
             except AssertionError:
-                print(result)
+                print(result)  # noqa: T201
                 raise
 
         def retrieve_table(self, table_name_fqn: str) -> Table:
             return self.openmetadata.get_by_name(entity=Table, fqn=table_name_fqn)
 
         def retrieve_sample_data(self, table_name_fqn: str) -> Table:
-            table: Table = self.openmetadata.get_by_name(
-                entity=Table, fqn=table_name_fqn
-            )
+            table: Table = self.openmetadata.get_by_name(entity=Table, fqn=table_name_fqn)
             return self.openmetadata.get_sample_data(table=table)
 
         def retrieve_profile(self, table_fqn: str) -> Table:
@@ -345,9 +326,7 @@ class CliDBBase(TestCase):
             return table
 
         def retrieve_lineage(self, entity_fqn: str) -> dict:
-            return self.openmetadata.client.get(
-                f"/lineage/table/name/{entity_fqn}?upstreamDepth=3&downstreamDepth=3"
-            )
+            return self.openmetadata.client.get(f"/lineage/table/name/{entity_fqn}?upstreamDepth=3&downstreamDepth=3")
 
         @staticmethod
         @abstractmethod
@@ -363,63 +342,43 @@ class CliDBBase(TestCase):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_for_vanilla_ingestion(
-            self, source_status: Status, sink_status: Status
-        ) -> None:
+        def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_for_test_lineage(
-            self, source_status: Status, sink_status: Status
-        ) -> None:
+        def assert_for_test_lineage(self, source_status: Status, sink_status: Status) -> None:
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_for_table_with_profiler(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_for_table_with_profiler(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_auto_classification_sample_data(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_auto_classification_sample_data(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_for_table_with_profiler_time_partition(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_for_table_with_profiler_time_partition(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_for_delete_table_is_marked_as_deleted(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_for_delete_table_is_marked_as_deleted(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_filtered_schemas_includes(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_filtered_schemas_includes(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_filtered_schemas_excludes(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_filtered_schemas_excludes(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_filtered_tables_includes(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_filtered_tables_includes(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_filtered_tables_excludes(
-            self, source_status: Status, sink_status: Status
-        ):
+        def assert_filtered_tables_excludes(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod
@@ -428,21 +387,21 @@ class CliDBBase(TestCase):
 
         @staticmethod
         @abstractmethod
-        def get_includes_schemas() -> List[str]:
+        def get_includes_schemas() -> List[str]:  # noqa: UP006
             raise NotImplementedError()
 
         @classmethod
-        def get_excludes_schemas(cls) -> List[str]:
+        def get_excludes_schemas(cls) -> List[str]:  # noqa: UP006
             return cls.get_includes_schemas()
 
         @staticmethod
         @abstractmethod
-        def get_includes_tables() -> List[str]:
+        def get_includes_tables() -> List[str]:  # noqa: UP006
             raise NotImplementedError()
 
         @staticmethod
         @abstractmethod
-        def get_excludes_tables() -> List[str]:
+        def get_excludes_tables() -> List[str]:  # noqa: UP006
             raise NotImplementedError()
 
         @staticmethod
@@ -450,19 +409,19 @@ class CliDBBase(TestCase):
             return {}
 
         @staticmethod
-        def get_profiler_time_partition() -> Optional[dict]:
+        def get_profiler_time_partition() -> Optional[dict]:  # noqa: UP045
             return None
 
         @staticmethod
-        def get_profiler_time_partition_results() -> Optional[dict]:
+        def get_profiler_time_partition_results() -> Optional[dict]:  # noqa: UP045
             return None
 
         @staticmethod
-        def delete_queries() -> Optional[List[str]]:
+        def delete_queries() -> Optional[List[str]]:  # noqa: UP006, UP045
             return None
 
         @staticmethod
-        def update_queries() -> Optional[List[str]]:
+        def update_queries() -> Optional[List[str]]:  # noqa: UP006, UP045
             return None
 
         @staticmethod
@@ -488,10 +447,10 @@ class CliDBBase(TestCase):
         def get_data_quality_table(self):
             return None
 
-        def get_test_case_definitions(self) -> List[TestCaseDefinition]:
+        def get_test_case_definitions(self) -> List[TestCaseDefinition]:  # noqa: UP006
             pass
 
-        def get_expected_test_case_results(self) -> List[TestCaseResult]:
+        def get_expected_test_case_results(self) -> List[TestCaseResult]:  # noqa: UP006
             pass
 
         def assert_status_for_data_quality(self, source_status, sink_status):
@@ -510,12 +469,12 @@ class CliDBBase(TestCase):
                     actual_profiles,
                     key=lambda x: (-x.timestamp.root, x.operation.value),
                 )
-                expected_profile = sorted(
+                expected_profile = sorted(  # noqa: PLW2901
                     expected_profile,
                     key=lambda x: (-x.timestamp.root, x.operation.value),
                 )
                 assert len(actual_profiles) >= len(expected_profile)
-                for expected, actual in zip(expected_profile, actual_profiles):
+                for expected, actual in zip(expected_profile, actual_profiles):  # noqa: B905
                     try:
                         assert_equal_pydantic_objects(
                             expected.model_copy(update={"timestamp": actual.timestamp}),
@@ -526,7 +485,7 @@ class CliDBBase(TestCase):
                             f"System metrics profile did not return exepcted results for table: {table_fqn}"
                         ) from e
 
-        def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:
+        def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:  # noqa: UP006
             """Return a list of tuples with the table fqn and the expected system profile"""
             return []
 

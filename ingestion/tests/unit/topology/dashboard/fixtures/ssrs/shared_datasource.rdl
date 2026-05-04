@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2008/01/reportdefinition">
+  <DataSources>
+    <DataSource Name="SharedDS">
+      <DataSourceReference>/Shared Data Sources/Warehouse</DataSourceReference>
+    </DataSource>
+  </DataSources>
+  <DataSets>
+    <DataSet Name="Inventory">
+      <Query>
+        <DataSourceName>SharedDS</DataSourceName>
+        <CommandType>Text</CommandType>
+        <CommandText>SELECT Sku, Qty FROM dbo.Inventory</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Sku"><DataField>Sku</DataField></Field>
+        <Field Name="Qty"><DataField>Qty</DataField></Field>
+      </Fields>
+    </DataSet>
+  </DataSets>
+</Report>

@@ -10,6 +10,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -223,46 +224,6 @@ public final class SearchIndexRetryQueue {
       return true;
     }
     return status < 400;
-  }
-
-  public static void updateSuspension(Set<String> entityTypes, boolean suspendAll) {
-    Set<String> normalized = new HashSet<>();
-    for (String entityType : entityTypes == null ? Collections.<String>emptySet() : entityTypes) {
-      String normalizedType = normalize(entityType);
-      if (!normalizedType.isEmpty()) {
-        normalized.add(normalizedType);
-      }
-    }
-
-    // Set entity types before the boolean so that isEntityTypeSuspended never
-    // sees suspendAll=false with an outdated (empty) entity-types set.
-    SUSPENDED_ENTITY_TYPES.set(Collections.unmodifiableSet(normalized));
-    SUSPEND_ALL_STREAMING.set(suspendAll);
-  }
-
-  public static void clearSuspension() {
-    SUSPEND_ALL_STREAMING.set(false);
-    SUSPENDED_ENTITY_TYPES.set(Collections.emptySet());
-  }
-
-  public static boolean isEntityTypeSuspended(String entityType) {
-    if (SUSPEND_ALL_STREAMING.get()) {
-      return true;
-    }
-    String normalized = normalize(entityType);
-    return !normalized.isEmpty() && SUSPENDED_ENTITY_TYPES.get().contains(normalized);
-  }
-
-  public static boolean isStreamingSuspended() {
-    return SUSPEND_ALL_STREAMING.get() || !SUSPENDED_ENTITY_TYPES.get().isEmpty();
-  }
-
-  public static boolean isSuspendAllStreaming() {
-    return SUSPEND_ALL_STREAMING.get();
-  }
-
-  public static Set<String> getSuspendedEntityTypes() {
-    return SUSPENDED_ENTITY_TYPES.get();
   }
 
   private static String truncate(String value) {
