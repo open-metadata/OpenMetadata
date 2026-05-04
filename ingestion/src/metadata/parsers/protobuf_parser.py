@@ -319,15 +319,6 @@ class ProtobufParser:
                 shutil.rmtree(self.config.base_file_path, ignore_errors=True)
         return field_models or None
 
-    # def _get_field_type(self, type_: int) -> DataType:
-    #     if type_ > 18:
-    #         return DataType.UNKNOWN
-    #     name = ProtobufDataTypes(type_).name
-    #     if name == ProtobufDataTypes.FIXED.name:
-    #         return DataType.INT
-    #     else:
-    #         return DataType[name]
-
     def _get_field_type_for_column(self, type_: int) -> DataType:
         """Return a DataType enum member for Column fields."""
         if type_ > 18:
