@@ -359,12 +359,14 @@ export const navigateToExploreAndSelectEntity = async ({
   endpoint,
   fullyQualifiedName,
   exploreTab,
+  dataAssetTypeLeftPanelTestId,
 }: {
   page: Page;
   entityName: string;
   endpoint?: string;
   fullyQualifiedName?: string;
   exploreTab?: string;
+  dataAssetTypeLeftPanelTestId?: string;
 }) => {
   await redirectToExplorePage(page);
 
@@ -378,6 +380,7 @@ export const navigateToExploreAndSelectEntity = async ({
     endpoint,
     fullyQualifiedName,
     exploreTab,
+    dataAssetTypeLeftPanelTestId,
   });
 };
 
