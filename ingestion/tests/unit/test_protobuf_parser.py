@@ -23,7 +23,8 @@ from metadata.utils.messaging_utils import merge_and_clean_protobuf_schema
 
 
 @pytest.fixture(scope="class")
-def protobuf_base_path(worker_id):
+def protobuf_base_path(request):
+    worker_id = getattr(request.config, "workerinput", {}).get("workerid", "master")
     worker_suffix = f"_{worker_id}" if worker_id != "master" else ""
     return f"/tmp/protobuf_openmetadata{worker_suffix}"
 

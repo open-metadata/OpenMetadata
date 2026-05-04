@@ -19,14 +19,13 @@ import sys
 import traceback
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Optional
 
 import grpc_tools.protoc
 from google.protobuf.message import Message
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType
-from metadata.generated.schema.entity.data.topic import FieldName
 from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel
 from metadata.utils.helpers import snake_to_camel
 from metadata.utils.logger import ingestion_logger
@@ -167,9 +166,7 @@ def _resolve_message_class(module: object, schema_name: str) -> Message | None:
 
 
 class ProtobufParser:
-    """
-    Protobuf Parser class
-    """
+    """Protobuf Parser class"""
 
     config: ProtobufParserConfig
 
@@ -249,8 +246,8 @@ class ProtobufParser:
         return None
 
     def parse_protobuf_schema(
-        self, cls: type[Union[FieldModel, Column]] = FieldModel  # noqa: UP007
-    ) -> Optional[list[Union[FieldModel, Column]]]:  # noqa: UP007, UP045
+        self, cls: type[FieldModel | Column] = FieldModel
+    ) -> list[FieldModel | Column] | None:
         """
         Method to parse the protobuf schema
         """
@@ -300,7 +297,7 @@ class ProtobufParser:
             else:
                 field_models = [
                     FieldModel(
-                        name=FieldName(instance.DESCRIPTOR.name),
+                        name=instance.DESCRIPTOR.name,
                         displayName=instance.DESCRIPTOR.name,
                         dataType=DataTypeTopic.RECORD,
                         dataTypeDisplay=None,
@@ -338,13 +335,12 @@ class ProtobufParser:
         if type_ > 18:
             return DataTypeTopic.UNKNOWN
         name = ProtobufDataTypes(type_).name
-        # return DataTypeTopic[name]
         try:
             return DataTypeTopic[name]
         except KeyError:
             return DataTypeTopic.UNKNOWN
 
-    def _get_column_fields(self, fields) -> list[Column] | None:
+    def _get_column_fields(self, fields: Any) -> list[Column] | None:
         """Recursively convert protobuf fields into Column objects."""
         result: list[Column] = []
         for field in fields:
@@ -383,14 +379,14 @@ class ProtobufParser:
                 )
         return result or None
 
-    def _get_field_models(self, fields) -> list[FieldModel] | None:
+    def _get_field_models(self, fields: Any) -> list[FieldModel] | None:
         """Recursively convert protobuf fields into FieldModel objects."""
         result: list[FieldModel] = []
         for field in fields:
             try:
                 result.append(
                     FieldModel(
-                        name=FieldName(field.name),  # FIX: wrap in FieldName
+                        name=field.name,  # plain string, FieldName does not exist in this repo
                         displayName=field.name,
                         dataType=self._get_field_type_for_field_model(
                             field.type
@@ -414,9 +410,11 @@ class ProtobufParser:
 
     def get_protobuf_fields(
         self,
-        fields,
+        fields: Any,
         cls: type[FieldModel | Column] = FieldModel,
     ) -> list[FieldModel | Column] | None:
         if cls is Column:
-            return self._get_column_fields(fields)
-        return self._get_field_models(fields)
+            result = self._get_column_fields(fields)
+            return list(result) if result is not None else None
+        result = self._get_field_models(fields)
+        return list(result) if result is not None else None
