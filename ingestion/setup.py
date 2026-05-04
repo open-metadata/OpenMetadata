@@ -48,7 +48,8 @@ VERSIONS = {
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
     "databricks-sdk": "databricks-sdk~=0.20.0",
-    "databricks-sql-connector": "databricks-sql-connector>=2.0",
+    "databricks-sql-connector": "databricks-sql-connector>=4.0.0",
+    "databricks-sqlalchemy": "databricks-sqlalchemy~=2.0.9",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy<3.8",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
@@ -235,14 +236,12 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict)
     },
     "databricks": {
-        # sqlalchemy-databricks is pre-installed with --no-deps (SA<2 metadata conflict)
+        VERSIONS["databricks-sqlalchemy"],
         VERSIONS["databricks-sdk"],
         VERSIONS["databricks-sql-connector"],
         "ndg-httpsclient~=0.5.1",
         "pyOpenSSL~=24.1.0",
         "pyasn1~=0.6.0",
-        # databricks has a dependency on pyhive for metadata as well as profiler
-        VERSIONS["pyhive"],
     },
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],

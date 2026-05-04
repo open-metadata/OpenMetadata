@@ -19,7 +19,7 @@ class DatabricksBaseTableParameter(BaseTableParameter):
         if not service_connection_config:
             return None
 
-        scheme = getattr(service_connection_config, "scheme", "databricks+connector")
+        scheme = getattr(service_connection_config, "scheme", "databricks")
         # Handle enum values properly
         if hasattr(scheme, "value"):
             scheme = scheme.value
