@@ -579,9 +579,17 @@ public class EsUtils {
     ((com.fasterxml.jackson.databind.node.ObjectNode) properties).set("embedding", embeddingNode);
 
     JsonNode mappings = rootNode.path("mappings");
-    if (!mappings.isMissingNode()) {
-      com.fasterxml.jackson.databind.node.ObjectNode metaNode =
-          ((com.fasterxml.jackson.databind.node.ObjectNode) mappings).putObject("_meta");
+    if (!mappings.isMissingNode() && mappings.isObject()) {
+      // Preserve any existing _meta fields; only upsert embedding_model / embedding_dimension.
+      com.fasterxml.jackson.databind.node.ObjectNode mappingsNode =
+          (com.fasterxml.jackson.databind.node.ObjectNode) mappings;
+      JsonNode existingMetaNode = mappingsNode.get("_meta");
+      com.fasterxml.jackson.databind.node.ObjectNode metaNode;
+      if (existingMetaNode instanceof com.fasterxml.jackson.databind.node.ObjectNode existing) {
+        metaNode = existing;
+      } else {
+        metaNode = mappingsNode.putObject("_meta");
+      }
       metaNode
           .put("embedding_model", searchRepository.getEmbeddingClient().getModelId())
           .put("embedding_dimension", dimension);

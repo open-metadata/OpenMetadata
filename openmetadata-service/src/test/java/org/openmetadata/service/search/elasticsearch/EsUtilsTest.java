@@ -613,6 +613,49 @@ class EsUtilsTest {
   }
 
   @Test
+  void enrichIndexMappingPreservesExistingMetaFields() {
+    // Existing _meta has user/build metadata that must survive enrichment.
+    // Embedding dimension matches client so no mismatch path is triggered.
+    String mapping =
+        "{\"mappings\":{"
+            + "\"_meta\":{"
+            + "\"embedding_dimension\":384,"
+            + "\"build_version\":\"1.13.0\","
+            + "\"custom_tag\":\"keep-me\""
+            + "},"
+            + "\"properties\":{\"name\":{\"type\":\"keyword\"},\"fingerprint\":{\"type\":\"keyword\"}}"
+            + "}}";
+
+    org.openmetadata.service.search.vector.client.EmbeddingClient mockEmbeddingClient =
+        org.mockito.Mockito.mock(
+            org.openmetadata.service.search.vector.client.EmbeddingClient.class);
+    org.mockito.Mockito.when(mockEmbeddingClient.getDimension()).thenReturn(384);
+    org.mockito.Mockito.when(mockEmbeddingClient.getModelId()).thenReturn("new-model");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      org.mockito.Mockito.when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+      org.mockito.Mockito.when(searchRepository.getEmbeddingClient())
+          .thenReturn(mockEmbeddingClient);
+
+      String result = EsUtils.enrichIndexMappingForElasticsearch(mapping);
+
+      assertTrue(
+          result.contains("\"build_version\":\"1.13.0\""),
+          "Existing _meta.build_version must be preserved");
+      assertTrue(
+          result.contains("\"custom_tag\":\"keep-me\""),
+          "Existing _meta.custom_tag must be preserved");
+      assertTrue(
+          result.contains("\"embedding_model\":\"new-model\""),
+          "_meta.embedding_model must be upserted");
+      assertTrue(
+          result.contains("\"embedding_dimension\":384"),
+          "_meta.embedding_dimension must be present");
+    }
+  }
+
+  @Test
   void testSearchEntitiesUsesResolvedAliasAndPostFilter() throws Exception {
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
