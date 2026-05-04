@@ -4325,7 +4325,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       } catch (RuntimeException e) {
         LOG.error(
             "Failed to delete {} '{}' during recursive batch delete: {}",
-            entityType, entityId, e.getMessage(), e);
+            entityType,
+            entityId,
+            e.getMessage(),
+            e);
         // Wrap with entity context before re-throwing so the operator can identify
         // the row that blocked a large recursive delete. The exception still
         // propagates — the loop still stops, the failure-semantics contract in the

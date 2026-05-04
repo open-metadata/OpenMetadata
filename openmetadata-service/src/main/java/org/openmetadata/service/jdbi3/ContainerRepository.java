@@ -658,8 +658,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     // entity_relationship-based implementation is gone — the FQN is enough.
     String parentHashRaw = FullyQualifiedName.buildHash(parentFQN);
     String parentHash = parentHashRaw + Entity.SEPARATOR + "%";
-    String parentHashChild =
-        parentHashRaw + Entity.SEPARATOR + "%" + Entity.SEPARATOR + "%";
+    String parentHashChild = parentHashRaw + Entity.SEPARATOR + "%" + Entity.SEPARATOR + "%";
     String includeBind = includeToBindString(safeInclude);
     CollectionDAO.ContainerDAO containerDAO = (CollectionDAO.ContainerDAO) dao;
 
