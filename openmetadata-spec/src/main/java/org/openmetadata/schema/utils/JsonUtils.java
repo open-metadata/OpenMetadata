@@ -425,7 +425,8 @@ public final class JsonUtils {
       JsonNode jsonNode = OBJECT_MAPPER.readTree(jsonString);
       return OBJECT_MAPPER.convertValue(jsonNode, clz);
     } catch (Exception e) {
-      throw new RuntimeException("Failed to convert JsonValue to target class", e);
+      throw new RuntimeException(
+          "Failed to convert JsonValue to " + clz.getSimpleName() + ": " + e.getMessage(), e);
     }
   }
 
