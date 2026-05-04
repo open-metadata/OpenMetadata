@@ -6580,6 +6580,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new Fields(allowedFields, fields);
   }
 
+  public final Fields getOnlySupportedFields(String fields) {
+    if ("*".equals(fields)) {
+      return new Fields(allowedFields, String.join(",", allowedFields), true);
+    }
+    return new Fields(allowedFields, fields, true);
+  }
+
   protected final Fields getFields(Set<String> fields) {
     return new Fields(allowedFields, fields);
   }

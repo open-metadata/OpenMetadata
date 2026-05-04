@@ -299,7 +299,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               keysetCursor,
               cachedTotalCount,
               true,
-              Entity.getFields(entityType, fields));
+              Entity.getOnlySupportedFields(entityType, fields));
 
       int warningsCount = 0;
       if (result.getErrors() != null && !result.getErrors().isEmpty()) {
