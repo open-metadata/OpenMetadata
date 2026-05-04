@@ -1,7 +1,8 @@
 import type { IconComponentType } from '@/components/base/badges/badge-types';
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
-import type { Popover, PopoverProps } from '@/components/base/select/popover';
+import { Popover } from '@/components/base/select/popover';
+import type { PopoverProps } from '@/components/base/select/popover';
 import {
   type SelectItemType,
   SelectContext,

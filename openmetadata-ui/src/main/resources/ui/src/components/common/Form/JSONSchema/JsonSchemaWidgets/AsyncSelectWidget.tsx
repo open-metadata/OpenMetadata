@@ -12,6 +12,7 @@
  */
 import { WidgetProps } from '@rjsf/utils';
 import { SearchIndex } from '../../../../../enums/search.enum';
+import { getEntityName } from '../../../../../utils/EntityUtils';
 import DataAssetAsyncSelectList from '../../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 
@@ -31,11 +32,25 @@ const AsyncSelectWidget = ({ onChange, schema, ...props }: WidgetProps) => {
     }
   };
 
+  const entityRef = props?.value;
+  const initialOptions: DataAssetOption[] | undefined = entityRef
+    ? [
+        {
+          id: entityRef.fullyQualifiedName ?? entityRef.id ?? '',
+          label: getEntityName(entityRef),
+          value: entityRef.fullyQualifiedName ?? '',
+          reference: entityRef,
+          displayName: getEntityName(entityRef),
+        },
+      ]
+    : undefined;
+
   return (
     <DataAssetAsyncSelectList
+      initialOptions={initialOptions}
       placeholder={schema.placeholder ?? ''}
       searchIndex={schema?.autoCompleteType ?? SearchIndex.TABLE}
-      value={props?.value?.fullyQualifiedName ?? undefined}
+      value={entityRef?.fullyQualifiedName ?? undefined}
       onChange={handleChange}
     />
   );

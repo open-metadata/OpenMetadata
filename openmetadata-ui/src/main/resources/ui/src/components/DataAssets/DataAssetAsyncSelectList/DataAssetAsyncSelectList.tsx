@@ -10,11 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Autocomplete,
-  PopoverProps,
-  SelectItemType,
-} from '@openmetadata/ui-core-components';
+import { Autocomplete } from '@openmetadata/ui-core-components';
+import type { PopoverProps, SelectItemType } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce, isArray, isString } from 'lodash';
 import {
@@ -58,6 +55,8 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   value: selectedValue,
   filterFqns = [],
   queryFilter,
+  popoverClassName: callerPopoverClassName,
+  popoverProps: callerPopoverProps,
   ...props
 }) => {
   const [paging, setPaging] = useState<Paging>({} as Paging);
@@ -208,6 +207,9 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
 
       if (multiple) {
         setSelectedItems((prev) => {
+          if (prev.some((i) => i.id === item.id)) {
+            return prev;
+          }
           const updatedSelection = [...prev, item];
           onChange?.(updatedSelection);
 
@@ -223,15 +225,18 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
 
   const handleItemCleared = useCallback(
     (key: Key) => {
-      const updatedSelection = selectedItems.filter((item) => item.id !== key);
-      setSelectedItems(updatedSelection);
-      if (multiple) {
-        onChange?.(updatedSelection);
-      } else {
-        onChange?.(updatedSelection[0] ?? null);
-      }
+      setSelectedItems((prev) => {
+        const updatedSelection = prev.filter((item) => item.id !== key);
+        if (multiple) {
+          onChange?.(updatedSelection);
+        } else {
+          onChange?.(updatedSelection[0] ?? null);
+        }
+
+        return updatedSelection;
+      });
     },
-    [selectedItems, multiple, onChange]
+    [multiple, onChange]
   );
 
   useEffect(() => {
@@ -248,23 +253,34 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         return;
       }
       if (isString(arr[0])) {
-        // Array of FQN strings
-        const items = (arr as string[])
-          .map((val) => knownOptionsRef.current.get(val))
-          .filter(Boolean) as DataAssetOption[];
-        if (items.length > 0) {
-          setSelectedItems(items);
-        }
+        // Array of FQN strings - resolve from knownOptionsRef or create placeholder
+        const items = (arr as string[]).map(
+          (val) =>
+            knownOptionsRef.current.get(val) ?? {
+              id: val,
+              label: val,
+              value: val,
+              reference: { fullyQualifiedName: val } as EntityReference,
+              displayName: val,
+            }
+        );
+        setSelectedItems(items);
       } else {
         // Array of DataAssetOption objects
         setSelectedItems(arr as DataAssetOption[]);
       }
     } else if (isString(selectedValue)) {
-      // Single FQN string
-      const item = knownOptionsRef.current.get(selectedValue);
-      if (item) {
-        setSelectedItems([item]);
-      }
+      // Single FQN string - resolve from knownOptionsRef or create placeholder
+      const item =
+        knownOptionsRef.current.get(selectedValue) ??
+        ({
+          id: selectedValue,
+          label: selectedValue,
+          value: selectedValue,
+          reference: { fullyQualifiedName: selectedValue } as EntityReference,
+          displayName: selectedValue,
+        } as DataAssetOption);
+      setSelectedItems([item]);
     } else {
       // Single DataAssetOption object
       setSelectedItems([selectedValue]);
@@ -279,8 +295,8 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   }, []);
 
   const customPopoverClassName = useMemo(() => {
-    return `data-asset-async-select-popover ${props.popoverClassName ?? ''}`;
-  }, [props.popoverClassName]);
+    return `data-asset-async-select-popover ${callerPopoverClassName ?? ''}`;
+  }, [callerPopoverClassName]);
 
   const handleNativeScroll: UIEventHandler<HTMLDivElement> = useCallback(
     (e) => {
@@ -299,12 +315,14 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
 
   const popoverProps = useMemo(() => {
     return {
+      ...callerPopoverProps,
       onScroll: handleNativeScroll,
     } as Partial<PopoverProps>;
-  }, [handleNativeScroll]);
+  }, [callerPopoverProps, handleNativeScroll]);
 
   return (
     <Autocomplete
+      {...props}
       autoFocus={autoFocus}
       data-testid="asset-select-list"
       items={filteredOptions}
@@ -315,8 +333,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       selectedItems={selectedItems}
       onItemCleared={handleItemCleared}
       onItemInserted={handleItemInserted}
-      onSearchChange={handleSearchChange}
-      {...props}>
+      onSearchChange={handleSearchChange}>
       {(item: SelectItemType) => {
         const dataAssetItem = item as DataAssetOption;
         const { reference, displayName, name } = dataAssetItem;

@@ -40,7 +40,7 @@ import { StateValue } from './ScheduleInterval.interface';
 
 export interface ScheduleIntervalV1Props {
   value?: string | null;
-  onChange?: (value: string | null) => void;
+  onChange?: (value: string | undefined) => void;
   disabled?: boolean;
   includePeriodOptions?: string[];
   defaultSchedule?: string;
@@ -135,8 +135,8 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
       setSelectedSchedular(schedularValue);
 
       if (schedularValue === SchedularOptions.ON_DEMAND) {
-        setState((prev) => ({ ...prev, cron: null }));
-        onChange?.(null);
+        setState((prev) => ({ ...prev, cron: undefined }));
+        onChange?.(undefined);
       } else {
         // When switching to schedule, use default schedule
         const nonEmptyScheduleValue = getDefaultScheduleValue({
@@ -145,7 +145,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
         });
         const newState = getStateValue(nonEmptyScheduleValue);
         setState(newState);
-        onChange?.(newState.cron ?? null);
+        onChange?.(newState.cron ?? undefined);
       }
     },
     [includePeriodOptions, defaultSchedule, onChange]
@@ -160,7 +160,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
       const cronExp = getCron(newState);
       const updatedState = { ...newState, cron: cronExp };
       setState(updatedState);
-      onChange?.(cronExp ?? null);
+      onChange?.(cronExp ?? undefined);
     },
     [state, onChange]
   );
@@ -208,7 +208,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
     if (value !== cronString) {
       if (isEmpty(value)) {
         setSelectedSchedular(SchedularOptions.ON_DEMAND);
-        setState((prev) => ({ ...prev, cron: null }));
+        setState((prev) => ({ ...prev, cron: undefined }));
       } else if (value) {
         setSelectedSchedular(SchedularOptions.SCHEDULE);
         const newState = getStateValue(value, initialDefaultSchedule);
