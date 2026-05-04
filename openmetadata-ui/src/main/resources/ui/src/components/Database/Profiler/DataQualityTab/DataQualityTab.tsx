@@ -628,7 +628,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             {renderIncidentCell(record)}
           </div>
         </Table.Cell>
-        <Table.Cell className="tw:max-w-13 tw:overflow-hidden">
+        <Table.Cell className="tw:max-w-20 tw:overflow-hidden">
           <div
             role="presentation"
             onClick={(e) => e.stopPropagation()}
