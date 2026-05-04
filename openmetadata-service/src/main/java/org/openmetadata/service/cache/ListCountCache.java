@@ -83,6 +83,9 @@ public final class ListCountCache {
    * direct compute — listing must not fail because Redis is down.
    */
   public static int getOrCompute(String entityType, ListFilter filter, IntSupplier supplier) {
+    if (EntityCacheBypass.isSkipped()) {
+      return supplier.getAsInt();
+    }
     CacheProvider provider = CacheBundle.getCacheProvider();
     CacheConfig config = CacheBundle.getCacheConfig();
     if (provider == null || !provider.available() || config == null || config.redis == null) {
@@ -159,6 +162,9 @@ public final class ListCountCache {
    * commit-ordering trade-off documented at the class level.
    */
   public static void invalidate(String entityType) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     CacheProvider provider = CacheBundle.getCacheProvider();
     CacheConfig config = CacheBundle.getCacheConfig();
     if (provider == null || !provider.available() || config == null || config.redis == null) {
