@@ -225,22 +225,37 @@ export const searchFromSearchInput = async (
     searchApiPattern = '/api/v1/search/query',
   } = options;
   const normalizedSearchTerm = searchTerm.trim();
-  const waitForSearchApiResponse = async () => {
-    if (!(waitForSearchApi && normalizedSearchTerm)) {
-      return;
-    }
+  const normalizedSearchTermLowerCase = normalizedSearchTerm.toLowerCase();
 
-    const searchResponse = await page.waitForResponse(
-      (response) =>
-        response.url().includes(searchApiPattern) &&
-        response.request().method() === 'GET'
-    );
+  if (waitForSearchApi && normalizedSearchTerm) {
+    const [searchResponse] = await Promise.all([
+      page.waitForResponse((response) => {
+        if (
+          !response.url().includes(searchApiPattern) ||
+          response.request().method() !== 'GET'
+        ) {
+          return false;
+        }
 
+        try {
+          const qParam = new URL(response.url()).searchParams.get('q') ?? '';
+
+          return qParam.toLowerCase().includes(normalizedSearchTermLowerCase);
+        } catch {
+          return response
+            .url()
+            .toLowerCase()
+            .includes(normalizedSearchTermLowerCase);
+        }
+      }),
+      updateSearchInputAndWait(page, searchInput, searchTerm),
+    ]);
     expect(searchResponse.status()).toBe(200);
-  };
+
+    return;
+  }
 
   await updateSearchInputAndWait(page, searchInput, searchTerm);
-  await waitForSearchApiResponse();
 };
 
 export const visitOwnProfilePage = async (page: Page) => {
