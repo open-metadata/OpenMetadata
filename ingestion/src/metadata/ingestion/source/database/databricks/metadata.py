@@ -14,18 +14,17 @@ import json
 import re
 import traceback
 from copy import deepcopy
-from typing import Iterable, Optional, Tuple, Union  # noqa: UP035
+from typing import Any, Iterable, Optional, Tuple, Union  # noqa: UP035
 
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
-from pyhive.sqlalchemy_hive import _type_map
 from sqlalchemy import exc, text, types, util
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql.sqltypes import String
-from sqlalchemy_databricks._dialect import DatabricksDialect
 
+from databricks.sqlalchemy.base import DatabricksDialect
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
@@ -114,18 +113,28 @@ class MAP(String):
     __visit_name__ = "MAP"
 
 
-# overriding pyhive.sqlalchemy_hive._type_map
-# mapping struct, array & map to custom classed instead of sqltypes.String
-_type_map.update(
-    {
-        "struct": STRUCT,
-        "array": ARRAY,
-        "map": MAP,
-        "void": create_sqlalchemy_type("VOID"),
-        "interval": create_sqlalchemy_type("INTERVAL"),
-        "binary": create_sqlalchemy_type("BINARY"),
-    }
-)
+_type_map = {
+    "boolean": types.Boolean,
+    "tinyint": types.SmallInteger,
+    "smallint": types.SmallInteger,
+    "int": types.Integer,
+    "bigint": types.BigInteger,
+    "float": types.Float,
+    "double": types.Float,
+    "string": types.String,
+    "varchar": types.String,
+    "char": types.String,
+    "date": types.Date,
+    "timestamp": types.DateTime,
+    "decimal": types.Numeric,
+    "binary": create_sqlalchemy_type("BINARY"),
+    "struct": STRUCT,
+    "array": ARRAY,
+    "map": MAP,
+    "void": create_sqlalchemy_type("VOID"),
+    "interval": create_sqlalchemy_type("INTERVAL"),
+    "uniontype": types.String,
+}
 
 
 def _fetch_nested_descriptions_via_describe_json(
@@ -279,7 +288,7 @@ def _get_column_rows(self, connection, table_name, schema, db_name):
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):
     """
-    This function overrides the sqlalchemy_databricks._dialect.DatabricksDialect.get_columns
+    This function overrides the DatabricksDialect.get_columns
     to add support for struct, array & map datatype
 
     Extract the Database Name from the keyword arguments parameter if it is present. This
@@ -410,7 +419,14 @@ def get_view_names_reflection(self, schema=None, **kw):
     return []
 
 
-def get_view_names(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
+def get_view_names(  # pylint: disable=unused-argument
+    self: Any,
+    connection: Any,
+    schema: str | None = None,
+    only_materialized: bool = False,  # pyright: ignore[reportUnusedParameter]
+    only_temp: bool = False,  # pyright: ignore[reportUnusedParameter]
+    **kw: Any,
+) -> list[str]:
     if kw.get("db_name"):
         connection.execute(text(f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"))
     query = "SHOW VIEWS"
