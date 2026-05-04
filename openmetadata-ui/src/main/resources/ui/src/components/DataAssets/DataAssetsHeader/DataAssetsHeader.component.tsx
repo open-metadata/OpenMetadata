@@ -67,15 +67,15 @@ import {
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
+import { getContainerByName } from '../../../rest/storageAPI';
 import {
+  listMyCreatedTasks,
   Task,
   TaskCategory,
   TaskEntityStatus,
   TaskEntityType,
-  listMyCreatedTasks,
 } from '../../../rest/tasksAPI';
 import { isExpired } from '../../../utils/DataAccessRequest/DataAccessRequestUtils';
-import { getContainerByName } from '../../../rest/storageAPI';
 import {
   getDataAssetsHeaderInfo,
   isDataAssetsWithServiceField,
@@ -170,7 +170,9 @@ export const DataAssetsHeader = ({
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
   const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
-  const [existingDarTask, setExistingDarTask] = useState<Task | null | undefined>(undefined);
+  const [existingDarTask, setExistingDarTask] = useState<
+    Task | null | undefined
+  >(undefined);
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -188,7 +190,10 @@ export const DataAssetsHeader = ({
     }
 
     try {
-      const res = await listMyCreatedTasks({ fields: 'about,resolution', limit: 50 });
+      const res = await listMyCreatedTasks({
+        fields: 'about,resolution',
+        limit: 50,
+      });
       const match = (res.data ?? []).find((task) => {
         if (
           task.category !== TaskCategory.DataAccess ||
