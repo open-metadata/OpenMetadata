@@ -830,8 +830,21 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Save contract and validate for schema', async () => {
+        const saveResponsePromise = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataContracts') &&
+            response.request().method() === 'POST'
+        );
+        const getResponsePromise = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataContracts/entity') &&
+            response.request().method() === 'GET'
+        );
+
         await page.getByTestId('save-contract-btn').click();
-        await page.waitForResponse('/api/v1/dataContracts/*');
+
+        await saveResponsePromise;
+        await getResponsePromise;
 
         // Check all schema from 1 to 50, and 10 is the max-pagination chip
         await expect(page.getByTitle('10')).toBeVisible();
