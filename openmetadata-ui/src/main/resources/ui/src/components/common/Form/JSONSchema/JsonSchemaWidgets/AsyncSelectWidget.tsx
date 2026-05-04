@@ -33,12 +33,13 @@ const AsyncSelectWidget = ({ onChange, schema, ...props }: WidgetProps) => {
   };
 
   const entityRef = props?.value;
+  const resolvedFqn = entityRef?.fullyQualifiedName ?? entityRef?.id ?? '';
   const initialOptions: DataAssetOption[] | undefined = entityRef
     ? [
         {
-          id: entityRef.fullyQualifiedName ?? entityRef.id ?? '',
+          id: resolvedFqn,
           label: getEntityName(entityRef),
-          value: entityRef.fullyQualifiedName ?? '',
+          value: resolvedFqn,
           reference: entityRef,
           displayName: getEntityName(entityRef),
         },

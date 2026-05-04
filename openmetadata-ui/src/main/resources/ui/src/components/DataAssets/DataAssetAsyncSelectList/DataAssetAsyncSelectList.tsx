@@ -18,6 +18,7 @@ import {
   FC,
   Key,
   ReactNode,
+  UIEvent,
   UIEventHandler,
   useCallback,
   useEffect,
@@ -44,6 +45,14 @@ import {
   DataAssetOption,
   FetchOptionsResponse,
 } from './DataAssetAsyncSelectList.interface';
+
+const createPlaceholderOption = (fqn: string): DataAssetOption => ({
+  id: fqn,
+  label: fqn,
+  value: fqn,
+  reference: { fullyQualifiedName: fqn } as EntityReference,
+  displayName: fqn,
+});
 
 const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   multiple = false,
@@ -255,14 +264,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       if (isString(arr[0])) {
         // Array of FQN strings - resolve from knownOptionsRef or create placeholder
         const items = (arr as string[]).map(
-          (val) =>
-            knownOptionsRef.current.get(val) ?? {
-              id: val,
-              label: val,
-              value: val,
-              reference: { fullyQualifiedName: val } as EntityReference,
-              displayName: val,
-            }
+          (val) => knownOptionsRef.current.get(val) ?? createPlaceholderOption(val)
         );
         setSelectedItems(items);
       } else {
@@ -273,13 +275,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       // Single FQN string - resolve from knownOptionsRef or create placeholder
       const item =
         knownOptionsRef.current.get(selectedValue) ??
-        ({
-          id: selectedValue,
-          label: selectedValue,
-          value: selectedValue,
-          reference: { fullyQualifiedName: selectedValue } as EntityReference,
-          displayName: selectedValue,
-        } as DataAssetOption);
+        createPlaceholderOption(selectedValue);
       setSelectedItems([item]);
     } else {
       // Single DataAssetOption object
@@ -314,9 +310,14 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   );
 
   const popoverProps = useMemo(() => {
+    const callerOnScroll = callerPopoverProps?.onScroll;
+
     return {
       ...callerPopoverProps,
-      onScroll: handleNativeScroll,
+      onScroll: (e: UIEvent<HTMLElement>) => {
+        callerOnScroll?.(e);
+        handleNativeScroll(e as UIEvent<HTMLDivElement>);
+      },
     } as Partial<PopoverProps>;
   }, [callerPopoverProps, handleNativeScroll]);
 
