@@ -75,7 +75,6 @@ import {
   TaskEntityStatus,
   TaskEntityType,
 } from '../../../rest/tasksAPI';
-import { isExpired } from '../../../utils/DataAccessRequest/DataAccessRequestUtils';
 import {
   getDataAssetsHeaderInfo,
   isDataAssetsWithServiceField,
@@ -93,6 +92,7 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
+import { isDarApprovalActive } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
@@ -666,7 +666,7 @@ export const DataAssetsHeader = ({
           | { duration?: string; expirationDate?: number }
           | undefined;
 
-        return !isExpired(
+        return isDarApprovalActive(
           existingDarTask.createdAt,
           payload?.duration,
           payload?.expirationDate

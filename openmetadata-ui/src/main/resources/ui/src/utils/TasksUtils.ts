@@ -12,6 +12,7 @@
  */
 import { AxiosError } from 'axios';
 import { Change, diffLines } from 'diff';
+import { Duration } from 'luxon';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import React from 'react';
 import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.svg';
@@ -1282,4 +1283,24 @@ export const getTaskEntityFQN = (entityType: EntityType, fqn: string) => {
   }
 
   return fqn;
+};
+
+export const isDarApprovalActive = (
+  createdAt?: number,
+  duration?: string,
+  expirationDate?: number
+): boolean => {
+  const now = Date.now();
+
+  if (expirationDate) {
+    return now <= expirationDate;
+  }
+
+  if (!duration || !createdAt) {
+    return true;
+  }
+
+  const parsed = Duration.fromISO(duration);
+
+  return parsed.isValid && now <= createdAt + parsed.toMillis();
 };
