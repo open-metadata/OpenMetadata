@@ -49,6 +49,7 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   assignDataProduct,
   assignSingleSelectDomain,
+  clickOutside,
   redirectToHomePage,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
@@ -270,8 +271,8 @@ test.describe(
           page.locator('.domain-selectable-tree .ant-tree-checkbox')
         ).toHaveCount(0);
 
-        // Close the selector by clicking cancel btn
-        await page.getByTestId('cancelAssociatedTag').click();
+        // Close the selector by clicking outside
+        await clickOutside(page);
 
         // Wait for domain selector to be fully closed
         await page.getByTestId('domain-selectable-tree').waitFor({
