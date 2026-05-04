@@ -27,11 +27,9 @@ import { CoreObjectFieldTemplate } from './CoreObjectFieldTemplate';
 
 const wrapIfAdditionalRegistry = {
   templates: {
-    WrapIfAdditionalTemplate: ({
-      children,
-    }: {
-      children: React.ReactNode;
-    }) => <div>{children}</div>,
+    WrapIfAdditionalTemplate: ({ children }: { children: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
   },
 } as unknown as FieldTemplateProps['registry'];
 
