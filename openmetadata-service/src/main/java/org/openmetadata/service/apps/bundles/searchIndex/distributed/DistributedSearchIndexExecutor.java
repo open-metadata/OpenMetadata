@@ -1102,6 +1102,17 @@ public class DistributedSearchIndexExecutor {
     // Set up per-entity promotion callback if recreating indices
     if (recreateIndex && recreateContext != null) {
       this.recreateIndexHandler = Entity.getSearchRepository().createReindexHandler();
+      // Wire jobData into the handler so applyLiveServingSettings (in
+      // DefaultRecreateHandler.promoteEntityIndex) can resolve the configured live + bulk
+      // index settings. Without this, jobData is null on the handler instance the per-entity
+      // callback uses, buildRevertJson returns null, and the bulk-build overrides
+      // (refresh_interval=-1, replicas=0, async translog) silently become the live settings.
+      if (recreateIndexHandler
+              instanceof org.openmetadata.service.search.DefaultRecreateHandler defaultHandler
+          && currentJob != null
+          && currentJob.getJobConfiguration() != null) {
+        defaultHandler.withJobData(currentJob.getJobConfiguration());
+      }
       entityTracker.setOnEntityComplete(this::promoteEntityIndex);
       LOG.info(
           "Per-entity promotion callback SET for job {} (recreateIndex={}, recreateContext entities={})",
