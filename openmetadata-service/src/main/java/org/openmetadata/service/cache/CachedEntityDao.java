@@ -20,6 +20,15 @@ public class CachedEntityDao {
   private final CacheConfig config;
 
   public String getBase(UUID entityId, String entityType) {
+    // Reindex worker threads opt out of the cache via EntityCacheBypass so a 580k-entity reindex
+    // doesn't generate millions of pointless Redis writes (cache hit rate during reindex ≈ 0)
+    // and isn't held hostage to Redis health (300ms timeouts add up fast at this volume). Go
+    // straight to DB; skip the write-through.
+    if (EntityCacheBypass.isSkipped()) {
+      String entityJson = fetchEntityFromDatabase(entityId, entityType);
+      return entityJson != null ? entityJson : "{}";
+    }
+
     String cacheKey = keys.entity(entityType, entityId);
 
     // Try to get from cache first
@@ -164,6 +173,9 @@ public class CachedEntityDao {
    * Get entity by name from cache
    */
   public Optional<String> getByName(String entityType, String fqn) {
+    if (EntityCacheBypass.isSkipped()) {
+      return Optional.empty();
+    }
     String cacheKey = keys.entityByName(entityType, fqn);
     return cache.get(cacheKey);
   }
@@ -172,6 +184,9 @@ public class CachedEntityDao {
    * Get entity reference by ID from cache
    */
   public Optional<String> getReference(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return Optional.empty();
+    }
     String cacheKey = keys.entity(entityType, entityId);
     return cache.hget(cacheKey, "ref");
   }
@@ -180,6 +195,9 @@ public class CachedEntityDao {
    * Get entity reference by name from cache
    */
   public Optional<String> getReferenceByName(String entityType, String fqn) {
+    if (EntityCacheBypass.isSkipped()) {
+      return Optional.empty();
+    }
     String cacheKey = keys.refByName(entityType, fqn);
     return cache.get(cacheKey);
   }

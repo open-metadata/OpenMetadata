@@ -25,6 +25,9 @@ public class CachedRelationshipDao {
       new TypeReference<List<EntityReference>>() {};
 
   public List<EntityReference> getOwners(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return null;
+    }
     String cacheKey = keys.entity(entityType, entityId);
     try {
       Optional<String> cached = cache.hget(cacheKey, "owners");
@@ -38,6 +41,9 @@ public class CachedRelationshipDao {
   }
 
   public List<EntityReference> getDomains(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return null;
+    }
     String cacheKey = keys.entity(entityType, entityId);
     try {
       Optional<String> cached = cache.hget(cacheKey, "domains");
@@ -51,7 +57,7 @@ public class CachedRelationshipDao {
   }
 
   public void putOwners(String entityType, UUID entityId, String ownersJson) {
-    if (ownersJson == null || ownersJson.isEmpty()) {
+    if (ownersJson == null || ownersJson.isEmpty() || EntityCacheBypass.isSkipped()) {
       return;
     }
 
@@ -66,7 +72,7 @@ public class CachedRelationshipDao {
   }
 
   public void putDomains(String entityType, UUID entityId, String domainsJson) {
-    if (domainsJson == null || domainsJson.isEmpty()) {
+    if (domainsJson == null || domainsJson.isEmpty() || EntityCacheBypass.isSkipped()) {
       return;
     }
 
@@ -111,6 +117,9 @@ public class CachedRelationshipDao {
    * href assembly (e.g. database -> service chain for every table GET).
    */
   public EntityReference getContainer(String childType, UUID childId, int relation) {
+    if (EntityCacheBypass.isSkipped()) {
+      return null;
+    }
     String key = keys.containerRef(childType, childId, relation);
     try {
       Optional<String> cached = cache.get(key);
@@ -124,7 +133,7 @@ public class CachedRelationshipDao {
   }
 
   public void putContainer(String childType, UUID childId, int relation, EntityReference parent) {
-    if (parent == null) return;
+    if (parent == null || EntityCacheBypass.isSkipped()) return;
     try {
       cache.set(
           keys.containerRef(childType, childId, relation),

@@ -51,6 +51,9 @@ public class CachedReadBundle {
   }
 
   public Dto get(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return null;
+    }
     String key = keys.bundle(entityType, entityId);
     try {
       Optional<String> json = cache.get(key);
@@ -66,7 +69,7 @@ public class CachedReadBundle {
   }
 
   public void put(String entityType, UUID entityId, Dto dto) {
-    if (dto == null) {
+    if (dto == null || EntityCacheBypass.isSkipped()) {
       return;
     }
     String key = keys.bundle(entityType, entityId);
