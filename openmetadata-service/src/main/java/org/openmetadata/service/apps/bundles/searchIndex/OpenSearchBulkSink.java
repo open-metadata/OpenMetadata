@@ -901,9 +901,12 @@ public class OpenSearchBulkSink implements BulkSink {
      * unbounded {@code acquire()} a single leaked async future (no completion, no release) parks
      * every subsequent caller permanently and the entire pipeline freezes at whatever record
      * count was in flight at the time. 60s is conservative — well above any realistic OS bulk
-     * latency, well below "user gives up and bounces the pod".
+     * latency, well below "user gives up and bounces the pod". Stored per-instance (instead of
+     * a static constant) so tests can shorten it without sleeping for a minute.
      */
-    private static final long SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS = 60L;
+    private static final long DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS = 60L;
+
+    private long semaphoreAcquireTimeoutSeconds = DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS;
 
     private final OpenSearchAsyncClient asyncClient;
     private final List<BulkOperation> buffer = new ArrayList<>();
@@ -1045,6 +1048,15 @@ public class OpenSearchBulkSink implements BulkSink {
     }
 
     /**
+     * Test-only override for the semaphore acquire timeout. Production code uses 60s; tests
+     * exercising the timeout path shorten this so they don't sleep for a minute. Not exposed
+     * via any non-test caller, hence package-private.
+     */
+    void setSemaphoreAcquireTimeoutSecondsForTesting(long seconds) {
+      this.semaphoreAcquireTimeoutSeconds = seconds;
+    }
+
+    /**
      * Flush pending requests and wait for all active bulk requests to complete. Unlike awaitClose,
      * this does not close the processor - it can continue to be used after this call.
      *
@@ -1110,8 +1122,7 @@ public class OpenSearchBulkSink implements BulkSink {
       boolean acquired;
       try {
         acquired =
-            concurrentRequestSemaphore.tryAcquire(
-                SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            concurrentRequestSemaphore.tryAcquire(semaphoreAcquireTimeoutSeconds, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         LOG.error("Interrupted while waiting for semaphore", e);
         Thread.currentThread().interrupt();
@@ -1124,7 +1135,7 @@ public class OpenSearchBulkSink implements BulkSink {
       if (!acquired) {
         LOG.error(
             "Bulk semaphore exhausted for {}s — recording {} ops as failed (active bulk requests={}). Likely a leaked async future.",
-            SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
+            semaphoreAcquireTimeoutSeconds,
             numberOfActions,
             activeBulkRequests.get());
         recordPermanentFailure(

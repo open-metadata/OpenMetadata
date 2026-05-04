@@ -166,8 +166,12 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     this.jobExecutionContext = jobExecutionContext;
     this.stopped = false;
     try {
-      initCacheComponents();
+      // Resolve the live config before constructing components. On-demand runs carry user
+      // overrides in the Quartz JobDataMap (entities, batchSize, warmBundles,
+      // enableDistributedClaim) that aren't in the persisted App config, and bundleBatcher in
+      // particular needs the right warmBundles flag at construction time.
       initJobData(jobExecutionContext);
+      initCacheComponents();
       if (cacheProvider == null || !cacheProvider.available()) {
         // Surface this as FAILED — initJobData set status to RUNNING above, and the finally block
         // will broadcast the terminal state. Leaving it RUNNING here would pin the job record in
@@ -216,15 +220,20 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   }
 
   private void initJobData(JobExecutionContext ctx) {
-    if (appConfig == null) {
+    boolean isOnDemand = ctx.getJobDetail().getKey().getName().equals(ON_DEMAND_JOB);
+    // For on-demand runs, OmAppJobListener places the user-supplied config (with overrides
+    // for entities / batchSize / warmBundles / enableDistributedClaim) into the Quartz
+    // JobDataMap[APP_CONFIG]. {@code init(App)} ran earlier and cached the persisted App
+    // config in {@code appConfig}; if we don't reload here, those manual overrides are
+    // silently ignored. Always reload for on-demand; for scheduled runs the persisted config
+    // is what we want.
+    if (appConfig == null || isOnDemand) {
       appConfig = loadAppConfig(ctx);
-      jobData = newRuntimeJobData();
-    } else if (jobData == null) {
-      jobData = newRuntimeJobData();
     }
-    if (ctx.getJobDetail().getKey().getName().equals(ON_DEMAND_JOB)) {
-      // Persist the (typed) user-supplied config back onto the App so subsequent runs see the
-      // same payload. We round-trip through a Map so AbstractNativeApplication's persistence
+    jobData = newRuntimeJobData();
+    if (isOnDemand) {
+      // Persist the (typed) user-supplied config back onto the App so subsequent renders see
+      // the same payload. Round-trip through a Map so AbstractNativeApplication's persistence
       // layer doesn't have to know about CacheWarmupAppConfig directly.
       Map<String, Object> asMap =
           JsonUtils.convertValue(appConfig, new TypeReference<Map<String, Object>>() {});
@@ -271,10 +280,6 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     if (stopped) {
       jobData.setStatus(EventPublisherJob.Status.STOPPED);
     } else if (partiallyWarmed) {
-      // Don't lie about success when one or more entity types bailed out because the cache went
-      // unavailable. Surface ACTIVE_ERROR so the AppRunRecord shows a non-success status and ops
-      // know to rerun. The 84%-cold incident happened because the app reported COMPLETED while
-      // most entities never made it to Redis.
       jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
       LOG.warn("Cache warmup completed with one or more entity types only partially warmed");
     } else {

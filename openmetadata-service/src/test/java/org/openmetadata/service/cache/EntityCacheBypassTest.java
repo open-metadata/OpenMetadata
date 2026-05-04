@@ -31,17 +31,10 @@ class EntityCacheBypassTest {
 
   @AfterEach
   void clearThreadLocal() {
-    // Belt-and-suspenders: nested skip() correctness is the responsibility of the API itself,
-    // but if a future test forgets to close a Handle this stops it from leaking across cases.
-    while (EntityCacheBypass.isSkipped()) {
-      // try-with-resources should always close, but in case a test forgot, drain.
-      try (EntityCacheBypass.Handle h = EntityCacheBypass.skip()) {
-        // noop — outer close restores false; if many were leaked, repeat.
-        h.close();
-      }
-      // If still skipped after closing, break to avoid infinite loop on a bug in skip().
-      if (EntityCacheBypass.isSkipped()) break;
-    }
+    // Force-clear any leaked bypass state. Using skip() to undo would just capture
+    // previous=true and close() would restore it — useless. The package-private
+    // resetForTesting() removes the thread-local entry entirely.
+    EntityCacheBypass.resetForTesting();
   }
 
   @Test

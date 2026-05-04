@@ -77,4 +77,14 @@ public final class EntityCacheBypass {
     @Override
     void close();
   }
+
+  /**
+   * Test-only escape hatch: clear the thread-local on the calling thread regardless of any
+   * outstanding {@link Handle} references. Production code must use {@link #skip()} with
+   * try-with-resources; using this from the request path would defeat the
+   * stack-discipline guarantee that nested skip blocks restore correctly.
+   */
+  static void resetForTesting() {
+    SKIP.remove();
+  }
 }
