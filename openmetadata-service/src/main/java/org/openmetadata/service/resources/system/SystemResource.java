@@ -602,7 +602,19 @@ public class SystemResource {
   @Operation(
       operationId = "healthCheck",
       summary = "Health check endpoint",
-      description = "Simple health check endpoint that returns 200 OK",
+      description =
+          "Pure process-aliveness probe — returns 200 OK as long as the JVM can run this"
+              + " handler and Jetty can serve a response. Intentionally does NOT probe the"
+              + " database, search backend, cache, or any other downstream system. Coupling"
+              + " the liveness probe to downstream latency creates restart loops: a slow"
+              + " (but otherwise healthy) database trips the probe, kubelet kills the pod,"
+              + " the new pod cold-starts and re-storms the database, and the cycle"
+              + " accelerates. Killing the process never speeds up the database.\n\n"
+              + "If you need DB/cache health visibility for routing decisions, use a"
+              + " separate readiness probe (which doesn't trigger a pod kill) or scrape"
+              + " HikariCP pool stats from the metrics endpoint.\n\n"
+              + "For production, prefer the admin-port `/healthcheck` over this endpoint —"
+              + " admin runs on its own thread pool insulated from API saturation.",
       responses = {@ApiResponse(responseCode = "200", description = "Service is healthy")})
   public Response healthCheck() {
     return Response.ok("OK").build();

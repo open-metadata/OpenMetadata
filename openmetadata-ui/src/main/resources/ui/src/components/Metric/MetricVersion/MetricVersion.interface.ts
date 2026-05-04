@@ -25,9 +25,6 @@ export interface MetricVersionProp {
   tier: TagLabel;
   slashedMetricName: TitleBreadcrumbProps['titleLinks'];
   versionList: EntityHistory;
-  onLoadMore?: () => void;
-  hasMore?: boolean;
-  isLoadingMore?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;
   entityPermissions: OperationPermission;
