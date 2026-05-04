@@ -55,6 +55,7 @@ def test_profiler_static_sampling(
     assert table is not None
     assert table.profile is not None
     assert table.profile.rowCount is not None
+    assert table.profile.profileSample == 50.0
     assert table.profile.profileSampleType.root == ProfileSampleType.PERCENTAGE
 
 
@@ -66,7 +67,7 @@ def test_profiler_dynamic_smart_sampling(
     db_service,
     metadata,
 ):
-    """Dynamic smart sampling should complete and store a profile with PERCENTAGE type."""
+    """Dynamic smart sampling: employees has ~300K rows → 100K < rows <= 1M → 50%."""
     search_cache.clear()
     run_workflow(MetadataWorkflow, ingestion_config)
 
@@ -83,9 +84,9 @@ def test_profiler_dynamic_smart_sampling(
     assert table is not None
     assert table.profile is not None
     assert table.profile.rowCount is not None
+    # employees table has ~300K rows → 100K < rows <= 1M → 50%
+    assert table.profile.profileSample == 50.0
     assert table.profile.profileSampleType.root == ProfileSampleType.PERCENTAGE
-    # Smart sampling resolves based on row count via get_tiered_sample
-    assert table.profile.profileSample is not None
 
 
 def test_profiler_dynamic_threshold_sampling(
@@ -96,7 +97,7 @@ def test_profiler_dynamic_threshold_sampling(
     db_service,
     metadata,
 ):
-    """Dynamic threshold sampling should complete and store a profile."""
+    """Dynamic threshold: threshold at 1000 rows → 25%. Employees has ~300K rows."""
     search_cache.clear()
     run_workflow(MetadataWorkflow, ingestion_config)
 
@@ -120,5 +121,6 @@ def test_profiler_dynamic_threshold_sampling(
     assert table is not None
     assert table.profile is not None
     assert table.profile.rowCount is not None
+    # employees table has ~300K rows >= threshold 1000 → 25%
+    assert table.profile.profileSample == 25.0
     assert table.profile.profileSampleType.root == ProfileSampleType.PERCENTAGE
-    assert table.profile.profileSample is not None

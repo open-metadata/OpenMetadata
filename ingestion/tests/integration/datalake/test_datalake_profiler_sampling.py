@@ -69,6 +69,8 @@ class TestDatalakeProfilerSampling:
         table = metadata.get_latest_table_profile(fqn)
         assert table.profile is not None
         assert table.profile.rowCount is not None
+        assert table.profile.profileSample == 50.0
+        assert table.profile.profileSampleType.root == ProfileSampleType.PERCENTAGE
 
     def test_dynamic_smart_sampling(self, ingestion_config, metadata):
         """Dynamic smart sampling: small CSV → <=100K tier → 100%."""
@@ -133,5 +135,6 @@ class TestDatalakeProfilerSampling:
         table = metadata.get_latest_table_profile(fqn)
         assert table.profile is not None
         assert table.profile.rowCount is not None
+        # Any table with >= 1 row should get 50% sampling
+        assert table.profile.profileSample == 50.0
         assert table.profile.profileSampleType.root == ProfileSampleType.PERCENTAGE
-        assert table.profile.profileSample is not None
