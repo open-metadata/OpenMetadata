@@ -79,6 +79,19 @@ class DbTuneReportTest {
   }
 
   @Test
+  void render_zeroRecommendationsSuppressesAllMatchAndNextSteps() {
+    DbTuneResult result = new DbTuneResult("PostgreSQL", "17.2", List.of(), List.of());
+
+    String report = DbTuneReport.render(result);
+
+    assertTrue(report.contains("none of the tracked tables exist"));
+    assertFalse(
+        report.contains("already match their recommended settings"),
+        "Empty recommendations must not claim everything matches");
+    assertFalse(report.contains("Next steps:"));
+  }
+
+  @Test
   void render_noActionableShowsAllGoodMessage() {
     DbTuneResult result =
         new DbTuneResult(

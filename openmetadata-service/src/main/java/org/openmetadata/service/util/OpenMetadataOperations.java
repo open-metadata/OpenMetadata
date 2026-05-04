@@ -2504,7 +2504,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
           boolean runAnalyze) {
     try {
       parseConfig();
-      ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+      String driverClass = config.getDataSourceFactory().getDriverClass();
+      ConnectionType connType = ConnectionType.from(driverClass);
+      if (connType == null) {
+        LOG.error(
+            "db-tune does not support driver class '{}'. Only the bundled MySQL and PostgreSQL drivers are recognised.",
+            driverClass);
+        return 1;
+      }
       AutoTuner tuner = autoTunerFor(connType);
       DbTuneResult result = jdbi.withHandle(tuner::analyze);
       LOG.info("\n{}", DbTuneReport.render(result));
@@ -2566,8 +2573,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       return List.of(rec.tableName(), rec.action().name(), "OK", "Applied");
     } catch (Exception e) {
-      LOG.error("Failed to apply recommendation for {}: {}", rec.tableName(), e.getMessage());
-      return List.of(rec.tableName(), rec.action().name(), "FAILED", e.getMessage());
+      LOG.error("Failed to apply recommendation for {}: {}", rec.tableName(), e.getMessage(), e);
+      String detail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+      return List.of(rec.tableName(), rec.action().name(), "FAILED", detail);
     }
   }
 

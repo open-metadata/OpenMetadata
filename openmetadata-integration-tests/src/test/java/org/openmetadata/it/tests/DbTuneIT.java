@@ -22,6 +22,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.util.dbtune.AutoTuner;
@@ -38,10 +40,16 @@ import org.openmetadata.service.util.dbtune.TableRecommendation;
  *
  * <p>Sequential because each test mutates table-level reloptions on shared production tables;
  * parallel execution would race between read-stats and apply.
+ *
+ * <p>Uses {@code entity_relationship} as the target — its tuning profile has a row-count threshold
+ * of zero, so the recommendation is actionable on a fresh IT bootstrap (other entity tables are
+ * gated behind 10k-row thresholds and would {@code SKIP} on an empty database, defeating the apply
+ * assertion).
  */
+@Execution(ExecutionMode.SAME_THREAD)
 class DbTuneIT {
 
-  private static final String TEST_TABLE = "storage_container_entity";
+  private static final String TEST_TABLE = "entity_relationship";
 
   @Test
   void analyzeReturnsRecommendationsForKnownTables() {

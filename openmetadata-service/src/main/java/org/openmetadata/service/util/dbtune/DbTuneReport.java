@@ -38,7 +38,8 @@ public final class DbTuneReport {
     out.append('\n').append('\n');
     appendServerParams(out, result.serverParams());
     appendTableRecommendations(out, result.tableRecommendations());
-    appendNextSteps(out, result.actionableRecommendations().size());
+    appendNextSteps(
+        out, result.tableRecommendations().size(), result.actionableRecommendations().size());
     return out.toString();
   }
 
@@ -93,7 +94,12 @@ public final class DbTuneReport {
     out.append('\n');
   }
 
-  private static void appendNextSteps(final StringBuilder out, final int actionableCount) {
+  private static void appendNextSteps(
+      final StringBuilder out, final int totalRecommendations, final int actionableCount) {
+    if (totalRecommendations == 0) {
+      // No tracked tables exist on this database — saying "all match" would be misleading.
+      return;
+    }
     if (actionableCount == 0) {
       out.append("All tracked tables already match their recommended settings — nothing to do.\n");
       return;
