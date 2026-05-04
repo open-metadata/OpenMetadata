@@ -720,12 +720,7 @@ public interface CollectionDAO {
       // String, String)` and make every non-root list call also pick up the depth check,
       // silently filtering out child containers from generic `?service=...` listings.
       return listRootBefore(
-          getTableName(),
-          rootListingParams(filter),
-          condition,
-          limit,
-          beforeName,
-          beforeId);
+          getTableName(), rootListingParams(filter), condition, limit, beforeName, beforeId);
     }
 
     @Override
@@ -738,12 +733,7 @@ public interface CollectionDAO {
       }
 
       return listRootAfter(
-          getTableName(),
-          rootListingParams(filter),
-          condition,
-          limit,
-          afterName,
-          afterId);
+          getTableName(), rootListingParams(filter), condition, limit, afterName, afterId);
     }
 
     @Override
