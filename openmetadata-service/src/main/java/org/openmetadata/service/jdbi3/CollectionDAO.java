@@ -697,15 +697,12 @@ public interface CollectionDAO {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
 
-      // The root-only SQL is a NOT EXISTS anti-join — there is no outer `er` alias to refer
-      // to here, so the condition is just the regular ListFilter WHERE clause; the new
-      // SQL appends its own NOT EXISTS predicate after this. Distinct method name
-      // (listRootBefore) is required: a same-signature `listBefore` here would override
-      // EntityDAO's default `listBefore(String, Map, String, int, String, String)` and
-      // make every non-root list call also pick up the NOT EXISTS predicate, silently
-      // filtering out child containers from generic `?service=...` listings.
+      // Distinct method name (listRootBefore) is required: a same-signature `listBefore`
+      // here would override EntityDAO's default `listBefore(String, Map, String, int,
+      // String, String)` and make every non-root list call also pick up the depth check,
+      // silently filtering out child containers from generic `?service=...` listings.
       return listRootBefore(
-          getTableName(), filter.getQueryParams(), condition, limit, beforeName, beforeId);
+          getTableName(), rootListingParams(filter), condition, limit, beforeName, beforeId);
     }
 
     @Override
@@ -718,7 +715,7 @@ public interface CollectionDAO {
       }
 
       return listRootAfter(
-          getTableName(), filter.getQueryParams(), condition, limit, afterName, afterId);
+          getTableName(), rootListingParams(filter), condition, limit, afterName, afterId);
     }
 
     @Override
@@ -730,28 +727,57 @@ public interface CollectionDAO {
         return EntityDAO.super.listCount(filter);
       }
 
-      return listRootCount(getTableName(), getNameHashColumn(), filter.getQueryParams(), condition);
+      return listRootCount(
+          getTableName(), getNameHashColumn(), rootListingParams(filter), condition);
     }
 
-    // Root-only listing (?root=true) returns containers that have no parent container.
-    // Earlier versions used a LEFT JOIN + IS NULL anti-join with an inlined subquery, which
-    // Postgres often plans as a hash join over the materialized child-edge set — fine for
-    // small services, painful for ones with thousands of container-to-container edges
-    // (a Tahoe-shaped 5,000-file bucket easily blows past 2s for the COUNT alone). Switching
-    // to NOT EXISTS lets the planner anti-join via the (fromEntity, toEntity, relation, toId)
-    // index instead, so each candidate row's "is this a child?" check is an index lookup.
+    /**
+     * Build the bind map the listRoot SQL expects. The depth predicate
+     * ({@code fqnHash NOT LIKE :serviceHashChild}) needs the {@code serviceHashChild}
+     * bind to be set on every call, but {@link ListFilter#getServiceCondition} only
+     * adds it when {@code ?service=} is present. For the {@code ?root=true} case
+     * <em>without</em> a service filter — "all root containers across all services" —
+     * we default the bind to {@code %.%.%}, which excludes any fqnHash with two or more
+     * separators (everything strictly below the immediate level). Index usage is naturally
+     * weaker here since the prefix LIKE is also absent, but no-service root listings are
+     * rare and the result is at most one row per service.
+     */
+    private static java.util.Map<String, Object> rootListingParams(ListFilter filter) {
+      java.util.Map<String, Object> params = new java.util.HashMap<>(filter.getQueryParams());
+      params.putIfAbsent("serviceHashChild", "%.%.%");
+      return params;
+    }
+
+    // Root-only listing (?root=true) returns containers that are direct children of the
+    // service — i.e. one segment below the service in the FQN tree.
+    //
+    // Earlier implementations relied on `entity_relationship` as the source of truth ("a
+    // container is a root iff no inbound CONTAINS edge exists"). That broke under two
+    // separate failure modes:
+    //   1. Connectors (and bulk imports) that create deeply-nested containers without
+    //      writing the parent CONTAINS edge — those orphans satisfy "no inbound edge" and
+    //      surface at the service root, even though their FQN is many segments deep. The
+    //      breadcrumb UI (which reads the FQN) and the listing (which reads the relationship)
+    //      disagreed about where the container lived.
+    //   2. The NOT EXISTS anti-join needed a composite (fromEntity, toEntity, relation, toId)
+    //      index to be cheap; under pgjdbc generic plans the planner often chose the
+    //      ORDER BY index instead, falling back to a full-table scan and making the count
+    //      query 1-2s on a service with hundreds of thousands of containers.
+    //
+    // The FQN is the canonical hierarchy in OpenMetadata (it's set unconditionally at write
+    // time and is what the breadcrumb UI consumes). `fqnHash` is built by joining
+    // fixed-width MD5 segments with '.', so depth follows from the count of separators —
+    // a direct child of the service has a fqnHash matching `<serviceHash>.<32hex>` and
+    // contains no further '.'. We express "not a direct child" as `fqnHash LIKE
+    // <serviceHash>.%.%` and reject those rows. ListFilter.getFqnPrefixCondition binds
+    // both `:serviceHash` (already used by the prefix LIKE in <sqlCondition>) and
+    // `:serviceHashChild` (the `.%.%` companion) so the SQL just plugs them in.
     @SqlQuery(
         value =
             "SELECT json FROM ("
                 + "SELECT name, id, ce.json FROM <table> ce "
                 + "<sqlCondition> AND "
-                + "NOT EXISTS ("
-                + "  SELECT 1 FROM entity_relationship er "
-                + "  WHERE er.toId = ce.id "
-                + "    AND er.fromEntity = 'container' "
-                + "    AND er.toEntity = 'container' "
-                + "    AND er.relation = 0"
-                + ") AND "
+                + "ce.fqnHash NOT LIKE :serviceHashChild AND "
                 + "(name < :beforeName OR (name = :beforeName AND id < :beforeId)) "
                 + "ORDER BY name DESC, id DESC "
                 + "LIMIT :limit"
@@ -768,13 +794,7 @@ public interface CollectionDAO {
         value =
             "SELECT ce.json FROM <table> ce "
                 + "<sqlCondition> AND "
-                + "NOT EXISTS ("
-                + "  SELECT 1 FROM entity_relationship er "
-                + "  WHERE er.toId = ce.id "
-                + "    AND er.fromEntity = 'container' "
-                + "    AND er.toEntity = 'container' "
-                + "    AND er.relation = 0"
-                + ") AND "
+                + "ce.fqnHash NOT LIKE :serviceHashChild AND "
                 + "(name > :afterName OR (name = :afterName AND id > :afterId)) "
                 + "ORDER BY name, id "
                 + "LIMIT :limit")
@@ -789,26 +809,12 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(<nameHashColumn>) FROM <table> ce "
-                + "<sqlCondition> AND "
-                + "NOT EXISTS ("
-                + "  SELECT 1 FROM entity_relationship er "
-                + "  WHERE er.toId = ce.id "
-                + "    AND er.fromEntity = 'container' "
-                + "    AND er.toEntity = 'container' "
-                + "    AND er.relation = 0"
-                + ")",
+                + "<sqlCondition> AND ce.fqnHash NOT LIKE :serviceHashChild",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(*) FROM <table> ce "
-                + "<sqlCondition> AND "
-                + "NOT EXISTS ("
-                + "  SELECT 1 FROM entity_relationship er "
-                + "  WHERE er.toId = ce.id "
-                + "    AND er.fromEntity = 'container' "
-                + "    AND er.toEntity = 'container' "
-                + "    AND er.relation = 0"
-                + ")",
+                + "<sqlCondition> AND ce.fqnHash NOT LIKE :serviceHashChild",
         connectionType = POSTGRES)
     int listRootCount(
         @Define("table") String table,
@@ -826,8 +832,7 @@ public interface CollectionDAO {
      */
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT id, "
-                + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) AS name, "
+            "SELECT id, name, "
                 + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
                 + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
                 + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.description')) AS description, "
@@ -836,8 +841,7 @@ public interface CollectionDAO {
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT id, "
-                + "json->>'name' AS name, "
+            "SELECT id, name, "
                 + "json->>'displayName' AS displayName, "
                 + "json->>'fullyQualifiedName' AS fqn, "
                 + "json->>'description' AS description, "
@@ -863,6 +867,69 @@ public interface CollectionDAO {
       }
       return all;
     }
+
+    // FQN-based direct-children page. The two binds (`:parentHash` = '<hash>.%' and
+    // `:parentHashChild` = '<hash>.%.%') together select containers whose FQN is exactly one
+    // segment below the parent — same shape used by the root listing in listRootAfter, just
+    // without the cursor pagination. Returns the slim projection used by the children table
+    // UI; the caller restores the service reference separately. `:includeDeleted` is a
+    // tri-state: 'NON_DELETED' (default), 'DELETED', or 'ALL'.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, name, "
+                + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
+                + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
+                + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.description')) AS description, "
+                + "deleted "
+                + "FROM storage_container_entity "
+                + "WHERE fqnHash LIKE :parentHash AND fqnHash NOT LIKE :parentHashChild "
+                + "  AND (:includeDeleted = 'ALL' "
+                + "       OR (:includeDeleted = 'DELETED' AND deleted = TRUE) "
+                + "       OR (:includeDeleted = 'NON_DELETED' AND deleted = FALSE)) "
+                + "ORDER BY name, id LIMIT :limit OFFSET :offset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, name, "
+                + "json->>'displayName' AS displayName, "
+                + "json->>'fullyQualifiedName' AS fqn, "
+                + "json->>'description' AS description, "
+                + "deleted "
+                + "FROM storage_container_entity "
+                + "WHERE fqnHash LIKE :parentHash AND fqnHash NOT LIKE :parentHashChild "
+                + "  AND (:includeDeleted = 'ALL' "
+                + "       OR (:includeDeleted = 'DELETED' AND deleted = TRUE) "
+                + "       OR (:includeDeleted = 'NON_DELETED' AND deleted = FALSE)) "
+                + "ORDER BY name, id LIMIT :limit OFFSET :offset",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ContainerSummaryRowMapper.class)
+    List<Container> listDirectChildSummariesByParentHash(
+        @Bind("parentHash") String parentHash,
+        @Bind("parentHashChild") String parentHashChild,
+        @Bind("includeDeleted") String includeDeleted,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(fqnHash) FROM storage_container_entity "
+                + "WHERE fqnHash LIKE :parentHash AND fqnHash NOT LIKE :parentHashChild "
+                + "  AND (:includeDeleted = 'ALL' "
+                + "       OR (:includeDeleted = 'DELETED' AND deleted = TRUE) "
+                + "       OR (:includeDeleted = 'NON_DELETED' AND deleted = FALSE))",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM storage_container_entity "
+                + "WHERE fqnHash LIKE :parentHash AND fqnHash NOT LIKE :parentHashChild "
+                + "  AND (:includeDeleted = 'ALL' "
+                + "       OR (:includeDeleted = 'DELETED' AND deleted = TRUE) "
+                + "       OR (:includeDeleted = 'NON_DELETED' AND deleted = FALSE))",
+        connectionType = POSTGRES)
+    int countDirectChildrenByParentHash(
+        @Bind("parentHash") String parentHash,
+        @Bind("parentHashChild") String parentHashChild,
+        @Bind("includeDeleted") String includeDeleted);
   }
 
   class ContainerSummaryRowMapper implements RowMapper<Container> {
