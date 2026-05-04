@@ -41,8 +41,7 @@ class TypeRepositoryTest {
   void customPropertyNamePatternMatchesSchema() throws Exception {
     JsonNode schemaPattern = readDefinitionField(CUSTOM_PROPERTY_NAME_DEF, "pattern");
     assertNotNull(
-        schemaPattern,
-        "customPropertyName.pattern must exist in " + BASIC_SCHEMA_RESOURCE);
+        schemaPattern, "customPropertyName.pattern must exist in " + BASIC_SCHEMA_RESOURCE);
 
     assertEquals(
         schemaPattern.asText(),
@@ -56,9 +55,7 @@ class TypeRepositoryTest {
   @Test
   void customPropertyNameMaxLengthMatchesSchema() throws Exception {
     JsonNode schemaMax = readDefinitionField(CUSTOM_PROPERTY_NAME_DEF, "maxLength");
-    assertNotNull(
-        schemaMax,
-        "customPropertyName.maxLength must exist in " + BASIC_SCHEMA_RESOURCE);
+    assertNotNull(schemaMax, "customPropertyName.maxLength must exist in " + BASIC_SCHEMA_RESOURCE);
 
     assertEquals(
         schemaMax.asInt(),
@@ -73,8 +70,7 @@ class TypeRepositoryTest {
     assertNotNull(definition, "customPropertyName must be defined in " + BASIC_SCHEMA_RESOURCE);
     assertEquals("string", definition.get("type").asText());
     assertTrue(
-        definition.get("minLength").asInt() >= 1,
-        "customPropertyName must have minLength >= 1");
+        definition.get("minLength").asInt() >= 1, "customPropertyName must have minLength >= 1");
   }
 
   private static JsonNode readDefinition(String definitionName) throws Exception {
