@@ -12,8 +12,8 @@
  */
 import { AxiosError } from 'axios';
 import { Change, diffLines } from 'diff';
-import { Duration } from 'luxon';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
+import { Duration } from 'luxon';
 import React from 'react';
 import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.svg';
 import { ReactComponent as EditSuggestionIcon } from '../assets/svg/edit-new.svg';
