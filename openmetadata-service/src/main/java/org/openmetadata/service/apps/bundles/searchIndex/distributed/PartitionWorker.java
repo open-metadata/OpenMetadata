@@ -43,6 +43,7 @@ import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesSource;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 /**
  * Worker that processes a single partition of entities for search indexing.
@@ -591,7 +592,7 @@ public class PartitionWorker {
   private ResultList<?> readEntitiesKeyset(String entityType, String keysetCursor, int limit)
       throws SearchIndexException {
 
-    List<String> fields = TIME_SERIES_ENTITIES.contains(entityType) ? List.of() : List.of("*");
+    List<String> fields = ReindexingUtil.getSearchIndexFields(entityType);
 
     if (!TIME_SERIES_ENTITIES.contains(entityType)) {
       PaginatedEntitiesSource source = new PaginatedEntitiesSource(entityType, limit, fields, 0);

@@ -3,6 +3,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 import static org.openmetadata.service.Entity.QUERY_COST_RECORD;
 import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSearchIndexFields;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -320,21 +321,6 @@ public class EntityReader implements AutoCloseable {
         || lower.contains("pool exhausted")
         || lower.contains("connectexception")
         || lower.contains("sockettimeoutexception");
-  }
-
-  static List<String> getSearchIndexFields(String entityType) {
-    if (TIME_SERIES_ENTITIES.contains(entityType)) {
-      return List.of();
-    }
-    org.openmetadata.service.search.SearchRepository repo =
-        org.openmetadata.service.Entity.getSearchRepository();
-    if (repo == null || repo.getSearchIndexFactory() == null) {
-      // Fallback for environments where the search subsystem isn't bootstrapped (e.g. unit
-      // tests that exercise the reader without the full Entity registry). Behaves the same
-      // as the pre-selective-fields code path.
-      return List.of("*");
-    }
-    return new ArrayList<>(repo.getSearchIndexFactory().getReindexFieldsFor(entityType));
   }
 
   static int calculateNumberOfReaders(int totalEntityRecords, int batchSize) {

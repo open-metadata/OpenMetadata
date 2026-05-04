@@ -222,6 +222,21 @@ public class ReindexingUtil {
     return entities;
   }
 
+  public static List<String> getSearchIndexFields(String entityType) {
+    if (TIME_SERIES_ENTITIES.contains(entityType)) {
+      return List.of();
+    }
+    org.openmetadata.service.search.SearchRepository repo =
+        org.openmetadata.service.Entity.getSearchRepository();
+    if (repo == null || repo.getSearchIndexFactory() == null) {
+      // Fallback for environments where the search subsystem isn't bootstrapped (e.g. unit
+      // tests that exercise the reader without the full Entity registry). Behaves the same
+      // as the pre-selective-fields code path.
+      return List.of("*");
+    }
+    return new ArrayList<>(repo.getSearchIndexFactory().getReindexFieldsFor(entityType));
+  }
+
   public static String escapeDoubleQuotes(String str) {
     return str.replace("\"", "\\\"");
   }

@@ -29,6 +29,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesSource;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 class EntityReaderLifecycleTest {
 
@@ -213,8 +214,8 @@ class EntityReaderLifecycleTest {
   void helperMethodsRespectTimeSeriesAndMinimumReaderRules() {
     assertEquals(
         List.of(),
-        EntityReader.getSearchIndexFields(ReportData.ReportDataType.ENTITY_REPORT_DATA.value()));
-    assertEquals(List.of("*"), EntityReader.getSearchIndexFields("table"));
+        ReindexingUtil.getSearchIndexFields(ReportData.ReportDataType.ENTITY_REPORT_DATA.value()));
+    assertEquals(List.of("*"), ReindexingUtil.getSearchIndexFields("table"));
     assertEquals(1, EntityReader.calculateNumberOfReaders(10, 0));
     assertEquals(3, EntityReader.calculateNumberOfReaders(11, 5));
   }
