@@ -11,11 +11,12 @@
 """
 Base class for ingesting security services
 """
+
 from abc import ABC
-from typing import Set
+from typing import Set  # noqa: UP035
 
 from pydantic import Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.entity.services.securityService import (
     SecurityConnection,
@@ -51,9 +52,7 @@ class SecurityServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -70,7 +69,7 @@ class SecurityServiceTopology(ServiceTopology):
     )
 
 
-from metadata.utils.helpers import clean_uri
+from metadata.utils.helpers import clean_uri  # noqa: E402
 
 
 class SecurityServiceSource(TopologyRunnerMixin, Source, ABC):
@@ -82,27 +81,23 @@ class SecurityServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: SecurityServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: SecurityConnection.model_fields["config"].annotation
+    service_connection: SecurityConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = SecurityServiceTopology()
     context = TopologyContextManager(topology)
-    security_source_state: Set = set()
+    security_source_state: Set = set()  # noqa: RUF012, UP006
 
     def __init__(
         self,
         config: WorkflowSource,
         metadata: OpenMetadata,
     ):
-        config.serviceConnection.root.config.hostPort = clean_uri(
-            config.serviceConnection.root.config.hostPort
-        )
+        config.serviceConnection.root.config.hostPort = clean_uri(config.serviceConnection.root.config.hostPort)  # pyright: ignore[reportAttributeAccessIssue]
         super().__init__()
         self.config = config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
-        self.source_config: SecurityServiceMetadataPipeline = (
-            self.config.sourceConfig.config
-        )
+        self.source_config: SecurityServiceMetadataPipeline = self.config.sourceConfig.config
 
         self.connection = get_connection(self.service_connection)
         # Flag the connection for the test connection
@@ -118,11 +113,7 @@ class SecurityServiceSource(TopologyRunnerMixin, Source, ABC):
         pass
 
     def yield_create_request_security_service(self, config: WorkflowSource):
-        yield Either(
-            right=self.metadata.get_create_service_from_source(
-                entity=SecurityService, config=config
-            )
-        )
+        yield Either(right=self.metadata.get_create_service_from_source(entity=SecurityService, config=config))
 
     def test_connection(self) -> None:
         self.client.test_connection()

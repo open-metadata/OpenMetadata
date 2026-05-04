@@ -11,6 +11,7 @@
 """
 Unit tests for topology runner deleted entity restoration
 """
+
 from collections import defaultdict
 from unittest import TestCase
 from unittest.mock import Mock
@@ -91,12 +92,8 @@ class TopologyRunnerRestoreTest(TestCase):
 
         # The deleted entity should be restored even though hashes match
         if is_deleted:
-            entity = self.mock_metadata.get_by_name(
-                entity=Table, fqn=self.entity_fqn, fields=["*"], include="all"
-            )
-            restored_entity = self.mock_metadata.restore(
-                entity=Table, entity_id=entity.id
-            )
+            entity = self.mock_metadata.get_by_name(entity=Table, fqn=self.entity_fqn, fields=["*"], include="all")
+            restored_entity = self.mock_metadata.restore(entity=Table, entity_id=entity.id)
 
             self.assertIsNotNone(restored_entity)
             self.assertFalse(restored_entity.deleted)
@@ -136,12 +133,8 @@ class TopologyRunnerRestoreTest(TestCase):
 
         # Deleted entity should be restored
         if is_deleted:
-            entity = self.mock_metadata.get_by_name(
-                entity=Table, fqn=self.entity_fqn, fields=["*"], include="all"
-            )
-            restored_entity = self.mock_metadata.restore(
-                entity=Table, entity_id=entity.id
-            )
+            entity = self.mock_metadata.get_by_name(entity=Table, fqn=self.entity_fqn, fields=["*"], include="all")
+            restored_entity = self.mock_metadata.restore(entity=Table, entity_id=entity.id)
 
             self.assertIsNotNone(restored_entity)
             deleted[Table].pop(self.entity_fqn, None)
@@ -182,13 +175,8 @@ class TopologyRunnerRestoreTest(TestCase):
         self.assertNotEqual(entity_source_hash, new_source_hash)
 
         # Non-deleted entity with different hash should be patched
-        if not is_deleted and (
-            entity_source_hash != new_source_hash
-            or self.mock_source_config.overrideMetadata
-        ):
-            entity = self.mock_metadata.get_by_name(
-                entity=Table, fqn=self.entity_fqn, fields=["*"], include="all"
-            )
+        if not is_deleted and (entity_source_hash != new_source_hash or self.mock_source_config.overrideMetadata):
+            entity = self.mock_metadata.get_by_name(entity=Table, fqn=self.entity_fqn, fields=["*"], include="all")
             self.assertIsNotNone(entity)
             self.assertFalse(entity.deleted)
 
@@ -242,12 +230,8 @@ class TopologyRunnerRestoreTest(TestCase):
         is_deleted = self.entity_fqn in deleted[Table]
 
         if is_deleted:
-            entity = self.mock_metadata.get_by_name(
-                entity=Table, fqn=self.entity_fqn, fields=["*"], include="all"
-            )
-            restored_entity = self.mock_metadata.restore(
-                entity=Table, entity_id=entity.id
-            )
+            entity = self.mock_metadata.get_by_name(entity=Table, fqn=self.entity_fqn, fields=["*"], include="all")
+            restored_entity = self.mock_metadata.restore(entity=Table, entity_id=entity.id)
 
             # Restore failed
             self.assertIsNone(restored_entity)
@@ -282,20 +266,15 @@ class TopologyRunnerRestoreTest(TestCase):
         is_deleted = self.entity_fqn in deleted[Table]
 
         if is_deleted:
-            entity = self.mock_metadata.get_by_name(
-                entity=Table, fqn=self.entity_fqn, fields=["*"], include="all"
-            )
-            restored_entity = self.mock_metadata.restore(
+            entity = self.mock_metadata.get_by_name(entity=Table, fqn=self.entity_fqn, fields=["*"], include="all")
+            restored_entity = self.mock_metadata.restore(  # noqa: F841
                 entity=Table, entity_id=entity.id
             )
 
             deleted[Table].pop(self.entity_fqn, None)
 
             # Even with same hash, overrideMetadata should trigger patch
-            if (
-                entity_source_hash != source_hash
-                or self.mock_source_config.overrideMetadata
-            ):
+            if entity_source_hash != source_hash or self.mock_source_config.overrideMetadata:
                 should_patch = True
             else:
                 should_patch = False

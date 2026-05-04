@@ -12,12 +12,13 @@
 """
 Check that we are properly running nodes and stages
 """
-from typing import List, Optional
+
+from typing import List, Optional  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import patch
 
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
@@ -32,26 +33,24 @@ from metadata.utils.source_hash import generate_source_hash
 
 
 class MockSchema(BaseModel):
-    sourceHash: Optional[str] = None
+    sourceHash: Optional[str] = None  # noqa: N815, UP045
     name: str
     # Keeping it None to reuse the same class for Create and Entity
-    fullyQualifiedName: Optional[str] = None
-    deleted: Optional[bool] = None
+    fullyQualifiedName: Optional[str] = None  # noqa: N815, UP045
+    deleted: Optional[bool] = None  # noqa: UP045
 
 
 class MockTable(BaseModel):
-    sourceHash: Optional[str] = None
+    sourceHash: Optional[str] = None  # noqa: N815, UP045
     name: str
     # Keeping it None to reuse the same class for Create and Entity
-    fullyQualifiedName: Optional[str] = None
-    columns: List[str]
-    deleted: Optional[bool] = None
+    fullyQualifiedName: Optional[str] = None  # noqa: N815, UP045
+    columns: List[str]  # noqa: UP006
+    deleted: Optional[bool] = None  # noqa: UP045
 
 
 class MockTopology(ServiceTopology):
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = TopologyNode(
         producer="get_schemas",
         stages=[
             NodeStage(
@@ -138,14 +137,9 @@ class TopologyRunnerTest(TestCase):
 
         self.assertEqual(
             # check the post process being at the end
+            [either.right if hasattr(either, "right") else either for either in processed],
             [
-                either.right if hasattr(either, "right") else either
-                for either in processed
-            ],
-            [
-                MockSchema(
-                    name="schema1", sourceHash="ddb43c9d34ccbe2363a37db746211fcb"
-                ),
+                MockSchema(name="schema1", sourceHash="ddb43c9d34ccbe2363a37db746211fcb"),
                 MockTable(
                     name="table1",
                     sourceHash="384ee4341cf5c1ac5658f9310ea8868c",
@@ -156,9 +150,7 @@ class TopologyRunnerTest(TestCase):
                     sourceHash="3b3c6ad507d2bbf24a68451d2bef38dd",
                     columns=["c1", "c2"],
                 ),
-                MockSchema(
-                    name="schema2", sourceHash="18e4768ea591108c38e6b24a861cb3d2"
-                ),
+                MockSchema(name="schema2", sourceHash="18e4768ea591108c38e6b24a861cb3d2"),
                 MockTable(
                     name="table1",
                     sourceHash="384ee4341cf5c1ac5658f9310ea8868c",
@@ -190,14 +182,9 @@ class TopologyRunnerTest(TestCase):
 
         self.assertCountEqual(
             # check the post process being at the end
+            [either.right if hasattr(either, "right") else either for either in processed],
             [
-                either.right if hasattr(either, "right") else either
-                for either in processed
-            ],
-            [
-                MockSchema(
-                    name="schema1", sourceHash="ddb43c9d34ccbe2363a37db746211fcb"
-                ),
+                MockSchema(name="schema1", sourceHash="ddb43c9d34ccbe2363a37db746211fcb"),
                 MockTable(
                     name="table1",
                     sourceHash="384ee4341cf5c1ac5658f9310ea8868c",
@@ -208,9 +195,7 @@ class TopologyRunnerTest(TestCase):
                     sourceHash="3b3c6ad507d2bbf24a68451d2bef38dd",
                     columns=["c1", "c2"],
                 ),
-                MockSchema(
-                    name="schema2", sourceHash="18e4768ea591108c38e6b24a861cb3d2"
-                ),
+                MockSchema(name="schema2", sourceHash="18e4768ea591108c38e6b24a861cb3d2"),
                 MockTable(
                     name="table1",
                     sourceHash="384ee4341cf5c1ac5658f9310ea8868c",
@@ -241,9 +226,7 @@ class TopologyRunnerTest(TestCase):
             list(self.source._run_node_post_process(self.source.topology.root)),
             ["hello"],
         )
-        self.assertEqual(
-            list(self.source._run_node_post_process(self.source.topology.tables)), []
-        )
+        self.assertEqual(list(self.source._run_node_post_process(self.source.topology.tables)), [])
 
     def test_init_hash_dict(self):
         """We get the right cache dict"""
@@ -268,14 +251,10 @@ class TopologyRunnerTest(TestCase):
             ),
         ]
 
-        with patch.object(
-            OpenMetadata, "list_all_entities", return_value=mock_list_all_entities
-        ):
+        with patch.object(OpenMetadata, "list_all_entities", return_value=mock_list_all_entities):
             local_source.metadata = OpenMetadata
 
-            local_source.get_fqn_source_hash_dict(
-                parent_type=MockSchema, child_type=MockTable, entity_fqn="fqn"
-            )
+            local_source.get_fqn_source_hash_dict(parent_type=MockSchema, child_type=MockTable, entity_fqn="fqn")
 
         self.assertEqual(
             dict(local_source.cache),

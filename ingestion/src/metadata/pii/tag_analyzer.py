@@ -1,5 +1,5 @@
 from itertools import groupby
-from typing import List, Optional, Sequence, Union, final
+from typing import List, Optional, Sequence, Union, final  # noqa: UP035
 
 from presidio_analyzer import (
     AnalyzerEngine,
@@ -39,9 +39,9 @@ TARGET_MAP = {
 class TagAnalysis(BaseModel):
     tag: Tag
     score: float
-    explanation: Optional[str]
-    recognizer_results: List[RecognizerResult] = []
-    target: Optional[recognizer.Target] = None
+    explanation: Optional[str]  # noqa: UP045
+    recognizer_results: List[RecognizerResult] = []  # noqa: UP006
+    target: Optional[recognizer.Target] = None  # noqa: UP045
 
     @final
     class Config:
@@ -76,10 +76,7 @@ class TagAnalyzer:
             FQN_SEPARATOR
         )
         return (
-            get_entity_link(
-                Table, FQN_SEPARATOR.join(table_fqn_parts), column_name=column_name
-            )
-            in blacklisted_entities
+            get_entity_link(Table, FQN_SEPARATOR.join(table_fqn_parts), column_name=column_name) in blacklisted_entities
         )
 
     def get_recognizers_by(self, target: recognizer.Target) -> list[EntityRecognizer]:
@@ -88,7 +85,7 @@ class TagAnalyzer:
 
         recognizers: list[EntityRecognizer] = []
 
-        for recognizer in self.tag.recognizers or []:
+        for recognizer in self.tag.recognizers or []:  # noqa: F402
             if (
                 recognizer.target is not target
                 or recognizer.enabled is False
@@ -122,12 +119,10 @@ class TagAnalyzer:
     def build_analyzer_with(
         self,
         recognizers: list[EntityRecognizer],
-        nlp_engine: Optional[NlpEngine] = None,
+        nlp_engine: Optional[NlpEngine] = None,  # noqa: UP045
     ) -> AnalyzerEngine:
         supported_languages = [rec.supported_language for rec in recognizers]
-        recognizer_registry = RecognizerRegistry(
-            recognizers=recognizers, supported_languages=supported_languages
-        )
+        recognizer_registry = RecognizerRegistry(recognizers=recognizers, supported_languages=supported_languages)
         effective_nlp = nlp_engine if nlp_engine is not None else self._nlp_engine
         return AnalyzerEngine(
             registry=recognizer_registry,
@@ -137,15 +132,11 @@ class TagAnalyzer:
 
     def _analyze_with(
         self,
-        text_or_values: Union[str, Sequence[str]],
+        text_or_values: Union[str, Sequence[str]],  # noqa: UP007
         recognizers: list[EntityRecognizer],
-        context: Optional[list[str]] = None,
+        context: Optional[list[str]] = None,  # noqa: UP045
     ) -> list[RecognizerResult]:
-        values = (
-            [text_or_values]
-            if isinstance(text_or_values, str)
-            else list(text_or_values)
-        )
+        values = [text_or_values] if isinstance(text_or_values, str) else list(text_or_values)
         results: list[RecognizerResult] = []
 
         if self._language is not ClassificationLanguage.any:
@@ -166,9 +157,7 @@ class TagAnalyzer:
             lang_recognizers = list(group)
             analyzer = self.build_analyzer_with(
                 lang_recognizers,
-                nlp_engine=load_nlp_engine(
-                    classification_language=ClassificationLanguage(lang)
-                ),
+                nlp_engine=load_nlp_engine(classification_language=ClassificationLanguage(lang)),
             )
             for value in values:
                 results.extend(

@@ -16,10 +16,11 @@ Vertica CE image already comes with a sample database `VMart` that
 we will use here. If for some reason the data gets lost, it can be
 regenerated via: `./opt/vertica/examples/VMart_Schema/vmart_gen`
 """
-from typing import List
 
-from .common.test_cli_db import CliCommonDB
-from .common_e2e_sqa_mixins import SQACommonMethods
+from typing import List  # noqa: UP035
+
+from .common.test_cli_db import CliCommonDB  # noqa: TID252
+from .common_e2e_sqa_mixins import SQACommonMethods  # noqa: TID252
 
 
 class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
@@ -36,7 +37,7 @@ class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             FROM public.vendor_dimension_new;
     """
 
-    insert_data_queries: List[str] = [
+    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
         "INSERT INTO vendor_dimension_new (vendor_key, vendor_name) VALUES (1, 'name');",
         "INSERT INTO vendor_dimension_new (vendor_key, vendor_name) VALUES (2, 'another name');",
     ]
@@ -81,15 +82,15 @@ class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return "e2e_vertica.VMart.public.vendor_dimension_new"
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:
+    def get_includes_schemas() -> List[str]:  # noqa: UP006
         return ["public.*"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:
+    def get_includes_tables() -> List[str]:  # noqa: UP006
         return [".*dimension.*"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:
+    def get_excludes_tables() -> List[str]:  # noqa: UP006
         return [".*fact.*"]
 
     @staticmethod

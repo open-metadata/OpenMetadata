@@ -15,9 +15,11 @@ import jakarta.json.stream.JsonGenerator;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -228,6 +230,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                 TARGET_INDEX_KEY, indexMapping.getIndexName(searchRepository.getClusterAlias()));
 
     try {
+      long processStartNanos = System.nanoTime();
       // Check if these are time series entities
       if (!entities.isEmpty() && entities.get(0) instanceof EntityTimeSeriesInterface) {
         List<EntityTimeSeriesInterface> tsEntities = (List<EntityTimeSeriesInterface>) entities;
@@ -270,6 +273,10 @@ public class ElasticSearchBulkSink implements BulkSink {
           }
           pendingColumnFutures.removeIf(CompletableFuture::isDone);
         }
+      }
+      if (tracker != null) {
+        tracker.addStageTime(
+            StageStatsTracker.Stage.PROCESS, System.nanoTime() - processStartNanos);
       }
     } catch (Exception e) {
       LOG.error("Failed to write {} entities of type {}", entities.size(), entityType, e);
@@ -965,11 +972,19 @@ public class ElasticSearchBulkSink implements BulkSink {
         return;
       }
 
+      // Sink timing wraps the bulk HTTP round-trip — pure Elasticsearch latency.
+      long bulkStartNanos = System.nanoTime();
+      Set<StageStatsTracker> participatingTrackers = collectTrackers(operations);
+
       CompletableFuture<BulkResponse> future =
           asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
 
       future.whenComplete(
           (response, error) -> {
+            long bulkElapsedNanos = System.nanoTime() - bulkStartNanos;
+            for (StageStatsTracker tracker : participatingTrackers) {
+              tracker.addStageTime(StageStatsTracker.Stage.SINK, bulkElapsedNanos);
+            }
             boolean retryScheduled = false;
             try {
               if (error != null) {
@@ -1016,6 +1031,24 @@ public class ElasticSearchBulkSink implements BulkSink {
               }
             }
           });
+    }
+
+    /**
+     * Resolve the distinct set of trackers represented in this bulk by walking each operation's
+     * docId. Used to charge Sink wall-clock time to every participating entity.
+     */
+    private Set<StageStatsTracker> collectTrackers(List<BulkOperation> operations) {
+      Set<StageStatsTracker> trackers = new HashSet<>();
+      for (BulkOperation op : operations) {
+        String docId = getDocId(op);
+        if (docId != null) {
+          StageStatsTracker tracker = docIdToTracker.get(docId);
+          if (tracker != null) {
+            trackers.add(tracker);
+          }
+        }
+      }
+      return trackers;
     }
 
     private boolean handleBulkFailure(

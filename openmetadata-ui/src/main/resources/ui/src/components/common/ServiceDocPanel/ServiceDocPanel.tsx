@@ -186,7 +186,11 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
         <RichTextEditorPreviewerV1
           className="service-doc-content"
           enableSeeMoreVariant={false}
-          extensionOptions={{ enableSectionNode: true }}
+          extensionOptions={{
+            enableAdmonitionNode: true,
+            enableCodeBlockCopy: true,
+            enableSectionNode: true,
+          }}
           markdown={processedHtml}
         />
       </>

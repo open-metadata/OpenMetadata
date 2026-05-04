@@ -92,6 +92,7 @@ export interface AutocompleteProps
   children: AriaListBoxProps<SelectItemType>['children'];
   onItemInserted?: (key: Key) => void;
   onItemCleared?: (key: Key) => void;
+  onFocus?: FocusEventHandler;
   renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
   filterOption?: (item: SelectItemType, filterText: string) => boolean;
   onSearchChange?: (value: string) => void;
@@ -320,6 +321,7 @@ export const AutocompleteBase = ({
   popoverClassName,
   renderTag,
   filterOption,
+  onFocus,
   multiple = true,
   onSearchChange,
   maxVisibleItems,
@@ -416,7 +418,7 @@ export const AutocompleteBase = ({
   useResizeObserver({ ref: triggerRef, onResize, box: 'border-box' });
 
   const selectContextValue = useMemo(
-    () => ({ fontSize: 'md' as const, size: 'sm' as const }),
+    () => ({ size: 'sm' as const, fontSize: 'md' as const }),
     []
   );
 
@@ -468,7 +470,10 @@ export const AutocompleteBase = ({
                   placeholder={placeholder}
                   placeholderIcon={props.placeholderIcon}
                   size="sm"
-                  onFocus={onResize}
+                  onFocus={(event) => {
+                    onResize();
+                    onFocus?.(event);
+                  }}
                   onPointerEnter={onResize}
                 />
               </div>

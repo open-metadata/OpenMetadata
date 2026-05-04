@@ -380,7 +380,7 @@ class DistributedJobStatsAggregatorTest {
 
     CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats aggregatedStats =
         new CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats(
-            9, 1, 2, 8, 1, 10, 2, 4, 1, 1, 0);
+            9, 1, 2, 8, 1, 10, 2, 4, 1, 0, 0, 0, 0, 1, 0);
     when(serverStatsDAO.getAggregatedStats(jobId.toString()))
         .thenReturn(aggregatedStats, aggregatedStats, aggregatedStats);
 
@@ -447,7 +447,7 @@ class DistributedJobStatsAggregatorTest {
 
     CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats aggregatedStats =
         new CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats(
-            5, 1, 0, 4, 1, 4, 1, 2, 1, 1, 0);
+            5, 1, 0, 4, 1, 4, 1, 2, 1, 0, 0, 0, 0, 1, 0);
     when(serverStatsDAO.getAggregatedStats(jobId.toString())).thenReturn(aggregatedStats);
 
     SearchIndexJob job =
@@ -521,7 +521,7 @@ class DistributedJobStatsAggregatorTest {
 
     CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats aggregatedStats =
         new CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats(
-            150, 5, 6, 300, 8, 200, 7, 11, 12, 1, 0);
+            150, 5, 6, 300, 8, 200, 7, 11, 12, 0, 0, 0, 0, 1, 0);
 
     Stats stats =
         (Stats)
@@ -553,6 +553,73 @@ class DistributedJobStatsAggregatorTest {
     assertEquals(
         Integer.MIN_VALUE,
         invokeStaticPrivate("safeToInt", new Class<?>[] {long.class}, Long.MIN_VALUE));
+  }
+
+  @Test
+  void testConvertToStatsPopulatesStageTiming() throws Exception {
+    aggregator = new DistributedJobStatsAggregator(coordinator, jobId);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.SearchIndexServerStatsDAO serverStatsDAO =
+        mock(CollectionDAO.SearchIndexServerStatsDAO.class);
+    when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
+    when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(serverStatsDAO);
+    when(serverStatsDAO.getStatsByEntityType(jobId.toString())).thenReturn(List.of());
+
+    SearchIndexJob job =
+        SearchIndexJob.builder()
+            .id(jobId)
+            .totalRecords(100)
+            .processedRecords(80)
+            .successRecords(80)
+            .failedRecords(0)
+            .entityStats(
+                Map.of(
+                    "container",
+                    SearchIndexJob.EntityTypeStats.builder()
+                        .entityType("container")
+                        .totalRecords(100L)
+                        .successRecords(80L)
+                        .failedRecords(0L)
+                        // Per-entity timings — the aggregator surfaces all four stage
+                        // timings on the entity StepStats so the UI table can show Reader
+                        // / Process / Sink / Vector avg latencies side-by-side.
+                        .readerTimeMs(2500L)
+                        .processTimeMs(80L)
+                        .sinkTimeMs(7200L)
+                        .vectorTimeMs(0L)
+                        .build()))
+            .build();
+
+    // Job-wide timing: reader 4s, process 200ms, sink 12s, vector 0 — typical "DB-bound" run.
+    CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats aggregatedStats =
+        new CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats(
+            80, 0, 0, 80, 0, 80, 0, 0, 0, 4000, 200, 12000, 0, 1, 0);
+
+    Stats stats =
+        (Stats)
+            invokePrivate(
+                "convertToStats",
+                new Class<?>[] {
+                  SearchIndexJob.class,
+                  CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats.class
+                },
+                job,
+                aggregatedStats);
+
+    // Job-level totals
+    assertEquals(4000L, stats.getReaderStats().getTotalTimeMs());
+    assertEquals(200L, stats.getProcessStats().getTotalTimeMs());
+    assertEquals(12000L, stats.getSinkStats().getTotalTimeMs());
+    assertEquals(0L, stats.getVectorStats().getTotalTimeMs());
+
+    // Per-entity StepStats now exposes all four stage timings as separate fields so the
+    // UI can render Reader / Process / Sink / Vector columns side-by-side.
+    StepStats containerStats = stats.getEntityStats().getAdditionalProperties().get("container");
+    assertNotNull(containerStats);
+    assertEquals(2500L, containerStats.getReaderTimeMs());
+    assertEquals(80L, containerStats.getProcessTimeMs());
+    assertEquals(7200L, containerStats.getSinkTimeMs());
+    assertEquals(0L, containerStats.getVectorTimeMs());
   }
 
   @Test
@@ -736,7 +803,7 @@ class DistributedJobStatsAggregatorTest {
 
     CollectionDAO.SearchIndexServerStatsDAO.EntityStats tableVectorStats =
         new CollectionDAO.SearchIndexServerStatsDAO.EntityStats(
-            "table", 50, 2, 1, 45, 3, 40, 5, 30, 7);
+            "table", 50, 2, 1, 45, 3, 40, 5, 30, 7, 0, 0, 0, 0);
     when(serverStatsDAO.getStatsByEntityType(jobId.toString()))
         .thenReturn(List.of(tableVectorStats));
 

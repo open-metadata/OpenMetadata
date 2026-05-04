@@ -11,11 +11,12 @@
 """
 Add methods to the workflows for updating the IngestionPipeline status
 """
+
 import traceback
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Tuple
+from typing import Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -56,13 +57,13 @@ class WorkflowStatusMixin:
     """
 
     config: OpenMetadataWorkflowConfig
-    _run_id: Optional[str] = None
+    _run_id: Optional[str] = None  # noqa: UP045
     metadata: OpenMetadata
     _start_ts: int
-    ingestion_pipeline: Optional[IngestionPipeline]
+    ingestion_pipeline: Optional[IngestionPipeline]  # noqa: UP045
 
     # All workflows execute a series of steps, aside from the source
-    steps: Tuple[Step]
+    steps: Tuple[Step]  # noqa: UP006
 
     @property
     def run_id(self) -> str:
@@ -87,9 +88,7 @@ class WorkflowStatusMixin:
             timestamp=Timestamp(self._start_ts),
         )  # type: ignore
 
-    def update_pipeline_status_metadata(
-        self, pipeline_status: PipelineStatus
-    ) -> PipelineStatus:
+    def update_pipeline_status_metadata(self, pipeline_status: PipelineStatus) -> PipelineStatus:
         """
         Update the pipeline status metadata with the context manager data.
         """
@@ -101,7 +100,9 @@ class WorkflowStatusMixin:
         return pipeline_status
 
     def set_ingestion_pipeline_status(
-        self, state: PipelineState, ingestion_status: Optional[IngestionStatus] = None
+        self,
+        state: PipelineState,
+        ingestion_status: Optional[IngestionStatus] = None,  # noqa: UP045
     ) -> None:
         """
         Method to set the pipeline status of current ingestion pipeline
@@ -122,14 +123,10 @@ class WorkflowStatusMixin:
                     pipeline_status = self._new_pipeline_status(state)
                 else:
                     # if workflow is ended then update the end date in status
-                    pipeline_status.endDate = Timestamp(
-                        int(datetime.now().timestamp() * 1000)
-                    )
+                    pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
                     pipeline_status.pipelineState = state
 
-                pipeline_status.status = (
-                    ingestion_status if ingestion_status else pipeline_status.status
-                )
+                pipeline_status.status = ingestion_status if ingestion_status else pipeline_status.status
                 # committing configurations can be a burden on resources,
                 # we dump a subset to be mindful of the payload size
                 pipeline_status.config = Map(
@@ -146,9 +143,7 @@ class WorkflowStatusMixin:
                 )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unhandled error trying to update Ingestion Pipeline status [{err}]"
-            )
+            logger.error(f"Unhandled error trying to update Ingestion Pipeline status [{err}]")
 
     def raise_from_status(self, raise_warnings=False):
         """
@@ -164,7 +159,7 @@ class WorkflowStatusMixin:
             return WorkflowResultStatus.FAILURE
         return WorkflowResultStatus.SUCCESS
 
-    def build_ingestion_status(self) -> Optional[IngestionStatus]:
+    def build_ingestion_status(self) -> Optional[IngestionStatus]:  # noqa: UP045
         """
         Get the results from the steps and prep the payload
         we'll send to the API
@@ -177,15 +172,13 @@ class WorkflowStatusMixin:
             ]
         )
 
-    def send_progress_update(
-        self, update_type: ProgressUpdateType = ProgressUpdateType.PROCESSING
-    ) -> None:
+    def send_progress_update(self, update_type: ProgressUpdateType = ProgressUpdateType.PROCESSING) -> None:
         """
         Send a progress update to the OpenMetadata server via SSE endpoint.
         Called periodically during workflow execution.
         """
         try:
-            from metadata.utils.progress_tracker import ProgressTrackerState
+            from metadata.utils.progress_tracker import ProgressTrackerState  # noqa: PLC0415
 
             if (
                 self.config.ingestionPipelineFQN
