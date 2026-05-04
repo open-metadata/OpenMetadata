@@ -15,7 +15,7 @@ package org.openmetadata.service.workflows.searchIndex;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isEntityNotFoundError;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isStaleReferenceError;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -151,7 +151,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
         List<EntityError> warningErrors = new ArrayList<>();
 
         for (EntityError error : result.getErrors()) {
-          if (isEntityNotFoundError(error)) {
+          if (isStaleReferenceError(error)) {
             warningErrors.add(error);
           } else {
             realErrors.add(error);
@@ -250,7 +250,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       if (!result.getErrors().isEmpty()) {
         List<EntityError> realErrors = new ArrayList<>();
         for (EntityError error : result.getErrors()) {
-          if (isEntityNotFoundError(error)) {
+          if (isStaleReferenceError(error)) {
             warningsCount++;
             LOG.debug("Skipping entity due to missing relationship: {}", error.getMessage());
           } else {
@@ -305,7 +305,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       if (result.getErrors() != null && !result.getErrors().isEmpty()) {
         List<EntityError> realErrors = new ArrayList<>();
         for (EntityError error : result.getErrors()) {
-          if (isEntityNotFoundError(error)) {
+          if (isStaleReferenceError(error)) {
             warningsCount++;
             LOG.debug("Skipping entity due to missing relationship: {}", error.getMessage());
           } else {

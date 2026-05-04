@@ -509,6 +509,8 @@ public class PartitionWorker {
           readSuccessCount, readErrorCount, warningsCount, readDurationNanos);
     }
 
+    recordReaderFailures(entityType, resultList, readErrorCount);
+
     if (readSuccessCount == 0) {
       LOG.debug(
           "{} read={}ms returned no indexable rows (warnings={}, errors={})",
@@ -517,30 +519,6 @@ public class PartitionWorker {
           warningsCount,
           readErrorCount);
       return new BatchResult(0, readErrorCount, warningsCount, nextCursor);
-    }
-
-    if (failureRecorder != null && readErrorCount > 0) {
-      for (EntityError entityError : listOrEmpty(resultList.getErrors())) {
-        Object rawEntity = entityError.getEntity();
-        String entityId = null;
-        if (rawEntity instanceof EntityInterface) {
-          UUID id = ((EntityInterface) rawEntity).getId();
-          if (id != null) {
-            entityId = id.toString();
-          }
-        } else if (rawEntity != null) {
-          entityId = rawEntity.toString();
-        }
-        if (entityId == null) {
-          LOG.warn(
-              "Skipping reader failure record for entityType={}: entityId is null, message={}",
-              entityType,
-              entityError.getMessage());
-          continue;
-        }
-        failureRecorder.recordReaderEntityFailure(
-            entityType, entityId, null, entityError.getMessage());
-      }
     }
 
     Map<String, Object> contextData = createContextData(entityType, statsTracker);
@@ -565,6 +543,40 @@ public class PartitionWorker {
               .withSubmittedCount(readSuccessCount)
               .withFailedCount(readSuccessCount)
               .withMessage("Failed to write batch to search index: " + e.getMessage()));
+    }
+  }
+
+  /**
+   * Persist per-entity reader failures so that downstream tooling (e.g. the failures dashboard)
+   * can show which specific records the reader could not hydrate. Runs whether or not the batch
+   * has any successful rows — losing failure diagnostics for "all-error" batches would defeat
+   * the point of the recorder.
+   */
+  private void recordReaderFailures(
+      String entityType, ResultList<?> resultList, int readErrorCount) {
+    if (failureRecorder == null || readErrorCount == 0 || resultList == null) {
+      return;
+    }
+    for (EntityError entityError : listOrEmpty(resultList.getErrors())) {
+      Object rawEntity = entityError.getEntity();
+      String entityId = null;
+      if (rawEntity instanceof EntityInterface) {
+        UUID id = ((EntityInterface) rawEntity).getId();
+        if (id != null) {
+          entityId = id.toString();
+        }
+      } else if (rawEntity != null) {
+        entityId = rawEntity.toString();
+      }
+      if (entityId == null) {
+        LOG.warn(
+            "Skipping reader failure record for entityType={}: entityId is null, message={}",
+            entityType,
+            entityError.getMessage());
+        continue;
+      }
+      failureRecorder.recordReaderEntityFailure(
+          entityType, entityId, null, entityError.getMessage());
     }
   }
 

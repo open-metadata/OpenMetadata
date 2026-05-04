@@ -35,43 +35,43 @@ class ReindexingUtilStaleRelationshipTest {
       "JsonProcessingException: Unexpected character at line 12";
 
   @Test
-  void isEntityNotFoundError_recognisesRelationshipNotFoundMessage() {
+  void isStaleReferenceError_recognisesRelationshipNotFoundMessage() {
     assertTrue(
-        ReindexingUtil.isEntityNotFoundError(
+        ReindexingUtil.isStaleReferenceError(
             new EntityError().withMessage(RELATIONSHIP_NOT_FOUND_MESSAGE)));
   }
 
   @Test
-  void isEntityNotFoundError_recognisesEntityNotFoundException() {
+  void isStaleReferenceError_recognisesEntityNotFoundException() {
     assertTrue(
-        ReindexingUtil.isEntityNotFoundError(
+        ReindexingUtil.isStaleReferenceError(
             new EntityError().withMessage(ENTITY_NOT_FOUND_MESSAGE)));
     assertTrue(
-        ReindexingUtil.isEntityNotFoundError(
+        ReindexingUtil.isStaleReferenceError(
             new EntityError().withMessage("Instance for testCase with id ... ")));
     assertTrue(
-        ReindexingUtil.isEntityNotFoundError(
+        ReindexingUtil.isStaleReferenceError(
             new EntityError().withMessage("Resource does not exist anymore")));
     assertTrue(
-        ReindexingUtil.isEntityNotFoundError(
+        ReindexingUtil.isStaleReferenceError(
             new EntityError().withMessage("Entity not found: testCase abc-123")));
   }
 
   @Test
-  void isEntityNotFoundError_doesNotMatchBareNotFoundOrUnrelatedMessages() {
+  void isStaleReferenceError_doesNotMatchBareNotFoundOrUnrelatedMessages() {
     assertFalse(
-        ReindexingUtil.isEntityNotFoundError(new EntityError().withMessage(REAL_ERROR_MESSAGE)));
+        ReindexingUtil.isStaleReferenceError(new EntityError().withMessage(REAL_ERROR_MESSAGE)));
     assertFalse(
-        ReindexingUtil.isEntityNotFoundError(
+        ReindexingUtil.isStaleReferenceError(
             new EntityError().withMessage("Database connection refused")));
     assertFalse(
-        ReindexingUtil.isEntityNotFoundError(
+        ReindexingUtil.isStaleReferenceError(
             new EntityError().withMessage("Column 'status' not found in result set")));
     assertFalse(
-        ReindexingUtil.isEntityNotFoundError(
+        ReindexingUtil.isStaleReferenceError(
             new EntityError().withMessage("SSL certificate not found")));
-    assertFalse(ReindexingUtil.isEntityNotFoundError(null));
-    assertFalse(ReindexingUtil.isEntityNotFoundError(new EntityError()));
+    assertFalse(ReindexingUtil.isStaleReferenceError(null));
+    assertFalse(ReindexingUtil.isStaleReferenceError(new EntityError()));
   }
 
   @Test

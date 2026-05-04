@@ -66,19 +66,21 @@ public class ReindexingUtil {
   }
 
   /**
-   * Returns true when an EntityError represents a stale relationship to a missing entity. These
-   * are expected during reindexing — for example when a time-series record
-   * (testCaseResolutionStatus, testCaseResult) was migrated without a corresponding
-   * entity_relationship row, or when an entity was hard-deleted out-of-band leaving its
-   * relationship rows behind. Such records cannot be meaningfully indexed and are reported as
-   * warnings rather than failing the entire batch.
+   * Returns true when an EntityError represents a stale reference — either a missing entity
+   * (canonical {@code EntityNotFoundException}) or a missing entity_relationship row (raised by
+   * {@code EntityRepository.ensureSingleRelationship} as "does not have expected relationship
+   * ..."). Both are expected during reindexing of long-lived records: e.g. a
+   * {@code testCaseResolutionStatus} migrated without a corresponding {@code parentOf} row, or
+   * an entity hard-deleted out-of-band leaving its relationship rows behind. Such records
+   * cannot be meaningfully indexed and are reported as warnings rather than failing the entire
+   * batch.
    *
    * <p>The patterns match the canonical message shapes from {@code CatalogExceptionMessage} and
    * {@code EntityNotFoundException} — bare {@code "not found"} is intentionally NOT matched
    * because it would misclassify unrelated errors like {@code "Column 'foo' not found in result
    * set"} or {@code "SSL certificate not found"}.
    */
-  public static boolean isEntityNotFoundError(EntityError error) {
+  public static boolean isStaleReferenceError(EntityError error) {
     if (error == null || error.getMessage() == null) {
       return false;
     }
@@ -102,7 +104,7 @@ public class ReindexingUtil {
     }
     List<EntityError> realErrors = new ArrayList<>(errors.size());
     for (EntityError error : errors) {
-      if (isEntityNotFoundError(error)) {
+      if (isStaleReferenceError(error)) {
         warningsOut.add(error);
       } else {
         realErrors.add(error);
