@@ -82,7 +82,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
       </div>
 
       {advancedProperties.length > 0 && (
-        <div className="tw:mt-3">
+        <div className="tw:my-3">
           <button
             aria-expanded={advancedOpen}
             className="tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:rounded-lg tw:border tw:border-primary tw:bg-primary
