@@ -1464,6 +1464,68 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   }
 
   /**
+   * {@code ?root=true} without {@code ?service=} must succeed: it returns every direct
+   * child of any service across the whole tenant. The depth predicate
+   * ({@code fqnHash NOT LIKE :serviceHashChild}) needs the bind to be present even in
+   * this case, but {@link org.openmetadata.service.jdbi3.ListFilter#getServiceCondition}
+   * only adds it when {@code ?service=} is present — the
+   * {@code ContainerDAO.rootListingParams} default ({@code '%.%.%'}) is what makes the
+   * SQL runnable here.
+   *
+   * <p>Regression guard for the "GET /containers?root=true (no service) crashes with a
+   * missing-named-parameter error" bug. Also verifies the depth check still excludes
+   * non-root descendants when no service prefix narrows the candidate set.
+   */
+  @Test
+  void test_rootListing_withoutServiceFilter_returnsRootsAcrossAllServices(TestNamespace ns) {
+    // Two distinct services. Each gets a root container and a child container so we can
+    // assert the listing covers both services and excludes children regardless of which
+    // service they belong to.
+    StorageService serviceA = StorageServiceTestFactory.createS3(ns);
+    StorageService serviceB = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer rootARequest = new CreateContainer();
+    rootARequest.setName(ns.prefix("noservice_rootA"));
+    rootARequest.setService(serviceA.getFullyQualifiedName());
+    Container rootA = createEntity(rootARequest);
+    Container childA = createChild(ns, serviceA, rootA, "noservice_childA");
+
+    CreateContainer rootBRequest = new CreateContainer();
+    rootBRequest.setName(ns.prefix("noservice_rootB"));
+    rootBRequest.setService(serviceB.getFullyQualifiedName());
+    Container rootB = createEntity(rootBRequest);
+    Container childB = createChild(ns, serviceB, rootB, "noservice_childB");
+
+    // ListParams with root=true but no service filter. Pagination: ask for a large page
+    // so both roots fit even if the tenant has unrelated rows from earlier tests.
+    ListParams params = new ListParams();
+    params.addFilter("root", "true");
+    params.setLimit(1000);
+
+    ListResponse<Container> rootContainers = listEntities(params);
+    assertNotNull(rootContainers);
+    assertNotNull(rootContainers.getData());
+
+    Set<UUID> ids =
+        rootContainers.getData().stream()
+            .map(Container::getId)
+            .collect(java.util.stream.Collectors.toSet());
+
+    assertTrue(
+        ids.contains(rootA.getId()),
+        "Root in serviceA must appear in ?root=true (no service filter) — rootListingParams default must allow cross-service listing");
+    assertTrue(
+        ids.contains(rootB.getId()),
+        "Root in serviceB must appear in ?root=true (no service filter)");
+    assertFalse(
+        ids.contains(childA.getId()),
+        "Child in serviceA must not appear — depth check must run even without service filter");
+    assertFalse(
+        ids.contains(childB.getId()),
+        "Child in serviceB must not appear — depth check must run even without service filter");
+  }
+
+  /**
    * Soft-deleted root containers must respect the {@code ?include=} flag the UI's "Deleted"
    * toggle sends. {@code include=non-deleted} (the default) hides them; {@code include=all}
    * surfaces them; {@code include=deleted} surfaces only deleted rows. The depth-check
