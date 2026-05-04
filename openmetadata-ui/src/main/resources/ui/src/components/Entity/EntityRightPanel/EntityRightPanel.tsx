@@ -47,7 +47,6 @@ interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   customProperties?: ExtentionEntities[T];
   editCustomAttributePermission?: boolean;
   editDataProductPermission?: boolean;
-  editAllPermission?: boolean;
   onDataProductUpdate?: (dataProducts: DataProduct[]) => Promise<void>;
 }
 
@@ -75,10 +74,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
     domains: EntityReference[];
     dataProducts: EntityReference[];
     id: string;
-    name?: string;
-    displayName?: string;
-    columns?: Array<{ fullyQualifiedName?: string; name?: string }>;
-    reviewers?: EntityReference[];
   }>();
 
   const { domains, dataProducts, id: entityId } = data ?? {};
