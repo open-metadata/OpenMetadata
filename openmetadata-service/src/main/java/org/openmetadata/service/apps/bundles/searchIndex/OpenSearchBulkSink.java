@@ -896,6 +896,22 @@ public class OpenSearchBulkSink implements BulkSink {
   }
 
   public static class CustomBulkProcessor {
+    /**
+     * Cap on how long a flush will wait for a permit before declaring the bulk failed. With an
+     * unbounded {@code acquire()} a single leaked async future (no completion, no release) parks
+     * every subsequent caller permanently and the entire pipeline freezes at whatever record
+     * count was in flight at the time. 60s is conservative — well above any realistic OS bulk
+     * latency, well below "user gives up and bounces the pod". Stored per-instance (instead of
+     * a static constant) so tests can shorten it without sleeping for a minute.
+     */
+    private static final long DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS = 60L;
+
+    // Volatile for cross-thread visibility. Read by flushInternal on the scheduler thread and
+    // from any caller that triggers a flush via add(); written by the package-private test
+    // setter from a different thread. Without volatile a stale value could be observed.
+    private volatile long semaphoreAcquireTimeoutSeconds =
+        DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS;
+
     private final OpenSearchAsyncClient asyncClient;
     private final List<BulkOperation> buffer = new ArrayList<>();
 
@@ -1036,6 +1052,15 @@ public class OpenSearchBulkSink implements BulkSink {
     }
 
     /**
+     * Test-only override for the semaphore acquire timeout. Production code uses 60s; tests
+     * exercising the timeout path shorten this so they don't sleep for a minute. Not exposed
+     * via any non-test caller, hence package-private.
+     */
+    void setSemaphoreAcquireTimeoutSecondsForTesting(long seconds) {
+      this.semaphoreAcquireTimeoutSeconds = seconds;
+    }
+
+    /**
      * Flush pending requests and wait for all active bulk requests to complete. Unlike awaitClose,
      * this does not close the processor - it can continue to be used after this call.
      *
@@ -1093,12 +1118,32 @@ public class OpenSearchBulkSink implements BulkSink {
       int numberOfActions = toFlush.size();
       LOG.debug("Executing bulk request {} with {} actions", executionId, numberOfActions);
 
+      // Bounded acquire: a leaked bulk future (callback never fires — e.g., the OpenSearch HC5
+      // I/O reactor died, PR #27698 territory) used to drain this semaphore and park every
+      // subsequent caller forever. With a timeout we surface the leak as a permanent failure
+      // so workers can keep moving and operators see an actual error instead of the pipeline
+      // silently freezing at a fixed record count.
+      boolean acquired;
       try {
-        concurrentRequestSemaphore.acquire();
+        acquired =
+            concurrentRequestSemaphore.tryAcquire(semaphoreAcquireTimeoutSeconds, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         LOG.error("Interrupted while waiting for semaphore", e);
         Thread.currentThread().interrupt();
         recordPermanentFailure(toFlush, numberOfActions, "Interrupted while waiting for semaphore");
+        if (metrics != null) {
+          metrics.decrementPendingBulkRequests();
+        }
+        return;
+      }
+      if (!acquired) {
+        LOG.error(
+            "Bulk semaphore exhausted for {}s — recording {} ops as failed (active bulk requests={}). Likely a leaked async future.",
+            semaphoreAcquireTimeoutSeconds,
+            numberOfActions,
+            activeBulkRequests.get());
+        recordPermanentFailure(
+            toFlush, numberOfActions, "Bulk semaphore timeout — likely future leak");
         if (metrics != null) {
           metrics.decrementPendingBulkRequests();
         }
