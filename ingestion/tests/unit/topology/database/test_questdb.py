@@ -37,10 +37,10 @@ from metadata.ingestion.source.database.questdb.metadata import QuestDBSource
 from metadata.ingestion.source.database.questdb.models import QuestDBTableRow
 from metadata.ingestion.source.database.questdb.utils import (
     _get_columns,
-    _get_materialized_view_definition,
     _get_view_definition_from_views,
-    _query_tables,
+    get_materialized_view_definition,
     patch_questdb_dialect,
+    query_tables,
 )
 
 # ── Shared test helpers ───────────────────────────────────────────────────────
@@ -214,7 +214,7 @@ def test_get_columns_falls_back_to_nulltype_for_unknown_type():
     assert type(columns[0]["type"]).__name__ == "NullType"
 
 
-# ── utils: _query_tables ──────────────────────────────────────────────────────
+# ── utils: query_tables ──────────────────────────────────────────────────────
 
 
 def test_query_tables_uses_table_type_for_categorization():
@@ -242,7 +242,7 @@ def test_query_tables_uses_table_type_for_categorization():
         ),
     ]
 
-    result = _query_tables(connection)
+    result = query_tables(connection)
     names = [r.name for r in result]
 
     assert "sensor_readings" in names
@@ -276,7 +276,7 @@ def test_query_tables_identifies_materialized_views():
         ),
     ]
 
-    result = _query_tables(connection)
+    result = query_tables(connection)
     by_name = {r.name: r for r in result}
 
     assert by_name["sensor_daily"].table_type == "M"
@@ -301,7 +301,7 @@ def test_query_tables_sets_partition_by():
         ),
     ]
 
-    result = _query_tables(connection)
+    result = query_tables(connection)
     by_name = {r.name: r for r in result}
 
     assert by_name["orders"].partition_by == "DAY"
@@ -590,7 +590,7 @@ def test_get_materialized_view_definition_returns_sql():
     connection = MagicMock()
     connection.execute.return_value.fetchone.return_value = _row(view_sql="SELECT ts FROM sensor_readings")
 
-    result = _get_materialized_view_definition(connection, "sensor_daily")
+    result = get_materialized_view_definition(connection, "sensor_daily")
 
     assert result == "SELECT ts FROM sensor_readings"
     query_text = str(connection.execute.call_args[0][0])
@@ -602,7 +602,7 @@ def test_get_materialized_view_definition_returns_none_when_not_found():
     connection = MagicMock()
     connection.execute.return_value.fetchone.return_value = None
 
-    result = _get_materialized_view_definition(connection, "nonexistent")
+    result = get_materialized_view_definition(connection, "nonexistent")
 
     assert result is None
 
@@ -621,7 +621,7 @@ def test_get_schema_definition_returns_materialized_view_sql():
     with (
         patch.object(type(source), "connection", new_callable=PropertyMock, return_value=MagicMock()),
         patch(
-            "metadata.ingestion.source.database.questdb.metadata._get_materialized_view_definition",
+            "metadata.ingestion.source.database.questdb.metadata.get_materialized_view_definition",
             return_value="SELECT ts FROM sensor_readings",
         ) as mock_get,
     ):
@@ -642,7 +642,7 @@ def test_get_schema_definition_returns_none_when_definition_missing():
     with (
         patch.object(type(source), "connection", new_callable=PropertyMock, return_value=MagicMock()),
         patch(
-            "metadata.ingestion.source.database.questdb.metadata._get_materialized_view_definition",
+            "metadata.ingestion.source.database.questdb.metadata.get_materialized_view_definition",
             return_value=None,
         ),
     ):
