@@ -39,8 +39,8 @@ from metadata.ingestion.source.database.questdb.connection import (
     QUESTDB_DEFAULT_DATABASE,
 )
 from metadata.ingestion.source.database.questdb.utils import (
-    _get_materialized_view_definition,
-    _query_tables,
+    get_materialized_view_definition,
+    query_tables,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -63,7 +63,7 @@ class QuestDBSource(CommonDbSourceService):
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection = config.serviceConnection.root.config
+        connection: QuestDBConnection = config.serviceConnection.root.config
         if not isinstance(connection, QuestDBConnection):
             raise InvalidSourceException(f"Expected QuestDBConnection, but got {connection}")
         return cls(config, metadata)
@@ -71,7 +71,7 @@ class QuestDBSource(CommonDbSourceService):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata) -> None:
         super().__init__(config, metadata)
         try:
-            rows = _query_tables(self.connection)
+            rows = query_tables(self.connection)
             self._tables_cache = {row.name: row for row in rows}
             logger.info("Loaded %d entries from QuestDB tables() catalog", len(self._tables_cache))
         except Exception as exc:
@@ -123,7 +123,7 @@ class QuestDBSource(CommonDbSourceService):
     def get_schema_definition(self, table_type, table_name, schema_name, inspector):
         if table_type == TableType.MaterializedView:
             try:
-                result = _get_materialized_view_definition(self.connection, table_name)
+                result = get_materialized_view_definition(self.connection, table_name)
                 return str(result).strip() if result else None
             except Exception as exc:
                 logger.debug(traceback.format_exc())

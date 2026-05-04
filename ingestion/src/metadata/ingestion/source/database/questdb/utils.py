@@ -121,7 +121,7 @@ def _empty_table_comment(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
     return {"text": None}
 
 
-def _query_tables(connection: Connection) -> list[QuestDBTableRow]:
+def query_tables(connection: Connection) -> list[QuestDBTableRow]:
     """
     Return all rows from QuestDB's ``tables()`` function as ``QuestDBTableRow`` instances.
     """
@@ -151,7 +151,7 @@ def _get_view_definition_from_views(
     return QuestDBViewDefinitionRow.model_validate(dict(raw._mapping)).view_sql
 
 
-def _get_materialized_view_definition(
+def get_materialized_view_definition(
     connection: Connection,
     view_name: str,
 ) -> str | None:
