@@ -27,7 +27,7 @@ import random
 import string
 import sys
 import time
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 # Force unbuffered output so progress shows up under tee/redirect.
 sys.stdout.reconfigure(line_buffering=True)
@@ -92,6 +92,46 @@ DEPTH_DISTRIBUTION = {
     9: 3000,
     10: 1000,
 }
+
+
+def scale_depth_counts(distribution: Dict[int, int], target: int) -> Dict[int, int]:
+    """Scale a depth distribution to a requested total, preserving the exact total.
+
+    Floor each weighted share, then hand out the leftover one-by-one to the depths with the
+    largest fractional remainder. Honors --containers exactly (10 → 10 containers, not 10 *
+    len(distribution)) and produces a stable distribution for the same input. Depth 1 must
+    always have at least one container so subsequent depths have a parent to attach to; the
+    floor would otherwise zero it out at very small targets.
+    """
+    if target <= 0:
+        return {d: 0 for d in distribution}
+    base_total = sum(distribution.values())
+    raw = {d: c * target / base_total for d, c in distribution.items()}
+    floored = {d: int(v) for d, v in raw.items()}
+    # Reserve one slot at depth 1 so the tree has a root layer.
+    if floored.get(1, 0) == 0 and target >= 1:
+        floored[1] = 1
+    deficit = target - sum(floored.values())
+    if deficit > 0:
+        remainders = sorted(
+            ((d, raw[d] - floored[d]) for d in raw),
+            key=lambda x: (-x[1], x[0]),
+        )
+        for d, _ in remainders[:deficit]:
+            floored[d] += 1
+    elif deficit < 0:
+        # Overshoot from the depth=1 reservation: take back from depths with the largest counts.
+        excess = -deficit
+        biggest = sorted(floored.items(), key=lambda kv: (-kv[1], kv[0]))
+        for d, _ in biggest:
+            if excess == 0:
+                break
+            if d == 1:
+                continue
+            take = min(excess, floored[d])
+            floored[d] -= take
+            excess -= take
+    return floored
 
 CLASSIFICATIONS = [
     ("PIIClass", ["Email", "Phone", "Address", "SSN", "DOB",
@@ -357,6 +397,11 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
+    # The seeded RNG is consumed concurrently by worker threads, so seed determinism is
+    # best-effort: the *layout* (depth distribution, target totals) is reproducible, the
+    # specific tag/name/column choices interleave non-deterministically across threads. Good
+    # enough for perf reproducibility; if you need exact byte-for-byte output, drop
+    # --workers to 1.
     random.seed(args.seed)
     print(f"Server: {args.server}", flush=True)
     print(f"Target: {args.containers} containers, {args.workers} workers, batch {args.batch_size}", flush=True)
@@ -368,9 +413,10 @@ def main():
     ALL_TAG_FQNS = ensure_classifications_and_tags(metadata)
     service_name = ensure_storage_service(metadata, args.service)
 
-    # Scale the depth distribution to match the requested total.
-    scale = args.containers / sum(DEPTH_DISTRIBUTION.values())
-    depth_counts = {d: max(1, round(c * scale)) for d, c in DEPTH_DISTRIBUTION.items()}
+    # Scale the depth distribution to honor --containers exactly. Floor-and-distribute the
+    # remainder largest-first so the totals add up to the requested target without overshoot
+    # (the previous max(1, round(...)) form clamped tiny inputs to >= len(distribution)).
+    depth_counts = scale_depth_counts(DEPTH_DISTRIBUTION, args.containers)
     print(f"Depth counts: {depth_counts}", flush=True)
     print(f"Sum: {sum(depth_counts.values())}", flush=True)
 

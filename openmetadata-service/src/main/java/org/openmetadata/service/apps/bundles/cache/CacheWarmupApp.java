@@ -219,6 +219,15 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     return Boolean.parseBoolean(System.getProperty("om.cache.warmup.distributedClaim", "false"));
   }
 
+  /** When true, this run warms every entity type even if another instance has already
+   *  claimed it. Use sparingly — concurrent warmers race on the same Redis keys, which is
+   *  idempotent but wastes work and may briefly serve mixed-version reads. */
+  private boolean forceWarmup() {
+    return appConfig != null
+        && appConfig.getForce() != null
+        && Boolean.TRUE.equals(appConfig.getForce());
+  }
+
   private void initJobData(JobExecutionContext ctx) {
     boolean isOnDemand = ctx.getJobDetail().getKey().getName().equals(ON_DEMAND_JOB);
     // For on-demand runs, OmAppJobListener places the user-supplied config (with overrides
@@ -296,9 +305,14 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       LOG.debug("Skipping user entity type — not cached by design");
       return;
     }
-    if (distributedClaimEnabled() && !claimEntityType(entityType)) {
+    if (distributedClaimEnabled() && !forceWarmup() && !claimEntityType(entityType)) {
       LOG.info("Skipping {} — claimed by another instance", entityType);
       return;
+    }
+    if (distributedClaimEnabled() && forceWarmup()) {
+      LOG.info(
+          "Force warmup enabled for {} — bypassing distributed claim (operator override)",
+          entityType);
     }
     EntityRepository<?> repository;
     EntityDAO<?> dao;
@@ -354,7 +368,12 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       try {
         page = dao.listAfterWithOffset(batchSize, offset);
       } catch (Exception e) {
+        // DB read failures during warmup leave the rest of this entity type cold. Mark
+        // partial so the run reports ACTIVE_ERROR (not COMPLETED) and the saved checkpoint
+        // is preserved for the next run instead of being cleared at the end of warmEntity.
         LOG.warn("Bulk fetch failed for {} at offset {}", entityType, offset, e);
+        partiallyWarmed = true;
+        bailedOut = true;
         break;
       }
       if (page.isEmpty()) break;
@@ -400,6 +419,9 @@ public class CacheWarmupApp extends AbstractNativeApplication {
           // bundle keys stale.
           if (bundleResult.success() == 0 && bundleResult.failed() > 0) {
             bundleOk = false;
+            // Bundle keys are cold even though entity JSON is warm. Surface as partial so
+            // the run status reflects the incoherent state and the operator can re-trigger.
+            partiallyWarmed = true;
             LOG.warn(
                 "Bundle warmup pass failed for {} batch at offset {} ({} rows); holding"
                     + " checkpoint so the next run retries.",
@@ -417,10 +439,13 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       } catch (RuntimeException e) {
         // Redis rejected the batch. Count every row in this page as failed so warmup progress and
         // the WebSocket status reflect the actual state — the cache is not warm for these rows.
+        // Mark partial so the run reports ACTIVE_ERROR rather than COMPLETED — the bundle/key
+        // state for these rows is incoherent and a follow-up retry should re-warm them.
         LOG.warn("Pipelined write failed for {} batch at offset {}", entityType, offset, e);
         int pageTotal = pageSuccess + pageFailed;
         failed += pageTotal;
         updateEntityStats(entityType, 0, pageTotal);
+        partiallyWarmed = true;
       }
       offset += page.size();
       sendUpdates(jobExecutionContext, false);

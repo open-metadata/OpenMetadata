@@ -12,6 +12,7 @@
  */
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
@@ -134,8 +135,11 @@ public class SearchIndexingFieldsParityIT {
     HttpClient httpClient = SdkClients.adminClient().getHttpClient();
 
     waitForCurrentRunCompletion(httpClient);
+    // Snapshot the latest run BEFORE triggering. Without this, a fast poll after trigger can
+    // observe the previous completed run and pass without ever seeing the new one.
+    Long previousRunStartTime = readLatestRunStartTime(httpClient);
     triggerWithDefaultConfig(httpClient);
-    AppRunRecord run = waitForLatestRunSuccess(httpClient);
+    AppRunRecord run = waitForLatestRunSuccess(httpClient, previousRunStartTime);
 
     assertNoFieldValidationFailures(run);
   }
@@ -162,7 +166,8 @@ public class SearchIndexingFieldsParityIT {
             });
   }
 
-  private static AppRunRecord waitForLatestRunSuccess(HttpClient httpClient) {
+  private static AppRunRecord waitForLatestRunSuccess(
+      HttpClient httpClient, Long previousRunStartTime) {
     AppRunRecord[] holder = new AppRunRecord[1];
     Awaitility.await("Reindex run completion")
         .atMost(Duration.ofMinutes(10))
@@ -179,6 +184,19 @@ public class SearchIndexingFieldsParityIT {
                       AppRunRecord.class);
               assertNotNull(run);
               assertNotNull(run.getStatus());
+              // Reject the previous run record — Quartz creates the new AppRunRecord
+              // asynchronously, so the latest endpoint can briefly serve the prior completed
+              // run after our trigger. The new run is identified by a later startTime.
+              if (previousRunStartTime != null
+                  && run.getStartTime() != null
+                  && run.getStartTime() <= previousRunStartTime) {
+                throw new AssertionError(
+                    "Latest run is still the pre-trigger one (startTime="
+                        + run.getStartTime()
+                        + ", previous="
+                        + previousRunStartTime
+                        + "); waiting for new run record");
+              }
               String status = run.getStatus().value();
               assertTrue(
                   "success".equalsIgnoreCase(status)
@@ -189,9 +207,24 @@ public class SearchIndexingFieldsParityIT {
               holder[0] = run;
             });
     AppRunRecord run = holder[0];
-    String status = run.getStatus().value();
-    assertNotEquals("failed", status.toLowerCase(), () -> "Reindex job failed: " + run);
+    String status = run.getStatus().value().toLowerCase();
+    assertNotEquals("failed", status, () -> "Reindex job failed: " + run);
     return run;
+  }
+
+  /** Read the latest run's startTime, or null if no prior run exists / endpoint is empty. */
+  private static Long readLatestRunStartTime(HttpClient httpClient) {
+    try {
+      AppRunRecord latest =
+          httpClient.execute(
+              HttpMethod.GET,
+              "/v1/apps/name/" + APP_NAME + "/runs/latest",
+              null,
+              AppRunRecord.class);
+      return latest == null ? null : latest.getStartTime();
+    } catch (Exception ignored) {
+      return null;
+    }
   }
 
   private static void waitForCurrentRunCompletion(HttpClient httpClient) {
@@ -239,7 +272,7 @@ public class SearchIndexingFieldsParityIT {
     assertNotNull(entityStats, "entityStats absent — cannot verify per-entity failures");
 
     Set<String> typesWithFailures = new LinkedHashSet<>();
-    long totalProcessedAcrossWatchedTypes = 0;
+    long totalSuccessAcrossWatchedTypes = 0;
 
     for (String entityType : FIELDS_MISSING_TYPES) {
       Object perTypeStats = entityStats.get(entityType);
@@ -248,10 +281,12 @@ public class SearchIndexingFieldsParityIT {
       }
       Map<String, Object> perType = readMap(perTypeStats);
       long failed = asLong(perType.get("failedRecords"));
+      long success = asLong(perType.get("successRecords"));
       long total = asLong(perType.get("totalRecords"));
-      totalProcessedAcrossWatchedTypes += total;
+      totalSuccessAcrossWatchedTypes += success;
       if (failed > 0) {
-        typesWithFailures.add(entityType + "(failed=" + failed + " total=" + total + ")");
+        typesWithFailures.add(
+            entityType + "(failed=" + failed + " success=" + success + " total=" + total + ")");
       }
     }
 
@@ -264,11 +299,15 @@ public class SearchIndexingFieldsParityIT {
                 + " EntityRepository.allowedFields rejects. Failing types: "
                 + typesWithFailures);
 
+    // Require at least one successful record across the watched types. totalRecords is seeded
+    // before any partition runs, so it would pass even for an early-aborted run; successRecords
+    // only ticks once the Reader → Process → Sink pipeline has actually walked at least one
+    // entity through Entity.getFields, which is the validation we care about.
     assertTrue(
-        totalProcessedAcrossWatchedTypes > 0,
-        "None of the watched fields-missing entity types had any seeded data. The test cannot"
-            + " distinguish 'all clean' from 'nothing exercised'. Seed at least one entity of a"
-            + " watched type before running this test.");
+        totalSuccessAcrossWatchedTypes > 0,
+        "None of the watched fields-missing entity types had any successful records. The test"
+            + " cannot distinguish 'all clean' from 'nothing exercised'. Seed at least one"
+            + " entity of a watched type and ensure the run completed before assertion.");
   }
 
   @SuppressWarnings("unchecked")
@@ -290,12 +329,5 @@ public class SearchIndexingFieldsParityIT {
       return n.longValue();
     }
     return Long.parseLong(o.toString());
-  }
-
-  private static void assertNotEquals(
-      String expected, String actual, java.util.function.Supplier<String> msg) {
-    if (expected.equalsIgnoreCase(actual)) {
-      throw new AssertionError(msg.get());
-    }
   }
 }

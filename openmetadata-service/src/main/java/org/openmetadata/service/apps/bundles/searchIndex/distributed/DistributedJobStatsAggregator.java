@@ -171,22 +171,35 @@ public class DistributedJobStatsAggregator {
   }
 
   /**
-   * Stop the stats aggregation.
+   * Stop the stats aggregation. Idempotent — repeated calls (e.g. executor stop racing
+   * self-stop) shut the scheduler down at most once.
    */
   public void stop() {
-    if (running.compareAndSet(true, false)) {
-      if (scheduler != null) {
-        scheduler.shutdown();
-        try {
-          if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
-            scheduler.shutdownNow();
-          }
-        } catch (InterruptedException e) {
-          scheduler.shutdownNow();
-          Thread.currentThread().interrupt();
-        }
-      }
+    boolean wasRunning = running.compareAndSet(true, false);
+    // Use the running CAS to gate the LOG line, but always attempt scheduler shutdown so a
+    // caller that previously flipped running=false (self-stop) can still drive the scheduler
+    // termination on a separate thread without deadlocking on its own task.
+    shutdownScheduler();
+    if (wasRunning) {
       LOG.info("Stopped stats aggregator for job {}", jobId);
+    }
+  }
+
+  private final java.util.concurrent.atomic.AtomicBoolean schedulerShutDown =
+      new java.util.concurrent.atomic.AtomicBoolean(false);
+
+  private void shutdownScheduler() {
+    if (scheduler == null || !schedulerShutDown.compareAndSet(false, true)) {
+      return;
+    }
+    scheduler.shutdown();
+    try {
+      if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+        scheduler.shutdownNow();
+      }
+    } catch (InterruptedException e) {
+      scheduler.shutdownNow();
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -287,7 +300,19 @@ public class DistributedJobStatsAggregator {
           jobId,
           status,
           SHUTDOWN_GRACE_MS);
-      stop();
+      // The polling task runs ON `scheduler`. Calling stop() inline would deadlock —
+      // scheduler.awaitTermination(5s) blocks waiting for *this* task to finish, and the task
+      // can't finish until awaitTermination returns. We split the work: flip `running=false`
+      // synchronously (so the next poll cycle bails out immediately and isRunning() reflects
+      // the new state), and hand the scheduler termination off to a daemon thread that runs
+      // after this task returns. Both paths converge in stop(): wherever it's called, the
+      // schedulerShutDown CAS makes scheduler.shutdown() run at most once.
+      running.set(false);
+      Thread shutdownThread =
+          new Thread(this::shutdownScheduler, "stats-aggregator-self-stop-" + jobId);
+      shutdownThread.setDaemon(true);
+      shutdownThread.start();
+      LOG.info("Stopped stats aggregator for job {} (self-stop)", jobId);
       return true;
     }
     return false;
