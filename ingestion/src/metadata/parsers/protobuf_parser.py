@@ -19,13 +19,14 @@ import sys
 import traceback
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union,Type
+from typing import Optional, Union
 
 import grpc_tools.protoc
 from google.protobuf.message import Message
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType
+from metadata.generated.schema.entity.data.topic import FieldName
 from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel
 from metadata.utils.helpers import snake_to_camel
 from metadata.utils.logger import ingestion_logger
@@ -73,12 +74,6 @@ class ProtobufDataTypes(Enum):
 class ProtobufParserConfig(BaseModel):
     """
     Protobuf Parser Config class
-    :param schema_name: Name of protobuf schema
-    :param schema_text: Protobuf schema definition in text format
-    :param base_file_path: A temporary directory will be created under this path for
-      generating the files required for protobuf parsing and compiling. By default
-      the directory will be created under "/tmp/protobuf_openmetadata" unless it is
-      specified in the parameter.
     """
 
     schema_name: str
@@ -86,7 +81,7 @@ class ProtobufParserConfig(BaseModel):
     base_file_path: Optional[str] = "/tmp/protobuf_openmetadata"  # noqa: UP045
 
 
-def _resolve_message_class(module: object, schema_name: str):
+def _resolve_message_class(module: object, schema_name: str) -> Message | None:
     """
     Resolve the top-level Protobuf message class from a compiled _pb2 module.
 
@@ -118,8 +113,14 @@ def _resolve_message_class(module: object, schema_name: str):
     # ------------------------------------------------------------------
     camel_name = snake_to_camel(schema_name)
     candidate = getattr(module, camel_name, None)
-    if candidate is not None and isinstance(candidate, type) and issubclass(candidate, Message):
-        logger.debug(f"Resolved protobuf message '{camel_name}' via name match for schema '{schema_name}'")
+    if (
+        candidate is not None
+        and isinstance(candidate, type)
+        and issubclass(candidate, Message)
+    ):
+        logger.debug(
+            f"Resolved protobuf message '{camel_name}' via name match for schema '{schema_name}'"
+        )
         return candidate()
 
     # ------------------------------------------------------------------
@@ -172,12 +173,12 @@ class ProtobufParser:
 
     config: ProtobufParserConfig
 
-    def __init__(self, config):
+    def __init__(self, config: ProtobufParserConfig) -> None:
         self.config = config
         self.proto_interface_dir = f"{self.config.base_file_path}/interfaces"
         self.generated_src_dir = f"{self.config.base_file_path}/generated/"
 
-    def load_module(self, module):
+    def load_module(self, module: str) -> object:
         """
         Get the python module from path
         """
@@ -202,7 +203,9 @@ class ProtobufParser:
             proto_path = self.proto_interface_dir
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}")
+            logger.warning(
+                f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}"
+            )
         else:
             return proto_path, file_path
         return None
@@ -225,45 +228,59 @@ class ProtobufParser:
 
             # import the python file
             if self.generated_src_dir not in sys.path:
-                sys.path.insert(0, self.generated_src_dir)  # ensure generated src dir is on sys.path for imports
+                sys.path.insert(
+                    0, self.generated_src_dir
+                )  # ensure generated src dir is on sys.path for imports
             generated_src_dir_path = Path(self.generated_src_dir)
-            py_file = next(generated_src_dir_path.glob(f"{self.config.schema_name}_pb2.py"))
+            py_file = next(
+                generated_src_dir_path.glob(f"{self.config.schema_name}_pb2.py")
+            )
             module_name = Path(py_file).stem
             message = importlib.import_module(module_name)
             # get the class and create a object instance
             instance = _resolve_message_class(message, self.config.schema_name)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to create protobuf python module for {self.config.schema_name}: {exc}")
+            logger.warning(
+                f"Unable to create protobuf python module for {self.config.schema_name}: {exc}"
+            )
         else:
             return instance
         return None
 
-    def parse_protobuf_schema(self, cls: Type[FieldModel] | Type[Column] = FieldModel) -> list[FieldModel | Column] | None:  # noqa: UP007, UP045
+    def parse_protobuf_schema(
+        self, cls: type[Union[FieldModel, Column]] = FieldModel  # noqa: UP007
+    ) -> Optional[list[Union[FieldModel, Column]]]:  # noqa: UP007, UP045
         """
         Method to parse the protobuf schema
         """
-        field_models = None
+        field_models: list[FieldModel | Column] | None = None
         try:
             result = self.create_proto_files()
             if result is None:
-                logger.warning(f"Failed to create proto files for '{self.config.schema_name}'")
+                logger.warning(
+                    f"Failed to create proto files for '{self.config.schema_name}'"
+                )
                 return None
 
             proto_path, file_path = result
 
-            instance = self.get_protobuf_python_object(proto_path=proto_path, file_path=file_path)
+            instance = self.get_protobuf_python_object(
+                proto_path=proto_path, file_path=file_path
+            )
 
             if instance is None:
-                logger.warning(f"Could not resolve a Protobuf message class for schema '{self.config.schema_name}'.")
+                logger.warning(
+                    f"Could not resolve a Protobuf message class for schema '{self.config.schema_name}'."
+                )
                 return None
 
-            if cls == Column:
+            if cls is Column:
                 field_models = [
                     Column(
-                        name=instance.DESCRIPTOR.name,
+                        name=ColumnName(instance.DESCRIPTOR.name),
                         displayName=instance.DESCRIPTOR.name,
-                        dataType=DataType.RECORD.value,
+                        dataType=DataType.RECORD,
                         arrayDataType=None,
                         dataLength=None,
                         precision=None,
@@ -277,97 +294,138 @@ class ProtobufParser:
                         profile=None,
                         customMetrics=None,
                         extension=None,
-                        children=self.get_protobuf_fields(
-                            instance.DESCRIPTOR.fields, cls=cls
-                        ),
+                        children=self._get_column_fields(instance.DESCRIPTOR.fields),
                     )
                 ]
             else:
                 field_models = [
                     FieldModel(
-                        name=instance.DESCRIPTOR.name,
+                        name=FieldName(instance.DESCRIPTOR.name),
                         displayName=instance.DESCRIPTOR.name,
-                        dataType=DataType.RECORD.value,
+                        dataType=DataTypeTopic.RECORD,
                         dataTypeDisplay=None,
                         description=None,
                         tags=None,
-                        children=self.get_protobuf_fields(
-                            instance.DESCRIPTOR.fields, cls=cls
-                        ),
+                        children=self._get_field_models(instance.DESCRIPTOR.fields),
                     )
                 ]
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}")
+            logger.warning(
+                f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}"
+            )
         finally:
             if Path(self.config.base_file_path).exists():
                 shutil.rmtree(self.config.base_file_path, ignore_errors=True)
         return field_models or None
 
-    def _get_field_type(self, type_: int, cls: Type[FieldModel] | Type[Column]) -> str:
+    # def _get_field_type(self, type_: int) -> DataType:
+    #     if type_ > 18:
+    #         return DataType.UNKNOWN
+    #     name = ProtobufDataTypes(type_).name
+    #     if name == ProtobufDataTypes.FIXED.name:
+    #         return DataType.INT
+    #     else:
+    #         return DataType[name]
+
+    def _get_field_type_for_column(self, type_: int) -> DataType:
+        """Return a DataType enum member for Column fields."""
         if type_ > 18:
-            return DataType.UNKNOWN.value
-        data_type = ProtobufDataTypes(type_).name
-        if cls == Column and data_type == DataTypeTopic.FIXED.value:
-            return DataType.INT.value
-        return data_type
+            return DataType.UNKNOWN
+        name = ProtobufDataTypes(type_).name
+        # FIXED maps to INT for Column (table) context
+        if name == ProtobufDataTypes.FIXED.name:
+            return DataType.INT
+        # Map ProtobufDataTypes name to DataType enum member
+        try:
+            return DataType[name]
+        except KeyError:
+            return DataType.UNKNOWN
+
+    def _get_field_type_for_field_model(self, type_: int) -> DataTypeTopic:
+        """Return a DataTypeTopic enum member for FieldModel (topic) fields."""
+        if type_ > 18:
+            return DataTypeTopic.UNKNOWN
+        name = ProtobufDataTypes(type_).name
+        # return DataTypeTopic[name]
+        try:
+            return DataTypeTopic[name]
+        except KeyError:
+            return DataTypeTopic.UNKNOWN
+
+    def _get_column_fields(self, fields) -> list[Column] | None:
+        """Recursively convert protobuf fields into Column objects."""
+        result: list[Column] = []
+        for field in fields:
+            try:
+                result.append(
+                    Column(
+                        name=ColumnName(field.name),  # FIX: wrap in ColumnName
+                        displayName=field.name,
+                        dataType=self._get_field_type_for_column(
+                            field.type
+                        ),  # FIX: enum member
+                        arrayDataType=None,
+                        dataLength=None,
+                        precision=None,
+                        scale=None,
+                        dataTypeDisplay=None,
+                        description=None,
+                        tags=None,
+                        constraint=None,
+                        ordinalPosition=None,
+                        jsonSchema=None,
+                        profile=None,
+                        customMetrics=None,
+                        extension=None,
+                        children=(
+                            self._get_column_fields(field.message_type.fields)
+                            if field.type == 11
+                            else None
+                        ),
+                    )
+                )
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unable to parse the protobuf schema into Column models: {exc}"
+                )
+        return result or None
+
+    def _get_field_models(self, fields) -> list[FieldModel] | None:
+        """Recursively convert protobuf fields into FieldModel objects."""
+        result: list[FieldModel] = []
+        for field in fields:
+            try:
+                result.append(
+                    FieldModel(
+                        name=FieldName(field.name),  # FIX: wrap in FieldName
+                        displayName=field.name,
+                        dataType=self._get_field_type_for_field_model(
+                            field.type
+                        ),  # FIX: enum member
+                        dataTypeDisplay=None,
+                        description=None,
+                        tags=None,
+                        children=(
+                            self._get_field_models(field.message_type.fields)
+                            if field.type == 11
+                            else None
+                        ),
+                    )
+                )
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unable to parse the protobuf schema into FieldModel models: {exc}"
+                )
+        return result or None
 
     def get_protobuf_fields(
         self,
         fields,
-        cls: Type[FieldModel] | Type[Column] = FieldModel,
-    ) -> list[FieldModel | Column] | None :  # noqa: UP007, UP045
-        """
-        Recursively convert the parsed schema into required models
-        """
-        field_models: list[FieldModel | Column] = []
-
-        for field in fields:
-            try:
-                if cls == Column:
-                    field_models.append(
-                        Column(
-                            name=field.name,
-                            displayName=field.name,
-                            dataType=self._get_field_type(field.type, cls=cls),
-                            arrayDataType=None,
-                            dataLength=None,
-                            precision=None,
-                            scale=None,
-                            dataTypeDisplay=None,
-                            description=None,
-                            tags=None,
-                            constraint=None,
-                            ordinalPosition=None,
-                            jsonSchema=None,
-                            profile=None,
-                            customMetrics=None,
-                            extension=None,
-                            children=(
-                                self.get_protobuf_fields(field.message_type.fields, cls=cls)
-                                if field.type == 11
-                                else None
-                            ),
-                        )
-                    )
-                else:
-                    field_models.append(
-                        FieldModel(
-                            name=field.name,
-                            displayName=field.name,
-                            dataType=self._get_field_type(field.type, cls=cls),
-                            dataTypeDisplay=None,
-                            description=None,
-                            tags=None,
-                            children=(
-                                self.get_protobuf_fields(field.message_type.fields, cls=cls)
-                                if field.type == 11
-                                else None
-                            ),
-                        )
-                    )
-            except Exception as exc:  # pylint: disable=broad-except
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Unable to parse the protobuf schema into models: {exc}")
-
-        return field_models or None
+        cls: type[FieldModel | Column] = FieldModel,
+    ) -> list[FieldModel | Column] | None:
+        if cls is Column:
+            return self._get_column_fields(fields)
+        return self._get_field_models(fields)
