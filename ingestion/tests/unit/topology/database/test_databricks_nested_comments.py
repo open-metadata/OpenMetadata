@@ -396,7 +396,12 @@ class TestDescribeJsonLazyFetch:
             ("orders", "array<struct<id:int,total:double>>", None),
         ]
         mock_fetch_json.return_value = {}
-        connection = self._connection_with_describe_rows()
+        connection = MagicMock()
+        connection.execute.return_value.fetchall.return_value = [
+            ("col_name", "orders"),
+            ("data_type", "array<struct<id:int,total:double>>"),
+            ("comment", ""),
+        ]
 
         self._run(connection)
 
@@ -475,3 +480,71 @@ class TestSqlAlchemy2RowCompat:
         result = get_table_comment(mock_self, MagicMock(), "customers", "sales")
 
         assert result == {"text": None}
+
+    def test_get_schema_description_handles_sa2_row(self):
+        from metadata.ingestion.source.database.databricks.metadata import (
+            DatabricksSource,
+        )
+
+        mock_self = MagicMock()
+        mock_self.context.get().database = "db"
+        mock_self.inspector.dialect.get_schema_comment_result.return_value = [
+            _SqlAlchemy2Row(("Comment", "My schema description")),
+        ]
+
+        result = DatabricksSource.get_schema_description(mock_self, "my_schema")
+
+        assert result == "My schema description"
+
+    def test_get_schema_description_returns_none_when_no_comment_row(self):
+        from metadata.ingestion.source.database.databricks.metadata import (
+            DatabricksSource,
+        )
+
+        mock_self = MagicMock()
+        mock_self.context.get().database = "db"
+        mock_self.inspector.dialect.get_schema_comment_result.return_value = [
+            _SqlAlchemy2Row(("Owner", "admin")),
+        ]
+
+        result = DatabricksSource.get_schema_description(mock_self, "my_schema")
+
+        assert result is None
+
+    def test_get_table_description_handles_sa2_row(self):
+        from metadata.ingestion.source.database.databricks.metadata import (
+            DatabricksSource,
+        )
+
+        mock_self = MagicMock()
+        mock_self.context.get().database = "db"
+        mock_self.external_location_map = {}
+        mock_inspector = MagicMock()
+        mock_inspector.dialect.get_table_comment_result.return_value = [
+            _SqlAlchemy2Row(("Comment", "My table description")),
+        ]
+
+        result = DatabricksSource.get_table_description(
+            mock_self, "my_schema", "my_table", mock_inspector
+        )
+
+        assert result == "My table description"
+
+    def test_get_table_description_returns_none_when_no_comment_row(self):
+        from metadata.ingestion.source.database.databricks.metadata import (
+            DatabricksSource,
+        )
+
+        mock_self = MagicMock()
+        mock_self.context.get().database = "db"
+        mock_self.external_location_map = {}
+        mock_inspector = MagicMock()
+        mock_inspector.dialect.get_table_comment_result.return_value = [
+            _SqlAlchemy2Row(("Location", "/external/path")),
+        ]
+
+        result = DatabricksSource.get_table_description(
+            mock_self, "my_schema", "my_table", mock_inspector
+        )
+
+        assert result is None

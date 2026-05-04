@@ -348,7 +348,12 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     # whose children we actually expose.
                     supports_nested_descriptions = col_type == "struct" or (
                         col_type == "array"
-                        and re.match(r"^array\s*<\s*struct\b", raw_col_type, re.IGNORECASE) is not None
+                        and re.match(
+                            r"^array\s*<\s*struct\b",
+                            sub_rows.get("data_type", raw_col_type),
+                            re.IGNORECASE,
+                        )
+                        is not None
                     )
                     if supports_nested_descriptions:
                         if nested_descriptions_by_column is None:
