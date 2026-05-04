@@ -12,7 +12,6 @@
  */
 
 import { ReactNode } from 'react';
-import MarketplaceDataAccessRequestsWidget from '../../components/DataMarketplace/MarketplaceDataAccessRequestsWidget/MarketplaceDataAccessRequestsWidget.component';
 import MarketplaceDataProductsWidget from '../../components/DataMarketplace/MarketplaceDataProductsWidget/MarketplaceDataProductsWidget.component';
 import MarketplaceDomainsWidget from '../../components/DataMarketplace/MarketplaceDomainsWidget/MarketplaceDomainsWidget.component';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
@@ -37,19 +36,6 @@ export const getDataMarketplaceWidgetsFromKey = (
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.MARKETPLACE_DOMAINS)) {
     return (
       <MarketplaceDomainsWidget
-        dragHandle={dragHandle}
-        isEditView={isEditView}
-        widgetKey={widgetConfig.i}
-      />
-    );
-  }
-  if (
-    widgetConfig.i.startsWith(
-      DetailPageWidgetKeys.MARKETPLACE_DATA_ACCESS_REQUESTS
-    )
-  ) {
-    return (
-      <MarketplaceDataAccessRequestsWidget
         dragHandle={dragHandle}
         isEditView={isEditView}
         widgetKey={widgetConfig.i}

@@ -27,8 +27,7 @@ import { getDataMarketplaceWidgetsFromKey } from './DataMarketplaceUtils';
 
 type MarketplaceWidgetKeys =
   | DetailPageWidgetKeys.MARKETPLACE_DATA_PRODUCTS
-  | DetailPageWidgetKeys.MARKETPLACE_DOMAINS
-  | DetailPageWidgetKeys.MARKETPLACE_DATA_ACCESS_REQUESTS;
+  | DetailPageWidgetKeys.MARKETPLACE_DOMAINS;
 
 class DataMarketplaceClassBase {
   defaultWidgetHeight: Record<MarketplaceWidgetKeys, number>;
@@ -37,7 +36,6 @@ class DataMarketplaceClassBase {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.MARKETPLACE_DATA_PRODUCTS]: 1,
       [DetailPageWidgetKeys.MARKETPLACE_DOMAINS]: 1,
-      [DetailPageWidgetKeys.MARKETPLACE_DATA_ACCESS_REQUESTS]: 2,
     };
   }
 
@@ -77,16 +75,6 @@ class DataMarketplaceClassBase {
         y: 1,
         static: false,
       },
-      {
-        h: this.defaultWidgetHeight[
-          DetailPageWidgetKeys.MARKETPLACE_DATA_ACCESS_REQUESTS
-        ],
-        i: DetailPageWidgetKeys.MARKETPLACE_DATA_ACCESS_REQUESTS,
-        w: 8,
-        x: 0,
-        y: 2,
-        static: false,
-      },
     ];
   }
 
@@ -102,14 +90,6 @@ class DataMarketplaceClassBase {
       {
         fullyQualifiedName: DetailPageWidgetKeys.MARKETPLACE_DOMAINS,
         name: i18n.t('label.domain-plural'),
-        data: {
-          gridSizes: ['large'] as GridSizes[],
-        },
-      },
-      {
-        fullyQualifiedName:
-          DetailPageWidgetKeys.MARKETPLACE_DATA_ACCESS_REQUESTS,
-        name: i18n.t('label.data-access-request'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },
@@ -130,10 +110,6 @@ class DataMarketplaceClassBase {
       case DetailPageWidgetKeys.MARKETPLACE_DOMAINS:
         return this.defaultWidgetHeight[
           DetailPageWidgetKeys.MARKETPLACE_DOMAINS
-        ];
-      case DetailPageWidgetKeys.MARKETPLACE_DATA_ACCESS_REQUESTS:
-        return this.defaultWidgetHeight[
-          DetailPageWidgetKeys.MARKETPLACE_DATA_ACCESS_REQUESTS
         ];
       default:
         return 1;

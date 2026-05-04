@@ -210,9 +210,6 @@ export const ROUTES = {
 
   DATA_MARKETPLACE_SECTION: '/data-marketplace-section',
   DATA_MARKETPLACE: '/data-marketplace',
-  DATA_ACCESS_REQUESTS: '/data-marketplace/data-access-requests',
-  DATA_ACCESS_REQUESTS_WITH_TAB: `/data-marketplace/data-access-requests/${PLACEHOLDER_ROUTE_TAB}`,
-
   APP_DETAILS: `/apps/${PLACEHOLDER_ROUTE_FQN}`,
   APP_DETAILS_WITH_TAB: `/apps/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
 

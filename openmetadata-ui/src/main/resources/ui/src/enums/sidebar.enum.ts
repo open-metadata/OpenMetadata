@@ -29,7 +29,6 @@ export enum SidebarItem {
   INSIGHTS = 'insights',
   DATA_MARKETPLACE = 'data-marketplace',
   DATA_MARKETPLACE_SECTION = 'data-marketplace-section',
-  DATA_ACCESS_REQUESTS = 'data-access-requests',
   SETTINGS = 'settings',
   LOGOUT = 'logout',
   METRICS = 'metrics',

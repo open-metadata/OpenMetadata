@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { ReactNode } from 'react';
-import DataAccessRequestDrawer from '../components/DataAccessRequest/DataAccessRequestDrawer/DataAccessRequestDrawer.component';
+import { ReactNode } from 'react';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
-import { EntityType } from '../enums/entity.enum';
+
 import {
   CUSTOM_PROPERTIES_WIDGET,
   DATA_PRODUCTS_WIDGET,
@@ -220,27 +219,17 @@ class TableClassBase {
   }
 
   public getShowRequestDataAccess() {
-    return true;
+    return false;
   }
 
   public getRequestDataAccessDrawer(
-    isOpen: boolean,
-    onClose: () => void,
-    entityFqn: string,
-    entityName: string,
-    entityType: string
+    _isOpen: boolean,
+    _onClose: () => void,
+    _entityFqn: string,
+    _entityName: string,
+    _entityType: string
   ): ReactNode {
-    if (!isOpen) {
-      return null;
-    }
-
-    return React.createElement(DataAccessRequestDrawer, {
-      entityDisplayName: entityName,
-      entityFqn,
-      entityType: entityType as EntityType,
-      open: isOpen,
-      onClose,
-    });
+    return null;
   }
 
   public getDummyData(): Table {

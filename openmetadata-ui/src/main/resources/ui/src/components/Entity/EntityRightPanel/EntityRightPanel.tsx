@@ -21,13 +21,14 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { PartitionedKeys } from '../../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
+
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import type {
   ExtentionEntities,
   ExtentionEntitiesKeys,
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import DataAccessRequestWidget from '../../DataAccessRequest/DataAccessRequestWidget/DataAccessRequestWidget.component';
+
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
@@ -91,9 +92,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
     reviewers,
   } = data ?? {};
 
-  const showDataAccessRequest =
-    entityType === EntityType.TABLE || entityType === EntityType.DATA_PRODUCT;
-
   const availableColumns = (columns ?? [])
     .map((c) => c.fullyQualifiedName ?? c.name)
     .filter((c): c is string => Boolean(c));
@@ -106,16 +104,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
     <>
       {beforeSlot}
       <Space className="w-full" direction="vertical" size="large">
-        {showDataAccessRequest && entityFQN && (
-          <DataAccessRequestWidget
-            availableColumns={availableColumns}
-            canRequestAccess={!editAllPermission}
-            entityDisplayName={displayName ?? name ?? entityFQN}
-            entityFqn={entityFQN}
-            entityType={entityType}
-            reviewers={reviewerFqns}
-          />
-        )}
         {showDataProductContainer && (
           <div data-testid="KnowledgePanel.DataProducts">
             <DataProductsContainer

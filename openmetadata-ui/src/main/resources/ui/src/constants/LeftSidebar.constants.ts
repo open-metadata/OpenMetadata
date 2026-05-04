@@ -23,7 +23,6 @@ import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contrac
 import { ReactComponent as MarketplaceIcon } from '../assets/svg/ic-data-marketplace.svg';
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
-import { ReactComponent as KeyIcon } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage.svg';
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
@@ -148,13 +147,6 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         redirect_url: ROUTES.DATA_PRODUCT,
         icon: DataProductIcon,
         dataTestId: `app-bar-item-${SidebarItem.DATA_PRODUCT}`,
-      },
-      {
-        key: ROUTES.DATA_ACCESS_REQUESTS,
-        title: 'label.data-access-request-plural',
-        redirect_url: ROUTES.DATA_ACCESS_REQUESTS,
-        icon: KeyIcon,
-        dataTestId: `app-bar-item-${SidebarItem.DATA_ACCESS_REQUESTS}`,
       },
     ],
   },
