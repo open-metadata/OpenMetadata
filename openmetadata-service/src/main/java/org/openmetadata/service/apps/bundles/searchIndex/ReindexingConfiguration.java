@@ -128,7 +128,8 @@ public record ReindexingConfiguration(
         DEFAULT_FIELD_FETCH_THREADS,
         DEFAULT_DOC_BUILD_THREADS,
         DEFAULT_STATS_INTERVAL_MS,
-        Boolean.TRUE.equals(jobData.getRecreateIndex()),
+        // Always recreate
+        true,
         Boolean.TRUE.equals(jobData.getAutoTune()),
         Boolean.TRUE.equals(jobData.getUseDistributedIndexing()),
         Boolean.TRUE.equals(jobData.getForce()),
