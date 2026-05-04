@@ -14,7 +14,7 @@ Validator for column value missing count to be equal test case
 """
 
 from collections import defaultdict
-from typing import List, Optional, cast
+from typing import List, Optional, cast  # noqa: UP035
 
 import pandas as pd
 
@@ -43,7 +43,7 @@ logger = test_suite_logger()
 class ColumnValuesMissingCountValidator(BaseColumnValuesMissingCountValidator, PandasValidatorMixin):
     """Validator for column value missing count to be equal test case"""
 
-    def _run_results(self, metric: Metrics, column: SQALikeColumn, **kwargs) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: SQALikeColumn, **kwargs) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -64,7 +64,7 @@ class ColumnValuesMissingCountValidator(BaseColumnValuesMissingCountValidator, P
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
         Follows the iterate pattern from the Mean metric's df_fn method to handle
@@ -109,11 +109,11 @@ class ColumnValuesMissingCountValidator(BaseColumnValuesMissingCountValidator, P
             )
 
             for df in dfs:
-                df_typed = cast(pd.DataFrame, df)
+                df_typed = cast(pd.DataFrame, df)  # noqa: TC006
                 grouped = df_typed.groupby(dimension_col.name, dropna=False)
 
                 for dimension_value, group_df in grouped:
-                    dimension_value = self.format_dimension_value(dimension_value)
+                    dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
                     for metric_name, metric in metric_expressions.items():
                         dimension_aggregates[dimension_value][metric_name] = metric.update_accumulator(
                             dimension_aggregates[dimension_value][metric_name], group_df

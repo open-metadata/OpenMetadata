@@ -14,7 +14,7 @@ Airflow metadata utils
 
 import traceback
 from datetime import timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional  # noqa: UP035
 
 from metadata.utils.constants import TIMEDELTA
 from metadata.utils.importer import import_from_module
@@ -24,7 +24,7 @@ logger = ingestion_logger()
 
 
 # pylint: disable=too-many-branches,too-many-return-statements,too-many-nested-blocks
-def get_schedule_interval(pipeline_data: Dict[str, Any]) -> Optional[str]:
+def get_schedule_interval(pipeline_data: Dict[str, Any]) -> Optional[str]:  # noqa: C901, UP006, UP045
     """
     Fetch Schedule Intervals from Airflow Dags
     """
@@ -88,7 +88,7 @@ def get_schedule_interval(pipeline_data: Dict[str, Any]) -> Optional[str]:
                 return str(timedelta(seconds=var_value))
 
         # If no timetable nor schedule, the DAG has no interval set
-        return None
+        return None  # noqa: TRY300
 
     except Exception as exc:
         logger.debug(traceback.format_exc())

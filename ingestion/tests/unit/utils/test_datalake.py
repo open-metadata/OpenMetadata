@@ -164,8 +164,65 @@ class TestDatalakeUtils(TestCase):
         ]
         actual = GenericDataFrameColumnParser.construct_json_column_children(STRUCTURE)
 
-        for el in zip(expected, actual):
+        for el in zip(expected, actual):  # noqa: B905
             self.assertDictEqual(el[0], el[1])
+
+    def test_unique_json_structure_with_list_of_dicts(self):
+        """list-of-dicts values are merged into a struct shape (e.g. Iceberg `schema.fields`)."""
+        sample_data = [
+            {
+                "schema": {
+                    "fields": [
+                        {"id": 1, "name": "customer_id", "type": "string"},
+                        {"id": 2, "name": "customer_type_cd", "type": "string"},
+                    ]
+                }
+            }
+        ]
+
+        actual = GenericDataFrameColumnParser.unique_json_structure(sample_data)
+        fields_value = actual["schema"]["fields"]
+
+        from metadata.utils.datalake.datalake_utils import _ArrayOfStruct
+
+        assert isinstance(fields_value, _ArrayOfStruct)
+        assert set(fields_value.struct.keys()) == {"id", "name", "type"}
+
+    def test_unique_json_structure_merges_list_of_dicts_across_samples(self):
+        """list-of-dicts values across multiple samples are unioned, not overwritten."""
+        from metadata.utils.datalake.datalake_utils import _ArrayOfStruct
+
+        sample_data = [
+            {"schema": {"fields": [{"id": 1, "name": "customer_id", "type": "string"}]}},
+            {"schema": {"fields": [{"id": 2, "required": False, "type": "string"}]}},
+            {"schema": {"fields": [{"description": "ciam id"}]}},
+        ]
+
+        actual = GenericDataFrameColumnParser.unique_json_structure(sample_data)
+        fields_value = actual["schema"]["fields"]
+
+        assert isinstance(fields_value, _ArrayOfStruct)
+        assert set(fields_value.struct.keys()) == {"id", "name", "type", "required", "description"}
+
+    def test_construct_column_with_array_of_struct(self):
+        """list-of-dicts values render as ARRAY<STRUCT<...>> with children for the struct fields."""
+        structure = {
+            "schema": {
+                "fields": [
+                    {"id": 1, "name": "customer_id", "type": "string"},
+                    {"id": 2, "name": "ciam_id", "type": "string"},
+                ]
+            }
+        }
+        merged = GenericDataFrameColumnParser.unique_json_structure([structure])
+        children = GenericDataFrameColumnParser.construct_json_column_children(merged)
+
+        schema_col = children[0]
+        fields_col = next(c for c in schema_col["children"] if c["name"] == "fields")
+
+        assert fields_col["dataType"] == DataType.ARRAY.value
+        assert fields_col["arrayDataType"] == DataType.STRUCT
+        assert {child["name"] for child in fields_col["children"]} == {"id", "name", "type"}
 
     def test_create_column_object(self):
         """test create column object fn"""
@@ -186,8 +243,8 @@ class TestParquetDataFrameColumnParser(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        resources_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources")
-        cls.parquet_path = os.path.join(resources_path, "datalake", "example.parquet")
+        resources_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources")  # noqa: PTH118, PTH120
+        cls.parquet_path = os.path.join(resources_path, "datalake", "example.parquet")  # noqa: PTH118
 
         cls.df = pd.read_parquet(cls.parquet_path)
 
@@ -425,7 +482,7 @@ class TestParquetDataFrameColumnParser(TestCase):
             ),  # type: ignore
         ]
         actual = self.parquet_parser.get_columns()
-        for validation in zip(expected, actual):
+        for validation in zip(expected, actual):  # noqa: B905
             with self.subTest(validation=validation):
                 expected_col, actual_col = validation
                 self.assertEqual(expected_col.name, actual_col.name)
@@ -439,7 +496,7 @@ class TestParquetDataFrameColumnParser(TestCase):
         self.assertEqual(expected.displayName, actual.displayName)
         if expected.children:
             self.assertEqual(len(expected.children), len(actual.children))
-            for validation in zip(expected.children, actual.children):
+            for validation in zip(expected.children, actual.children):  # noqa: B905
                 with self.subTest(validation=validation):
                     expected_col, actual_col = validation
                     self._validate_parsed_column(expected_col, actual_col)

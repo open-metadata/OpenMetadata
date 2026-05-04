@@ -16,7 +16,7 @@ Postgres SQLAlchemy util methods
 
 import re
 import traceback
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple  # noqa: UP035
 
 from packaging import version
 from sqlalchemy import sql, text, util
@@ -80,7 +80,7 @@ def get_foreign_keys(self, connection, table_name, schema=None, postgresql_ignor
     table_oid = self.get_table_oid(connection, table_name, schema, info_cache=kw.get("info_cache"))
 
     # https://www.postgresql.org/docs/9.0/static/sql-createtable.html
-    FK_REGEX = re.compile(
+    FK_REGEX = re.compile(  # noqa: N806
         r"FOREIGN KEY \((.*?)\) REFERENCES (?:(.*?)\.)?(.*?)\((.*?)\)"
         r"[\s]?(MATCH (FULL|PARTIAL|SIMPLE)+)?"
         r"[\s]?(ON UPDATE "
@@ -234,7 +234,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         format_type,
         default_,
         notnull,
-        table_oid,
+        table_oid,  # noqa: B007
         comment,
         generated,
         identity,
@@ -263,7 +263,7 @@ def _get_numeric_args(charlen):
     return ()
 
 
-def _get_interval_args(charlen, attype, kwargs: Dict):
+def _get_interval_args(charlen, attype, kwargs: Dict):  # noqa: UP006
     field_match = re.match(r"interval (.+)", attype, re.I)
     if charlen:
         kwargs["precision"] = int(charlen)
@@ -281,7 +281,7 @@ def _get_bit_var_args(charlen, kwargs):
     return (), kwargs
 
 
-def get_column_args(charlen: str, args: Tuple, kwargs: Dict, attype: str) -> Tuple[Tuple, Dict]:
+def get_column_args(charlen: str, args: Tuple, kwargs: Dict, attype: str) -> Tuple[Tuple, Dict]:  # noqa: UP006
     """
     Method to determine the args and kwargs
     """
@@ -472,7 +472,7 @@ def get_view_definition(self, connection, table_name, schema=None, **kw):
     )
 
 
-def get_postgres_version(engine) -> Optional[str]:
+def get_postgres_version(engine) -> Optional[str]:  # noqa: UP045
     """
     return the postgres version in major.minor.patch format
     """
@@ -481,7 +481,7 @@ def get_postgres_version(engine) -> Optional[str]:
             results = conn.execute(text(POSTGRES_GET_SERVER_VERSION)).all()
         for res in results:
             version_string = str(res[0])
-            return version_string
+            return version_string  # noqa: RET504
     except Exception as err:
         logger.warning(f"Unable to fetch the Postgres Version - {err}")
         logger.debug(traceback.format_exc())
@@ -501,7 +501,7 @@ def get_postgres_time_column_name(engine) -> str:
             columns = {row[0] for row in result}
             if "total_exec_time" in columns:
                 return "total_exec_time"
-            elif "total_time" in columns:
+            elif "total_time" in columns:  # noqa: RET505
                 return "total_time"
             else:
                 logger.warning(

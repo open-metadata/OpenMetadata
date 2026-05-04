@@ -22,7 +22,7 @@ logger = utils_logger()
 NAME_PATTERN = r"(?<=call)(.*)(?=\()|(?<=begin)(.*)(?=\()|(?<=begin)(.*)(?=;\s*end)"
 
 
-def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False) -> Optional[str]:
+def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False) -> Optional[str]:  # noqa: UP045
     """
     In the query text we'll have:
     - `CALL db.schema.procedure_name(...)`,

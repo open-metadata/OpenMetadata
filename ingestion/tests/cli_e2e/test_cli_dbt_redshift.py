@@ -14,16 +14,16 @@ Test Redshift connector with CLI
 """
 
 from pathlib import Path
-from typing import List
+from typing import List  # noqa: UP035
 
 import pytest
 from sqlalchemy.engine import Engine
 
 from metadata.ingestion.api.status import Status
-from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.metadata import MetadataWorkflow  # noqa: TC001
 
-from .base.test_cli import PATH_TO_RESOURCES
-from .base.test_cli_dbt import CliDBTBase
+from .base.test_cli import PATH_TO_RESOURCES  # noqa: TID252
+from .base.test_cli_dbt import CliDBTBase  # noqa: TID252
 
 
 class DbtCliTest(CliDBTBase.TestSuite):
@@ -54,7 +54,7 @@ class DbtCliTest(CliDBTBase.TestSuite):
         return 72
 
     @staticmethod
-    def fqn_dbt_tables() -> List[str]:
+    def fqn_dbt_tables() -> List[str]:  # noqa: UP006
         return [
             "local_redshift.dev.dbt_cli_e2e.customers",
             "local_redshift.dev.dbt_cli_e2e.orders",

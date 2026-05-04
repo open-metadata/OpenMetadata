@@ -98,7 +98,7 @@ class TestBigquerySystem(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         """set up class"""
-        with open(cls.full_config_path, "r", encoding="utf-8") as file:
+        with open(cls.full_config_path, "r", encoding="utf-8") as file:  # noqa: PTH123
             cls.config = yaml.safe_load(file)
 
         # set up the config to filter from the `dbt_jaffle` schema
@@ -164,4 +164,4 @@ class TestBigquerySystem(TestCase):
             profile_type=SystemProfile,
         )
         ddl_operations = [prl.operation.value for prl in profile.entities]
-        assert set(ddl_operations) == set(["INSERT", "UPDATE", "DELETE"])
+        assert set(ddl_operations) == set(["INSERT", "UPDATE", "DELETE"])  # noqa: C405

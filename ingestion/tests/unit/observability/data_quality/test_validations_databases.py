@@ -1006,7 +1006,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
         ),
     ],
 )
-def test_suite_validation_database(
+def test_suite_validation_database(  # noqa: C901
     test_case_name,
     test_case_type,
     test_type,
