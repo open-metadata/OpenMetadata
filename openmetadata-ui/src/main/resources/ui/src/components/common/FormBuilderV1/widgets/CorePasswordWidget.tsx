@@ -12,12 +12,14 @@
  */
 
 import {
+  Box,
   Button,
   FileTrigger,
   HintText,
   Label,
   RadioButton,
   RadioGroup,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { Eye, EyeOff, UploadCloud01 } from '@untitledui/icons';
@@ -160,8 +162,10 @@ const CorePasswordWidget = (props: WidgetProps) => {
         isDisabled={disabled || readonly}
         size="sm"
         type="button">
-        <UploadCloud01 data-icon size={14} />
-        {t('message.upload-file')}
+        <Box align="center" gap={1}>
+          <UploadCloud01 data-icon size={14} />
+          <Typography size="text-sm">{t('message.upload-file')}</Typography>
+        </Box>
       </Button>
     </FileTrigger>
   );

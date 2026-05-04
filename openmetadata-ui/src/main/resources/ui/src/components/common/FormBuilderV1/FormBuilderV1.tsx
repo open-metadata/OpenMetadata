@@ -152,4 +152,6 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
   }
 );
 
+FormBuilderV1.displayName = 'FormBuilderV1';
+
 export default FormBuilderV1;

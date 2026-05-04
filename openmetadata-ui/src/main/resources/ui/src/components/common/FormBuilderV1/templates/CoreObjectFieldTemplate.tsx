@@ -85,8 +85,10 @@ export const CoreObjectFieldTemplate: FunctionComponent<
         <div className="tw:my-3">
           <button
             aria-expanded={advancedOpen}
-            className="tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:rounded-lg tw:border tw:border-primary tw:bg-primary
-            tw:px-4 tw:py-3 tw:text-left tw:transition-colors hover:tw:bg-secondary"
+            className={`tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:rounded-lg tw:border tw:border-primary tw:bg-primary
+            tw:px-4 tw:py-3 tw:text-left tw:transition-colors hover:tw:bg-secondary ${
+              advancedOpen ? 'tw:border-b-0 tw:rounded-none' : ''
+            }`}
             type="button"
             onClick={() => setAdvancedOpen((v) => !v)}>
             <Typography
@@ -107,7 +109,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
             />
           </button>
           {advancedOpen && (
-            <div className="tw:mt-2 tw:flex tw:flex-col tw:gap-4 tw:rounded-lg tw:border tw:border-primary tw:p-3">
+            <div className="tw:flex tw:flex-col tw:gap-4  tw:border-1 tw:border-t-0 tw:border-primary tw:p-3">
               {advancedProperties.map((element) => (
                 <div key={element.name}>{element.content}</div>
               ))}
