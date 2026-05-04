@@ -32,6 +32,7 @@ import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
 
 /**
@@ -400,9 +401,9 @@ public class TypeResourceIT {
       property.setPropertyType(STRING_TYPE.getEntityReference());
 
       assertThrows(
-          Exception.class,
+          InvalidRequestException.class,
           () -> addCustomProperty(client, tableTypeId, property),
-          "Custom property name '" + name + "' should be rejected");
+          "Custom property name '" + name + "' should be rejected with HTTP 400");
     }
   }
 
@@ -423,9 +424,9 @@ public class TypeResourceIT {
       property.setPropertyType(STRING_TYPE.getEntityReference());
 
       assertThrows(
-          Exception.class,
+          InvalidRequestException.class,
           () -> addCustomProperty(client, tableTypeId, property),
-          "Custom property name '" + name + "' must start with alphanumeric");
+          "Custom property name '" + name + "' must start with alphanumeric (HTTP 400 expected)");
     }
   }
 
@@ -445,9 +446,9 @@ public class TypeResourceIT {
     property.setPropertyType(STRING_TYPE.getEntityReference());
 
     assertThrows(
-        Exception.class,
+        InvalidRequestException.class,
         () -> addCustomProperty(client, tableTypeId, property),
-        "Custom property name longer than 256 characters should be rejected");
+        "Custom property name longer than 256 characters should be rejected with HTTP 400");
   }
 
   @Test
