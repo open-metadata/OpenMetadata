@@ -715,9 +715,15 @@ public interface CollectionDAO {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
 
-      String sqlCondition = String.format("%s AND er.toId is NULL", condition);
-      return listBefore(
-          getTableName(), filter.getQueryParams(), sqlCondition, limit, beforeName, beforeId);
+      // The root-only SQL is a NOT EXISTS anti-join — there is no outer `er` alias to refer
+      // to here, so the condition is just the regular ListFilter WHERE clause; the new
+      // SQL appends its own NOT EXISTS predicate after this. Distinct method name
+      // (listRootBefore) is required: a same-signature `listBefore` here would override
+      // EntityDAO's default `listBefore(String, Map, String, int, String, String)` and
+      // make every non-root list call also pick up the NOT EXISTS predicate, silently
+      // filtering out child containers from generic `?service=...` listings.
+      return listRootBefore(
+          getTableName(), filter.getQueryParams(), condition, limit, beforeName, beforeId);
     }
 
     @Override
@@ -729,10 +735,8 @@ public interface CollectionDAO {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
 
-      String sqlCondition = String.format("%s AND er.toId is NULL", condition);
-
-      return listAfter(
-          getTableName(), filter.getQueryParams(), sqlCondition, limit, afterName, afterId);
+      return listRootAfter(
+          getTableName(), filter.getQueryParams(), condition, limit, afterName, afterId);
     }
 
     @Override
@@ -744,25 +748,33 @@ public interface CollectionDAO {
         return EntityDAO.super.listCount(filter);
       }
 
-      String sqlCondition = String.format("%s AND er.toId is NULL", condition);
-      return listCount(getTableName(), getNameHashColumn(), filter.getQueryParams(), sqlCondition);
+      return listRootCount(getTableName(), getNameHashColumn(), filter.getQueryParams(), condition);
     }
 
+    // Root-only listing (?root=true) returns containers that have no parent container.
+    // Earlier versions used a LEFT JOIN + IS NULL anti-join with an inlined subquery, which
+    // Postgres often plans as a hash join over the materialized child-edge set — fine for
+    // small services, painful for ones with thousands of container-to-container edges
+    // (a Tahoe-shaped 5,000-file bucket easily blows past 2s for the COUNT alone). Switching
+    // to NOT EXISTS lets the planner anti-join via the (fromEntity, toEntity, relation, toId)
+    // index instead, so each candidate row's "is this a child?" check is an index lookup.
     @SqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT name,id, ce.json FROM <table> ce "
-                + "LEFT JOIN ("
-                + "  SELECT toId FROM entity_relationship "
-                + "  WHERE fromEntity = 'container' AND toEntity = 'container' AND relation = 0 "
-                + ") er "
-                + "on ce.id = er.toId "
+                + "SELECT name, id, ce.json FROM <table> ce "
                 + "<sqlCondition> AND "
-                + "(name < :beforeName OR (name = :beforeName AND id < :beforeId))  "
-                + "ORDER BY name DESC,id DESC "
+                + "NOT EXISTS ("
+                + "  SELECT 1 FROM entity_relationship er "
+                + "  WHERE er.toId = ce.id "
+                + "    AND er.fromEntity = 'container' "
+                + "    AND er.toEntity = 'container' "
+                + "    AND er.relation = 0"
+                + ") AND "
+                + "(name < :beforeName OR (name = :beforeName AND id < :beforeId)) "
+                + "ORDER BY name DESC, id DESC "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name,id")
-    List<String> listBefore(
+                + ") last_rows_subquery ORDER BY name, id")
+    List<String> listRootBefore(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
         @Define("sqlCondition") String sqlCondition,
@@ -773,16 +785,18 @@ public interface CollectionDAO {
     @SqlQuery(
         value =
             "SELECT ce.json FROM <table> ce "
-                + "LEFT JOIN ("
-                + "  SELECT toId FROM entity_relationship "
-                + "  WHERE fromEntity = 'container' AND toEntity = 'container' AND relation = 0 "
-                + ") er "
-                + "on ce.id = er.toId "
                 + "<sqlCondition> AND "
-                + "(name > :afterName OR (name = :afterName AND id > :afterId))  "
-                + "ORDER BY name,id "
+                + "NOT EXISTS ("
+                + "  SELECT 1 FROM entity_relationship er "
+                + "  WHERE er.toId = ce.id "
+                + "    AND er.fromEntity = 'container' "
+                + "    AND er.toEntity = 'container' "
+                + "    AND er.relation = 0"
+                + ") AND "
+                + "(name > :afterName OR (name = :afterName AND id > :afterId)) "
+                + "ORDER BY name, id "
                 + "LIMIT :limit")
-    List<String> listAfter(
+    List<String> listRootAfter(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
         @Define("sqlCondition") String sqlCondition,
@@ -793,24 +807,28 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(<nameHashColumn>) FROM <table> ce "
-                + "LEFT JOIN ("
-                + "  SELECT toId FROM entity_relationship "
-                + "  WHERE fromEntity = 'container' AND toEntity = 'container' AND relation = 0 "
-                + ") er "
-                + "on ce.id = er.toId "
-                + "<sqlCondition>",
+                + "<sqlCondition> AND "
+                + "NOT EXISTS ("
+                + "  SELECT 1 FROM entity_relationship er "
+                + "  WHERE er.toId = ce.id "
+                + "    AND er.fromEntity = 'container' "
+                + "    AND er.toEntity = 'container' "
+                + "    AND er.relation = 0"
+                + ")",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(*) FROM <table> ce "
-                + "LEFT JOIN ("
-                + "  SELECT toId FROM entity_relationship "
-                + "  WHERE fromEntity = 'container' AND toEntity = 'container' AND relation = 0 "
-                + ") er "
-                + "on ce.id = er.toId "
-                + "<sqlCondition>",
+                + "<sqlCondition> AND "
+                + "NOT EXISTS ("
+                + "  SELECT 1 FROM entity_relationship er "
+                + "  WHERE er.toId = ce.id "
+                + "    AND er.fromEntity = 'container' "
+                + "    AND er.toEntity = 'container' "
+                + "    AND er.relation = 0"
+                + ")",
         connectionType = POSTGRES)
-    int listCount(
+    int listRootCount(
         @Define("table") String table,
         @Define("nameHashColumn") String nameHashColumn,
         @BindMap Map<String, ?> params,
@@ -12457,6 +12475,10 @@ public interface CollectionDAO {
         long processFailed,
         long vectorSuccess,
         long vectorFailed,
+        long readerTimeMs,
+        long processTimeMs,
+        long sinkTimeMs,
+        long vectorTimeMs,
         int partitionsCompleted,
         int partitionsFailed,
         long lastUpdatedAt) {}
@@ -12471,6 +12493,10 @@ public interface CollectionDAO {
         long processFailed,
         long vectorSuccess,
         long vectorFailed,
+        long readerTimeMs,
+        long processTimeMs,
+        long sinkTimeMs,
+        long vectorTimeMs,
         int partitionsCompleted,
         int partitionsFailed) {}
 
@@ -12484,7 +12510,11 @@ public interface CollectionDAO {
         long processSuccess,
         long processFailed,
         long vectorSuccess,
-        long vectorFailed) {}
+        long vectorFailed,
+        long readerTimeMs,
+        long processTimeMs,
+        long sinkTimeMs,
+        long vectorTimeMs) {}
 
     /**
      * Increment stats using delta values. This is the primary method for updating stats -
@@ -12495,10 +12525,12 @@ public interface CollectionDAO {
             "INSERT INTO search_index_server_stats (id, jobId, serverId, entityType, "
                 + "readerSuccess, readerFailed, readerWarnings, sinkSuccess, sinkFailed, "
                 + "processSuccess, processFailed, vectorSuccess, vectorFailed, "
+                + "readerTimeMs, processTimeMs, sinkTimeMs, vectorTimeMs, "
                 + "partitionsCompleted, partitionsFailed, lastUpdatedAt) "
                 + "VALUES (:id, :jobId, :serverId, :entityType, "
                 + ":readerSuccess, :readerFailed, :readerWarnings, :sinkSuccess, :sinkFailed, "
                 + ":processSuccess, :processFailed, :vectorSuccess, :vectorFailed, "
+                + ":readerTimeMs, :processTimeMs, :sinkTimeMs, :vectorTimeMs, "
                 + ":partitionsCompleted, :partitionsFailed, :lastUpdatedAt) "
                 + "ON DUPLICATE KEY UPDATE "
                 + "readerSuccess = readerSuccess + VALUES(readerSuccess), "
@@ -12510,6 +12542,10 @@ public interface CollectionDAO {
                 + "processFailed = processFailed + VALUES(processFailed), "
                 + "vectorSuccess = vectorSuccess + VALUES(vectorSuccess), "
                 + "vectorFailed = vectorFailed + VALUES(vectorFailed), "
+                + "readerTimeMs = readerTimeMs + VALUES(readerTimeMs), "
+                + "processTimeMs = processTimeMs + VALUES(processTimeMs), "
+                + "sinkTimeMs = sinkTimeMs + VALUES(sinkTimeMs), "
+                + "vectorTimeMs = vectorTimeMs + VALUES(vectorTimeMs), "
                 + "partitionsCompleted = partitionsCompleted + VALUES(partitionsCompleted), "
                 + "partitionsFailed = partitionsFailed + VALUES(partitionsFailed), "
                 + "lastUpdatedAt = VALUES(lastUpdatedAt)",
@@ -12519,10 +12555,12 @@ public interface CollectionDAO {
             "INSERT INTO search_index_server_stats (id, jobId, serverId, entityType, "
                 + "readerSuccess, readerFailed, readerWarnings, sinkSuccess, sinkFailed, "
                 + "processSuccess, processFailed, vectorSuccess, vectorFailed, "
+                + "readerTimeMs, processTimeMs, sinkTimeMs, vectorTimeMs, "
                 + "partitionsCompleted, partitionsFailed, lastUpdatedAt) "
                 + "VALUES (:id, :jobId, :serverId, :entityType, "
                 + ":readerSuccess, :readerFailed, :readerWarnings, :sinkSuccess, :sinkFailed, "
                 + ":processSuccess, :processFailed, :vectorSuccess, :vectorFailed, "
+                + ":readerTimeMs, :processTimeMs, :sinkTimeMs, :vectorTimeMs, "
                 + ":partitionsCompleted, :partitionsFailed, :lastUpdatedAt) "
                 + "ON CONFLICT (jobId, serverId, entityType) DO UPDATE SET "
                 + "readerSuccess = search_index_server_stats.readerSuccess + EXCLUDED.readerSuccess, "
@@ -12534,6 +12572,10 @@ public interface CollectionDAO {
                 + "processFailed = search_index_server_stats.processFailed + EXCLUDED.processFailed, "
                 + "vectorSuccess = search_index_server_stats.vectorSuccess + EXCLUDED.vectorSuccess, "
                 + "vectorFailed = search_index_server_stats.vectorFailed + EXCLUDED.vectorFailed, "
+                + "readerTimeMs = search_index_server_stats.readerTimeMs + EXCLUDED.readerTimeMs, "
+                + "processTimeMs = search_index_server_stats.processTimeMs + EXCLUDED.processTimeMs, "
+                + "sinkTimeMs = search_index_server_stats.sinkTimeMs + EXCLUDED.sinkTimeMs, "
+                + "vectorTimeMs = search_index_server_stats.vectorTimeMs + EXCLUDED.vectorTimeMs, "
                 + "partitionsCompleted = search_index_server_stats.partitionsCompleted + EXCLUDED.partitionsCompleted, "
                 + "partitionsFailed = search_index_server_stats.partitionsFailed + EXCLUDED.partitionsFailed, "
                 + "lastUpdatedAt = EXCLUDED.lastUpdatedAt",
@@ -12552,6 +12594,10 @@ public interface CollectionDAO {
         @Bind("processFailed") long processFailed,
         @Bind("vectorSuccess") long vectorSuccess,
         @Bind("vectorFailed") long vectorFailed,
+        @Bind("readerTimeMs") long readerTimeMs,
+        @Bind("processTimeMs") long processTimeMs,
+        @Bind("sinkTimeMs") long sinkTimeMs,
+        @Bind("vectorTimeMs") long vectorTimeMs,
         @Bind("partitionsCompleted") int partitionsCompleted,
         @Bind("partitionsFailed") int partitionsFailed,
         @Bind("lastUpdatedAt") long lastUpdatedAt);
@@ -12565,10 +12611,12 @@ public interface CollectionDAO {
             "INSERT INTO search_index_server_stats (id, jobId, serverId, entityType, "
                 + "readerSuccess, readerFailed, readerWarnings, sinkSuccess, sinkFailed, "
                 + "processSuccess, processFailed, vectorSuccess, vectorFailed, "
+                + "readerTimeMs, processTimeMs, sinkTimeMs, vectorTimeMs, "
                 + "partitionsCompleted, partitionsFailed, lastUpdatedAt) "
                 + "VALUES (:id, :jobId, :serverId, :entityType, "
                 + ":readerSuccess, :readerFailed, :readerWarnings, :sinkSuccess, :sinkFailed, "
                 + ":processSuccess, :processFailed, :vectorSuccess, :vectorFailed, "
+                + ":readerTimeMs, :processTimeMs, :sinkTimeMs, :vectorTimeMs, "
                 + ":partitionsCompleted, :partitionsFailed, :lastUpdatedAt) "
                 + "ON DUPLICATE KEY UPDATE "
                 + "readerSuccess = VALUES(readerSuccess), "
@@ -12580,6 +12628,10 @@ public interface CollectionDAO {
                 + "processFailed = VALUES(processFailed), "
                 + "vectorSuccess = VALUES(vectorSuccess), "
                 + "vectorFailed = VALUES(vectorFailed), "
+                + "readerTimeMs = VALUES(readerTimeMs), "
+                + "processTimeMs = VALUES(processTimeMs), "
+                + "sinkTimeMs = VALUES(sinkTimeMs), "
+                + "vectorTimeMs = VALUES(vectorTimeMs), "
                 + "partitionsCompleted = VALUES(partitionsCompleted), "
                 + "partitionsFailed = VALUES(partitionsFailed), "
                 + "lastUpdatedAt = VALUES(lastUpdatedAt)",
@@ -12589,10 +12641,12 @@ public interface CollectionDAO {
             "INSERT INTO search_index_server_stats (id, jobId, serverId, entityType, "
                 + "readerSuccess, readerFailed, readerWarnings, sinkSuccess, sinkFailed, "
                 + "processSuccess, processFailed, vectorSuccess, vectorFailed, "
+                + "readerTimeMs, processTimeMs, sinkTimeMs, vectorTimeMs, "
                 + "partitionsCompleted, partitionsFailed, lastUpdatedAt) "
                 + "VALUES (:id, :jobId, :serverId, :entityType, "
                 + ":readerSuccess, :readerFailed, :readerWarnings, :sinkSuccess, :sinkFailed, "
                 + ":processSuccess, :processFailed, :vectorSuccess, :vectorFailed, "
+                + ":readerTimeMs, :processTimeMs, :sinkTimeMs, :vectorTimeMs, "
                 + ":partitionsCompleted, :partitionsFailed, :lastUpdatedAt) "
                 + "ON CONFLICT (jobId, serverId, entityType) DO UPDATE SET "
                 + "readerSuccess = EXCLUDED.readerSuccess, "
@@ -12604,6 +12658,10 @@ public interface CollectionDAO {
                 + "processFailed = EXCLUDED.processFailed, "
                 + "vectorSuccess = EXCLUDED.vectorSuccess, "
                 + "vectorFailed = EXCLUDED.vectorFailed, "
+                + "readerTimeMs = EXCLUDED.readerTimeMs, "
+                + "processTimeMs = EXCLUDED.processTimeMs, "
+                + "sinkTimeMs = EXCLUDED.sinkTimeMs, "
+                + "vectorTimeMs = EXCLUDED.vectorTimeMs, "
                 + "partitionsCompleted = EXCLUDED.partitionsCompleted, "
                 + "partitionsFailed = EXCLUDED.partitionsFailed, "
                 + "lastUpdatedAt = EXCLUDED.lastUpdatedAt",
@@ -12622,6 +12680,10 @@ public interface CollectionDAO {
         @Bind("processFailed") long processFailed,
         @Bind("vectorSuccess") long vectorSuccess,
         @Bind("vectorFailed") long vectorFailed,
+        @Bind("readerTimeMs") long readerTimeMs,
+        @Bind("processTimeMs") long processTimeMs,
+        @Bind("sinkTimeMs") long sinkTimeMs,
+        @Bind("vectorTimeMs") long vectorTimeMs,
         @Bind("partitionsCompleted") int partitionsCompleted,
         @Bind("partitionsFailed") int partitionsFailed,
         @Bind("lastUpdatedAt") long lastUpdatedAt);
@@ -12650,6 +12712,10 @@ public interface CollectionDAO {
             + "COALESCE(SUM(processFailed), 0) as processFailed, "
             + "COALESCE(SUM(vectorSuccess), 0) as vectorSuccess, "
             + "COALESCE(SUM(vectorFailed), 0) as vectorFailed, "
+            + "COALESCE(SUM(readerTimeMs), 0) as readerTimeMs, "
+            + "COALESCE(SUM(processTimeMs), 0) as processTimeMs, "
+            + "COALESCE(SUM(sinkTimeMs), 0) as sinkTimeMs, "
+            + "COALESCE(SUM(vectorTimeMs), 0) as vectorTimeMs, "
             + "COALESCE(SUM(partitionsCompleted), 0) as partitionsCompleted, "
             + "COALESCE(SUM(partitionsFailed), 0) as partitionsFailed "
             + "FROM search_index_server_stats WHERE jobId = :jobId")
@@ -12667,11 +12733,61 @@ public interface CollectionDAO {
             + "COALESCE(SUM(processSuccess), 0) as processSuccess, "
             + "COALESCE(SUM(processFailed), 0) as processFailed, "
             + "COALESCE(SUM(vectorSuccess), 0) as vectorSuccess, "
-            + "COALESCE(SUM(vectorFailed), 0) as vectorFailed "
+            + "COALESCE(SUM(vectorFailed), 0) as vectorFailed, "
+            + "COALESCE(SUM(readerTimeMs), 0) as readerTimeMs, "
+            + "COALESCE(SUM(processTimeMs), 0) as processTimeMs, "
+            + "COALESCE(SUM(sinkTimeMs), 0) as sinkTimeMs, "
+            + "COALESCE(SUM(vectorTimeMs), 0) as vectorTimeMs "
             + "FROM search_index_server_stats WHERE jobId = :jobId "
             + "GROUP BY entityType")
     @RegisterRowMapper(EntityStatsMapper.class)
     List<EntityStats> getStatsByEntityType(@Bind("jobId") String jobId);
+
+    /**
+     * Per-server timing breakdown. Sums every counter and timing column for each serverId,
+     * letting the UI show "is one node dragging the cluster" for distributed runs.
+     */
+    record ServerTimingStats(
+        String serverId,
+        long readerSuccess,
+        long sinkSuccess,
+        long processSuccess,
+        long vectorSuccess,
+        long readerTimeMs,
+        long processTimeMs,
+        long sinkTimeMs,
+        long vectorTimeMs) {}
+
+    @SqlQuery(
+        "SELECT serverId, "
+            + "COALESCE(SUM(readerSuccess), 0) as readerSuccess, "
+            + "COALESCE(SUM(sinkSuccess), 0) as sinkSuccess, "
+            + "COALESCE(SUM(processSuccess), 0) as processSuccess, "
+            + "COALESCE(SUM(vectorSuccess), 0) as vectorSuccess, "
+            + "COALESCE(SUM(readerTimeMs), 0) as readerTimeMs, "
+            + "COALESCE(SUM(processTimeMs), 0) as processTimeMs, "
+            + "COALESCE(SUM(sinkTimeMs), 0) as sinkTimeMs, "
+            + "COALESCE(SUM(vectorTimeMs), 0) as vectorTimeMs "
+            + "FROM search_index_server_stats WHERE jobId = :jobId "
+            + "GROUP BY serverId")
+    @RegisterRowMapper(ServerTimingStatsMapper.class)
+    List<ServerTimingStats> getStatsByServer(@Bind("jobId") String jobId);
+
+    class ServerTimingStatsMapper implements RowMapper<ServerTimingStats> {
+      @Override
+      public ServerTimingStats map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new ServerTimingStats(
+            rs.getString("serverId"),
+            rs.getLong("readerSuccess"),
+            rs.getLong("sinkSuccess"),
+            rs.getLong("processSuccess"),
+            rs.getLong("vectorSuccess"),
+            rs.getLong("readerTimeMs"),
+            rs.getLong("processTimeMs"),
+            rs.getLong("sinkTimeMs"),
+            rs.getLong("vectorTimeMs"));
+      }
+    }
 
     @SqlUpdate("DELETE FROM search_index_server_stats WHERE jobId = :jobId")
     void deleteByJobId(@Bind("jobId") String jobId);
@@ -12696,6 +12812,10 @@ public interface CollectionDAO {
             rs.getLong("processFailed"),
             rs.getLong("vectorSuccess"),
             rs.getLong("vectorFailed"),
+            rs.getLong("readerTimeMs"),
+            rs.getLong("processTimeMs"),
+            rs.getLong("sinkTimeMs"),
+            rs.getLong("vectorTimeMs"),
             rs.getInt("partitionsCompleted"),
             rs.getInt("partitionsFailed"),
             rs.getLong("lastUpdatedAt"));
@@ -12715,6 +12835,10 @@ public interface CollectionDAO {
             rs.getLong("processFailed"),
             rs.getLong("vectorSuccess"),
             rs.getLong("vectorFailed"),
+            rs.getLong("readerTimeMs"),
+            rs.getLong("processTimeMs"),
+            rs.getLong("sinkTimeMs"),
+            rs.getLong("vectorTimeMs"),
             rs.getInt("partitionsCompleted"),
             rs.getInt("partitionsFailed"));
       }
@@ -12733,7 +12857,11 @@ public interface CollectionDAO {
             rs.getLong("processSuccess"),
             rs.getLong("processFailed"),
             rs.getLong("vectorSuccess"),
-            rs.getLong("vectorFailed"));
+            rs.getLong("vectorFailed"),
+            rs.getLong("readerTimeMs"),
+            rs.getLong("processTimeMs"),
+            rs.getLong("sinkTimeMs"),
+            rs.getLong("vectorTimeMs"));
       }
     }
   }
