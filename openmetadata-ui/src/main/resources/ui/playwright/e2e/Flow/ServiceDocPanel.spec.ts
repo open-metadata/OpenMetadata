@@ -191,11 +191,15 @@ test.describe('ServiceDocPanel', () => {
   });
 
   test.describe('Code block copy button', () => {
+    test.use({
+      contextOptions: {
+        permissions: ['clipboard-read', 'clipboard-write'],
+      },
+    });
+
     test('should copy code block content to clipboard and show copied tooltip', async ({
       page,
-      context,
     }) => {
-      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
       await goToMysqlConnectionStep(page, 'pw-doc-panel-copy');
 
       const docPanel = page.getByTestId('service-requirements');
@@ -211,6 +215,7 @@ test.describe('ServiceDocPanel', () => {
       await expect(copyButtonWrapper).toHaveAttribute('data-copied', 'false');
 
       // Click and verify copied state + tooltip
+      await copyButton.hover();
       await copyButton.click();
 
       await expect(copyButtonWrapper).toHaveAttribute('data-copied', 'true');
