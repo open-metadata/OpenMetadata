@@ -45,7 +45,6 @@ from metadata.sampler.config import (
 from metadata.sampler.models import SampleConfig, TableConfig
 
 
-
 class TestResolveStaticSamplingConfig:
     """Tests for resolve_static_sampling_config — the core dynamic→static resolver."""
 
@@ -92,7 +91,6 @@ class TestResolveStaticSamplingConfig:
         result = resolve_static_sampling_config(sample_config=psc)
         assert result.samplingMethodType == SamplingMethodType.BERNOULLI
 
-
     def test_dynamic_smart_sampling_delegates_to_tiered(self):
         dynamic = DynamicSamplingConfig(smartSampling=True)
         psc = ProfileSampleConfig(
@@ -133,7 +131,6 @@ class TestResolveStaticSamplingConfig:
         # row_count=0 → <=100K tier → 100%
         assert result.profileSample == 100
 
-
     def _make_threshold_config(self, thresholds):
         return ProfileSampleConfig(
             sampleConfigType=SampleConfigType.DYNAMIC,
@@ -144,64 +141,78 @@ class TestResolveStaticSamplingConfig:
         )
 
     def test_dynamic_thresholds_matches_exact_boundary(self):
-        psc = self._make_threshold_config([
-            Threshold(rowCountThreshold=1000, profileSample=50.0),
-            Threshold(rowCountThreshold=100_000, profileSample=10.0),
-        ])
+        psc = self._make_threshold_config(
+            [
+                Threshold(rowCountThreshold=1000, profileSample=50.0),
+                Threshold(rowCountThreshold=100_000, profileSample=10.0),
+            ]
+        )
         result = resolve_static_sampling_config(sample_config=psc, row_count=100_000)
         assert result.profileSample == 10.0
 
     def test_dynamic_thresholds_matches_highest_applicable(self):
-        psc = self._make_threshold_config([
-            Threshold(rowCountThreshold=100, profileSample=80.0),
-            Threshold(rowCountThreshold=1000, profileSample=50.0),
-            Threshold(rowCountThreshold=10_000, profileSample=20.0),
-        ])
+        psc = self._make_threshold_config(
+            [
+                Threshold(rowCountThreshold=100, profileSample=80.0),
+                Threshold(rowCountThreshold=1000, profileSample=50.0),
+                Threshold(rowCountThreshold=10_000, profileSample=20.0),
+            ]
+        )
         result = resolve_static_sampling_config(sample_config=psc, row_count=5_000)
         assert result.profileSample == 50.0
 
     def test_dynamic_thresholds_above_all(self):
-        psc = self._make_threshold_config([
-            Threshold(rowCountThreshold=100, profileSample=80.0),
-            Threshold(rowCountThreshold=1000, profileSample=50.0),
-        ])
+        psc = self._make_threshold_config(
+            [
+                Threshold(rowCountThreshold=100, profileSample=80.0),
+                Threshold(rowCountThreshold=1000, profileSample=50.0),
+            ]
+        )
         result = resolve_static_sampling_config(sample_config=psc, row_count=1_000_000)
         assert result.profileSample == 50.0
 
     def test_dynamic_thresholds_below_all_returns_none(self):
-        psc = self._make_threshold_config([
-            Threshold(rowCountThreshold=1000, profileSample=50.0),
-            Threshold(rowCountThreshold=10_000, profileSample=20.0),
-        ])
+        psc = self._make_threshold_config(
+            [
+                Threshold(rowCountThreshold=1000, profileSample=50.0),
+                Threshold(rowCountThreshold=10_000, profileSample=20.0),
+            ]
+        )
         result = resolve_static_sampling_config(sample_config=psc, row_count=500)
         assert result is None
 
     def test_dynamic_thresholds_preserves_sample_type_and_method(self):
-        psc = self._make_threshold_config([
-            Threshold(
-                rowCountThreshold=100,
-                profileSample=5000,
-                profileSampleType=ProfileSampleType.ROWS,
-                samplingMethodType=SamplingMethodType.SYSTEM,
-            ),
-        ])
+        psc = self._make_threshold_config(
+            [
+                Threshold(
+                    rowCountThreshold=100,
+                    profileSample=5000,
+                    profileSampleType=ProfileSampleType.ROWS,
+                    samplingMethodType=SamplingMethodType.SYSTEM,
+                ),
+            ]
+        )
         result = resolve_static_sampling_config(sample_config=psc, row_count=200)
         assert result.profileSample == 5000
         assert result.profileSampleType == ProfileSampleType.ROWS
         assert result.samplingMethodType == SamplingMethodType.SYSTEM
 
     def test_dynamic_thresholds_none_row_count_defaults_to_zero(self):
-        psc = self._make_threshold_config([
-            Threshold(rowCountThreshold=1, profileSample=90.0),
-        ])
+        psc = self._make_threshold_config(
+            [
+                Threshold(rowCountThreshold=1, profileSample=90.0),
+            ]
+        )
         result = resolve_static_sampling_config(sample_config=psc, row_count=None)
         # row_count defaults to 0, which is below threshold of 1
         assert result is None
 
     def test_dynamic_thresholds_single_threshold(self):
-        psc = self._make_threshold_config([
-            Threshold(rowCountThreshold=500, profileSample=25.0),
-        ])
+        psc = self._make_threshold_config(
+            [
+                Threshold(rowCountThreshold=500, profileSample=25.0),
+            ]
+        )
         assert resolve_static_sampling_config(sample_config=psc, row_count=499) is None
         result = resolve_static_sampling_config(sample_config=psc, row_count=500)
         assert result.profileSample == 25.0
@@ -220,7 +231,6 @@ class TestResolveStaticSamplingConfig:
         result = resolve_static_sampling_config(sample_config=psc, row_count=10_000)
         assert result is None
 
-
     def test_static_type_with_non_static_config_returns_none(self):
         """If sampleConfigType=STATIC but config is not StaticSamplingConfig, return None."""
         dynamic = DynamicSamplingConfig(smartSampling=True)
@@ -230,7 +240,6 @@ class TestResolveStaticSamplingConfig:
         )
         result = resolve_static_sampling_config(sample_config=psc)
         assert result is None
-
 
 
 class TestGetTieredSample:
@@ -266,7 +275,6 @@ class TestGetTieredSample:
     def test_returns_static_sampling_config_type(self):
         result = get_tiered_sample(1)
         assert isinstance(result, StaticSamplingConfig)
-
 
 
 class TestBaseGetAssetRowCount:
@@ -417,7 +425,6 @@ class TestNoSQLSamplerGetAssetRowCount:
 
         result = NoSQLSampler._get_asset_row_count(sampler)
         assert result == SAMPLE_DATA_DEFAULT_COUNT
-
 
 
 class TestResolveProfileSampleConfigHierarchy:
@@ -626,18 +633,18 @@ class TestResolveProfileSampleConfigHierarchy:
         assert result.sampleConfigType == SampleConfigType.DYNAMIC
         assert isinstance(result.config, DynamicSamplingConfig)
         assert result.config.thresholds[0].rowCountThreshold == 1000
- 
+
 
 class TestTableDiffDynamicSampling:
     """Tests for tableDiff.py calculate_nounce and sample_where_clause with dynamic configs."""
 
     def _make_validator(self, table_profile_config, row_count=10_000):
-        from metadata.data_quality.validations.table.sqlalchemy.tableDiff import (
-            TableDiffValidator,
-        )
         from metadata.data_quality.validations.models import (
             TableDiffRuntimeParameters,
             TableParameter,
+        )
+        from metadata.data_quality.validations.table.sqlalchemy.tableDiff import (
+            TableDiffValidator,
         )
         from metadata.generated.schema.tests.testCase import (
             TestCase,
@@ -647,35 +654,27 @@ class TestTableDiffDynamicSampling:
         validator = TableDiffValidator(
             None,
             TestCase.model_construct(
-                parameterValues=[
-                    TestCaseParameterValue(name="caseSensitiveColumns", value="false")
-                ]
+                parameterValues=[TestCaseParameterValue(name="caseSensitiveColumns", value="false")]
             ),
             None,
         )
         validator.runtime_params = TableDiffRuntimeParameters.model_construct(
-            **{
-                "table_profile_config": table_profile_config,
-                "table1": TableParameter.model_construct(
-                    **{
-                        "database_service_type": DatabaseServiceType.Postgres,
-                        "columns": [
-                            Column(name="id", dataType=DataType.STRING),
-                        ],
-                        "key_columns": ["id"],
-                    }
-                ),
-                "table2": TableParameter.model_construct(
-                    **{
-                        "database_service_type": DatabaseServiceType.Postgres,
-                        "columns": [
-                            Column(name="id", dataType=DataType.STRING),
-                        ],
-                        "key_columns": ["id"],
-                    }
-                ),
-                "keyColumns": ["id"],
-            }
+            table_profile_config=table_profile_config,
+            table1=TableParameter.model_construct(
+                database_service_type=DatabaseServiceType.Postgres,
+                columns=[
+                    Column(name="id", dataType=DataType.STRING),
+                ],
+                key_columns=["id"],
+            ),
+            table2=TableParameter.model_construct(
+                database_service_type=DatabaseServiceType.Postgres,
+                columns=[
+                    Column(name="id", dataType=DataType.STRING),
+                ],
+                key_columns=["id"],
+            ),
+            keyColumns=["id"],
         )
         validator.get_total_row_count = Mock(return_value=row_count)
         return validator

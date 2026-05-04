@@ -18,10 +18,6 @@ from sqlalchemy import inspect, or_, text
 from metadata.profiler.orm.registry import FLOAT_SET
 from metadata.profiler.processor.handle_partition import RANDOM_LABEL
 from metadata.sampler.sqlalchemy.sampler import SQASampler
-from metadata.sampler.sqlalchemy.stats_utils import get_row_count_from_show_stats
-from metadata.utils.logger import profiler_interface_registry_logger
-
-logger = profiler_interface_registry_logger()
 
 
 class TrinoSampler(SQASampler):
@@ -37,22 +33,6 @@ class TrinoSampler(SQASampler):
         TrinoDialect._json_deserializer = None
 
         super().__init__(*args, **kwargs)
-
-    def _get_asset_row_count(self) -> int:
-        if self.partition_details:
-            return super()._get_asset_row_count()
-
-        try:
-            schema = self.raw_dataset.__table__.schema
-            table = self.raw_dataset.__tablename__
-            with self.session_factory() as session:
-                result = get_row_count_from_show_stats(session, schema, table)
-                if result is not None:
-                    return result
-        except Exception as exc:
-            logger.debug(f"SHOW STATS row count failed, falling back to COUNT(*): {exc}")
-
-        return super()._get_asset_row_count()
 
     def _base_sample_query(self, selectable, column, label=None):
         sqa_columns = [col for col in inspect(self.raw_dataset).c if col.name != RANDOM_LABEL]

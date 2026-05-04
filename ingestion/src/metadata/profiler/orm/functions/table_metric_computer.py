@@ -976,6 +976,88 @@ class TeradataTableMetricComputer(BaseTableMetricComputer):
         return res
 
 
+class _StatsBasedTableMetricComputer(BaseTableMetricComputer):
+    """Base class for metric computers that get row count from database stats commands
+    (SHOW STATS, DESCRIBE FORMATTED, etc.) and fall back to COUNT(*)."""
+
+    def _build_result(self, row_count: int):
+        col_keys = inspect(self.runner.raw_dataset).c.keys()
+        Result = namedtuple("Result", [ROW_COUNT, COLUMN_COUNT, COLUMN_NAMES])
+        return Result(
+            rowCount=row_count,
+            columnCount=len(col_keys),
+            columnNames=",".join(col_keys),
+        )
+
+
+class TrinoTableMetricComputer(_StatsBasedTableMetricComputer):
+    """Trino/Presto/Athena Table Metric Computer using SHOW STATS."""
+
+    def compute(self):
+        """Extract row_count from SHOW STATS FOR. The summary row
+        (where column_name IS NULL) contains the table-level row_count."""
+        query = sa_text(f'SHOW STATS FOR "{self.schema_name}"."{self.table_name}"')
+        rows = self.runner._session.execute(query)
+        for row in rows:
+            row_dict = row._asdict()
+            if row_dict.get("column_name") is None:
+                row_count = row_dict.get("row_count")
+                if row_count is not None:
+                    return self._build_result(int(row_count))
+        return super().compute()
+
+
+class HiveTableMetricComputer(_StatsBasedTableMetricComputer):
+    """Hive Table Metric Computer using DESCRIBE FORMATTED."""
+
+    _NUMROWS_PATTERN = __import__("re").compile(r"numRows\s+(\d+)")
+
+    def compute(self):
+        """Parse numRows from DESCRIBE FORMATTED output."""
+        query = sa_text(f"DESCRIBE FORMATTED `{self.schema_name}`.`{self.table_name}`")
+        rows = self.runner._session.execute(query).fetchall()
+        for row in rows:
+            match = self._NUMROWS_PATTERN.search(str(row))
+            if match:
+                num_rows = int(match.group(1))
+                if num_rows >= 0:
+                    return self._build_result(num_rows)
+        return super().compute()
+
+
+class ImpalaTableMetricComputer(_StatsBasedTableMetricComputer):
+    """Impala Table Metric Computer using SHOW TABLE STATS."""
+
+    def compute(self):
+        """Sum #Rows across partitions from SHOW TABLE STATS."""
+        query = sa_text(f"SHOW TABLE STATS `{self.schema_name}`.`{self.table_name}`")
+        rows = self.runner._session.execute(query).fetchall()
+        total_rows = 0
+        for row in rows:
+            row_dict = row._asdict()
+            num_rows = row_dict.get("#Rows") or row_dict.get("#rows")
+            if num_rows is not None and int(num_rows) >= 0:
+                total_rows += int(num_rows)
+        if total_rows > 0:
+            return self._build_result(total_rows)
+        return super().compute()
+
+
+class DatabricksTableMetricComputer(_StatsBasedTableMetricComputer):
+    """Databricks Table Metric Computer using DESCRIBE DETAIL."""
+
+    def compute(self):
+        """Extract numRecords from DESCRIBE DETAIL."""
+        query = sa_text(f"DESCRIBE DETAIL `{self.schema_name}`.`{self.table_name}`")
+        result = self.runner._session.execute(query).first()
+        if result:
+            row_dict = result._asdict()
+            num_records = row_dict.get("numRecords")
+            if num_records is not None:
+                return self._build_result(int(num_records))
+        return super().compute()
+
+
 class TableMetricComputer:
     """Table Metric Construct"""
 
@@ -1072,3 +1154,9 @@ table_metric_computer_factory.register(Dialects.Informix, InformixTableMetricCom
 table_metric_computer_factory.register(Dialects.Timescale, TimescaleTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Exasol, ExasolTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Teradata, TeradataTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Trino, TrinoTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Presto, TrinoTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Athena, TrinoTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Hive, HiveTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Impala, ImpalaTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Databricks, DatabricksTableMetricComputer)

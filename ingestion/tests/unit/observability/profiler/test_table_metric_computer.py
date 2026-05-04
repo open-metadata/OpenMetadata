@@ -24,12 +24,16 @@ from metadata.generated.schema.entity.data.table import TableType
 from metadata.profiler.orm.functions.table_metric_computer import (
     BaseTableMetricComputer,
     CockroachTableMetricComputer,
+    DatabricksTableMetricComputer,
     DB2TableMetricComputer,
     ExasolTableMetricComputer,
+    HiveTableMetricComputer,
+    ImpalaTableMetricComputer,
     MSSQLTableMetricComputer,
     MySQLTableMetricComputer,
     SAPHanaTableMetricComputer,
     TeradataTableMetricComputer,
+    TrinoTableMetricComputer,
     VerticaTableMetricComputer,
     table_metric_computer_factory,
 )
@@ -421,3 +425,155 @@ class TestTeradataTableMetricComputer:
         sql = str(session.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True}))
         assert "columnCount" in sql, f"Query must select columnCount, got: {sql}"
         assert "columnNames" in sql, f"Query must select columnNames, got: {sql}"
+
+
+class TestTrinoTableMetricComputer:
+    def test_show_stats_returns_row_count(self):
+        session = _build_mock_session()
+        summary_row = MagicMock()
+        summary_row._asdict.return_value = {"column_name": None, "row_count": 891.0}
+        col_row = MagicMock()
+        col_row._asdict.return_value = {"column_name": "id", "row_count": None}
+        session.execute.return_value = [col_row, summary_row]
+
+        computer = _build_computer(session, TrinoTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 891
+
+    def test_show_stats_no_row_count_falls_back(self):
+        session = _build_mock_session()
+        summary_row = MagicMock()
+        summary_row._asdict.return_value = {"column_name": None, "row_count": None}
+        session.execute.return_value = [summary_row]
+        session.execute.return_value = iter([summary_row])
+
+        computer = _build_computer(session, TrinoTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=500)):
+            result = computer.compute()
+        assert result.rowCount == 500
+
+    def test_show_stats_empty_result_falls_back(self):
+        session = _build_mock_session()
+        session.execute.return_value = iter([])
+
+        computer = _build_computer(session, TrinoTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=100)):
+            result = computer.compute()
+        assert result.rowCount == 100
+
+    def test_result_includes_column_metadata(self):
+        session = _build_mock_session()
+        summary_row = MagicMock()
+        summary_row._asdict.return_value = {"column_name": None, "row_count": 50.0}
+        session.execute.return_value = [summary_row]
+
+        computer = _build_computer(session, TrinoTableMetricComputer)
+        result = computer.compute()
+        assert result.columnCount == 2
+        assert "id" in result.columnNames
+        assert "name" in result.columnNames
+
+    def test_trino_presto_athena_registrations(self):
+        assert table_metric_computer_factory._constructs[Dialects.Trino] is TrinoTableMetricComputer
+        assert table_metric_computer_factory._constructs[Dialects.Presto] is TrinoTableMetricComputer
+        assert table_metric_computer_factory._constructs[Dialects.Athena] is TrinoTableMetricComputer
+
+
+class TestHiveTableMetricComputer:
+    def test_describe_formatted_extracts_numrows(self):
+        session = _build_mock_session()
+        rows = [
+            MagicMock(__str__=lambda self: "Table Parameters:"),
+            MagicMock(),
+            MagicMock(__str__=lambda self: "rawDataSize 999"),
+        ]
+        rows[1].__str__ = lambda self: "numRows\t12345"
+        session.execute.return_value.fetchall.return_value = rows
+
+        computer = _build_computer(session, HiveTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 12345
+
+    def test_describe_formatted_no_match_falls_back(self):
+        session = _build_mock_session()
+        rows = [MagicMock(__str__=lambda self: "some other output")]
+        session.execute.return_value.fetchall.return_value = rows
+
+        computer = _build_computer(session, HiveTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=200)):
+            result = computer.compute()
+        assert result.rowCount == 200
+
+    def test_hive_registration(self):
+        assert table_metric_computer_factory._constructs[Dialects.Hive] is HiveTableMetricComputer
+
+
+class TestImpalaTableMetricComputer:
+    def test_sums_rows_across_partitions(self):
+        session = _build_mock_session()
+        row1 = MagicMock()
+        row1._asdict.return_value = {"#Rows": "3000"}
+        row2 = MagicMock()
+        row2._asdict.return_value = {"#Rows": "2000"}
+        session.execute.return_value.fetchall.return_value = [row1, row2]
+
+        computer = _build_computer(session, ImpalaTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 5000
+
+    def test_handles_lowercase_rows_key(self):
+        session = _build_mock_session()
+        row = MagicMock()
+        row._asdict.return_value = {"#rows": "800"}
+        session.execute.return_value.fetchall.return_value = [row]
+
+        computer = _build_computer(session, ImpalaTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 800
+
+    def test_zero_rows_falls_back(self):
+        session = _build_mock_session()
+        row = MagicMock()
+        row._asdict.return_value = {"#Rows": "0"}
+        session.execute.return_value.fetchall.return_value = [row]
+
+        computer = _build_computer(session, ImpalaTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=0)):
+            result = computer.compute()
+        assert result.rowCount == 0
+
+    def test_empty_stats_falls_back(self):
+        session = _build_mock_session()
+        session.execute.return_value.fetchall.return_value = []
+
+        computer = _build_computer(session, ImpalaTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=50)):
+            result = computer.compute()
+        assert result.rowCount == 50
+
+    def test_impala_registration(self):
+        assert table_metric_computer_factory._constructs[Dialects.Impala] is ImpalaTableMetricComputer
+
+
+class TestDatabricksTableMetricComputer:
+    def test_describe_detail_returns_num_records(self):
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result._asdict.return_value = {"numRecords": 42000}
+        session.execute.return_value.first.return_value = mock_result
+
+        computer = _build_computer(session, DatabricksTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 42000
+
+    def test_describe_detail_none_falls_back(self):
+        session = _build_mock_session()
+        session.execute.return_value.first.return_value = None
+
+        computer = _build_computer(session, DatabricksTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=5000)):
+            result = computer.compute()
+        assert result.rowCount == 5000
+
+    def test_databricks_registration(self):
+        assert table_metric_computer_factory._constructs[Dialects.Databricks] is DatabricksTableMetricComputer
