@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import TourPage from './TourPage.component';
 
 const mockUseTourProvider = {
+  isTourOpen: true,
   updateIsTourOpen: jest.fn(),
   currentTourPage: CurrentTourPageType.MY_DATA_PAGE,
   updateActiveTab: jest.fn(),
@@ -28,6 +29,29 @@ Object.defineProperty(document, 'querySelector', {
   value: mockQuerySelector,
   writable: true,
 });
+
+const createReadyFeedWidget = () => {
+  const feedWidget = document.createElement('div');
+  jest.spyOn(feedWidget, 'getBoundingClientRect').mockReturnValue({
+    bottom: 100,
+    height: 100,
+    left: 0,
+    right: 100,
+    top: 0,
+    width: 100,
+    x: 0,
+    y: 0,
+    toJSON: jest.fn(),
+  });
+
+  return feedWidget;
+};
+
+const waitForTourReadyCheck = async (time = 80) => {
+  await act(async () => {
+    jest.advanceTimersByTime(time);
+  });
+};
 
 jest.mock('../../context/TourProvider/TourProvider', () => ({
   useTourProvider: jest.fn().mockImplementation(() => mockUseTourProvider),
@@ -62,9 +86,11 @@ jest.mock('../../utils/TourUtils', () => ({
 describe('TourPage component', () => {
   beforeEach(() => {
     jest.useFakeTimers();
+
+    const feedWidget = createReadyFeedWidget();
     mockQuerySelector.mockImplementation((selector) => {
       if (selector === '#feedWidgetData') {
-        return document.createElement('div');
+        return feedWidget;
       }
 
       return null;
@@ -78,17 +104,90 @@ describe('TourPage component', () => {
 
   it('should render correctly', async () => {
     render(<TourPage />);
+    await waitForTourReadyCheck();
 
     expect(await screen.findByText('Tour.component')).toBeInTheDocument();
   });
 
   it('clear search term should work correctly', async () => {
     render(<TourPage />);
+    await waitForTourReadyCheck();
 
     const clearBtn = await screen.findByTestId('clear-btn');
     fireEvent.click(clearBtn);
 
     expect(mockUseTourProvider.updateTourSearch).toHaveBeenCalledWith('');
+  });
+
+  it('should render tour when feed widget appears after initial render', async () => {
+    const feedWidget = createReadyFeedWidget();
+    mockQuerySelector.mockReturnValue(null);
+
+    render(<TourPage />);
+
+    expect(screen.queryByText('Tour.component')).not.toBeInTheDocument();
+
+    mockQuerySelector.mockImplementation((selector) => {
+      if (selector === '#feedWidgetData') {
+        return feedWidget;
+      }
+
+      return null;
+    });
+    await act(async () => {
+      document.body.appendChild(feedWidget);
+    });
+    await waitForTourReadyCheck(116);
+
+    expect(screen.getByText('Tour.component')).toBeInTheDocument();
+
+    feedWidget.remove();
+  });
+
+  it('should render tour when existing feed widget becomes layout ready', async () => {
+    const feedWidget = document.createElement('div');
+    const getBoundingClientRect = jest
+      .spyOn(feedWidget, 'getBoundingClientRect')
+      .mockReturnValueOnce({
+        bottom: 0,
+        height: 0,
+        left: 0,
+        right: 0,
+        top: 0,
+        width: 0,
+        x: 0,
+        y: 0,
+        toJSON: jest.fn(),
+      })
+      .mockReturnValue({
+        bottom: 100,
+        height: 100,
+        left: 0,
+        right: 100,
+        top: 0,
+        width: 100,
+        x: 0,
+        y: 0,
+        toJSON: jest.fn(),
+      });
+
+    mockQuerySelector.mockImplementation((selector) => {
+      if (selector === '#feedWidgetData') {
+        return feedWidget;
+      }
+
+      return null;
+    });
+
+    render(<TourPage />);
+
+    expect(screen.queryByText('Tour.component')).not.toBeInTheDocument();
+
+    await waitForTourReadyCheck();
+    await waitForTourReadyCheck();
+
+    expect(screen.getByText('Tour.component')).toBeInTheDocument();
+    expect(getBoundingClientRect).toHaveBeenCalled();
   });
 
   it('MyDataPage Component should be visible, if currentTourPage is myDataPage', async () => {
@@ -98,6 +197,7 @@ describe('TourPage component', () => {
       currentTourPage: CurrentTourPageType.MY_DATA_PAGE,
     }));
     render(<TourPage />);
+    await waitForTourReadyCheck();
 
     expect(await screen.findByText('MyDataPage.component')).toBeInTheDocument();
   });
@@ -109,6 +209,7 @@ describe('TourPage component', () => {
       currentTourPage: CurrentTourPageType.EXPLORE_PAGE,
     }));
     render(<TourPage />);
+    await waitForTourReadyCheck();
 
     expect(
       await screen.findByText('ExplorePageV1Component.component')
@@ -122,6 +223,7 @@ describe('TourPage component', () => {
       currentTourPage: CurrentTourPageType.DATASET_PAGE,
     }));
     render(<TourPage />);
+    await waitForTourReadyCheck();
 
     expect(
       await screen.findByText('TableDetailsPageV1.component')
