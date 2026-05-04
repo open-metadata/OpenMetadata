@@ -98,7 +98,7 @@ export interface AutocompleteProps
   onSearchChange?: (value: string) => void;
   maxVisibleItems?: number;
   multiple?: boolean;
-  popoverProps?: PopoverProps;
+  popoverProps?: Partial<Omit<PopoverProps, 'size' | 'className'>>;;
 }
 
 const renderChipIcon = (item: SelectItemType) => {
