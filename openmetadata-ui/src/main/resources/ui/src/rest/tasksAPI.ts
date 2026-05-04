@@ -28,7 +28,6 @@ export enum TaskEntityStatus {
   Completed = 'Completed',
   Cancelled = 'Cancelled',
   Failed = 'Failed',
-  Revoked = 'Revoked',
 }
 
 // Task category enum - matches backend TaskCategory
@@ -76,33 +75,6 @@ export enum TaskResolutionType {
   TimedOut = 'TimedOut',
   AutoApproved = 'AutoApproved',
   AutoRejected = 'AutoRejected',
-  Revoked = 'Revoked',
-}
-
-// Data Access Request - access scope
-export enum DataAccessType {
-  FullAccess = 'FullAccess',
-  ColumnLevel = 'ColumnLevel',
-  Masked = 'Masked',
-}
-
-// Data Access Request - permission level
-export enum DataAccessPermission {
-  Read = 'Read',
-  Write = 'Write',
-  Admin = 'Admin',
-}
-
-// Payload shape for DataAccessRequest tasks
-export interface DataAccessRequestPayload {
-  accessType: DataAccessType;
-  requestedAccess?: DataAccessPermission;
-  columns?: string[];
-  duration?: string;
-  reason: string;
-  ticketId?: string;
-  expirationDate?: number;
-  [key: string]: unknown;
 }
 
 // Task comment interface
