@@ -54,7 +54,27 @@ class ReindexingUtilStaleRelationshipTest {
             new EntityError().withMessage("Resource does not exist anymore")));
     assertTrue(
         ReindexingUtil.isStaleReferenceError(
-            new EntityError().withMessage("Entity not found: testCase abc-123")));
+            new EntityError().withMessage("Entity not found for query params [name=foo].")));
+  }
+
+  @Test
+  void isStaleReferenceError_recognisesEveryEntityNotFoundExceptionFactory() {
+    // Mirrors the exact message constants in EntityNotFoundException — every byX(...) factory
+    // must be classified as a stale-reference warning, not a real failure.
+    assertTrue(
+        ReindexingUtil.isStaleReferenceError(
+            new EntityError().withMessage("Entity with id [abc-123] not found.")));
+    assertTrue(
+        ReindexingUtil.isStaleReferenceError(
+            new EntityError().withMessage("Entity with name [my-table] not found.")));
+    assertTrue(
+        ReindexingUtil.isStaleReferenceError(
+            new EntityError()
+                .withMessage("Entity with id [abc-123] and version [0.2] not found.")));
+    assertTrue(
+        ReindexingUtil.isStaleReferenceError(
+            new EntityError()
+                .withMessage("Parser schema not found for entity with id [abc-123].")));
   }
 
   @Test

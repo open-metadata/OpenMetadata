@@ -570,8 +570,12 @@ public class PartitionWorker {
         entityId = rawEntity.toString();
       }
       if (entityId == null) {
-        LOG.warn(
-            "Skipping reader failure record for entityType={}: entityId is null, message={}",
+        // Time-series readers (EntityTimeSeriesRepository) build EntityError without an id —
+        // they only have access to the JSON row, not the entity reference. Per-entity recording
+        // requires an id, so log at DEBUG (not WARN) to avoid spamming logs for every error in
+        // large time-series batches.
+        LOG.debug(
+            "No entityId on reader failure for entityType={} — skipping per-entity record. message={}",
             entityType,
             entityError.getMessage());
         continue;

@@ -76,10 +76,12 @@ public class ReindexingUtil {
    * cannot be meaningfully indexed and are reported as warnings rather than failing the entire
    * batch.
    *
-   * <p>The patterns match the canonical message shapes from {@code CatalogExceptionMessage} and
-   * {@code EntityNotFoundException} — bare {@code "not found"} is intentionally NOT matched
-   * because it would misclassify unrelated errors like {@code "Column 'foo' not found in result
-   * set"} or {@code "SSL certificate not found"}.
+   * <p>The patterns are deliberately specific so we do not misclassify unrelated errors that
+   * happen to contain {@code "not found"} (e.g. {@code "Column 'foo' not found in result set"}
+   * or {@code "SSL certificate not found"}). They cover every {@code EntityNotFoundException}
+   * factory message ({@code byId}, {@code byName}, {@code byFilter}, {@code byVersion},
+   * {@code byParserSchema}) plus the legacy {@code CatalogExceptionMessage.entityNotFound}
+   * format and the relationship-not-found shape.
    */
   public static boolean isStaleReferenceError(EntityError error) {
     if (error == null || error.getMessage() == null) {
@@ -88,6 +90,9 @@ public class ReindexingUtil {
     String message = error.getMessage().toLowerCase();
     return message.contains("instance for")
         || message.contains("entity not found")
+        || message.contains("entity with id")
+        || message.contains("entity with name")
+        || message.contains("parser schema not found")
         || message.contains("does not exist")
         || message.contains("entitynotfoundexception")
         || message.contains("expected relationship");
