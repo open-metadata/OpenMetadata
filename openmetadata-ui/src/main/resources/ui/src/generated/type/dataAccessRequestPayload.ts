@@ -51,6 +51,10 @@ export interface DataAccessRequestPayload {
 }
 
 /**
+ * Scope of access being requested. FullAccess grants access to all columns, ColumnLevel
+ * restricts to the columns listed in 'columns', Masked grants access to masked or
+ * anonymized data.
+ *
  * Scope of access being requested against the target entity.
  */
 export enum AccessType {

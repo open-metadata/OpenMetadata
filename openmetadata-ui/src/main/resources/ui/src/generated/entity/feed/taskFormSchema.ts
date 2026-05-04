@@ -175,4 +175,5 @@ export enum TaskStatus {
     Open = "Open",
     Pending = "Pending",
     Rejected = "Rejected",
+    Revoked = "Revoked",
 }
