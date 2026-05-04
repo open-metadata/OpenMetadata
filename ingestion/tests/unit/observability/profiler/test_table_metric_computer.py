@@ -102,6 +102,20 @@ class TestFactoryRegistrations:
         assert table_metric_computer_factory._constructs.get(Dialects.Hana) is SAPHanaTableMetricComputer
 
 
+class TestDialectStringValidation:
+    """Verify Dialects enum values match actual SQLAlchemy dialect names."""
+
+    def test_exasol_dialect_matches_driver(self):
+        from sqlalchemy_exasol.base import EXADialect
+
+        assert Dialects.Exasol == EXADialect.name
+
+    def test_teradata_dialect_matches_driver(self):
+        from teradatasqlalchemy.dialect import TeradataDialect
+
+        assert Dialects.Teradata == TeradataDialect.name
+
+
 class TestDB2TableMetricComputer:
     def test_compute_returns_result(self):
         session = _build_mock_session()

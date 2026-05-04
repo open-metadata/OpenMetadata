@@ -38,6 +38,7 @@ from metadata.generated.schema.entity.services.storageService import StorageConn
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     ProcessingEngine,
 )
+from metadata.generated.schema.type.samplingConfig import SampleConfigType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.types import ClassifiableEntityType
@@ -181,7 +182,7 @@ class SamplerInterface(ABC):
         return self._columns
 
     @cached_property
-    def _get_sample_config(self) -> StaticSamplingConfig | None:
+    def _resolve_sample_config(self) -> StaticSamplingConfig | None:
         """Get the static sampling config. Use cached_property to cache the
         result since it can be used multiple times during the sampling process
         and contains a potentially expensive computation.
@@ -191,7 +192,14 @@ class SamplerInterface(ABC):
         """
         self._sample_config = resolve_static_sampling_config(
             sample_config=self.sample_config.profileSampleConfig,
-            row_count=self._get_asset_row_count(),
+            row_count=(
+                self._get_asset_row_count()
+                if (
+                    self.sample_config.profileSampleConfig
+                    and self.sample_config.profileSampleConfig.sampleConfigType == SampleConfigType.DYNAMIC
+                )
+                else None
+            ),
         )
         return self._sample_config
 

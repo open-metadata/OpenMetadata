@@ -239,12 +239,16 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.sample_query:
             return self._rdn_sample_from_user_query()
 
-        static = self._get_sample_config
+        static = self._resolve_sample_config
 
         if (
             not static
             or not static.profileSample
-            or (static.profileSampleType == ProfileSampleType.PERCENTAGE and static.profileSample == 100)
+            or (
+                static.profileSampleType == ProfileSampleType.PERCENTAGE
+                and static.profileSample == 100
+                and self.sample_config.randomizedSample is not True
+            )
         ):
             if self.partition_details:
                 return self._partitioned_table()

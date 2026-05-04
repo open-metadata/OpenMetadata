@@ -4,7 +4,6 @@ from metadata.ingestion.source.database.athena.usage import AthenaUsageSource
 from metadata.profiler.interface.sqlalchemy.athena.profiler_interface import (
     AthenaProfilerInterface,
 )
-from metadata.sampler.sqlalchemy.athena.sampler import AthenaSampler
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
@@ -12,5 +11,4 @@ ServiceSpec = DefaultDatabaseSpec(
     lineage_source_class=AthenaLineageSource,
     usage_source_class=AthenaUsageSource,
     profiler_class=AthenaProfilerInterface,
-    sampler_class=AthenaSampler,
 )

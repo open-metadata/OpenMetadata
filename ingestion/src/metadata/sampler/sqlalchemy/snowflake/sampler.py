@@ -65,7 +65,7 @@ class SnowflakeSampler(SQASampler):
         )
         self.sampling_method_type = func.bernoulli
         if sample_config:
-            static = self._get_sample_config
+            static = self._resolve_sample_config
             if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
                 self.sampling_method_type = func.system
 

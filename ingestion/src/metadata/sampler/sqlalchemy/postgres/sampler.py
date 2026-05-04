@@ -68,7 +68,7 @@ class PostgresSampler(SQASampler):
         self.sampling_fn = func.bernoulli
         self.sampling_method_type = SamplingMethodType.BERNOULLI
         if sample_config:
-            static = self._get_sample_config
+            static = self._resolve_sample_config
             if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
                 self.sampling_fn = func.system
 

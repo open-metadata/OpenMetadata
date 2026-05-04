@@ -517,7 +517,7 @@ class Profiler(Generic[TMetric]):
                 rowCount=self._table_results.get(RowCount.name()),
                 createDateTime=raw_create_date,
                 sizeInByte=self._table_results.get("sizeInBytes"),
-                profileSample=(sample_config.profileSample if sample_config else 100.0),
+                profileSample=(sample_config.profileSample if sample_config else None),
                 profileSampleType=(sample_config.profileSampleType if sample_config else ProfileSampleType.PERCENTAGE),
                 customMetrics=self._table_results.get("customMetrics"),
             )

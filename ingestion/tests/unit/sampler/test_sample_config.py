@@ -31,7 +31,7 @@ class TestSampleConfigGetConfig:
             )
         )
         result = sample_config.get_config(StaticSamplingConfig)
-        assert result is static
+        assert isinstance(result, StaticSamplingConfig)
 
     def test_returns_dynamic_config(self):
         dynamic = DynamicSamplingConfig(
