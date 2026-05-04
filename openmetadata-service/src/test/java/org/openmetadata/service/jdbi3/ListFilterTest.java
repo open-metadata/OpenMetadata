@@ -201,6 +201,27 @@ class ListFilterTest {
   }
 
   /**
+   * {@code ?root=true} without {@code ?service=} must not bind {@code :serviceHash}
+   * either — confirming that the depth bind {@code :serviceHashChild} the
+   * {@code ContainerDAO.listRoot*} SQL references is not silently produced by ListFilter
+   * for a no-service call. The DAO override has to default this bind itself
+   * ({@code rootListingParams}) so the SQL stays runnable. Regression guard for the
+   * "GET /containers?root=true (no service) crashes with missing-named-parameter" bug.
+   */
+  @Test
+  void test_noServiceFilter_doesNotBindServicePatterns() {
+    ListFilter filter = new ListFilter().addQueryParam("root", "true");
+    filter.getCondition("storage_container_entity");
+
+    assertNull(
+        filter.getQueryParams().get("serviceHash"),
+        "serviceHash must not be bound when ?service= is absent");
+    assertNull(
+        filter.getQueryParams().get("serviceHashChild"),
+        "serviceHashChild must not be bound when ?service= is absent — DAO defaults it");
+  }
+
+  /**
    * Confirms the `?include=` flag still routes through the standard <sqlCondition> slot
    * regardless of which entity-specific prefix filter is in use. This is the bridge the
    * Deleted-toggle UI relies on: the user's choice translates to {@code include=} on the

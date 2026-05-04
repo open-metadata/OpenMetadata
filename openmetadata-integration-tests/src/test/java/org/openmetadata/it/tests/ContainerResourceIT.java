@@ -1355,7 +1355,9 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
         rootContainers.getData().stream()
             .map(Container::getId)
             .collect(java.util.stream.Collectors.toSet());
-    assertTrue(ids.contains(parent.getId()), "Real root container must still appear in ?root=true listing");
+    assertTrue(
+        ids.contains(parent.getId()),
+        "Real root container must still appear in ?root=true listing");
     assertFalse(
         ids.contains(child.getId()),
         "Orphaned child (multi-segment FQN, no parent CONTAINS row) must be excluded from "
@@ -1451,7 +1453,9 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     assertNotNull(rootContainers.getData());
 
     Set<UUID> ids =
-        rootContainers.getData().stream().map(Container::getId).collect(java.util.stream.Collectors.toSet());
+        rootContainers.getData().stream()
+            .map(Container::getId)
+            .collect(java.util.stream.Collectors.toSet());
     assertTrue(ids.contains(root.getId()), "root container must appear in ?root=true listing");
     assertFalse(ids.contains(child.getId()), "child must not appear in ?root=true listing");
     assertFalse(
@@ -1579,9 +1583,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     String basePath = "/v1/containers/name/" + parent.getFullyQualifiedName() + "/children";
 
     ContainerResultList nonDeletedPage =
-        client
-            .getHttpClient()
-            .execute(HttpMethod.GET, basePath, null, ContainerResultList.class);
+        client.getHttpClient().execute(HttpMethod.GET, basePath, null, ContainerResultList.class);
     Set<UUID> ndIds =
         nonDeletedPage.getData().stream()
             .map(Container::getId)
@@ -1594,8 +1596,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     ContainerResultList allPage =
         client
             .getHttpClient()
-            .execute(
-                HttpMethod.GET, basePath + "?include=all", null, ContainerResultList.class);
+            .execute(HttpMethod.GET, basePath + "?include=all", null, ContainerResultList.class);
     Set<UUID> allIds =
         allPage.getData().stream()
             .map(Container::getId)

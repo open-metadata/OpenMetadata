@@ -91,14 +91,15 @@ public class ChildrenPageCache {
   /**
    * Compact tag for the page key. Kept short to keep Redis keys readable in {@code MONITOR}
    * and {@code SCAN} output. Three values, fixed: {@code nd} (non-deleted, default),
-   * {@code all}, {@code d}.
+   * {@code a} (all), {@code d} (deleted-only). Single-letter tags also keep the cache-key
+   * "1-2 char" promise documented on {@link CacheKeys#childrenPage}.
    */
   private static String includeTag(Include include) {
     if (include == null) {
       return "nd";
     }
     return switch (include) {
-      case ALL -> "all";
+      case ALL -> "a";
       case DELETED -> "d";
       default -> "nd";
     };

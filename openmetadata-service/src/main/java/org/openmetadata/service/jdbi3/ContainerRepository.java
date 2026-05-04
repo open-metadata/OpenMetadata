@@ -704,10 +704,13 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   /**
    * Map the public {@link Include} enum to the literal value the listing SQL expects.
-   * The SQL keeps the comparison as a CASE on a literal string ('NON_DELETED' / 'ALL' /
-   * 'DELETED') rather than three separate query templates because the underlying access
-   * path is identical — the index range scan on {@code fqnHash} runs once and the per-row
-   * deleted predicate is evaluated post-index in all three modes.
+   * The SQL ({@code ContainerDAO.listDirectChildSummariesByParentHash}) gates the
+   * deleted predicate on this bind via a three-branch OR chain
+   * ({@code :includeDeleted = 'ALL' OR (:includeDeleted = 'DELETED' AND deleted = TRUE)
+   * OR (:includeDeleted = 'NON_DELETED' AND deleted = FALSE)}) rather than three
+   * separate query templates — the underlying access path is identical, the index range
+   * scan on {@code fqnHash} runs once, and the per-row deleted predicate is evaluated
+   * post-index in all three modes.
    */
   private static String includeToBindString(Include include) {
     return switch (include) {

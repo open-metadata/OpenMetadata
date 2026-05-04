@@ -110,12 +110,7 @@ public final class CacheKeys {
    * version stamp rotates.
    */
   public String childrenPage(
-      String type,
-      String parentFqn,
-      String version,
-      int limit,
-      int offset,
-      String includeTag) {
+      String type, String parentFqn, String version, int limit, int offset, String includeTag) {
     String fqnHash = FullyQualifiedName.buildHash(parentFqn);
     return ns
         + ":kids:"

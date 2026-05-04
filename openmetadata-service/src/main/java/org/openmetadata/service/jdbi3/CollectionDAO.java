@@ -715,15 +715,17 @@ public interface CollectionDAO {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
 
-      // The root-only SQL is a NOT EXISTS anti-join — there is no outer `er` alias to refer
-      // to here, so the condition is just the regular ListFilter WHERE clause; the new
-      // SQL appends its own NOT EXISTS predicate after this. Distinct method name
-      // (listRootBefore) is required: a same-signature `listBefore` here would override
-      // EntityDAO's default `listBefore(String, Map, String, int, String, String)` and
-      // make every non-root list call also pick up the NOT EXISTS predicate, silently
-      // filtering out child containers from generic `?service=...` listings.
+      // Distinct method name (listRootBefore) is required: a same-signature `listBefore`
+      // here would override EntityDAO's default `listBefore(String, Map, String, int,
+      // String, String)` and make every non-root list call also pick up the depth check,
+      // silently filtering out child containers from generic `?service=...` listings.
       return listRootBefore(
-          getTableName(), filter.getQueryParams(), condition, limit, beforeName, beforeId);
+          getTableName(),
+          rootListingParams(filter),
+          condition,
+          limit,
+          beforeName,
+          beforeId);
     }
 
     @Override
@@ -736,7 +738,12 @@ public interface CollectionDAO {
       }
 
       return listRootAfter(
-          getTableName(), filter.getQueryParams(), condition, limit, afterName, afterId);
+          getTableName(),
+          rootListingParams(filter),
+          condition,
+          limit,
+          afterName,
+          afterId);
     }
 
     @Override
@@ -748,7 +755,25 @@ public interface CollectionDAO {
         return EntityDAO.super.listCount(filter);
       }
 
-      return listRootCount(getTableName(), getNameHashColumn(), filter.getQueryParams(), condition);
+      return listRootCount(
+          getTableName(), getNameHashColumn(), rootListingParams(filter), condition);
+    }
+
+    /**
+     * Build the bind map the listRoot SQL expects. The depth predicate
+     * ({@code fqnHash NOT LIKE :serviceHashChild}) needs the {@code serviceHashChild}
+     * bind to be set on every call, but {@link ListFilter#getServiceCondition} only
+     * adds it when {@code ?service=} is present. For the {@code ?root=true} case
+     * <em>without</em> a service filter — "all root containers across all services" —
+     * we default the bind to {@code %.%.%}, which excludes any fqnHash with two or more
+     * separators (everything strictly below the immediate level). Index usage is naturally
+     * weaker here since the prefix LIKE is also absent, but no-service root listings are
+     * rare and the result is at most one row per service.
+     */
+    private static java.util.Map<String, Object> rootListingParams(ListFilter filter) {
+      java.util.Map<String, Object> params = new java.util.HashMap<>(filter.getQueryParams());
+      params.putIfAbsent("serviceHashChild", "%.%.%");
+      return params;
     }
 
     // Root-only listing (?root=true) returns containers that are direct children of the
