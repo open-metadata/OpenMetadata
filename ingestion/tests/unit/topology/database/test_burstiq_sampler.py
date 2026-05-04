@@ -89,7 +89,7 @@ def sampler(mock_client):
             entity=TABLE_ENTITY,
             sample_config=SampleConfig(),
         )
-    return s
+    return s  # noqa: RET504
 
 
 class TestBurstIQSamplerGetClient:

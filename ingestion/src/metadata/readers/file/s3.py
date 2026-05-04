@@ -14,7 +14,7 @@ Read files as string from S3
 """
 
 import traceback
-from typing import Any, Dict, List
+from typing import Any, Dict, List  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
@@ -25,7 +25,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-def return_s3_storage_options(config_source: S3Config) -> Dict[str, Any]:
+def return_s3_storage_options(config_source: S3Config) -> Dict[str, Any]:  # noqa: UP006
     """
     Build the S3 storage options to pass to pandas/fsspec readers.
     Returns a dictionary with AWS credentials and client configuration.
@@ -60,15 +60,15 @@ class S3Reader(Reader):
     def __init__(self, client):
         self.client = client
 
-    def read(self, path: str, *, bucket_name: str = None, verbose: bool = True, **__) -> bytes:
+    def read(self, path: str, *, bucket_name: str = None, verbose: bool = True, **__) -> bytes:  # noqa: RUF013
         try:
             return self.client.get_object(Bucket=bucket_name, Key=path)["Body"].read()
         except Exception as err:
             if verbose:
                 logger.debug(traceback.format_exc())
-            raise ReadException(f"Error fetching file [{path}] from S3: {err}")
+            raise ReadException(f"Error fetching file [{path}] from S3: {err}")  # noqa: B904
 
-    def _get_tree(self) -> List[str]:
+    def _get_tree(self) -> List[str]:  # noqa: UP006
         """
         We are not implementing this yet. This should
         only be needed for now for the Datalake where we don't need
@@ -81,7 +81,7 @@ class S3Reader(Reader):
         path: str,
         local_file_path: str,
         *,
-        bucket_name: str = None,
+        bucket_name: str = None,  # noqa: RUF013
         verbose: bool = True,
         **__,
     ):
@@ -90,4 +90,4 @@ class S3Reader(Reader):
         except Exception as err:
             if verbose:
                 logger.debug(traceback.format_exc())
-            raise ReadException(f"Error downloading file [{path}] from S3: {err}")
+            raise ReadException(f"Error downloading file [{path}] from S3: {err}")  # noqa: B904

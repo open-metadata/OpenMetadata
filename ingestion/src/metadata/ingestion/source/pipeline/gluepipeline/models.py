@@ -13,7 +13,7 @@
 Glue Pipeline Source Model module
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, Field
 
@@ -30,7 +30,7 @@ class SourceDetails(BaseModel):
 class AmazonRedshift(BaseModel):
     Name: str
     Data: SourceDetails
-    database_name: Optional[str] = None
+    database_name: Optional[str] = None  # noqa: UP045
 
     @property
     def table_name(self):
@@ -48,44 +48,44 @@ class AmazonRedshift(BaseModel):
 class CatalogSource(BaseModel):
     Name: str
     database_name: str = Field(alias="Database")
-    schema_name: Optional[str] = None
+    schema_name: Optional[str] = None  # noqa: UP045
     table_name: str = Field(alias="Table")
 
 
 class JDBCSource(BaseModel):
     Name: str
-    schema_name: Optional[str] = Field(default=None, alias="SchemaName")
-    database_name: Optional[str] = None
+    schema_name: Optional[str] = Field(default=None, alias="SchemaName")  # noqa: UP045
+    database_name: Optional[str] = None  # noqa: UP045
     table_name: str = Field(alias="ConnectionTable")
 
 
 class S3Source(BaseModel):
     Name: str
-    Paths: List[str]
+    Paths: List[str]  # noqa: UP006
 
 
 class S3Target(BaseModel):
     Name: str
     Path: str
-    Paths: Optional[str] = None
+    Paths: Optional[str] = None  # noqa: UP045
 
 
 class JobCommand(BaseModel):
-    Name: Optional[str] = None
-    ScriptLocation: Optional[str] = None
-    PythonVersion: Optional[str] = None
+    Name: Optional[str] = None  # noqa: UP045
+    ScriptLocation: Optional[str] = None  # noqa: UP045
+    PythonVersion: Optional[str] = None  # noqa: UP045
 
 
 class JobConnections(BaseModel):
-    Connections: Optional[List[str]] = None
+    Connections: Optional[List[str]] = None  # noqa: UP006, UP045
 
 
 class JobNodes(BaseModel):
-    config_nodes: Optional[dict] = Field(default=None, alias="CodeGenConfigurationNodes")
-    command: Optional[JobCommand] = Field(default=None, alias="Command")
-    connections: Optional[JobConnections] = Field(default=None, alias="Connections")
-    default_arguments: Optional[dict] = Field(default=None, alias="DefaultArguments")
+    config_nodes: Optional[dict] = Field(default=None, alias="CodeGenConfigurationNodes")  # noqa: UP045
+    command: Optional[JobCommand] = Field(default=None, alias="Command")  # noqa: UP045
+    connections: Optional[JobConnections] = Field(default=None, alias="Connections")  # noqa: UP045
+    default_arguments: Optional[dict] = Field(default=None, alias="DefaultArguments")  # noqa: UP045
 
 
 class JobNodeResponse(BaseModel):
-    Job: Optional[JobNodes] = None
+    Job: Optional[JobNodes] = None  # noqa: UP045

@@ -14,7 +14,7 @@ Client to interact with BurstIQ LifeGraph APIs
 
 import traceback
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional  # noqa: UP035
 
 import requests
 
@@ -49,9 +49,9 @@ class BurstIQClient:
         self.config = config
         self.api_base_url = getattr(config, "apiUrl", API_BASE_URL).rstrip("/")
 
-        self.access_token: Optional[str] = None
-        self.token_expires_at: Optional[datetime] = None
-        self._chain_metrics: Optional[Dict[str, int]] = None
+        self.access_token: Optional[str] = None  # noqa: UP045
+        self.token_expires_at: Optional[datetime] = None  # noqa: UP045
+        self._chain_metrics: Optional[Dict[str, int]] = None  # noqa: UP006, UP045
 
     def test_authenticate(self):
         """
@@ -111,9 +111,9 @@ class BurstIQClient:
         except Exception as exc:
             logger.error(f"Authentication failed: {exc}")
             logger.debug(traceback.format_exc())
-            raise Exception("Failed to authenticate with BurstIQ") from exc
+            raise Exception("Failed to authenticate with BurstIQ") from exc  # noqa: TRY002
 
-    def _get_auth_header(self) -> Dict[str, str]:
+    def _get_auth_header(self) -> Dict[str, str]:  # noqa: UP006
         """
         Get authentication headers, refreshing the token if necessary.
 
@@ -146,7 +146,7 @@ class BurstIQClient:
 
         return headers
 
-    def _make_request(self, method: str, endpoint: str, **kwargs) -> Optional[Any]:
+    def _make_request(self, method: str, endpoint: str, **kwargs) -> Optional[Any]:  # noqa: UP045
         """
         Make HTTP request to BurstIQ API
 
@@ -158,7 +158,7 @@ class BurstIQClient:
         Returns:
             JSON response or None
         """
-        import time
+        import time  # noqa: PLC0415
 
         url = f"{self.api_base_url}/{endpoint.lstrip('/')}"
         headers = self._get_auth_header()
@@ -185,7 +185,7 @@ class BurstIQClient:
             else:
                 logger.debug("Received single item response")
 
-            return json_data
+            return json_data  # noqa: TRY300
 
         except requests.exceptions.Timeout as exc:
             logger.error(f"Request timeout after {API_TIMEOUT}s for {url}: {exc}")
@@ -205,7 +205,7 @@ class BurstIQClient:
             logger.debug(traceback.format_exc())
             raise
 
-    def get_dictionaries(self, limit: Optional[int] = None) -> List[BurstIQDictionary]:
+    def get_dictionaries(self, limit: Optional[int] = None) -> List[BurstIQDictionary]:  # noqa: UP006, UP045
         """
         Fetch all data dictionaries from BurstIQ
 
@@ -230,7 +230,7 @@ class BurstIQClient:
         logger.info(f"Found {len(dictionaries)} dictionaries")
         return dictionaries
 
-    def get_dictionary_by_name(self, name: str) -> Optional[BurstIQDictionary]:
+    def get_dictionary_by_name(self, name: str) -> Optional[BurstIQDictionary]:  # noqa: UP045
         """
         Get a specific dictionary by name
 
@@ -248,12 +248,12 @@ class BurstIQClient:
 
     def get_edges(
         self,
-        name: Optional[str] = None,
-        from_dictionary: Optional[str] = None,
-        to_dictionary: Optional[str] = None,
-        limit: Optional[int] = None,
-        skip: Optional[int] = None,
-    ) -> List[BurstIQEdge]:
+        name: Optional[str] = None,  # noqa: UP045
+        from_dictionary: Optional[str] = None,  # noqa: UP045
+        to_dictionary: Optional[str] = None,  # noqa: UP045
+        limit: Optional[int] = None,  # noqa: UP045
+        skip: Optional[int] = None,  # noqa: UP045
+    ) -> List[BurstIQEdge]:  # noqa: UP006
         """
         Query edge definitions (lineage relationships) from BurstIQ
 
@@ -290,7 +290,7 @@ class BurstIQClient:
         logger.info(f"Found {len(edges)} edge definitions")
         return edges
 
-    def get_chain_metrics(self) -> Dict[str, int]:
+    def get_chain_metrics(self) -> Dict[str, int]:  # noqa: UP006
         """
         Fetch asset counts per chain from BurstIQ metrics endpoint.
 
@@ -307,7 +307,7 @@ class BurstIQClient:
         self._chain_metrics = {name: chain.assets for name, chain in metrics.chainMetrics.items()}
         return self._chain_metrics
 
-    def get_records_by_tql(self, chain: str, limit: int, skip: int = 0) -> List[Dict[str, Any]]:
+    def get_records_by_tql(self, chain: str, limit: int, skip: int = 0) -> List[Dict[str, Any]]:  # noqa: UP006
         """
         Fetch data records from a chain using TQL (Temporal Query Language).
 

@@ -18,6 +18,7 @@ from pathlib import Path
 from airflow import settings
 from airflow.models import DagModel, DagRun
 from flask import Response
+
 from openmetadata_managed_apis.api.config import (
     AIRFLOW_DAGS_FOLDER,
     DAG_GENERATED_CONFIGS,
@@ -42,12 +43,12 @@ def delete_dag_id(dag_id: str) -> Response:
     deleted_file = False
     if dag_py_file.is_file():
         deleted_file = True
-        os.remove(dag_py_file.absolute())
+        os.remove(dag_py_file.absolute())  # noqa: PTH107
 
     deleted_config = False
     if config_file.is_file():
         deleted_config = True
-        os.remove(config_file.absolute())
+        os.remove(config_file.absolute())  # noqa: PTH107
 
     with settings.Session() as session:
         deleted_dags = session.query(DagModel).filter(DagModel.dag_id == dag_id).delete()

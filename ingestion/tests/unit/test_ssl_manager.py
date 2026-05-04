@@ -40,14 +40,14 @@ class SSLManagerTest(TestCase):
     def test_create_temp_file(self):
         content = SecretStr("Test content")
         temp_file = self.ssl_manager.create_temp_file(content)
-        self.assertTrue(os.path.exists(temp_file))
-        with open(temp_file, "r", encoding="UTF-8") as file:
+        self.assertTrue(os.path.exists(temp_file))  # noqa: PTH110
+        with open(temp_file, "r", encoding="UTF-8") as file:  # noqa: PTH123
             file_content = file.read()
         self.assertEqual(file_content, content.get_secret_value())
         content = SecretStr("")
         temp_file = self.ssl_manager.create_temp_file(content)
-        self.assertTrue(os.path.exists(temp_file))
-        with open(temp_file, "r", encoding="UTF-8") as file:
+        self.assertTrue(os.path.exists(temp_file))  # noqa: PTH110
+        with open(temp_file, "r", encoding="UTF-8") as file:  # noqa: PTH123
             file_content = file.read()
         self.assertEqual(file_content, content.get_secret_value())
         with self.assertRaises(AttributeError):
@@ -57,7 +57,7 @@ class SSLManagerTest(TestCase):
     def test_cleanup_temp_files(self):
         temp_file = self.ssl_manager.create_temp_file(SecretStr("Test content"))
         self.ssl_manager.cleanup_temp_files()
-        self.assertFalse(os.path.exists(temp_file))
+        self.assertFalse(os.path.exists(temp_file))  # noqa: PTH110
 
 
 class KafkaSourceSSLTest(TestCase):
@@ -66,7 +66,7 @@ class KafkaSourceSSLTest(TestCase):
     def test_init(self, mock_ssl_manager, test_connection):
         test_connection.return_value = True
         config = WorkflowSource(
-            **{
+            **{  # noqa: PIE804
                 "type": "kafka",
                 "serviceName": "local_kafka",
                 "serviceConnection": {
@@ -91,7 +91,7 @@ class KafkaSourceSSLTest(TestCase):
         mock_ssl_manager.assert_not_called()
 
         config_with_ssl = WorkflowSource(
-            **{
+            **{  # noqa: PIE804
                 "type": "kafka",
                 "serviceName": "local_kafka",
                 "serviceConnection": {
@@ -144,7 +144,7 @@ class CassandraSourceSSLTest(TestCase):
         setup_ssl.side_effect = lambda x: x
 
         config = WorkflowSource(
-            **{
+            **{  # noqa: PIE804
                 "type": "cassandra",
                 "serviceName": "local_cassandra",
                 "serviceConnection": {
@@ -167,7 +167,7 @@ class CassandraSourceSSLTest(TestCase):
         self.assertIsNone(cassandra_source.ssl_manager)
 
         config_with_ssl = WorkflowSource(
-            **{
+            **{  # noqa: PIE804
                 "type": "cassandra",
                 "serviceName": "local_cassandra",
                 "serviceConnection": {

@@ -82,12 +82,12 @@ EXPTECTED_COLUMN_TYPE = [
     "GEOMETRY",
     "UNKNOWN",
 ]
-root = os.path.dirname(__file__)
+root = os.path.dirname(__file__)  # noqa: PTH120
 
 
 try:
-    with open(
-        os.path.join(root, "resources/expected_output_column_parser.json"),
+    with open(  # noqa: PTH123
+        os.path.join(root, "resources/expected_output_column_parser.json"),  # noqa: PTH118
         encoding="UTF-8",
     ) as f:
         EXPECTED_OUTPUT = json.loads(f.read())["data"]
@@ -144,4 +144,4 @@ def test_superset_parse_array_data_type():
     assert result == DataType.UNKNOWN
     col_parse = {"dataType": "STRING", "arrayDataType": None}
     result = SupersetSourceMixin.parse_array_data_type(None, col_parse)
-    assert result == None
+    assert result == None  # noqa: E711

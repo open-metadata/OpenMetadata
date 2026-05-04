@@ -14,7 +14,7 @@ Postgres source module
 
 import traceback
 from collections import namedtuple
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -135,14 +135,14 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         self.schema_desc_map = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: PostgresConnection = config.serviceConnection.root.config
         if not isinstance(connection, PostgresConnection):
             raise InvalidSourceException(f"Expected PostgresConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:
+    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the schema description
         """
@@ -165,7 +165,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
             TableNameAndType(name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)) for name, relkind in result
         ]
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -174,8 +174,8 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         yield from self._execute_database_query(POSTGRES_GET_DB_NAMES)
 
     def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.root.config.ingestAllDatabases:
-            configured_db = self.config.serviceConnection.root.config.database
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
+            configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
             self.set_inspector(database_name=configured_db)
             self.set_schema_description_map()
             yield configured_db
@@ -203,7 +203,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     logger.debug(traceback.format_exc())
                     logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
-    def get_table_partition_details(self, table_name: str, schema_name: str, inspector) -> Tuple[bool, TablePartition]:
+    def get_table_partition_details(self, table_name: str, schema_name: str, inspector) -> Tuple[bool, TablePartition]:  # noqa: UP006
         with self.engine.connect() as conn:
             result = conn.execute(
                 text(POSTGRES_PARTITION_DETAILS),

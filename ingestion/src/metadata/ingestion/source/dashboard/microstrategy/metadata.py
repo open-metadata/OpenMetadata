@@ -11,7 +11,7 @@
 """MicroStrategy source module"""
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -82,7 +82,7 @@ class MicrostrategySource(DashboardServiceSource):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         config = WorkflowSource.model_validate(config_dict)
         connection: MicroStrategyConnection = config.serviceConnection.root.config
@@ -90,7 +90,7 @@ class MicrostrategySource(DashboardServiceSource):
             raise InvalidSourceException(f"Expected MicroStrategyConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_dashboards_list(self) -> Optional[List[MstrDashboard]]:
+    def get_dashboards_list(self) -> Optional[List[MstrDashboard]]:  # noqa: UP006, UP045
         """
         Get List of all dashboards
         """
@@ -114,7 +114,7 @@ class MicrostrategySource(DashboardServiceSource):
         """
         return dashboard.name
 
-    def get_project_name(self, dashboard_details: MstrDashboard) -> Optional[str]:
+    def get_project_name(self, dashboard_details: MstrDashboard) -> Optional[str]:  # noqa: UP045
         """
         Get dashboard project name
         """
@@ -129,7 +129,7 @@ class MicrostrategySource(DashboardServiceSource):
         Get Dashboard Details
         """
         dashboard_details = self.client.get_dashboard_details(dashboard.projectId, dashboard.projectName, dashboard.id)
-        return dashboard_details
+        return dashboard_details  # noqa: RET504
 
     def yield_dashboard(self, dashboard_details: MstrDashboardDetails) -> Iterable[Either[CreateDashboardRequest]]:
         """
@@ -174,8 +174,8 @@ class MicrostrategySource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: MstrDashboardDetails,
-        db_service_prefix: Optional[str] = None,
-    ) -> Optional[Iterable[AddLineageRequest]]:
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[Iterable[AddLineageRequest]]:  # noqa: UP045
         """
         Get lineage between dashboard and data sources
         """
@@ -221,7 +221,7 @@ class MicrostrategySource(DashboardServiceSource):
                         table_name=str(table),
                     )
                     if not table_entities:
-                        logger.debug(f"[{query_hash}] Table not found in metadata: {str(table)}")
+                        logger.debug(f"[{query_hash}] Table not found in metadata: {str(table)}")  # noqa: RUF010
                         continue
                     for table_entity in table_entities or []:
                         if prefix_table_name and prefix_table_name.lower() != str(table_entity.name.root).lower():
@@ -265,7 +265,7 @@ class MicrostrategySource(DashboardServiceSource):
                     )
                 )
 
-    def yield_dashboard_chart(self, dashboard_details: MstrDashboardDetails) -> Optional[Iterable[CreateChartRequest]]:
+    def yield_dashboard_chart(self, dashboard_details: MstrDashboardDetails) -> Optional[Iterable[CreateChartRequest]]:  # noqa: UP045
         """Get chart method
 
         Args:
@@ -307,7 +307,7 @@ class MicrostrategySource(DashboardServiceSource):
                     )
                 )
 
-    def _get_column_info(self, dataset: MstrDataset) -> Optional[List[Column]]:
+    def _get_column_info(self, dataset: MstrDataset) -> Optional[List[Column]]:  # noqa: UP006, UP045
         """Build columns from dataset"""
         datasource_columns = []
         for available_object in dataset.availableObjects or []:
@@ -320,7 +320,7 @@ class MicrostrategySource(DashboardServiceSource):
                 }
                 parsed_column_children = []
                 for form in available_object.forms or []:
-                    parsed_column_children.append(MicroStrategyColumnParser.parse(form))
+                    parsed_column_children.append(MicroStrategyColumnParser.parse(form))  # noqa: PERF401
                 if parsed_column_children:
                     parsed_column["children"] = parsed_column_children
 
@@ -332,7 +332,7 @@ class MicrostrategySource(DashboardServiceSource):
 
     def yield_datamodel(
         self, dashboard_details: MstrDashboardDetails
-    ) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
+    ) -> Optional[Iterable[CreateDashboardDataModelRequest]]:  # noqa: UP045
         """Get datamodel method
 
         Args:

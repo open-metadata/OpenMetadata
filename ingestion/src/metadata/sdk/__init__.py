@@ -42,7 +42,7 @@ from metadata.sdk.entities import (
 )
 from metadata.sdk.entities.base import BaseEntity
 
-_global_client: Optional[OpenMetadata] = None
+_global_client: Optional[OpenMetadata] = None  # noqa: UP045
 
 
 def to_entity_reference(entity: Any) -> dict[str, Any]:
@@ -108,7 +108,7 @@ def configure(
         >>> configure()
     """
 
-    global _global_client  # pylint: disable=global-statement
+    global _global_client  # pylint: disable=global-statement  # noqa: PLW0603
 
     if config is not None and (host or server_url or jwt_token or kwargs):
         raise TypeError("Pass either a config object or keyword arguments, not both")
@@ -150,7 +150,7 @@ def client() -> OpenMetadata:
 
 def reset() -> None:
     """Reset the SDK state, closing any cached client."""
-    global _global_client  # pylint: disable=global-statement
+    global _global_client  # pylint: disable=global-statement  # noqa: PLW0603
     OpenMetadata.reset()
     _global_client = None
 

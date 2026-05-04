@@ -52,7 +52,7 @@ class UniqueCount(QueryMetric):
     def metric_type(self):
         return int
 
-    def query(self, sample: Optional[type], session: Optional[Session] = None):
+    def query(self, sample: Optional[type], session: Optional[Session] = None):  # noqa: UP045
         """
         Build the Unique Count metric
         """
@@ -108,7 +108,7 @@ class UniqueCount(QueryMetric):
                 for value in values:
                     counter.update([json.dumps(value)])
             else:
-                raise err
+                raise err  # noqa: TRY201
         return counter
 
     @staticmethod

@@ -464,7 +464,7 @@ class DatalakeUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
@@ -511,17 +511,17 @@ class DatalakeUnitTest(TestCase):
             reader = JSONDataFrameReader(config, None)
 
             result1 = reader._read(key=tmp1_path, bucket_name="")
-            actual_df_1 = list(result1.dataframes())[0]
+            actual_df_1 = list(result1.dataframes())[0]  # noqa: RUF015
             assert actual_df_1.compare(exp_df_list).empty
 
             result2 = reader._read(key=tmp2_path, bucket_name="")
-            actual_df_2 = list(result2.dataframes())[0]
+            actual_df_2 = list(result2.dataframes())[0]  # noqa: RUF015
             assert actual_df_2.compare(exp_df_obj).empty
         finally:
             import os
 
-            os.unlink(tmp1_path)
-            os.unlink(tmp2_path)
+            os.unlink(tmp1_path)  # noqa: PTH108
+            os.unlink(tmp2_path)  # noqa: PTH108
 
         Column.__eq__ = custom_column_compare
 
@@ -539,7 +539,7 @@ class DatalakeUnitTest(TestCase):
         finally:
             import os
 
-            os.unlink(tmp3_path)
+            os.unlink(tmp3_path)  # noqa: PTH108
 
         with tempfile.NamedTemporaryFile(mode="wb", suffix=".json", delete=False) as tmp4:
             tmp4.write(EXAMPLE_JSON_TEST_4)
@@ -555,7 +555,7 @@ class DatalakeUnitTest(TestCase):
         finally:
             import os
 
-            os.unlink(tmp4_path)
+            os.unlink(tmp4_path)  # noqa: PTH108
 
         json_parser = JsonDataFrameColumnParser(pd.DataFrame(), raw_data=EXAMPLE_JSON_TEST_5)
         actual_cols_5 = json_parser.get_columns()
@@ -580,11 +580,11 @@ class DatalakeUnitTest(TestCase):
 
             result1 = reader._read(key=tmp1_path, bucket_name="")
             if result1.columns:
-                assert EXPECTED_AVRO_COL_1 == result1.columns
+                assert EXPECTED_AVRO_COL_1 == result1.columns  # noqa: SIM300
         finally:
             import os
 
-            os.unlink(tmp1_path)
+            os.unlink(tmp1_path)  # noqa: PTH108
 
         with tempfile.NamedTemporaryFile(mode="wb", suffix=".avro", delete=False) as tmp2:
             tmp2.write(AVRO_DATA_FILE)
@@ -593,11 +593,11 @@ class DatalakeUnitTest(TestCase):
         try:
             result2 = reader._read(key=tmp2_path, bucket_name="")
             if result2.columns:
-                assert EXPECTED_AVRO_COL_2 == result2.columns
+                assert EXPECTED_AVRO_COL_2 == result2.columns  # noqa: SIM300
         finally:
             import os
 
-            os.unlink(tmp2_path)
+            os.unlink(tmp2_path)  # noqa: PTH108
 
 
 mock_datalake_gcs_config = {
@@ -655,7 +655,7 @@ class DatalakeGCSUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection")
     @patch("metadata.utils.credentials.validate_private_key")
     @patch("google.cloud.storage.Client")
-    def __init__(self, methodName, _, __, test_connection) -> None:
+    def __init__(self, methodName, _, __, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_gcs_config)
@@ -670,7 +670,7 @@ class DatalakeGCSUnitTest(TestCase):
     @patch("google.cloud.storage.Client")
     @patch("metadata.utils.credentials.validate_private_key")
     def test_multiple_project_id_implementation(self, validate_private_key, storage_client, test_connection):
-        print(mock_multiple_project_id)
+        print(mock_multiple_project_id)  # noqa: T201
         self.datalake_source_multiple_project_id = DatalakeSource.create(
             mock_multiple_project_id["source"],
             OpenMetadataWorkflowConfig.model_validate(mock_multiple_project_id).workflowConfig.openMetadataServerConfig,

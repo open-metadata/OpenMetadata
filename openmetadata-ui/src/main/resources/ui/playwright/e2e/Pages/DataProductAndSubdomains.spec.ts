@@ -56,7 +56,7 @@ test.describe('Data Product Comprehensive Tests', () => {
       await page.getByRole('menuitem', { name: 'Data Products' }).click();
 
       // Wait for the Add Data Product form to appear
-      await page.getByTestId('add-domain').waitFor({
+      await page.getByTestId('add-domain-form').waitFor({
         state: 'visible',
         timeout: 10000,
       });

@@ -32,11 +32,11 @@ class ColumnFullyQualifiedNameFactory(RootModelFactory):
 
 class ColumnFactory(factory.Factory):
     name = factory.LazyAttribute(lambda obj: ColumnName(root=obj.column_name))
-    dataType = factory.fuzzy.FuzzyChoice(DataType)
-    arrayDataType = factory.LazyAttribute(
-        lambda a: random.choice([d for d in DataType]) if a.dataType is DataType.ARRAY else None
+    dataType = factory.fuzzy.FuzzyChoice(DataType)  # noqa: N815
+    arrayDataType = factory.LazyAttribute(  # noqa: N815
+        lambda a: random.choice([d for d in DataType]) if a.dataType is DataType.ARRAY else None  # noqa: C416
     )
-    fullyQualifiedName = factory.LazyAttribute(
+    fullyQualifiedName = factory.LazyAttribute(  # noqa: N815
         lambda obj: FullyQualifiedEntityName(
             root=f"{obj.service}.{obj.database}.{obj.schema}.{obj.table}.{obj.column_name}"
         )

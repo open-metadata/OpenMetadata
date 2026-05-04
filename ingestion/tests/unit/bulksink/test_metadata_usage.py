@@ -159,7 +159,7 @@ class TestMetadataUsageBulkSinkErrorHandling(TestCase):
             call_count[0] += 1
             if call_count[0] == 1:
                 raise create_api_error(409, "Entity already exists")
-            return None
+            return None  # noqa: RET501
 
         self.mock_metadata.ingest_entity_queries_data.side_effect = side_effect_fn
 
@@ -285,13 +285,13 @@ class TestHandleQueryCostErrorHandling(TestCase):
     def tearDown(self):
         import shutil
 
-        if os.path.exists(self.config.filename):
+        if os.path.exists(self.config.filename):  # noqa: PTH110
             shutil.rmtree(self.config.filename)
 
     def _write_cost_file(self, records):
         """Write query cost records to a staging file"""
-        filepath = os.path.join(self.config.filename, "test_service_1702000000000_query")
-        with open(filepath, "w") as f:
+        filepath = os.path.join(self.config.filename, "test_service_1702000000000_query")  # noqa: PTH118
+        with open(filepath, "w") as f:  # noqa: PTH123
             for record in records:
                 f.write(json.dumps(record) + "\n")
 
@@ -329,7 +329,7 @@ class TestHandleQueryCostErrorHandling(TestCase):
             call_count[0] += 1
             if call_count[0] == 1:
                 raise AttributeError("'NoneType' object has no attribute 'encode'")
-            return None
+            return None  # noqa: RET501
 
         self.mock_metadata.publish_query_cost.side_effect = side_effect
 

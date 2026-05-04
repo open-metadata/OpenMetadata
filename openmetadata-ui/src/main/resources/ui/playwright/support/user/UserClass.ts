@@ -29,15 +29,14 @@ export type UserData = {
   password: string;
 };
 
-const dataStewardPolicy = new PolicyClass();
-const dataStewardRoles = new RolesClass();
-let dataStewardTeam: TeamClass;
-
 export class UserClass {
   data: UserData;
 
   responseData: UserResponseDataType = {} as UserResponseDataType;
   isUserDataSteward = false;
+  private readonly dataStewardPolicy = new PolicyClass();
+  private readonly dataStewardRoles = new RolesClass();
+  private dataStewardTeam: TeamClass | undefined;
   isAdmin: boolean;
 
   constructor(data?: UserData, isAdmin = false) {
@@ -185,28 +184,28 @@ export class UserClass {
   async setDataStewardRole(apiContext: APIRequestContext) {
     this.isUserDataSteward = true;
     const id = uuid();
-    await dataStewardPolicy.create(apiContext, DATA_STEWARD_RULES);
-    await dataStewardRoles.create(apiContext, [
-      dataStewardPolicy.responseData.name,
+    await this.dataStewardPolicy.create(apiContext, DATA_STEWARD_RULES);
+    await this.dataStewardRoles.create(apiContext, [
+      this.dataStewardPolicy.responseData.name,
     ]);
-    dataStewardTeam = new TeamClass({
+    this.dataStewardTeam = new TeamClass({
       name: `PW%data_steward_team-${id}`,
       displayName: `PW Data Steward Team ${id}`,
       description: 'playwright data steward team description',
       teamType: 'Group',
       users: [this.responseData.id],
-      defaultRoles: dataStewardRoles.responseData.id
-        ? [dataStewardRoles.responseData.id]
+      defaultRoles: this.dataStewardRoles.responseData.id
+        ? [this.dataStewardRoles.responseData.id]
         : [],
     });
-    await dataStewardTeam.create(apiContext);
+    await this.dataStewardTeam.create(apiContext);
   }
 
   async delete(apiContext: APIRequestContext, hardDelete = true) {
     if (this.isUserDataSteward) {
-      await dataStewardPolicy.delete(apiContext);
-      await dataStewardRoles.delete(apiContext);
-      await dataStewardTeam.delete(apiContext);
+      await this.dataStewardPolicy.delete(apiContext);
+      await this.dataStewardRoles.delete(apiContext);
+      await this.dataStewardTeam?.delete(apiContext);
     }
 
     const response = await apiContext.delete(

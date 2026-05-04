@@ -207,18 +207,18 @@ class TestParquetBatchReading(unittest.TestCase):
 
         from pyarrow.parquet import ParquetFile
 
-        test_file_path = os.path.join(os.path.dirname(__file__), "test_files", "flights-1m.parquet")
+        test_file_path = os.path.join(os.path.dirname(__file__), "test_files", "flights-1m.parquet")  # noqa: PTH118, PTH120
 
-        if not os.path.exists(test_file_path):
+        if not os.path.exists(test_file_path):  # noqa: PTH110
             self.skipTest(f"Test file not found: {test_file_path}")
 
         try:
             parquet_file = ParquetFile(test_file_path)
 
-            file_size = os.path.getsize(test_file_path)
+            file_size = os.path.getsize(test_file_path)  # noqa: PTH202
             total_rows = parquet_file.metadata.num_rows
 
-            print(f"Testing with real parquet file: {file_size} bytes, {total_rows} rows")
+            print(f"Testing with real parquet file: {file_size} bytes, {total_rows} rows")  # noqa: T201
 
             result = list(self.reader._read_parquet_in_batches(parquet_file))
             fallback_method_result = dataframe_to_chunks(parquet_file.read().to_pandas())

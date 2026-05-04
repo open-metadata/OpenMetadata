@@ -13,7 +13,7 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from sqlalchemy import Column, Table, text
 from sqlalchemy.sql.selectable import CTE
@@ -31,7 +31,7 @@ class AzureSQLSampler(SQASampler):
     # These types are not supported by pyodbc - it throws
     # an error when trying to fetch data from these columns
     # pyodbc.ProgrammingError: ('ODBC SQL type -151 is not yet supported.  column-index=x  type=-151', 'HY106')
-    NOT_COMPUTE_PYODBC = {"SQASGeography", "UndeterminedType"}
+    NOT_COMPUTE_PYODBC = {"SQASGeography", "UndeterminedType"}  # noqa: RUF012
 
     def set_tablesample(self, selectable: Table):
         """Set the TABLESAMPLE clause for MSSQL
@@ -53,10 +53,10 @@ class AzureSQLSampler(SQASampler):
         query = self.get_client().query(rnd)
         return query.cte(f"{self.get_sampler_table_name()}_sample")
 
-    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:
+    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:  # noqa: UP006, UP045
         sqa_columns = []
         if columns:
             for col in columns:
                 if col.type.__class__.__name__ not in self.NOT_COMPUTE_PYODBC:
-                    sqa_columns.append(col)
+                    sqa_columns.append(col)  # noqa: PERF401
         return super().fetch_sample_data(sqa_columns or columns)
