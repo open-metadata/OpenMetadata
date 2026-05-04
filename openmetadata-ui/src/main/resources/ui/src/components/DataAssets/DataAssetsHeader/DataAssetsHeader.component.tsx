@@ -52,8 +52,8 @@ import {
 } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
-import { EntityReference } from '../../../generated/type/entityReference';
 import { Thread } from '../../../generated/entity/feed/thread';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityRules } from '../../../hooks/useEntityRules';
