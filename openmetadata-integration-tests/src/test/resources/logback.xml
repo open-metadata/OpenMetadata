@@ -9,8 +9,6 @@
             </pattern>
         </encoder>
     </appender>
-    <!-- Slow request diagnostics -->
-    <logger name="org.openmetadata.slowrequest" level="WARN" />
     <root level="INFO">
         <appender-ref ref="STDOUT" />
     </root>

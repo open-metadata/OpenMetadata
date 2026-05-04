@@ -487,9 +487,9 @@ public class PartitionWorker {
       String entityType, String keysetCursor, int batchSize, StageStatsTracker statsTracker)
       throws SearchIndexException {
 
-    long t0 = System.currentTimeMillis();
+    long readStartNanos = System.nanoTime();
     ResultList<?> resultList = readEntitiesKeyset(entityType, keysetCursor, batchSize);
-    long t1 = System.currentTimeMillis();
+    long readDurationNanos = System.nanoTime() - readStartNanos;
 
     int readSuccessCount = resultList != null ? listOrEmpty(resultList.getData()).size() : 0;
     int readErrorCount = resultList != null ? listOrEmpty(resultList.getErrors()).size() : 0;
@@ -503,14 +503,17 @@ public class PartitionWorker {
             : null;
 
     if (statsTracker != null) {
-      statsTracker.recordReaderBatch(readSuccessCount, readErrorCount, warningsCount);
+      // Reader timing = wall-clock time of the keyset DB read (listAfter + setFieldsInBulk
+      // hydration). This isolates DB latency from downstream queue / process / sink work.
+      statsTracker.recordReaderBatch(
+          readSuccessCount, readErrorCount, warningsCount, readDurationNanos);
     }
 
     if (readSuccessCount == 0) {
       LOG.debug(
           "{} read={}ms returned no indexable rows (warnings={}, errors={})",
           entityType,
-          t1 - t0,
+          readDurationNanos / 1_000_000L,
           warningsCount,
           readErrorCount);
       return new BatchResult(0, readErrorCount, warningsCount, nextCursor);
@@ -542,15 +545,17 @@ public class PartitionWorker {
 
     Map<String, Object> contextData = createContextData(entityType, statsTracker);
 
+    long readMs = readDurationNanos / 1_000_000L;
     try {
+      long writeStartMs = System.currentTimeMillis();
       writeToSink(entityType, resultList, contextData);
-      long t2 = System.currentTimeMillis();
+      long writeMs = System.currentTimeMillis() - writeStartMs;
       LOG.debug(
           "{} read={}ms write={}ms total={}ms records={}",
           entityType,
-          t1 - t0,
-          t2 - t1,
-          t2 - t0,
+          readMs,
+          writeMs,
+          readMs + writeMs,
           readSuccessCount);
       return new BatchResult(readSuccessCount, readErrorCount, warningsCount, nextCursor);
     } catch (Exception e) {
