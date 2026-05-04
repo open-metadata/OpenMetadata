@@ -53,6 +53,15 @@ public class DistributedJobStatsAggregator {
   /** Minimum polling interval to avoid excessive DB load */
   private static final long MIN_POLL_INTERVAL_MS = 500;
 
+  /**
+   * Once the underlying job has been in a non-running state (STOPPING or any terminal status) for
+   * longer than this, the aggregator self-stops. The executor's {@code finally} block in {@code
+   * execute()} is supposed to call {@link #stop()}, but if a worker thread is wedged that block
+   * never runs and the aggregator polls forever — burning CPU and continuously broadcasting a
+   * status that overwrites the user-visible STOPPED in the UI.
+   */
+  static final long SHUTDOWN_GRACE_MS = 30_000L;
+
   private final DistributedSearchIndexCoordinator coordinator;
   private final UUID jobId;
   private final UUID appId;
@@ -69,6 +78,7 @@ public class DistributedJobStatsAggregator {
   private volatile BulkSink bulkSink;
   private String cachedRunType;
   private AppSchedule cachedScheduleInfo;
+  private volatile long shutdownObservedAtMs = 0L;
 
   public DistributedJobStatsAggregator(DistributedSearchIndexCoordinator coordinator, UUID jobId) {
     this(coordinator, jobId, null, null, DEFAULT_POLL_INTERVAL_MS);
@@ -201,6 +211,12 @@ public class DistributedJobStatsAggregator {
         return;
       }
 
+      IndexJobStatus status = job.getStatus();
+      boolean shutdownInitiated = status == IndexJobStatus.STOPPING || job.isTerminal();
+      if (shouldSelfStop(shutdownInitiated, status)) {
+        return;
+      }
+
       // Skip broadcast if stats haven't changed (reduces log noise and DB load)
       boolean statsChanged =
           job.getSuccessRecords() != lastBroadcastSuccess
@@ -220,22 +236,58 @@ public class DistributedJobStatsAggregator {
       // Convert to WebSocket message format
       AppRunRecord appRecord = convertToAppRunRecord(job, serverStats);
 
-      // Broadcast via WebSocket
-      broadcastStats(appRecord);
+      // Broadcast via WebSocket — but skip during the user-initiated STOPPING phase. The
+      // {@code AppScheduler.updateAndBroadcastStoppedStatus} path already wrote
+      // AppRunRecord.status=STOPPED and pushed it on this same WebSocket channel. If we keep
+      // broadcasting AppRunRecord built from the search_index_job row (still STOPPING), we
+      // overwrite that STOPPED in the UI for the entire drain period and the user's Stop click
+      // looks like it did nothing. Once the job actually transitions to a terminal state we
+      // resume broadcasting so the UI shows the final outcome.
+      if (status != IndexJobStatus.STOPPING) {
+        broadcastStats(appRecord);
+      }
 
       // Notify progress listener
       notifyProgressListener(job, serverStats);
 
       if (job.isTerminal()) {
         LOG.info(
-            "Job {} is in terminal state {}, waiting for executor to stop aggregator",
+            "Job {} reached terminal state {}, aggregator will self-stop within {}ms",
             jobId,
-            job.getStatus());
+            status,
+            SHUTDOWN_GRACE_MS);
       }
 
     } catch (Exception e) {
       LOG.error("Error aggregating stats for job {}", jobId, e);
     }
+  }
+
+  /**
+   * Track when shutdown was first observed. If we sit in STOPPING (or any terminal state) past
+   * {@link #SHUTDOWN_GRACE_MS} without the executor calling {@link #stop()}, self-stop. Returns
+   * true when the aggregator self-stopped and the caller should bail out of this cycle.
+   */
+  private boolean shouldSelfStop(boolean shutdownInitiated, IndexJobStatus status) {
+    if (!shutdownInitiated) {
+      shutdownObservedAtMs = 0L;
+      return false;
+    }
+    long now = System.currentTimeMillis();
+    if (shutdownObservedAtMs == 0L) {
+      shutdownObservedAtMs = now;
+      return false;
+    }
+    if (now - shutdownObservedAtMs > SHUTDOWN_GRACE_MS) {
+      LOG.warn(
+          "Job {} stuck in {} for >{}ms, self-stopping aggregator (executor never called stop)",
+          jobId,
+          status,
+          SHUTDOWN_GRACE_MS);
+      stop();
+      return true;
+    }
+    return false;
   }
 
   private CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats fetchServerStats(

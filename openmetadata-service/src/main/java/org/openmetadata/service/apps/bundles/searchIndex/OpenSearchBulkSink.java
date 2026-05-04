@@ -896,6 +896,15 @@ public class OpenSearchBulkSink implements BulkSink {
   }
 
   public static class CustomBulkProcessor {
+    /**
+     * Cap on how long a flush will wait for a permit before declaring the bulk failed. With an
+     * unbounded {@code acquire()} a single leaked async future (no completion, no release) parks
+     * every subsequent caller permanently and the entire pipeline freezes at whatever record
+     * count was in flight at the time. 60s is conservative — well above any realistic OS bulk
+     * latency, well below "user gives up and bounces the pod".
+     */
+    private static final long SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS = 60L;
+
     private final OpenSearchAsyncClient asyncClient;
     private final List<BulkOperation> buffer = new ArrayList<>();
 
@@ -1093,12 +1102,33 @@ public class OpenSearchBulkSink implements BulkSink {
       int numberOfActions = toFlush.size();
       LOG.debug("Executing bulk request {} with {} actions", executionId, numberOfActions);
 
+      // Bounded acquire: a leaked bulk future (callback never fires — e.g., the OpenSearch HC5
+      // I/O reactor died, PR #27698 territory) used to drain this semaphore and park every
+      // subsequent caller forever. With a timeout we surface the leak as a permanent failure
+      // so workers can keep moving and operators see an actual error instead of the pipeline
+      // silently freezing at a fixed record count.
+      boolean acquired;
       try {
-        concurrentRequestSemaphore.acquire();
+        acquired =
+            concurrentRequestSemaphore.tryAcquire(
+                SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         LOG.error("Interrupted while waiting for semaphore", e);
         Thread.currentThread().interrupt();
         recordPermanentFailure(toFlush, numberOfActions, "Interrupted while waiting for semaphore");
+        if (metrics != null) {
+          metrics.decrementPendingBulkRequests();
+        }
+        return;
+      }
+      if (!acquired) {
+        LOG.error(
+            "Bulk semaphore exhausted for {}s — recording {} ops as failed (active bulk requests={}). Likely a leaked async future.",
+            SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
+            numberOfActions,
+            activeBulkRequests.get());
+        recordPermanentFailure(
+            toFlush, numberOfActions, "Bulk semaphore timeout — likely future leak");
         if (metrics != null) {
           metrics.decrementPendingBulkRequests();
         }

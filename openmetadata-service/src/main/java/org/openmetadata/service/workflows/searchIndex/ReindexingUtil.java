@@ -176,4 +176,27 @@ public class ReindexingUtil {
   public static String escapeDoubleQuotes(String str) {
     return str.replace("\"", "\\\"");
   }
+
+  /**
+   * Resolve the minimal field set the reindex path must request from {@code
+   * EntityRepository.setFields}. Time-series entities don't go through the entity-fields machinery,
+   * so they get an empty list. For everything else, ask the index class via {@link
+   * org.openmetadata.service.search.SearchIndexFactory#getReindexFieldsFor(String)} for exactly
+   * the fields its document needs. Single source of truth shared by {@code EntityReader} (single-
+   * server pipeline) and {@code PartitionWorker} (distributed pipeline) — historically these two
+   * paths drifted apart and the distributed one fetched all fields, including expensive ones like
+   * {@code owns} on Team/User that are excluded from the search document anyway.
+   */
+  public static List<String> getSearchIndexFields(String entityType) {
+    if (TIME_SERIES_ENTITIES.contains(entityType)) {
+      return List.of();
+    }
+    org.openmetadata.service.search.SearchRepository repo = Entity.getSearchRepository();
+    if (repo == null || repo.getSearchIndexFactory() == null) {
+      // Fallback for environments without a bootstrapped search subsystem (unit tests) — keep
+      // pre-selective-fields behaviour.
+      return List.of("*");
+    }
+    return new ArrayList<>(repo.getSearchIndexFactory().getReindexFieldsFor(entityType));
+  }
 }

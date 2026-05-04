@@ -34,6 +34,7 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
+import org.openmetadata.schema.entity.applications.configuration.internal.CacheWarmupAppConfig;
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Stats;
@@ -101,7 +102,19 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   private static final Duration CHECKPOINT_TTL = Duration.ofDays(1);
   private static final Duration CLAIM_TTL = Duration.ofMinutes(10);
 
+  // Bound how long we wait for a flapping cache before declaring the warmup partial. Each retry
+  // sleeps {@link #UNAVAILABLE_BACKOFF_MS}, so the total grace before bailing is roughly
+  // MAX_UNAVAILABLE_RETRIES * UNAVAILABLE_BACKOFF_MS / 1000 seconds. Old behaviour was a single
+  // {@code break} on first {@code !available}, which combined with a 300ms-timeout cache flipping
+  // unavailable on the very first hiccup left 84% of entities cold while the run reported SUCCESS.
+  private static final int MAX_UNAVAILABLE_RETRIES = 30;
+  private static final long UNAVAILABLE_BACKOFF_MS = 1_000L;
+
+  // Runtime state used for the AppRunRecord broadcast. We keep an EventPublisherJob here purely
+  // because that's what the AppRunRecord serialization expects in the success/failure contexts;
+  // it is NOT parsed from the user-supplied JSON. User configuration lives on {@link #appConfig}.
   @Getter private EventPublisherJob jobData;
+  private CacheWarmupAppConfig appConfig;
 
   private CacheProvider cacheProvider;
   private CacheKeys keys;
@@ -111,16 +124,11 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   private String checkpointKeyPrefix;
   private String claimKeyPrefix;
   private final String instanceId = generateInstanceId();
-  // Read in initJobData from the user-supplied app config (cacheWarmupAppConfig schema). System
-  // properties remain a fallback for cases where the app record isn't editable (e.g. bootstrap).
-  private boolean warmBundles =
-      Boolean.parseBoolean(System.getProperty("om.cache.warmBundles", "true"));
-  private boolean enableDistributedClaim =
-      Boolean.parseBoolean(System.getProperty("om.cache.warmup.distributedClaim", "false"));
 
   private JobExecutionContext jobExecutionContext;
   private volatile boolean stopped = false;
   private final Stats stats = new Stats().withEntityStats(new EntityStats());
+  private volatile boolean partiallyWarmed = false;
   private volatile long lastWebSocketUpdate = 0;
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000;
 
@@ -131,8 +139,26 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   @Override
   public void init(App app) {
     super.init(app);
-    jobData = JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class);
-    readAppConfigFlags();
+    appConfig = parseAppConfig(app.getAppConfiguration());
+    jobData = newRuntimeJobData();
+  }
+
+  private CacheWarmupAppConfig parseAppConfig(Object raw) {
+    if (raw == null) {
+      return new CacheWarmupAppConfig();
+    }
+    return JsonUtils.convertValue(raw, CacheWarmupAppConfig.class);
+  }
+
+  private EventPublisherJob newRuntimeJobData() {
+    EventPublisherJob runtime = new EventPublisherJob();
+    if (appConfig != null) {
+      runtime.setEntities(appConfig.getEntities());
+      if (appConfig.getBatchSize() != null) {
+        runtime.setBatchSize(appConfig.getBatchSize());
+      }
+    }
+    return runtime;
   }
 
   @Override
@@ -170,56 +196,38 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       checkpointKeyPrefix = ks + ":warmup:checkpoint:";
       claimKeyPrefix = ks + ":warmup:claim:";
     }
-    if (warmBundles && cacheProvider != null && keys != null) {
+    if (warmBundlesEnabled() && cacheProvider != null && keys != null) {
       bundleBatcher = new BundleWarmupBatcher(collectionDAO, cacheProvider, keys);
     }
   }
 
-  /**
-   * Pull the user-supplied warmBundles / enableDistributedClaim flags out of the raw app config
-   * map. The runtime parses the same payload as {@link EventPublisherJob}, which doesn't include
-   * these fields, so we read them from the original map rather than trying to extend the
-   * EventPublisherJob schema.
-   */
-  private void readAppConfigFlags() {
-    if (getApp() == null || getApp().getAppConfiguration() == null) {
-      return;
+  private boolean warmBundlesEnabled() {
+    if (appConfig != null && appConfig.getWarmBundles() != null) {
+      return appConfig.getWarmBundles();
     }
-    try {
-      Map<?, ?> raw = JsonUtils.convertValue(getApp().getAppConfiguration(), Map.class);
-      if (raw == null) {
-        return;
-      }
-      // Accept both native Boolean and string forms — depending on how the config arrives
-      // (typed POJO, raw JSON, YAML env-var override, API string body) the same logical value
-      // can land here as Boolean.TRUE or "true". An instanceof Boolean check would silently
-      // ignore the string form and fall back to JVM system properties, which surprises
-      // operators who set the flag in the UI.
-      warmBundles = parseBooleanFlag(raw.get("warmBundles"), warmBundles);
-      enableDistributedClaim =
-          parseBooleanFlag(raw.get("enableDistributedClaim"), enableDistributedClaim);
-    } catch (Exception e) {
-      LOG.debug("Could not read warmBundles / enableDistributedClaim from app config", e);
-    }
+    return Boolean.parseBoolean(System.getProperty("om.cache.warmBundles", "true"));
   }
 
-  private static boolean parseBooleanFlag(Object value, boolean fallback) {
-    if (value == null) {
-      return fallback;
+  private boolean distributedClaimEnabled() {
+    if (appConfig != null && appConfig.getEnableDistributedClaim() != null) {
+      return appConfig.getEnableDistributedClaim();
     }
-    if (value instanceof Boolean) {
-      return (Boolean) value;
-    }
-    return Boolean.parseBoolean(String.valueOf(value));
+    return Boolean.parseBoolean(System.getProperty("om.cache.warmup.distributedClaim", "false"));
   }
 
   private void initJobData(JobExecutionContext ctx) {
-    if (jobData == null) {
-      jobData = loadJobData(ctx);
+    if (appConfig == null) {
+      appConfig = loadAppConfig(ctx);
+      jobData = newRuntimeJobData();
+    } else if (jobData == null) {
+      jobData = newRuntimeJobData();
     }
     if (ctx.getJobDetail().getKey().getName().equals(ON_DEMAND_JOB)) {
+      // Persist the (typed) user-supplied config back onto the App so subsequent runs see the
+      // same payload. We round-trip through a Map so AbstractNativeApplication's persistence
+      // layer doesn't have to know about CacheWarmupAppConfig directly.
       Map<String, Object> asMap =
-          JsonUtils.convertValue(jobData, new TypeReference<Map<String, Object>>() {});
+          JsonUtils.convertValue(appConfig, new TypeReference<Map<String, Object>>() {});
       getApp().setAppConfiguration(asMap);
     }
     if (jobData.getBatchSize() == null) {
@@ -229,15 +237,15 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     jobData.setStats(stats);
   }
 
-  private EventPublisherJob loadJobData(JobExecutionContext ctx) {
+  private CacheWarmupAppConfig loadAppConfig(JobExecutionContext ctx) {
     String raw = (String) ctx.getJobDetail().getJobDataMap().get(APP_CONFIG);
     if (raw != null) {
-      return JsonUtils.readValue(raw, EventPublisherJob.class);
+      return JsonUtils.readValue(raw, CacheWarmupAppConfig.class);
     }
     if (getApp() != null && getApp().getAppConfiguration() != null) {
-      return JsonUtils.convertValue(getApp().getAppConfiguration(), EventPublisherJob.class);
+      return parseAppConfig(getApp().getAppConfiguration());
     }
-    throw new AppException("JobData is not initialized");
+    throw new AppException("CacheWarmup app configuration is not initialized");
   }
 
   private void runWarmup() {
@@ -255,12 +263,20 @@ public class CacheWarmupApp extends AbstractNativeApplication {
 
     int batchSize = jobData.getBatchSize();
     Duration ttl = Duration.ofSeconds(cacheConfig.entityTtlSeconds);
+    partiallyWarmed = false;
     for (String entityType : entityTypes) {
       if (stopped) break;
       warmupEntityType(entityType, batchSize, ttl);
     }
     if (stopped) {
       jobData.setStatus(EventPublisherJob.Status.STOPPED);
+    } else if (partiallyWarmed) {
+      // Don't lie about success when one or more entity types bailed out because the cache went
+      // unavailable. Surface ACTIVE_ERROR so the AppRunRecord shows a non-success status and ops
+      // know to rerun. The 84%-cold incident happened because the app reported COMPLETED while
+      // most entities never made it to Redis.
+      jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
+      LOG.warn("Cache warmup completed with one or more entity types only partially warmed");
     } else {
       jobData.setStatus(EventPublisherJob.Status.COMPLETED);
       CacheMetrics metrics = CacheMetrics.getInstance();
@@ -275,7 +291,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       LOG.debug("Skipping user entity type — not cached by design");
       return;
     }
-    if (enableDistributedClaim && !claimEntityType(entityType)) {
+    if (distributedClaimEnabled() && !claimEntityType(entityType)) {
       LOG.info("Skipping {} — claimed by another instance", entityType);
       return;
     }
@@ -298,16 +314,35 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     int success = 0;
     int bundlesWritten = 0;
     int failed = 0;
+    int unavailableAttempts = 0;
     long start = System.currentTimeMillis();
     while (!stopped) {
       if (!cacheProvider.available()) {
-        // A prior batch tripped the provider to unavailable. Iterating further would silently
-        // drop every subsequent pipelineSet/Hset (their guard `if (!available) return;` fires)
-        // while the accounting below still counted pages as success. Bail out — the health
-        // checker will flip the flag back if Redis recovers; rerun the app to resume warmup.
-        LOG.warn("Cache provider unavailable, aborting warmup for {}", entityType);
-        break;
+        // Cache flipped to unavailable mid-warmup. Old behaviour was an immediate {@code break}
+        // here, which combined with a hair-trigger availability flag (a single 300ms timeout
+        // marked the whole provider unavailable) routinely left 80%+ of entities cold while the
+        // run reported COMPLETED. Now we wait for the health-check to confirm recovery (with
+        // bounded retries) before declaring this entity type partially warmed.
+        if (++unavailableAttempts > MAX_UNAVAILABLE_RETRIES) {
+          LOG.warn(
+              "Cache provider unavailable for {} after {} retries (~{}s); marking warmup partial",
+              entityType,
+              unavailableAttempts,
+              (MAX_UNAVAILABLE_RETRIES * UNAVAILABLE_BACKOFF_MS) / 1000);
+          partiallyWarmed = true;
+          break;
+        }
+        try {
+          Thread.sleep(UNAVAILABLE_BACKOFF_MS);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          break;
+        }
+        continue;
       }
+      // Reset retry counter once the provider is available again so a flaky cache that recovers
+      // doesn't accumulate retry budget across separate hiccups within the same entity type.
+      unavailableAttempts = 0;
       List<String> page;
       try {
         page = dao.listAfterWithOffset(batchSize, offset);
@@ -396,7 +431,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       reportCoverage(entityType, dao, success, bundlesWritten);
       clearCheckpoint(entityType);
     }
-    if (enableDistributedClaim) {
+    if (distributedClaimEnabled()) {
       releaseClaim(entityType);
     }
   }
@@ -421,7 +456,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
    * does redundant work (Redis writes are idempotent).
    */
   private void refreshClaim(String entityType) {
-    if (!enableDistributedClaim
+    if (!distributedClaimEnabled()
         || cacheProvider == null
         || !cacheProvider.available()
         || claimKeyPrefix == null) {
@@ -631,7 +666,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   @Override
   protected void validateConfig(Map<String, Object> appConfig) {
     try {
-      JsonUtils.convertValue(appConfig, EventPublisherJob.class);
+      JsonUtils.convertValue(appConfig, CacheWarmupAppConfig.class);
     } catch (IllegalArgumentException e) {
       throw AppException.byMessage(
           jakarta.ws.rs.core.Response.Status.BAD_REQUEST,
