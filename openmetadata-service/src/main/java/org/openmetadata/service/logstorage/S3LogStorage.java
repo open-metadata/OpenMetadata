@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -105,7 +104,6 @@ public class S3LogStorage implements LogStorageInterface {
   private StorageClass storageClass;
   private int expirationDays;
   private int maxConcurrentStreams;
-  private long streamTimeoutMs;
   private boolean isCustomEndpoint = false;
   private ServerSideEncryption sseAlgorithm = null;
   private String kmsKeyId = null;
@@ -185,10 +183,6 @@ public class S3LogStorage implements LogStorageInterface {
 
       this.maxConcurrentStreams =
           s3Config.getMaxConcurrentStreams() != null ? s3Config.getMaxConcurrentStreams() : 100;
-      this.streamTimeoutMs =
-          s3Config.getStreamTimeoutMinutes() != null
-              ? s3Config.getStreamTimeoutMinutes() * 60000L
-              : 300000L; // 5 minutes default
 
       this.streamTimeoutHours =
           s3Config.getStreamTimeoutHours() != null ? s3Config.getStreamTimeoutHours() : 24;
@@ -265,10 +259,17 @@ public class S3LogStorage implements LogStorageInterface {
                 return thread;
               });
 
-      cleanupExecutor.scheduleWithFixedDelay(this::cleanupExpiredStreams, 1, 1, TimeUnit.MINUTES);
+      cleanupExecutor.scheduleWithFixedDelay(
+          this::cleanupAbandonedStreams,
+          cleanupIntervalMinutes,
+          cleanupIntervalMinutes,
+          TimeUnit.MINUTES);
 
-      // Write partial logs every 2 minutes to make them available for reading
-      cleanupExecutor.scheduleWithFixedDelay(this::writePartialLogs, 2, 2, TimeUnit.MINUTES);
+      cleanupExecutor.scheduleWithFixedDelay(
+          this::writePartialLogs,
+          partialFlushIntervalMinutes,
+          partialFlushIntervalMinutes,
+          TimeUnit.MINUTES);
 
       if (expirationDays > 0) {
         try {
@@ -281,11 +282,11 @@ public class S3LogStorage implements LogStorageInterface {
       }
 
       LOG.info(
-          "S3LogStorage initialized with bucket: {}, prefix: {}, maxStreams: {}, timeoutMs: {}",
+          "S3LogStorage initialized with bucket: {}, prefix: {}, maxStreams: {}, timeoutHours: {}",
           bucketName,
           prefix,
           maxConcurrentStreams,
-          streamTimeoutMs);
+          streamTimeoutHours);
     } catch (Exception e) {
       throw new IOException("Failed to initialize S3LogStorage", e);
     }
@@ -862,32 +863,80 @@ public class S3LogStorage implements LogStorageInterface {
     }
   }
 
-  private void cleanupExpiredStreams() {
+  void cleanupAbandonedStreams() {
     long now = System.currentTimeMillis();
-    Iterator<Map.Entry<String, StreamContext>> iterator = activeStreams.entrySet().iterator();
+    long timeoutMs = streamTimeoutHours * 60L * 60L * 1000L;
 
-    while (iterator.hasNext()) {
-      Map.Entry<String, StreamContext> entry = iterator.next();
-      StreamContext context = entry.getValue();
-
-      if (now - context.lastAccessTime > streamTimeoutMs) {
-        ReentrantLock lock = acquireStreamLock(entry.getKey());
-        try {
-          LOG.debug("Removing expired stream state: {}", entry.getKey());
-          // Drop in-memory state only. Task 7 will rewrite this as cleanupAbandonedStreams
-          // which also finalizes logs.txt via server-side copy.
-          pendingFlush.remove(entry.getKey());
-          pendingFlushBytes.remove(entry.getKey());
-          totalLinesAppended.remove(entry.getKey());
-          consecutiveFlushFailures.remove(entry.getKey());
-          iterator.remove();
-        } catch (Exception e) {
-          LOG.error("Error during stream cleanup: {}", entry.getKey(), e);
-        } finally {
-          releaseStreamLock(entry.getKey(), lock);
-          streamLocks.remove(entry.getKey());
-        }
+    List<String> expired = new ArrayList<>();
+    for (Map.Entry<String, StreamContext> entry : activeStreams.entrySet()) {
+      if (now - entry.getValue().lastAccessTime > timeoutMs) {
+        expired.add(entry.getKey());
       }
+    }
+
+    for (String streamKey : expired) {
+      finalizeAbandonedStream(streamKey);
+    }
+  }
+
+  private void finalizeAbandonedStream(String streamKey) {
+    int lastSlashIndex = streamKey.lastIndexOf('/');
+    if (lastSlashIndex == -1) {
+      LOG.warn("Cannot finalize stream with malformed key: {}", streamKey);
+      return;
+    }
+    String pipelineFQN = streamKey.substring(0, lastSlashIndex);
+    UUID runId;
+    try {
+      runId = UUID.fromString(streamKey.substring(lastSlashIndex + 1));
+    } catch (IllegalArgumentException e) {
+      LOG.warn("Cannot finalize stream with invalid runId: {}", streamKey);
+      return;
+    }
+
+    ReentrantLock lock = acquireStreamLock(streamKey);
+    try {
+      writePartialLogsForStreamLocked(streamKey, pipelineFQN, runId);
+
+      try {
+        copyPartialToLogs(pipelineFQN, runId);
+      } catch (NoSuchKeyException e) {
+        LOG.debug("finalizeAbandonedStream no-op for {}: partial.txt absent", streamKey);
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to copy partial->logs for abandoned stream {}: {}", streamKey, e.getMessage());
+        return;
+      }
+
+      try {
+        s3Client.deleteObject(
+            DeleteObjectRequest.builder()
+                .bucket(bucketName)
+                .key(buildPartialS3Key(pipelineFQN, runId))
+                .build());
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to delete partial.txt for abandoned stream {}: {}", streamKey, e.getMessage());
+      }
+
+      try {
+        String markerKey =
+            String.format(
+                "%s/.active/%s/%s/%s",
+                prefix != null ? prefix : "pipeline-logs",
+                pipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_"),
+                runId,
+                getServerId());
+        s3Client.deleteObject(
+            DeleteObjectRequest.builder().bucket(bucketName).key(markerKey).build());
+      } catch (Exception ignored) {
+        // Best-effort.
+      }
+
+      dropStreamState(streamKey);
+    } finally {
+      releaseStreamLock(streamKey, lock);
+      streamLocks.remove(streamKey);
     }
   }
 

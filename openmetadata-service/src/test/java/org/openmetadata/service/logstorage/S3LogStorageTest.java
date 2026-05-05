@@ -824,6 +824,64 @@ public class S3LogStorageTest {
         "post-restart flush must set last-flushed-line to 7 (5 pre-restart + 2 new)");
   }
 
+  @Test
+  void testCleanupAbandonedStreamsCopiesPartialToLogsAndDrops() throws Exception {
+    String streamKey = testPipelineFQN + "/" + testRunId;
+    String partialKey =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + testRunId
+            + "/partial.txt";
+    String logsKey =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + testRunId
+            + "/logs.txt";
+
+    mockAsyncPutObject();
+    when(mockS3Client.getObject(
+            argThat((GetObjectRequest req) -> req != null && partialKey.equals(req.key()))))
+        .thenThrow(NoSuchKeyException.builder().build());
+    when(mockS3Client.putObject(
+            any(PutObjectRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+        .thenReturn(PutObjectResponse.builder().build());
+    when(mockS3Client.copyObject(any(CopyObjectRequest.class)))
+        .thenReturn(software.amazon.awssdk.services.s3.model.CopyObjectResponse.builder().build());
+    when(mockS3Client.deleteObject(any(DeleteObjectRequest.class)))
+        .thenReturn(DeleteObjectResponse.builder().build());
+
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "abandoned\n");
+
+    @SuppressWarnings("unchecked")
+    Map<String, ?> active = (Map<String, ?>) getPrivateField(s3LogStorage, "activeStreams");
+    Object ctx = active.get(streamKey);
+    java.lang.reflect.Field f = ctx.getClass().getDeclaredField("lastAccessTime");
+    f.setAccessible(true);
+    f.setLong(ctx, System.currentTimeMillis() - (25L * 60 * 60 * 1000));
+
+    java.lang.reflect.Method m = S3LogStorage.class.getDeclaredMethod("cleanupAbandonedStreams");
+    m.setAccessible(true);
+    m.invoke(s3LogStorage);
+
+    verify(mockS3Client, atLeastOnce())
+        .copyObject(
+            argThat(
+                (CopyObjectRequest req) ->
+                    req != null
+                        && partialKey.equals(req.sourceKey())
+                        && logsKey.equals(req.destinationKey())));
+
+    verify(mockS3Client, atLeastOnce())
+        .deleteObject(
+            argThat((DeleteObjectRequest req) -> req != null && partialKey.equals(req.key())));
+
+    assertNull(active.get(streamKey));
+  }
+
   private static Object getPrivateField(Object target, String name) throws Exception {
     Field f = target.getClass().getDeclaredField(name);
     f.setAccessible(true);
