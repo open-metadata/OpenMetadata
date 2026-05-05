@@ -628,4 +628,49 @@ public class S3LogStorageTest {
       assertTrue(exception.getCause().getMessage().contains("AWS credentials not configured"));
     }
   }
+
+  @Test
+  void testInitializeReadsNewConfigDefaults() throws Exception {
+    S3LogStorage storage = createInitializedS3LogStorage();
+    assertEquals(24, getPrivateField(storage, "streamTimeoutHours"));
+    assertEquals(60, getPrivateField(storage, "cleanupIntervalMinutes"));
+    assertEquals(2, getPrivateField(storage, "partialFlushIntervalMinutes"));
+    assertEquals(5L * 1024 * 1024, getPrivateField(storage, "earlyFlushWatermarkBytes"));
+    assertEquals(10, getPrivateField(storage, "pendingFlushAlertAfterFailures"));
+  }
+
+  private S3LogStorage createInitializedS3LogStorage() throws IOException {
+    try (MockedStatic<S3Client> s3ClientMock = mockStatic(S3Client.class);
+        MockedStatic<S3AsyncClient> s3AsyncClientMock = mockStatic(S3AsyncClient.class)) {
+
+      S3ClientBuilder mockBuilder = mock(S3ClientBuilder.class);
+      when(S3Client.builder()).thenReturn(mockBuilder);
+      when(mockBuilder.region(any())).thenReturn(mockBuilder);
+      when(mockBuilder.credentialsProvider(any())).thenReturn(mockBuilder);
+      when(mockBuilder.build()).thenReturn(mockS3Client);
+
+      S3AsyncClientBuilder mockAsyncBuilder = mock(S3AsyncClientBuilder.class);
+      when(S3AsyncClient.builder()).thenReturn(mockAsyncBuilder);
+      when(mockAsyncBuilder.region(any())).thenReturn(mockAsyncBuilder);
+      when(mockAsyncBuilder.credentialsProvider(any())).thenReturn(mockAsyncBuilder);
+      when(mockAsyncBuilder.build()).thenReturn(mockS3AsyncClient);
+
+      // Mock bucket exists check
+      when(mockS3Client.headBucket(any(HeadBucketRequest.class)))
+          .thenReturn(HeadBucketResponse.builder().build());
+
+      S3LogStorage storage = new S3LogStorage();
+      Map<String, Object> config = new HashMap<>();
+      config.put("config", testConfig);
+
+      storage.initialize(config);
+      return storage;
+    }
+  }
+
+  private static Object getPrivateField(Object target, String name) throws Exception {
+    java.lang.reflect.Field f = target.getClass().getDeclaredField(name);
+    f.setAccessible(true);
+    return f.get(target);
+  }
 }

@@ -113,6 +113,12 @@ public class S3LogStorage implements LogStorageInterface {
   private ServerSideEncryption sseAlgorithm = null;
   private String kmsKeyId = null;
 
+  private int streamTimeoutHours;
+  private int cleanupIntervalMinutes;
+  private int partialFlushIntervalMinutes;
+  private long earlyFlushWatermarkBytes;
+  private int pendingFlushAlertAfterFailures;
+
   private final Map<String, StreamContext> activeStreams = new ConcurrentHashMap<>();
   private final Map<String, Long> partialLogOffsets = new ConcurrentHashMap<>();
   private ScheduledExecutorService cleanupExecutor;
@@ -164,6 +170,33 @@ public class S3LogStorage implements LogStorageInterface {
           s3Config.getAsyncBufferSizeMB() != null
               ? s3Config.getAsyncBufferSizeMB() * 1024 * 1024
               : 5 * 1024 * 1024;
+
+      this.streamTimeoutHours =
+          s3Config.getStreamTimeoutHours() != null ? s3Config.getStreamTimeoutHours() : 24;
+      this.cleanupIntervalMinutes =
+          s3Config.getCleanupIntervalMinutes() != null ? s3Config.getCleanupIntervalMinutes() : 60;
+      this.partialFlushIntervalMinutes =
+          s3Config.getPartialFlushIntervalMinutes() != null
+              ? s3Config.getPartialFlushIntervalMinutes()
+              : 2;
+      this.earlyFlushWatermarkBytes =
+          s3Config.getEarlyFlushWatermarkBytes() != null
+              ? s3Config.getEarlyFlushWatermarkBytes().longValue()
+              : 5L * 1024 * 1024;
+      this.pendingFlushAlertAfterFailures =
+          s3Config.getPendingFlushAlertAfterFailures() != null
+              ? s3Config.getPendingFlushAlertAfterFailures()
+              : 10;
+
+      // Deprecation warning: if streamTimeoutMinutes is explicitly set to a small value,
+      // log it. Operators on legacy configs should migrate to streamTimeoutHours.
+      if (s3Config.getStreamTimeoutMinutes() != null && s3Config.getStreamTimeoutMinutes() < 30) {
+        LOG.warn(
+            "streamTimeoutMinutes={} is deprecated and may cause stream churn under slow connectors. "
+                + "Migrate to streamTimeoutHours (current value: {}h).",
+            s3Config.getStreamTimeoutMinutes(),
+            streamTimeoutHours);
+      }
 
       S3ClientBuilder s3Builder =
           S3Client.builder().region(Region.of(s3Config.getAwsConfig().getAwsRegion()));
