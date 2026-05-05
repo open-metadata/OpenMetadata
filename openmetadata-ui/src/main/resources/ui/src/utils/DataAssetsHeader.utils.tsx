@@ -63,6 +63,7 @@ import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
 import { SecurityService } from '../generated/entity/services/securityService';
 import { StorageService } from '../generated/entity/services/storageService';
+import { EntityReference } from '../generated/type/entityReference';
 import { formatDateTime } from './date-time/DateTimeUtils';
 import {
   getBreadcrumbForEntitiesWithServiceOnly,
@@ -91,7 +92,8 @@ export const ExtraInfoLabel = ({
         <Divider className="self-center" type="vertical" />
         <Typography.Text
           className="self-center text-xs whitespace-nowrap"
-          data-testid={dataTestId}>
+          data-testid={dataTestId}
+        >
           {!isEmpty(label) && (
             <span className="text-grey-muted">{`${label}: `}</span>
           )}
@@ -105,7 +107,8 @@ export const ExtraInfoLabel = ({
     <div className="d-flex align-start extra-info-container">
       <Typography.Text
         className="whitespace-nowrap text-sm d-flex flex-col gap-2 w-full"
-        data-testid={dataTestId}>
+        data-testid={dataTestId}
+      >
         {!isEmpty(label) && (
           <span className="extra-info-label-heading">{label}</span>
         )}
@@ -114,7 +117,8 @@ export const ExtraInfoLabel = ({
           className={classNames('font-medium extra-info-value')}
           ellipsis={{
             tooltip: true,
-          }}>
+          }}
+        >
           {value ?? NO_DATA_PLACEHOLDER}
         </Typography.Text>
       </Typography.Text>
@@ -138,7 +142,8 @@ export const ExtraInfoLink = ({
   <div
     className={classNames('d-flex  text-sm  flex-col gap-2', {
       'w-48': ellipsis,
-    })}>
+    })}
+  >
     {!isEmpty(label) && (
       <span className="extra-info-label-heading  m-r-xss">{label}</span>
     )}
@@ -149,7 +154,8 @@ export const ExtraInfoLink = ({
           className="extra-info-link"
           href={href}
           rel={newTab ? 'noopener noreferrer' : undefined}
-          target={newTab ? '_blank' : undefined}>
+          target={newTab ? '_blank' : undefined}
+        >
           {value}
         </Typography.Link>
       </Tooltip>
@@ -166,7 +172,7 @@ export const getDataAssetsHeaderInfo = (
   entityType: DataAssetsHeaderProps['entityType'],
   dataAsset: DataAssetsHeaderProps['dataAsset'],
   entityName: string,
-  parentContainers: Container[]
+  parentContainers: EntityReference[]
 ) => {
   const returnData: DataAssetHeaderInfo = {
     extraInfo: <></>,
