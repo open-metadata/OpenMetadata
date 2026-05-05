@@ -12,9 +12,9 @@
  */
 
 import { List, Space, Typography } from 'antd';
-import { FC, useMemo } from 'react';
+import { FC, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
 import { TaskType, ThreadType } from '../../generated/entity/feed/thread';
 import {
@@ -41,6 +41,19 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
 }) => {
   const { t } = useTranslation();
   const { task: taskDetails } = task ?? {};
+  const navigate = useNavigate();
+  const lastNavigatedKeyRef = useRef<number | undefined>(undefined);
+  const taskLink = useMemo(() => getTaskDetailPath(task), [task]);
+
+  const handleTaskLinkClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const key = Date.now();
+      lastNavigatedKeyRef.current = key;
+      navigate(taskLink, { state: { tasksRefreshKey: key } });
+    },
+    [navigate, taskLink]
+  );
 
   const taskContent = useMemo(() => {
     if (task.task?.type === TaskType.RequestApproval) {
@@ -80,12 +93,17 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
         <span className="p-x-xss">
           {t('message.assigned-you-a-new-task-lowercase')}
         </span>
-        <Link to={getTaskDetailPath(task)}>
+        <Link
+          to={taskLink}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleTaskLinkClick(e);
+          }}>
           {`#${taskDetails?.id}`} {taskDetails?.type}
         </Link>
       </>
     );
-  }, [entityType, task, taskDetails, t]);
+  }, [entityType, task, taskDetails, taskLink, handleTaskLinkClick, t]);
 
   const entityName = useMemo(() => {
     return task?.entityRef
@@ -99,8 +117,9 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
       to={
         isConversationFeed
           ? prepareFeedLink(entityType, entityFQN, ActivityFeedTabs.ALL)
-          : getTaskDetailPath(task)
-      }>
+          : taskLink
+      }
+      onClick={!isConversationFeed ? handleTaskLinkClick : undefined}>
       <List.Item.Meta
         avatar={<ProfilePicture name={createdBy} width="32" />}
         className="m-0"

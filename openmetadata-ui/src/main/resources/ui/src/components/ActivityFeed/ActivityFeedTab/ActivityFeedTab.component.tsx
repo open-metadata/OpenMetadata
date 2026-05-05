@@ -22,9 +22,9 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
+import { RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
@@ -97,6 +97,7 @@ export const ActivityFeedTab = ({
   urlFqn = '',
 }: ActivityFeedTabProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { isAdminUser } = useAuth();
@@ -123,6 +124,7 @@ export const ActivityFeedTab = ({
     data: FEED_COUNT_INITIAL_DATA,
   });
   const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
+  const processedRefreshKeyRef = useRef<number | undefined>(undefined);
 
   const {
     selectedThread,
@@ -287,6 +289,30 @@ export const ActivityFeedTab = ({
       );
     }
   }, [feedFilter, threadType, fqn]);
+
+  useEffect(() => {
+    const refreshKey = (
+      location.state as { tasksRefreshKey?: number } | null
+    )?.tasksRefreshKey;
+    if (
+      refreshKey !== undefined &&
+      refreshKey !== processedRefreshKeyRef.current &&
+      fqn &&
+      isTaskActiveTab
+    ) {
+      processedRefreshKeyRef.current = refreshKey;
+      getTaskData(feedFilter, undefined, entityType, fqn, taskFilter);
+    }
+  }, [
+    entityType,
+    feedFilter,
+    fqn,
+    getTaskData,
+    isTaskActiveTab,
+    location.key,
+    location.state,
+    taskFilter,
+  ]);
 
   useEffect(() => {
     if (feedCount) {
