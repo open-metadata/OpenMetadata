@@ -14,9 +14,16 @@ import { Button, Dropdown, Menu, Segmented, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
@@ -89,6 +96,7 @@ export const ActivityFeedTab = ({
   urlFqn = '',
 }: ActivityFeedTabProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { isAdminUser } = useAuth();
@@ -99,8 +107,10 @@ export const ActivityFeedTab = ({
     root: document.querySelector('#center-container'),
     rootMargin: '0px 0px 2px 0px',
   });
-  const { subTab: activeTab = subTab } =
-    useRequiredParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
+  const { subTab: activeTab = subTab } = useRequiredParams<{
+    tab: EntityTabs;
+    subTab: ActivityFeedTabs;
+  }>();
   const [taskFilter, setTaskFilter] = useState<ThreadTaskStatus>(
     ThreadTaskStatus.Open
   );
@@ -113,6 +123,7 @@ export const ActivityFeedTab = ({
     data: FEED_COUNT_INITIAL_DATA,
   });
   const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
+  const processedRefreshKeyRef = useRef<number | undefined>(undefined);
 
   const {
     selectedThread,
@@ -279,6 +290,29 @@ export const ActivityFeedTab = ({
   }, [feedFilter, threadType, fqn]);
 
   useEffect(() => {
+    const refreshKey = (location.state as { tasksRefreshKey?: number } | null)
+      ?.tasksRefreshKey;
+    if (
+      refreshKey !== undefined &&
+      refreshKey !== processedRefreshKeyRef.current &&
+      fqn &&
+      isTaskActiveTab
+    ) {
+      processedRefreshKeyRef.current = refreshKey;
+      getTaskData(feedFilter, undefined, entityType, fqn, taskFilter);
+    }
+  }, [
+    entityType,
+    feedFilter,
+    fqn,
+    getTaskData,
+    isTaskActiveTab,
+    location.key,
+    location.state,
+    taskFilter,
+  ]);
+
+  useEffect(() => {
     if (feedCount) {
       setCountData((prev) => ({ ...prev, data: feedCount }));
     } else {
@@ -328,7 +362,8 @@ export const ActivityFeedTab = ({
               'flex items-center justify-between px-4 py-2 gap-2',
               { active: taskFilter === ThreadTaskStatus.Open }
             )}
-            data-testid="open-tasks">
+            data-testid="open-tasks"
+          >
             <div className="flex items-center space-x-2">
               {taskFilter === ThreadTaskStatus.Open ? (
                 <TaskOpenIcon
@@ -341,14 +376,16 @@ export const ActivityFeedTab = ({
               <span
                 className={classNames('task-tab-filter-item', {
                   selected: taskFilter === ThreadTaskStatus.Open,
-                })}>
+                })}
+              >
                 {t('label.open')}
               </span>
             </div>
             <span
               className={classNames('task-count-container d-flex flex-center', {
                 active: taskFilter === ThreadTaskStatus.Open,
-              })}>
+              })}
+            >
               <span className="task-count-text">
                 {countData?.data?.openTaskCount}
               </span>
@@ -368,7 +405,8 @@ export const ActivityFeedTab = ({
               'flex items-center justify-between px-4 py-2 gap-2',
               { active: taskFilter === ThreadTaskStatus.Closed }
             )}
-            data-testid="closed-tasks">
+            data-testid="closed-tasks"
+          >
             <div className="flex items-center space-x-2">
               {taskFilter === ThreadTaskStatus.Closed ? (
                 <TaskCloseIconBlue
@@ -384,14 +422,16 @@ export const ActivityFeedTab = ({
               <span
                 className={classNames('task-tab-filter-item', {
                   selected: taskFilter === ThreadTaskStatus.Closed,
-                })}>
+                })}
+              >
                 {t('label.closed')}
               </span>
             </div>
             <span
               className={classNames('task-count-container d-flex flex-center', {
                 active: taskFilter === ThreadTaskStatus.Closed,
-              })}>
+              })}
+            >
               <span className="task-count-text">
                 {countData?.data?.closedTaskCount}
               </span>
@@ -585,7 +625,8 @@ export const ActivityFeedTab = ({
           'three-panel-layout':
             layoutType === ActivityFeedLayoutType.THREE_PANEL,
         })}
-        id="center-container">
+        id="center-container"
+      >
         {(isTaskActiveTab || isMentionTabSelected) && (
           <div className="d-flex gap-4 task-filter-container  justify-between items-center ">
             <Dropdown
@@ -595,7 +636,8 @@ export const ActivityFeedTab = ({
                 selectedKeys: [...taskFilter],
               }}
               overlayClassName="task-tab-custom-dropdown"
-              trigger={['click']}>
+              trigger={['click']}
+            >
               <Button
                 className={classNames('feed-filter-icon', {
                   'cursor-pointer': !isMentionTabSelected,
@@ -640,7 +682,8 @@ export const ActivityFeedTab = ({
           'hide-panel': isFullWidth,
           'three-panel-layout':
             layoutType === ActivityFeedLayoutType.THREE_PANEL,
-        })}>
+        })}
+      >
         {loader}
         {selectedThread && !loading
           ? getRightPanelContent(selectedThread)
@@ -648,7 +691,8 @@ export const ActivityFeedTab = ({
               <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
                 <ErrorPlaceHolderNew
                   icon={<NoConversationsIcon />}
-                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
+                >
                   <Typography.Paragraph className="placeholder-text">
                     {getRightPanelPlaceholder}
                   </Typography.Paragraph>
