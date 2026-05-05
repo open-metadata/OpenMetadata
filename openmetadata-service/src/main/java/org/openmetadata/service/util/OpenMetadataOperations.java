@@ -2520,8 +2520,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       List<TableRecommendation> actionable = result.actionableRecommendations();
       if (actionable.isEmpty()) {
-        LOG.info(
-            "Nothing to apply — every tracked table already matches its recommended settings.");
+        if (result.tableRecommendations().isEmpty()) {
+          LOG.info("Nothing to apply — no tracked tables exist on this database.");
+        } else {
+          LOG.info(
+              "Nothing to apply — every tracked table already matches its recommended settings.");
+        }
         return 0;
       }
       if (!skipPrompt && !confirmApply(tuner, actionable)) {

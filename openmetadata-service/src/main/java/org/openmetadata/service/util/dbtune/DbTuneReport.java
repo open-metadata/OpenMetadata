@@ -106,9 +106,9 @@ public final class DbTuneReport {
     }
     out.append("Next steps:\n");
     out.append(
-        "  ./openmetadata-ops.sh db-tune --apply --analyze    # apply + refresh planner stats\n");
+        "  ./bootstrap/openmetadata-ops.sh db-tune --apply --analyze    # apply + refresh planner stats\n");
     out.append(
-        "  ./openmetadata-ops.sh db-tune --apply              # apply only; run analyze-tables later\n");
+        "  ./bootstrap/openmetadata-ops.sh db-tune --apply              # apply only; run analyze-tables later\n");
   }
 
   static String formatSettings(final Map<String, String> settings) {

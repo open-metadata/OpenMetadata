@@ -16,7 +16,15 @@ public record ServerParamCheck(
     String parameter, String currentValue, String recommendedValue, String status, String note) {
 
   public static final String STATUS_OK = "OK";
-  public static final String STATUS_UNDERSIZED = "UNDERSIZED";
+
+  /**
+   * Direction-agnostic. Some recommended values (e.g. {@code random_page_cost = 1.1},
+   * {@code autovacuum_*_scale_factor}) are deliberately lower than the engine default — labelling
+   * those mismatches as "undersized" would be wrong. Operators see the actual current vs
+   * recommended values in the report and can judge direction themselves.
+   */
+  public static final String STATUS_MISMATCH = "MISMATCH";
+
   public static final String STATUS_UNTUNED = "UNTUNED";
   public static final String STATUS_UNKNOWN = "UNKNOWN";
 }

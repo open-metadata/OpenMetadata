@@ -245,7 +245,7 @@ public final class MysqlAutoTuner implements AutoTuner {
           "RAM-relative; verify in RDS");
     }
     boolean ok = numericEquals(current, recommended);
-    String status = ok ? ServerParamCheck.STATUS_OK : ServerParamCheck.STATUS_UNDERSIZED;
+    String status = ok ? ServerParamCheck.STATUS_OK : ServerParamCheck.STATUS_MISMATCH;
     return new ServerParamCheck(name, current, recommended, status, "");
   }
 }

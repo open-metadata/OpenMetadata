@@ -63,7 +63,7 @@ class DbTuneIT {
     assertFalse(result.tableRecommendations().isEmpty(), "Expected at least one recommendation");
     assertTrue(
         result.tableRecommendations().stream().anyMatch(r -> TEST_TABLE.equals(r.tableName())),
-        "storage_container_entity should be in the recommendations");
+        TEST_TABLE + " should be in the recommendations");
   }
 
   @Test

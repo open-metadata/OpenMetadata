@@ -228,10 +228,20 @@ class PostgresAutoTunerTest {
   }
 
   @Test
-  void buildServerCheck_numericMismatchIsUndersized() {
+  void buildServerCheck_numericMismatchIsLabelledMismatch() {
     ServerParamCheck check = PostgresAutoTuner.buildServerCheck("work_mem", "4096", "131072");
 
-    assertEquals(ServerParamCheck.STATUS_UNDERSIZED, check.status());
+    assertEquals(ServerParamCheck.STATUS_MISMATCH, check.status());
+  }
+
+  @Test
+  void buildServerCheck_currentHigherThanRecommendedIsAlsoMismatch() {
+    // random_page_cost recommendation (1.1) is intentionally LOWER than the SSD-naive default
+    // (4.0).
+    // Direction-agnostic MISMATCH avoids the misleading "UNDERSIZED" label here.
+    ServerParamCheck check = PostgresAutoTuner.buildServerCheck("random_page_cost", "4.0", "1.1");
+
+    assertEquals(ServerParamCheck.STATUS_MISMATCH, check.status());
   }
 
   private static TableStats stats(
