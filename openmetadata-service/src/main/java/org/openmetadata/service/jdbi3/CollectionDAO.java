@@ -4355,6 +4355,29 @@ public interface CollectionDAO {
         @Bind("category") String category,
         @Bind("status") String status);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM task_entity "
+                + "WHERE aboutFqnHash = :aboutFqnHash "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.workflowDefinitionId')) = :workflowDefinitionId "
+                + "AND status IN (<activeStatuses>) "
+                + "AND (deleted = false OR deleted IS NULL) "
+                + "ORDER BY createdAt DESC LIMIT 1",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM task_entity "
+                + "WHERE aboutFqnHash = :aboutFqnHash "
+                + "AND json->>'workflowDefinitionId' = :workflowDefinitionId "
+                + "AND status IN (<activeStatuses>) "
+                + "AND (deleted = false OR deleted IS NULL) "
+                + "ORDER BY createdAt DESC LIMIT 1",
+        connectionType = POSTGRES)
+    String findActiveByAboutAndWorkflowDefinition(
+        @BindFQN("aboutFqnHash") String aboutFqn,
+        @Bind("workflowDefinitionId") String workflowDefinitionId,
+        @BindList("activeStatuses") List<String> activeStatuses);
+
     @SqlUpdate(
         "DELETE FROM task_entity " + "WHERE createdById = :createdById AND category = :category")
     void deleteByCreatorAndCategory(

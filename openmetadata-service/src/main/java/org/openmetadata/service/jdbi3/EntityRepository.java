@@ -7220,6 +7220,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       try (var ignored = phase("entityUpdateDiffDeferred")) {
         updateInternal();
       }
+      // Mirrors the captureIncrementalFromCurrentChange() call in flushUpdate()'s common path.
+      // Without this, incrementalChangeDescription stays null, incrementalFieldsChanged() always
+      // returns false, and bulkUpdateEntities never produces ENTITY_UPDATED change events.
+      captureIncrementalFromCurrentChange();
 
       versionChanged = updateVersion(original.getVersion());
       if (!versionChanged && entityChanged) {
@@ -10723,12 +10727,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public void bulkUpdateEntitiesForGovernanceWorkflow(
-      List<T> updateEntities, Map<String, T> existingByFqn, String userName) {
+      List<T> updateEntities,
+      Map<String, T> existingByFqn,
+      String userName,
+      String impersonatedBy) {
     List<BulkResponse> success = new ArrayList<>();
     List<BulkResponse> failed = new ArrayList<>();
     List<Long> latencies = new ArrayList<>();
     bulkUpdateEntities(
-        null, updateEntities, existingByFqn, userName, true, success, failed, latencies);
+        null,
+        updateEntities,
+        existingByFqn,
+        userName,
+        impersonatedBy,
+        true,
+        success,
+        failed,
+        latencies);
     if (!failed.isEmpty()) {
       LOG.warn("Bulk update: {} succeeded, {} failed", success.size(), failed.size());
     }
@@ -10739,6 +10754,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<T> updateEntities,
       Map<String, T> existingByFqn,
       String userName,
+      String impersonatedBy,
       boolean skipBotGuard,
       List<BulkResponse> successRequests,
       List<BulkResponse> failedRequests,
@@ -10800,6 +10816,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   : hydratedOriginal;
           entity.setUpdatedBy(userName);
           entity.setUpdatedAt(System.currentTimeMillis());
+          // Set impersonatedBy so FormatterUtil.getChangeEvent picks it up via
+          // entityInterface.getImpersonatedBy(). Mirrors what the regular update() path does.
+          entity.setImpersonatedBy(impersonatedBy);
 
           if (Boolean.TRUE.equals(original.getDeleted())) {
             restoreEntity(entity.getUpdatedBy(), original.getId());
@@ -11065,6 +11084,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateEntities,
         existingByFqn,
         userName,
+        null,
         false,
         successRequests,
         failedRequests,

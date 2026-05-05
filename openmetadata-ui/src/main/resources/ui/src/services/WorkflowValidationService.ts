@@ -428,6 +428,54 @@ const findAllPredecessorsInSave = (
 type BackendNode = ReturnType<typeof buildWorkflowNodes>[number];
 type BackendEdge = ReturnType<typeof buildWorkflowEdges>[number];
 
+const CHECK_TASK_SUBTYPES = new Set([
+  NodeSubType.CheckEntityAttributesTask,
+  NodeSubType.CheckChangeDescriptionTask,
+  NodeSubType.DataCompletenessTask,
+]);
+
+const migrateEntityListNamespace = (
+  nodes: BackendNode[],
+  edges: BackendEdge[]
+): BackendNode[] => {
+  const nodesByName = new Map(nodes.map((n) => [n.name, n]));
+
+  return nodes.map((node) => {
+    const nsMap = node.inputNamespaceMap as Record<string, string> | undefined;
+    if (!nsMap) {
+      return node;
+    }
+
+    const incomingCheckEdge = edges.find((edge) => {
+      if (edge.to !== node.name || !edge.condition) {
+        return false;
+      }
+      const sourceNode = nodesByName.get(edge.from);
+
+      return sourceNode?.subType
+        ? CHECK_TASK_SUBTYPES.has(sourceNode.subType as NodeSubType)
+        : false;
+    });
+
+    if (!incomingCheckEdge) {
+      return node;
+    }
+
+    const conditionKey = `${incomingCheckEdge.condition}_entityList`;
+
+    // Keep entityList:global to satisfy the schema required constraint.
+    // The runtime getEntityList() prioritises *_entityList keys, so the
+    // conditional key wins and the right filtered list is used.
+    return {
+      ...node,
+      inputNamespaceMap: {
+        ...nsMap,
+        [conditionKey]: incomingCheckEdge.from,
+      },
+    };
+  });
+};
+
 const migrateInputNamespaceMap = (
   nodes: BackendNode[],
   edges: BackendEdge[]
@@ -581,6 +629,7 @@ export const buildWorkflowForSave = async (
   const workflowEdges = buildWorkflowEdges(validEdges as Edge[], nodes);
 
   workflowNodes = migrateInputNamespaceMap(workflowNodes, workflowEdges);
+  workflowNodes = migrateEntityListNamespace(workflowNodes, workflowEdges);
 
   const backendReadyJSON = {
     name: workflowName,
@@ -590,12 +639,12 @@ export const buildWorkflowForSave = async (
     trigger: {
       type: triggerType,
       config: finalTriggerConfig,
-      output: ['relatedEntity', 'updatedBy'],
+      output: ['entityList', 'updatedBy'],
     },
     nodes: workflowNodes,
     edges: workflowEdges,
     config: {
-      storeStageStatus: triggerType === Type.EventBasedEntity,
+      storeStageStatus: true,
     },
   };
 
