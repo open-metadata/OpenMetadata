@@ -744,7 +744,9 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             top: edgeTooltip.y + 12,
           }}>
           <div className="kg-edge-tooltip__direction">
-            {`${edgeTooltip.sourceLabel} ${t('label.arrow-symbol')} ${edgeTooltip.targetLabel}`}
+            {`${edgeTooltip.sourceLabel} ${t('label.arrow-symbol')} ${
+              edgeTooltip.targetLabel
+            }`}
           </div>
           {edgeTooltip.labels.map((label) => (
             <div
