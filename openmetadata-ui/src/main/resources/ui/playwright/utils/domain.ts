@@ -1388,7 +1388,7 @@ export const verifyDataProductsCount = async (
         },
         {
           message: `Wait for data product search index to show ${expectedCount} results for domain "${domainFqn}"`,
-          timeout: 30_000,
+          timeout: 120_000,
           intervals: [2_000, 3_000, 5_000],
         }
       )

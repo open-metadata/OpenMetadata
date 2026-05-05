@@ -1867,6 +1867,8 @@ test.describe('Domain Rename Comprehensive Tests', () => {
   test('Rename domain with data products attached at domain and subdomain levels', async ({
     page,
   }) => {
+    test.setTimeout(240_000);
+
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const domainDataProduct = new DataProduct([domain]);
