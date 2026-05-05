@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Image as GImage, Rect as GRect, Group, Text as GText } from '@antv/g';
+import { Group, Image as GImage, Rect as GRect, Text as GText } from '@antv/g';
 import {
   Circle,
   ExtensionCategory,

@@ -123,10 +123,7 @@ export function truncateNodeLabelByWidth(label: string, width: number): string {
   const ctx = getNodeLabelMeasureCtx();
 
   if (!ctx) {
-    const maxChars = Math.max(
-      1,
-      Math.floor(maxTextPx / CHAR_WIDTH_ESTIMATE)
-    );
+    const maxChars = Math.max(1, Math.floor(maxTextPx / CHAR_WIDTH_ESTIMATE));
     if (label.length <= maxChars) {
       return label;
     }
