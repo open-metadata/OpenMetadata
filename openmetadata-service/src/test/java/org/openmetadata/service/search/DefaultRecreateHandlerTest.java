@@ -488,7 +488,14 @@ class DefaultRecreateHandlerTest {
       }
 
       ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
-      verify(client).updateIndexSettings(eq("table_search_index_rebuild_new"), body.capture());
+      org.mockito.InOrder order = org.mockito.Mockito.inOrder(client);
+      // Settings revert MUST happen before the alias swap, otherwise a brief window opens where
+      // live reads see refresh_interval=-1 and writes are buffered indefinitely. InOrder locks
+      // this — without it, a swap-then-revert refactor would still pass.
+      order
+          .verify(client)
+          .updateIndexSettings(eq("table_search_index_rebuild_new"), body.capture());
+      order.verify(client).swapAliases(anySet(), eq("table_search_index_rebuild_new"), anySet());
       String json = body.getValue();
       assertTrue(json.contains("\"refresh_interval\":\"1s\""), json);
       assertTrue(json.contains("\"number_of_replicas\":1"), json);
@@ -496,49 +503,6 @@ class DefaultRecreateHandlerTest {
       assertTrue(
           aliasState.indexAliases.get("table_search_index_rebuild_new").contains("table"),
           "alias swap should still happen after settings revert");
-    }
-
-    @Test
-    @DisplayName("Should apply live serving settings before alias swap, never after")
-    void testPromoteEntityIndexAppliesSettingsBeforeAliasSwap() {
-      AliasState aliasState = new AliasState();
-      aliasState.put("table_search_index_rebuild_old", Set.of("table"));
-      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
-
-      SearchClient client = aliasState.toMock();
-      SearchRepository repo = mock(SearchRepository.class);
-      when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("");
-      when(repo.getIndexMapping("table"))
-          .thenReturn(
-              IndexMapping.builder()
-                  .indexName("table_search_index")
-                  .alias("table")
-                  .parentAliases(List.of("all"))
-                  .childAliases(List.of())
-                  .build());
-
-      EventPublisherJob jobData =
-          new EventPublisherJob()
-              .withBulkIndexSettings(
-                  new BulkIndexOverrides().withNumberOfReplicas(0).withRefreshInterval("-1"));
-
-      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
-
-        EntityReindexContext context =
-            EntityReindexContext.builder()
-                .entityType("table")
-                .canonicalIndex("table_search_index")
-                .stagedIndex("table_search_index_rebuild_new")
-                .build();
-
-        new DefaultRecreateHandler().withJobData(jobData).promoteEntityIndex(context, true);
-      }
-
-      org.mockito.InOrder order = org.mockito.Mockito.inOrder(client);
-      order.verify(client).updateIndexSettings(eq("table_search_index_rebuild_new"), anyString());
-      order.verify(client).swapAliases(anySet(), eq("table_search_index_rebuild_new"), anySet());
     }
 
     @Test
@@ -608,6 +572,43 @@ class DefaultRecreateHandlerTest {
 
       verify(client, never()).updateIndexSettings(anyString(), anyString());
       verify(client, never()).forceMerge(anyString(), org.mockito.ArgumentMatchers.anyInt());
+    }
+
+    @Test
+    @DisplayName("Should still unregister staged index when settings update throws")
+    void testPromoteEntityIndexUnregistersStagedIndexOnSettingsFailure() {
+      SearchClient client = mock(SearchClient.class);
+      // Simulate transient OS/ES failure on the settings revert. Throwing here exits before
+      // any of the alias-resolution or index-listing calls run, so we stub nothing else.
+      org.mockito.Mockito.doThrow(new IllegalStateException("connection reset"))
+          .when(client)
+          .updateIndexSettings(eq("table_search_index_rebuild_new"), anyString());
+
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+
+      EventPublisherJob jobData =
+          new EventPublisherJob()
+              .withBulkIndexSettings(
+                  new BulkIndexOverrides().withNumberOfReplicas(0).withRefreshInterval("-1"));
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().withJobData(jobData).promoteEntityIndex(context, true);
+      }
+
+      // Without applyLiveServingSettings inside the try/finally, this assertion fails — the
+      // exception escapes before unregisterStagedIndex runs and live writes keep routing to a
+      // staged index that nothing reads from.
+      verify(repo).unregisterStagedIndex("table", "table_search_index_rebuild_new");
     }
   }
 
