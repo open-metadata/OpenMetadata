@@ -134,20 +134,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     }
 
     if (shouldPromote) {
-      // Always clear staged-index routing on the way out, regardless of outcome:
-      //   - swap success      → alias now points at staged; canonical and staged resolve to the
-      //                         same index, so unregistering keeps reads/writes consistent.
-      //   - swap failure / empty aliases / exception → leaving routing active would silently
-      //                         send live writes to a staged index nothing reads from, which
-      //                         is strictly worse than the writes going back to the canonical
-      //                         alias target. Operators need to retry the reindex either way.
-      // applyLiveServingSettings + maybeForceMerge live inside this try so a transient OS/ES
-      // failure during _settings update or _forcemerge still reaches the finally that
-      // unregisters the staged index; otherwise live writes would keep routing to a staged
-      // index that nothing reads from.
       try {
-        // Restore live serving settings on the staged index before alias swap. The bulk-build
-        // overrides (refresh=-1, replicas=0, async translog) must NOT be the new live settings.
         applyLiveServingSettings(searchClient, stagedIndex, entityType);
         maybeForceMerge(searchClient, stagedIndex, entityType);
 
@@ -325,17 +312,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       return;
     }
 
-    // Always clear staged-index routing on the way out — see the rationale in finalizeReindex.
-    // applyLiveServingSettings + maybeForceMerge must live inside this try block so that a
-    // transient OS/ES failure during _settings update or _forcemerge still hits the finally
-    // and unregisters the staged index; otherwise live writes would keep routing to a staged
-    // index that nothing reads from. The per-entity path runs mid-job, so the failure window
-    // is wider than the end-of-job finalizeReindex path.
     try {
-      // Restore live serving settings on the staged index before alias swap. The bulk-build
-      // overrides (refresh=-1, replicas=0, async translog) must NOT survive into live serving —
-      // otherwise live writes after promotion are buffered indefinitely and only become
-      // searchable on a manual _refresh.
       applyLiveServingSettings(searchClient, stagedIndex, entityType);
       maybeForceMerge(searchClient, stagedIndex, entityType);
 

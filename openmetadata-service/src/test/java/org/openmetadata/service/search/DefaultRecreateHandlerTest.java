@@ -489,9 +489,6 @@ class DefaultRecreateHandlerTest {
 
       ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
       org.mockito.InOrder order = org.mockito.Mockito.inOrder(client);
-      // Settings revert MUST happen before the alias swap, otherwise a brief window opens where
-      // live reads see refresh_interval=-1 and writes are buffered indefinitely. InOrder locks
-      // this — without it, a swap-then-revert refactor would still pass.
       order
           .verify(client)
           .updateIndexSettings(eq("table_search_index_rebuild_new"), body.capture());
@@ -578,8 +575,6 @@ class DefaultRecreateHandlerTest {
     @DisplayName("Should still unregister staged index when settings update throws")
     void testPromoteEntityIndexUnregistersStagedIndexOnSettingsFailure() {
       SearchClient client = mock(SearchClient.class);
-      // Simulate transient OS/ES failure on the settings revert. Throwing here exits before
-      // any of the alias-resolution or index-listing calls run, so we stub nothing else.
       org.mockito.Mockito.doThrow(new IllegalStateException("connection reset"))
           .when(client)
           .updateIndexSettings(eq("table_search_index_rebuild_new"), anyString());
@@ -605,9 +600,6 @@ class DefaultRecreateHandlerTest {
         new DefaultRecreateHandler().withJobData(jobData).promoteEntityIndex(context, true);
       }
 
-      // Without applyLiveServingSettings inside the try/finally, this assertion fails — the
-      // exception escapes before unregisterStagedIndex runs and live writes keep routing to a
-      // staged index that nothing reads from.
       verify(repo).unregisterStagedIndex("table", "table_search_index_rebuild_new");
     }
   }
