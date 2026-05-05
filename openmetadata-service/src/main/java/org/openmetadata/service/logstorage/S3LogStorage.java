@@ -122,6 +122,9 @@ public class S3LogStorage implements LogStorageInterface {
 
   private final Map<String, StreamContext> activeStreams = new ConcurrentHashMap<>();
   private final Map<String, Long> partialLogOffsets = new ConcurrentHashMap<>();
+  // Per-stream coordination lock. Entries accumulate one per (fqn, runId) for the
+  // lifetime of the run; cleanup is added in Task 7 (cleanupAbandonedStreams) and
+  // at the end of /close (Task 8). Until then, this map grows monotonically.
   private final Map<String, ReentrantLock> streamLocks = new ConcurrentHashMap<>();
   private ScheduledExecutorService cleanupExecutor;
 
@@ -940,12 +943,12 @@ public class S3LogStorage implements LogStorageInterface {
 
           // Clean up partial log offset tracking
           partialLogOffsets.remove(entry.getKey());
+          iterator.remove();
         } catch (Exception e) {
           LOG.error("Error closing expired stream: {}", entry.getKey(), e);
         } finally {
           releaseStreamLock(entry.getKey(), lock);
         }
-        iterator.remove();
       }
     }
   }
@@ -1078,8 +1081,11 @@ public class S3LogStorage implements LogStorageInterface {
   public void flush(String pipelineFQN, UUID runId) throws IOException {
     String streamKey = pipelineFQN + "/" + runId;
 
-    // writePartialLogsForStream acquires the lock internally, so call it before our lock block
-    // to avoid re-entrant nesting across method boundaries.
+    // Final partial-logs flush is invoked OUTSIDE the outer lock. writePartialLogsForStream
+    // already acquires the same per-stream lock internally; calling it inside the outer lock
+    // would simply re-enter (ReentrantLock allows this), but separating the two phases keeps
+    // the lock-held window narrow. This ordering is acceptable for Task 3's no-behavior-change
+    // goal; Task 8 rewrites closeStream end-to-end with a single lock holding the full flow.
     try {
       writePartialLogsForStream(streamKey);
     } catch (Exception e) {
