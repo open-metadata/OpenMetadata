@@ -1150,22 +1150,22 @@ def test_suite_validation_database(  # noqa: C901
 
 
 @pytest.mark.parametrize(
-    "column_count,expected_word",
+    "column_count,expected_message",
     [
-        (1, "column"),
-        (2, "columns"),
-        (5, "columns"),
-        (11, "columns"),
-        (0, "columns"),
+        (1, "Found columnCount=1 column vs. the expected min=2.0 and max=11.0"),
+        (2, "Found columnCount=2 columns vs. the expected min=2.0 and max=11.0"),
+        (5, "Found columnCount=5 columns vs. the expected min=2.0 and max=11.0"),
+        (11, "Found columnCount=11 columns vs. the expected min=2.0 and max=11.0"),
+        (0, "Found columnCount=0 columns vs. the expected min=2.0 and max=11.0"),
     ],
 )
 def test_table_column_count_to_be_between_result_message(
     column_count,
-    expected_word,
+    expected_message,
     test_case_table_column_count_to_be_between,
     create_sqlite_table,
 ):
-    """Test that tableColumnCountToBeBetween uses correct singular/plural form in result message"""
+    """Test that tableColumnCountToBeBetween uses correct singular/plural form and exact message format"""
     test_case = test_case_table_column_count_to_be_between
 
     with patch(
@@ -1188,4 +1188,4 @@ def test_table_column_count_to_be_between_result_message(
         res = test_handler.run_validation()
 
         assert isinstance(res, TestCaseResult)
-        assert f"columnCount={column_count} {expected_word}" in res.result
+        assert res.result == expected_message
