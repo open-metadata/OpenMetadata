@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -604,14 +605,63 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   public ResultList<Container> listChildren(String parentFQN, Integer limit, Integer offset) {
+    return listChildren(parentFQN, limit, offset, Include.NON_DELETED, null);
+  }
+
+  public ResultList<Container> listChildren(
+      String parentFQN, Integer limit, Integer offset, Include include) {
+    return listChildren(parentFQN, limit, offset, include, null);
+  }
+
+  /**
+   * List direct children of {@code parentFQN}, paginated. Direct children are containers
+   * whose FQN is exactly one segment below {@code parentFQN} — the FQN is the canonical
+   * hierarchy in OpenMetadata, set unconditionally at write time and consumed by the
+   * breadcrumb UI.
+   *
+   * <p>Earlier implementations resolved children through {@code entity_relationship}
+   * (CONTAINS edges from the parent's UUID). That made two assumptions that don't always
+   * hold in practice:
+   * <ul>
+   *   <li>The connector or bulk-import path always writes the parent CONTAINS edge. Some
+   *       connectors only write leaf containers without their ancestors, leaving the leaf
+   *       with a deeply-nested FQN but no inbound CONTAINS edge — those leaves never appear
+   *       under any /children query for their FQN-implied parent.</li>
+   *   <li>The parent itself exists in the table. The previous code did a
+   *       {@code dao.findEntityByName(parentFQN)} preflight to resolve the parent's UUID;
+   *       a missing parent meant the call failed even though descendants existed.</li>
+   * </ul>
+   *
+   * <p>The FQN-depth approach asks the right question — "which rows have an FQN that is
+   * exactly one level below this prefix?" — and answers it with a single indexed range
+   * scan against {@code idx_storage_container_entity_fqnhash_pattern}. The parent UUID is
+   * never needed; the parent doesn't even have to exist for its descendants to be
+   * discoverable. Because each FQN segment hashes to a fixed-width MD5, "exactly one
+   * segment below" is expressible as {@code fqnHash LIKE :parentHash AND fqnHash NOT LIKE
+   * :parentHashChild}, where {@code :parentHash} is {@code <hash>.%} and
+   * {@code :parentHashChild} is {@code <hash>.%.%}.
+   *
+   * <p>{@code search} narrows the page to children whose name contains the given substring
+   * (case-insensitive). Empty / null disables the filter — the caller passes the raw text
+   * the user typed; LIKE wildcards in the query are escaped here so {@code _} and
+   * {@code %} match literally. Searches bypass {@link ChildrenPageCache} since the same
+   * parent will typically be queried with many different substrings (cache hit rate ≈ 0)
+   * and caching every variant inflates the working set; the depth-only listing remains
+   * cached as before.
+   */
+  public ResultList<Container> listChildren(
+      String parentFQN, Integer limit, Integer offset, Include include, String search) {
     int safeLimit = limit != null ? limit : 0;
     int safeOffset = offset != null ? offset : 0;
+    Include safeInclude = include != null ? include : Include.NON_DELETED;
+    String nameLike = buildNameLikeBind(search);
+    boolean hasSearch = !"%".equals(nameLike);
 
-    ChildrenPageCache pageCache = CacheBundle.getChildrenPageCache();
+    ChildrenPageCache pageCache = hasSearch ? null : CacheBundle.getChildrenPageCache();
     if (pageCache != null) {
       ResultList<Container> cached;
       try (var ignored = RequestLatencyContext.phase("listChildrenCacheGet")) {
-        cached = pageCache.get(CONTAINER, parentFQN, safeLimit, safeOffset);
+        cached = pageCache.get(CONTAINER, parentFQN, safeLimit, safeOffset, safeInclude);
       }
       if (cached != null) {
         return cached;
@@ -619,73 +669,38 @@ public class ContainerRepository extends EntityRepository<Container> {
     }
 
     // Phase markers feed the slow-request log so when a /children call exceeds the
-    // latency budget in prod we can tell which step (parent lookup / relationship
-    // fetch / count / slim hydration / service restore) was responsible.
-    Container parentContainer;
-    try (var ignored = RequestLatencyContext.phase("listChildrenParent")) {
-      parentContainer = dao.findEntityByName(parentFQN);
-    }
+    // latency budget in prod we can tell which step (depth query / count / service
+    // restore) was responsible. The parent-lookup phase from the previous
+    // entity_relationship-based implementation is gone — the FQN is enough.
+    String parentHashRaw = FullyQualifiedName.buildHash(parentFQN);
+    String parentHash = parentHashRaw + Entity.SEPARATOR + "%";
+    String parentHashChild = parentHashRaw + Entity.SEPARATOR + "%" + Entity.SEPARATOR + "%";
+    String includeBind = includeToBindString(safeInclude);
+    CollectionDAO.ContainerDAO containerDAO = (CollectionDAO.ContainerDAO) dao;
 
     try {
-      List<CollectionDAO.EntityRelationshipRecord> relationshipRecords;
-      try (var ignored = RequestLatencyContext.phase("listChildrenRelationships")) {
-        relationshipRecords =
-            daoCollection
-                .relationshipDAO()
-                .findToWithOffset(
-                    parentContainer.getId(),
-                    CONTAINER,
-                    List.of(Relationship.CONTAINS.ordinal()),
-                    safeOffset,
-                    safeLimit);
+      List<Container> children;
+      try (var ignored = RequestLatencyContext.phase("listChildrenPage")) {
+        children =
+            containerDAO.listDirectChildSummariesByParentHash(
+                parentHash, parentHashChild, nameLike, includeBind, safeLimit, safeOffset);
       }
 
       int total;
       try (var ignored = RequestLatencyContext.phase("listChildrenCount")) {
         total =
-            daoCollection
-                .relationshipDAO()
-                .countFindTo(
-                    parentContainer.getId(), CONTAINER, List.of(Relationship.CONTAINS.ordinal()));
+            containerDAO.countDirectChildrenByParentHash(
+                parentHash, parentHashChild, nameLike, includeBind);
       }
 
-      if (relationshipRecords.isEmpty()) {
+      if (children.isEmpty()) {
         ResultList<Container> empty = new ResultList<>(new ArrayList<>(), null, null, total);
         if (pageCache != null) {
-          pageCache.put(CONTAINER, parentFQN, safeLimit, safeOffset, empty);
+          pageCache.put(CONTAINER, parentFQN, safeLimit, safeOffset, safeInclude, empty);
         }
         return empty;
       }
 
-      // Hydrate the page with a slim projection: id, name, fqn, displayName, description.
-      // Heavy fields like dataModel, tags, owners, extension are intentionally skipped —
-      // the UI's children table only renders name and description, and parquet
-      // containers can carry multi-MB column schemas in dataModel.
-      //
-      // The IDs come straight from the relationship rows we already loaded in
-      // findToWithOffset — we deliberately do NOT call EntityUtil.getEntityReferences
-      // here because that path round-trips through Entity.getEntityReferencesByIds →
-      // EntityRepository.find → CACHE_WITH_ID, which materialises the FULL Container
-      // JSON (dataModel, tags, owners, extension) for every child just to extract its
-      // EntityReference. For 15 parquet rows that single call alone can dominate the
-      // listing latency.
-      List<UUID> ids = relationshipRecords.stream().map(r -> r.getId()).toList();
-      Map<UUID, Container> byId = new HashMap<>();
-      try (var ignored = RequestLatencyContext.phase("listChildrenHydrate")) {
-        for (Container c : ((CollectionDAO.ContainerDAO) dao).findContainerSummariesByIds(ids)) {
-          byId.put(c.getId(), c);
-        }
-      }
-      // Preserve relationship-offset ordering returned by findToWithOffset; drop
-      // any rows that no longer resolve (deleted between the relationship lookup and
-      // the bulk fetch) rather than failing the whole page.
-      List<Container> children = new ArrayList<>(ids.size());
-      for (UUID id : ids) {
-        Container container = byId.get(id);
-        if (container != null) {
-          children.add(container);
-        }
-      }
       // service is stripped from stored JSON; restore via batched relationship lookup.
       try (var ignored = RequestLatencyContext.phase("listChildrenService")) {
         fetchAndSetDefaultService(children);
@@ -693,7 +708,7 @@ public class ContainerRepository extends EntityRepository<Container> {
 
       ResultList<Container> page = new ResultList<>(children, null, null, total);
       if (pageCache != null) {
-        pageCache.put(CONTAINER, parentFQN, safeLimit, safeOffset, page);
+        pageCache.put(CONTAINER, parentFQN, safeLimit, safeOffset, safeInclude, page);
       }
       return page;
     } catch (Exception e) {
@@ -702,6 +717,50 @@ public class ContainerRepository extends EntityRepository<Container> {
               "Failed to fetch children for container [%s]: %s", parentFQN, e.getMessage()),
           e);
     }
+  }
+
+  /**
+   * Build the LIKE bind for the optional name filter. Returns {@code "%"} (which always
+   * matches) when no search is supplied so the SQL stays branch-free. When a search is
+   * supplied the pattern is lowercased to match the {@code LOWER(name)} expression in the
+   * SQL and the LIKE wildcards {@code %} and {@code _} (plus the escape character
+   * {@code !}) are escaped so a name containing them matches literally rather than
+   * acting as a wildcard. The SQL declares {@code ESCAPE '!'} explicitly because the
+   * MySQL/PostgreSQL defaults differ; {@code !} is preferred over {@code \} because
+   * a literal backslash inside a single-quoted SQL string confuses JDBI's
+   * ColonPrefixSqlParser when it scans for {@code :name} bind markers, leaving a
+   * downstream bind un-substituted (see ContainerDAO comment block).
+   */
+  private static String buildNameLikeBind(String search) {
+    if (search == null || search.isBlank()) {
+      return "%";
+    }
+    String escaped =
+        search
+            .trim()
+            .toLowerCase(Locale.ROOT)
+            .replace("!", "!!")
+            .replace("%", "!%")
+            .replace("_", "!_");
+    return "%" + escaped + "%";
+  }
+
+  /**
+   * Map the public {@link Include} enum to the literal value the listing SQL expects.
+   * The SQL ({@code ContainerDAO.listDirectChildSummariesByParentHash}) gates the
+   * deleted predicate on this bind via a three-branch OR chain
+   * ({@code :includeDeleted = 'ALL' OR (:includeDeleted = 'DELETED' AND deleted = TRUE)
+   * OR (:includeDeleted = 'NON_DELETED' AND deleted = FALSE)}) rather than three
+   * separate query templates — the underlying access path is identical, the index range
+   * scan on {@code fqnHash} runs once, and the per-row deleted predicate is evaluated
+   * post-index in all three modes.
+   */
+  private static String includeToBindString(Include include) {
+    return switch (include) {
+      case ALL -> "ALL";
+      case DELETED -> "DELETED";
+      default -> "NON_DELETED";
+    };
   }
 
   /**

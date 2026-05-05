@@ -35,6 +35,6 @@ class DataBricksProfilerSource(ProfilerSource):
     def set_is_disconnect(self):
         """Set the is_disconnect method for the Databricks dialect"""
         # pylint: disable=import-outside-toplevel
-        from databricks.sqlalchemy import DatabricksDialect  # noqa: PLC0415
+        from databricks.sqlalchemy.base import DatabricksDialect  # noqa: PLC0415
 
         DatabricksDialect.is_disconnect = is_disconnect
