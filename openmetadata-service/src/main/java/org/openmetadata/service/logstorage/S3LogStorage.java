@@ -52,6 +52,7 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -66,6 +67,7 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
 import software.amazon.awssdk.services.s3.model.ExpirationStatus;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
@@ -652,13 +654,8 @@ public class S3LogStorage implements LogStorageInterface {
     String key = buildS3Key(pipelineFQN, runId);
     String partialKey = buildPartialS3Key(pipelineFQN, runId);
 
-    // Clean up active stream if exists
     String streamKey = pipelineFQN + "/" + runId;
-    activeStreams.remove(streamKey);
     dropStreamState(streamKey);
-
-    // Clear memory cache for this stream
-    recentLogsCache.invalidate(streamKey);
 
     try {
       // Delete main logs file
@@ -839,13 +836,20 @@ public class S3LogStorage implements LogStorageInterface {
     }
   }
 
-  /**
-   * Apply SSE configuration to PutObjectRequest builders based on current settings.
-   * This centralizes the logic for applying server-side encryption consistently across all S3 writes.
-   *
-   * @param requestBuilder The PutObjectRequest.Builder to apply SSE configuration to
-   */
   private void applySSEConfiguration(PutObjectRequest.Builder requestBuilder) {
+    if (enableSSE && !isCustomEndpoint) {
+      if (sseAlgorithm != null) {
+        requestBuilder.serverSideEncryption(sseAlgorithm);
+        if (sseAlgorithm == ServerSideEncryption.AWS_KMS && kmsKeyId != null) {
+          requestBuilder.ssekmsKeyId(kmsKeyId);
+        }
+      } else {
+        requestBuilder.serverSideEncryption(ServerSideEncryption.AES256);
+      }
+    }
+  }
+
+  private void applySSEConfiguration(CopyObjectRequest.Builder requestBuilder) {
     if (enableSSE && !isCustomEndpoint) {
       if (sseAlgorithm != null) {
         requestBuilder.serverSideEncryption(sseAlgorithm);
@@ -881,6 +885,7 @@ public class S3LogStorage implements LogStorageInterface {
           LOG.error("Error during stream cleanup: {}", entry.getKey(), e);
         } finally {
           releaseStreamLock(entry.getKey(), lock);
+          streamLocks.remove(entry.getKey());
         }
       }
     }
@@ -938,11 +943,21 @@ public class S3LogStorage implements LogStorageInterface {
     String partialKey = buildPartialS3Key(pipelineFQN, runId);
 
     String existingBody = "";
+    long priorFlushedLine = 0L;
     try {
       GetObjectRequest getRequest =
           GetObjectRequest.builder().bucket(bucketName).key(partialKey).build();
-      try (InputStream in = s3Client.getObject(getRequest)) {
-        existingBody = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+      ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getRequest);
+      try (response) {
+        existingBody = new String(response.readAllBytes(), StandardCharsets.UTF_8);
+        String lastFlushed = response.response().metadata().get("last-flushed-line");
+        if (lastFlushed != null) {
+          try {
+            priorFlushedLine = Long.parseLong(lastFlushed);
+          } catch (NumberFormatException ignored) {
+            // Treat as 0; the metadata may be from a buggy or external writer.
+          }
+        }
       }
     } catch (NoSuchKeyException e) {
       existingBody = "";
@@ -956,6 +971,8 @@ public class S3LogStorage implements LogStorageInterface {
     String mergedBody = existingBody + newContent;
 
     AtomicLong counter = totalLinesAppended.computeIfAbsent(streamKey, k -> new AtomicLong());
+    long candidate = priorFlushedLine + snapshot.size();
+    counter.accumulateAndGet(candidate, Math::max);
     long lastFlushedLine = counter.get();
 
     Map<String, String> metadata = new HashMap<>();
@@ -978,7 +995,7 @@ public class S3LogStorage implements LogStorageInterface {
       if (metrics != null) {
         metrics.recordS3Write();
       }
-      consecutiveFlushFailures.put(streamKey, new AtomicInteger(0));
+      consecutiveFlushFailures.computeIfAbsent(streamKey, k -> new AtomicInteger(0)).set(0);
     } catch (Exception e) {
       restorePendingFlush(streamKey, snapshot);
       recordFlushFailure(streamKey, e);
@@ -1097,14 +1114,14 @@ public class S3LogStorage implements LogStorageInterface {
   private void copyPartialToLogs(String pipelineFQN, UUID runId) {
     String partialKey = buildPartialS3Key(pipelineFQN, runId);
     String logsKey = buildS3Key(pipelineFQN, runId);
-    CopyObjectRequest req =
+    CopyObjectRequest.Builder builder =
         CopyObjectRequest.builder()
             .sourceBucket(bucketName)
             .sourceKey(partialKey)
             .destinationBucket(bucketName)
-            .destinationKey(logsKey)
-            .build();
-    s3Client.copyObject(req);
+            .destinationKey(logsKey);
+    applySSEConfiguration(builder);
+    s3Client.copyObject(builder.build());
     if (metrics != null) {
       metrics.recordS3Write();
     }
@@ -1117,7 +1134,7 @@ public class S3LogStorage implements LogStorageInterface {
     totalLinesAppended.remove(streamKey);
     consecutiveFlushFailures.remove(streamKey);
     recentLogsCache.invalidate(streamKey);
-    // Note: streamLocks entry is removed by the caller AFTER releasing the lock.
+    activeListeners.remove(streamKey);
   }
 
   private void markRunAsActive(String pipelineFQN, UUID runId) {

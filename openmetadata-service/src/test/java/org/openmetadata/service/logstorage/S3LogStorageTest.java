@@ -745,6 +745,9 @@ public class S3LogStorageTest {
                 AbortableInputStream.create(
                     new ByteArrayInputStream(existingBody.getBytes(StandardCharsets.UTF_8)))));
 
+    when(mockS3Client.putObject(
+            any(PutObjectRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+        .thenReturn(PutObjectResponse.builder().build());
     mockAsyncPutObject();
     s3LogStorage.appendLogs(testPipelineFQN, testRunId, "L6\nL7\n");
 
@@ -767,6 +770,58 @@ public class S3LogStorageTest {
       }
     }
     assertTrue(foundFullBody, "merged body must contain pre-restart and post-restart lines");
+  }
+
+  @Test
+  void testFlushUsesMetadataLastFlushedLineToBumpCounter() throws Exception {
+    String partialKey =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + testRunId
+            + "/partial.txt";
+
+    String existingBody = "L1\nL2\nL3\nL4\nL5\n";
+    GetObjectResponse getResponse =
+        GetObjectResponse.builder().metadata(Map.of("last-flushed-line", "5")).build();
+    when(mockS3Client.getObject(
+            argThat((GetObjectRequest req) -> req != null && partialKey.equals(req.key()))))
+        .thenReturn(
+            new ResponseInputStream<>(
+                getResponse,
+                AbortableInputStream.create(
+                    new ByteArrayInputStream(existingBody.getBytes(StandardCharsets.UTF_8)))));
+
+    when(mockS3Client.putObject(
+            any(PutObjectRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+        .thenReturn(PutObjectResponse.builder().build());
+
+    mockAsyncPutObject();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "L6\nL7\n");
+
+    java.lang.reflect.Method m =
+        S3LogStorage.class.getDeclaredMethod("writePartialLogsForStream", String.class);
+    m.setAccessible(true);
+    m.invoke(s3LogStorage, testPipelineFQN + "/" + testRunId);
+
+    org.mockito.ArgumentCaptor<PutObjectRequest> reqCaptor =
+        org.mockito.ArgumentCaptor.forClass(PutObjectRequest.class);
+    verify(mockS3Client, atLeastOnce())
+        .putObject(reqCaptor.capture(), any(software.amazon.awssdk.core.sync.RequestBody.class));
+    boolean foundCorrectMetadata = false;
+    for (PutObjectRequest req : reqCaptor.getAllValues()) {
+      if (partialKey.equals(req.key())) {
+        String lastFlushed = req.metadata().get("last-flushed-line");
+        if ("7".equals(lastFlushed)) {
+          foundCorrectMetadata = true;
+          break;
+        }
+      }
+    }
+    assertTrue(
+        foundCorrectMetadata,
+        "post-restart flush must set last-flushed-line to 7 (5 pre-restart + 2 new)");
   }
 
   private static Object getPrivateField(Object target, String name) throws Exception {
