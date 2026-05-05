@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Group, Image as GImage, Rect as GRect, Text as GText } from '@antv/g';
+import { Image as GImage, Rect as GRect, Group, Text as GText } from '@antv/g';
 import {
   Circle,
   ExtensionCategory,
@@ -98,6 +98,51 @@ import './ontologyComboAwarePolylineEdge';
 
 const cssColorCache = new Map<string, string>();
 const COMBO_LABEL_CHAR_WIDTH = 7;
+const COMBO_LABEL_MEASURE_FONT = `${COMBO_LABEL_FONT_WEIGHT} ${COMBO_LABEL_FONT_SIZE}px sans-serif`;
+const COMBO_HEADER_MAX_WIDTH = 200;
+
+function measureComboLabelWidth(label: string): number {
+  const ctx = getMeasureTextContext2d();
+  if (!ctx) {
+    return label.length * COMBO_LABEL_CHAR_WIDTH;
+  }
+  try {
+    ctx.font = COMBO_LABEL_MEASURE_FONT;
+
+    return Math.ceil(ctx.measureText(label).width);
+  } catch {
+    return label.length * COMBO_LABEL_CHAR_WIDTH;
+  }
+}
+
+function truncateComboLabel(label: string, maxPx: number): string {
+  const ctx = getMeasureTextContext2d();
+  if (!ctx) {
+    const maxChars = Math.max(1, Math.floor(maxPx / COMBO_LABEL_CHAR_WIDTH));
+
+    return label.length > maxChars
+      ? `${label.slice(0, Math.max(1, maxChars - 1))}...`
+      : label;
+  }
+  ctx.font = COMBO_LABEL_MEASURE_FONT;
+  if (ctx.measureText(label).width <= maxPx) {
+    return label;
+  }
+  const ellipsisWidth = ctx.measureText('...').width;
+  const budget = maxPx - ellipsisWidth;
+  let lo = 0;
+  let hi = label.length - 1;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (ctx.measureText(label.slice(0, mid)).width <= budget) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+
+  return lo === 0 ? '...' : `${label.slice(0, lo)}...`;
+}
 
 function parseVarName(cssVar: string): string {
   const inner = cssVar.slice(4, -1).trim();
@@ -234,6 +279,18 @@ export const LABEL_PLACEMENT_CENTER = 'center';
 export const LABEL_PLACEMENT_TOP_LEFT = 'top-left';
 
 export class GlossaryCombo extends RectCombo {
+  protected override getExpandedKeySize(
+    attributes: Required<RectComboStyleProps>
+  ): [number, number, number] {
+    const [w, h, d] = super.getExpandedKeySize(attributes);
+    const minW =
+      typeof (attributes as Record<string, unknown>).minWidth === 'number'
+        ? ((attributes as Record<string, unknown>).minWidth as number)
+        : 0;
+
+    return [Math.max(w, minW), h, d];
+  }
+
   protected drawLabelShape(
     attributes: Required<RectComboStyleProps>,
     container: Group
@@ -283,14 +340,7 @@ export class GlossaryCombo extends RectCombo {
         16,
         headerW - COMBO_LABEL_PADDING_LEFT * 2
       );
-      const maxChars = Math.max(
-        1,
-        Math.floor(maxLabelWidth / COMBO_LABEL_CHAR_WIDTH)
-      );
-      const truncatedLabelText =
-        labelText.length > maxChars
-          ? `${labelText.slice(0, Math.max(1, maxChars - 1))}...`
-          : labelText;
+      const truncatedLabelText = truncateComboLabel(labelText, maxLabelWidth);
 
       this.upsert(
         'combo-label',
@@ -563,7 +613,7 @@ export function buildDataModeAssetNodeStyle(
       ? String(entityTypeLabel).trim()
       : undefined;
 
-  const nameMeasureFont = `${DATA_MODE_ASSET_LABEL_FONT_WEIGHT} ${DATA_MODE_ASSET_LABEL_FONT_SIZE}px system-ui, sans-serif`;
+  const nameMeasureFont = `${DATA_MODE_ASSET_LABEL_FONT_WEIGHT} ${DATA_MODE_ASSET_LABEL_FONT_SIZE}px sans-serif`;
 
   if (!entityTypeText) {
     const rawTextW =
@@ -604,7 +654,7 @@ export function buildDataModeAssetNodeStyle(
     };
   }
 
-  const entityTypeMeasureFont = `${DATA_MODE_ASSET_LABEL_FONT_WEIGHT} ${DATA_MODE_ENTITY_BADGE_FONT_SIZE}px system-ui, sans-serif`;
+  const entityTypeMeasureFont = `${DATA_MODE_ASSET_LABEL_FONT_WEIGHT} ${DATA_MODE_ENTITY_BADGE_FONT_SIZE}px sans-serif`;
   const measuredEntityInner = measureCanvasTextWidthPx(
     entityTypeText,
     entityTypeMeasureFont,
@@ -839,8 +889,15 @@ export function buildComboStyle(
   labelText: string,
   color: string
 ): Record<string, unknown> {
+  const textWidth = measureComboLabelWidth(labelText);
+  const minWidth = Math.min(
+    textWidth + COMBO_LABEL_PADDING_LEFT * 2,
+    COMBO_HEADER_MAX_WIDTH
+  );
+
   return {
     fill: COMBO_FILL_DEFAULT,
+    minWidth,
     stroke: color,
     lineWidth: COMBO_LINE_WIDTH,
     radius: COMBO_RADIUS,

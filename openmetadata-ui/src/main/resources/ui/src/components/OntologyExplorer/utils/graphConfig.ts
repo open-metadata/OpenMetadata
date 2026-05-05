@@ -13,6 +13,8 @@
 import {
   LayoutEngine,
   MODEL_ANTV_DAGRE_RANKSEP_WITH_COMBOS,
+  NODE_LABEL_FONT_SIZE,
+  NODE_LABEL_FONT_WEIGHT,
   NODE_PADDING_H,
   NODE_PADDING_V,
   toLayoutEngineType,
@@ -24,8 +26,38 @@ import { LayoutConfig, LayoutNodeLike } from '../OntologyExplorer.interface';
 export const NODE_WIDTH = 120;
 export const NODE_HEIGHT = 2 * NODE_PADDING_V + 18;
 export { NODE_PADDING_H } from '../OntologyExplorer.constants';
-export const CHAR_WIDTH_ESTIMATE = 7;
-export const MODEL_NODE_MAX_WIDTH = 220;
+export const CHAR_WIDTH_ESTIMATE = 9;
+export const MODEL_NODE_MAX_WIDTH = 560;
+
+const NODE_LABEL_MEASURE_FONT = `${NODE_LABEL_FONT_WEIGHT} ${NODE_LABEL_FONT_SIZE}px sans-serif`;
+let nodeLabelMeasureCtx: CanvasRenderingContext2D | null = null;
+
+function getNodeLabelMeasureCtx(): CanvasRenderingContext2D | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  if (!nodeLabelMeasureCtx) {
+    const canvas = document.createElement('canvas');
+    nodeLabelMeasureCtx = canvas.getContext('2d');
+  }
+
+  return nodeLabelMeasureCtx;
+}
+
+export function measureLabelTextWidth(label: string): number {
+  const ctx = getNodeLabelMeasureCtx();
+  if (!ctx) {
+    return label.length * CHAR_WIDTH_ESTIMATE;
+  }
+  try {
+    ctx.font = NODE_LABEL_MEASURE_FONT;
+
+    return Math.ceil(ctx.measureText(label).width);
+  } catch {
+    return label.length * CHAR_WIDTH_ESTIMATE;
+  }
+}
+
 export const COMBO_PADDING = 48;
 export const HULL_GAP = 56;
 export const MIN_NODE_SPACING = 12;
@@ -81,26 +113,46 @@ export function getNodeSize(d?: LayoutNodeLike): [number, number] {
 }
 
 export function estimateNodeWidth(label: string): number {
-  const fromLabel = NODE_PADDING_H * 2 + label.length * CHAR_WIDTH_ESTIMATE;
+  const textWidth = measureLabelTextWidth(label);
 
-  return Math.max(MIN_NODE_WIDTH, fromLabel);
+  return Math.max(MIN_NODE_WIDTH, textWidth + NODE_PADDING_H * 2);
 }
 
 export function truncateNodeLabelByWidth(label: string, width: number): string {
-  const maxChars = Math.max(
-    1,
-    Math.floor((width - NODE_PADDING_H * 2) / CHAR_WIDTH_ESTIMATE)
-  );
+  const maxTextPx = width - NODE_PADDING_H * 2;
+  const ctx = getNodeLabelMeasureCtx();
 
-  if (label.length <= maxChars) {
+  if (!ctx) {
+    const maxChars = Math.max(
+      1,
+      Math.floor(maxTextPx / CHAR_WIDTH_ESTIMATE)
+    );
+    if (label.length <= maxChars) {
+      return label;
+    }
+
+    return maxChars <= 1 ? '...' : `${label.slice(0, maxChars - 1)}...`;
+  }
+
+  ctx.font = NODE_LABEL_MEASURE_FONT;
+  if (ctx.measureText(label).width <= maxTextPx) {
     return label;
   }
 
-  if (maxChars <= 1) {
-    return '...';
+  const ellipsisWidth = ctx.measureText('...').width;
+  const budget = maxTextPx - ellipsisWidth;
+  let lo = 0;
+  let hi = label.length - 1;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (ctx.measureText(label.slice(0, mid)).width <= budget) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
   }
 
-  return `${label.slice(0, maxChars - 1)}...`;
+  return lo === 0 ? '...' : `${label.slice(0, lo)}...`;
 }
 
 export function getLayoutConfig(
