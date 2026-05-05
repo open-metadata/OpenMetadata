@@ -1509,6 +1509,7 @@
     "ownership": "소유권",
     "owns": "Owns",
     "page": "페이지",
+    "page-lowercase": "페이지",
     "page-not-found": "페이지를 찾을 수 없습니다",
     "page-plural": "페이지",
     "page-views-by-data-asset-plural": "데이터 자산별 페이지 조회수",

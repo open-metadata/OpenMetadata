@@ -1509,6 +1509,7 @@
     "ownership": "Sahiplik",
     "owns": "Owns",
     "page": "Sayfa",
+    "page-lowercase": "sayfa",
     "page-not-found": "Sayfa Bulunamadı",
     "page-plural": "Sayfalar",
     "page-views-by-data-asset-plural": "Veri Varlıklarına Göre Sayfa Görüntülemeleri",

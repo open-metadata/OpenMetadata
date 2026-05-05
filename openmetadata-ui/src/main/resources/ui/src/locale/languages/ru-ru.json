@@ -1509,6 +1509,7 @@
     "ownership": "Владение",
     "owns": "Owns",
     "page": "Страница",
+    "page-lowercase": "страница",
     "page-not-found": "Страница не найдена",
     "page-plural": "Страницы",
     "page-views-by-data-asset-plural": "Просмотры объектов данных",

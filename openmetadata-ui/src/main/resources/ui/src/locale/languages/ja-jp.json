@@ -1509,6 +1509,7 @@
     "ownership": "所有権",
     "owns": "Owns",
     "page": "ページ",
+    "page-lowercase": "ページ",
     "page-not-found": "ページが見つかりません",
     "page-plural": "ページ",
     "page-views-by-data-asset-plural": "データアセットごとのページビュー",

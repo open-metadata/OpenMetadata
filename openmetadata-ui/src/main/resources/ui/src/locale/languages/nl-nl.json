@@ -1509,6 +1509,7 @@
     "ownership": "Eigendom",
     "owns": "Owns",
     "page": "Pagina",
+    "page-lowercase": "pagina",
     "page-not-found": "Pagina niet gevonden",
     "page-plural": "Pagina's",
     "page-views-by-data-asset-plural": "Paginaweergaven per data-asset",

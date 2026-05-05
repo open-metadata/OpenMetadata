@@ -1509,6 +1509,7 @@
     "ownership": "Ownership",
     "owns": "Owns",
     "page": "Page",
+    "page-lowercase": "page",
     "page-not-found": "Page Not Found",
     "page-plural": "Pages",
     "page-views-by-data-asset-plural": "Page Views by Data Assets",
