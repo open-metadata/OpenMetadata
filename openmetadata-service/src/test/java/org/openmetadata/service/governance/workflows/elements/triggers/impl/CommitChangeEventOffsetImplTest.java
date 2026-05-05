@@ -141,12 +141,12 @@ class CommitChangeEventOffsetImplTest {
   }
 
   // -------------------------------------------------------------------------
-  // commitOffset — direct static call, null offset → no-op
+  // ChangeEventOffsetUtils.commitOffset — null offset → no-op
   // -------------------------------------------------------------------------
 
   @Test
   void testCommitOffset_nullOffset_isNoOp() {
-    CommitChangeEventOffsetImpl.commitOffset("wf", "table", null);
+    ChangeEventOffsetUtils.commitOffset("wf", "table", null);
 
     verify(eventSubscriptionDAO, never()).getSubscriberExtension(anyString(), anyString());
     verify(eventSubscriptionDAO, never())
@@ -154,7 +154,7 @@ class CommitChangeEventOffsetImplTest {
   }
 
   // -------------------------------------------------------------------------
-  // commitOffset — direct static call, stored offset >= processed → skip
+  // ChangeEventOffsetUtils.commitOffset — stored offset >= processed → skip
   // -------------------------------------------------------------------------
 
   @Test
@@ -166,7 +166,7 @@ class CommitChangeEventOffsetImplTest {
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
-      CommitChangeEventOffsetImpl.commitOffset("certificationWorkflow", "table", 50L);
+      ChangeEventOffsetUtils.commitOffset("certificationWorkflow", "table", 50L);
     }
 
     verify(eventSubscriptionDAO, never())

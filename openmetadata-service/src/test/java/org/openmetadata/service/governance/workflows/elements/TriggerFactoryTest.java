@@ -23,6 +23,7 @@ import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.CallActivity;
 import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.MultiInstanceLoopCharacteristics;
+import org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchChangeEventsImpl;
 import org.flowable.bpmn.model.Process;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -104,7 +105,7 @@ class TriggerFactoryTest {
   }
 
   @Test
-  void testPeriodicBatchTrigger_WithNoSinkNodes_UsesMultipleExecutions() {
+  void testPeriodicBatchTrigger_WithNoSinkNodes_UsesParallelBatches() {
     WorkflowDefinition workflow = createWorkflowWithoutSink();
 
     TriggerInterface trigger = TriggerFactory.createTrigger(workflow);
@@ -117,15 +118,17 @@ class TriggerFactoryTest {
     CallActivity callActivity = findCallActivity(model);
     assertNotNull(callActivity, "CallActivity should exist");
 
-    MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
+    MultiInstanceLoopCharacteristics loopChars =
+        (MultiInstanceLoopCharacteristics) callActivity.getLoopCharacteristics();
+    assertNotNull(loopChars, "Loop characteristics should exist");
     assertEquals(
-        "${numberOfEntities}",
-        loopChars.getLoopCardinality(),
-        "Cardinality should be ${numberOfEntities} when no sink nodes");
+        FetchChangeEventsImpl.BATCHES_VARIABLE,
+        loopChars.getInputDataItem(),
+        "Non-sink batch mode should iterate over the batches collection");
   }
 
   @Test
-  void testPeriodicBatchTrigger_WithNullNodes_UsesMultipleExecutions() {
+  void testPeriodicBatchTrigger_WithNullNodes_UsesParallelBatches() {
     WorkflowDefinition workflow = createWorkflowWithNullNodes();
 
     TriggerInterface trigger = TriggerFactory.createTrigger(workflow);
@@ -138,11 +141,13 @@ class TriggerFactoryTest {
     CallActivity callActivity = findCallActivity(model);
     assertNotNull(callActivity, "CallActivity should exist");
 
-    MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
+    MultiInstanceLoopCharacteristics loopChars =
+        (MultiInstanceLoopCharacteristics) callActivity.getLoopCharacteristics();
+    assertNotNull(loopChars, "Loop characteristics should exist");
     assertEquals(
-        "${numberOfEntities}",
-        loopChars.getLoopCardinality(),
-        "Cardinality should be ${numberOfEntities} when nodes is null");
+        FetchChangeEventsImpl.BATCHES_VARIABLE,
+        loopChars.getInputDataItem(),
+        "Null-nodes batch mode should iterate over the batches collection");
   }
 
   @Test

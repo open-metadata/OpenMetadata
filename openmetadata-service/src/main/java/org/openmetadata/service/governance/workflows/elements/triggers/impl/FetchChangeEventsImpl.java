@@ -43,7 +43,9 @@ public class FetchChangeEventsImpl implements JavaDelegate {
 
   static final String CURRENT_BATCH_OFFSET_VARIABLE = "currentBatchOffset";
   static final String MAX_PROCESSED_OFFSET_VARIABLE = "maxProcessedOffset";
-  static final int PROCESSED_FQNS_MAX_SIZE = 10_000;
+  // Cross-batch dedup cache stored as a Flowable execution variable (serialized to DB on every
+  // async boundary). 1,000 entries × ~100 chars/FQN ≈ 100KB per write — within safe BLOB limits.
+  static final int PROCESSED_FQNS_MAX_SIZE = 1_000;
   private static final String CARDINALITY_VARIABLE = "numberOfEntities";
 
   // Variable name written to the Flowable execution scope when parallelism > 1.
@@ -163,7 +165,7 @@ public class FetchChangeEventsImpl implements JavaDelegate {
     Long existingMax = (Long) execution.getVariable(MAX_PROCESSED_OFFSET_VARIABLE);
     if (existingMax == null || batchMaxOffset > existingMax) {
       execution.setVariable(MAX_PROCESSED_OFFSET_VARIABLE, batchMaxOffset);
-      CommitChangeEventOffsetImpl.commitOffset(workflowFqn, entityType, batchMaxOffset);
+      ChangeEventOffsetUtils.commitOffset(workflowFqn, entityType, batchMaxOffset);
     }
 
     String updatedByVar = getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);

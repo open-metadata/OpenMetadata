@@ -36,6 +36,8 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
           (WorkflowInstanceStateRepository)
               Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
 
+      WorkflowDefinition workflowDefinition = fetchWorkflowDefinition(workflowName);
+
       switch (eventName) {
         case "start" -> {
           LOG.debug(
@@ -43,7 +45,7 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
               workflowName,
               processInstanceId,
               currentActivity);
-          addNewStage(varHandler, execution, workflowInstanceStateRepository);
+          addNewStage(varHandler, execution, workflowInstanceStateRepository, workflowDefinition);
         }
         case "end" -> {
           LOG.debug(
@@ -51,7 +53,7 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
               workflowName,
               processInstanceId,
               currentActivity);
-          updateStage(varHandler, execution, workflowInstanceStateRepository);
+          updateStage(varHandler, execution, workflowInstanceStateRepository, workflowDefinition);
         }
         default -> LOG.debug(
             "[STAGE_EVENT] Workflow: {}, ProcessInstance: {}, Activity: {} - Unsupported event: {}",
@@ -141,7 +143,8 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
   private void addNewStage(
       WorkflowVariableHandler varHandler,
       DelegateExecution execution,
-      WorkflowInstanceStateRepository workflowInstanceStateRepository) {
+      WorkflowInstanceStateRepository workflowInstanceStateRepository,
+      WorkflowDefinition workflowDefinition) {
     execution.removeTransientVariable(FAILURE_VARIABLE);
     String workflowDefinitionName =
         getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
@@ -178,7 +181,6 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
 
     String stage =
         Optional.ofNullable(execution.getCurrentActivityId()).orElse(workflowDefinitionName);
-    WorkflowDefinition workflowDefinition = fetchWorkflowDefinition(workflowDefinitionName);
     List<String> entityList = resolveStageEntityList(workflowDefinition, stage, varHandler);
     UUID workflowInstanceStateId =
         workflowInstanceStateRepository.addNewStageToInstance(
@@ -253,7 +255,8 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
   private void updateStage(
       WorkflowVariableHandler varHandler,
       DelegateExecution execution,
-      WorkflowInstanceStateRepository workflowInstanceStateRepository) {
+      WorkflowInstanceStateRepository workflowInstanceStateRepository,
+      WorkflowDefinition workflowDefinition) {
     String workflowDefinitionName =
         getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
     String processInstanceId = execution.getProcessInstanceId();
@@ -273,7 +276,6 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
     }
 
     Map<String, Object> variables = execution.getVariables();
-    WorkflowDefinition workflowDefinition = fetchWorkflowDefinition(workflowDefinitionName);
     String updatedBy = resolveStageUpdatedBy(workflowDefinition, stage, variables);
     workflowInstanceStateRepository.updateStage(
         workflowInstanceStateId, System.currentTimeMillis(), updatedBy, variables);
