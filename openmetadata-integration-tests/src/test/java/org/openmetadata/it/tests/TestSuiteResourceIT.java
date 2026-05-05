@@ -179,17 +179,6 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().testSuites().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().testSuites().getVersionList(id, limit, offset, fieldChanged);
-  }
-
-  @Override
   protected TestSuite getVersion(UUID id, Double version) {
     return SdkClients.adminClient().testSuites().getVersion(id.toString(), version);
   }

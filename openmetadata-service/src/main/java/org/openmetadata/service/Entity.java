@@ -563,6 +563,11 @@ public final class Entity {
     return entityRepository.getFields(String.join(",", fields));
   }
 
+  public static Fields getOnlySupportedFields(String entityType, List<String> fields) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    return entityRepository.getOnlySupportedFields(String.join(",", fields));
+  }
+
   public static <T> T getEntity(EntityReference ref, String fields, Include include) {
     if (ref == null) {
       return null;

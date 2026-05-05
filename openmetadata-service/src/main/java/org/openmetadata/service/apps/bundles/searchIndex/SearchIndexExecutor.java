@@ -1000,6 +1000,31 @@ public class SearchIndexExecutor implements AutoCloseable {
       KeysetBatchReader batchReader,
       Phaser producerPhaser,
       String endCursor) {
+    // Bypass the Redis-backed entity cache for the duration of this reader. Reindex never
+    // re-reads the same entity, so the cache hit rate is ~0; every relationship lookup pays a
+    // cache round-trip we don't need, and on an unhealthy Redis the indexer crawls because each
+    // miss pays a 300ms timeout. See {@link org.openmetadata.service.cache.EntityCacheBypass}.
+    try (org.openmetadata.service.cache.EntityCacheBypass.Handle ignored =
+        org.openmetadata.service.cache.EntityCacheBypass.skip()) {
+      processKeysetBatchesInternal(
+          entityType,
+          recordLimit,
+          fixedBatchSize,
+          startCursor,
+          batchReader,
+          producerPhaser,
+          endCursor);
+    }
+  }
+
+  private void processKeysetBatchesInternal(
+      String entityType,
+      int recordLimit,
+      int fixedBatchSize,
+      String startCursor,
+      KeysetBatchReader batchReader,
+      Phaser producerPhaser,
+      String endCursor) {
     boolean hadFailure = false;
     try {
       String keysetCursor = startCursor;
@@ -1096,6 +1121,15 @@ public class SearchIndexExecutor implements AutoCloseable {
   }
 
   private void processBatch(String entityType, int currentOffset, CountDownLatch producerLatch) {
+    // See note on processKeysetBatches: bypass the entity cache for reindex reader threads.
+    try (org.openmetadata.service.cache.EntityCacheBypass.Handle ignored =
+        org.openmetadata.service.cache.EntityCacheBypass.skip()) {
+      processBatchInternal(entityType, currentOffset, producerLatch);
+    }
+  }
+
+  private void processBatchInternal(
+      String entityType, int currentOffset, CountDownLatch producerLatch) {
     boolean batchHadFailure = false;
     try {
       if (stopped.get()) {
@@ -1329,10 +1363,14 @@ public class SearchIndexExecutor implements AutoCloseable {
   }
 
   private List<String> getSearchIndexFields(String entityType) {
-    if (TIME_SERIES_ENTITIES.contains(entityType)) {
-      return List.of();
-    }
-    return List.of("*");
+    // Delegate to the shared helper so single-server (this executor) and distributed
+    // (PartitionWorker) reindex paths request the same minimal field set. Otherwise
+    // setFieldsInBulk runs every registered fieldFetcher — including expensive ones like
+    // fetchAndSetOwns on Team/User — even though the search document drops most of them
+    // via getExcludedFields. PR #27723 originally fixed this for EntityReader; the
+    // executor was the missing piece.
+    return org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSearchIndexFields(
+        entityType);
   }
 
   @SuppressWarnings("unchecked")

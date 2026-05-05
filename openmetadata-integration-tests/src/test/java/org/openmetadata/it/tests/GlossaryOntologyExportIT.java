@@ -40,13 +40,24 @@ import org.testcontainers.utility.DockerImageName;
  * <p>Tests verify that glossaries can be exported as RDF ontologies in various formats (Turtle,
  * RDF/XML, N-Triples, JSON-LD) with proper SKOS vocabulary mapping.
  *
- * <p>Test isolation: Uses TestNamespace for unique entity naming.
+ * <p>{@link RdfUpdater} is a JVM-wide singleton; {@code @BeforeAll} flips it on and makes every
+ * entity create in the same JVM do a synchronous Fuseki write. Running concurrently with other
+ * IT classes saturates the Dropwizard thread pool and produces 60s request timeouts (issue
+ * #27649).
  *
- * <p>Parallelization: Annotated {@code @Isolated} because {@link RdfUpdater} is a JVM-wide
- * singleton. {@code @BeforeAll} flips it on, so any test class running concurrently starts doing
- * synchronous Fuseki writes on every entity create — saturating the Dropwizard thread pool and
- * causing 60s request timeouts (see issue #27649). {@code @Execution(SAME_THREAD)} alone only
- * serializes within this class and does not prevent that cross-class leakage.
+ * <p>Two layers of isolation, both required:
+ *
+ * <ul>
+ *   <li>The class is in the failsafe {@code sequential-tests} execution group so CI runs it
+ *       with {@code parallel.enabled=false}. The group includes a handful of other IT classes
+ *       that also need serial execution; those still run in the same JVM, but never
+ *       concurrently with each other or with this class — which is what matters for the
+ *       RdfUpdater singleton.
+ *   <li>{@code @Isolated} + {@code @Execution(SAME_THREAD)} keep the test safe under
+ *       {@code junit-platform.properties} defaults (parallel + concurrent classes), which is
+ *       what you get when running from an IDE or any future profile that doesn't route through
+ *       {@code sequential-tests}.
+ * </ul>
  */
 @Isolated
 @Execution(ExecutionMode.SAME_THREAD)

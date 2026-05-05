@@ -49,9 +49,6 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
   tier,
   slashedApiEndpointName,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   backHandler,
   versionHandler,
   entityPermissions,
@@ -234,12 +231,9 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={version ?? ''}
         entityType={EntityType.API_ENDPOINT}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );

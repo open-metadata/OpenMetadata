@@ -25,7 +25,7 @@
  * so cleanup always runs in afterAll even when a test fails mid-way.
  */
 
-import { expect, test } from '@playwright/test';
+import { APIRequestContext, expect, test } from '@playwright/test';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import {
   CP_BASE_VALUES,
@@ -72,6 +72,7 @@ import {
 import {
   addCustomPropertiesForEntity,
   createCustomPropertyForEntity,
+  CustomProperty,
   CustomPropertyTypeByName,
   deleteCreatedProperty,
   editCreatedProperty,
@@ -131,6 +132,21 @@ type OtherTypes = GlossaryTerm | Domain | DataProduct;
 type CRUDEntity = {
   key: keyof typeof CUSTOM_PROPERTIES_ENTITIES;
   makeInstance: (() => AssetTypes | OtherTypes) | null;
+};
+
+type ColumnsTestData = {
+  customPropertyValue: Record<
+    string,
+    {
+      value: string;
+      newValue: string;
+      property: CustomProperty;
+    }
+  >;
+  cleanupUser: (apiContext: APIRequestContext) => Promise<void>;
+  users: Record<string, string>;
+  columnFqn: string;
+  tableFqn: string;
 };
 
 const BASIC_PROPERTIES = [
@@ -3340,43 +3356,50 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     // ── TableColumn-specific extra test ────────────────────────────────────
 
     if (key === 'entity_tableColumn') {
-      test('Set & update column-level custom property', async ({ page }) => {
-        // 5 minutes timeout for this test since it handles all cp types
-        test.setTimeout(300000);
+      test.describe('Set & update column-level custom property', async () => {
+        const testData: ColumnsTestData = {} as ColumnsTestData;
 
-        const { apiContext, afterAction } = await getApiContext(page);
+        test.beforeAll(async ({ browser }) => {
+          const { apiContext, afterAction } = await createNewPage(browser);
 
-        const data = await createCustomPropertyForEntity(
-          apiContext,
-          EntityTypeEndpoint.TableColumn
-        );
-        const customPropertyValue = data.customProperties;
-        const cleanupUser = data.cleanupUser;
-        const users = data.userNames;
+          const data = await createCustomPropertyForEntity(
+            apiContext,
+            EntityTypeEndpoint.TableColumn
+          );
+          testData.customPropertyValue = data.customProperties;
+          testData.cleanupUser = data.cleanupUser;
+          testData.users = data.userNames;
 
-        const columnFqn =
-          tableForColumnTest?.entityResponseData.columns[0]
-            .fullyQualifiedName ?? '';
-        const tableFqn =
-          tableForColumnTest?.entityResponseData.fullyQualifiedName ?? '';
+          testData.columnFqn =
+            tableForColumnTest?.entityResponseData.columns[0]
+              .fullyQualifiedName ?? '';
+          testData.tableFqn =
+            tableForColumnTest?.entityResponseData.fullyQualifiedName ?? '';
 
-        const properties = Object.values(CustomPropertyTypeByName);
+          await afterAction();
+        });
 
-        for (const type of properties) {
-          await test.step(`Set ${type} custom property on column and verify in UI`, async () => {
+        test.afterAll(async ({ browser }) => {
+          const { apiContext, afterAction } = await createNewPage(browser);
+
+          await testData.cleanupUser?.(apiContext);
+          await afterAction();
+        });
+
+        for (const type of Object.values(CustomPropertyTypeByName)) {
+          test(`Set ${type} custom property on column and verify in UI`, async ({
+            page,
+          }) => {
             await verifyTableColumnCustomPropertyPersistence({
               page,
-              columnFqn,
-              tableFqn,
-              propertyName: customPropertyValue[type].property.name,
+              columnFqn: testData.columnFqn,
+              tableFqn: testData.tableFqn,
+              propertyName: testData.customPropertyValue[type].property.name,
               propertyType: type,
-              users,
+              users: testData.users,
             });
           });
         }
-
-        await cleanupUser(apiContext);
-        await afterAction();
       });
     }
 

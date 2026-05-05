@@ -19,6 +19,12 @@ public class CacheConfig {
   public int relationshipTtlSeconds = 3600; // 1 hour
   public int tagTtlSeconds = 3600; // 1 hour
 
+  // Listing total-row counts. Short TTL because counts are best-effort: a freshly created
+  // entity may not show up in paging.total for up to listCountTtlSeconds, but the list
+  // itself is always live. Keeps repeated /containers, /tables, /dashboards listings
+  // from each paying for a fresh count(*) on heavy tables.
+  public int listCountTtlSeconds = 60;
+
   // Single-flight bundle load uses an in-process Striped<Lock> keyed by (type, id). The
   // stripe count caps concurrent independent loads — more stripes = less collision between
   // unrelated entities. 512 suits a typical OM instance; bump if you see lock contention

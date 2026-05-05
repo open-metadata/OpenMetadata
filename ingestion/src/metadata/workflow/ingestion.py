@@ -181,7 +181,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             )
 
         try:
-            if not self.config.source.serviceConnection.root.config.supportsProfiler:
+            if not self.config.source.serviceConnection.root.config.supportsProfiler:  # pyright: ignore[reportAttributeAccessIssue]
                 raise AttributeError()  # noqa: TRY301
         except AttributeError:
             if profiler_config_class.model_validate(self.config.processor.model_dump().get("config")).ignoreValidation:
@@ -197,7 +197,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         source_type = self.config.source.type.lower()
         try:
             return (
-                import_from_module(self.config.source.serviceConnection.root.config.sourcePythonClass)
+                import_from_module(self.config.source.serviceConnection.root.config.sourcePythonClass)  # pyright: ignore[reportAttributeAccessIssue]
                 if source_type.startswith(CUSTOM_CONNECTOR_PREFIX)
                 else import_source_class(service_type=self.service_type, source_type=source_type)
             )

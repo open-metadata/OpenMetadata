@@ -32,11 +32,16 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
+from metadata.ingestion.source.database.databricks.log_filters import (
+    suppress_user_agent_entry_deprecation_log,
+)
 from metadata.utils.constants import THREE_MIN
+
+suppress_user_agent_entry_deprecation_log()
 
 
 def get_connection_url(connection: DatabricksPipelineConnection) -> str:
-    url = f"databricks+connector://token:{connection.token.get_secret_value()}@{connection.hostPort}"
+    url = f"databricks://token:{connection.token.get_secret_value()}@{connection.hostPort}"
     return url  # noqa: RET504
 
 
