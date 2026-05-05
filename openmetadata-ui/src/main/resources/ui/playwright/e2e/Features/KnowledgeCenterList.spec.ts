@@ -12,7 +12,8 @@
  */
 import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
-import { redirectToHomePage } from '../../utils/common';
+import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
+import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   getKnowledgePageCardByIndex,
@@ -27,31 +28,21 @@ test.use({
 
 // 7 cards needed: tests use indices 0-6
 const MIN_CARDS = 7;
+const knowledgeCenter = new KnowledgeCenterClass();
 
 test.describe('Knowledge Center List', () => {
   test.slow(true);
 
   test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext({
-      storageState: 'playwright/.auth/admin.json',
-    });
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await knowledgeCenter.create(apiContext, MIN_CARDS);
+    await afterAction();
+  });
 
-    try {
-      for (let i = 0; i < MIN_CARDS; i++) {
-        await context.request.post('/api/v1/knowledgeCenter', {
-          data: {
-            name: `00pw-kc-list-${Date.now()}-${i}`,
-            pageType: 'Article',
-            page: {
-              publicationDate: Date.now(),
-              relatedArticles: [],
-            },
-          },
-        });
-      }
-    } finally {
-      await context.close();
-    }
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await knowledgeCenter.delete(apiContext);
+    await afterAction();
   });
 
   test.beforeEach(async ({ page }) => {
