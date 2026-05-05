@@ -509,7 +509,7 @@ public class TypeResourceIT {
                         .build()),
         "PATCH that adds a custom property with disallowed character must return 400");
 
-    Type after = getTypeById(client, fresh.getId());
+    Type after = getTypeById(client, fresh.getId(), "customProperties");
     boolean persisted =
         after.getCustomProperties() != null
             && after.getCustomProperties().stream().anyMatch(cp -> badName.equals(cp.getName()));
@@ -537,7 +537,7 @@ public class TypeResourceIT {
             patchJson,
             RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
 
-    Type after = getTypeById(client, fresh.getId());
+    Type after = getTypeById(client, fresh.getId(), "customProperties");
     boolean persisted =
         after.getCustomProperties() != null
             && after.getCustomProperties().stream().anyMatch(cp -> goodName.equals(cp.getName()));
@@ -1010,6 +1010,18 @@ public class TypeResourceIT {
         client
             .getHttpClient()
             .executeForString(HttpMethod.GET, "/v1/metadata/types/" + typeId.toString(), null);
+    return OBJECT_MAPPER.readValue(response, Type.class);
+  }
+
+  private static Type getTypeById(OpenMetadataClient client, UUID typeId, String fields)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/metadata/types/" + typeId.toString() + "?fields=" + fields,
+                null);
     return OBJECT_MAPPER.readValue(response, Type.class);
   }
 
