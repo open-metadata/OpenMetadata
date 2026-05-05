@@ -119,9 +119,10 @@ public class S3LogStorage implements LogStorageInterface {
   private final long writerEpoch = System.currentTimeMillis();
 
   private final Map<String, StreamContext> activeStreams = new ConcurrentHashMap<>();
-  // Per-stream coordination lock keyed by `<fqn>/<runId>`. Entries are populated lazily and
-  // removed when the stream is finalized (close or sweep). The map is bounded by the number of
-  // in-flight runs.
+  // Per-stream coordination lock keyed by `<fqn>/<runId>`. Entries are populated
+  // lazily and never removed; this is intentional to avoid an
+  // acquire-vs-remove race that would break mutual exclusion. The map is
+  // bounded by maxConcurrentStreams in practice (100 by default).
   private final Map<String, ReentrantLock> streamLocks = new ConcurrentHashMap<>();
 
   // Lines accumulated since the last successful partial.txt PUT, per stream. Drained by the
@@ -656,7 +657,12 @@ public class S3LogStorage implements LogStorageInterface {
     String partialKey = buildPartialS3Key(pipelineFQN, runId);
 
     String streamKey = pipelineFQN + "/" + runId;
-    dropStreamState(streamKey);
+    ReentrantLock lock = acquireStreamLock(streamKey);
+    try {
+      dropStreamState(streamKey);
+    } finally {
+      releaseStreamLock(streamKey, lock);
+    }
 
     try {
       // Delete main logs file
@@ -683,7 +689,8 @@ public class S3LogStorage implements LogStorageInterface {
     String keyPrefix = buildKeyPrefix(pipelineFQN);
     String streamKeyPrefix = pipelineFQN + "/";
 
-    // Clean up active streams for this pipeline
+    // NOTE: The per-stream lock is not acquired here because we iterate across all streams for the
+    // pipeline. This method may race with active writers; out of scope for this fix.
     activeStreams
         .entrySet()
         .removeIf(
@@ -895,9 +902,18 @@ public class S3LogStorage implements LogStorageInterface {
     }
 
     ReentrantLock lock = acquireStreamLock(streamKey);
-    boolean finalized = false;
     try {
-      writePartialLogsForStreamLocked(streamKey, pipelineFQN, runId);
+      // Re-check expiration under the lock — appendLogs may have bumped lastAccessTime.
+      StreamContext ctx = activeStreams.get(streamKey);
+      long timeoutMs = streamTimeoutHours * 60L * 60L * 1000L;
+      if (ctx == null || System.currentTimeMillis() - ctx.lastAccessTime <= timeoutMs) {
+        return; // Stream is no longer expired (or already finalized by another path).
+      }
+
+      if (!writePartialLogsForStreamLocked(streamKey, pipelineFQN, runId)) {
+        LOG.warn("Final flush failed for abandoned stream {}; will retry next sweep", streamKey);
+        return; // Leave state intact for the next sweep.
+      }
 
       try {
         copyPartialToLogs(pipelineFQN, runId);
@@ -935,12 +951,8 @@ public class S3LogStorage implements LogStorageInterface {
       }
 
       dropStreamState(streamKey);
-      finalized = true;
     } finally {
       releaseStreamLock(streamKey, lock);
-      if (finalized) {
-        streamLocks.remove(streamKey);
-      }
     }
   }
 
@@ -972,16 +984,18 @@ public class S3LogStorage implements LogStorageInterface {
 
     ReentrantLock lock = acquireStreamLock(streamKey);
     try {
+      // Result is intentionally discarded; failures are logged inside the locked method.
       writePartialLogsForStreamLocked(streamKey, pipelineFQN, runId);
     } finally {
       releaseStreamLock(streamKey, lock);
     }
   }
 
-  private void writePartialLogsForStreamLocked(String streamKey, String pipelineFQN, UUID runId) {
+  private boolean writePartialLogsForStreamLocked(
+      String streamKey, String pipelineFQN, UUID runId) {
     List<String> queue = pendingFlush.get(streamKey);
     if (queue == null || queue.isEmpty()) {
-      return;
+      return true;
     }
 
     List<String> snapshot = new ArrayList<>(queue);
@@ -1017,7 +1031,7 @@ public class S3LogStorage implements LogStorageInterface {
     } catch (Exception e) {
       restorePendingFlush(streamKey, snapshot);
       recordFlushFailure(streamKey, e);
-      return;
+      return false;
     }
 
     String newContent = String.join("\n", snapshot) + "\n";
@@ -1049,9 +1063,11 @@ public class S3LogStorage implements LogStorageInterface {
         metrics.recordS3Write();
       }
       consecutiveFlushFailures.computeIfAbsent(streamKey, k -> new AtomicInteger(0)).set(0);
+      return true;
     } catch (Exception e) {
       restorePendingFlush(streamKey, snapshot);
       recordFlushFailure(streamKey, e);
+      return false;
     }
   }
 
@@ -1116,7 +1132,14 @@ public class S3LogStorage implements LogStorageInterface {
     ReentrantLock lock = acquireStreamLock(streamKey);
     try {
       // Final flush: drain remaining pendingFlush to partial.txt.
-      writePartialLogsForStreamLocked(streamKey, pipelineFQN, runId);
+      if (!writePartialLogsForStreamLocked(streamKey, pipelineFQN, runId)) {
+        // Final flush failed — partial.txt may be stale; do not produce logs.txt.
+        // pendingFlush has been restored. Caller should retry.
+        throw new IOException(
+            "Failed to flush remaining logs to partial.txt for "
+                + streamKey
+                + "; close aborted, retry next call");
+      }
 
       // Server-side copy partial.txt -> logs.txt.
       try {
@@ -1160,7 +1183,6 @@ public class S3LogStorage implements LogStorageInterface {
       dropStreamState(streamKey);
     } finally {
       releaseStreamLock(streamKey, lock);
-      streamLocks.remove(streamKey);
     }
   }
 
@@ -1393,24 +1415,29 @@ public class S3LogStorage implements LogStorageInterface {
             pipelineFQN,
             runId);
       }
-    } else {
-      // Append the in-memory pendingFlush tail (lines appended but not yet flushed).
-      // Read under the per-stream lock — the value list is a plain ArrayList and is
-      // only safe to access while the lock is held. If the lock entry is missing
-      // for any reason (a lifecycle invariant we expect to hold), skip the append
-      // rather than reading without synchronization.
-      String streamKeyForPending = pipelineFQN + "/" + runId;
-      ReentrantLock pendingLock = streamLocks.get(streamKeyForPending);
-      if (pendingLock != null) {
-        pendingLock.lock();
-        try {
-          List<String> livePending = pendingFlush.get(streamKeyForPending);
-          if (livePending != null && !livePending.isEmpty()) {
-            allLines.addAll(new ArrayList<>(livePending));
-          }
-        } finally {
-          pendingLock.unlock();
+    }
+
+    // Always append the in-memory pendingFlush tail. The recentLogsCache
+    // (used in the !foundPartialFile branch) may have evicted older lines
+    // at its 1000-line cap; pendingFlush is unbounded and complete.
+    // Read under the per-stream lock — the value list is a plain ArrayList and is
+    // only safe to access while the lock is held. If the lock entry is missing
+    // for any reason (a lifecycle invariant we expect to hold), skip the append
+    // rather than reading without synchronization.
+    // Note: in the !foundPartialFile branch, the recentLogsCache and pendingFlush
+    // hold the same lines, so some duplicates may appear in the rare overlap case;
+    // the user-visible cost is showing some lines twice for ~2 minutes, vs. losing them.
+    String streamKeyForPending = pipelineFQN + "/" + runId;
+    ReentrantLock pendingLock = streamLocks.get(streamKeyForPending);
+    if (pendingLock != null) {
+      pendingLock.lock();
+      try {
+        List<String> livePending = pendingFlush.get(streamKeyForPending);
+        if (livePending != null && !livePending.isEmpty()) {
+          allLines.addAll(new ArrayList<>(livePending));
         }
+      } finally {
+        pendingLock.unlock();
       }
     }
 

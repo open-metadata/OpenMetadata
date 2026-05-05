@@ -414,8 +414,11 @@ public class S3LogStorageTest {
 
     assertEquals("Line 1\nLine 2", result.get("logs"));
     assertEquals("2", result.get("after"));
-    // recentLogsCache already includes the pendingFlush lines, so total is 3
-    assertEquals(3L, result.get("total"));
+    // pendingFlush is now appended unconditionally in both branches to prevent data loss when
+    // recentLogsCache evicts at its 1000-line cap. In the !foundPartialFile branch both sources
+    // hold the same lines, so duplicates appear (6 = 3 from cache + 3 from pendingFlush).
+    // This is the documented trade-off: duplicates for ~2 minutes vs. losing lines.
+    assertEquals(6L, result.get("total"));
     assertEquals(true, result.get("streaming"));
   }
 
@@ -913,6 +916,28 @@ public class S3LogStorageTest {
     assertTrue(body.contains("tail-1"), "should include in-memory tail line 1");
     assertTrue(body.contains("tail-2"), "should include in-memory tail line 2");
     assertEquals(4L, result.get("total"));
+  }
+
+  @Test
+  void testCloseStreamThrowsIfFinalFlushPutFails() throws Exception {
+    mockAsyncPutObject();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "to-flush\n");
+    // Force the next PUT (the final flush) to fail.
+    when(mockS3Client.putObject(
+            any(PutObjectRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+        .thenThrow(
+            software.amazon.awssdk.services.s3.model.S3Exception.builder()
+                .message("simulated PUT failure")
+                .build());
+    // GET for the partial.txt returns nothing (no prior file).
+    when(mockS3Client.getObject(any(GetObjectRequest.class)))
+        .thenThrow(NoSuchKeyException.builder().build());
+    assertThrows(IOException.class, () -> s3LogStorage.closeStream(testPipelineFQN, testRunId));
+    // pendingFlush should still have the line for retry (restored by restorePendingFlush).
+    @SuppressWarnings("unchecked")
+    Map<String, java.util.List<String>> pending =
+        (Map<String, java.util.List<String>>) getPrivateField(s3LogStorage, "pendingFlush");
+    assertEquals(1, pending.get(testPipelineFQN + "/" + testRunId).size());
   }
 
   private static Object getPrivateField(Object target, String name) throws Exception {
