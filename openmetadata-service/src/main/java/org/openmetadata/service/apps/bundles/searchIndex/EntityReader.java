@@ -236,6 +236,25 @@ public class EntityReader implements AutoCloseable {
       KeysetBatchReader batchReader,
       Phaser phaser,
       BatchCallback callback) {
+    // Bypass the Redis-backed entity cache on the reader thread for the same reasons as the
+    // distributed PartitionWorker: bulk reindex never re-reads entities, every relationship
+    // lookup pays a cache round-trip we don't need, and an unhealthy Redis turns each lookup
+    // into a 300ms timeout. See {@link org.openmetadata.service.cache.EntityCacheBypass}.
+    try (org.openmetadata.service.cache.EntityCacheBypass.Handle ignored =
+        org.openmetadata.service.cache.EntityCacheBypass.skip()) {
+      readKeysetBatchesInternal(
+          entityType, recordLimit, batchSize, startCursor, batchReader, phaser, callback);
+    }
+  }
+
+  private void readKeysetBatchesInternal(
+      String entityType,
+      int recordLimit,
+      int batchSize,
+      String startCursor,
+      KeysetBatchReader batchReader,
+      Phaser phaser,
+      BatchCallback callback) {
     try {
       String keysetCursor = startCursor;
       int processed = 0;
@@ -323,18 +342,8 @@ public class EntityReader implements AutoCloseable {
   }
 
   static List<String> getSearchIndexFields(String entityType) {
-    if (TIME_SERIES_ENTITIES.contains(entityType)) {
-      return List.of();
-    }
-    org.openmetadata.service.search.SearchRepository repo =
-        org.openmetadata.service.Entity.getSearchRepository();
-    if (repo == null || repo.getSearchIndexFactory() == null) {
-      // Fallback for environments where the search subsystem isn't bootstrapped (e.g. unit
-      // tests that exercise the reader without the full Entity registry). Behaves the same
-      // as the pre-selective-fields code path.
-      return List.of("*");
-    }
-    return new ArrayList<>(repo.getSearchIndexFactory().getReindexFieldsFor(entityType));
+    return org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSearchIndexFields(
+        entityType);
   }
 
   static int calculateNumberOfReaders(int totalEntityRecords, int batchSize) {

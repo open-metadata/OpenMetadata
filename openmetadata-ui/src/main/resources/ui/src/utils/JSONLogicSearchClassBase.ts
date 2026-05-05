@@ -326,7 +326,6 @@ class JSONLogicSearchClassBase {
         label: t('label.tier'),
         type: '!group',
         mode: 'some',
-        fieldName: 'tags',
         defaultField: 'tagFQN',
         subfields: {
           tagFQN: {

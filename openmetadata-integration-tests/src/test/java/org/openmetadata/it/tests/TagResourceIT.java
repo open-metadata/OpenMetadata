@@ -182,17 +182,6 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   }
 
   @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().tags().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().tags().getVersionList(id, limit, offset, fieldChanged);
-  }
-
-  @Override
   protected Tag getVersion(UUID id, Double version) {
     return SdkClients.adminClient().tags().getVersion(id.toString(), version);
   }
@@ -1587,6 +1576,104 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     assertTrue(
         listTags.stream().anyMatch(t -> t.getTagFQN().equals(regularTag.getFullyQualifiedName())),
         "LIST (batch): regular tag must still be present in tags field");
+  }
+
+  @Test
+  void test_certBatch_bulkFetchReturnsCorrectCertsPerEntity(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    org.openmetadata.schema.entity.classification.Classification certClassification =
+        client.classifications().getByName("Certification", null);
+    assertNotNull(certClassification, "Certification classification must exist");
+
+    CreateTag createCertTag = new CreateTag();
+    createCertTag.setName(ns.shortPrefix("cert_bulk_tag"));
+    createCertTag.setClassification(certClassification.getFullyQualifiedName());
+    createCertTag.setDescription("Cert tag for bulk fetch test");
+    Tag certTag = SdkClients.adminClient().tags().create(createCertTag);
+
+    org.openmetadata.schema.entity.classification.Classification regularClassification =
+        createClassification(ns);
+    CreateTag createRegularTag = new CreateTag();
+    createRegularTag.setName(ns.shortPrefix("regular_bulk_tag"));
+    createRegularTag.setClassification(regularClassification.getFullyQualifiedName());
+    createRegularTag.setDescription("Non-cert tag for bulk fetch test");
+    Tag regularTag = SdkClients.adminClient().tags().create(createRegularTag);
+
+    org.openmetadata.schema.entity.services.DatabaseService dbService =
+        createDatabaseService(ns, "cert_bulk_svc");
+    org.openmetadata.schema.entity.data.Database db =
+        createDatabase(ns, dbService.getFullyQualifiedName());
+
+    DatabaseSchema schemaWithCert =
+        createDatabaseSchemaNamed(ns, db.getFullyQualifiedName(), "cert_bulk_with");
+    DatabaseSchema schemaWithoutCert =
+        createDatabaseSchemaNamed(ns, db.getFullyQualifiedName(), "cert_bulk_without");
+    DatabaseSchema schemaWithRegularTag =
+        createDatabaseSchemaNamed(ns, db.getFullyQualifiedName(), "cert_bulk_regular");
+
+    org.openmetadata.schema.type.TagLabel certTagLabel =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN(certTag.getFullyQualifiedName())
+            .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+    schemaWithCert.setCertification(new AssetCertification().withTagLabel(certTagLabel));
+    client.databaseSchemas().update(schemaWithCert.getId().toString(), schemaWithCert);
+
+    org.openmetadata.schema.type.TagLabel regularTagLabel =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN(regularTag.getFullyQualifiedName())
+            .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+    schemaWithRegularTag.setTags(List.of(regularTagLabel));
+    client.databaseSchemas().update(schemaWithRegularTag.getId().toString(), schemaWithRegularTag);
+
+    org.openmetadata.sdk.models.ListParams listParams =
+        new org.openmetadata.sdk.models.ListParams()
+            .setDatabase(db.getFullyQualifiedName())
+            .setFields("certification");
+    org.openmetadata.sdk.models.ListResponse<DatabaseSchema> listed =
+        client.databaseSchemas().list(listParams);
+    assertNotNull(listed.getData());
+
+    DatabaseSchema listedWithCert =
+        listed.getData().stream()
+            .filter(s -> s.getId().equals(schemaWithCert.getId()))
+            .findFirst()
+            .orElse(null);
+    DatabaseSchema listedWithoutCert =
+        listed.getData().stream()
+            .filter(s -> s.getId().equals(schemaWithoutCert.getId()))
+            .findFirst()
+            .orElse(null);
+    DatabaseSchema listedWithRegularTag =
+        listed.getData().stream()
+            .filter(s -> s.getId().equals(schemaWithRegularTag.getId()))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(listedWithCert);
+    assertNotNull(listedWithoutCert);
+    assertNotNull(listedWithRegularTag);
+
+    assertNotNull(listedWithCert.getCertification(), "cert-tagged schema: certification missing");
+    assertEquals(
+        certTag.getFullyQualifiedName(),
+        listedWithCert.getCertification().getTagLabel().getTagFQN());
+
+    assertNull(listedWithoutCert.getCertification(), "untagged schema: false-positive cert");
+    assertNull(
+        listedWithRegularTag.getCertification(),
+        "non-cert tag from another classification leaked as certification");
+  }
+
+  private org.openmetadata.schema.entity.data.DatabaseSchema createDatabaseSchemaNamed(
+      TestNamespace ns, String databaseFqn, String name) {
+    org.openmetadata.schema.api.data.CreateDatabaseSchema createSchema =
+        new org.openmetadata.schema.api.data.CreateDatabaseSchema();
+    createSchema.setName(ns.shortPrefix(name));
+    createSchema.setDatabase(databaseFqn);
+    return SdkClients.adminClient().databaseSchemas().create(createSchema);
   }
 
   @Test

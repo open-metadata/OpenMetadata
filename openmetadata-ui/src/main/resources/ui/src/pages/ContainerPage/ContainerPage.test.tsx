@@ -21,6 +21,7 @@ import { Include } from '../../generated/type/include';
 import {
   addContainerFollower,
   getContainerByName,
+  getContainerChildrenByName,
 } from '../../rest/storageAPI';
 import ContainerPage from './ContainerPage';
 import {
@@ -293,6 +294,10 @@ describe('Container Page Component', () => {
       jest.requireMock('../../utils/PermissionsUtils');
     getPrioritizedEditPermission.mockReturnValue(true);
     getPrioritizedViewPermission.mockReturnValue(true);
+    (getContainerChildrenByName as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
   });
 
   it('should show error-placeholder, if not have view permission', async () => {

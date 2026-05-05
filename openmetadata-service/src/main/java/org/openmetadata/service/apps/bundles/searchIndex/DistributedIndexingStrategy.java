@@ -32,6 +32,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.SearchIndex
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.search.DefaultRecreateHandler;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
@@ -136,6 +137,9 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
             config.batchSize(), config.maxConcurrentRequests(), config.payloadSize());
 
     RecreateIndexHandler recreateIndexHandler = searchRepository.createReindexHandler();
+    if (recreateIndexHandler instanceof DefaultRecreateHandler defaultHandler) {
+      defaultHandler.withJobData(jobData);
+    }
     ReindexContext recreateContext = null;
 
     if (config.recreateIndex()) {
@@ -342,6 +346,12 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
       readerStats.setSuccessRecords(saturatedToInt(readerSuccess));
       readerStats.setFailedRecords(saturatedToInt(readerFailed));
       readerStats.setWarningRecords(saturatedToInt(readerWarnings));
+      // Carry stage timing forward into the final ExecutionResult stats. Without this the
+      // periodic aggregator's totalTimeMs (visible while running) gets clobbered to 0 here,
+      // and OmAppJobListener picks up the zero on the SUCCESS transition.
+      if (serverStatsAggr != null) {
+        readerStats.setTotalTimeMs(serverStatsAggr.readerTimeMs());
+      }
     }
 
     StepStats processStats = stats.getProcessStats();
@@ -351,6 +361,7 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
       processStats.setTotalRecords(saturatedToInt(processSuccess + processFailed));
       processStats.setSuccessRecords(saturatedToInt(processSuccess));
       processStats.setFailedRecords(saturatedToInt(processFailed));
+      processStats.setTotalTimeMs(serverStatsAggr.processTimeMs());
     }
 
     StepStats sinkStats = stats.getSinkStats();
@@ -362,6 +373,7 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
         sinkStats.setTotalRecords(saturatedToInt(actualSinkTotal));
         sinkStats.setSuccessRecords(saturatedToInt(sinkSuccess));
         sinkStats.setFailedRecords(saturatedToInt(sinkFailed));
+        sinkStats.setTotalTimeMs(serverStatsAggr.sinkTimeMs());
       } else {
         long sinkTotal = distributedJob.getTotalRecords();
         sinkStats.setTotalRecords(saturatedToInt(sinkTotal));
@@ -377,6 +389,7 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
       vectorStats.setTotalRecords(saturatedToInt(vectorSuccess + vectorFailed));
       vectorStats.setSuccessRecords(saturatedToInt(vectorSuccess));
       vectorStats.setFailedRecords(saturatedToInt(vectorFailed));
+      vectorStats.setTotalTimeMs(serverStatsAggr.vectorTimeMs());
     }
 
     if (distributedJob.getEntityStats() != null && stats.getEntityStats() != null) {
@@ -387,6 +400,12 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
         if (entityStats != null) {
           entityStats.setSuccessRecords(saturatedToInt(entry.getValue().getSuccessRecords()));
           entityStats.setFailedRecords(saturatedToInt(entry.getValue().getFailedRecords()));
+          // Surface all four stage timings on the entity-level StepStats so the UI per-entity
+          // table can show Reader / Process / Sink / Vector avg latencies side-by-side.
+          entityStats.setReaderTimeMs(entry.getValue().getReaderTimeMs());
+          entityStats.setProcessTimeMs(entry.getValue().getProcessTimeMs());
+          entityStats.setSinkTimeMs(entry.getValue().getSinkTimeMs());
+          entityStats.setVectorTimeMs(entry.getValue().getVectorTimeMs());
         }
       }
     }
