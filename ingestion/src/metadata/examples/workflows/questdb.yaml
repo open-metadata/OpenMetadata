@@ -8,7 +8,6 @@ source:
       authType:
         password: quest
       hostPort: localhost:8812
-      databaseName: qdb
   sourceConfig:
     config:
       type: DatabaseMetadata
