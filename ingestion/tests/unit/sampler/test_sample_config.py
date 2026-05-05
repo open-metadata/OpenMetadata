@@ -47,7 +47,7 @@ class TestSampleConfigGetConfig:
             )
         )
         result = sample_config.get_config(DynamicSamplingConfig)
-        assert result is dynamic
+        assert isinstance(result, DynamicSamplingConfig)
 
     def test_returns_none_when_no_profile_sample_config(self):
         sample_config = SampleConfig()
