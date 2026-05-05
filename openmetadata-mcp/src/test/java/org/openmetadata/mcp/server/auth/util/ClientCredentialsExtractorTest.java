@@ -83,20 +83,44 @@ class ClientCredentialsExtractorTest {
   }
 
   @Test
-  void testHeaderAndBody_throws() {
+  void testHeaderAndBody_mismatchedClientId_throws() {
     HttpServletRequest request = requestWithAuthHeader(basicHeader("hdr-client", "hdr-secret"));
 
     assertThatThrownBy(
-            () -> ClientCredentialsExtractor.extract(request, "body-client", "body-secret"))
-        .isInstanceOf(InvalidClientCredentialsException.class);
+            () -> ClientCredentialsExtractor.extract(request, "body-client", "hdr-secret"))
+        .isInstanceOf(InvalidClientCredentialsException.class)
+        .hasMessageContaining("client_id");
   }
 
   @Test
-  void testHeaderAndBodyClientIdOnly_throws() {
+  void testHeaderAndBody_mismatchedClientSecret_throws() {
     HttpServletRequest request = requestWithAuthHeader(basicHeader("hdr-client", "hdr-secret"));
 
-    assertThatThrownBy(() -> ClientCredentialsExtractor.extract(request, "body-client", null))
-        .isInstanceOf(InvalidClientCredentialsException.class);
+    assertThatThrownBy(
+            () -> ClientCredentialsExtractor.extract(request, "hdr-client", "body-secret"))
+        .isInstanceOf(InvalidClientCredentialsException.class)
+        .hasMessageContaining("client_secret");
+  }
+
+  @Test
+  void testHeaderAndBody_matchingDuplicates_returnsHeaderCredentials() throws Exception {
+    HttpServletRequest request = requestWithAuthHeader(basicHeader("hdr-client", "hdr-secret"));
+
+    Credentials credentials =
+        ClientCredentialsExtractor.extract(request, "hdr-client", "hdr-secret");
+
+    assertThat(credentials.clientId()).isEqualTo("hdr-client");
+    assertThat(credentials.clientSecret()).isEqualTo("hdr-secret");
+  }
+
+  @Test
+  void testHeaderAndBody_clientIdOnlyAndMatching_returnsHeaderCredentials() throws Exception {
+    HttpServletRequest request = requestWithAuthHeader(basicHeader("hdr-client", "hdr-secret"));
+
+    Credentials credentials = ClientCredentialsExtractor.extract(request, "hdr-client", null);
+
+    assertThat(credentials.clientId()).isEqualTo("hdr-client");
+    assertThat(credentials.clientSecret()).isEqualTo("hdr-secret");
   }
 
   @Test

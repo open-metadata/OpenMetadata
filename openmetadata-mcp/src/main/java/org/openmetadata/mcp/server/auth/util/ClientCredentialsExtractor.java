@@ -14,9 +14,13 @@ import java.util.Base64;
  *   <li>{@code client_secret_post} — credentials in form body parameters.
  * </ul>
  *
- * <p>Per RFC 6749 §2.3.1, clients MUST NOT use more than one method per request. When the
- * Authorization header is present, body parameters {@code client_id}/{@code client_secret} must
- * not also be present.
+ * <p>Per RFC 6749 §2.3.1, clients MUST NOT use more than one method per request, but several
+ * widely deployed clients (notably the Databricks MCP Proxy) duplicate the same credentials in
+ * both the Authorization header and the request body. Strict rejection blocks such clients
+ * outright. This implementation therefore prefers the Basic header (treated as the authoritative
+ * channel per RFC) and tolerates duplicate body parameters only when they exactly match the
+ * header credentials. Mismatched credentials are still rejected as {@code invalid_request} since
+ * they signal either a misconfiguration or an attempted credential confusion attack.
  */
 public final class ClientCredentialsExtractor {
 
@@ -33,8 +37,8 @@ public final class ClientCredentialsExtractor {
    * @param bodyClientId value of the {@code client_id} form parameter (may be {@code null})
    * @param bodyClientSecret value of the {@code client_secret} form parameter (may be {@code null})
    * @return parsed credentials; {@code clientId} may be {@code null} when no credentials supplied
-   * @throws InvalidClientCredentialsException when the Basic header is malformed or credentials
-   *     appear in both header and body
+   * @throws InvalidClientCredentialsException when the Basic header is malformed or when body
+   *     credentials are present and do not match the header credentials
    */
   public static Credentials extract(
       HttpServletRequest request, String bodyClientId, String bodyClientSecret)
@@ -44,12 +48,22 @@ public final class ClientCredentialsExtractor {
       return new Credentials(bodyClientId, bodyClientSecret);
     }
 
-    if (bodyClientId != null || bodyClientSecret != null) {
-      throw new InvalidClientCredentialsException(
-          "Client credentials provided both in Authorization header and request body");
-    }
+    Credentials headerCreds = decodeBasic(header.substring(BASIC_PREFIX.length()).trim());
+    assertBodyMatchesHeader(headerCreds, bodyClientId, bodyClientSecret);
+    return headerCreds;
+  }
 
-    return decodeBasic(header.substring(BASIC_PREFIX.length()).trim());
+  private static void assertBodyMatchesHeader(
+      Credentials headerCreds, String bodyClientId, String bodyClientSecret)
+      throws InvalidClientCredentialsException {
+    if (bodyClientId != null && !bodyClientId.equals(headerCreds.clientId())) {
+      throw new InvalidClientCredentialsException(
+          "client_id in request body does not match Authorization header");
+    }
+    if (bodyClientSecret != null && !bodyClientSecret.equals(headerCreds.clientSecret())) {
+      throw new InvalidClientCredentialsException(
+          "client_secret in request body does not match Authorization header");
+    }
   }
 
   private static Credentials decodeBasic(String encoded) throws InvalidClientCredentialsException {
