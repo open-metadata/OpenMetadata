@@ -100,6 +100,17 @@ export default defineConfig({
       workers: 1,
     },
     {
+      name: 'search-nightly',
+      testMatch: ['**/nightly/SearchNightly.spec.ts'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/admin.json',
+      },
+      dependencies: ['setup'],
+      fullyParallel: false,
+      workers: 1,
+    },
+    {
       name: 'entity-data-teardown',
       testMatch: '**/entity-data.teardown.ts',
     },
