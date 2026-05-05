@@ -102,7 +102,7 @@ class TestDbUtils(TestCase):
     def tearDown(self):
         """Clean up after each test"""
         # Reset any module-level state if needed
-        pass
+        pass  # noqa: PIE790
 
     def test_get_host_from_host_port(self):
         """Test get_host_from_host_port function"""

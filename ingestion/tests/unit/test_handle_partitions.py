@@ -88,8 +88,8 @@ MOCK_SCHEMA = [
 class MockTable(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
-    time_partitioning: Optional[TimePartitioning] = None
-    range_partitioning: Optional[RangePartitioning] = None
+    time_partitioning: Optional[TimePartitioning] = None  # noqa: UP045
+    range_partitioning: Optional[RangePartitioning] = None  # noqa: UP045
     schema_: list = MOCK_SCHEMA
 
     @property
@@ -167,7 +167,7 @@ class BigqueryUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.common_db_source.get_connection")
     def __init__(
         self,
-        methodName,
+        methodName,  # noqa: N803
         get_connection_common,
         test_connection,
         set_project_id,

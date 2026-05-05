@@ -136,9 +136,9 @@ class SourceConnectionTest(TestCase):
             get_connection_url,
         )
 
-        expected_result = "databricks+connector://1.1.1.1:443"
+        expected_result = "databricks://1.1.1.1:443"
         databricks_conn_obj = DatabricksConnection(
-            scheme=DatabricksScheme.databricks_connector,
+            scheme=DatabricksScheme.databricks,
             hostPort="1.1.1.1:443",
             authType=PersonalAccessToken(token="KlivDTACWXKmZVfN1qIM"),
             httpPath="/sql/1.0/warehouses/abcdedfg",
@@ -150,9 +150,9 @@ class SourceConnectionTest(TestCase):
             get_connection_url,
         )
 
-        expected_result = "databricks+connector://1.1.1.1:443"
+        expected_result = "databricks://1.1.1.1:443?catalog=main"
         databricks_conn_obj = DatabricksConnection(
-            scheme=DatabricksScheme.databricks_connector,
+            scheme=DatabricksScheme.databricks,
             hostPort="1.1.1.1:443",
             authType=DatabricksOauth(
                 clientId="d40e2905-88ef-42ab-8898-fbefff2d071d",
@@ -162,6 +162,99 @@ class SourceConnectionTest(TestCase):
             catalog="main",
         )
         assert expected_result == get_connection_url(databricks_conn_obj)
+
+    def test_databricks_pipeline_url(self):
+        from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
+            DatabricksPipelineConnection,
+        )
+        from metadata.ingestion.source.pipeline.databrickspipeline.connection import (
+            get_connection_url,
+        )
+
+        conn_obj = DatabricksPipelineConnection(
+            hostPort="my-workspace.cloud.databricks.com:443",
+            token="dapi1234567890",
+        )
+        url = get_connection_url(conn_obj)
+        assert url == "databricks://token:dapi1234567890@my-workspace.cloud.databricks.com:443"
+        assert "databricks+connector" not in url
+
+    def test_databricks_url_with_special_chars_in_catalog(self):
+        from metadata.ingestion.source.database.databricks.connection import (
+            get_connection_url,
+        )
+
+        databricks_conn_obj = DatabricksConnection(
+            scheme=DatabricksScheme.databricks,
+            hostPort="1.1.1.1:443",
+            authType=PersonalAccessToken(token="KlivDTACWXKmZVfN1qIM"),
+            httpPath="/sql/1.0/warehouses/abcdedfg",
+            catalog="my catalog&name=val",
+        )
+        url = get_connection_url(databricks_conn_obj)
+        assert url == "databricks://1.1.1.1:443?catalog=my+catalog%26name%3Dval"
+
+    def test_unity_catalog_url_without_catalog(self):
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            DatabricksScheme as UCDatabricksScheme,
+        )
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            UnityCatalogConnection,
+        )
+        from metadata.ingestion.source.database.unitycatalog.connection import (
+            get_connection_url,
+        )
+
+        conn_obj = UnityCatalogConnection(
+            scheme=UCDatabricksScheme.databricks,
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=PersonalAccessToken(token="dapi1234567890"),
+            httpPath="/sql/1.0/warehouses/abc",
+        )
+        url = get_connection_url(conn_obj)
+        assert url == "databricks://my-workspace.cloud.databricks.com:443"
+
+    def test_unity_catalog_url_with_catalog(self):
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            DatabricksScheme as UCDatabricksScheme,
+        )
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            UnityCatalogConnection,
+        )
+        from metadata.ingestion.source.database.unitycatalog.connection import (
+            get_connection_url,
+        )
+
+        conn_obj = UnityCatalogConnection(
+            scheme=UCDatabricksScheme.databricks,
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=PersonalAccessToken(token="dapi1234567890"),
+            httpPath="/sql/1.0/warehouses/abc",
+            catalog="production",
+        )
+        url = get_connection_url(conn_obj)
+        assert url == "databricks://my-workspace.cloud.databricks.com:443?catalog=production"
+
+    def test_unity_catalog_url_with_special_chars_in_catalog(self):
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            DatabricksScheme as UCDatabricksScheme,
+        )
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            UnityCatalogConnection,
+        )
+        from metadata.ingestion.source.database.unitycatalog.connection import (
+            get_connection_url,
+        )
+
+        conn_obj = UnityCatalogConnection(
+            scheme=UCDatabricksScheme.databricks,
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=PersonalAccessToken(token="dapi1234567890"),
+            httpPath="/sql/1.0/warehouses/abc",
+            catalog="my catalog&name=val",
+        )
+        url = get_connection_url(conn_obj)
+        assert url == "databricks://my-workspace.cloud.databricks.com:443?catalog=my+catalog%26name%3Dval"
 
     def test_hive_url(self):
         from metadata.ingestion.source.database.hive.connection import (
@@ -686,7 +779,7 @@ class SourceConnectionTest(TestCase):
             username="username",
             hostPort="localhost:8123",
             scheme=ClickhouseScheme.clickhouse_http,
-            connectionOptions=dict(protocol="https"),
+            connectionOptions=dict(protocol="https"),  # noqa: C408
             databaseSchema="default",
         )
         assert expected_url == get_connection_url_common(clickhouse_conn_obj)
@@ -735,10 +828,10 @@ class SourceConnectionTest(TestCase):
         )
         assert expected_url == get_connection_url_common(redshift_conn_obj)
 
-    def test_singleStore_url(self):
+    def test_singleStore_url(self):  # noqa: N802
         # connection arguments without db
         expected_url = "mysql+pymysql://openmetadata_user:@localhost:5432"
-        singleStore_conn_obj = SingleStoreConnection(
+        singleStore_conn_obj = SingleStoreConnection(  # noqa: N806
             username="openmetadata_user",
             hostPort="localhost:5432",
             scheme=SingleStoreScheme.mysql_pymysql,
@@ -747,7 +840,7 @@ class SourceConnectionTest(TestCase):
 
         # connection arguments with db
         expected_url = "mysql+pymysql://openmetadata_user:@localhost:5432"
-        singleStore_conn_obj = SingleStoreConnection(
+        singleStore_conn_obj = SingleStoreConnection(  # noqa: N806
             username="openmetadata_user",
             hostPort="localhost:5432",
             scheme=SingleStoreScheme.mysql_pymysql,
@@ -922,10 +1015,10 @@ class SourceConnectionTest(TestCase):
         )
         assert expected_args == get_connection_args_common(redshift_conn_obj)
 
-    def test_singleStore_conn_arguments(self):
+    def test_singleStore_conn_arguments(self):  # noqa: N802
         # connection arguments without connectionArguments
         expected_args = {}
-        singleStore_conn_obj = SingleStoreConnection(
+        singleStore_conn_obj = SingleStoreConnection(  # noqa: N806
             username="user",
             password=None,
             hostPort="localhost:443",
@@ -936,7 +1029,7 @@ class SourceConnectionTest(TestCase):
 
         # connection arguments with connectionArguments
         expected_args = {"user": "user-to-be-impersonated"}
-        singleStore_conn_obj = SingleStoreConnection(
+        singleStore_conn_obj = SingleStoreConnection(  # noqa: N806
             username="user",
             password=None,
             hostPort="localhost:443",
@@ -1002,7 +1095,7 @@ class SourceConnectionTest(TestCase):
         )
 
         # connection arguments without db
-        awsCreds = awsCredentials.AWSCredentials(
+        awsCreds = awsCredentials.AWSCredentials(  # noqa: N806
             awsAccessKeyId="key", awsRegion="us-east-2", awsSecretAccessKey="secret_key"
         )
 
@@ -1155,7 +1248,7 @@ class SourceConnectionTest(TestCase):
             hostPort="localhost:1541",
             scheme=OracleScheme.oracle_cx_oracle,
             oracleConnectionType=OracleDatabaseSchema(databaseSchema="testdb"),
-            connectionOptions=dict(test_key_1="test_value_1", test_key_2="test_value_2"),
+            connectionOptions=dict(test_key_1="test_value_1", test_key_2="test_value_2"),  # noqa: C408
         )
         assert OracleConnection.get_connection_url(oracle_conn_obj) in expected_url
 
@@ -1171,7 +1264,7 @@ class SourceConnectionTest(TestCase):
             hostPort="localhost:1541",
             scheme=OracleScheme.oracle_cx_oracle,
             oracleConnectionType=OracleServiceName(oracleServiceName="testdb"),
-            connectionOptions=dict(test_key_1="test_value_1", test_key_2="test_value_2"),
+            connectionOptions=dict(test_key_1="test_value_1", test_key_2="test_value_2"),  # noqa: C408
         )
         assert OracleConnection.get_connection_url(oracle_conn_obj) in expected_url
 

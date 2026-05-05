@@ -18,10 +18,10 @@ sqlalchemy_vertica = pytest.importorskip(
     reason="sqlalchemy_vertica not installed — skipping Vertica type-mapping tests",
 )
 
-from sqlalchemy_vertica.base import ischema_names as vertica_ischema_names
+from sqlalchemy_vertica.base import ischema_names as vertica_ischema_names  # noqa: E402
 
 # Importing this module triggers the ischema_names.update(...) side-effect
-import metadata.ingestion.source.database.vertica.metadata  # noqa: F401
+import metadata.ingestion.source.database.vertica.metadata  # noqa: E402, F401
 
 
 class TestVerticaTypeMappingRegistered:

@@ -55,9 +55,6 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   tier,
   breadCrumbList,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -267,12 +264,9 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
       <EntityVersionTimeLine
         currentVersion={toString(version)}
         entityType={EntityType.SEARCH_INDEX}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );

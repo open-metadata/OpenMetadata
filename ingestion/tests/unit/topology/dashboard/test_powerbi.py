@@ -102,7 +102,7 @@ MOCK_DATABRICKS_EXP = """let
     test_schema = test_database{[Name="PUBLIC",Kind="Schema"]}[Data],
     test_table = test_schema{[Name="STG_CUSTOMERS",Kind="Table"]}[Data]
 in 
-    Source"""
+    Source"""  # noqa: W291
 
 MOCK_DATABRICKS_NATIVE_EXP = """let
     Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], "PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true])
@@ -115,7 +115,7 @@ MOCK_DATABRICKS_NATIVE_QUERY_EXP = """let
         {[Name="DEMO_STAGE",Kind="Database"]}[Data],  
             "select * from PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true]) 
 in 
-    "Source" """
+    "Source" """  # noqa: W291
 
 EXPECTED_DATABRICKS_RESULT = [{"database": "DEMO_STAGE", "schema": "PUBLIC", "table": "STG_CUSTOMERS"}]
 
@@ -675,7 +675,7 @@ class PowerBIUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.powerbi.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:
+    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         get_connection.return_value = False
         test_connection.return_value = False
@@ -931,13 +931,13 @@ class PowerBIUnitTest(TestCase):
     @patch.object(OpenMetadata, "get_by_name", return_value=MOCK_DATAMODEL_ENTITY)
     @patch.object(fqn, "build", return_value=None)
     def test_upstream_dataflow_lineage(self, *_):
-        MOCK_DATAMODEL_ENTITY_2 = DashboardDataModel(
+        MOCK_DATAMODEL_ENTITY_2 = DashboardDataModel(  # noqa: N806
             name="dummy_dataflow_id_b",
             id=uuid.uuid4(),
             dataModelType=DataModelType.PowerBIDataFlow.value,
             columns=[],
         )
-        MOCK_DATAMODEL_2 = Dataflow(
+        MOCK_DATAMODEL_2 = Dataflow(  # noqa: N806
             name="dataflow_b",
             objectId="dummy_dataflow_id_b",
             upstreamDataflows=[
@@ -971,7 +971,7 @@ class PowerBIUnitTest(TestCase):
             def mock_get_ref_by_email(email):
                 if email == "john.doe@example.com":
                     return EntityReferenceList(root=[EntityReference(id=uuid.uuid4(), name="John Doe", type="user")])
-                elif email == "jane.smith@example.com":
+                elif email == "jane.smith@example.com":  # noqa: RET505
                     return EntityReferenceList(root=[EntityReference(id=uuid.uuid4(), name="Jane Smith", type="user")])
                 return EntityReferenceList(root=[])
 

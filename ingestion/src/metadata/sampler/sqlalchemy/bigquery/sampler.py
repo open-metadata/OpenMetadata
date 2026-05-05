@@ -14,7 +14,7 @@ for the profiler
 """
 
 from copy import deepcopy  # noqa: I001
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Column
 from sqlalchemy import Table as SqaTable
@@ -53,14 +53,14 @@ class BigQuerySampler(SQASampler):
     # pylint: disable=too-many-arguments
     def __init__(
         self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection],  # noqa: UP007
         ometa_client: OpenMetadata,
         entity: Table,
-        sample_config: Optional[SampleConfig] = None,
-        partition_details: Optional[Dict] = None,
-        sample_query: Optional[str] = None,
+        sample_config: Optional[SampleConfig] = None,  # noqa: UP045
+        partition_details: Optional[Dict] = None,  # noqa: UP006, UP045
+        sample_query: Optional[str] = None,  # noqa: UP045
         storage_config: DataStorageConfig = None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
+        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,  # noqa: UP045
         **kwargs,
     ):
         super().__init__(
@@ -74,7 +74,7 @@ class BigQuerySampler(SQASampler):
             sample_data_count=sample_data_count,
             **kwargs,
         )
-        self.raw_dataset_type: Optional[TableType] = entity.tableType
+        self.raw_dataset_type: Optional[TableType] = entity.tableType  # noqa: UP045
 
         connection_config = deepcopy(service_connection_config)
         # Create a modified connection for BigQuery with the correct project ID
@@ -99,7 +99,7 @@ class BigQuerySampler(SQASampler):
 
         return selectable
 
-    def _base_sample_query(self, column: Optional[Column], label=None):
+    def _base_sample_query(self, column: Optional[Column], label=None):  # noqa: UP045
         """Base query for sampling
 
         Args:
@@ -109,7 +109,7 @@ class BigQuerySampler(SQASampler):
         Returns:
         """
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy_bigquery import STRUCT
+        from sqlalchemy_bigquery import STRUCT  # noqa: PLC0415
 
         if column is not None:
             column_parts = column.name.split(".")

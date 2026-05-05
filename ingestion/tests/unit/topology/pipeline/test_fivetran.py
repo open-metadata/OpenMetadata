@@ -52,7 +52,7 @@ from metadata.ingestion.source.pipeline.fivetran.metadata import FivetranSource
 from metadata.ingestion.source.pipeline.fivetran.models import FivetranPipelineDetails
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/fivetran_dataset.json"
-with open(mock_file_path) as file:
+with open(mock_file_path) as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 MOCK_FIVETRAN_CONFIG = {
@@ -334,7 +334,7 @@ def fivetran_source():
 class TestFivetranSource:
     def test_pipeline_list(self, fivetran_source):
         source, _ = fivetran_source
-        assert list(source.get_pipelines_list())[0] == EXPECTED_FIVETRAN_DETAILS
+        assert list(source.get_pipelines_list())[0] == EXPECTED_FIVETRAN_DETAILS  # noqa: RUF015
 
     def test_pipeline_name(self, fivetran_source):
         source, _ = fivetran_source
@@ -343,12 +343,12 @@ class TestFivetranSource:
 
     def test_pipelines(self, fivetran_source):
         source, _ = fivetran_source
-        pipeline = list(source.yield_pipeline(EXPECTED_FIVETRAN_DETAILS))[0].right
+        pipeline = list(source.yield_pipeline(EXPECTED_FIVETRAN_DETAILS))[0].right  # noqa: RUF015
         assert pipeline == EXPECTED_CREATED_PIPELINES
 
     def test_pipeline_has_three_elt_tasks(self, fivetran_source):
         source, _ = fivetran_source
-        pipeline = list(source.yield_pipeline(EXPECTED_FIVETRAN_DETAILS))[0].right
+        pipeline = list(source.yield_pipeline(EXPECTED_FIVETRAN_DETAILS))[0].right  # noqa: RUF015
         assert len(pipeline.tasks) == 3
         assert pipeline.tasks[0].name == FIVETRAN_TASK_EXTRACT
         assert pipeline.tasks[2].name == FIVETRAN_TASK_LOAD
@@ -421,7 +421,7 @@ class TestGetScheduleInterval:
 
 class TestGetDataErrorHandling:
     def test_raises_on_none_response(self, fivetran_source):
-        source, client = fivetran_source
+        source, client = fivetran_source  # noqa: RUF059
         ft_client = FivetranClient.__new__(FivetranClient)
         ft_client.config = Mock(limit=100)
         ft_client.client = Mock()

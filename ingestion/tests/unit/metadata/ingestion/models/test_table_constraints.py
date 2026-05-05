@@ -13,7 +13,7 @@
 Unit tests for the _table_constraints_handler function in patch_request.py
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 from unittest import TestCase
 
 from pydantic import BaseModel
@@ -26,7 +26,7 @@ from metadata.ingestion.models.patch_request import _table_constraints_handler
 class MockEntity(BaseModel):
     """Mock entity class for testing the table constraints handler"""
 
-    tableConstraints: Optional[List[TableConstraint]] = None
+    tableConstraints: Optional[List[TableConstraint]] = None  # noqa: N815, UP006, UP045
 
 
 class TableConstraintsHandlerTest(TestCase):

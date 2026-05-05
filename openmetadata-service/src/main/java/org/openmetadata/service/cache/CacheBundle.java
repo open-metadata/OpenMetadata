@@ -19,6 +19,8 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
   private static CachedRelationshipDao cachedRelationshipDao;
   private static CachedTagUsageDao cachedTagUsageDao;
   private static CachedReadBundle cachedReadBundle;
+  private static AncestorsCache ancestorsCache;
+  private static ChildrenPageCache childrenPageCache;
   private static CacheInvalidationPubSub cacheInvalidationPubSub;
   private static CacheConfig cacheConfig;
 
@@ -68,6 +70,8 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       cachedTagUsageDao =
           new CachedTagUsageDao(Entity.getCollectionDAO(), cacheProvider, keys, cacheConfig);
       cachedReadBundle = new CachedReadBundle(cacheProvider, keys, cacheConfig);
+      ancestorsCache = new AncestorsCache(cacheProvider, keys, cacheConfig);
+      childrenPageCache = new ChildrenPageCache(cacheProvider, keys, cacheConfig);
       cacheInvalidationPubSub = new CacheInvalidationPubSub(cacheConfig);
       cacheInvalidationPubSub.setHandler(
           msg -> {
@@ -76,6 +80,31 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
                   msg.type(), msg.id(), msg.fqn());
               if (msg.id() != null && cachedReadBundle != null) {
                 cachedReadBundle.invalidate(msg.type(), msg.id());
+              }
+              // Container-only derived caches: ancestors keyed by descendant FQN, children-page
+              // keyed by parent FQN. Other entity types don't have these caches today, so this
+              // gate keeps unrelated invalidations from doing redundant Redis work on every
+              // table / dashboard / user write.
+              if (msg.fqn() != null
+                  && org.openmetadata.service.Entity.CONTAINER.equals(msg.type())) {
+                if (ancestorsCache != null) {
+                  ancestorsCache.invalidate(msg.type(), msg.fqn());
+                }
+                if (childrenPageCache != null) {
+                  // Two children-page caches need rotation:
+                  //   1. The parent's — the parent's child list changed (this row was added,
+                  //      renamed, or removed under it).
+                  //   2. The container's own — if the changed container is itself a parent
+                  //      (typical for buckets/folders), its /children pages cached on this
+                  //      pod must be invalidated too. Otherwise a delete on the writer leaves
+                  //      readers serving 200 with the old child list until the page TTL.
+                  childrenPageCache.invalidate(msg.type(), msg.fqn());
+                  String parentFqn =
+                      org.openmetadata.service.util.FullyQualifiedName.getParentFQN(msg.fqn());
+                  if (parentFqn != null) {
+                    childrenPageCache.invalidate(msg.type(), parentFqn);
+                  }
+                }
               }
             } catch (Exception e) {
               LOG.debug("Remote invalidation handler failed for {}", msg, e);
@@ -112,6 +141,14 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
 
   public static CachedReadBundle getCachedReadBundle() {
     return cachedReadBundle;
+  }
+
+  public static AncestorsCache getAncestorsCache() {
+    return ancestorsCache;
+  }
+
+  public static ChildrenPageCache getChildrenPageCache() {
+    return childrenPageCache;
   }
 
   public static CacheInvalidationPubSub getCacheInvalidationPubSub() {

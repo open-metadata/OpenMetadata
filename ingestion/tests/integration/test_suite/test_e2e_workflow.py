@@ -28,8 +28,8 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.database import Database  # noqa: TC001
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema  # noqa: TC001
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataType,
@@ -128,7 +128,7 @@ class TestE2EWorkflow(unittest.TestCase):
         OpenMetadataConnection.model_validate(test_suite_config["workflowConfig"]["openMetadataServerConfig"])
     )
 
-    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")
+    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")  # noqa: PTH118, PTH120, PTH122
     sqlite_conn = DatabaseConnection(
         config=SQLiteConnection(
             scheme=SQLiteScheme.sqlite_pysqlite,
@@ -232,7 +232,7 @@ class TestE2EWorkflow(unittest.TestCase):
             hard_delete=True,
         )
 
-        os.remove(cls.db_path)
+        os.remove(cls.db_path)  # noqa: PTH107
         return super().tearDownClass()
 
     def test_e2e_cli_workflow(self):

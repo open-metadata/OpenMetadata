@@ -14,10 +14,10 @@ DBT service Topology.
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Iterable, List
+from typing import Iterable, List  # noqa: UP035
 
 from pydantic import Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -203,14 +203,14 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
 
         # pylint: disable=too-many-nested-blocks
         for field in ["nodes", "sources"]:
-            for node, value in manifest_dict.get(  # pylint: disable=unused-variable
+            for node, value in manifest_dict.get(  # pylint: disable=unused-variable  # noqa: B007, PERF102
                 field
             ).items():
                 keys_to_delete = [key for key in value if key.lower() not in REQUIRED_NODE_KEYS]
                 for key in keys_to_delete:
                     del value[key]
                 if value.get("columns"):
-                    for _, value in value["columns"].items():
+                    for _, value in value["columns"].items():  # noqa: B020, PERF102, PLW2901
                         if value.get("constraints"):
                             for constraint in value["constraints"]:
                                 keys_to_delete = [
@@ -221,7 +221,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
                         else:
                             value["constraints"] = None
 
-    def remove_run_result_non_required_keys(self, run_results: List[dict]):
+    def remove_run_result_non_required_keys(self, run_results: List[dict]):  # noqa: UP006
         """
         Method to remove the non required keys from run results file
         """
@@ -254,7 +254,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         Prepare the DBT objects
         """
         # pylint: disable=import-outside-toplevel
-        from collate_dbt_artifacts_parser.parser import (
+        from collate_dbt_artifacts_parser.parser import (  # noqa: PLC0415
             parse_catalog,
             parse_manifest,
             parse_run_results,
@@ -339,14 +339,14 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Prepare the DBT tests
         """
-        for _, dbt_test in self.context.get().dbt_tests.items():
+        for _, dbt_test in self.context.get().dbt_tests.items():  # noqa: PERF102
             yield dbt_test
 
     def get_dbt_exposures(self) -> Iterable[dict]:
         """
         Prepare the DBT exposures
         """
-        for _, exposure in self.context.get().exposures.items():
+        for _, exposure in self.context.get().exposures.items():  # noqa: PERF102
             yield exposure
 
     @abstractmethod

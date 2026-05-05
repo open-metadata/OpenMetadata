@@ -91,7 +91,7 @@ mock_atlas_config = {
 
 
 mock_file_path = Path(__file__).parent / "atlas_dataset.json"
-with open(mock_file_path, encoding="UTF-8") as file:
+with open(mock_file_path, encoding="UTF-8") as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 
@@ -288,7 +288,7 @@ class AtlasUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.metadata.atlas.metadata.AtlasSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_atlas_config)

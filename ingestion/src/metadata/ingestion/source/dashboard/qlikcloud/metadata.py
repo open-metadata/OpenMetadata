@@ -11,7 +11,7 @@
 """QlikCloud source module"""
 
 import traceback
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -48,7 +48,7 @@ from metadata.ingestion.source.dashboard.qlikcloud.models import (
     QlikSpaceType,
 )
 from metadata.ingestion.source.dashboard.qliksense.metadata import QliksenseSource
-from metadata.ingestion.source.dashboard.qliksense.models import QlikTable
+from metadata.ingestion.source.dashboard.qliksense.models import QlikTable  # noqa: TC001
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_project
 from metadata.utils.fqn import build_es_fqn_search_string
@@ -68,7 +68,7 @@ class QlikcloudSource(QliksenseSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config = WorkflowSource.model_validate(config_dict)
         connection: QlikCloudConnection = config.serviceConnection.root.config
         if not isinstance(connection, QlikCloudConnection):
@@ -81,9 +81,9 @@ class QlikcloudSource(QliksenseSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.projects_map: Dict[str, QlikSpace] = {}
-        self.collections: List[QlikApp] = []
-        self.data_models: List[QlikTable] = []
+        self.projects_map: Dict[str, QlikSpace] = {}  # noqa: UP006
+        self.collections: List[QlikApp] = []  # noqa: UP006
+        self.data_models: List[QlikTable] = []  # noqa: UP006
 
     def prepare(self):
         """
@@ -105,7 +105,7 @@ class QlikcloudSource(QliksenseSource):
         """
         Filter space based on space types configured in connection config.
         """
-        spaceTypes = self.service_connection.spaceTypes
+        spaceTypes = self.service_connection.spaceTypes  # noqa: N806
         if spaceTypes is None:
             return False
         return project.type.value not in [space_type.value for space_type in spaceTypes]
@@ -126,7 +126,7 @@ class QlikcloudSource(QliksenseSource):
         """
         return dashboard.name
 
-    def get_project_name(self, dashboard_details: Optional[QlikApp]) -> Optional[str]:
+    def get_project_name(self, dashboard_details: Optional[QlikApp]) -> Optional[str]:  # noqa: UP045
         """
         Get Project Name
         """
@@ -136,7 +136,7 @@ class QlikcloudSource(QliksenseSource):
         project = self.projects_map.get(dashboard_details.space_id)
         return project.name if project else None
 
-    def get_dashboard_details(self, dashboard: QlikApp) -> Optional[QlikApp]:
+    def get_dashboard_details(self, dashboard: QlikApp) -> Optional[QlikApp]:  # noqa: UP045
         """
         Get app Details
         """
@@ -221,7 +221,7 @@ class QlikcloudSource(QliksenseSource):
         self,
         db_service_entity: DatabaseService,
         data_model_entity: DashboardDataModel,
-    ) -> Optional[Table]:
+    ) -> Optional[Table]:  # noqa: UP045
         """
         Get the table entity for lineage
         """
@@ -248,7 +248,9 @@ class QlikcloudSource(QliksenseSource):
         return None
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: QlikApp, db_service_prefix: Optional[str] = None
+        self,
+        dashboard_details: QlikApp,
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
         (

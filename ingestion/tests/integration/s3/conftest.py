@@ -22,7 +22,7 @@ from _openmetadata_testutils.ometa import OM_JWT, int_admin_ometa
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..containers import MinioContainerConfigs, get_minio_container
+from ..containers import MinioContainerConfigs, get_minio_container  # noqa: TID252
 
 RESOURCES_DIR = Path(__file__).parent / "resources"
 
@@ -48,10 +48,10 @@ def upload_directory_to_minio(client: Minio, local_directory: Path, bucket_name:
     list(client.list_objects(bucket_name=bucket_name, recursive=True))
     """
     # Walk through the local directory
-    for root, dirs, files in os.walk(local_directory):
+    for root, dirs, files in os.walk(local_directory):  # noqa: B007
         for filename in files:
             # Create the file path
-            local_file_path = os.path.join(root, filename)
+            local_file_path = os.path.join(root, filename)  # noqa: PTH118
             # Generate the object name for MinIO by stripping the local directory path
             object_name = os.path.relpath(local_file_path, local_directory)
 
@@ -107,7 +107,7 @@ def ingest_s3_storage(minio, metadata, service_name, create_data):
             authProvider: openmetadata
             securityConfig:
               jwtToken: "{OM_JWT}"
-        """
+        """  # noqa: W291
 
     workflow = MetadataWorkflow.create(yaml.safe_load(config))
     workflow.execute()

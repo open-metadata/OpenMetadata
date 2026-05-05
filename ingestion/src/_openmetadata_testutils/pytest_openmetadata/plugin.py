@@ -1,4 +1,4 @@
-from typing import Type
+from typing import Type  # noqa: UP035
 
 import pytest
 
@@ -72,7 +72,7 @@ def ingestion_bot_workflow_config(metadata: OpenMetadata):
 
 @pytest.fixture(scope="module")
 def run_workflow():
-    def _run(workflow_type: Type[IngestionWorkflow], config, raise_from_status=True):
+    def _run(workflow_type: Type[IngestionWorkflow], config, raise_from_status=True):  # noqa: UP006
         workflow: IngestionWorkflow = workflow_type.create(config)
         workflow.execute()
         if raise_from_status:

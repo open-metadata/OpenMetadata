@@ -36,4 +36,4 @@ class DataTestsRunner:
             test_case,
         )
 
-        return result
+        return result  # noqa: RET504

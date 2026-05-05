@@ -62,7 +62,7 @@ def get_connection_url(connection: MicrosoftFabricConnection) -> str:
 
     # Build SQLAlchemy URL with ODBC connection string
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
-    return connection_url
+    return connection_url  # noqa: RET504
 
 
 def get_connection(connection: MicrosoftFabricConnection) -> Engine:
@@ -80,8 +80,8 @@ def test_connection(
     metadata: OpenMetadata,
     engine: Engine,
     service_connection: MicrosoftFabricConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection to Microsoft Fabric SQL endpoint.

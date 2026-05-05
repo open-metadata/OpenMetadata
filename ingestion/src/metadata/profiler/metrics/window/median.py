@@ -14,7 +14,7 @@ Median Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import TYPE_CHECKING, List, NamedTuple, Optional
+from typing import TYPE_CHECKING, List, NamedTuple, Optional  # noqa: UP035
 
 from sqlalchemy import column
 
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 class MedianAccumulator(NamedTuple):
     """Accumulator holding chunked NumPy arrays for fast median computation."""
 
-    arrays: List["np.ndarray"]
+    arrays: List["np.ndarray"]  # noqa: UP006
     count_value: int
 
 
@@ -122,7 +122,7 @@ class Median(StaticMetric, PercentilMixin):
         return median
 
     def get_pandas_computation(self) -> PandasComputation:
-        return PandasComputation[MedianAccumulator, Optional[float]](
+        return PandasComputation[MedianAccumulator, Optional[float]](  # noqa: UP045
             create_accumulator=lambda: MedianAccumulator([], 0),
             update_accumulator=lambda acc, df: Median.update_accumulator(acc, df, self.col),
             aggregate_accumulator=Median.aggregate_accumulator,
@@ -130,19 +130,19 @@ class Median(StaticMetric, PercentilMixin):
 
     @staticmethod
     def update_accumulator(acc: MedianAccumulator, df: "pd.DataFrame", column) -> MedianAccumulator:
-        import numpy as np  # pylint: disable=import-outside-toplevel  # noqa: F401
-        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: F401
+        import numpy as np  # pylint: disable=import-outside-toplevel  # noqa: F401, PLC0415
+        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: F401, PLC0415
 
         series = df[column.name].dropna()
         if series.empty:
             return acc
 
-        arr: Optional["np.ndarray"] = None
+        arr: Optional["np.ndarray"] = None  # noqa: UP037, UP045
 
         if is_quantifiable(column.type):
             try:
                 arr = series.to_numpy(dtype=float, copy=False)
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001, RUF100
                 arr = series.astype(float).to_numpy(copy=False)
         else:
             logger.debug(f"Don't know how to process type {column.type} when computing Median")
@@ -154,8 +154,8 @@ class Median(StaticMetric, PercentilMixin):
         return MedianAccumulator(acc.arrays, acc.count_value + int(arr.size))
 
     @staticmethod
-    def aggregate_accumulator(acc: MedianAccumulator) -> Optional[float]:
-        import numpy as np  # pylint: disable=import-outside-toplevel
+    def aggregate_accumulator(acc: MedianAccumulator) -> Optional[float]:  # noqa: UP045
+        import numpy as np  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         if acc.count_value == 0:
             return None

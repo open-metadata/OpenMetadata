@@ -9,17 +9,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import inspect
-from typing import Iterable, Tuple
+from typing import Iterable, Tuple  # noqa: UP035
 
 from metadata.pii.algorithms.classifiers import ColumnClassifier, HeuristicPIIClassifier
 from metadata.pii.algorithms.tags import PIITag
 from metadata.pii.algorithms.utils import get_top_classes
 
-from .data import pii_samples
-from .data.pii_samples import LabeledData
+from .data import pii_samples  # noqa: TID252
+from .data.pii_samples import LabeledData  # noqa: TID252
 
 
-def get_sample_data() -> Iterable[Tuple[str, LabeledData]]:
+def get_sample_data() -> Iterable[Tuple[str, LabeledData]]:  # noqa: UP006
     # Add the samples you want to test
     # get all attributes of the module that ends with _data
     suffix = "_data"

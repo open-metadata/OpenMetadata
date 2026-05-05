@@ -15,7 +15,7 @@ its interface
 """
 
 from copy import deepcopy
-from typing import Optional, Type, cast
+from typing import Optional, Type, cast  # noqa: UP035
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
@@ -46,7 +46,7 @@ from metadata.sampler.config import (
     get_include_columns,
 )
 from metadata.sampler.models import ProfileSampleConfig, SampleConfig
-from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.sampler.sampler_interface import SamplerInterface  # noqa: TC001
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,
     Inject,
@@ -83,7 +83,7 @@ class ProfilerSource(ProfilerSourceInterface):
         database: Database,
         ometa_client: OpenMetadata,
         global_profiler_configuration: ProfilerConfiguration,
-        profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None,
+        profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None,  # noqa: UP006
     ):
         if profiler_config_class is None:
             raise DependencyNotFoundError(
@@ -103,7 +103,7 @@ class ProfilerSource(ProfilerSourceInterface):
     @property
     def interface(
         self,
-    ) -> Optional[ProfilerInterface]:
+    ) -> Optional[ProfilerInterface]:  # noqa: UP045
         """Get the interface"""
         return self._interface
 
@@ -134,9 +134,9 @@ class ProfilerSource(ProfilerSourceInterface):
                 config_copy.catalog = database.name.root  # type: ignore
 
         # we know we'll only be working with DatabaseConnection, we cast the type to satisfy type checker
-        config_copy = cast(DatabaseConnection, config_copy)
+        config_copy = cast(DatabaseConnection, config_copy)  # noqa: TC006
 
-        return config_copy
+        return config_copy  # noqa: RET504
 
     def _build_default_sample_config(self) -> SampleConfig:
         """Build a SampleConfig from the pipeline's profileSampleConfig."""
@@ -153,10 +153,10 @@ class ProfilerSource(ProfilerSourceInterface):
     def create_profiler_interface(
         self,
         entity: Table,
-        config: Optional[TableConfig],
+        config: Optional[TableConfig],  # noqa: UP045
         schema_entity: DatabaseSchema,
         database_entity: Database,
-        profiler_resolver: Inject[Type[ProfilerResolver]] = None,
+        profiler_resolver: Inject[Type[ProfilerResolver]] = None,  # noqa: UP006
     ) -> ProfilerInterface:
         """Create the appropriate profiler interface based on processing engine."""
         if profiler_resolver is None:
@@ -204,7 +204,7 @@ class ProfilerSource(ProfilerSourceInterface):
         self,
         entity: Table,
         profiler_config: ProfilerProcessorConfig,
-        metrics_registry: Inject[Type[MetricRegistry]] = None,
+        metrics_registry: Inject[Type[MetricRegistry]] = None,  # noqa: UP006
     ) -> Profiler:
         """
         Returns the runner for the profiler

@@ -11,7 +11,7 @@
 """SageMaker source module"""
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, Field, ValidationError
 
@@ -75,7 +75,7 @@ class SagemakerSource(MlModelServiceSource):
         self.sagemaker = self.client
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SageMakerConnection = config.serviceConnection.root.config
         if not isinstance(connection, SageMakerConnection):
@@ -189,7 +189,7 @@ class SagemakerSource(MlModelServiceSource):
     def _get_ml_store(  # pylint: disable=arguments-differ
         self,
         model_name: str,
-    ) -> Optional[MlStore]:
+    ) -> Optional[MlStore]:  # noqa: UP045
         """
         Get the Ml Store for the model
         """
@@ -207,7 +207,7 @@ class SagemakerSource(MlModelServiceSource):
             logger.warning(f"Wild error adding the MlModel store from model description: {model_name} - {err}")
         return None
 
-    def _get_tags(self, model_arn: str) -> Optional[List[TagLabel]]:
+    def _get_tags(self, model_arn: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         try:
             tags = self.sagemaker.list_tags(ResourceArn=model_arn).get("Tags")
             if tags:
@@ -229,8 +229,8 @@ class SagemakerSource(MlModelServiceSource):
             logger.warning(f"Wild error adding TagLabel from model tags: {model_arn} - {err}")
         return None
 
-    def _get_hyper_params(self, *args, **kwargs) -> Optional[List[MlHyperParameter]]:
+    def _get_hyper_params(self, *args, **kwargs) -> Optional[List[MlHyperParameter]]:  # noqa: UP006, UP045
         pass
 
-    def _get_ml_features(self, *args, **kwargs) -> Optional[List[MlFeature]]:
+    def _get_ml_features(self, *args, **kwargs) -> Optional[List[MlFeature]]:  # noqa: UP006, UP045
         pass

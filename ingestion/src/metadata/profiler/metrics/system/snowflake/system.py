@@ -3,7 +3,7 @@
 import hashlib
 import re
 import traceback
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple  # noqa: UP035
 
 import sqlalchemy.orm
 from pydantic import TypeAdapter
@@ -57,7 +57,7 @@ cache = LRUCache(LRU_CACHE_SIZE)
 
 
 @cache.wrap(key_func=lambda query: sha256_hash(query.strip()))
-def _parse_query(query: str) -> Optional[str]:
+def _parse_query(query: str) -> Optional[str]:  # noqa: UP045
     """Parse snowflake queries to extract the identifiers"""
     match = re.match(QUERY_PATTERN, query, re.IGNORECASE)
     try:
@@ -70,7 +70,7 @@ def _parse_query(query: str) -> Optional[str]:
         if internal_identifier:
             return internal_identifier
 
-        return identifier
+        return identifier  # noqa: TRY300
     except (IndexError, AttributeError):
         logger.debug("Could not find identifier in query. Skipping row.")
         return None
@@ -122,9 +122,9 @@ class SnowflakeTableResovler:
     def resolve_implicit_fqn(
         self,
         context_database: str,
-        context_schema: Optional[str],
+        context_schema: Optional[str],  # noqa: UP045
         table_name: str,
-    ) -> Tuple[str, str, str]:
+    ) -> Tuple[str, str, str]:  # noqa: UP006
         """Resolve the fully qualified name of the table from snowflake based on the following logic:
         1. If the schema is provided:
             a. search for the table in the schema
@@ -151,16 +151,16 @@ class SnowflakeTableResovler:
             return context_database, PUBLIC_SCHEMA, table_name
         raise RuntimeError(
             "Could not find the table {search_paths}.".format(  # pylint: disable=consider-using-f-string
-                search_paths=" OR ".join(map(lambda x: f"[{x}]", search_paths))
+                search_paths=" OR ".join(map(lambda x: f"[{x}]", search_paths))  # noqa: C417
             )
         )
 
     def resolve_snowflake_fqn(
         self,
         context_database: str,
-        context_schema: Optional[str],
+        context_schema: Optional[str],  # noqa: UP045
         identifier: str,
-    ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    ) -> Tuple[Optional[str], Optional[str], Optional[str]]:  # noqa: UP006, UP045
         """Get query identifiers from the query text. If the schema is not provided in the query, we'll look for
         the table under "PUBLIC" in Snowflake.
         Database can be retrieved from the query or the query context.
@@ -225,7 +225,7 @@ class SnowflakeTableResovler:
 def get_snowflake_system_queries(
     query_log_entry: SnowflakeQueryLogEntry,
     resolver: SnowflakeTableResovler,
-) -> Optional[SnowflakeQueryResult]:
+) -> Optional[SnowflakeQueryResult]:  # noqa: UP045
     """
     Run a regex lookup on the query to identify which operation ran against the table.
 
@@ -243,7 +243,7 @@ def get_snowflake_system_queries(
         logger.debug(f"Parsing snowflake query [{query_log_entry.query_id}]")
         identifier = _parse_query(query_log_entry.query_text)
         if not identifier:
-            raise RuntimeError("Could not identify the table from the query.")
+            raise RuntimeError("Could not identify the table from the query.")  # noqa: TRY301
 
         database_name, schema_name, table_name = resolver.resolve_snowflake_fqn(
             identifier=identifier,
@@ -252,7 +252,7 @@ def get_snowflake_system_queries(
         )
 
         if not all([database_name, schema_name, table_name]):
-            raise RuntimeError(f"Could not extract the identifiers from the query [{query_log_entry.query_id}].")
+            raise RuntimeError(f"Could not extract the identifiers from the query [{query_log_entry.query_id}].")  # noqa: TRY301
 
         return SnowflakeQueryResult(
             query_id=query_log_entry.query_id,
@@ -304,7 +304,7 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
         """Check if the table is a dynamic table"""
         return self.table_entity.tableType == TableType.Dynamic
 
-    def get_inserts(self) -> List[SystemProfile]:
+    def get_inserts(self) -> List[SystemProfile]:  # noqa: UP006
         if self.is_dynamic_table:
             return self._get_dynamic_table_system_profile("rows_inserted", DmlOperationType.INSERT)
         return self.get_system_profile(
@@ -324,7 +324,7 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
             DmlOperationType.INSERT,
         )
 
-    def get_updates(self) -> List[SystemProfile]:
+    def get_updates(self) -> List[SystemProfile]:  # noqa: UP006
         if self.is_dynamic_table:
             return self._get_dynamic_table_system_profile("rows_updated", DmlOperationType.UPDATE)
         return self.get_system_profile(
@@ -344,7 +344,7 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
             DmlOperationType.UPDATE,
         )
 
-    def get_deletes(self) -> List[SystemProfile]:
+    def get_deletes(self) -> List[SystemProfile]:  # noqa: UP006
         if self.is_dynamic_table:
             return self._get_dynamic_table_system_profile("rows_deleted", DmlOperationType.DELETE)
         return self.get_system_profile(
@@ -365,7 +365,7 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
 
     def _get_dynamic_table_refresh_entries(
         self,
-    ) -> List[SnowflakeDynamicTableRefreshEntry]:
+    ) -> List[SnowflakeDynamicTableRefreshEntry]:  # noqa: UP006
         """Get dynamic table refresh history entries from cache or query"""
         return self.get_or_update_cache(
             self.table,
@@ -379,10 +379,10 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
         self,
         rows_affected_field: str,
         operation: DmlOperationType,
-    ) -> List[SystemProfile]:
+    ) -> List[SystemProfile]:  # noqa: UP006
         """Get system profile from dynamic table refresh history"""
         refresh_entries = self._get_dynamic_table_refresh_entries()
-        return TypeAdapter(List[SystemProfile]).validate_python(
+        return TypeAdapter(List[SystemProfile]).validate_python(  # noqa: UP006
             [
                 {
                     "timestamp": datetime_to_timestamp(entry.start_time, milliseconds=True),
@@ -400,15 +400,15 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
         db: str,
         schema: str,
         table: str,
-        query_results: List[SnowflakeQueryResult],
+        query_results: List[SnowflakeQueryResult],  # noqa: UP006
         rows_affected_field: str,
         operation: DmlOperationType,
-    ) -> List[SystemProfile]:
+    ) -> List[SystemProfile]:  # noqa: UP006
         if not SnowflakeQueryResult.model_fields.get(rows_affected_field):
             raise ValueError(
                 f"rows_affected_field [{rows_affected_field}] is not a valid field in SnowflakeQueryResult."
             )
-        return TypeAdapter(List[SystemProfile]).validate_python(
+        return TypeAdapter(List[SystemProfile]).validate_python(  # noqa: UP006
             [
                 {
                     "timestamp": datetime_to_timestamp(q.start_time, milliseconds=True),
@@ -431,11 +431,11 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
             ]
         )
 
-    def get_queries_by_operation(self, table: str, operations: List[DatabaseDMLOperations]):
+    def get_queries_by_operation(self, table: str, operations: List[DatabaseDMLOperations]):  # noqa: UP006
         ops = [op.value for op in operations]
         yield from (query for query in self.get_queries(table) if query.query_type in ops)
 
-    def get_queries(self, table: str) -> List[SnowflakeQueryResult]:
+    def get_queries(self, table: str) -> List[SnowflakeQueryResult]:  # noqa: UP006
         queries = self.get_or_update_cache(
             table,
             SnowflakeQueryLogEntry.get_for_table,

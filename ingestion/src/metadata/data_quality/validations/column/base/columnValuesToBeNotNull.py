@@ -15,7 +15,7 @@ Validator for column values to be not null test case
 
 import traceback
 from abc import abstractmethod
-from typing import List, Optional, Union
+from typing import List, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -53,7 +53,7 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self.get_column()
+            column: Union[SQALikeColumn, Column] = self.get_column()  # noqa: UP007
             null_count = self._run_results(Metrics.nullCount, column)
 
             metric_values = {
@@ -105,7 +105,7 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
 
         return metrics
 
-    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:  # noqa: UP045
         """Evaluate the not null test condition
 
         Test passes if null_count == 0 (no null values found)
@@ -139,8 +139,8 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
     def _format_result_message(
         self,
         metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,
-        test_params: Optional[dict] = None,
+        dimension_info: Optional[DimensionInfo] = None,  # noqa: UP045
+        test_params: Optional[dict] = None,  # noqa: UP045
     ) -> str:
         """Format the result message for not null test
 
@@ -159,10 +159,10 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
                 f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
                 f"Found nullCount={null_count}. It should be 0"
             )
-        else:
+        else:  # noqa: RET505
             return f"Found nullCount={null_count}. It should be 0"
 
-    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:
+    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:  # noqa: UP006
         """Get test result values for not null test
 
         Args:
@@ -179,11 +179,11 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
         ]
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):
+    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):  # noqa: UP007
         raise NotImplementedError
 
     @abstractmethod
-    def compute_row_count(self, column: Union[SQALikeColumn, Column]):
+    def compute_row_count(self, column: Union[SQALikeColumn, Column]):  # noqa: UP007
         """Compute row count for the given column
 
         Args:

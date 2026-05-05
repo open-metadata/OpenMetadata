@@ -12,7 +12,7 @@
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
 import { Box, Typography as MuiTypography, useTheme } from '@mui/material';
-import { Button, Dropdown, Form, Space, Tabs, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Space, Tabs, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -20,6 +20,7 @@ import classNames from 'classnames';
 import { isEmpty, isEqual, toString } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
@@ -85,6 +86,7 @@ import {
   getEntityVoteStatus,
 } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import Fqn from '../../../utils/Fqn';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
@@ -102,7 +104,7 @@ import {
   getDecodedFqn,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
-import { useFormDrawerWithRef } from '../../common/atoms/drawer';
+import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
 
@@ -123,7 +125,11 @@ import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/Asse
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
-import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
+import AddDomainForm, {
+  DOMAIN_FORM_DEFAULTS,
+  transformDomainFormData,
+} from '../AddDomainForm/AddDomainForm.component';
+import { DomainFormValues } from '../AddDomainForm/AddDomainForm.interface';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
 import { DataProductsTabRef } from '../DomainTabs/DataProductsTab/DataProductsTab.interface';
@@ -190,11 +196,15 @@ const DomainDetails = ({
     DEFAULT_ENTITY_PERMISSION
   );
   // Sub-domain drawer implementation
-  const [subDomainForm] = Form.useForm();
+  const subDomainForm = useForm<DomainFormValues>({
+    defaultValues: DOMAIN_FORM_DEFAULTS,
+  });
   const [isSubDomainLoading, setIsSubDomainLoading] = useState(false);
 
   // Data product drawer implementation
-  const [dataProductForm] = Form.useForm();
+  const dataProductForm = useForm<DomainFormValues>({
+    defaultValues: DOMAIN_FORM_DEFAULTS,
+  });
   const [isDataProductLoading, setIsDataProductLoading] = useState(false);
 
   const [showActions, setShowActions] = useState(false);
@@ -258,7 +268,7 @@ const DomainDetails = ({
     }
   };
 
-  const fetchDataProducts = async () => {
+  const fetchDataProducts = useCallback(async () => {
     if (!isVersionsView) {
       try {
         const res = await searchQuery({
@@ -282,7 +292,7 @@ const DomainDetails = ({
         );
       }
     }
-  };
+  }, [isVersionsView, domainFqn, enqueueSnackbar, t]);
 
   const fetchSubDomainsCount = useCallback(async () => {
     if (!isVersionsView) {
@@ -346,64 +356,81 @@ const DomainDetails = ({
     );
   };
 
+  const handleDataProductSubmit = useCallback(
+    async (data: DomainFormValues) => {
+      const formData = transformDomainFormData(
+        data,
+        DomainFormType.DATA_PRODUCT,
+        domain
+      ) as CreateDataProduct;
+      formData.domains = [domain.fullyQualifiedName ?? ''];
+      setIsDataProductLoading(true);
+      try {
+        await createEntityWithCoverImage({
+          formData,
+          entityType: EntityType.DATA_PRODUCT,
+          entityLabel: t('label.data-product'),
+          entityPluralLabel: 'data-products',
+          createEntity: addDataProducts,
+          patchEntity: patchDataProduct,
+          onSuccess: () => {
+            dataProductForm.reset();
+          },
+          enqueueSnackbar,
+          closeSnackbar,
+          t,
+        });
+      } finally {
+        setIsDataProductLoading(false);
+      }
+    },
+    [domain, dataProductForm, enqueueSnackbar, closeSnackbar, t]
+  );
+
+  const onDataProductCreateSuccess = useCallback(() => {
+    fetchDataProducts();
+    dataProductsTabRef.current?.refreshDataProducts();
+    handleTabChange(EntityTabs.DATA_PRODUCTS);
+    onUpdate?.(domain);
+  }, [fetchDataProducts, handleTabChange, onUpdate, domain]);
+
   const {
     formDrawer: dataProductDrawer,
     openDrawer: openDataProductDrawer,
     closeDrawer: closeDataProductDrawer,
-  } = useFormDrawerWithRef({
+  } = useFormDrawerWithHook<DomainFormValues>({
     title: t('label.add-entity', { entity: t('label.data-product') }),
     width: 670,
     closeOnEscape: false,
     className: 'tw:z-[20]',
-    onCancel: () => {
-      dataProductForm.resetFields();
-    },
+    hookForm: dataProductForm,
     form: (
       <AddDomainForm
         isFormInDialog
-        formRef={dataProductForm}
+        form={dataProductForm}
         loading={isDataProductLoading}
         parentDomain={domain}
         type={DomainFormType.DATA_PRODUCT}
         onCancel={() => {
-          // No-op: Drawer close and form reset handled by useFormDrawerWithRef
+          // No-op: Drawer close and form reset handled by useFormDrawerWithHook
         }}
-        onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
-          setIsDataProductLoading(true);
-          try {
-            (formData as CreateDataProduct).domains = [
-              domain.fullyQualifiedName ?? '',
-            ];
-
-            await createEntityWithCoverImage({
-              formData: formData as CreateDataProduct,
-              entityType: EntityType.DATA_PRODUCT,
-              entityLabel: t('label.data-product'),
-              entityPluralLabel: 'data-products',
-              createEntity: addDataProducts,
-              patchEntity: patchDataProduct,
-              onSuccess: () => {
-                fetchDataProducts();
-                dataProductsTabRef.current?.refreshDataProducts();
-                handleTabChange(EntityTabs.DATA_PRODUCTS);
-                onUpdate?.(domain);
-                closeDataProductDrawer();
-              },
-              enqueueSnackbar,
-              closeSnackbar,
-              t,
-            });
-          } finally {
-            setIsDataProductLoading(false);
-          }
-        }}
+        onSubmit={(data: DomainFormValues): Promise<void> =>
+          submitAndClose(
+            data,
+            handleDataProductSubmit,
+            closeDataProductDrawer,
+            onDataProductCreateSuccess
+          )
+        }
       />
     ),
-    formRef: dataProductForm,
-    onSubmit: () => {
-      // This is called by the drawer button, but actual submission
-      // happens via formRef.submit() which triggers form.onFinish
-    },
+    onSubmit: (data: DomainFormValues): Promise<void> =>
+      submitAndClose(
+        data,
+        handleDataProductSubmit,
+        closeDataProductDrawer,
+        onDataProductCreateSuccess
+      ),
     loading: isDataProductLoading,
   });
 
@@ -496,60 +523,84 @@ const DomainDetails = ({
     }
   }, [domain, isVersionsView]);
 
+  const handleSubDomainSubmit = useCallback(
+    async (data: DomainFormValues) => {
+      const formData = transformDomainFormData(
+        data,
+        DomainFormType.SUBDOMAIN
+      ) as CreateDomain;
+      formData.parent = domain.fullyQualifiedName;
+      setIsSubDomainLoading(true);
+      try {
+        await createEntityWithCoverImage({
+          formData,
+          entityType: EntityType.DOMAIN,
+          entityLabel: t('label.sub-domain'),
+          entityPluralLabel: 'sub-domains',
+          createEntity: addDomains,
+          patchEntity: patchDomains,
+          onSuccess: () => {
+            subDomainForm.reset();
+          },
+          enqueueSnackbar,
+          closeSnackbar,
+          t,
+        });
+      } finally {
+        setIsSubDomainLoading(false);
+      }
+    },
+    [
+      domain.fullyQualifiedName,
+      subDomainForm,
+      enqueueSnackbar,
+      closeSnackbar,
+      t,
+    ]
+  );
+
+  const onSubDomainCreateSuccess = useCallback(() => {
+    fetchSubDomainsCount();
+    refreshDomains?.();
+    handleTabChange(EntityTabs.SUBDOMAINS);
+  }, [fetchSubDomainsCount, refreshDomains, handleTabChange]);
+
   const {
     formDrawer: subDomainDrawer,
     openDrawer: openSubDomainDrawer,
     closeDrawer: closeSubDomainDrawer,
-  } = useFormDrawerWithRef({
+  } = useFormDrawerWithHook<DomainFormValues>({
     title: t('label.add-entity', { entity: t('label.sub-domain') }),
     width: 670,
     closeOnEscape: false,
     className: 'tw:z-[20]',
-    onCancel: () => {
-      subDomainForm.resetFields();
-    },
+    hookForm: subDomainForm,
     form: (
       <AddDomainForm
         isFormInDialog
-        formRef={subDomainForm}
+        form={subDomainForm}
         loading={isSubDomainLoading}
         type={DomainFormType.SUBDOMAIN}
         onCancel={() => {
-          // No-op: Drawer close and form reset handled by useFormDrawerWithRef
+          // No-op: Drawer close and form reset handled by useFormDrawerWithHook
         }}
-        onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
-          setIsSubDomainLoading(true);
-          try {
-            (formData as CreateDomain).parent = domain.fullyQualifiedName;
-
-            await createEntityWithCoverImage({
-              formData: formData as CreateDomain,
-              entityType: EntityType.DOMAIN,
-              entityLabel: t('label.sub-domain'),
-              entityPluralLabel: 'sub-domains',
-              createEntity: addDomains,
-              patchEntity: patchDomains,
-              onSuccess: () => {
-                fetchSubDomainsCount();
-                refreshDomains?.();
-                handleTabChange(EntityTabs.SUBDOMAINS);
-                closeSubDomainDrawer();
-              },
-              enqueueSnackbar,
-              closeSnackbar,
-              t,
-            });
-          } finally {
-            setIsSubDomainLoading(false);
-          }
-        }}
+        onSubmit={(data: DomainFormValues): Promise<void> =>
+          submitAndClose(
+            data,
+            handleSubDomainSubmit,
+            closeSubDomainDrawer,
+            onSubDomainCreateSuccess
+          )
+        }
       />
     ),
-    formRef: subDomainForm,
-    onSubmit: () => {
-      // This is called by the drawer button, but actual submission
-      // happens via formRef.submit() which triggers form.onFinish
-    },
+    onSubmit: (data: DomainFormValues): Promise<void> =>
+      submitAndClose(
+        data,
+        handleSubDomainSubmit,
+        closeSubDomainDrawer,
+        onSubDomainCreateSuccess
+      ),
     loading: isSubDomainLoading,
   });
 

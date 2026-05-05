@@ -12,7 +12,7 @@
 Entity Fetcher
 """
 
-from typing import Iterator, Optional
+from typing import Iterator, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.storageService import StorageService
@@ -39,7 +39,7 @@ class EntityFetcher:
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],
+        global_profiler_config: Optional[Settings],  # noqa: UP045
         status: Status,
     ):
         self.config = config

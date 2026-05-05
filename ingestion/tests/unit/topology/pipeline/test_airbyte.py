@@ -56,11 +56,11 @@ from metadata.ingestion.source.pipeline.airbyte.models import (
 from metadata.utils.constants import UTF_8
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/airbyte_dataset.json"
-with open(mock_file_path, encoding=UTF_8) as file:
+with open(mock_file_path, encoding=UTF_8) as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 mock_cloud_file_path = Path(__file__).parent.parent.parent / "resources/datasets/airbyte_cloud_dataset.json"
-with open(mock_cloud_file_path, encoding=UTF_8) as file:
+with open(mock_cloud_file_path, encoding=UTF_8) as file:  # noqa: PTH123
     mock_cloud_data: dict = json.load(file)
 
 mock_airbyte_config = {
@@ -238,7 +238,7 @@ class AirbyteUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("metadata.ingestion.source.pipeline.airbyte.connection.get_connection")
-    def __init__(self, methodName, airbyte_client, test_connection) -> None:
+    def __init__(self, methodName, airbyte_client, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         config = OpenMetadataWorkflowConfig.model_validate(mock_airbyte_config)
@@ -263,13 +263,13 @@ class AirbyteUnitTest(TestCase):
         self.airbyte.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
 
     def test_pipeline_list(self):
-        assert list(self.airbyte.get_pipelines_list())[0] == EXPECTED_AIRBYTE_DETAILS
+        assert list(self.airbyte.get_pipelines_list())[0] == EXPECTED_AIRBYTE_DETAILS  # noqa: RUF015
 
     def test_pipeline_name(self):
         assert self.airbyte.get_pipeline_name(EXPECTED_AIRBYTE_DETAILS) == mock_data.get("connection")[0].get("name")
 
     def test_pipelines(self):
-        pipeline = list(self.airbyte.yield_pipeline(EXPECTED_AIRBYTE_DETAILS))[0].right
+        pipeline = list(self.airbyte.yield_pipeline(EXPECTED_AIRBYTE_DETAILS))[0].right  # noqa: RUF015
         assert pipeline == EXPECTED_CREATED_PIPELINES
 
     def test_pipeline_status(self):
@@ -457,7 +457,7 @@ class AirbyteCloudUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("metadata.ingestion.source.pipeline.airbyte.connection.get_connection")
-    def __init__(self, methodName, airbyte_cloud_client, test_connection) -> None:
+    def __init__(self, methodName, airbyte_cloud_client, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
 
@@ -487,7 +487,7 @@ class AirbyteCloudUnitTest(TestCase):
         self.airbyte.context.get().__dict__["pipeline_service"] = MOCK_CLOUD_PIPELINE_SERVICE.name.root
 
     def test_pipeline_list(self):
-        assert list(self.airbyte.get_pipelines_list())[0] == EXPECTED_CLOUD_AIRBYTE_DETAILS
+        assert list(self.airbyte.get_pipelines_list())[0] == EXPECTED_CLOUD_AIRBYTE_DETAILS  # noqa: RUF015
 
     def test_pipeline_name(self):
         assert self.airbyte.get_pipeline_name(EXPECTED_CLOUD_AIRBYTE_DETAILS) == mock_cloud_data.get("connection")[
@@ -495,7 +495,7 @@ class AirbyteCloudUnitTest(TestCase):
         ].get("name")
 
     def test_pipelines(self):
-        pipeline = list(self.airbyte.yield_pipeline(EXPECTED_CLOUD_AIRBYTE_DETAILS))[0].right
+        pipeline = list(self.airbyte.yield_pipeline(EXPECTED_CLOUD_AIRBYTE_DETAILS))[0].right  # noqa: RUF015
         assert pipeline == EXPECTED_CLOUD_CREATED_PIPELINES
 
     def test_pipeline_status(self):

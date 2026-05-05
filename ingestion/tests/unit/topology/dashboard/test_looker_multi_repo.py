@@ -101,7 +101,7 @@ view: customers {
 
     def create_mock_view_file(self, path: Path, content: str):
         """Helper to create mock .view.lkml files"""
-        with open(path, "w", encoding="utf-8") as f:
+        with open(path, "w", encoding="utf-8") as f:  # noqa: PTH123
             f.write(content)
 
     def tearDown(self):

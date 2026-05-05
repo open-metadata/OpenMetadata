@@ -410,7 +410,7 @@ class MigrationWorkflowTest {
   }
 
   @Test
-  void getMigrationsToApplyOlderMinorBackfillsExcludedWhenOnHigherMinor() throws Exception {
+  void getMigrationsToApplyBackportedLowerMinorVersionsAreIncluded() throws Exception {
     List<String> executedMigrations = List.of("1.11.10", "1.12.0", "1.12.1");
     List<MigrationFile> availableMigrations =
         List.of(
@@ -429,9 +429,31 @@ class MigrationWorkflowTest {
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
 
     List<String> versions = result.stream().map(m -> m.version).toList();
-    assertEquals(List.of("1.12.1", "1.12.2"), versions);
-    assertTrue(result.get(0).isReprocessing());
-    assertFalse(result.get(1).isReprocessing());
+    assertEquals(List.of("1.11.11", "1.11.12", "1.12.1", "1.12.2"), versions);
+    assertFalse(
+        result.stream()
+            .filter(m -> m.version.equals("1.11.11"))
+            .findFirst()
+            .orElseThrow()
+            .isReprocessing());
+    assertFalse(
+        result.stream()
+            .filter(m -> m.version.equals("1.11.12"))
+            .findFirst()
+            .orElseThrow()
+            .isReprocessing());
+    assertTrue(
+        result.stream()
+            .filter(m -> m.version.equals("1.12.1"))
+            .findFirst()
+            .orElseThrow()
+            .isReprocessing());
+    assertFalse(
+        result.stream()
+            .filter(m -> m.version.equals("1.12.2"))
+            .findFirst()
+            .orElseThrow()
+            .isReprocessing());
   }
 
   @Test
@@ -458,7 +480,7 @@ class MigrationWorkflowTest {
     List<String> extensionVersions =
         result.stream().filter(m -> m.isExtension).map(m -> m.version).toList();
 
-    assertEquals(List.of("1.12.1", "1.12.2"), nativeVersions);
+    assertEquals(List.of("1.11.11", "1.12.1", "1.12.2"), nativeVersions);
     assertEquals(List.of("1.12.1-collate"), extensionVersions);
     assertTrue(result.stream().anyMatch(m -> m.version.equals("1.12.1") && m.isReprocessing()));
     assertTrue(
@@ -606,7 +628,7 @@ class MigrationWorkflowTest {
   }
 
   @Test
-  void getMigrationsToApplyMultipleBackportedMinorVersionsExcluded() throws Exception {
+  void getMigrationsToApplyMultipleBackportedMinorVersionsAreIncluded() throws Exception {
     List<String> executedMigrations = List.of("1.10.5", "1.11.0", "1.12.0", "1.12.1");
     List<MigrationFile> availableMigrations =
         List.of(
@@ -627,8 +649,50 @@ class MigrationWorkflowTest {
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
 
     List<String> versions = result.stream().map(m -> m.version).toList();
-    assertEquals(List.of("1.12.1", "1.12.2"), versions);
-    assertTrue(result.get(0).isReprocessing());
+    assertEquals(List.of("1.10.6", "1.11.1", "1.11.1-collate", "1.12.1", "1.12.2"), versions);
+    assertTrue(
+        result.stream()
+            .filter(m -> m.version.equals("1.12.1"))
+            .findFirst()
+            .orElseThrow()
+            .isReprocessing());
+  }
+
+  @Test
+  void getMigrationsToApplyHistoricalGapBelowMaxIsBackfilled() throws Exception {
+    List<String> executedMigrations =
+        List.of("1.5.0", "1.5.11", "1.9.0", "1.9.1", "1.10.0", "1.10.5");
+    List<MigrationFile> availableMigrations =
+        List.of(
+            createMigrationFile("1.5.0", false),
+            createMigrationFile("1.5.11", false),
+            createMigrationFile("1.5.15", false),
+            createMigrationFile("1.9.0", false),
+            createMigrationFile("1.9.1", false),
+            createMigrationFile("1.10.0", false),
+            createMigrationFile("1.10.5", false));
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+
+    List<MigrationFile> result =
+        workflow.getMigrationsToApply(executedMigrations, availableMigrations);
+
+    List<String> versions = result.stream().map(m -> m.version).toList();
+    assertEquals(List.of("1.5.15", "1.10.5"), versions);
+    assertFalse(
+        result.stream()
+            .filter(m -> m.version.equals("1.5.15"))
+            .findFirst()
+            .orElseThrow()
+            .isReprocessing());
+    assertTrue(
+        result.stream()
+            .filter(m -> m.version.equals("1.10.5"))
+            .findFirst()
+            .orElseThrow()
+            .isReprocessing());
   }
 
   @Test
@@ -694,19 +758,6 @@ class MigrationWorkflowTest {
     assertEquals(1, result.size());
     assertEquals("1.12.2", result.get(0).version);
     assertTrue(result.get(0).isReprocessing());
-  }
-
-  @Test
-  void sameOrHigherMajorMinorComparisons() {
-    assertTrue(MigrationWorkflow.sameOrHigherMajorMinor("1.12.0", "1.12.1"));
-    assertTrue(MigrationWorkflow.sameOrHigherMajorMinor("1.12.5", "1.12.1"));
-    assertTrue(MigrationWorkflow.sameOrHigherMajorMinor("1.13.0", "1.12.1"));
-    assertTrue(MigrationWorkflow.sameOrHigherMajorMinor("2.0.0", "1.12.1"));
-    assertFalse(MigrationWorkflow.sameOrHigherMajorMinor("1.11.15", "1.12.1"));
-    assertFalse(MigrationWorkflow.sameOrHigherMajorMinor("1.10.6", "1.12.1"));
-    assertFalse(MigrationWorkflow.sameOrHigherMajorMinor("0.13.0", "1.12.1"));
-    assertTrue(MigrationWorkflow.sameOrHigherMajorMinor("1.12.1-collate", "1.12.1"));
-    assertFalse(MigrationWorkflow.sameOrHigherMajorMinor("1.11.1-collate", "1.12.1"));
   }
 
   private void mockContext(

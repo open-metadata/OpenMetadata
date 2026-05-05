@@ -14,7 +14,7 @@ AlationSink source to extract metadata
 """
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -86,7 +86,7 @@ class AlationsinkSource(Source):
         self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AlationSinkConnection = config.serviceConnection.root.config
         if not isinstance(connection, AlationSinkConnection):
@@ -96,7 +96,7 @@ class AlationsinkSource(Source):
     def prepare(self):
         """Not required to implement"""
 
-    def create_datasource_request(self, om_database: Database) -> Optional[CreateDatasourceRequest]:
+    def create_datasource_request(self, om_database: Database) -> Optional[CreateDatasourceRequest]:  # noqa: UP045
         """
         Method to form the CreateDatasourceRequest object
         """
@@ -118,7 +118,7 @@ class AlationsinkSource(Source):
 
     def create_schema_request(
         self, alation_datasource_id: int, om_schema: DatabaseSchema
-    ) -> Optional[CreateSchemaRequest]:
+    ) -> Optional[CreateSchemaRequest]:  # noqa: UP045
         """
         Method to form the CreateSchemaRequest object
         """
@@ -137,7 +137,7 @@ class AlationsinkSource(Source):
 
     def create_table_request(
         self, alation_datasource_id: int, schema_name: str, om_table: Table
-    ) -> Optional[CreateTableRequest]:
+    ) -> Optional[CreateTableRequest]:  # noqa: UP045
         """
         Method to form the CreateTableRequest object
         """
@@ -160,7 +160,7 @@ class AlationsinkSource(Source):
         self,
         alation_datasource_id: int,
         om_column: Column,
-        table_constraints: Optional[List[TableConstraint]],
+        table_constraints: Optional[List[TableConstraint]],  # noqa: UP006, UP045
         column_index: ColumnIndex,
     ):
         """
@@ -187,8 +187,8 @@ class AlationsinkSource(Source):
         self,
         alation_datasource_id: int,
         om_column: Column,
-        table_constraints: Optional[List[TableConstraint]],
-    ) -> Optional[ColumnIndex]:
+        table_constraints: Optional[List[TableConstraint]],  # noqa: UP006, UP045
+    ) -> Optional[ColumnIndex]:  # noqa: UP045
         """
         Method to get the alation column index
         """
@@ -205,7 +205,7 @@ class AlationsinkSource(Source):
             logger.warning(f"Failed to get column index for {model_str(om_column.name)}: {exc}")
         return column_index or None
 
-    def _check_nullable_column(self, om_column: Column) -> Optional[bool]:
+    def _check_nullable_column(self, om_column: Column) -> Optional[bool]:  # noqa: UP045
         """
         Method to check if the column is null
         """
@@ -225,8 +225,8 @@ class AlationsinkSource(Source):
         schema_name: str,
         table_name: str,
         om_column: Column,
-        table_constraints: Optional[List[TableConstraint]],
-    ) -> Optional[CreateColumnRequest]:
+        table_constraints: Optional[List[TableConstraint]],  # noqa: UP006, UP045
+    ) -> Optional[CreateColumnRequest]:  # noqa: UP045
         """
         Method to form the CreateColumnRequest object
         """

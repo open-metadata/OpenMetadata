@@ -80,8 +80,8 @@ class PostgresConnection(BaseConnection[PostgresConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

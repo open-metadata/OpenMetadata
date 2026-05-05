@@ -248,7 +248,7 @@ EXPECTED_COLUMN_VALUE = [
     ),
 ]
 
-from collections import OrderedDict
+from collections import OrderedDict  # noqa: E402
 
 SALESFORCE_FIELDS = [
     OrderedDict(
@@ -496,7 +496,7 @@ EXPECTED_COLUMN_TYPE = ["VARCHAR", "VARCHAR", "VARCHAR", "UNKNOWN"]
 class SalesforceUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection")
     @patch("simple_salesforce.api.Salesforce")
-    def __init__(self, methodName, salesforce, test_connection) -> None:
+    def __init__(self, methodName, salesforce, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_salesforce_config)
@@ -515,7 +515,7 @@ class SalesforceUnitTest(TestCase):
             {"QualifiedApiName": "Description", "Description": "Contact Description"}
         ]
         result = self.salesforce_source.get_columns("TEST_TABLE", SALESFORCE_FIELDS)
-        assert EXPECTED_COLUMN_VALUE == result
+        assert EXPECTED_COLUMN_VALUE == result  # noqa: SIM300
 
     def test_column_type(self):
         for i in range(len(SALESFORCE_FIELDS)):

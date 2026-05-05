@@ -338,7 +338,7 @@ class HiveUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def __init__(
         self,
-        methodName,
+        methodName,  # noqa: N803
         test_connection,
     ) -> None:
         super().__init__(methodName)
@@ -357,13 +357,13 @@ class HiveUnitTest(TestCase):
         self.hive._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
 
     def test_yield_database(self):
-        assert EXPECTED_DATABASE == [either.right for either in self.hive.yield_database(MOCK_DATABASE.name.root)]
+        assert EXPECTED_DATABASE == [either.right for either in self.hive.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
 
         self.hive.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.hive.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     def test_yield_schema(self):
-        assert EXPECTED_DATABASE_SCHEMA == [
+        assert EXPECTED_DATABASE_SCHEMA == [  # noqa: SIM300
             either.right for either in self.hive.yield_database_schema(schema_name=MOCK_DATABASE_SCHEMA.name.root)
         ]
 
@@ -372,7 +372,7 @@ class HiveUnitTest(TestCase):
     def test_yield_table(self):
         self.hive.inspector.get_columns = lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
         results = [either.right for either in self.hive.yield_table(("sample_table", "Regular"))]
-        assert EXPECTED_TABLE == results
+        assert EXPECTED_TABLE == results  # noqa: SIM300
 
     def test_col_data_type(self):
         """
@@ -395,7 +395,7 @@ class HiveUnitTest(TestCase):
                 schema="sample_schema",
             )
         )
-        for _, (expected, original) in enumerate(zip(EXPECTED_COMPLEX_COL_TYPE, col_list)):
+        for _, (expected, original) in enumerate(zip(EXPECTED_COMPLEX_COL_TYPE, col_list)):  # noqa: B905
 
             def custom_eq(self, __value: object) -> bool:
                 return self.length == __value.length and self.collation == __value.collation

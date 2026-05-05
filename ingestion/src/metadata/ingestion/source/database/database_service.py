@@ -14,11 +14,11 @@ Base class for ingesting database services
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple
+from typing import Any, Iterable, List, Optional, Set, Tuple  # noqa: UP035
 
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -136,7 +136,7 @@ class DatabaseServiceTopology(ServiceTopology):
         children=["databaseSchema"],
         post_process=["mark_databases_as_deleted"],
     )
-    databaseSchema: Annotated[TopologyNode, Field(description="Database Schema Node")] = TopologyNode(
+    databaseSchema: Annotated[TopologyNode, Field(description="Database Schema Node")] = TopologyNode(  # noqa: N815
         producer="get_database_schema_names",
         stages=[
             NodeStage(
@@ -211,10 +211,10 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
-    database_source_state: Set = set()
-    stored_procedure_source_state: Set = set()
-    database_entity_source_state: Set = set()
-    schema_entity_source_state: Set = set()
+    database_source_state: Set = set()  # noqa: RUF012, UP006
+    stored_procedure_source_state: Set = set()  # noqa: RUF012, UP006
+    database_entity_source_state: Set = set()  # noqa: RUF012, UP006
+    schema_entity_source_state: Set = set()  # noqa: RUF012, UP006
     # Big union of types we want to fetch dynamically
     service_connection: DatabaseConnection.model_fields["config"].annotation  # noqa: F821
 
@@ -254,7 +254,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
 
     @abstractmethod
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:  # noqa: UP006, UP045
         """
         Prepares the table name to be sent to stage.
         Filtering happens here.
@@ -290,14 +290,16 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
 
     def yield_table_tags(
-        self, table_name_and_type: Tuple[str, TableType]
+        self,
+        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each table
         """
 
     def yield_table_tag_details(
-        self, table_name_and_type: Tuple[str, TableType]
+        self,
+        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each table
@@ -321,9 +323,9 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     @staticmethod
     def normalize_table_constraints(
-        table_constraints: List[TableConstraint],
-        columns: List[Column],
-    ) -> List[TableConstraint]:
+        table_constraints: List[TableConstraint],  # noqa: UP006
+        columns: List[Column],  # noqa: UP006
+    ) -> List[TableConstraint]:  # noqa: UP006
         """
         Normalize constraint column names to match actual column definitions.
         Some data sources (e.g., BigQuery) may return constraint column names
@@ -347,17 +349,17 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         table_name,
         schema_name,
         db_name,
-        table_constraints: List[TableConstraint],
+        table_constraints: List[TableConstraint],  # noqa: UP006
         foreign_columns: [],
         columns,
-    ) -> List[TableConstraint]:
+    ) -> List[TableConstraint]:  # noqa: UP006
         """
         process the table constraints of all tables
         transform SQLAlchemy returned foreign_columns into list of TableConstraint.
         """
 
     @abstractmethod
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
+    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
         """
         From topology.
         Prepare a table request and pass it to the sink.
@@ -379,7 +381,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
         yield from self.get_database_schema_names()
 
-    def get_tag_by_fqn(self, entity_fqn: str) -> Optional[List[TagLabel]]:
+    def get_tag_by_fqn(self, entity_fqn: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         Pick up the tags registered in the context
         searching by entity FQN
@@ -397,7 +399,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                     tag_labels.append(tag_label)
         return tag_labels or None
 
-    def get_database_tag_labels(self, database_name: str) -> Optional[List[TagLabel]]:
+    def get_database_tag_labels(self, database_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         Method to get schema tags
         This will only get executed if the tags context
@@ -411,7 +413,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         )
         return self.get_tag_by_fqn(entity_fqn=database_fqn)
 
-    def get_schema_tag_labels(self, schema_name: str) -> Optional[List[TagLabel]]:
+    def get_schema_tag_labels(self, schema_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         Method to get schema tags
         This will only get executed if the tags context
@@ -427,7 +429,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         return self.get_tag_by_fqn(entity_fqn=schema_fqn)
 
     @calculate_execution_time()
-    def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
+    def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         This will only get executed if the tags context
         is properly informed
@@ -443,7 +445,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         )
         return self.get_tag_by_fqn(entity_fqn=table_fqn)
 
-    def get_column_tag_labels(self, table_name: str, column: dict) -> Optional[List[TagLabel]]:
+    def get_column_tag_labels(self, table_name: str, column: dict) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         This will only get executed if the tags context
         is properly informed
@@ -578,7 +580,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             return True
         return False
 
-    def get_database_owner_ref(self, database_name: str) -> Optional[EntityReferenceList]:
+    def get_database_owner_ref(self, database_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Get owner for database entity using ownerConfig.
 
@@ -610,7 +612,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
         return None
 
-    def get_schema_owner_ref(self, schema_name: str) -> Optional[EntityReferenceList]:
+    def get_schema_owner_ref(self, schema_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Get owner for schema entity using ownerConfig.
 
@@ -647,7 +649,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         return None
 
     @calculate_execution_time()
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Get owner for table entity using ownerConfig.
 
@@ -687,7 +689,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                     schema=self.context.get().database_schema,
                 )
                 owner_ref = self.metadata.get_reference_by_name(name=owner_name, is_owner=True)
-                return owner_ref
+                return owner_ref  # noqa: RET504
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner for table {table_name}: {exc}")

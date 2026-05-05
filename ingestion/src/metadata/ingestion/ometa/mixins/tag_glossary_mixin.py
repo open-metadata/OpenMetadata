@@ -11,7 +11,7 @@
 """Tag and Glossary Term specific operations"""
 
 import traceback
-from typing import Dict
+from typing import Dict  # noqa: UP035
 
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
@@ -24,7 +24,7 @@ class OMetaTagGlossaryMixin:
 
     client: REST
 
-    def get_tag_assets(self, fqn: str, limit: int = 10, offset: int = 0) -> Dict:
+    def get_tag_assets(self, fqn: str, limit: int = 10, offset: int = 0) -> Dict:  # noqa: UP006
         """
         Get paginated list of assets for a tag
 
@@ -45,7 +45,7 @@ class OMetaTagGlossaryMixin:
             logger.warning(f"Could not get tag assets due to {exc}")
             return {}
 
-    def get_glossary_term_assets(self, fqn: str, limit: int = 10, offset: int = 0) -> Dict:
+    def get_glossary_term_assets(self, fqn: str, limit: int = 10, offset: int = 0) -> Dict:  # noqa: UP006
         """
         Get paginated list of assets for a glossary term
 

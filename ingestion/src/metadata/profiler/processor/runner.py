@@ -17,7 +17,7 @@ This is useful to centralise the running logic
 and manage behavior such as timeouts.
 """
 
-from typing import TYPE_CHECKING, Callable, Dict, Iterator, Optional, Union
+from typing import TYPE_CHECKING, Callable, Dict, Iterator, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Table, text
 from sqlalchemy.orm import Query, Session
@@ -112,10 +112,10 @@ class QueryRunner:
     def __init__(
         self,
         session: Session,
-        dataset: Union[type, AliasedClass],
+        dataset: Union[type, AliasedClass],  # noqa: UP007
         raw_dataset: Table,
-        partition_details: Optional[Dict] = None,
-        profile_sample_query: Optional[str] = None,
+        partition_details: Optional[Dict] = None,  # noqa: UP006, UP045
+        profile_sample_query: Optional[str] = None,  # noqa: UP045
     ):
         self._session = session
         self._dataset = dataset

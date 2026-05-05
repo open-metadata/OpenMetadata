@@ -13,15 +13,15 @@ Deploy the DAG and scan it with the scheduler
 """
 
 import traceback
-from typing import Callable
+from typing import Callable  # noqa: UP035
 
 from flask import Blueprint, Response, request
-from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.operations.deploy import DagDeployer
-from openmetadata_managed_apis.utils.logger import routes_logger
 from pydantic import ValidationError
 
 from metadata.ingestion.api.parser import parse_ingestion_pipeline_config_gracefully
+from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.operations.deploy import DagDeployer
+from openmetadata_managed_apis.utils.logger import routes_logger
 
 logger = routes_logger()
 
@@ -35,17 +35,18 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
-    from airflow.security import permissions
-    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
-    from openmetadata_managed_apis.utils.security_compat import (
+    from airflow.security import permissions  # noqa: PLC0415
+
+    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher  # noqa: PLC0415
+    from openmetadata_managed_apis.utils.security_compat import (  # noqa: PLC0415
         requires_access_decorator,
     )
 
     # CSRF protection import - different between Airflow 2.x and 3.x
     if not is_airflow_3_or_higher():
-        from airflow.www.app import csrf
+        from airflow.www.app import csrf  # noqa: PLC0415
     else:
-        from airflow.providers.fab.www.app import csrf
+        from airflow.providers.fab.www.app import csrf  # noqa: PLC0415
 
     @blueprint.route("/deploy", methods=["POST"])
     @csrf.exempt
@@ -71,7 +72,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
             deployer = DagDeployer(ingestion_pipeline)
             response = deployer.deploy()
 
-            return response
+            return response  # noqa: RET504, TRY300
 
         except ValidationError as err:
             logger.debug(traceback.format_exc())

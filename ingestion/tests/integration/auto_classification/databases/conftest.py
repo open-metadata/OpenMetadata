@@ -31,7 +31,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 @pytest.fixture(scope="module")
 def postgres_container():
     """Start a PostgreSQL container with the test database."""
-    init_file = os.path.join(os.path.dirname(__file__), "init.sql")
+    init_file = os.path.join(os.path.dirname(__file__), "init.sql")  # noqa: PTH118, PTH120
     container = PostgresContainer("postgres:15", dbname="test_db").with_volume_mapping(
         init_file, "/docker-entrypoint-initdb.d/init.sql"
     )
@@ -416,7 +416,7 @@ def pii_classification(metadata: OpenMetadata[Classification, CreateClassificati
     )
     entity = metadata.create_or_update(create_classification_request)
 
-    return entity
+    return entity  # noqa: RET504
 
 
 @pytest.fixture(scope="session")

@@ -53,8 +53,8 @@ from metadata.generated.schema.type.tagLabel import (
 from metadata.generated.schema.type.termRelation import TermRelation
 from metadata.utils import fqn
 
-from ..integration_base import generate_name
-from .conftest import _safe_delete
+from ..integration_base import generate_name  # noqa: TID252
+from .conftest import _safe_delete  # noqa: TID252
 
 
 def _glossary_request(name=None):

@@ -52,7 +52,7 @@ _BASIC_AUTH_CALLBACK_PATH = "metadata.ingestion.source.pipeline.airflow.api.clie
 
 
 def _make_access_token_config(token: str = "test_token") -> AirflowRestApiConnection:
-    """Helper – build a RestAPI config using a static access token."""
+    """Helper – build a RestAPI config using a static access token."""  # noqa: RUF002
     return AirflowRestApiConnection(
         type="RestAPI",
         authConfig=accessTokenConfig.AccessToken(token=token),
@@ -60,7 +60,7 @@ def _make_access_token_config(token: str = "test_token") -> AirflowRestApiConnec
 
 
 def _make_airflow_connection(token: str = "test_token") -> AirflowConnection:
-    """Helper – build a full AirflowConnection using a static access token."""
+    """Helper – build a full AirflowConnection using a static access token."""  # noqa: RUF002
     return AirflowConnection(
         hostPort="http://localhost:8080",
         connection=_make_access_token_config(token),
@@ -505,7 +505,7 @@ class TestAirflowApiMockedIntegration:
 
         # build_basic_auth_callback calls try_exchange_jwt (a real HTTP POST).
         # Patch it to return a dummy (callback, None) tuple.
-        dummy_callback = lambda: ("Basic YWRtaW46YWRtaW4xMjM=", 7 * 24 * 3600)
+        dummy_callback = lambda: ("Basic YWRtaW46YWRtaW4xMjM=", 7 * 24 * 3600)  # noqa: E731
         with (
             patch(_BASIC_AUTH_CALLBACK_PATH, return_value=(dummy_callback, None)),
             patch(_TRACKED_REST_PATH) as mock_tracked_rest_cls,
@@ -587,7 +587,7 @@ class TestAirflowApiMockedIntegration:
             assert dag_details.dag_id == "sample_etl_dag"
             assert dag_details.description == "Sample ETL pipeline"
             assert dag_details.fileloc == "/opt/airflow/dags/sample_etl.py"
-            assert dag_details.is_paused == False
+            assert dag_details.is_paused == False  # noqa: E712
             assert dag_details.owners == ["data_team"]
 
             # Verify tags parsing
@@ -629,7 +629,7 @@ class TestAirflowApiMockedIntegration:
 
             assert len(dag_runs) == 2
 
-            # AirflowApiDagRun is a Pydantic model – use attribute access.
+            # AirflowApiDagRun is a Pydantic model – use attribute access.  # noqa: RUF003
             run1 = dag_runs[0]
             assert run1.dag_run_id == "scheduled__2024-01-01T00:00:00+00:00"
             assert run1.state == "success"
@@ -647,7 +647,7 @@ class TestAirflowApiMockedIntegration:
         ``get_task_instances_for_run`` (paginated helper) returns a list of
         ``AirflowApiTaskInstance`` model objects – use attribute access.
         The lower-level ``get_task_instances`` returns the raw API dict.
-        """
+        """  # noqa: RUF002
         config = _make_airflow_connection()
 
         run_id = "scheduled__2024-01-01T00:00:00+00:00"
@@ -668,7 +668,7 @@ class TestAirflowApiMockedIntegration:
 
             assert len(task_instances) == 3
 
-            # AirflowApiTaskInstance is a Pydantic model – use attribute access.
+            # AirflowApiTaskInstance is a Pydantic model – use attribute access.  # noqa: RUF003
             extract_instance = next(ti for ti in task_instances if ti.task_id == "extract_data")
             assert extract_instance.state == "success"
             assert extract_instance.start_date is not None

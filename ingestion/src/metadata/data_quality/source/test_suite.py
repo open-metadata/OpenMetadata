@@ -17,7 +17,7 @@ The main goal is to get the configured table from the API.
 
 import itertools
 import traceback
-from typing import Dict, Iterable, List, Optional, cast
+from typing import Dict, Iterable, List, Optional, cast  # noqa: UP035
 
 from metadata.data_quality.api.models import TableAndTests
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
@@ -37,7 +37,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
-    TestSuitePipeline,
+    TestSuitePipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -46,7 +46,7 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.step import Step
+from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import entity_link, fqn
@@ -75,7 +75,7 @@ class TestSuiteSource(Source):
         self.source_config: TestSuitePipeline = self.config.source.sourceConfig.config
 
         # Build at runtime - if not informed in the yaml - the service connection map
-        self.service_connection_map: Dict[str, DatabaseConnection] = self._load_yaml_service_connections()
+        self.service_connection_map: Dict[str, DatabaseConnection] = self._load_yaml_service_connections()  # noqa: UP006
 
         self.test_connection()
 
@@ -83,14 +83,14 @@ class TestSuiteSource(Source):
     def name(self) -> str:
         return "OpenMetadata"
 
-    def _load_yaml_service_connections(self) -> Dict[str, DatabaseConnection]:
+    def _load_yaml_service_connections(self) -> Dict[str, DatabaseConnection]:  # noqa: UP006
         """Load the service connections from the YAML file"""
         service_connections = self.source_config.serviceConnections
         if not service_connections:
             return {}
-        return {conn.serviceName: cast(DatabaseConnection, conn.serviceConnection.root) for conn in service_connections}
+        return {conn.serviceName: cast(DatabaseConnection, conn.serviceConnection.root) for conn in service_connections}  # noqa: TC006
 
-    def _get_table_entity(self) -> Optional[Table]:
+    def _get_table_entity(self) -> Optional[Table]:  # noqa: UP045
         """given an entity fqn return the table entity
 
         Args:
@@ -124,13 +124,13 @@ class TestSuiteSource(Source):
             try:
                 service: DatabaseService = self.metadata.get_by_name(DatabaseService, service_name)
                 if not service:
-                    raise ConnectionError(
+                    raise ConnectionError(  # noqa: TRY301
                         f"Could not retrieve service with name `{service_name}`. "
                         "Typically caused by the `entityFullyQualifiedName` does not exists in OpenMetadata "
                         "or the JWT Token is invalid."
                     )
                 if not service.connection:
-                    raise ConnectionError(
+                    raise ConnectionError(  # noqa: TRY301
                         f"Service with name `{service_name}` does not have a connection. "
                         "If the connection is not stored in OpenMetadata, please provide it in the YAML file."
                     )
@@ -150,7 +150,7 @@ class TestSuiteSource(Source):
                     f"Error getting service connection for service name [{service_name}]"
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
-                raise exc
+                raise exc  # noqa: TRY201
 
         service_connection = self.service_connection_map[service_name]
         self._apply_service_connection_modifiers(service_connection)
@@ -183,14 +183,14 @@ class TestSuiteSource(Source):
         args_dict["use_multistage_engine"] = True
         pinot_config.connectionArguments = ConnectionArguments(root=args_dict)
 
-    def _get_test_cases_from_test_suite(self, test_suite: TestSuite) -> List[TestCase]:
+    def _get_test_cases_from_test_suite(self, test_suite: TestSuite) -> List[TestCase]:  # noqa: UP006
         """Return test cases if the test suite exists and has them"""
         test_cases = self.metadata.list_all_entities(
             entity=TestCase,
             fields=["testSuite", "entityLink", "testDefinition"],
             params={"testSuiteId": test_suite.id.root},
         )
-        test_cases = cast(List[TestCase], test_cases)  # satisfy type checker
+        test_cases = cast(List[TestCase], test_cases)  # satisfy type checker  # noqa: TC006, UP006
         if self.source_config.testCases is not None:
             test_cases = [t for t in test_cases if t.name in self.source_config.testCases]
         return test_cases
@@ -258,7 +258,7 @@ class TestSuiteSource(Source):
         # Otherwise, we pick the tests already registered in the suite
         else:
             logger.info(f"Using existing test suite for table {table.name.root}")
-            test_suite: Optional[TestSuite] = self.metadata.get_by_id(
+            test_suite: Optional[TestSuite] = self.metadata.get_by_id(  # noqa: UP045
                 entity=TestSuite, entity_id=table.testSuite.id.root
             )
             if test_suite is None:
@@ -295,7 +295,7 @@ class TestSuiteSource(Source):
             return
 
         logger.info(f"Found test suite: {test_suite.name.root}")
-        test_cases: List[TestCase] = self._get_test_cases_from_test_suite(test_suite)
+        test_cases: List[TestCase] = self._get_test_cases_from_test_suite(test_suite)  # noqa: UP006
         grouped_by_table = itertools.groupby(test_cases, key=lambda t: entity_link.get_table_fqn(t.entityLink.root))
         for table_fqn, group in grouped_by_table:
             table_entity: Table = self.metadata.get_by_name(Table, table_fqn, fields=["tableProfilerConfig"])
@@ -334,7 +334,7 @@ class TestSuiteSource(Source):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)

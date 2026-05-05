@@ -13,16 +13,16 @@ Test the connection against a source system
 """
 
 import traceback
-from typing import Callable
+from typing import Callable  # noqa: UP035
 
 from flask import Blueprint, Response, escape, request
-from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.utils.logger import routes_logger
 from pydantic import ValidationError
 
 from metadata.automations.execute_runner import execute
 from metadata.ingestion.api.parser import parse_automation_workflow_gracefully
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
+from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.utils.logger import routes_logger
 
 logger = routes_logger()
 
@@ -36,17 +36,18 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
-    from airflow.security import permissions
-    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
-    from openmetadata_managed_apis.utils.security_compat import (
+    from airflow.security import permissions  # noqa: PLC0415
+
+    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher  # noqa: PLC0415
+    from openmetadata_managed_apis.utils.security_compat import (  # noqa: PLC0415
         requires_access_decorator,
     )
 
     # CSRF protection import - different between Airflow 2.x and 3.x
     if not is_airflow_3_or_higher():
-        from airflow.www.app import csrf
+        from airflow.www.app import csrf  # noqa: PLC0415
     else:
-        from airflow.providers.fab.www.app import csrf
+        from airflow.providers.fab.www.app import csrf  # noqa: PLC0415
 
     @blueprint.route("/run_automation", methods=["POST"])
     @csrf.exempt

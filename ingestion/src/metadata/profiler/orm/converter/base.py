@@ -37,7 +37,7 @@ class Base(DeclarativeBase):
 SQA_RESERVED_ATTRIBUTES = ["metadata"]
 
 
-def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional[bool]:
+def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional[bool]:  # noqa: UP045
     """Check whether column or table name are not uppercase for snowflake table.
     If so, then force quoting, If not return None to let engine backend handle the logic.
 
@@ -52,7 +52,7 @@ def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional
     return None
 
 
-def check_if_should_quote_column_name(table_service_type) -> Optional[bool]:
+def check_if_should_quote_column_name(table_service_type) -> Optional[bool]:  # noqa: UP045
     """Check whether column name should be quoted when passed into the sql command build up.
     This is important when a column name is the same as a reserve word and causes a sql error.
 
@@ -99,8 +99,10 @@ def build_orm_col(idx: int, col: Column, table_service_type, *, _quote=None) -> 
 
 
 def ometa_to_sqa_orm(
-    table: Table, metadata: OpenMetadata, sqa_metadata_obj: Optional[MetaData] = None
-) -> Optional[type]:
+    table: Table,
+    metadata: OpenMetadata,
+    sqa_metadata_obj: Optional[MetaData] = None,  # noqa: UP045
+) -> Optional[type]:  # noqa: UP045
     """
     Given an OpenMetadata instance, prepare
     the SQLAlchemy ORM class
@@ -117,7 +119,7 @@ def ometa_to_sqa_orm(
         can be left as None so that the global_metadata object is used.
     """
     _metadata = sqa_metadata_obj or Base.metadata
-    table.serviceType = cast(databaseService.DatabaseServiceType, table.serviceType)  # satisfy mypy
+    table.serviceType = cast(databaseService.DatabaseServiceType, table.serviceType)  # satisfy mypy  # noqa: TC006
 
     # SQA 2.x raises a hard error if no primary key columns are found (was just a warning in 1.x).
     # Since build_orm_col assigns PK to the first column, we need at least one column.
@@ -159,7 +161,7 @@ def ometa_to_sqa_orm(
     )
 
     if not issubclass(orm, Base):
-        raise ValueError("OMeta to ORM did not create a valid ORM class")
+        raise ValueError("OMeta to ORM did not create a valid ORM class")  # noqa: TRY004
     return orm
 
 

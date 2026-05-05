@@ -176,7 +176,7 @@ EXPECTED_RESULT = CreateSearchIndexRequest(
 
 class OpenSearchUnitTest(TestCase):
     @patch("metadata.ingestion.source.search.search_service.SearchServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         # Set the test_connection to return False so that test_connection doesn't interfere.
         test_connection.return_value = False

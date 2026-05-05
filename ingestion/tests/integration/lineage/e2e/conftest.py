@@ -94,48 +94,48 @@ def oracle_lineage_container():
     )
 
     container = OracleTestContainer()
-    print(f"\nOracle container started on port {container.exposed_port} for lineage tests")
+    print(f"\nOracle container started on port {container.exposed_port} for lineage tests")  # noqa: T201
 
     _grant_query_privileges(container)
 
     sql_file_path = Path(__file__).parent / "data" / "lineage.sql"
     _load_sql_file(container, sql_file_path)
 
-    print("Schema: test (lineage tests)")
+    print("Schema: test (lineage tests)")  # noqa: T201
     yield container
 
-    print("\nStopping container of lineage tests...")
+    print("\nStopping container of lineage tests...")  # noqa: T201
     container.stop()
-    print("Container stopped. Removing image...")
+    print("Container stopped. Removing image...")  # noqa: T201
     container.delete_image()
-    print("Image removed.")
+    print("Image removed.")  # noqa: T201
 
 
 @pytest.fixture(scope="package")
 def oracle_lineage_ingestion(oracle_lineage_service_name, metadata):
-    print("\n\nRunning metadata ingestion workflow for lineage tests...")
+    print("\n\nRunning metadata ingestion workflow for lineage tests...")  # noqa: T201
     metadata_workflow_config = OpenMetadataWorkflowConfig.model_validate(ORACLE_METADATA_CONFIG)
     metadata_workflow: IngestionWorkflow = MetadataWorkflow(metadata_workflow_config)
     metadata_workflow.execute()
-    print("Metadata ingestion workflow completed.")
+    print("Metadata ingestion workflow completed.")  # noqa: T201
 
-    print("\nRunning lineage ingestion workflow for lineage tests...")
+    print("\nRunning lineage ingestion workflow for lineage tests...")  # noqa: T201
     lineage_workflow_config = OpenMetadataWorkflowConfig.model_validate(ORACLE_LINEAGE_CONFIG)
     lineage_workflow: IngestionWorkflow = MetadataWorkflow(lineage_workflow_config)
     lineage_workflow.execute()
-    print("Lineage ingestion workflow completed.")
+    print("Lineage ingestion workflow completed.")  # noqa: T201
 
     yield
 
-    print("\nCleaning up lineage test service...")
+    print("\nCleaning up lineage test service...")  # noqa: T201
     service_entity = metadata.get_by_name(DatabaseService, oracle_lineage_service_name)
     if service_entity:
         metadata.delete(DatabaseService, service_entity.id, recursive=True, hard_delete=True)
-        print("Lineage test service cleaned up.")
+        print("Lineage test service cleaned up.")  # noqa: T201
 
 
 def _grant_query_privileges(container):
-    print("\nGranting query privileges to test user...")
+    print("\nGranting query privileges to test user...")  # noqa: T201
 
     dsn = oracledb.makedsn("localhost", container.exposed_port, service_name=container.dbname)
     connection = oracledb.connect(user="sys", password="test", dsn=dsn, mode=oracledb.AUTH_MODE_SYSDBA)
@@ -155,24 +155,24 @@ def _grant_query_privileges(container):
         cursor.close()
         connection.close()
     except Exception as e:
-        print(f"Error closing cursor/connection after granting query privileges: {e}")
-        pass
-    print("Query privileges granted successfully")
+        print(f"Error closing cursor/connection after granting query privileges: {e}")  # noqa: T201
+        pass  # noqa: PIE790
+    print("Query privileges granted successfully")  # noqa: T201
 
 
 def _load_sql_file(container, sql_file_path: Path):
     if not sql_file_path.exists():
-        print(f"SQL file not found: {sql_file_path}")
+        print(f"SQL file not found: {sql_file_path}")  # noqa: T201
         return
 
-    if os.path.getsize(sql_file_path) == 0:
-        print(f"SQL file is empty: {sql_file_path}")
+    if os.path.getsize(sql_file_path) == 0:  # noqa: PTH202
+        print(f"SQL file is empty: {sql_file_path}")  # noqa: T201
         return
 
-    print(f"Loading SQL from: {sql_file_path}")
+    print(f"Loading SQL from: {sql_file_path}")  # noqa: T201
 
     try:
-        with open(sql_file_path, "r") as f:
+        with open(sql_file_path, "r") as f:  # noqa: PTH123
             sql_content = f.read()
 
         connection = container.raw_connection()
@@ -182,13 +182,13 @@ def _load_sql_file(container, sql_file_path: Path):
         # This is the standard Oracle way to separate statements
         statements = sql_content.split("\n/\n")
 
-        print(f"Executing {len(statements)} SQL statements...")
+        print(f"Executing {len(statements)} SQL statements...")  # noqa: T201
         for i, statement in enumerate(statements, 1):
-            statement = statement.strip()
+            statement = statement.strip()  # noqa: PLW2901
 
             # Remove trailing / if present (last statement in file)
             if statement.endswith("/"):
-                statement = statement[:-1].strip()
+                statement = statement[:-1].strip()  # noqa: PLW2901
 
             if not statement:
                 continue
@@ -196,17 +196,17 @@ def _load_sql_file(container, sql_file_path: Path):
             try:
                 cursor.execute(statement)
                 connection.commit()
-                print(f"  Statement {i}/{len(statements)} executed")
+                print(f"  Statement {i}/{len(statements)} executed")  # noqa: T201
             except Exception as e:
-                print(f"  Statement {i}/{len(statements)} failed: {e}")
-                print(f"    Statement content: {statement}")
+                print(f"  Statement {i}/{len(statements)} failed: {e}")  # noqa: T201
+                print(f"    Statement content: {statement}")  # noqa: T201
                 connection.rollback()
                 continue
 
         cursor.close()
         connection.close()
-        print("Successfully loaded lineage.sql into Oracle container for lineage tests.")
+        print("Successfully loaded lineage.sql into Oracle container for lineage tests.")  # noqa: T201
 
     except Exception as e:
-        print(f"Failed to load SQL: {e}")
+        print(f"Failed to load SQL: {e}")  # noqa: T201
         raise

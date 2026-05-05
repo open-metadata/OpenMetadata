@@ -12,7 +12,7 @@
 Test Microsoft Fabric Pipeline connector using the topology
 """
 
-from typing import List
+from typing import List  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -83,7 +83,7 @@ MOCK_PIPELINE = Pipeline(
 )
 
 # Mock Fabric API responses
-MOCK_PIPELINES: List[FabricPipeline] = [
+MOCK_PIPELINES: List[FabricPipeline] = [  # noqa: UP006
     FabricPipeline(
         id="pipeline-id-1",
         display_name="Test ETL Pipeline",
@@ -98,7 +98,7 @@ MOCK_PIPELINES: List[FabricPipeline] = [
     ),
 ]
 
-MOCK_PIPELINE_RUNS: List[FabricPipelineRun] = [
+MOCK_PIPELINE_RUNS: List[FabricPipelineRun] = [  # noqa: UP006
     FabricPipelineRun(
         id="run-id-1",
         pipeline_id="pipeline-id-1",
@@ -115,7 +115,7 @@ MOCK_PIPELINE_RUNS: List[FabricPipelineRun] = [
     ),
 ]
 
-MOCK_PIPELINE_ACTIVITIES: List[FabricActivity] = [
+MOCK_PIPELINE_ACTIVITIES: List[FabricActivity] = [  # noqa: UP006
     FabricActivity(
         name="Copy Data",
         type="Copy",
@@ -172,7 +172,7 @@ class MicrosoftFabricPipelineUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.microsoftfabricpipeline.connection.get_connection")
     def __init__(
         self,
-        methodName,
+        methodName,  # noqa: N803
         mock_get_connection,
         test_connection,
     ) -> None:

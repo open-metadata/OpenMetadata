@@ -35,7 +35,7 @@ class SftpContainerConfig:
     username: str = "testuser"
     password: str = "testpass"
     port: int = 22
-    container_name: Optional[str] = None
+    container_name: Optional[str] = None  # noqa: UP045
     upload_dir: str = "upload"
 
 
@@ -74,9 +74,9 @@ def upload_test_data_to_sftp(container: SftpContainer, local_dir: str, remote_di
     sftp = paramiko.SFTPClient.from_transport(transport)
 
     try:
-        try:
+        try:  # noqa: SIM105
             sftp.mkdir(remote_dir)
-        except IOError:
+        except IOError:  # noqa: UP024
             pass
 
         for root, dirs, files in os.walk(local_dir):
@@ -88,13 +88,13 @@ def upload_test_data_to_sftp(container: SftpContainer, local_dir: str, remote_di
 
             for dir_name in dirs:
                 remote_path = f"{remote_root}/{dir_name}"
-                try:
+                try:  # noqa: SIM105
                     sftp.mkdir(remote_path)
-                except IOError:
+                except IOError:  # noqa: UP024
                     pass
 
             for file_name in files:
-                local_path = os.path.join(root, file_name)
+                local_path = os.path.join(root, file_name)  # noqa: PTH118
                 remote_path = f"{remote_root}/{file_name}"
                 sftp.put(local_path, remote_path)
     finally:
@@ -106,64 +106,64 @@ def create_test_data_directory() -> str:
     """Create a temporary directory with test data including structured and unstructured files"""
     temp_dir = tempfile.mkdtemp()
 
-    os.makedirs(os.path.join(temp_dir, "documents"))
-    os.makedirs(os.path.join(temp_dir, "data"))
-    os.makedirs(os.path.join(temp_dir, "data", "nested"))
-    os.makedirs(os.path.join(temp_dir, "data", "nested", "level2"))
-    os.makedirs(os.path.join(temp_dir, "data", "nested", "level2", "level3"))
-    os.makedirs(os.path.join(temp_dir, "media"))
-    os.makedirs(os.path.join(temp_dir, "empty_dir"))
+    os.makedirs(os.path.join(temp_dir, "documents"))  # noqa: PTH103, PTH118
+    os.makedirs(os.path.join(temp_dir, "data"))  # noqa: PTH103, PTH118
+    os.makedirs(os.path.join(temp_dir, "data", "nested"))  # noqa: PTH103, PTH118
+    os.makedirs(os.path.join(temp_dir, "data", "nested", "level2"))  # noqa: PTH103, PTH118
+    os.makedirs(os.path.join(temp_dir, "data", "nested", "level2", "level3"))  # noqa: PTH103, PTH118
+    os.makedirs(os.path.join(temp_dir, "media"))  # noqa: PTH103, PTH118
+    os.makedirs(os.path.join(temp_dir, "empty_dir"))  # noqa: PTH103, PTH118
 
-    with open(os.path.join(temp_dir, "readme.txt"), "w") as f:
+    with open(os.path.join(temp_dir, "readme.txt"), "w") as f:  # noqa: PTH118, PTH123
         f.write("This is a test file in the root directory.")
 
-    with open(os.path.join(temp_dir, "documents", "report.txt"), "w") as f:
+    with open(os.path.join(temp_dir, "documents", "report.txt"), "w") as f:  # noqa: PTH118, PTH123
         f.write("This is a test report.")
 
-    with open(os.path.join(temp_dir, "documents", "notes.md"), "w") as f:
+    with open(os.path.join(temp_dir, "documents", "notes.md"), "w") as f:  # noqa: PTH118, PTH123
         f.write("# Notes\n\nSome test notes.")
 
     # CSV file with structured data
-    with open(os.path.join(temp_dir, "data", "sample.csv"), "w") as f:
+    with open(os.path.join(temp_dir, "data", "sample.csv"), "w") as f:  # noqa: PTH118, PTH123
         f.write("id,name,value,price,active\n")
         f.write("1,Product A,100,19.99,true\n")
         f.write("2,Product B,200,29.99,false\n")
         f.write("3,Product C,150,24.99,true\n")
 
     # TSV file with structured data
-    with open(os.path.join(temp_dir, "data", "users.tsv"), "w") as f:
+    with open(os.path.join(temp_dir, "data", "users.tsv"), "w") as f:  # noqa: PTH118, PTH123
         f.write("user_id\tusername\temail\tage\n")
         f.write("1\tjohn_doe\tjohn@example.com\t30\n")
         f.write("2\tjane_doe\tjane@example.com\t25\n")
 
-    with open(os.path.join(temp_dir, "data", "config.json"), "w") as f:
+    with open(os.path.join(temp_dir, "data", "config.json"), "w") as f:  # noqa: PTH118, PTH123
         f.write('{"key": "value", "enabled": true}')
 
-    with open(os.path.join(temp_dir, "data", "nested", "deep_file.txt"), "w") as f:
+    with open(os.path.join(temp_dir, "data", "nested", "deep_file.txt"), "w") as f:  # noqa: PTH118, PTH123
         f.write("Deep nested file content.")
 
     # Files in deeply nested directories (level2, level3)
-    with open(os.path.join(temp_dir, "data", "nested", "level2", "level2_file.txt"), "w") as f:
+    with open(os.path.join(temp_dir, "data", "nested", "level2", "level2_file.txt"), "w") as f:  # noqa: PTH118, PTH123
         f.write("Level 2 nested file content.")
 
-    with open(
-        os.path.join(temp_dir, "data", "nested", "level2", "level3", "level3_file.csv"),
+    with open(  # noqa: PTH123
+        os.path.join(temp_dir, "data", "nested", "level2", "level3", "level3_file.csv"),  # noqa: PTH118
         "w",
     ) as f:
         f.write("col_a,col_b,col_c\n")
         f.write("val1,val2,val3\n")
 
     # Empty CSV file (header only)
-    with open(os.path.join(temp_dir, "data", "empty_data.csv"), "w") as f:
+    with open(os.path.join(temp_dir, "data", "empty_data.csv"), "w") as f:  # noqa: PTH118, PTH123
         f.write("header1,header2,header3\n")
 
     # File with special characters in name
-    with open(os.path.join(temp_dir, "data", "file-with_special.chars.csv"), "w") as f:
+    with open(os.path.join(temp_dir, "data", "file-with_special.chars.csv"), "w") as f:  # noqa: PTH118, PTH123
         f.write("name,score\n")
         f.write("test,100\n")
 
     # File without extension
-    with open(os.path.join(temp_dir, "documents", "README"), "w") as f:
+    with open(os.path.join(temp_dir, "documents", "README"), "w") as f:  # noqa: PTH118, PTH123
         f.write("This is a README without extension.")
 
     # Create unstructured files (images, PDFs)
@@ -239,7 +239,7 @@ def create_test_data_directory() -> str:
             0x82,
         ]
     )
-    with open(os.path.join(temp_dir, "media", "logo.png"), "wb") as f:
+    with open(os.path.join(temp_dir, "media", "logo.png"), "wb") as f:  # noqa: PTH118, PTH123
         f.write(png_data)
 
     # Create a minimal JPEG file
@@ -587,7 +587,7 @@ def create_test_data_directory() -> str:
             0xD9,
         ]
     )
-    with open(os.path.join(temp_dir, "media", "photo.jpg"), "wb") as f:
+    with open(os.path.join(temp_dir, "media", "photo.jpg"), "wb") as f:  # noqa: PTH118, PTH123
         f.write(jpeg_data)
 
     # Create a minimal PDF file
@@ -613,11 +613,11 @@ startxref
 196
 %%EOF
 """
-    with open(os.path.join(temp_dir, "documents", "document.pdf"), "wb") as f:
+    with open(os.path.join(temp_dir, "documents", "document.pdf"), "wb") as f:  # noqa: PTH118, PTH123
         f.write(pdf_content)
 
     # Create another unstructured file in data directory
-    with open(os.path.join(temp_dir, "data", "archive.zip"), "wb") as f:
+    with open(os.path.join(temp_dir, "data", "archive.zip"), "wb") as f:  # noqa: PTH118, PTH123
         # Minimal ZIP file (empty archive)
         f.write(
             bytes(
@@ -746,7 +746,7 @@ workflowConfig:
     # Run 4: Creates level 4 directories (level3)
     # Run 5: Creates files (in all directories including deeply nested)
     # (bulk API may process entities out of order within a batch)
-    for run in range(5):
+    for run in range(5):  # noqa: B007
         workflow = MetadataWorkflow.create(workflow_config)
         workflow.execute()
         workflow.print_status()
@@ -808,7 +808,7 @@ workflowConfig:
     workflow_config = yaml.safe_load(config)
 
     # Run workflow multiple times to handle nested directories and files
-    for run in range(5):
+    for run in range(5):  # noqa: B007
         workflow = MetadataWorkflow.create(workflow_config)
         workflow.execute()
         workflow.print_status()

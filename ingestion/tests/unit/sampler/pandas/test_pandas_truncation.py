@@ -18,7 +18,7 @@ from uuid import uuid4
 
 import pytest
 
-if sys.version_info < (3, 9):
+if sys.version_info < (3, 9):  # noqa: UP036
     pytest.skip(
         "requires python 3.9+ due to incompatibility with object patch",
         allow_module_level=True,

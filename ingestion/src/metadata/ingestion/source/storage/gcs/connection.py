@@ -98,7 +98,7 @@ class Tester:
                 else:
                     raise SourceConnectionException(f"Bucket {bucket_name} not found in provided projects.")
             return
-        else:
+        else:  # noqa: RET505
             for project_id, client in self.client.storage_client.clients.items():
                 matched = False
                 for bucket in client.list_buckets():
@@ -153,7 +153,7 @@ class Tester:
                 bucket.get_blob(bucket_test.blob_name)
 
     def get_metrics(self):
-        for project_id in self.client.storage_client.clients.keys():
+        for project_id in self.client.storage_client.clients.keys():  # noqa: SIM118
             self.client.metrics_client.list_metric_descriptors(name=f"projects/{project_id}")
 
 
@@ -161,8 +161,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: GcsObjectStoreClient,
     service_connection: GcsConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part

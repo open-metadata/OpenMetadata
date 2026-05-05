@@ -32,6 +32,6 @@ class MariaDBStoredProcedure(BaseModel):
     name: str = Field(alias="procedure_name")
     schema_name: str
     definition: str
-    language: Optional[str]
-    procedure_type: Optional[str]
-    description: Optional[str]
+    language: Optional[str]  # noqa: UP045
+    procedure_type: Optional[str]  # noqa: UP045
+    description: Optional[str]  # noqa: UP045

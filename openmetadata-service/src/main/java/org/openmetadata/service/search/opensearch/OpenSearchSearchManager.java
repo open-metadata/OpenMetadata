@@ -189,7 +189,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   }
 
   @Override
-  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+  public Response searchByField(
+      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("OpenSearch client is not available");
@@ -199,6 +200,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(index))
+                    .from(from)
+                    .size(size)
                     .query(
                         q ->
                             q.bool(

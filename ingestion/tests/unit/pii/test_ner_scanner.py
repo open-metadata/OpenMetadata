@@ -29,7 +29,7 @@ def test_scanner_none(scanner):
     assert scanner.scan(list(range(100))) is None
     assert (
         scanner.scan(
-            " ".split(
+            " ".split(  # noqa: SIM905
                 "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam consequat quam sagittis convallis cursus."
             )
         )

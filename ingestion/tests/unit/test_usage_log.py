@@ -146,7 +146,7 @@ class QueryLogSourceTest(TestCase):
     Usage & Lineage via Query Log
     """
 
-    def __init__(self, methodName) -> None:
+    def __init__(self, methodName) -> None:  # noqa: N803
         super().__init__(methodName)
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_query_log_config)
         with patch("metadata.ingestion.source.database.query.usage.QueryLogUsageSource.test_connection"):

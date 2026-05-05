@@ -74,3 +74,4 @@ $$
 $$section
 ### Connection Arguments $(id="connectionArguments")
 Additional connection arguments such as security or protocol configs that can be sent to the service during connection.
+$$

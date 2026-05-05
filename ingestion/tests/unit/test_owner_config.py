@@ -20,7 +20,7 @@ Replaces the bash/YAML-based tests previously in owner_config_tests/ directory.
 """
 
 import uuid
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import Mock
 
@@ -37,12 +37,12 @@ from metadata.generated.schema.type.basic import (
 
 
 def build_owner_config(
-    default: Optional[str] = None,
+    default: Optional[str] = None,  # noqa: UP045
     enable_inheritance: bool = True,
-    database: Optional[Union[str, Dict[str, Any]]] = None,
-    database_schema: Optional[Union[str, Dict[str, Any]]] = None,
-    table: Optional[Union[str, Dict[str, Any]]] = None,
-) -> Dict[str, Any]:
+    database: Optional[Union[str, Dict[str, Any]]] = None,  # noqa: UP006, UP007, UP045
+    database_schema: Optional[Union[str, Dict[str, Any]]] = None,  # noqa: UP006, UP007, UP045
+    table: Optional[Union[str, Dict[str, Any]]] = None,  # noqa: UP006, UP007, UP045
+) -> Dict[str, Any]:  # noqa: UP006
     """
     Build owner configuration dictionary for testing.
 
@@ -56,7 +56,7 @@ def build_owner_config(
     Returns:
         Owner configuration dictionary
     """
-    config: Dict[str, Any] = {"enableInheritance": enable_inheritance}
+    config: Dict[str, Any] = {"enableInheritance": enable_inheritance}  # noqa: UP006
 
     if default:
         config["default"] = default
@@ -72,10 +72,10 @@ def build_owner_config(
 
 def build_test_workflow_config(
     service_name: str,
-    owner_config: Dict[str, Any],
+    owner_config: Dict[str, Any],  # noqa: UP006
     host_port: str = "localhost:5432",
     database: str = "finance_db",
-) -> Dict[str, Any]:
+) -> Dict[str, Any]:  # noqa: UP006
     """
     Build complete workflow configuration for testing.
 
@@ -193,8 +193,10 @@ class TestOwnerConfig(TestCase):
         }
 
         def get_by_name_side_effect(
-            entity: Any, fqn: str, fields: Optional[List[str]] = None
-        ) -> Optional[Union[User, Team]]:
+            entity: Any,
+            fqn: str,
+            fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+        ) -> Optional[Union[User, Team]]:  # noqa: UP007, UP045
             """Mock get_by_name to return users/teams or None"""
             if fqn in mock_users:
                 return mock_users[fqn]
