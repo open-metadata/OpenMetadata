@@ -43,6 +43,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import lombok.extern.slf4j.Slf4j;
@@ -130,17 +131,23 @@ public class S3LogStorage implements LogStorageInterface {
 
   // Lines accumulated since last successful partial.txt PUT, per stream.
   // Drained by writePartialLogsForStream (rewritten in Task 5).
+  // Values are plain ArrayList — NOT independently thread-safe.
+  // MUST be accessed only while holding the corresponding per-stream lock.
   private final Map<String, List<String>> pendingFlush = new ConcurrentHashMap<>();
 
   // Bytes pending in pendingFlush, per stream — drives the early-flush watermark in Task 5.
+  // Entries are removed in Tasks 7 (cleanupAbandonedStreams) and 8 (closeStream rewrite).
   private final Map<String, AtomicLong> pendingFlushBytes = new ConcurrentHashMap<>();
 
   // Monotonic logical line counter, per stream. Survives buffer eviction; never decrements.
   // Source of truth for offsets in the new flush logic (Task 5).
+  // Entries are removed in Tasks 7 (cleanupAbandonedStreams) and 8 (closeStream rewrite).
   private final Map<String, AtomicLong> totalLinesAppended = new ConcurrentHashMap<>();
 
-  // Per-stream consecutive flush failure count for alerting (consumed in Task 5).
-  private final Map<String, Integer> consecutiveFlushFailures = new ConcurrentHashMap<>();
+  // Per-stream consecutive flush failure count for alerting.
+  // Written AND consumed in Task 5 (writePartialLogsForStream rewrite).
+  // Entries are removed in Tasks 7 (cleanupAbandonedStreams) and 8 (closeStream rewrite).
+  private final Map<String, AtomicInteger> consecutiveFlushFailures = new ConcurrentHashMap<>();
 
   private ScheduledExecutorService cleanupExecutor;
 

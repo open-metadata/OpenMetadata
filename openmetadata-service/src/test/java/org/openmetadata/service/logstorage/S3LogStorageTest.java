@@ -703,6 +703,24 @@ public class S3LogStorageTest {
     assertEquals(3L, counters.get(streamKey).get());
   }
 
+  @Test
+  void testAppendLogsTrailingNewlineDoesNotOvercount() throws Exception {
+    mockActiveStreamCreation();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "line A\nline B\n");
+    String streamKey = testPipelineFQN + "/" + testRunId;
+
+    @SuppressWarnings("unchecked")
+    Map<String, List<String>> pending =
+        (Map<String, List<String>>) getPrivateField(s3LogStorage, "pendingFlush");
+    @SuppressWarnings("unchecked")
+    Map<String, AtomicLong> counters =
+        (Map<String, AtomicLong>) getPrivateField(s3LogStorage, "totalLinesAppended");
+
+    // "line A\nline B\n" → split → ["line A", "line B", ""] → trim → 2 lines
+    assertEquals(2, pending.get(streamKey).size(), "trailing newline must not yield an empty line");
+    assertEquals(2L, counters.get(streamKey).get());
+  }
+
   private static Object getPrivateField(Object target, String name) throws Exception {
     Field f = target.getClass().getDeclaredField(name);
     f.setAccessible(true);
