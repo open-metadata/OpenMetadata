@@ -173,7 +173,9 @@ public class FetchChangeEventsImpl implements JavaDelegate {
       execution.setVariable(updatedByVar, "governance-bot");
     }
     execution.setVariable(CARDINALITY_VARIABLE, entityList.size());
-    execution.setVariable(HAS_FINISHED_VARIABLE, records.isEmpty());
+    // singleExecution mode uses loopCardinality=1 with inputDataItem — when the collection is
+    // empty Flowable falls back to cardinality=1 and accesses entityList.get(0) → crash.
+    execution.setVariable(HAS_FINISHED_VARIABLE, records.isEmpty() || entityList.isEmpty());
     execution.setVariable(ENTITY_LIST_VARIABLE, entityList);
 
     // When parallelism > 1, split into sub-batches so PeriodicBatchEntityTrigger can dispatch

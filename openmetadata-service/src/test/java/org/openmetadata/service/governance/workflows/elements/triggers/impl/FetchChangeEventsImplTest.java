@@ -359,6 +359,37 @@ class FetchChangeEventsImplTest {
         .upsertSubscriberExtension(anyString(), anyString(), anyString(), anyString());
   }
 
+  // -------------------------------------------------------------------------
+  // execute — all records deduped away → entityList empty → hasFinished=true
+  // Without the fix, records.isEmpty()=false → notFinished path taken →
+  // singleExecution's loopCardinality=1 accesses entityList.get(0) → NoSuchElementException.
+  // -------------------------------------------------------------------------
+
+  @Test
+  void testExecute_allRecordsDedupedAway_setsHasFinishedTrue() {
+    LinkedHashMap<String, Boolean> priorBatchCache = new LinkedHashMap<>();
+    priorBatchCache.put("schema.myTable", Boolean.TRUE);
+    when(execution.getVariable(PROCESSED_FQNS_VARIABLE)).thenReturn(priorBatchCache);
+    when(execution.getVariable(CURRENT_BATCH_OFFSET_VARIABLE)).thenReturn(null);
+    when(execution.getVariable(MAX_PROCESSED_OFFSET_VARIABLE)).thenReturn(null);
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityFullyQualifiedName("schema.myTable");
+    changeEvent.setEntityType("table");
+    ChangeEventRecord record = new ChangeEventRecord(99L, JsonUtils.pojoToJson(changeEvent));
+    when(changeEventDAO.listByEntityTypesWithOffset(anyList(), anyLong(), any(int.class)))
+        .thenReturn(List.of(record));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      impl.execute(execution);
+    }
+
+    verify(execution).setVariable(eq(HAS_FINISHED_VARIABLE), eq(true));
+    verify(execution).setVariable(eq(ENTITY_LIST_VARIABLE), eq(List.of()));
+    verify(execution).setVariable(eq("numberOfEntities"), eq(0));
+  }
+
   private void injectField(Object target, String fieldName, Object value) throws Exception {
     Field field = FetchChangeEventsImpl.class.getDeclaredField(fieldName);
     field.setAccessible(true);
