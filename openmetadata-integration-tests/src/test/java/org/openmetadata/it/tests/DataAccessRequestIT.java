@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -30,6 +31,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -65,6 +67,7 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
  * </ul>
  */
 @Execution(ExecutionMode.CONCURRENT)
+@ExtendWith(TestNamespaceExtension.class)
 public class DataAccessRequestIT {
 
   private static final String DAR_FORM_SCHEMA_NAME = "DataAccessRequest";
@@ -78,6 +81,10 @@ public class DataAccessRequestIT {
     return table.getFullyQualifiedName();
   }
 
+  private static String tableEntityLink(String tableFqn) {
+    return String.format("<#E::table::%s>", tableFqn);
+  }
+
   private static CreateTask buildDarRequest(TestNamespace ns, String tableFqn, String accessType) {
     return new CreateTask()
         .withName(ns.prefix("dar-task"))
@@ -85,8 +92,7 @@ public class DataAccessRequestIT {
         .withCategory(TaskCategory.DataAccess)
         .withType(TaskEntityType.DataAccessRequest)
         .withPriority(TaskPriority.Medium)
-        .withAbout(tableFqn)
-        .withAboutType("table")
+        .withAbout(tableEntityLink(tableFqn))
         .withPayload(
             Map.of(
                 "accessType", accessType,
@@ -199,8 +205,7 @@ public class DataAccessRequestIT {
             .withName(ns.prefix("dar-cols"))
             .withCategory(TaskCategory.DataAccess)
             .withType(TaskEntityType.DataAccessRequest)
-            .withAbout(tableFqn)
-            .withAboutType("table")
+            .withAbout(tableEntityLink(tableFqn))
             .withPayload(
                 Map.of(
                     "accessType", "ColumnLevel",
@@ -224,8 +229,7 @@ public class DataAccessRequestIT {
             .withName(ns.prefix("dar-invalid"))
             .withCategory(TaskCategory.DataAccess)
             .withType(TaskEntityType.DataAccessRequest)
-            .withAbout(tableFqn)
-            .withAboutType("table")
+            .withAbout(tableEntityLink(tableFqn))
             // accessType missing — required by both the JSON Schema payload
             // (dataAccessRequestPayload.json) and the seeded form schema.
             .withPayload(Map.of("reason", "I need it"));

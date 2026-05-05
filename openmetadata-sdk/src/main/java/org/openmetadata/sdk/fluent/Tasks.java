@@ -223,11 +223,14 @@ public final class Tasks {
             .withCategory(TaskCategory.DataAccess)
             .withType(TaskEntityType.DataAccessRequest)
             .withPriority(TaskPriority.Medium)
-            .withAbout(entityFqn)
-            .withAboutType(entityType)
+            .withAbout(buildEntityLink(entityType, entityFqn))
             .withPayload(payload);
 
     return create(request);
+  }
+
+  private static String buildEntityLink(String entityType, String entityFqn) {
+    return String.format("<#E::%s::%s>", entityType, entityFqn);
   }
 
   /**
