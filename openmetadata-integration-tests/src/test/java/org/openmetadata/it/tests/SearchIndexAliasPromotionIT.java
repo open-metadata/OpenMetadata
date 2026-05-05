@@ -151,6 +151,54 @@ public class SearchIndexAliasPromotionIT {
     }
   }
 
+  /**
+   * Idempotency guard: re-run the app a second time after the first promotion succeeded. The
+   * second run replaces the canonical index again — exercises the full pre-existing-canonical →
+   * three-step swap path. If the deferred-canonical-delete logic is broken, the second run leaves
+   * the alias dangling and this test fails.
+   */
+  @Test
+  void perEntityPromotionIsIdempotentAcrossRepeatedRuns() throws Exception {
+    assumeFalse(
+        TestSuiteBootstrap.isK8sEnabled(), "App trigger not compatible with K8s pipeline backend");
+
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+
+    waitForCurrentRunCompletion(httpClient);
+    Long firstRunPrev = readLatestRunStartTime(httpClient);
+    triggerWithBulkOverrides(httpClient);
+    waitForLatestRunSuccess(httpClient, firstRunPrev);
+    Map<String, JsonNode> firstSettings = readIndexSettings(SETTINGS_INDEX);
+    assertTrue(!firstSettings.isEmpty(), "First run must leave a concrete index serving the alias");
+
+    waitForCurrentRunCompletion(httpClient);
+    Long secondRunPrev = readLatestRunStartTime(httpClient);
+    triggerWithBulkOverrides(httpClient);
+    waitForLatestRunSuccess(httpClient, secondRunPrev);
+
+    Map<String, JsonNode> secondSettings = readIndexSettings(SETTINGS_INDEX);
+    assertTrue(
+        !secondSettings.isEmpty(),
+        () ->
+            "Second run left alias '"
+                + SETTINGS_INDEX
+                + "' resolving to nothing — canonical was deleted but alias not re-attached.");
+    assertNotEquals(
+        firstSettings.keySet(),
+        secondSettings.keySet(),
+        "Second run should produce a new *_rebuild_* index (different concrete name from first)");
+    for (JsonNode indexSettings : secondSettings.values()) {
+      assertEquals(
+          "1s",
+          textOrNull(indexSettings.path("refresh_interval")),
+          "Second-run promoted index must also have live refresh_interval");
+      assertEquals(
+          "1",
+          textOrNull(indexSettings.path("number_of_replicas")),
+          "Second-run promoted index must also have live number_of_replicas");
+    }
+  }
+
   private static void triggerWithBulkOverrides(HttpClient httpClient) {
     Map<String, Object> bulk = new HashMap<>();
     bulk.put("numberOfReplicas", 0);

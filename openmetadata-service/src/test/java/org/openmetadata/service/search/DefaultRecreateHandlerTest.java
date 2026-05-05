@@ -44,7 +44,7 @@ class DefaultRecreateHandlerTest {
   class PromoteEntityIndexTests {
 
     @Test
-    @DisplayName("Should promote staged index with aliases from indexMapping")
+    @DisplayName("Should promote staged index with aliases from context")
     void testPromoteEntityIndexSuccess() {
       AliasState aliasState = new AliasState();
       aliasState.put(
@@ -54,16 +54,6 @@ class DefaultRecreateHandlerTest {
       SearchClient client = aliasState.toMock();
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("");
-
-      IndexMapping indexMapping =
-          IndexMapping.builder()
-              .indexName("table_search_index")
-              .alias("table")
-              .parentAliases(List.of("all", "dataAsset"))
-              .childAliases(List.of())
-              .build();
-      when(repo.getIndexMapping("table")).thenReturn(indexMapping);
 
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
         entityMock.when(Entity::getSearchRepository).thenReturn(repo);
@@ -73,6 +63,9 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
+                .canonicalAliases("table")
+                .existingAliases(new HashSet<>(Set.of("table_search_index")))
+                .parentAliases(new HashSet<>(Set.of("all", "dataAsset")))
                 .build();
 
         new DefaultRecreateHandler().promoteEntityIndex(context, true);
@@ -126,15 +119,6 @@ class DefaultRecreateHandlerTest {
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("");
-      when(repo.getIndexMapping("table"))
-          .thenReturn(
-              IndexMapping.builder()
-                  .indexName("table_search_index")
-                  .alias("table")
-                  .parentAliases(List.of("all"))
-                  .childAliases(List.of())
-                  .build());
 
       ReindexingMetrics metrics = mock(ReindexingMetrics.class);
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
@@ -147,6 +131,9 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
+                .canonicalAliases("table")
+                .existingAliases(new HashSet<>(Set.of("table_search_index")))
+                .parentAliases(new HashSet<>(Set.of("all")))
                 .build();
 
         new DefaultRecreateHandler().promoteEntityIndex(context, false);
@@ -170,8 +157,6 @@ class DefaultRecreateHandlerTest {
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("");
-      when(repo.getIndexMapping("table")).thenReturn(null);
 
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
         entityMock.when(Entity::getSearchRepository).thenReturn(repo);
@@ -181,12 +166,15 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
+                .canonicalAliases("table")
+                .existingAliases(new HashSet<>(Set.of("table_search_index")))
+                .parentAliases(new HashSet<>(Set.of("all")))
                 .build();
 
         new DefaultRecreateHandler().promoteEntityIndex(context, false);
       }
 
-      assertTrue(aliasState.indexAliases.get("table_search_index_rebuild_new").isEmpty());
+      assertTrue(aliasState.indexAliases.get("table_search_index_rebuild_new").contains("table"));
     }
 
     @Test
@@ -246,16 +234,6 @@ class DefaultRecreateHandlerTest {
       SearchClient client = aliasState.toMock();
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("");
-
-      IndexMapping indexMapping =
-          IndexMapping.builder()
-              .indexName("table_search_index")
-              .alias("table")
-              .parentAliases(List.of("all"))
-              .childAliases(List.of())
-              .build();
-      when(repo.getIndexMapping("table")).thenReturn(indexMapping);
 
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
         entityMock.when(Entity::getSearchRepository).thenReturn(repo);
@@ -265,6 +243,9 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_3000")
+                .canonicalAliases("table")
+                .existingAliases(new HashSet<>(Set.of("table_search_index")))
+                .parentAliases(new HashSet<>(Set.of("all")))
                 .build();
 
         new DefaultRecreateHandler().promoteEntityIndex(context, true);
@@ -287,15 +268,6 @@ class DefaultRecreateHandlerTest {
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("");
-      when(repo.getIndexMapping("table"))
-          .thenReturn(
-              IndexMapping.builder()
-                  .indexName("table_search_index")
-                  .alias("table")
-                  .parentAliases(List.of("all"))
-                  .childAliases(List.of())
-                  .build());
 
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
         entityMock.when(Entity::getSearchRepository).thenReturn(repo);
@@ -305,6 +277,9 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
+                .canonicalAliases("table")
+                .existingAliases(new HashSet<>(Set.of("table_search_index")))
+                .parentAliases(new HashSet<>(Set.of("all")))
                 .build();
 
         new DefaultRecreateHandler().promoteEntityIndex(context, true);
@@ -315,16 +290,14 @@ class DefaultRecreateHandlerTest {
     }
 
     @Test
-    @DisplayName("Should handle null indexMapping gracefully")
-    void testPromoteWithNullIndexMapping() {
+    @DisplayName("Empty aliases on context is handled even when caller forgot to populate them")
+    void testPromoteWithEmptyContextAliases() {
       AliasState aliasState = new AliasState();
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("");
-      when(repo.getIndexMapping("table")).thenReturn(null);
 
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
         entityMock.when(Entity::getSearchRepository).thenReturn(repo);
@@ -340,11 +313,11 @@ class DefaultRecreateHandlerTest {
       }
 
       Set<String> stagedAliases = aliasState.indexAliases.get("table_search_index_rebuild_new");
-      assertTrue(stagedAliases.isEmpty());
+      assertTrue(stagedAliases.isEmpty(), "No swap should occur when context has no aliases");
     }
 
     @Test
-    @DisplayName("Should include cluster alias prefix in aliases")
+    @DisplayName("Should preserve cluster-prefixed aliases supplied by the context")
     void testPromoteWithClusterAlias() {
       AliasState aliasState = new AliasState();
       aliasState.put("cluster_table_search_index_rebuild_new", new HashSet<>());
@@ -352,16 +325,6 @@ class DefaultRecreateHandlerTest {
       SearchClient client = aliasState.toMock();
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("cluster");
-
-      IndexMapping indexMapping =
-          IndexMapping.builder()
-              .indexName("table_search_index")
-              .alias("table")
-              .parentAliases(List.of("all"))
-              .childAliases(List.of())
-              .build();
-      when(repo.getIndexMapping("table")).thenReturn(indexMapping);
 
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
         entityMock.when(Entity::getSearchRepository).thenReturn(repo);
@@ -371,6 +334,9 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("cluster_table_search_index")
                 .stagedIndex("cluster_table_search_index_rebuild_new")
+                .canonicalAliases("cluster_table")
+                .existingAliases(new HashSet<>(Set.of("cluster_table_search_index")))
+                .parentAliases(new HashSet<>(Set.of("cluster_all")))
                 .build();
 
         new DefaultRecreateHandler().promoteEntityIndex(context, true);
@@ -421,10 +387,6 @@ class DefaultRecreateHandlerTest {
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("");
-      when(repo.getIndexMapping("table"))
-          .thenReturn(
-              IndexMapping.builder().indexName("table_search_index").alias("table").build());
 
       ReindexingMetrics metrics = mock(ReindexingMetrics.class);
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
@@ -437,6 +399,9 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
+                .canonicalAliases("table")
+                .existingAliases(new HashSet<>(Set.of("table_search_index")))
+                .parentAliases(new HashSet<>(Set.of("all")))
                 .build();
 
         new DefaultRecreateHandler().promoteEntityIndex(context, true);
@@ -455,15 +420,6 @@ class DefaultRecreateHandlerTest {
       SearchClient client = aliasState.toMock();
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("");
-      when(repo.getIndexMapping("table"))
-          .thenReturn(
-              IndexMapping.builder()
-                  .indexName("table_search_index")
-                  .alias("table")
-                  .parentAliases(List.of("all"))
-                  .childAliases(List.of())
-                  .build());
 
       EventPublisherJob jobData =
           new EventPublisherJob()
@@ -482,6 +438,9 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
+                .canonicalAliases("table")
+                .existingAliases(new HashSet<>(Set.of("table_search_index")))
+                .parentAliases(new HashSet<>(Set.of("all")))
                 .build();
 
         new DefaultRecreateHandler().withJobData(jobData).promoteEntityIndex(context, true);
@@ -511,10 +470,6 @@ class DefaultRecreateHandlerTest {
       SearchClient client = aliasState.toMock();
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("");
-      when(repo.getIndexMapping("table"))
-          .thenReturn(
-              IndexMapping.builder().indexName("table_search_index").alias("table").build());
 
       EventPublisherJob jobData =
           new EventPublisherJob()
@@ -532,6 +487,9 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
+                .canonicalAliases("table")
+                .existingAliases(new HashSet<>(Set.of("table_search_index")))
+                .parentAliases(new HashSet<>(Set.of("all")))
                 .build();
 
         new DefaultRecreateHandler().withJobData(jobData).promoteEntityIndex(context, true);
@@ -549,10 +507,6 @@ class DefaultRecreateHandlerTest {
       SearchClient client = aliasState.toMock();
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("");
-      when(repo.getIndexMapping("table"))
-          .thenReturn(
-              IndexMapping.builder().indexName("table_search_index").alias("table").build());
 
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
         entityMock.when(Entity::getSearchRepository).thenReturn(repo);
@@ -562,6 +516,9 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
+                .canonicalAliases("table")
+                .existingAliases(new HashSet<>(Set.of("table_search_index")))
+                .parentAliases(new HashSet<>(Set.of("all")))
                 .build();
 
         new DefaultRecreateHandler().promoteEntityIndex(context, true);
@@ -614,8 +571,6 @@ class DefaultRecreateHandlerTest {
       SearchClient client = aliasState.toMock();
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("");
-      when(repo.getIndexMapping("table")).thenReturn(null);
 
       ReindexingMetrics metrics = mock(ReindexingMetrics.class);
       DefaultRecreateHandler handler = new DefaultRecreateHandler();
@@ -656,15 +611,6 @@ class DefaultRecreateHandlerTest {
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("");
-      when(repo.getIndexMapping("table"))
-          .thenReturn(
-              IndexMapping.builder()
-                  .indexName("table_search_index")
-                  .alias("table")
-                  .parentAliases(List.of("all"))
-                  .childAliases(List.of())
-                  .build());
 
       DefaultRecreateHandler handler = new DefaultRecreateHandler();
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
@@ -675,6 +621,9 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
+                .canonicalAliases("table")
+                .existingAliases(new HashSet<>(Set.of("table_search_index")))
+                .parentAliases(new HashSet<>(Set.of("all")))
                 .build();
 
         handler.promoteEntityIndex(context, true);
@@ -698,15 +647,6 @@ class DefaultRecreateHandlerTest {
       SearchClient client = aliasState.toMock();
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("");
-      when(repo.getIndexMapping("table"))
-          .thenReturn(
-              IndexMapping.builder()
-                  .indexName("table_search_index")
-                  .alias("table")
-                  .parentAliases(List.of("all"))
-                  .childAliases(List.of())
-                  .build());
 
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
         entityMock.when(Entity::getSearchRepository).thenReturn(repo);
@@ -716,6 +656,9 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
+                .canonicalAliases("table")
+                .existingAliases(new HashSet<>(Set.of("table_search_index")))
+                .parentAliases(new HashSet<>(Set.of("all")))
                 .build();
 
         new DefaultRecreateHandler().promoteEntityIndex(context, true);
@@ -741,15 +684,6 @@ class DefaultRecreateHandlerTest {
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("");
-      when(repo.getIndexMapping("table"))
-          .thenReturn(
-              IndexMapping.builder()
-                  .indexName("table_search_index")
-                  .alias("table")
-                  .parentAliases(List.of("all"))
-                  .childAliases(List.of())
-                  .build());
 
       DefaultRecreateHandler handler = new DefaultRecreateHandler();
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
@@ -760,6 +694,9 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
+                .canonicalAliases("table")
+                .existingAliases(new HashSet<>(Set.of("table_search_index")))
+                .parentAliases(new HashSet<>(Set.of("all")))
                 .build();
 
         handler.promoteEntityIndex(context, true);
@@ -773,48 +710,132 @@ class DefaultRecreateHandlerTest {
   }
 
   @Nested
-  @DisplayName("getAliasesFromMapping Tests")
-  class GetAliasesFromMappingTests {
+  @DisplayName("Entry-point parity Tests")
+  class EntryPointParityTests {
+
+    private EntityReindexContext stdContext() {
+      return EntityReindexContext.builder()
+          .entityType("table")
+          .canonicalIndex("table_search_index")
+          .stagedIndex("table_search_index_rebuild_new")
+          .canonicalAliases("table")
+          .existingAliases(new HashSet<>(Set.of("table_search_index")))
+          .parentAliases(new HashSet<>(Set.of("all")))
+          .build();
+    }
 
     @Test
-    @DisplayName("Should return all aliases from indexMapping")
-    void testGetAliasesFromMapping() {
-      AliasState aliasState = new AliasState();
-      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+    @DisplayName("Both entry points produce identical alias state on success")
+    void testFinalizeReindexAndPromoteEntityIndexProduceIdenticalSuccessState() {
+      AliasState aliasStateA = new AliasState();
+      aliasStateA.put("table_search_index", Set.of("table_search_index"));
+      aliasStateA.put("table_search_index_rebuild_new", new HashSet<>());
 
+      AliasState aliasStateB = new AliasState();
+      aliasStateB.put("table_search_index", Set.of("table_search_index"));
+      aliasStateB.put("table_search_index_rebuild_new", new HashSet<>());
+
+      runOnFinalizeReindex(aliasStateA);
+      runOnPromoteEntityIndex(aliasStateB);
+
+      assertEquals(
+          aliasStateA.indexAliases.get("table_search_index_rebuild_new"),
+          aliasStateB.indexAliases.get("table_search_index_rebuild_new"),
+          "Final alias set on staged index must be identical across both entry points");
+      assertEquals(
+          aliasStateA.deletedIndices,
+          aliasStateB.deletedIndices,
+          "Set of deleted indices must be identical across both entry points");
+    }
+
+    @Test
+    @DisplayName("Both entry points fail identically on empty aliases")
+    void testBothEntryPointsHardFailOnEmptyAliasesIdentically() {
+      EntityReindexContext emptyCtx =
+          EntityReindexContext.builder()
+              .entityType("table")
+              .canonicalIndex("table_search_index")
+              .stagedIndex("table_search_index_rebuild_new")
+              .build();
+
+      AliasState aliasStateA = new AliasState();
+      aliasStateA.put("table_search_index", Set.of("table_search_index"));
+      aliasStateA.put("table_search_index_rebuild_new", new HashSet<>());
+      DefaultRecreateHandler handlerA =
+          runHandler(aliasStateA, h -> h.finalizeReindex(emptyCtx, true));
+
+      AliasState aliasStateB = new AliasState();
+      aliasStateB.put("table_search_index", Set.of("table_search_index"));
+      aliasStateB.put("table_search_index_rebuild_new", new HashSet<>());
+      DefaultRecreateHandler handlerB =
+          runHandler(aliasStateB, h -> h.promoteEntityIndex(emptyCtx, true));
+
+      assertEquals(handlerA.getFailedPromotions(), handlerB.getFailedPromotions());
+      assertEquals(handlerA.getDataLossPromotions(), handlerB.getDataLossPromotions());
+      assertEquals(
+          aliasStateA.deletedIndices,
+          aliasStateB.deletedIndices,
+          "Empty-aliases path must not delete canonical via either entry point");
+      assertFalse(aliasStateA.deletedIndices.contains("table_search_index"));
+    }
+
+    @Test
+    @DisplayName("Both entry points record promotion failure identically on swap-step1 fail")
+    void testBothEntryPointsRecordSwap1FailureIdentically() {
+      AliasState aliasStateA = new AliasState();
+      aliasStateA.put("table_search_index", Set.of("table_search_index"));
+      aliasStateA.put("table_search_index_rebuild_new", new HashSet<>());
+
+      AliasState aliasStateB = new AliasState();
+      aliasStateB.put("table_search_index", Set.of("table_search_index"));
+      aliasStateB.put("table_search_index_rebuild_new", new HashSet<>());
+
+      DefaultRecreateHandler handlerA =
+          runHandlerWithSwap1Fail(aliasStateA, h -> h.finalizeReindex(stdContext(), true));
+      DefaultRecreateHandler handlerB =
+          runHandlerWithSwap1Fail(aliasStateB, h -> h.promoteEntityIndex(stdContext(), true));
+
+      assertEquals(handlerA.getFailedPromotions(), handlerB.getFailedPromotions());
+      assertEquals(handlerA.getDataLossPromotions(), handlerB.getDataLossPromotions());
+      assertFalse(aliasStateA.deletedIndices.contains("table_search_index"));
+      assertFalse(aliasStateB.deletedIndices.contains("table_search_index"));
+    }
+
+    private void runOnFinalizeReindex(AliasState aliasState) {
+      runHandler(aliasState, h -> h.finalizeReindex(stdContext(), true));
+    }
+
+    private void runOnPromoteEntityIndex(AliasState aliasState) {
+      runHandler(aliasState, h -> h.promoteEntityIndex(stdContext(), true));
+    }
+
+    private DefaultRecreateHandler runHandler(
+        AliasState aliasState, java.util.function.Consumer<DefaultRecreateHandler> action) {
       SearchClient client = aliasState.toMock();
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
-      when(repo.getClusterAlias()).thenReturn("");
 
-      IndexMapping indexMapping =
-          IndexMapping.builder()
-              .indexName("table_search_index")
-              .alias("table")
-              .parentAliases(List.of("all", "dataAsset"))
-              .childAliases(List.of())
-              .build();
-      when(repo.getIndexMapping("table")).thenReturn(indexMapping);
-
+      DefaultRecreateHandler handler = new DefaultRecreateHandler();
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
         entityMock.when(Entity::getSearchRepository).thenReturn(repo);
-
-        EntityReindexContext context =
-            EntityReindexContext.builder()
-                .entityType("table")
-                .canonicalIndex("table_search_index")
-                .stagedIndex("table_search_index_rebuild_new")
-                .build();
-
-        new DefaultRecreateHandler().promoteEntityIndex(context, true);
+        action.accept(handler);
       }
+      return handler;
+    }
 
-      Set<String> aliases = aliasState.indexAliases.get("table_search_index_rebuild_new");
-      assertEquals(4, aliases.size());
-      assertTrue(aliases.contains("table"));
-      assertTrue(aliases.contains("table_search_index"));
-      assertTrue(aliases.contains("all"));
-      assertTrue(aliases.contains("dataAsset"));
+    private DefaultRecreateHandler runHandlerWithSwap1Fail(
+        AliasState aliasState, java.util.function.Consumer<DefaultRecreateHandler> action) {
+      SearchClient client = aliasState.toMock();
+      when(client.swapAliases(anySet(), anyString(), anySet())).thenReturn(false);
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+
+      DefaultRecreateHandler handler = new DefaultRecreateHandler();
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        action.accept(handler);
+      }
+      return handler;
     }
   }
 
