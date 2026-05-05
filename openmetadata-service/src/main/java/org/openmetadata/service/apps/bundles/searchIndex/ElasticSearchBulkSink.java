@@ -880,6 +880,20 @@ public class ElasticSearchBulkSink implements BulkSink {
   }
 
   public static class CustomBulkProcessor {
+    /**
+     * Cap on how long a flush will wait for a permit before declaring the bulk failed. Mirror
+     * of the OpenSearch sink's bounded acquire (PR-level rationale documented there): a single
+     * leaked async future drains the semaphore and parks every subsequent caller permanently,
+     * freezing the pipeline at whatever record count was in flight. Stored per-instance so
+     * tests can shorten it without sleeping for a minute.
+     */
+    private static final long DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS = 60L;
+
+    // Volatile for cross-thread visibility — read by flushInternal on the scheduler thread,
+    // written by the package-private test setter from a different thread.
+    private volatile long semaphoreAcquireTimeoutSeconds =
+        DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS;
+
     private final ElasticsearchAsyncClient asyncClient;
     private final List<BulkOperation> buffer = new ArrayList<>();
 
@@ -1069,17 +1083,39 @@ public class ElasticSearchBulkSink implements BulkSink {
       int numberOfActions = toFlush.size();
       LOG.debug("Executing bulk request {} with {} actions", executionId, numberOfActions);
 
+      // Bounded acquire: a leaked bulk future (callback never fires) used to drain this
+      // semaphore and park every subsequent caller forever. With a timeout we surface the
+      // leak as a permanent failure so workers can keep moving and operators see an actual
+      // error instead of the pipeline silently freezing at a fixed record count. Mirrors
+      // OpenSearchBulkSink.flushInternal so both backends behave the same way.
+      boolean acquired;
       try {
-        concurrentRequestSemaphore.acquire();
+        acquired =
+            concurrentRequestSemaphore.tryAcquire(semaphoreAcquireTimeoutSeconds, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         LOG.error("Interrupted while waiting for semaphore", e);
         Thread.currentThread().interrupt();
         recordPermanentFailure(toFlush, numberOfActions, "Interrupted while waiting for semaphore");
         return;
       }
+      if (!acquired) {
+        LOG.error(
+            "Bulk semaphore exhausted for {}s — recording {} ops as failed (active bulk requests={}). Likely a leaked async future.",
+            semaphoreAcquireTimeoutSeconds,
+            numberOfActions,
+            activeBulkRequests.get());
+        recordPermanentFailure(
+            toFlush, numberOfActions, "Bulk semaphore timeout — likely future leak");
+        return;
+      }
 
       activeBulkRequests.incrementAndGet();
       executeBulkWithRetry(toFlush, executionId, numberOfActions, 0);
+    }
+
+    // Package-private setter for tests to short-circuit the 60s default.
+    void setSemaphoreAcquireTimeoutSecondsForTesting(long seconds) {
+      this.semaphoreAcquireTimeoutSeconds = seconds;
     }
 
     private void executeBulkWithRetry(

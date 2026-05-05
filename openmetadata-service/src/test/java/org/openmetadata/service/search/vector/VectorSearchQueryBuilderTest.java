@@ -752,6 +752,22 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
+  void testNativeESQueryClampsNumCandidatesOnIntOverflow() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+
+    // k * multiplier > Integer.MAX_VALUE → must clamp, never emit a negative value.
+    String query =
+        VectorSearchQueryBuilder.buildNativeESQuery(
+            vector, 10, 0, 1_000_000, Map.of(), 100_000);
+
+    JsonNode root = MAPPER.readTree(query);
+    int numCandidates = root.get("knn").get("num_candidates").asInt();
+
+    assertTrue(numCandidates > 0, "num_candidates must be positive even on overflow");
+    assertEquals(Integer.MAX_VALUE, numCandidates, "num_candidates must clamp to Integer.MAX_VALUE");
+  }
+
+  @Test
   void testNativeESQueryAlwaysHasDeletedFilter() throws Exception {
     float[] vector = {0.1f, 0.2f};
 
