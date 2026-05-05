@@ -17,9 +17,10 @@ import importlib
 import shutil
 import sys
 import traceback
+from collections.abc import Sequence
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional, Sequence
+from typing import Any, Optional
 
 import grpc_tools.protoc
 from google.protobuf.message import Message
@@ -296,9 +297,9 @@ class ProtobufParser:
                     )
                 ]
             else:
-                field_models = [     
+                field_models = [
                     FieldModel(
-                        name=instance.DESCRIPTOR.name,   # type: ignore[arg-type]
+                        name=instance.DESCRIPTOR.name,  # type: ignore[arg-type]
                         displayName=instance.DESCRIPTOR.name,
                         dataType=DataTypeTopic.RECORD,
                         dataTypeDisplay=None,
