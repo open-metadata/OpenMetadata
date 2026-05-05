@@ -53,14 +53,14 @@ def test_resolve_snoflake_fqn(schema_name, existing_tables):
 
     resolver = SnowflakeTableResovler(Mock())
 
-    def mock_show_tables(_, schema, table):
+    def mock_show_tables(_, schema, table):  # noqa: RET503
         for t in existing_tables:
             if t == f"db.{schema}.{table}":
                 return True
 
     resolver.show_tables = mock_show_tables
     expected = expected_result(schema_name, existing_tables)
-    if expected == RuntimeError:
+    if expected == RuntimeError:  # noqa: E721
         with pytest.raises(expected):
             resolver.resolve_implicit_fqn("db", schema_name, "test_table")
     else:

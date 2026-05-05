@@ -13,7 +13,7 @@ Classification run manager for auto-classification workflows.
 """
 
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Dict, List, Optional, Protocol  # noqa: UP035
 
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
@@ -26,9 +26,9 @@ logger = profiler_logger()
 
 
 class ClassificationManagerInterface(Protocol):
-    def get_enabled_classifications(self, filter_names: Optional[List[str]] = None) -> List[Classification]: ...
+    def get_enabled_classifications(self, filter_names: Optional[List[str]] = None) -> List[Classification]: ...  # noqa: UP006, UP045
 
-    def get_enabled_tags(self, classifications: List[Classification]) -> List[Tag]: ...
+    def get_enabled_tags(self, classifications: List[Classification]) -> List[Tag]: ...  # noqa: UP006
 
 
 class ClassificationManager:
@@ -39,10 +39,10 @@ class ClassificationManager:
 
     def __init__(self, metadata: OpenMetadata[Any, Any]):
         self.metadata: OpenMetadata[Any, Any] = metadata
-        self._classification_cache: Dict[str, List[Classification]] = defaultdict(list)
-        self._tags_cache: Dict[str, List[Tag]] = {}
+        self._classification_cache: Dict[str, List[Classification]] = defaultdict(list)  # noqa: UP006
+        self._tags_cache: Dict[str, List[Tag]] = {}  # noqa: UP006
 
-    def get_enabled_classifications(self, filter_names: Optional[List[str]] = None) -> List[Classification]:
+    def get_enabled_classifications(self, filter_names: Optional[List[str]] = None) -> List[Classification]:  # noqa: UP006, UP045
         """
         Fetch classifications that have auto-classification enabled.
 
@@ -95,7 +95,7 @@ class ClassificationManager:
         )
         return cached_classifications
 
-    def get_enabled_tags(self, classifications: List[Classification]) -> List[Tag]:
+    def get_enabled_tags(self, classifications: List[Classification]) -> List[Tag]:  # noqa: UP006
         """
         Get all tags with recognizers from enabled classifications.
 
@@ -118,7 +118,7 @@ class ClassificationManager:
 
         logger.info(f"Fetching enabled tags from classifications: {classification_names}")
 
-        candidate_tags: List[Tag] = []
+        candidate_tags: List[Tag] = []  # noqa: UP006
 
         for classification_name in classification_names:
             try:

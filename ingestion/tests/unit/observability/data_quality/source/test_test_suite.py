@@ -115,5 +115,5 @@ def test_source_config(parameters, expected, monkeypatch):
     mock_metadata.get_by_id.return_value = TestSuite(name="test_suite", basic=True, id=UUID(int=0))
 
     source = TestSuiteSource(OpenMetadataWorkflowConfig.model_validate(workflow_config), mock_metadata)
-    test_cases = list(source._iter())[0].right.test_cases
+    test_cases = list(source._iter())[0].right.test_cases  # noqa: RUF015
     assert [t.name.root for t in test_cases] == expected

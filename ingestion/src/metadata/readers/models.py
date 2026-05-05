@@ -28,4 +28,4 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
     LocalConfig,
 )
 
-ConfigSource = Union[LocalConfig, AzureConfig, GCSConfig, S3Config]
+ConfigSource = Union[LocalConfig, AzureConfig, GCSConfig, S3Config]  # noqa: UP007

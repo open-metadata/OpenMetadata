@@ -16,7 +16,7 @@ import math
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, ValidationError
 
@@ -76,10 +76,10 @@ class NifiProcessor(BaseModel):
     """
 
     id_: str
-    name: Optional[str] = None
+    name: Optional[str] = None  # noqa: UP045
     type_: str
     uri: str
-    run_status: Optional[str] = None
+    run_status: Optional[str] = None  # noqa: UP045
 
 
 class NifiProcessorConnections(BaseModel):
@@ -99,11 +99,11 @@ class NifiPipelineDetails(BaseModel):
     """
 
     id_: str
-    name: Optional[str] = None
+    name: Optional[str] = None  # noqa: UP045
     uri: str
-    processors: List[NifiProcessor]
-    connections: List[NifiProcessorConnections]
-    parent_pipeline_id: Optional[str] = None
+    processors: List[NifiProcessor]  # noqa: UP006
+    connections: List[NifiProcessorConnections]  # noqa: UP006
+    parent_pipeline_id: Optional[str] = None  # noqa: UP045
 
 
 class NifiSource(PipelineServiceSource):
@@ -114,11 +114,11 @@ class NifiSource(PipelineServiceSource):
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
-        self.pipeline_parents_mapping: Dict[str, List[str]] = defaultdict(list)
-        self.process_group_connections: List[NifiProcessorConnections] = []
+        self.pipeline_parents_mapping: Dict[str, List[str]] = defaultdict(list)  # noqa: UP006
+        self.process_group_connections: List[NifiProcessorConnections] = []  # noqa: UP006
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: NifiConnection = config.serviceConnection.root.config
         if not isinstance(connection, NifiConnection):
@@ -126,13 +126,13 @@ class NifiSource(PipelineServiceSource):
         return cls(config, metadata)
 
     @staticmethod
-    def _get_downstream_tasks_from(source_id: str, connections: List[NifiProcessorConnections]) -> List[str]:
+    def _get_downstream_tasks_from(source_id: str, connections: List[NifiProcessorConnections]) -> List[str]:  # noqa: UP006
         """
         Fetch all tasks downstream from the source
         """
         return [conn.destination_id for conn in connections if conn.source_id == source_id]
 
-    def _get_tasks_from_details(self, pipeline_details: NifiPipelineDetails) -> Optional[List[Task]]:
+    def _get_tasks_from_details(self, pipeline_details: NifiPipelineDetails) -> Optional[List[Task]]:  # noqa: UP006, UP045
         """
         Prepare the list of the related Tasks
         that form the Pipeline
@@ -229,7 +229,7 @@ class NifiSource(PipelineServiceSource):
     @staticmethod
     def _get_connections_from_process_group(
         process_group: dict,
-    ) -> List[NifiProcessorConnections]:
+    ) -> List[NifiProcessorConnections]:  # noqa: UP006
         """
         Parse the process_group dictionary to pick up the Connections
         """
@@ -245,7 +245,7 @@ class NifiSource(PipelineServiceSource):
         ]
 
     @staticmethod
-    def _get_processors_from_process_group(process_group: dict) -> List[NifiProcessor]:
+    def _get_processors_from_process_group(process_group: dict) -> List[NifiProcessor]:  # noqa: UP006
         """
         Parse the process_group dictionary to pick up the Processors
         """
@@ -291,7 +291,7 @@ class NifiSource(PipelineServiceSource):
                     f"Wild error encountered when trying to get pipelines from Process Group {process_group} - {err}."
                 )
 
-    def get_process_group_connections(self, process_group: dict) -> List[NifiProcessorConnections]:
+    def get_process_group_connections(self, process_group: dict) -> List[NifiProcessorConnections]:  # noqa: UP006
         """Get all connections for a process group"""
         connections_list = process_group.get(PROCESS_GROUP_FLOW).get("flow").get("connections")
         connections = []

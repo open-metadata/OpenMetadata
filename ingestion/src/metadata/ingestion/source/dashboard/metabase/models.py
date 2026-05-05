@@ -14,12 +14,12 @@ Metabase Models
 
 import ast
 import json
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
-MetabaseStrId = Annotated[str, BeforeValidator(lambda x: str(x))]
+MetabaseStrId = Annotated[str, BeforeValidator(lambda x: str(x))]  # noqa: PLW0108
 
 
 class MetabaseUser(BaseModel):
@@ -28,12 +28,12 @@ class MetabaseUser(BaseModel):
     """
 
     id: MetabaseStrId
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    common_name: Optional[str] = None
-    email: Optional[str] = None
-    is_superuser: Optional[bool] = False
-    last_edit_timestamp: Optional[str] = Field(None, alias="timestamp")
+    first_name: Optional[str] = None  # noqa: UP045
+    last_name: Optional[str] = None  # noqa: UP045
+    common_name: Optional[str] = None  # noqa: UP045
+    email: Optional[str] = None  # noqa: UP045
+    is_superuser: Optional[bool] = False  # noqa: UP045
+    last_edit_timestamp: Optional[str] = Field(None, alias="timestamp")  # noqa: UP045
 
 
 class MetabaseDashboard(BaseModel):
@@ -41,10 +41,10 @@ class MetabaseDashboard(BaseModel):
     Metabase dashboard model
     """
 
-    description: Optional[str] = None
+    description: Optional[str] = None  # noqa: UP045
     name: str
     id: MetabaseStrId
-    collection_id: Optional[MetabaseStrId] = None
+    collection_id: Optional[MetabaseStrId] = None  # noqa: UP045
 
 
 class MetabaseCollection(BaseModel):
@@ -57,22 +57,22 @@ class MetabaseCollection(BaseModel):
 
 
 class MetabaseDashboardList(BaseModel):
-    data: List[MetabaseDashboard] = []
+    data: List[MetabaseDashboard] = []  # noqa: UP006
 
 
 class MetabaseCollectionList(BaseModel):
-    collections: List[MetabaseCollection] = []
+    collections: List[MetabaseCollection] = []  # noqa: UP006
 
 
 class Native(BaseModel):
-    query: Optional[str] = None
+    query: Optional[str] = None  # noqa: UP045
 
 
 class DatasetQuery(BaseModel):
     model_config = {"extra": "ignore"}
 
-    type: Optional[str] = None
-    native: Optional[Native] = None
+    type: Optional[str] = None  # noqa: UP045
+    native: Optional[Native] = None  # noqa: UP045
 
     @model_validator(mode="before")
     @classmethod
@@ -104,14 +104,14 @@ class MetabaseChart(BaseModel):
     Metabase card model
     """
 
-    description: Optional[str] = None
-    table_id: Optional[MetabaseStrId] = None
-    database_id: Optional[MetabaseStrId] = None
-    name: Optional[str] = None
-    dataset_query: Optional[DatasetQuery] = None
-    id: Optional[MetabaseStrId] = None
-    display: Optional[str] = None
-    dashboard_ids: List[str] = []
+    description: Optional[str] = None  # noqa: UP045
+    table_id: Optional[MetabaseStrId] = None  # noqa: UP045
+    database_id: Optional[MetabaseStrId] = None  # noqa: UP045
+    name: Optional[str] = None  # noqa: UP045
+    dataset_query: Optional[DatasetQuery] = None  # noqa: UP045
+    id: Optional[MetabaseStrId] = None  # noqa: UP045
+    display: Optional[str] = None  # noqa: UP045
+    dashboard_ids: List[str] = []  # noqa: UP006
 
     @field_validator("dataset_query", mode="before")
     @classmethod
@@ -148,7 +148,7 @@ class MetabaseChart(BaseModel):
                 pass
 
             # If all strategies fail, log and return None
-            print(f"Failed to parse dataset_query string: {v[:100]}...")
+            print(f"Failed to parse dataset_query string: {v[:100]}...")  # noqa: T201
             return None
 
         # For any other type, return as is and let Pydantic handle validation
@@ -164,16 +164,16 @@ class MetabaseDashboardDetails(BaseModel):
     Metabase dashboard details model
     """
 
-    description: Optional[str] = None
-    card_ids: List[str] = []
-    name: Optional[str] = None
+    description: Optional[str] = None  # noqa: UP045
+    card_ids: List[str] = []  # noqa: UP006
+    name: Optional[str] = None  # noqa: UP045
     id: MetabaseStrId
-    creator_id: Optional[MetabaseStrId] = None
-    collection_id: Optional[MetabaseStrId] = None
+    creator_id: Optional[MetabaseStrId] = None  # noqa: UP045
+    collection_id: Optional[MetabaseStrId] = None  # noqa: UP045
 
 
 class MetabaseDatabaseDetails(BaseModel):
-    db: Optional[str] = None
+    db: Optional[str] = None  # noqa: UP045
 
 
 class MetabaseDatabase(BaseModel):
@@ -181,12 +181,12 @@ class MetabaseDatabase(BaseModel):
     Metabase database model
     """
 
-    details: Optional[MetabaseDatabaseDetails] = None
+    details: Optional[MetabaseDatabaseDetails] = None  # noqa: UP045
 
 
 class MetabaseTable(BaseModel):
-    table_schema: Optional[str] = Field(None, alias="schema")
-    db: Optional[MetabaseDatabase] = None
-    name: Optional[str] = None
-    id: Optional[MetabaseStrId] = None
-    display_name: Optional[str] = None
+    table_schema: Optional[str] = Field(None, alias="schema")  # noqa: UP045
+    db: Optional[MetabaseDatabase] = None  # noqa: UP045
+    name: Optional[str] = None  # noqa: UP045
+    id: Optional[MetabaseStrId] = None  # noqa: UP045
+    display_name: Optional[str] = None  # noqa: UP045

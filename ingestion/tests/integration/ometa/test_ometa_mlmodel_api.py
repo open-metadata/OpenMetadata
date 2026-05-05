@@ -48,7 +48,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 
-from .conftest import _safe_delete
+from .conftest import _safe_delete  # noqa: TID252
 
 
 @pytest.fixture

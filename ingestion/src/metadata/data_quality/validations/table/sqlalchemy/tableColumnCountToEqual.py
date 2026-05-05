@@ -28,7 +28,7 @@ from metadata.data_quality.validations.table.base.tableColumnCountToEqual import
 class TableColumnCountToEqualValidator(BaseTableColumnCountToEqualValidator, SQAValidatorMixin):
     """Validator for table column count to be equal test case"""
 
-    def _run_results(self) -> Optional[int]:
+    def _run_results(self) -> Optional[int]:  # noqa: UP045
         """compute result of the test case"""
         count = len(inspect(self.runner.table).c)
         if not count:

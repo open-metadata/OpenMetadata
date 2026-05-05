@@ -75,10 +75,10 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             Strategy,
         )
 
-        operator = cast(str, operator)  # satisfy mypy
-        sql_expression = cast(str, sql_expression)  # satisfy mypy
-        threshold = cast(int, threshold)  # satisfy mypy
-        strategy = cast(Strategy, strategy)  # satisfy mypy
+        operator = cast(str, operator)  # satisfy mypy  # noqa: TC006
+        sql_expression = cast(str, sql_expression)  # satisfy mypy  # noqa: TC006
+        threshold = cast(int, threshold)  # satisfy mypy  # noqa: TC006
+        strategy = cast(Strategy, strategy)  # satisfy mypy  # noqa: TC006
 
         try:
             rows = self._run_results(sql_expression, strategy)

@@ -28,7 +28,7 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.domopipeline.metadata import DomopipelineSource
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/domopipeline_dataset.json"
-with open(mock_file_path, encoding="UTF-8") as file:
+with open(mock_file_path, encoding="UTF-8") as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 MOCK_PIPELINE_SERVICE = PipelineService(
@@ -235,7 +235,7 @@ class DomoPipelineUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("pydomo.Domo")
-    def __init__(self, methodName, domo_client, test_connection) -> None:
+    def __init__(self, methodName, domo_client, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         domo_client.return_value = False
@@ -254,8 +254,8 @@ class DomoPipelineUnitTest(TestCase):
         pipeline_list = []
         for result in results:
             if isinstance(result, CreatePipelineRequest):
-                pipeline_list.append(result)
-        for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE, pipeline_list)):
+                pipeline_list.append(result)  # noqa: PERF401
+        for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE, pipeline_list)):  # noqa: B905
             self.assertEqual(expected, original)
 
     @patch("metadata.clients.domo_client.DomoClient.get_runs")
@@ -265,7 +265,7 @@ class DomoPipelineUnitTest(TestCase):
         results = self.domopipeline.yield_pipeline_status(MOCK_PIPELINE_DETAILS)
         for result in results:
             if isinstance(result.right, OMetaPipelineStatus):
-                pipeline_status_list.append(result.right)
+                pipeline_status_list.append(result.right)  # noqa: PERF401
 
-        for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE_STATUS, pipeline_status_list)):
+        for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE_STATUS, pipeline_status_list)):  # noqa: B905
             self.assertEqual(expected, original)

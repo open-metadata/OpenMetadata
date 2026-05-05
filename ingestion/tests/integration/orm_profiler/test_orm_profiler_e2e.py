@@ -46,7 +46,7 @@ from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import WorkflowResultStatus
 
-from ..conftest import _safe_delete
+from ..conftest import _safe_delete  # noqa: TID252
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
@@ -138,7 +138,7 @@ def create_data(engine, session):
     try:
         User.__table__.create(bind=engine)
         NewUser.__table__.create(bind=engine)
-    except:
+    except:  # noqa: E722
         logger.warning("Table Already exists, clearing existing data")
         session.query(User).delete()
         session.query(NewUser).delete()
@@ -555,7 +555,7 @@ def test_workflow_values_partition(ingest, metadata, service_name):
     profile = metadata.get_latest_table_profile(table.fullyQualifiedName).profile
 
     assert profile.rowCount == 4.0
-    assert profile.profileSample == None
+    assert profile.profileSample == None  # noqa: E711
 
     workflow_config["processor"] = {
         "type": "orm-profiler",

@@ -39,7 +39,7 @@ from metadata.readers.dataframe.base import (
 from metadata.readers.dataframe.common import dataframe_to_chunks
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import AZURE_PATH, return_azure_storage_options
-from metadata.readers.models import ConfigSource
+from metadata.readers.models import ConfigSource  # noqa: TC001
 from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import ingestion_logger
 
@@ -119,7 +119,7 @@ class ParquetDataFrameReader(DataFrameReader):
                 yield from dataframe_to_chunks(df)
             except Exception as fallback_exc:
                 logger.error(f"Failed to read parquet file: {fallback_exc}")
-                raise fallback_exc
+                raise fallback_exc  # noqa: TRY201
 
     @singledispatchmethod
     def _read_parquet_dispatch(self, config_source: ConfigSource, key: str, bucket_name: str) -> DatalakeColumnWrapper:
@@ -131,8 +131,8 @@ class ParquetDataFrameReader(DataFrameReader):
         Read the Parquet file from the gcs bucket and return a dataframe
         """
         # pylint: disable=import-outside-toplevel
-        from gcsfs import GCSFileSystem
-        from pyarrow.parquet import ParquetFile
+        from gcsfs import GCSFileSystem  # noqa: PLC0415
+        from pyarrow.parquet import ParquetFile  # noqa: PLC0415
 
         gcs = GCSFileSystem()
         file_path = f"gs://{bucket_name}/{key}"
@@ -150,7 +150,7 @@ class ParquetDataFrameReader(DataFrameReader):
                     yield from self._read_parquet_in_batches(parquet_file)
 
                 return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
-            else:
+            else:  # noqa: RET505
                 # Use regular reading for smaller files
                 def chunk_generator():
                     file = gcs.open(file_path)
@@ -181,7 +181,7 @@ class ParquetDataFrameReader(DataFrameReader):
         (e.g., when called from profiler).
         """
         # pylint: disable=import-outside-toplevel
-        from s3fs import S3FileSystem
+        from s3fs import S3FileSystem  # noqa: PLC0415
 
         kwargs = {}
         if self.session:
@@ -212,7 +212,7 @@ class ParquetDataFrameReader(DataFrameReader):
     @_read_parquet_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         # pylint: disable=import-outside-toplevel
-        from pyarrow.parquet import ParquetFile
+        from pyarrow.parquet import ParquetFile  # noqa: PLC0415
 
         s3_fs = self._build_s3fs_filesystem()
         file_path = f"{bucket_name}/{key}"
@@ -251,10 +251,10 @@ class ParquetDataFrameReader(DataFrameReader):
 
     @_read_parquet_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
-        import pandas as pd  # pylint: disable=import-outside-toplevel
-        from adlfs import AzureBlobFileSystem
-        from pyarrow.fs import FSSpecHandler, PyFileSystem
-        from pyarrow.parquet import ParquetFile
+        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from adlfs import AzureBlobFileSystem  # noqa: PLC0415
+        from pyarrow.fs import FSSpecHandler, PyFileSystem  # noqa: PLC0415
+        from pyarrow.parquet import ParquetFile  # noqa: PLC0415
 
         storage_options = return_azure_storage_options(self.config_source)
         account_url = AZURE_PATH.format(
@@ -286,7 +286,7 @@ class ParquetDataFrameReader(DataFrameReader):
                     yield from self._read_parquet_in_batches(parquet_file)
 
                 return DatalakeColumnWrapper(dataframes=arrow_chunk_generator, raw_data=None, columns=None)
-            else:
+            else:  # noqa: RET505
 
                 def chunk_generator():
                     # Use pandas for regular reading of smaller files
@@ -313,14 +313,14 @@ class ParquetDataFrameReader(DataFrameReader):
         key: str,
         bucket_name: str,  # pylint: disable=unused-argument
     ) -> DatalakeColumnWrapper:
-        import os  # noqa: F811
+        import os  # noqa: F811, PLC0415
 
-        import pandas as pd  # pylint: disable=import-outside-toplevel
-        from pyarrow.parquet import ParquetFile
+        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from pyarrow.parquet import ParquetFile  # noqa: PLC0415
 
         # Check file size to determine reading strategy
         try:
-            file_size = os.path.getsize(key)
+            file_size = os.path.getsize(key)  # noqa: PTH202
 
             if self._should_use_chunking(file_size):
 
@@ -333,7 +333,7 @@ class ParquetDataFrameReader(DataFrameReader):
                     yield from self._read_parquet_in_batches(parquet_file)
 
                 return DatalakeColumnWrapper(dataframes=arrow_chunk_generator, raw_data=None, columns=None)
-            else:
+            else:  # noqa: RET505
 
                 def chunk_generator():
                     # Use pandas for regular reading of smaller files
@@ -351,7 +351,7 @@ class ParquetDataFrameReader(DataFrameReader):
 
             return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
 
-    def _read(self, *, key: str, bucket_name: str, file_size: Optional[int] = None, **__) -> DatalakeColumnWrapper:
+    def _read(self, *, key: str, bucket_name: str, file_size: Optional[int] = None, **__) -> DatalakeColumnWrapper:  # noqa: UP045
         self._file_size = file_size
         return self._read_parquet_dispatch(self.config_source, key=key, bucket_name=bucket_name)
 

@@ -15,7 +15,7 @@ Test database connectors with CLI
 
 from abc import abstractmethod
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple  # noqa: UP035
 from unittest import TestCase
 
 import pytest
@@ -29,8 +29,8 @@ from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase as OMTestCase
 from metadata.ingestion.api.status import Status
 
-from .e2e_types import E2EType
-from .test_cli import CliBase
+from .e2e_types import E2EType  # noqa: TID252
+from .test_cli import CliBase  # noqa: TID252
 
 
 class CliDBBase(TestCase):
@@ -283,7 +283,7 @@ class CliDBBase(TestCase):
                 E2EType.DATA_QUALITY,
                 {
                     "entity_fqn": table.fullyQualifiedName.root,
-                    "test_case_definitions": TypeAdapter(List[TestCaseDefinition]).dump_python(test_case_definitions),
+                    "test_case_definitions": TypeAdapter(List[TestCaseDefinition]).dump_python(test_case_definitions),  # noqa: UP006
                 },
             )
             result = self.run_command("test")
@@ -301,7 +301,7 @@ class CliDBBase(TestCase):
                 ]
                 expected = self.get_expected_test_case_results()
                 try:
-                    for test_case, expected in zip(test_case_entities, expected):
+                    for test_case, expected in zip(test_case_entities, expected):  # noqa: B020, B905
                         assert_equal_pydantic_objects(
                             expected.model_copy(update={"timestamp": test_case.testCaseResult.timestamp}),
                             test_case.testCaseResult,
@@ -310,7 +310,7 @@ class CliDBBase(TestCase):
                     for tc in test_case_entities:
                         self.openmetadata.delete(OMTestCase, tc.id, recursive=True, hard_delete=True)
             except AssertionError:
-                print(result)
+                print(result)  # noqa: T201
                 raise
 
         def retrieve_table(self, table_name_fqn: str) -> Table:
@@ -387,21 +387,21 @@ class CliDBBase(TestCase):
 
         @staticmethod
         @abstractmethod
-        def get_includes_schemas() -> List[str]:
+        def get_includes_schemas() -> List[str]:  # noqa: UP006
             raise NotImplementedError()
 
         @classmethod
-        def get_excludes_schemas(cls) -> List[str]:
+        def get_excludes_schemas(cls) -> List[str]:  # noqa: UP006
             return cls.get_includes_schemas()
 
         @staticmethod
         @abstractmethod
-        def get_includes_tables() -> List[str]:
+        def get_includes_tables() -> List[str]:  # noqa: UP006
             raise NotImplementedError()
 
         @staticmethod
         @abstractmethod
-        def get_excludes_tables() -> List[str]:
+        def get_excludes_tables() -> List[str]:  # noqa: UP006
             raise NotImplementedError()
 
         @staticmethod
@@ -409,19 +409,19 @@ class CliDBBase(TestCase):
             return {}
 
         @staticmethod
-        def get_profiler_time_partition() -> Optional[dict]:
+        def get_profiler_time_partition() -> Optional[dict]:  # noqa: UP045
             return None
 
         @staticmethod
-        def get_profiler_time_partition_results() -> Optional[dict]:
+        def get_profiler_time_partition_results() -> Optional[dict]:  # noqa: UP045
             return None
 
         @staticmethod
-        def delete_queries() -> Optional[List[str]]:
+        def delete_queries() -> Optional[List[str]]:  # noqa: UP006, UP045
             return None
 
         @staticmethod
-        def update_queries() -> Optional[List[str]]:
+        def update_queries() -> Optional[List[str]]:  # noqa: UP006, UP045
             return None
 
         @staticmethod
@@ -447,10 +447,10 @@ class CliDBBase(TestCase):
         def get_data_quality_table(self):
             return None
 
-        def get_test_case_definitions(self) -> List[TestCaseDefinition]:
+        def get_test_case_definitions(self) -> List[TestCaseDefinition]:  # noqa: UP006
             pass
 
-        def get_expected_test_case_results(self) -> List[TestCaseResult]:
+        def get_expected_test_case_results(self) -> List[TestCaseResult]:  # noqa: UP006
             pass
 
         def assert_status_for_data_quality(self, source_status, sink_status):
@@ -469,12 +469,12 @@ class CliDBBase(TestCase):
                     actual_profiles,
                     key=lambda x: (-x.timestamp.root, x.operation.value),
                 )
-                expected_profile = sorted(
+                expected_profile = sorted(  # noqa: PLW2901
                     expected_profile,
                     key=lambda x: (-x.timestamp.root, x.operation.value),
                 )
                 assert len(actual_profiles) >= len(expected_profile)
-                for expected, actual in zip(expected_profile, actual_profiles):
+                for expected, actual in zip(expected_profile, actual_profiles):  # noqa: B905
                     try:
                         assert_equal_pydantic_objects(
                             expected.model_copy(update={"timestamp": actual.timestamp}),
@@ -485,7 +485,7 @@ class CliDBBase(TestCase):
                             f"System metrics profile did not return exepcted results for table: {table_fqn}"
                         ) from e
 
-        def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:
+        def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:  # noqa: UP006
             """Return a list of tuples with the table fqn and the expected system profile"""
             return []
 

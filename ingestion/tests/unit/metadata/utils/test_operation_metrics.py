@@ -372,7 +372,7 @@ class TestTrackOperationContextManager:
         assert summary["api_calls"]["POST:/data"]["_default"]["count"] == 1
 
     def test_context_manager_records_on_exception(self) -> None:
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError):  # noqa: SIM117
             with TrackOperation("api_calls", "GET:/error"):
                 raise RuntimeError("API Error")
 
@@ -400,7 +400,7 @@ class TestTrackOperationContextFunction:
         assert summary["entity_operations"]["yield_column"]["Column"]["count"] == 1
 
     def test_context_function_records_on_exception(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError):  # noqa: SIM117
             with track_operation_context("entity_operations", "yield_table"):
                 raise ValueError("Processing failed")
 

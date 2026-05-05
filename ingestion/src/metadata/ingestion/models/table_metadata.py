@@ -12,7 +12,7 @@
 Table related pydantic definitions
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, Field
 
@@ -27,8 +27,8 @@ class OMetaTableConstraints(BaseModel):
     """
 
     table: Table
-    foreign_constraints: Optional[List[Dict]] = None
-    constraints: Optional[List[TableConstraint]] = None
+    foreign_constraints: Optional[List[Dict]] = None  # noqa: UP006, UP045
+    constraints: Optional[List[TableConstraint]] = None  # noqa: UP006, UP045
 
 
 class ColumnTag(BaseModel):
@@ -42,4 +42,4 @@ class ColumnDescription(BaseModel):
     """Column FQN and description information"""
 
     column_fqn: str
-    description: Optional[basic.Markdown] = Field(None, description="Description of a column.")
+    description: Optional[basic.Markdown] = Field(None, description="Description of a column.")  # noqa: UP045

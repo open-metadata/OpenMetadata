@@ -81,7 +81,7 @@ def _add_location(url: str, connection: BigQueryConnection) -> str:
     return f"{url}{separator}location={encoded_location}"
 
 
-def get_connection_url(connection: BigQueryConnection) -> str:
+def get_connection_url(connection: BigQueryConnection) -> str:  # noqa: C901
     """
     Build the connection URL and set the project
     environment variable when needed
@@ -160,18 +160,18 @@ def test_connection(
     metadata: OpenMetadata,
     engine: Engine,
     service_connection: BigQueryConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
 
-    def get_tags(taxonomies):
+    def get_tags(taxonomies):  # noqa: RET503
         for taxonomy in taxonomies:
             policy_tags = PolicyTagManagerClient().list_policy_tags(parent=taxonomy.name)
-            return policy_tags
+            return policy_tags  # noqa: RET504
 
     def test_tags():
         if not service_connection.includePolicyTags:

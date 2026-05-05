@@ -15,7 +15,7 @@ Helpers module for db sources
 
 import time
 import traceback
-from typing import Iterable, List, Union
+from typing import Iterable, List, Union  # noqa: UP035
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -49,7 +49,7 @@ def get_host_from_host_port(uri: str) -> str:
     if uri is like "localhost:9000"
     then return the host "localhost"
     """
-    return uri.split(":")[0]
+    return uri.split(":")[0]  # noqa: PLC0207
 
 
 #  pylint: disable=too-many-locals
@@ -57,7 +57,7 @@ def get_host_from_host_port(uri: str) -> str:
 def get_view_lineage(
     view: TableView,
     metadata: OpenMetadata,
-    service_names: Union[str, List[str]],
+    service_names: Union[str, List[str]],  # noqa: UP006, UP007
     connection_type: str,
     timeout_seconds: int,
     parser_type: QueryParserType,

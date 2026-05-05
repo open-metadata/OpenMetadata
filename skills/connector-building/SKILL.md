@@ -176,7 +176,7 @@ cd openmetadata-ui/src/main/resources/ui && yarn parse-schema  # UI schemas
 
 # Format ALL code (mandatory before commit)
 cd /path/to/repo/root
-make py_format                               # black + isort + pycln
+make py_format                               # ruff lint-fix + format
 mvn spotless:apply                           # Format Java
 ```
 

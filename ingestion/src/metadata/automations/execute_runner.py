@@ -38,8 +38,8 @@ def execute(encrypted_automation_workflow: AutomationWorkflow) -> Any:
     The implementation depends on the request body type
     """
     # Import all the functions defined for run_workflow
-    import metadata.automations.extended_runner  # pylint: disable=import-outside-toplevel
-    import metadata.automations.runner  # pylint: disable=import-outside-toplevel
+    import metadata.automations.extended_runner  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+    import metadata.automations.runner  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
     # This will already instantiate the Secrets Manager
     metadata = OpenMetadata(config=encrypted_automation_workflow.openMetadataServerConnection)

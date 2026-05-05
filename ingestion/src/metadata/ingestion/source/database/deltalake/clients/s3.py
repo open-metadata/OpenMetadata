@@ -15,7 +15,7 @@ Deltalake S3 Client
 
 import traceback  # noqa: I001
 from functools import partial
-from typing import Callable, Iterable, List, Optional
+from typing import Callable, Iterable, List, Optional  # noqa: UP035
 
 from deltalake import DeltaTable
 from deltalake.exceptions import TableNotFoundError
@@ -87,7 +87,7 @@ class DeltalakeS3Client(DeltalakeBaseClient):
     @staticmethod
     def _get_configured_bucket(
         service_connection: DeltaLakeConnection,
-    ) -> Optional[str]:
+    ) -> Optional[str]:  # noqa: UP045
         return service_connection.configSource.bucketName if service_connection.configSource.bucketName else None
 
     @staticmethod
@@ -102,7 +102,7 @@ class DeltalakeS3Client(DeltalakeBaseClient):
         """Yields the Bucket Names as Schema Names from the DatalakeS3Client."""
         yield from self._client.get_database_schema_names(self._get_configured_bucket(service_connection))
 
-    def _read_delta_table(self, schema_name: str, prefix: str) -> Optional[DeltaTable]:
+    def _read_delta_table(self, schema_name: str, prefix: str) -> Optional[DeltaTable]:  # noqa: UP045
         url = Url(scheme="s3", host=schema_name, path=prefix)
 
         try:
@@ -116,10 +116,10 @@ class DeltalakeS3Client(DeltalakeBaseClient):
             logger.warning("No Delta Table found at path '%s/%s'.", schema_name, prefix)
             return None
 
-    def _get_columns(self, table) -> List[Column]:
+    def _get_columns(self, table) -> List[Column]:  # noqa: UP006
         return ParquetDataFrameColumnParser(data_frame=table.to_pandas()).get_columns()
 
-    def _get_partitions(self, table) -> Optional[List[PartitionColumnDetails]]:
+    def _get_partitions(self, table) -> Optional[List[PartitionColumnDetails]]:  # noqa: UP006, UP045
         return [PartitionColumnDetails(columnName=column) for column in table.metadata().partition_columns] or None
 
     def _get_table_info(self, schema_name: str, prefix: str) -> Iterable[TableInfo]:

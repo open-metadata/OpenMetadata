@@ -87,7 +87,7 @@ class UnityCatalogClient(DatabricksClient):
                     f"Status code: {raw_response.status_code}, "
                     f"Raw response: {raw_response.text}"
                 )
-                raise json_err
+                raise json_err  # noqa: TRY201
 
             if response:
                 return LineageTableStreams(**response)

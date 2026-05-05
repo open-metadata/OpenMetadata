@@ -32,12 +32,17 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
+from metadata.ingestion.source.database.databricks.log_filters import (
+    suppress_user_agent_entry_deprecation_log,
+)
 from metadata.utils.constants import THREE_MIN
+
+suppress_user_agent_entry_deprecation_log()
 
 
 def get_connection_url(connection: DatabricksPipelineConnection) -> str:
-    url = f"databricks+connector://token:{connection.token.get_secret_value()}@{connection.hostPort}"
-    return url
+    url = f"databricks://token:{connection.token.get_secret_value()}@{connection.hostPort}"
+    return url  # noqa: RET504
 
 
 def get_connection(connection: DatabricksPipelineConnection) -> DatabricksClient:
@@ -63,8 +68,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: DatabricksClient,
     service_connection: DatabricksPipelineConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part

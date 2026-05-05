@@ -1,5 +1,5 @@
 from itertools import groupby
-from typing import List, Optional, Sequence, Union, final
+from typing import List, Optional, Sequence, Union, final  # noqa: UP035
 
 from presidio_analyzer import (
     AnalyzerEngine,
@@ -39,9 +39,9 @@ TARGET_MAP = {
 class TagAnalysis(BaseModel):
     tag: Tag
     score: float
-    explanation: Optional[str]
-    recognizer_results: List[RecognizerResult] = []
-    target: Optional[recognizer.Target] = None
+    explanation: Optional[str]  # noqa: UP045
+    recognizer_results: List[RecognizerResult] = []  # noqa: UP006
+    target: Optional[recognizer.Target] = None  # noqa: UP045
 
     @final
     class Config:
@@ -119,7 +119,7 @@ class TagAnalyzer:
     def build_analyzer_with(
         self,
         recognizers: list[EntityRecognizer],
-        nlp_engine: Optional[NlpEngine] = None,
+        nlp_engine: Optional[NlpEngine] = None,  # noqa: UP045
     ) -> AnalyzerEngine:
         supported_languages = [rec.supported_language for rec in recognizers]
         recognizer_registry = RecognizerRegistry(recognizers=recognizers, supported_languages=supported_languages)
@@ -132,9 +132,9 @@ class TagAnalyzer:
 
     def _analyze_with(
         self,
-        text_or_values: Union[str, Sequence[str]],
+        text_or_values: Union[str, Sequence[str]],  # noqa: UP007
         recognizers: list[EntityRecognizer],
-        context: Optional[list[str]] = None,
+        context: Optional[list[str]] = None,  # noqa: UP045
     ) -> list[RecognizerResult]:
         values = [text_or_values] if isinstance(text_or_values, str) else list(text_or_values)
         results: list[RecognizerResult] = []

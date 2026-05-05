@@ -28,7 +28,7 @@ query = textwrap.dedent(
     """
     select TABLE_NAME as name, `ENGINE` as engine
     from INFORMATION_SCHEMA.tables 
-    """
+    """  # noqa: W291
 )
 
 

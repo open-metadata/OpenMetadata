@@ -1,7 +1,7 @@
-from typing import Any, Generator, Mapping
+from typing import Any, Generator, Mapping  # noqa: UP035
 from unittest.mock import Mock, patch
 
-import pandas
+import pandas  # noqa: ICN001
 import pytest
 from dirty_equals import HasAttributes, IsList, IsTuple
 from pandas import DataFrame
@@ -39,7 +39,7 @@ def column_unique_test(table_fqn: str, metadata: OpenMetadata[TestCase, CreateTe
 
     test_case = metadata.create_or_update(request)
 
-    return test_case
+    return test_case  # noqa: RET504
 
 
 @pytest.fixture(scope="module")
@@ -53,7 +53,7 @@ def table_row_count_test(table_fqn: str, metadata: OpenMetadata[TestCase, Create
 
     test_case = metadata.create_or_update(request)
 
-    return test_case
+    return test_case  # noqa: RET504
 
 
 @pytest.fixture(scope="module")

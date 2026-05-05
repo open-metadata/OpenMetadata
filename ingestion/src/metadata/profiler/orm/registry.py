@@ -211,9 +211,9 @@ def is_concatenable(_type) -> bool:
 
 def is_value_non_numeric(value) -> bool:
     try:
-        if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):  # noqa: SIM103
             return True
-        return False
+        return False  # noqa: TRY300
     except Exception:
         return False
 

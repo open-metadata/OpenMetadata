@@ -135,3 +135,13 @@ CREATE TABLE IF NOT EXISTS task_form_schema_entity (
     KEY idx_task_form_schema_task_type (taskType),
     KEY idx_task_form_schema_deleted (deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Add composite index on change_event(entityType, offset) for efficient incremental
+-- change-event-driven workflow processing (filters by entityType + offset range).
+CREATE INDEX IF NOT EXISTS idx_change_event_entity_type_offset ON change_event (entityType, `offset`);
+
+-- Widen change_event_consumers.id from VARCHAR(36) to VARCHAR(500) to support workflow consumer IDs
+-- which follow the pattern {workflowFQN}Trigger-{entityType} and can exceed 36 characters.
+-- VARCHAR(500) keeps the composite UNIQUE(id, extension) key within MySQL's 3072-byte limit
+-- (500 * 4 + 256 * 4 = 3024 bytes with utf8mb4).
+ALTER TABLE change_event_consumers MODIFY COLUMN id VARCHAR(500) NOT NULL;

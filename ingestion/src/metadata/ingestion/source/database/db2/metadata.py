@@ -11,7 +11,7 @@
 """Db2 source module"""
 
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.engine.row import Row
@@ -67,7 +67,7 @@ class Db2Source(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: Db2Connection = config.serviceConnection.root.config
         if not isinstance(connection, Db2Connection):

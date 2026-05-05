@@ -210,6 +210,11 @@
               "description": "API key for authenticating with OpenAI or Azure OpenAI.",
               "type": "string"
             },
+            "modelId": {
+              "description": "OpenAI model identifier to use for query transformation (chat completions).",
+              "type": "string",
+              "default": "gpt-4o-mini"
+            },
             "embeddingModelId": {
               "description": "OpenAI embedding model identifier (e.g., text-embedding-3-small, text-embedding-ada-002).",
               "type": "string",

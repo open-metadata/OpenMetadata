@@ -16,6 +16,7 @@ Source connection handler
 from copy import deepcopy
 from functools import partial
 from typing import Optional
+from urllib.parse import quote_plus
 
 from databricks.sdk import WorkspaceClient
 from sqlalchemy import text
@@ -48,6 +49,9 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.auth import get_auth_config
+from metadata.ingestion.source.database.databricks.log_filters import (
+    suppress_user_agent_entry_deprecation_log,
+)
 from metadata.ingestion.source.database.unitycatalog.models import DatabricksTable
 from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_GET_ALL_SCHEMA_TAGS,
@@ -63,9 +67,13 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+suppress_user_agent_entry_deprecation_log()
+
 
 def get_connection_url(connection: UnityCatalogConnection) -> str:
     url = f"{connection.scheme.value}://{connection.hostPort}"
+    if connection.catalog:
+        url = f"{url}?catalog={quote_plus(connection.catalog)}"
     return url
 
 
@@ -92,9 +100,10 @@ def get_sqlalchemy_connection(connection: UnityCatalogConnection) -> Engine:
     Create sqlalchemy connection
     """
 
+    if not connection.connectionArguments:
+        connection.connectionArguments = init_empty_connection_arguments()
+
     if connection.httpPath:
-        if not connection.connectionArguments:
-            connection.connectionArguments = init_empty_connection_arguments()
         connection.connectionArguments.root["http_path"] = connection.httpPath
 
     auth_args = get_auth_config(connection)
@@ -116,8 +125,8 @@ def test_connection(
     metadata: OpenMetadata,
     connection: WorkspaceClient,
     service_connection: UnityCatalogConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -133,7 +142,7 @@ def test_connection(
         in the sql statement
         """
         try:
-            with engine.connect() as connection:
+            with engine.connect() as connection:  # noqa: PLR1704
                 connection.execute(text(statement)).fetchone()
         except DatabaseError as soe:
             logger.debug(f"Failed to fetch catalogs due to: {soe}")
@@ -158,7 +167,7 @@ def test_connection(
 
     def get_tags(service_connection: UnityCatalogConnection, table_obj: DatabricksTable):
         engine = get_sqlalchemy_connection(service_connection)
-        with engine.connect() as connection:
+        with engine.connect() as connection:  # noqa: PLR1704
             connection.execute(
                 text(UNITY_CATALOG_GET_CATALOGS_TAGS.format(database=table_obj.catalog_name).replace(";", " limit 1;"))
             )

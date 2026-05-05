@@ -14,7 +14,7 @@ Utils module to parse the jsonschema
 """
 
 import traceback
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.searchIndex import DataType, SearchIndexField
 from metadata.utils.logger import ingestion_logger
@@ -32,7 +32,7 @@ def _missing_(cls, value):
 DataType._missing_ = _missing_
 
 
-def parse_es_index_mapping(mapping: dict) -> Optional[List[SearchIndexField]]:
+def parse_es_index_mapping(mapping: dict) -> Optional[List[SearchIndexField]]:  # noqa: UP006, UP045
     """
     Recursively convert the parsed schema into required models
     """

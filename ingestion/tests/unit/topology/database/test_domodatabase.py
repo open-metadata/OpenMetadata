@@ -237,7 +237,7 @@ class DomoDatabaseUnitTest(TestCase):
     @patch("pydomo.Domo")
     def __init__(
         self,
-        methodName,
+        methodName,  # noqa: N803
         domo_client,  # pylint: disable=unused-argument
         test_connection,
     ) -> None:
@@ -258,9 +258,9 @@ class DomoDatabaseUnitTest(TestCase):
 
         for schema in yield_schemas:
             if isinstance(schema, CreateDatabaseSchemaRequest):
-                schema_list.append(schema)
+                schema_list.append(schema)  # noqa: PERF401
 
-        for _, (exptected, original) in enumerate(zip(EXPECTED_DATABASE_SCHEMA, schema_list)):
+        for _, (exptected, original) in enumerate(zip(EXPECTED_DATABASE_SCHEMA, schema_list)):  # noqa: B905
             self.assertEqual(exptected, original)
 
     def test_yield_table(self):
@@ -269,7 +269,7 @@ class DomoDatabaseUnitTest(TestCase):
         yield_tables = self.domodatabase.yield_table(("01bcd21a-6a0d-4560-93c3-ad99b5e9af4c", "Regular"))
         for table in yield_tables:
             if isinstance(table, CreateTableRequest):
-                table_list.append(table)
+                table_list.append(table)  # noqa: PERF401
 
-        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):
+        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):  # noqa: B905
             self.assertEqual(expected, original)

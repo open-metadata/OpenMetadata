@@ -37,6 +37,7 @@ import {
 } from '../../../../utils/WorkflowBuilderUtils';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
 
+import workflowClassBase from '../../../../utils/WorkflowClassBase';
 import { FormActionButtons, MetadataFormSection } from './';
 
 interface SetActionFormProps {
@@ -237,7 +238,12 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
       return (
         <Select
           data-testid="field-value-select"
-          isDisabled={isFormDisabled || isLoadingOptions}
+          isDisabled={
+            isFormDisabled ||
+            (workflowClassBase.getCapabilities()
+              .disableSetActionFieldWhileLoading &&
+              isLoadingOptions)
+          }
           label={t('label.field-value')}
           value={formData.fieldValue}
           onChange={(e) => updateFormData('fieldValue', String(e ?? ''))}>

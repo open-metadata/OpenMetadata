@@ -52,8 +52,8 @@ cd ingestion
 make install_dev_env           # Install in development mode
 make generate                  # Generate Pydantic models from JSON schemas
 make unit_ingestion_dev_env    # Run unit tests
-make lint                      # Run pylint
-make py_format                 # Format with black, isort, pycln
+make py_format                 # Apply ruff lint-fix + format
+make py_format_check           # Verify lint + format (matches CI; catches non-auto-fixable issues)
 make static-checks             # Run type checking with basedpyright
 ```
 

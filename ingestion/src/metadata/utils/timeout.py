@@ -20,7 +20,7 @@ import os
 import platform
 import signal
 import threading
-from typing import Callable
+from typing import Callable  # noqa: UP035
 
 from metadata.utils.constants import TEN_MIN
 from metadata.utils.logger import utils_logger
@@ -76,7 +76,7 @@ def cls_timeout(seconds: int = TEN_MIN):
     """
 
     def inner(cls):
-        for attr_name, attr in inspect.getmembers(  # pylint: disable=unused-variable
+        for attr_name, attr in inspect.getmembers(  # pylint: disable=unused-variable  # noqa: B007
             cls, inspect.ismethod
         ):
             setattr(cls, attr_name, timeout(seconds)(getattr(cls, attr_name)))

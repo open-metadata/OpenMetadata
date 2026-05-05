@@ -72,7 +72,7 @@ def _make_mysql_connection(connection):
 class TestMySQLCloudSQLConnection:
     @patch("metadata.ingestion.source.database.mysql.connection.create_generic_db_connection")
     def test_cloudsql_password_auth(self, mock_create_conn, mock_connector):
-        mock_connector_cls, mock_connector_inst = mock_connector
+        mock_connector_cls, mock_connector_inst = mock_connector  # noqa: RUF059
         mock_create_conn.return_value = MagicMock()
 
         connection = MysqlConnection(

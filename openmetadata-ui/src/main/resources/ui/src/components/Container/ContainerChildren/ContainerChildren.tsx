@@ -12,12 +12,11 @@
  */
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
-import { EntityReference } from '../../../generated/type/entityReference';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { getContainerChildrenByName } from '../../../rest/storageAPI';
@@ -30,8 +29,25 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import Table from '../../common/Table/Table';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ContainerChildrenProps } from './ContainerChildren.interface';
+import { useContainerChildrenCountSetter } from './ContainerChildrenCountContext';
+
+// Row shape rendered by the children table: every field used by the columns
+// (id, name, displayName, fullyQualifiedName, description) is structurally
+// satisfied by both the slim Container summaries returned by the /children
+// endpoint and the EntityReference[] the customize-page widget preview feeds
+// in via the parent Container's `children`. Picking this minimum keeps both
+// inputs strongly typed without an unchecked cast and without forcing the
+// preview path to mint synthetic Containers (which would need `service`, etc).
+type ContainerChildRow = {
+  id: string;
+  name?: string;
+  displayName?: string;
+  fullyQualifiedName?: string;
+  description?: string;
+};
 
 const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
+  const onChildrenCountChange = useContainerChildrenCountSetter();
   const { t } = useTranslation();
   const {
     paging,
@@ -46,17 +62,17 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
   const { fqn: decodedContainerName } = useFqn();
   const [isChildrenLoading, setIsChildrenLoading] = useState(false);
   const [containerChildrenData, setContainerChildrenData] = useState<
-    EntityReference[]
+    ContainerChildRow[]
   >([]);
 
-  const columns: ColumnsType<EntityReference> = useMemo(
+  const columns: ColumnsType<ContainerChildRow> = useMemo(
     () => [
       {
         title: t('label.name'),
         dataIndex: 'name',
         width: 400,
         key: 'name',
-        sorter: getColumnSorter<EntityReference, 'name'>('name'),
+        sorter: getColumnSorter<ContainerChildRow, 'name'>('name'),
         render: (_, record) => (
           <div className="d-inline-flex w-max-90">
             <Link
@@ -71,29 +87,44 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
           </div>
         ),
       },
-      ...descriptionTableObject<EntityReference>(),
+      ...descriptionTableObject<ContainerChildRow>(),
     ],
-    []
+    [t]
   );
 
-  const fetchContainerChildren = async (pagingOffset?: number) => {
-    setIsChildrenLoading(true);
-    try {
-      const { data, paging } = await getContainerChildrenByName(
-        decodedContainerName,
-        {
+  // Track the FQN of the latest in-flight fetch so a slow earlier response for a
+  // previous container does not overwrite the newer container's data when the
+  // user navigates between containers.
+  const latestFetchFqn = useRef<string>('');
+
+  const fetchContainerChildren = useCallback(
+    async (pagingOffset?: number) => {
+      const fetchFqn = decodedContainerName;
+      latestFetchFqn.current = fetchFqn;
+      setIsChildrenLoading(true);
+      try {
+        const { data, paging } = await getContainerChildrenByName(fetchFqn, {
           limit: pageSize,
           offset: pagingOffset ?? 0,
+        });
+        if (latestFetchFqn.current !== fetchFqn) {
+          return;
         }
-      );
-      setContainerChildrenData(data ?? []);
-      handlePagingChange(paging);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsChildrenLoading(false);
-    }
-  };
+        setContainerChildrenData(data ?? []);
+        handlePagingChange(paging);
+        onChildrenCountChange?.(paging.total);
+      } catch (error) {
+        if (latestFetchFqn.current === fetchFqn) {
+          showErrorToast(error as AxiosError);
+        }
+      } finally {
+        if (latestFetchFqn.current === fetchFqn) {
+          setIsChildrenLoading(false);
+        }
+      }
+    },
+    [decodedContainerName, pageSize, handlePagingChange, onChildrenCountChange]
+  );
 
   const handleChildrenPageChange = (data: PagingHandlerParams) => {
     handlePageChange(data.currentPage);
@@ -101,12 +132,24 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
   };
 
   useEffect(() => {
-    if (!isReadOnly) {
-      fetchContainerChildren();
-    } else {
-      setContainerChildrenData(container?.children ?? []);
+    if (isReadOnly) {
+      return;
     }
-  }, [pageSize, isReadOnly]);
+    fetchContainerChildren();
+  }, [pageSize, isReadOnly, decodedContainerName, fetchContainerChildren]);
+
+  useEffect(() => {
+    if (!isReadOnly) {
+      return;
+    }
+    // Read-only mode is used by the customize-page widget preview, which feeds
+    // synthetic data via the parent Container's `children` (an EntityReference[]).
+    // Both Container and EntityReference are structurally assignable to
+    // ContainerChildRow, so no cast is needed.
+    const children = container?.children ?? [];
+    setContainerChildrenData(children);
+    onChildrenCountChange?.(children.length);
+  }, [isReadOnly, container?.children, onChildrenCountChange]);
 
   return (
     <Table

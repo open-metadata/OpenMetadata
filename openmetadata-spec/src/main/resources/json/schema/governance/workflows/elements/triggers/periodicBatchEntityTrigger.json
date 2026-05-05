@@ -61,7 +61,7 @@
           "title": "Batch Size",
           "description": "Number of Entities to process at once.",
           "type": "integer",
-          "default": 500
+          "default": 1000
         }
       },
       "anyOf": [

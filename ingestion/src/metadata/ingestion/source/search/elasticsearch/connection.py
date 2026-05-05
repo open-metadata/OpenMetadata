@@ -60,7 +60,7 @@ def _clean_cert_value(cert_data: str) -> str:
 
 
 def write_data_to_file(file_path: Path, cert_data: str) -> None:
-    with open(
+    with open(  # noqa: PTH123
         file_path,
         "w+",
         encoding=UTF_8,
@@ -131,7 +131,7 @@ def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
             cert=cert_chain,
             verify=ca_cert,
         )
-        return ssl_context
+        return ssl_context  # noqa: RET504
 
     return ssl._create_unverified_context()  # pylint: disable=protected-access
 
@@ -177,8 +177,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: Elasticsearch,
     service_connection: ElasticsearchConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -189,8 +189,8 @@ def test_connection(
         try:
             result = client.indices.get_alias(expand_wildcards="open")
             if result is None:
-                raise ConnectionError("Failed to retrieve search indexes from Elasticsearch")
-            return result
+                raise ConnectionError("Failed to retrieve search indexes from Elasticsearch")  # noqa: TRY301
+            return result  # noqa: TRY300
         except Exception as exc:
             raise ConnectionError(
                 f"Unable to connect to Elasticsearch or retrieve indexes: {exc}. "

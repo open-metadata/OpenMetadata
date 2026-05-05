@@ -13,7 +13,7 @@ Base sampler for storage services (S3, GCS, etc.)
 """
 
 from abc import abstractmethod
-from typing import Any, List, Optional
+from typing import Any, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import (
@@ -51,14 +51,14 @@ class StorageSampler(SamplerInterface):
         service_connection_config: StorageConnection,
         ometa_client: OpenMetadata,
         entity: Container,
-        include_columns: Optional[List[ColumnProfilerConfig]] = None,
-        exclude_columns: Optional[List[str]] = None,
+        include_columns: Optional[List[ColumnProfilerConfig]] = None,  # noqa: UP006, UP045
+        exclude_columns: Optional[List[str]] = None,  # noqa: UP006, UP045
         sample_config: SampleConfig = SampleConfig(),
-        partition_details: Optional[PartitionProfilerConfig] = None,
-        sample_query: Optional[str] = None,
-        storage_config: Optional[DataStorageConfig] = None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
-        processing_engine: Optional[ProcessingEngine] = None,
+        partition_details: Optional[PartitionProfilerConfig] = None,  # noqa: UP045
+        sample_query: Optional[str] = None,  # noqa: UP045
+        storage_config: Optional[DataStorageConfig] = None,  # noqa: UP045
+        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,  # noqa: UP045
+        processing_engine: Optional[ProcessingEngine] = None,  # noqa: UP045
         **kwargs,
     ):
         super().__init__(
@@ -86,10 +86,10 @@ class StorageSampler(SamplerInterface):
         schema_entity=None,
         database_entity=None,
         table_config=None,
-        storage_config: Optional[DataStorageConfig] = None,
-        default_sample_config: Optional[SampleConfig] = None,
+        storage_config: Optional[DataStorageConfig] = None,  # noqa: UP045
+        default_sample_config: Optional[SampleConfig] = None,  # noqa: UP045
         default_sample_data_count: int = SAMPLE_DATA_DEFAULT_COUNT,
-        processing_engine: Optional[ProcessingEngine] = None,
+        processing_engine: Optional[ProcessingEngine] = None,  # noqa: UP045
         **kwargs,
     ) -> "StorageSampler":
         """Create storage sampler instance
@@ -129,7 +129,7 @@ class StorageSampler(SamplerInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def _get_sample_file_path(self) -> Optional[str]:
+    def _get_sample_file_path(self) -> Optional[str]:  # noqa: UP045
         """Get a sample file path from the container"""
         raise NotImplementedError
 
@@ -153,9 +153,9 @@ class StorageSampler(SamplerInterface):
 
     def get_dataset(self, **kwargs):
         """Not used for storage samplers"""
-        return None
+        return None  # noqa: RET501
 
-    def get_columns(self) -> List[SQALikeColumn]:
+    def get_columns(self) -> List[SQALikeColumn]:  # noqa: UP006
         """Get columns from container's data model"""
         if self._columns:
             return self._columns
@@ -167,7 +167,7 @@ class StorageSampler(SamplerInterface):
         self._columns = [SQALikeColumn(col.name.root, col.dataType) for col in self.entity.dataModel.columns]
         return self._columns
 
-    def _get_file_format(self) -> Optional[SupportedTypes]:
+    def _get_file_format(self) -> Optional[SupportedTypes]:  # noqa: UP045
         """Extract file format from container"""
         if not self.entity.fileFormats or len(self.entity.fileFormats) == 0:
             logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no file formats")
@@ -180,7 +180,7 @@ class StorageSampler(SamplerInterface):
             logger.warning(f"Unsupported file format: {file_format}")
             return None
 
-    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:
+    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:  # noqa: UP006, UP045
         """Fetch sample data from storage container"""
         sample_file_path = self._get_sample_file_path()
         if not sample_file_path:

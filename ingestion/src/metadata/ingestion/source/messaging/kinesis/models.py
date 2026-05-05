@@ -15,7 +15,7 @@ Kinesis Models
 # Disable pylint to conform to Kinesis API returns
 # We want to convert to the pydantic models in 1 go
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict
 
@@ -33,7 +33,7 @@ class KinesisStreamModel(BaseModel):
     Model for Kinesis streams
     """
 
-    StreamNames: List[str]
+    StreamNames: List[str]  # noqa: UP006
     HasMoreStreams: bool
 
 
@@ -42,7 +42,7 @@ class KinesisSummaryAttributes(BaseModel):
     Model for Kinesis Summary Attributes
     """
 
-    RetentionPeriodHours: Optional[float] = 0
+    RetentionPeriodHours: Optional[float] = 0  # noqa: UP045
 
 
 class KinesisSummaryModel(BaseModel):
@@ -58,8 +58,8 @@ class KinesisTopicMetadataModel(BaseModel):
     Model for Kinesis Topic Metadata
     """
 
-    summary: Optional[KinesisSummaryModel]
-    partitions: Optional[List[str]]
+    summary: Optional[KinesisSummaryModel]  # noqa: UP045
+    partitions: Optional[List[str]]  # noqa: UP006, UP045
 
 
 class KinesisArgs(BaseModel):
@@ -95,8 +95,8 @@ class KinesisPartitions(BaseModel):
     Model for Kinesis Partitions
     """
 
-    Shards: Optional[List[KinesisShards]]
-    NextToken: Optional[str]
+    Shards: Optional[List[KinesisShards]]  # noqa: UP006, UP045
+    NextToken: Optional[str]  # noqa: UP045
 
 
 class KinesisShardIterator(BaseModel):
@@ -104,7 +104,7 @@ class KinesisShardIterator(BaseModel):
     Model for Kinesis Shard Iterator
     """
 
-    ShardIterator: Optional[str]
+    ShardIterator: Optional[str]  # noqa: UP045
 
 
 class KinesisData(BaseModel):
@@ -112,7 +112,7 @@ class KinesisData(BaseModel):
     Model for Kinesis Sample Data
     """
 
-    Data: Optional[bytes]
+    Data: Optional[bytes]  # noqa: UP045
 
 
 class KinesisRecords(BaseModel):
@@ -120,4 +120,4 @@ class KinesisRecords(BaseModel):
     Model for Kinesis Records
     """
 
-    Records: Optional[List[KinesisData]]
+    Records: Optional[List[KinesisData]]  # noqa: UP006, UP045

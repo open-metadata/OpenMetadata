@@ -14,7 +14,7 @@ Tag utils Module
 
 import functools
 import traceback
-from typing import Iterable, List, Optional, Type, Union
+from typing import Iterable, List, Optional, Type, Union  # noqa: UP035
 
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
@@ -52,13 +52,13 @@ logger = ingestion_logger()
 
 # pylint: disable=too-many-arguments
 def get_ometa_tag_and_classification(
-    tags: List[str],
+    tags: List[str],  # noqa: UP006
     classification_name: str,
     tag_description: str,
     classification_description: str,
     include_tags: bool = True,
-    tag_fqn: Optional[FullyQualifiedEntityName] = None,
-    metadata: Optional[OpenMetadata] = None,
+    tag_fqn: Optional[FullyQualifiedEntityName] = None,  # noqa: UP045
+    metadata: Optional[OpenMetadata] = None,  # noqa: UP045
     system_tags: bool = False,
 ) -> Iterable[Either[OMetaTagAndClassification]]:
     """
@@ -102,7 +102,7 @@ def get_ometa_tag_and_classification(
                         and tag_entity.classification.name == classification_name
                         and tag_entity.name.root.lower() == tag.lower()
                     ):
-                        tag = tag_entity.name.root
+                        tag = tag_entity.name.root  # noqa: PLW2901
                         specific_tag_description = tag_entity.description.root
                         break
 
@@ -134,9 +134,9 @@ def get_ometa_tag_and_classification(
 def get_tag_label(
     metadata: OpenMetadata,
     tag_name: str,
-    classification_name: Optional[str],
-    tag_type: Union[Type[Tag], Type[GlossaryTerm]] = Tag,
-) -> Optional[TagLabel]:
+    classification_name: Optional[str],  # noqa: UP045
+    tag_type: Union[Type[Tag], Type[GlossaryTerm]] = Tag,  # noqa: UP006, UP007
+) -> Optional[TagLabel]:  # noqa: UP045
     """
     Returns the tag label if the tag is created
     """
@@ -181,11 +181,11 @@ def get_tag_label(
 
 def get_tag_labels(
     metadata: OpenMetadata,
-    tags: List[str],
-    classification_name: Optional[str] = None,
+    tags: List[str],  # noqa: UP006
+    classification_name: Optional[str] = None,  # noqa: UP045
     include_tags: bool = True,
-    tag_type: Union[Type[Tag], Type[GlossaryTerm]] = Tag,
-) -> Optional[List[TagLabel]]:
+    tag_type: Union[Type[Tag], Type[GlossaryTerm]] = Tag,  # noqa: UP006, UP007
+) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
     """
     Method to create tag labels from the collected tags
     """

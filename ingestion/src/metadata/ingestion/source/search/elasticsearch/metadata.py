@@ -15,9 +15,9 @@ Elasticsearch source to extract metadata
 import shutil
 import traceback
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Optional  # noqa: UP035
 
-from elasticsearch8 import Elasticsearch
+from elasticsearch8 import Elasticsearch  # noqa: TC002
 
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
@@ -60,7 +60,7 @@ class ElasticsearchSource(SearchServiceSource):
         self.client: Elasticsearch = self.connection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: ElasticsearchConnection = config.serviceConnection.root.config
         if not isinstance(connection, ElasticsearchConnection):
@@ -73,7 +73,7 @@ class ElasticsearchSource(SearchServiceSource):
         """
         try:
             index_list = self.client.indices.get_alias(expand_wildcards="open") or {}
-            for index in index_list.keys():
+            for index in index_list.keys():  # noqa: SIM118
                 try:
                     yield self.client.indices.get(index=str(index))
                 except Exception as exc:
@@ -86,14 +86,14 @@ class ElasticsearchSource(SearchServiceSource):
                 f"Failed to retrieve index list from Elasticsearch: {exc}. "
                 "Please check your Elasticsearch connection and cluster health."
             )
-            raise exc
+            raise exc  # noqa: TRY201
 
-    def get_search_index_name(self, search_index_details: dict) -> Optional[str]:
+    def get_search_index_name(self, search_index_details: dict) -> Optional[str]:  # noqa: UP045
         """
         Get Search Index Name
         """
         if search_index_details and len(search_index_details) == 1:
-            return list(search_index_details.keys())[0]
+            return list(search_index_details.keys())[0]  # noqa: RUF015
 
         return None
 
@@ -168,7 +168,7 @@ class ElasticsearchSource(SearchServiceSource):
         """
         yield from self.client.indices.get_index_template().get("index_templates", [])
 
-    def get_search_index_template_name(self, search_index_template_details: dict) -> Optional[str]:
+    def get_search_index_template_name(self, search_index_template_details: dict) -> Optional[str]:  # noqa: UP045
         """
         Get Search Index Template Name
         """

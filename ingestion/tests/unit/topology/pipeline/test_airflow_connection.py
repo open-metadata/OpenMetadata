@@ -127,7 +127,7 @@ class TestTryExchangeJwt:
 class TestBuildAccessTokenCallback:
     def test_returns_static_token(self):
         cb = build_access_token_callback("my_static_token")
-        token, expiry = cb()
+        token, expiry = cb()  # noqa: RUF059
         assert token == "my_static_token"
 
     def test_expiry_is_zero(self):
@@ -178,7 +178,7 @@ class TestBuildBasicAuthCallback:
         return_value=None,
     )
     def test_basic_token_encodes_colon_in_password_correctly(self, _mock_jwt):
-        cb, mode = build_basic_auth_callback("http://h", "user", "pass:word", True)
+        cb, mode = build_basic_auth_callback("http://h", "user", "pass:word", True)  # noqa: RUF059
         token, _ = cb()
         assert token.startswith("Basic ")
         decoded = base64.b64decode(token[len("Basic ") :]).decode()

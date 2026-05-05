@@ -16,7 +16,7 @@ of the classifiers. These datasets should then be stored in separate files in a 
 like CSV, JSON or Parquet.
 """
 
-from typing import List, Optional, TypedDict
+from typing import List, Optional, TypedDict  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.pii.algorithms.tags import PIITag
@@ -25,10 +25,10 @@ from metadata.pii.algorithms.tags import PIITag
 class LabeledData(TypedDict):
     """Labeled data for testing"""
 
-    column_name: Optional[str]
+    column_name: Optional[str]  # noqa: UP045
     column_data_type: DataType
     sample_data: list[str]
-    pii_tags: List[PIITag]
+    pii_tags: List[PIITag]  # noqa: UP006
     pii_sensitivity: bool
 
 

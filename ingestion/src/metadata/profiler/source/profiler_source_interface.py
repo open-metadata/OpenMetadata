@@ -32,7 +32,7 @@ class ProfilerSourceInterface(ABC):
 
     @property
     @abstractmethod
-    def interface(self) -> Optional[ProfilerInterface]:
+    def interface(self) -> Optional[ProfilerInterface]:  # noqa: UP045
         """Interface property"""
         raise NotImplementedError
 

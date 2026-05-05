@@ -13,7 +13,7 @@ except ImportError:
 
 from sqlalchemy import Column, Integer
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.sql.selectable import CTE
+from sqlalchemy.sql.selectable import CTE  # noqa: TC002
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (

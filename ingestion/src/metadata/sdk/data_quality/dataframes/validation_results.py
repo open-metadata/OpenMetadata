@@ -13,7 +13,7 @@
 
 import logging  # noqa: I001
 from enum import Enum
-from typing import List, Optional, Tuple, cast
+from typing import List, Optional, Tuple, cast  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -52,11 +52,11 @@ class ValidationResult(BaseModel):
     total_tests: int
     passed_tests: int
     failed_tests: int
-    test_cases_and_results: List[Tuple[TestCase, TestCaseResult]]
+    test_cases_and_results: List[Tuple[TestCase, TestCaseResult]]  # noqa: UP006
     execution_time_ms: float
 
     @property
-    def failures(self) -> List[TestCaseResult]:
+    def failures(self) -> List[TestCaseResult]:  # noqa: UP006
         """Get only failed test results.
 
         Returns:
@@ -69,7 +69,7 @@ class ValidationResult(BaseModel):
         ]
 
     @property
-    def passes(self) -> List[TestCaseResult]:
+    def passes(self) -> List[TestCaseResult]:  # noqa: UP006
         """Get only passed test results.
 
         Returns:
@@ -78,11 +78,11 @@ class ValidationResult(BaseModel):
         return [result for result in self.test_results if result.testCaseStatus == TestCaseStatus.Success]
 
     @property
-    def test_results(self) -> List[TestCaseResult]:
+    def test_results(self) -> List[TestCaseResult]:  # noqa: UP006
         """Get all test results."""
         return [result for _, result in self.test_cases_and_results]
 
-    def publish(self, table_fqn: str, client: Optional[OpenMetadata] = None) -> None:
+    def publish(self, table_fqn: str, client: Optional[OpenMetadata] = None) -> None:  # noqa: UP045
         """Publish test results to OpenMetadata.
         Args:
             table_fqn: Fully qualified table name
@@ -95,7 +95,7 @@ class ValidationResult(BaseModel):
 
         for test_case, result in self.test_cases_and_results:
             if isinstance(test_case, MockTestCase):
-                test_case = metadata.get_or_create_test_case(
+                test_case = metadata.get_or_create_test_case(  # noqa: PLW2901
                     test_case_fqn=f"{table_fqn}.{test_case.name.root}",
                     entity_link=get_entity_link(
                         Table,
@@ -109,7 +109,7 @@ class ValidationResult(BaseModel):
 
             res = metadata.add_test_case_results(
                 result,
-                cast(FullyQualifiedEntityName, test_case.fullyQualifiedName).root,
+                cast(FullyQualifiedEntityName, test_case.fullyQualifiedName).root,  # noqa: TC006
             )
 
             logger.debug(f"Result: {res}")
@@ -134,9 +134,9 @@ class ValidationResult(BaseModel):
         if not results:
             raise ValueError("At least one ValidationResult must be provided to merge")
 
-        from collections import defaultdict
+        from collections import defaultdict  # noqa: PLC0415
 
-        aggregated_results: dict[str, List[Tuple[TestCase, TestCaseResult]]] = defaultdict(list)
+        aggregated_results: dict[str, List[Tuple[TestCase, TestCaseResult]]] = defaultdict(list)  # noqa: UP006
         total_execution_time = 0.0
 
         for result in results:
@@ -147,8 +147,8 @@ class ValidationResult(BaseModel):
                 aggregated_results[str(fqn)].append((test_case, test_result))
             total_execution_time += result.execution_time_ms
 
-        merged_test_cases_and_results: List[Tuple[TestCase, TestCaseResult]] = []
-        for fqn, test_cases_and_results_for_fqn in aggregated_results.items():
+        merged_test_cases_and_results: List[Tuple[TestCase, TestCaseResult]] = []  # noqa: UP006
+        for fqn, test_cases_and_results_for_fqn in aggregated_results.items():  # noqa: B007
             test_case = test_cases_and_results_for_fqn[0][0]
             results_for_test = [result for _, result in test_cases_and_results_for_fqn]
 
@@ -174,7 +174,7 @@ class ValidationResult(BaseModel):
 
     @staticmethod
     def _aggregate_test_case_results(
-        results: List[TestCaseResult],
+        results: List[TestCaseResult],  # noqa: UP006
     ) -> TestCaseResult:
         """Aggregate multiple TestCaseResult objects for the same test case.
 

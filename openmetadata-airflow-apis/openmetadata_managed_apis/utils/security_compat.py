@@ -13,7 +13,7 @@ Compatibility layer for Airflow security decorators across versions
 """
 
 from functools import wraps
-from typing import Callable
+from typing import Callable  # noqa: UP035
 
 from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
 
@@ -30,9 +30,9 @@ def get_security_module():
             # For Airflow 3.x, we need to provide a compatibility layer
             # since Flask blueprints still work but api_connexion is gone
             return None  # Will use no-op decorator
-        else:
+        else:  # noqa: RET505
             # Airflow 2.x uses api_connexion
-            from airflow.api_connexion import security
+            from airflow.api_connexion import security  # noqa: PLC0415
 
             return security
     except ImportError:

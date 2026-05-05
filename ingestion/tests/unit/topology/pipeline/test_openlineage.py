@@ -162,7 +162,7 @@ EVENT_WITHOUT_PARENT_FACET = {
     "job": {"name": "standalone-job", "namespace": "standalone-namespace"},
 }
 
-with open(f"{Path(__file__).parent}/../../resources/datasets/openlineage_event.json") as ol_file:
+with open(f"{Path(__file__).parent}/../../resources/datasets/openlineage_event.json") as ol_file:  # noqa: PTH123
     FULL_OL_KAFKA_EVENT = json.load(ol_file)
 
 EXPECTED_OL_EVENT = OpenLineageEvent(
@@ -176,7 +176,7 @@ EXPECTED_OL_EVENT = OpenLineageEvent(
 
 class OpenLineageUnitTest(unittest.TestCase):
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
 
@@ -584,7 +584,7 @@ class OpenLineageUnitTest(unittest.TestCase):
             if fqn == "testService.shopify.raw_product_catalog":
                 # source of table lineage
                 return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
-            elif fqn == "testService.shopify.fact_order_new5":
+            elif fqn == "testService.shopify.fact_order_new5":  # noqa: RET505
                 # dst of table lineage
                 return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
             else:
@@ -604,7 +604,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                     )
                 )
                 for col in r.right.edge.lineageDetails.columnsLineage:
-                    col_lineage.append((col.fromColumns[0].root, col.toColumn.root))
+                    col_lineage.append((col.fromColumns[0].root, col.toColumn.root))  # noqa: PERF401
             return table_lineage, col_lineage
 
         # Set up the side effect for the mock entity FQN builder
@@ -821,7 +821,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         def mock_get_uuid_by_name(entity, fqn):
             if fqn == "testService.shopify.raw_product_catalog":
                 return Mock(id=Mock(root=from_table_id))
-            elif fqn == "testService.shopify.fact_order_new5":
+            elif fqn == "testService.shopify.fact_order_new5":  # noqa: RET505
                 return Mock(id=Mock(root=to_table_id))
             elif "openlineage_source" in fqn:  # Pipeline entity
                 return Mock(id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
@@ -1020,7 +1020,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         def mock_get_uuid_by_name(entity, fqn):
             if fqn == "testService.shopify.raw_product_catalog":
                 return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
-            elif fqn == "testService.shopify.fact_order_new5":
+            elif fqn == "testService.shopify.fact_order_new5":  # noqa: RET505
                 return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
             else:
                 return Mock(id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
@@ -1327,7 +1327,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         ):
             if service_name == "mysql_prod":
                 return "mysql_prod.db.analytics.user_stat"
-            elif service_name == "redshift_prod":
+            elif service_name == "redshift_prod":  # noqa: RET505
                 return "redshift_prod.warehouse.analytics.user_stat"
             return None
 
@@ -1382,7 +1382,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         ):
             if service_name == "mysql_cluster_a":
                 return "mysql_cluster_a.db.analytics.user_stat"
-            elif service_name == "mysql_cluster_b":
+            elif service_name == "mysql_cluster_b":  # noqa: RET505
                 return "mysql_cluster_b.db.analytics.user_stat"
             return None
 
@@ -1427,7 +1427,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         ):
             if service_name == "mysql_prod":
                 return "mysql_prod.db.analytics.user_stat"
-            elif service_name == "custom_lakehouse":
+            elif service_name == "custom_lakehouse":  # noqa: RET505
                 return "custom_lakehouse.lake.analytics.user_stat"
             return None
 
@@ -1470,13 +1470,13 @@ class OpenLineageUnitTest(unittest.TestCase):
         ):
             if service_name == "mysql_a":
                 return "mysql_a.db.analytics.user_stat"
-            elif service_name == "mysql_b":
+            elif service_name == "mysql_b":  # noqa: RET505
                 return "mysql_b.db.analytics.user_stat"
             return None
 
         import logging
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):  # noqa: SIM117
             with self.assertLogs("metadata.Ingestion", level=logging.WARNING) as cm:
                 result = source._get_table_fqn(table, namespace="mysql://some-host:3306/db")
 
@@ -1547,7 +1547,7 @@ class OpenLineageUnitTest(unittest.TestCase):
 
                 if entity == Table:
                     return mock_table
-                elif entity == Pipeline:
+                elif entity == Pipeline:  # noqa: RET505
                     return mock_pipeline
                 return None
 

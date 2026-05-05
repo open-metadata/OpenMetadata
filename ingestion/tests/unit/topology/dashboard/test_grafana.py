@@ -320,7 +320,7 @@ class GrafanaUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.grafana.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:
+    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         # Mock the connection to return a mock client
         mock_client = MagicMock()
@@ -418,13 +418,13 @@ class GrafanaUnitTest(TestCase):
 
         for result in results:
             if isinstance(result, Either) and result.right:
-                chart_list.append(result.right)
+                chart_list.append(result.right)  # noqa: PERF401
 
         # Should have 3 charts (row panel is skipped)
         self.assertEqual(len(chart_list), 3)
 
         # Verify chart details
-        for expected, actual in zip(EXPECTED_CHARTS, chart_list):
+        for expected, actual in zip(EXPECTED_CHARTS, chart_list):  # noqa: B905
             self.assertEqual(expected.name, actual.name)
             self.assertEqual(expected.displayName, actual.displayName)
             self.assertEqual(expected.chartType, actual.chartType)

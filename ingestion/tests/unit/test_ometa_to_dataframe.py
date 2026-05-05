@@ -27,11 +27,11 @@ from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.utils.datalake.datalake_utils import DatalakeColumnWrapper
 
-from .topology.database.test_datalake import mock_datalake_config
+from .topology.database.test_datalake import mock_datalake_config  # noqa: TID252
 
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))  # noqa: PTH100, PTH120
 
-resp_parquet_file = pq.ParquetFile(os.path.join(ROOT_DIR, "test_ometa_to_dataframe.parquet")).read().to_pandas()
+resp_parquet_file = pq.ParquetFile(os.path.join(ROOT_DIR, "test_ometa_to_dataframe.parquet")).read().to_pandas()  # noqa: PTH118
 method_resp_file = DatalakeColumnWrapper(
     columns=None,
     dataframes=lambda: iter((resp_parquet_file,)),
@@ -46,7 +46,7 @@ class TestStringMethods(unittest.TestCase):
             return_value=method_resp_file,
         ) as exec_mock_method:
             resp = exec_mock_method("key", "string")
-            assert type(resp) == DatalakeColumnWrapper
+            assert type(resp) == DatalakeColumnWrapper  # noqa: E721
 
     @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection")
     def test_get_dataframes(self, test_connection):
@@ -76,7 +76,7 @@ class TestStringMethods(unittest.TestCase):
             )
 
             assert resp == method_resp_file
-            assert type(resp) == DatalakeColumnWrapper
+            assert type(resp) == DatalakeColumnWrapper  # noqa: E721
 
     @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection")
     def test_get_dataframes_fail(self, test_connection):

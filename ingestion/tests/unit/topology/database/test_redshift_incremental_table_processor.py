@@ -288,7 +288,7 @@ class TestRedshiftIncrementalTableProcessor:
         """Checks if only the first time table is seen it is saved."""
         return_value = []
         for template in [VALID_DROP_TABLE_STATEMENT_TEMPLATES[0]] + VALID_CREATE_TABLE_STATEMENT_TEMPLATES:
-            return_value.append(template.format(table_name="my_schema.my_table"))
+            return_value.append(template.format(table_name="my_schema.my_table"))  # noqa: PERF401
 
         with patch.object(
             RedshiftIncrementalTableProcessor,
