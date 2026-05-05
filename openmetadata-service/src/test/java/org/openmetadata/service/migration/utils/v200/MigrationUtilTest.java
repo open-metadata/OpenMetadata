@@ -15,14 +15,24 @@ package org.openmetadata.service.migration.utils.v200;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -30,6 +40,7 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -40,14 +51,22 @@ import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.Workflow;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.EntityDAO;
+import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 class MigrationUtilTest {
+  private static final ObjectMapper MAPPER = new ObjectMapper();
   private Handle handle;
 
   @BeforeEach
@@ -437,6 +456,511 @@ class MigrationUtilTest {
     method.setAccessible(true);
 
     return method.invoke(null, args);
+  }
+
+  // ─── migrateWorkflowJson ───────────────────────────────────────────────
+
+  @Test
+  void migrateWorkflowJson_returnsSameInstanceWhenTriggerAlreadyHasEntityList() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {
+            "output": ["entityList", "updatedBy"]
+          },
+          "nodes": []
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.migrateWorkflowJson(root);
+    assertSame(root, result, "Should return the same instance when output is already canonical");
+  }
+
+  @Test
+  void migrateWorkflowJson_addsEntityListFirstWhenMissingFromTrigger() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": []
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.migrateWorkflowJson(root);
+
+    assertFalse(result == root, "Should return a new instance when changes are needed");
+    JsonNode output = result.get("trigger").get("output");
+    assertEquals("entityList", output.get(0).asText());
+    assertEquals("updatedBy", output.get(1).asText());
+    assertEquals(2, output.size());
+  }
+
+  @Test
+  void migrateWorkflowJson_handlesNoTriggerNode() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "nodes": []
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    assertSame(root, MigrationUtil.migrateWorkflowJson(root));
+  }
+
+  @Test
+  void migrateWorkflowJson_handlesNullRoot() {
+    assertNull(MigrationUtil.migrateWorkflowJson(null));
+  }
+
+  @Test
+  void migrateWorkflowJson_handlesTriggerWithNoOutputArray() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {"type": "manual"},
+          "nodes": []
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    assertSame(root, MigrationUtil.migrateWorkflowJson(root));
+  }
+
+  @Test
+  void migrateWorkflowJson_migratesBatchNodeNamespaceMap() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {"output": ["entityList"]},
+          "nodes": [
+            {
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "name": "MyTask",
+              "inputNamespaceMap": {"relatedEntity": "global"}
+            }
+          ]
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.migrateWorkflowJson(root);
+
+    assertFalse(result == root);
+    JsonNode nsMap = result.get("nodes").get(0).get("inputNamespaceMap");
+    assertTrue(nsMap.has("entityList"));
+    assertFalse(nsMap.has("relatedEntity"));
+    assertEquals("global", nsMap.get("entityList").asText());
+  }
+
+  @Test
+  void migrateWorkflowJson_preservesUpdatedByWhenMigratingRelatedEntity() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {"output": ["entityList"]},
+          "nodes": [
+            {
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "name": "SetApproved",
+              "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "ApprovalForUpdates"}
+            }
+          ]
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.migrateWorkflowJson(root);
+
+    JsonNode nsMap = result.get("nodes").get(0).get("inputNamespaceMap");
+    assertTrue(nsMap.has("entityList"));
+    assertFalse(nsMap.has("relatedEntity"));
+    assertEquals("global", nsMap.get("entityList").asText());
+    assertEquals("ApprovalForUpdates", nsMap.get("updatedBy").asText());
+  }
+
+  @Test
+  void migrateWorkflowJson_skipsNonBatchNodes() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {"output": ["entityList", "updatedBy"]},
+          "nodes": [
+            {
+              "type": "userTask",
+              "subType": "unknownCustomTask",
+              "name": "ApproveIt",
+              "inputNamespaceMap": {"relatedEntity": "global"}
+            }
+          ]
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.migrateWorkflowJson(root);
+
+    assertSame(root, result);
+    assertTrue(result.get("nodes").get(0).get("inputNamespaceMap").has("relatedEntity"));
+  }
+
+  @Test
+  void migrateWorkflowJson_migratesInputArrayRelatedEntityToo() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {"output": ["entityList"]},
+          "nodes": [
+            {
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "name": "n1",
+              "inputNamespaceMap": {"entityList": "global"},
+              "input": ["relatedEntity", "updatedBy"]
+            }
+          ]
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.migrateWorkflowJson(root);
+
+    JsonNode input = result.get("nodes").get(0).get("input");
+    assertEquals("entityList", input.get(0).asText());
+    assertEquals("updatedBy", input.get(1).asText());
+    assertEquals(2, input.size());
+  }
+
+  @Test
+  void migrateWorkflowJson_assignsTrueEntityListToNodeDownstreamOfCheckNodeOnTrueEdge()
+      throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {"output": ["entityList"]},
+          "nodes": [
+            {
+              "type": "automatedTask",
+              "subType": "checkEntityAttributesTask",
+              "name": "CheckOwner",
+              "inputNamespaceMap": {"entityList": "global"}
+            },
+            {
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "name": "SetGold",
+              "inputNamespaceMap": {"relatedEntity": "global"}
+            }
+          ],
+          "edges": [{"from": "CheckOwner", "to": "SetGold", "condition": "true"}]
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.migrateWorkflowJson(root);
+
+    JsonNode nsMap = result.get("nodes").get(1).get("inputNamespaceMap");
+    assertTrue(nsMap.has("true_entityList"));
+    assertEquals("CheckOwner", nsMap.get("true_entityList").asText());
+    assertFalse(nsMap.has("entityList"));
+    assertFalse(nsMap.has("relatedEntity"));
+  }
+
+  @Test
+  void migrateWorkflowJson_halfMigratedTriggerOutputGetsCleaned() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {"output": ["entityList", "relatedEntity"]},
+          "nodes": []
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.migrateWorkflowJson(root);
+
+    assertFalse(result == root);
+    JsonNode output = result.get("trigger").get("output");
+    assertEquals(2, output.size());
+    assertEquals("entityList", output.get(0).asText());
+    assertEquals("updatedBy", output.get(1).asText());
+  }
+
+  @Test
+  void migrateWorkflowJson_setsStoreStageStatusForPeriodicBatchEntity() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {"type": "periodicBatchEntity", "output": ["entityList", "updatedBy"]},
+          "config": {"storeStageStatus": false},
+          "nodes": []
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.migrateWorkflowJson(root);
+
+    assertFalse(result == root);
+    assertTrue(result.get("config").get("storeStageStatus").asBoolean());
+  }
+
+  @Test
+  void migrateWorkflowJson_storeStageStatusAlreadyTrueIsIdempotent() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {"type": "periodicBatchEntity", "output": ["entityList", "updatedBy"]},
+          "config": {"storeStageStatus": true},
+          "nodes": []
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    assertSame(root, MigrationUtil.migrateWorkflowJson(root));
+  }
+
+  // ─── addEntityListToNamespaceMap ──────────────────────────────────────
+
+  @Test
+  void addEntityListToNamespaceMap_returnsSameWhenAlreadyHasEntityListNoRelatedEntity()
+      throws Exception {
+    String json =
+        """
+        {"name": "node", "inputNamespaceMap": {"entityList": "global", "updatedBy": "global"}}
+        """;
+    JsonNode node = MAPPER.readTree(json);
+    assertSame(node, MigrationUtil.addEntityListToNamespaceMap(node, null, Map.of()));
+  }
+
+  @Test
+  void addEntityListToNamespaceMap_replacesRelatedEntityWithEntityListGlobal() throws Exception {
+    String json =
+        """
+        {"name": "node", "inputNamespaceMap": {"relatedEntity": "myNamespace"}}
+        """;
+    JsonNode node = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.addEntityListToNamespaceMap(node, null, Map.of());
+
+    JsonNode nsMap = result.get("inputNamespaceMap");
+    assertTrue(nsMap.has("entityList"));
+    assertFalse(nsMap.has("relatedEntity"));
+    assertEquals("global", nsMap.get("entityList").asText());
+  }
+
+  @Test
+  void addEntityListToNamespaceMap_setsTrueEntityListFromCheckNodeOnTrueCondition()
+      throws Exception {
+    String json =
+        """
+        {"name": "SetGold", "inputNamespaceMap": {"relatedEntity": "global"}}
+        """;
+    JsonNode node = MAPPER.readTree(json);
+    List<String[]> incoming = Collections.singletonList(new String[] {"CheckOwner", "true"});
+    Map<String, String> nodeSubType = Map.of("CheckOwner", "checkEntityAttributesTask");
+    JsonNode result = MigrationUtil.addEntityListToNamespaceMap(node, incoming, nodeSubType);
+
+    JsonNode nsMap = result.get("inputNamespaceMap");
+    assertTrue(nsMap.has("true_entityList"));
+    assertEquals("CheckOwner", nsMap.get("true_entityList").asText());
+    assertFalse(nsMap.has("entityList"));
+    assertFalse(nsMap.has("relatedEntity"));
+  }
+
+  @Test
+  void addEntityListToNamespaceMap_returnsSameWhenNoInputNamespaceMap() throws Exception {
+    JsonNode node = MAPPER.readTree("""
+        {"name": "node"}
+        """);
+    assertSame(node, MigrationUtil.addEntityListToNamespaceMap(node, null, Map.of()));
+  }
+
+  // ─── migrateInputArray ────────────────────────────────────────────────
+
+  @Test
+  void migrateInputArray_replacesRelatedEntityWithEntityList() throws Exception {
+    String json = """
+        {"name": "node", "input": ["relatedEntity", "updatedBy"]}
+        """;
+    JsonNode node = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.migrateInputArray(node);
+
+    JsonNode input = result.get("input");
+    assertEquals(2, input.size());
+    assertEquals("entityList", input.get(0).asText());
+    assertEquals("updatedBy", input.get(1).asText());
+  }
+
+  @Test
+  void migrateInputArray_returnsSameWhenNoRelatedEntity() throws Exception {
+    String json = """
+        {"name": "node", "input": ["entityList", "updatedBy"]}
+        """;
+    JsonNode node = MAPPER.readTree(json);
+    assertSame(node, MigrationUtil.migrateInputArray(node));
+  }
+
+  @Test
+  void migrateInputArray_returnsSameWhenNoInputArray() throws Exception {
+    JsonNode node = MAPPER.readTree("""
+        {"name": "node"}
+        """);
+    assertSame(node, MigrationUtil.migrateInputArray(node));
+  }
+
+  // ─── migrateWorkflowInputNamespaceMap ────────────────────────────────
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void migrateWorkflowInputNamespaceMap_phase2SkippedWhenNoChangesInPhase1() throws Exception {
+    WorkflowDefinitionRepository repository = mock(WorkflowDefinitionRepository.class);
+    EntityDAO<WorkflowDefinition> mockDao = mock(EntityDAO.class);
+
+    when(repository.getDao()).thenReturn(mockDao);
+    when(mockDao.listAfterWithOffset(anyInt(), anyInt())).thenReturn(List.of());
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION))
+          .thenReturn(repository);
+      MigrationUtil.migrateWorkflowInputNamespaceMap();
+    }
+
+    verify(repository, never()).listAll(any(), any());
+    verify(repository, never()).getByName(any(), anyString(), any());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void migrateWorkflowInputNamespaceMap_updatesRawJsonWhenEntityListMissing() throws Exception {
+    WorkflowDefinitionRepository repository = mock(WorkflowDefinitionRepository.class);
+    EntityDAO<WorkflowDefinition> mockDao = mock(EntityDAO.class);
+
+    UUID workflowId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    String rawJson =
+        String.format(
+            """
+            {
+              "id": "%s",
+              "fullyQualifiedName": "wf1",
+              "trigger": {"output": ["relatedEntity", "updatedBy"]},
+              "nodes": []
+            }
+            """,
+            workflowId);
+
+    WorkflowDefinition wf1 = buildMinimalWorkflowDefinition("wf1");
+
+    when(repository.getDao()).thenReturn(mockDao);
+    when(mockDao.listAfterWithOffset(anyInt(), eq(0))).thenReturn(List.of(rawJson));
+    when(mockDao.listAfterWithOffset(anyInt(), eq(100))).thenReturn(List.of());
+    doNothing().when(mockDao).update(eq(workflowId), eq("wf1"), anyString());
+    when(repository.getByName(isNull(), eq("wf1"), any())).thenReturn(wf1);
+
+    WorkflowHandler mockHandler = mock(WorkflowHandler.class);
+    doNothing().when(mockHandler).deploy(any());
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<WorkflowHandler> wfhMock = mockStatic(WorkflowHandler.class);
+        MockedConstruction<Workflow> ignored = mockConstruction(Workflow.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION))
+          .thenReturn(repository);
+      wfhMock.when(WorkflowHandler::isInitialized).thenReturn(false);
+      wfhMock.when(WorkflowHandler::getInstance).thenReturn(mockHandler);
+
+      MigrationUtil.migrateWorkflowInputNamespaceMap();
+    }
+
+    verify(mockDao).update(eq(workflowId), eq("wf1"), anyString());
+    verify(repository).getByName(isNull(), eq("wf1"), any());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void migrateWorkflowInputNamespaceMap_handlesRedeployExceptionGracefully() throws Exception {
+    WorkflowDefinitionRepository repository = mock(WorkflowDefinitionRepository.class);
+    EntityDAO<WorkflowDefinition> mockDao = mock(EntityDAO.class);
+
+    UUID workflowId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    String rawJson =
+        String.format(
+            """
+            {
+              "id": "%s",
+              "fullyQualifiedName": "wf-fail",
+              "trigger": {"output": ["relatedEntity"]},
+              "nodes": []
+            }
+            """,
+            workflowId);
+
+    when(repository.getDao()).thenReturn(mockDao);
+    when(mockDao.listAfterWithOffset(anyInt(), eq(0))).thenReturn(List.of(rawJson));
+    when(mockDao.listAfterWithOffset(anyInt(), eq(100))).thenReturn(List.of());
+    doNothing().when(mockDao).update(any(UUID.class), anyString(), anyString());
+    when(repository.getByName(isNull(), eq("wf-fail"), any()))
+        .thenThrow(new RuntimeException("Simulated redeploy failure"));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION))
+          .thenReturn(repository);
+      assertThrows(RuntimeException.class, () -> MigrationUtil.migrateWorkflowInputNamespaceMap());
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void migrateWorkflowInputNamespaceMap_skipsUpdateWhenJsonUnchanged() throws Exception {
+    WorkflowDefinitionRepository repository = mock(WorkflowDefinitionRepository.class);
+    EntityDAO<WorkflowDefinition> mockDao = mock(EntityDAO.class);
+
+    String alreadyMigratedJson =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "wf1",
+          "trigger": {"output": ["entityList", "updatedBy"]},
+          "nodes": []
+        }
+        """;
+
+    when(repository.getDao()).thenReturn(mockDao);
+    when(mockDao.listAfterWithOffset(anyInt(), eq(0))).thenReturn(List.of(alreadyMigratedJson));
+    when(mockDao.listAfterWithOffset(anyInt(), eq(100))).thenReturn(List.of());
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION))
+          .thenReturn(repository);
+      MigrationUtil.migrateWorkflowInputNamespaceMap();
+    }
+
+    verify(mockDao, never()).update(any(UUID.class), anyString(), anyString());
+  }
+
+  private static WorkflowDefinition buildMinimalWorkflowDefinition(String name) {
+    WorkflowDefinition wf = new WorkflowDefinition();
+    wf.setName(name);
+    wf.setFullyQualifiedName(name);
+    return wf;
   }
 
   private static final class JsonUtilsHolder {

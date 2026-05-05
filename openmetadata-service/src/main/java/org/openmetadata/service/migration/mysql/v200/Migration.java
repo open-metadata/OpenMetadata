@@ -7,6 +7,7 @@ import static org.openmetadata.service.migration.utils.v200.MigrationUtil.backfi
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateLegacyActivityThreadsToActivityStream;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateSuggestionsToTaskEntity;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateThreadTasksToTaskEntity;
+import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateWorkflowInputNamespaceMap;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.widenChangeEventConsumersId;
 
 import lombok.SneakyThrows;
@@ -35,5 +36,7 @@ public class Migration extends MigrationProcessImpl {
     backfillAnnouncementRelationships(handle);
     addWorkflowChangeEventIndex(handle, MYSQL);
     widenChangeEventConsumersId(handle, MYSQL);
+    initializeWorkflowHandler();
+    migrateWorkflowInputNamespaceMap();
   }
 }
