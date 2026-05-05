@@ -73,7 +73,7 @@ class TriggerFactoryTest {
   }
 
   @Test
-  void testPeriodicBatchTrigger_WithoutBatchModeNode_UsesMultipleExecutions() {
+  void testPeriodicBatchTrigger_WithSinkTaskBatchModeDisabled_StillUsesSingleExecution() {
     WorkflowDefinition workflow = createWorkflowWithBatchSink(false);
 
     TriggerInterface trigger = TriggerFactory.createTrigger(workflow);
@@ -90,9 +90,9 @@ class TriggerFactoryTest {
     MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
     assertNotNull(loopChars, "Loop characteristics should exist");
     assertEquals(
-        "${numberOfEntities}",
+        "1",
         loopChars.getLoopCardinality(),
-        "Cardinality should be ${numberOfEntities} for non-batch mode");
+        "Cardinality should be 1 for sink task regardless of batchMode config");
   }
 
   @Test
@@ -149,11 +149,10 @@ class TriggerFactoryTest {
     CallActivity callActivity = findCallActivity(model);
     MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
 
-    // If ANY sink has batchMode=true, should use single execution
     assertEquals(
         "1",
         loopChars.getLoopCardinality(),
-        "Cardinality should be 1 if any sink has batchMode=true");
+        "Cardinality should be 1 when any batch-capable node type is present");
   }
 
   @Test
@@ -172,7 +171,7 @@ class TriggerFactoryTest {
     assertEquals(
         "1",
         loopChars.getLoopCardinality(),
-        "Cardinality should be 1 when batchMode not set (defaults to true)");
+        "Cardinality should be 1 when a batch-capable node type is present");
   }
 
   private CallActivity findCallActivity(BpmnModel model) {

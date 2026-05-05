@@ -68,7 +68,7 @@
     "output": {
       "type": "array",
       "items": { "type": "string" },
-      "default": ["entityList", "true_entityList", "false_entityList"],
+      "default": ["true_entityList", "false_entityList", "result"],
       "additionalItems": false
     },
     "branches": {
