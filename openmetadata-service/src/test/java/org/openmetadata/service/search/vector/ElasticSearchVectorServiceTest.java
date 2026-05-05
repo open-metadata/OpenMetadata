@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -102,6 +103,37 @@ class ElasticSearchVectorServiceTest {
     assertEquals(1, results.hits.size());
     assertTrue(results.hits.get(0).containsKey("_score"), "Result should contain _score field");
     assertEquals(0.85, (double) results.hits.get(0).get("_score"), 0.001);
+  }
+
+  @Test
+  void testParentIdFallbackToDocIdIsWrittenIntoResultMap() throws Exception {
+    // _source has no parentId; collectSearchHits falls back to the document _id for grouping.
+    // The fallback must also be persisted into the hit map — SemanticSearchTool.cleanHit
+    // (MCP consumer) does copyIfPresent("parentId"), so a missing key silently drops it
+    // from MCP responses.
+    String esResponse =
+        """
+        {
+          "hits": {
+            "total": {"value": 1},
+            "hits": [
+              {"_id": "doc-fallback-id", "_score": 0.9, "_source": {"chunkIndex": 0}}
+            ]
+          }
+        }
+        """;
+
+    mockRestClientResponse(esResponse);
+
+    DTOs.VectorSearchResponse results =
+        vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
+
+    assertEquals(1, results.hits.size());
+    Map<String, Object> hit = results.hits.get(0);
+    assertEquals(
+        "doc-fallback-id",
+        hit.get("parentId"),
+        "Result map must carry the fallback parentId (= _id) when _source has none");
   }
 
   @Test
@@ -439,6 +471,29 @@ class ElasticSearchVectorServiceTest {
   }
 
   /** Returns a fresh stream on every call — safe for multi-iteration loops. */
+  @Test
+  void testExecuteGenericRequestHandlesNullEntityWithout4xxNPE() throws Exception {
+    // Some ES endpoints return no body on 4xx; getEntity() may be null. The previous
+    // code dereferenced response.getEntity().getContent() unconditionally and NPE'd,
+    // masking the actual HTTP status. We must surface the status (400) and an empty
+    // body in the error message.
+    Response mockResponse = mock(Response.class);
+    when(mockResponse.getStatusCode()).thenReturn(400);
+    when(mockResponse.getEntity()).thenReturn(null);
+    when(mockRestClient.performRequest(any(Request.class))).thenReturn(mockResponse);
+
+    RuntimeException ex =
+        assertThrows(
+            RuntimeException.class,
+            () -> vectorService.executeGenericRequest("GET", "/_some/path", null));
+    assertTrue(
+        ex.getMessage().contains("400"),
+        "Error must surface the HTTP status, not a NPE: " + ex.getMessage());
+    assertFalse(
+        ex.getCause() instanceof NullPointerException,
+        "Null entity must not cause a NullPointerException");
+  }
+
   private void mockRestClientResponse(String responseJson) throws Exception {
     Response mockResponse = mock(Response.class);
     HttpEntity mockEntity = mock(HttpEntity.class);

@@ -178,6 +178,9 @@ public class ElasticSearchVectorService implements VectorIndexService {
       Map<String, Object> hitMap = MAPPER.convertValue(hit.path("_source"), Map.class);
       hitMap.put("_score", score);
       String parentId = (String) hitMap.getOrDefault("parentId", hit.path("_id").asText());
+      // Persist the fallback into the result map so consumers (e.g. SemanticSearchTool
+      // via copyIfPresent) always see a populated parentId, not just the grouping key.
+      hitMap.put("parentId", parentId);
       byParent.computeIfAbsent(parentId, ignored -> new ArrayList<>()).add(hitMap);
     }
     return pageHitCount;
@@ -206,30 +209,45 @@ public class ElasticSearchVectorService implements VectorIndexService {
       // so we still need a manual status-code check below for client errors.
       Response response = restClient.performRequest(request);
       int statusCode = response.getStatusCode();
-      String responseBody;
-      try (InputStream is = response.getEntity().getContent()) {
-        responseBody = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-      }
+      String responseBody = readEntityBody(response.getEntity());
       if (statusCode >= 400) {
-        throw new IOException(
+        // 4xx path: Rest5Client returns these normally, so we surface the status
+        // and body in the exception message — symmetric to the OS path.
+        LOG.error("Generic request failed: {} {} status={}", method, endpoint, statusCode);
+        throw new RuntimeException(
             "Elasticsearch request failed with status " + statusCode + ": " + responseBody);
       }
       return responseBody;
     } catch (ResponseException e) {
       // 5xx path: format symmetrically with the OS generic-client error message.
       int statusCode = e.getResponse().getStatusCode();
-      String errorBody;
-      try (InputStream is = e.getResponse().getEntity().getContent()) {
-        errorBody = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-      } catch (Exception ignored) {
-        errorBody = "no body";
-      }
+      String errorBody = readEntityBody(e.getResponse().getEntity());
       LOG.error("Generic request failed: {} {}", method, endpoint, e);
       throw new RuntimeException(
           "Elasticsearch request failed with status " + statusCode + ": " + errorBody, e);
+    } catch (RuntimeException e) {
+      // Already a RuntimeException with a meaningful message (e.g. our 4xx-status
+      // surface). Don't double-wrap and lose the message.
+      throw e;
     } catch (Exception e) {
       LOG.error("Generic request failed: {} {}", method, endpoint, e);
       throw new RuntimeException("Elasticsearch generic request failed", e);
+    }
+  }
+
+  /**
+   * Read an HttpEntity body as UTF-8, tolerating a null or unreadable entity. Some ES
+   * endpoints return no body on 4xx; dereferencing entity.getContent() unconditionally
+   * would NPE and mask the real HTTP status.
+   */
+  private static String readEntityBody(org.apache.hc.core5.http.HttpEntity entity) {
+    if (entity == null) {
+      return "";
+    }
+    try (InputStream is = entity.getContent()) {
+      return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+    } catch (Exception ignored) {
+      return "";
     }
   }
 
