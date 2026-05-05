@@ -134,11 +134,12 @@ public class FetchChangeEventsImpl implements JavaDelegate {
       entityToListMap.put(entityLink, List.of(entityLink));
     }
 
-    // hasFinished is true only when no more change events exist (records fetch returned empty).
-    // A batch where all entities were filtered out is NOT finished — the cursor still advances
-    // via batchMaxOffset, and the loop runs the workflow trigger with zero iterations before
-    // fetching the next batch.
-    boolean hasFinished = records.isEmpty();
+    // hasFinished is true when no more change events exist OR when all were filtered/deduped away.
+    // For single-execution mode the MultiInstance uses loopCardinality=1, so an empty entityList
+    // would cause Flowable to call iterator.next() on an empty collection → NoSuchElementException.
+    // Treating an all-filtered batch as finished advances the cursor via commitTask and avoids the
+    // crash; the next scheduled run picks up from the committed offset.
+    boolean hasFinished = records.isEmpty() || entityList.isEmpty();
 
     execution.setVariable(CURRENT_BATCH_OFFSET_VARIABLE, batchMaxOffset);
 
