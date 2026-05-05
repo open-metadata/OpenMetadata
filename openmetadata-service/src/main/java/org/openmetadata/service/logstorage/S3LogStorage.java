@@ -122,33 +122,32 @@ public class S3LogStorage implements LogStorageInterface {
   private long earlyFlushWatermarkBytes;
   private int pendingFlushAlertAfterFailures;
 
-  // Bumped on each fresh OM-server start; surfaced in partial.txt metadata for debugging.
+  // Per-JVM identifier surfaced in partial.txt metadata. Useful for distinguishing the OM-server
+  // instance that wrote a given partial.txt during cross-restart debugging.
   private final long writerEpoch = System.currentTimeMillis();
 
   private final Map<String, StreamContext> activeStreams = new ConcurrentHashMap<>();
-  // Per-stream coordination lock. Entries accumulate one per (fqn, runId) for the
-  // lifetime of the run; cleanup is added in Task 7 (cleanupAbandonedStreams) and
-  // at the end of /close (Task 8). Until then, this map grows monotonically.
+  // Per-stream coordination lock keyed by `<fqn>/<runId>`. Entries are populated lazily and
+  // removed when the stream is finalized (close or sweep). The map is bounded by the number of
+  // in-flight runs.
   private final Map<String, ReentrantLock> streamLocks = new ConcurrentHashMap<>();
 
-  // Lines accumulated since last successful partial.txt PUT, per stream.
-  // Drained by writePartialLogsForStream (rewritten in Task 5).
-  // Values are plain ArrayList — NOT independently thread-safe.
-  // MUST be accessed only while holding the corresponding per-stream lock.
+  // Lines accumulated since the last successful partial.txt PUT, per stream. Drained by the
+  // periodic / watermark-driven flush. Values are plain ArrayList — NOT independently
+  // thread-safe. MUST be accessed only while holding the corresponding per-stream lock.
   private final Map<String, List<String>> pendingFlush = new ConcurrentHashMap<>();
 
-  // Bytes pending in pendingFlush, per stream — drives the early-flush watermark in Task 5.
-  // Entries are removed in Tasks 7 (cleanupAbandonedStreams) and 8 (closeStream rewrite).
+  // Bytes pending in pendingFlush, per stream — drives the early-flush watermark. Entries are
+  // removed when the stream is finalized.
   private final Map<String, AtomicLong> pendingFlushBytes = new ConcurrentHashMap<>();
 
   // Monotonic logical line counter, per stream. Survives buffer eviction; never decrements.
-  // Source of truth for offsets in the new flush logic (Task 5).
-  // Entries are removed in Tasks 7 (cleanupAbandonedStreams) and 8 (closeStream rewrite).
+  // Source of truth for the offset persisted in partial.txt metadata. Entries are removed when
+  // the stream is finalized.
   private final Map<String, AtomicLong> totalLinesAppended = new ConcurrentHashMap<>();
 
-  // Per-stream consecutive flush failure count for alerting.
-  // Written AND consumed in Task 5 (writePartialLogsForStream rewrite).
-  // Entries are removed in Tasks 7 (cleanupAbandonedStreams) and 8 (closeStream rewrite).
+  // Per-stream consecutive flush failure count for alerting. Incremented on each failed PUT and
+  // reset on success. Entries are removed when the stream is finalized.
   private final Map<String, AtomicInteger> consecutiveFlushFailures = new ConcurrentHashMap<>();
 
   private ScheduledExecutorService cleanupExecutor;
@@ -382,8 +381,7 @@ public class S3LogStorage implements LogStorageInterface {
       SimpleLogBuffer recentLogs = recentLogsCache.get(streamKey, k -> new SimpleLogBuffer(1000));
       recentLogs.append(logContent);
 
-      // Track lines for the new pendingFlush + totalLinesAppended pipeline.
-      // (Consumed in Task 5; current task only populates the state.)
+      // Track lines for the durable-pending flush queue and the logical line counter.
       String[] splitLines = logContent.split("\n", -1);
       int lineCount = splitLines.length;
       if (lineCount > 0 && splitLines[lineCount - 1].isEmpty()) {
@@ -1009,6 +1007,8 @@ public class S3LogStorage implements LogStorageInterface {
   }
 
   private void writePartialLogsForStream(String streamKey) {
+    // Parse the streamKey before acquiring the lock — these are pure local string ops
+    // that don't need protection and let us validate the key shape before any I/O.
     int lastSlashIndex = streamKey.lastIndexOf('/');
     if (lastSlashIndex == -1) {
       LOG.warn("Invalid stream key format: {}", streamKey);
@@ -1029,6 +1029,8 @@ public class S3LogStorage implements LogStorageInterface {
       queue.clear();
       AtomicLong bytes = pendingFlushBytes.get(streamKey);
       if (bytes != null) {
+        // Counter is reset under the lock; restorePendingFlush below adds back to it on failure.
+        // If this lock scope is ever narrowed, revisit the atomicity of clear+set+restore.
         bytes.set(0);
       }
 
@@ -1147,11 +1149,8 @@ public class S3LogStorage implements LogStorageInterface {
   public void flush(String pipelineFQN, UUID runId) throws IOException {
     String streamKey = pipelineFQN + "/" + runId;
 
-    // Final partial-logs flush is invoked OUTSIDE the outer lock. writePartialLogsForStream
-    // already acquires the same per-stream lock internally; calling it inside the outer lock
-    // would simply re-enter (ReentrantLock allows this), but separating the two phases keeps
-    // the lock-held window narrow. This ordering is acceptable for Task 3's no-behavior-change
-    // goal; Task 8 rewrites closeStream end-to-end with a single lock holding the full flow.
+    // The final partial-flush is invoked outside the outer lock to keep the lock-held window
+    // narrow; writePartialLogsForStream re-acquires the same per-stream lock internally.
     try {
       writePartialLogsForStream(streamKey);
     } catch (Exception e) {
