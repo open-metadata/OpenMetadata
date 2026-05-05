@@ -10689,6 +10689,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         userName,
         impersonatedBy,
         true,
+        true,
         success,
         failed,
         latencies);
@@ -10704,6 +10705,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String userName,
       String impersonatedBy,
       boolean skipBotGuard,
+      boolean skipDeleted,
       List<BulkResponse> successRequests,
       List<BulkResponse> failedRequests,
       List<Long> entityLatenciesNanos) {
@@ -10769,6 +10771,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entity.setImpersonatedBy(impersonatedBy);
 
           if (Boolean.TRUE.equals(original.getDeleted())) {
+            if (skipDeleted) {
+              LOG.debug(
+                  "[BulkUpdate] Skipping soft-deleted entity '{}' — governance workflows must not restore entities",
+                  fqn);
+              continue;
+            }
             restoreEntity(entity.getUpdatedBy(), original.getId());
           }
 
@@ -11034,6 +11042,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         existingByFqn,
         userName,
         null,
+        false,
         false,
         successRequests,
         failedRequests,
