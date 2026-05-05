@@ -153,7 +153,7 @@ export const waitForContractExecutionWithFallback = async (
 
     const suiteNameCell = page
       .getByTestId('test-suite-table')
-      .locator('.ant-table-cell')
+      .locator('[role="gridcell"]')
       .filter({ hasText: `Data Contract - ${contractName}` });
 
     await expect(suiteNameCell).toBeVisible();
