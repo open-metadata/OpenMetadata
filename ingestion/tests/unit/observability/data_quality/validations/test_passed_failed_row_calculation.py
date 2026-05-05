@@ -10,7 +10,7 @@ def calculate_passed_failed_rows(
     operator: str,
     threshold: int,
     actual_rows: int,
-    total_rows: int = None,
+    total_rows: int = None,  # noqa: RUF013
 ):
     """
     Calculate passed and failed rows based on test result, operator, threshold, and actual row count.
@@ -21,7 +21,7 @@ def calculate_passed_failed_rows(
     if total_rows is None:
         if test_passed:
             return actual_rows, 0
-        else:
+        else:  # noqa: RET505
             if operator in (">", ">="):
                 failed_rows = 0
                 passed_rows = actual_rows

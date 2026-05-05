@@ -14,8 +14,8 @@ Python SSE Client wrapper and helpers
 
 import time
 from datetime import datetime, timezone
-from logging import Logger
-from typing import Any, Generator
+from logging import Logger  # noqa: TC003
+from typing import Any, Generator  # noqa: UP035
 
 import httpx
 
@@ -79,7 +79,7 @@ class SSEClient:
                 if self.last_event_id:
                     headers["Last-Event-ID"] = self.last_event_id
 
-                with httpx.Client(timeout=None) as client:
+                with httpx.Client(timeout=None) as client:  # noqa: SIM117
                     with client.stream(
                         method,
                         url,
@@ -103,7 +103,7 @@ class SSEClient:
                                             f"Stream terminated with event: {parsed_event.get('event', 'unknown')}"
                                         )
                                         return
-                            else:
+                            else:  # noqa: PLR5501
                                 if not line.startswith(":"):
                                     event_buffer.append(line)
 
@@ -148,12 +148,12 @@ class SSEClient:
             None
         """
         if (
-            self.config.expires_in
+            self.config.expires_in  # noqa: RUF021
             and datetime.now(timezone.utc).timestamp() >= self.config.expires_in
             or not self.config.access_token
         ):
             self.config.access_token, expiry = self.config.auth_token()
-            if not self.config.access_token == "no_token":
+            if not self.config.access_token == "no_token":  # noqa: SIM201
                 if isinstance(expiry, datetime):
                     self.config.expires_in = expiry.timestamp() - 120
                 else:

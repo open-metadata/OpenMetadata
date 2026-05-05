@@ -27,7 +27,7 @@ from metadata.utils.logger import great_expectations_logger
 logger = great_expectations_logger()
 
 
-def env(key: str) -> Optional[Any]:
+def env(key: str) -> Optional[Any]:  # noqa: UP045
     """Render environment variable from jinja template
 
     Args:
@@ -61,7 +61,7 @@ def render_template(environment: Environment, template_file: str = "config.yml")
     Returns:
         str
     """
-    file_type = os.path.splitext(template_file)
+    file_type = os.path.splitext(template_file)  # noqa: PTH122
     if file_type[1] not in {".yaml", ".yml"}:
         raise TypeError(f"Unsupported file type: {file_type}. Type should be `.yaml` or `.yml`")
 

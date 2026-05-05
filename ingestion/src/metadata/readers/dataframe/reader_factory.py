@@ -78,9 +78,9 @@ DF_READER_MAP = {
 def get_df_reader(
     type_: SupportedTypes,
     config_source: ConfigSource,
-    client: Optional[Any],
-    separator: Optional[str] = None,
-    session: Optional[Any] = None,
+    client: Optional[Any],  # noqa: UP045
+    separator: Optional[str] = None,  # noqa: UP045
+    session: Optional[Any] = None,  # noqa: UP045
 ) -> DataFrameReader:
     """
     Load the File Reader based on the Config Source

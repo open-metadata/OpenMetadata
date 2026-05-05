@@ -22,7 +22,7 @@ class CassandraColumnParser:
     Responsible for containing the logic to parse a column from Cassandra to OpenMetadata
     """
 
-    datatype_mapping = {
+    datatype_mapping = {  # noqa: RUF012
         "ascii": DataType.STRING,
         "bigint": DataType.BIGINT,
         "blob": DataType.BLOB,

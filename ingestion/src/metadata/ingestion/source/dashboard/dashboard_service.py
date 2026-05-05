@@ -14,10 +14,10 @@ Base class for ingesting dashboard services
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Iterable, List, Optional, Set, Tuple, Union  # noqa: UP035
 
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -197,7 +197,7 @@ class DashboardServiceTopology(ServiceTopology):
     )
 
 
-from metadata.utils.helpers import retry_with_docker_host
+from metadata.utils.helpers import retry_with_docker_host  # noqa: E402
 
 
 # pylint: disable=too-many-public-methods
@@ -215,9 +215,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = DashboardServiceTopology()
     context = TopologyContextManager(topology)
-    dashboard_source_state: Set = set()
-    datamodel_source_state: Set = set()
-    chart_source_state: Set = set()
+    dashboard_source_state: Set = set()  # noqa: RUF012, UP006
+    datamodel_source_state: Set = set()  # noqa: RUF012, UP006
+    chart_source_state: Set = set()  # noqa: RUF012, UP006
 
     @retry_with_docker_host()
     def __init__(
@@ -250,7 +250,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Any,
-        db_service_prefix: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -263,7 +263,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def get_dashboards_list(self) -> Optional[List[Any]]:
+    def get_dashboards_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
         """
         Get List of all dashboards
         """
@@ -326,10 +326,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(
-                        f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"
+                        f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"  # noqa: RUF010
                     )
 
-    def get_db_service_prefixes(self) -> List[str]:
+    def get_db_service_prefixes(self) -> List[str]:  # noqa: UP006
         """
         Get the list of db service prefixes
         """
@@ -354,8 +354,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         return QueryParserType.Auto
 
     def parse_db_service_prefix(
-        self, db_service_prefix: Optional[str]
-    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+        self,
+        db_service_prefix: Optional[str],  # noqa: UP045
+    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:  # noqa: UP006, UP045
         """
         Parse the db service prefix
         Returns:
@@ -382,7 +383,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 yield from self.yield_lineage_request(lineage)
 
     def yield_lineage_request(
-        self, lineage: Optional[Either[AddLineageRequest]] = None
+        self,
+        lineage: Optional[Either[AddLineageRequest]] = None,  # noqa: UP045
     ) -> Iterable[Either[OMetaLineageRequest]]:
         """
         Method to yield lineage request
@@ -470,7 +472,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_owner_ref(  # pylint: disable=unused-argument, useless-return
         self, dashboard_details
-    ) -> Optional[EntityReferenceList]:
+    ) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Method to process the dashboard owners
         """
@@ -518,11 +520,11 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     @staticmethod
     def _get_add_lineage_request(
-        to_entity: Union[Dashboard, DashboardDataModel, Chart],
-        from_entity: Union[Table, DashboardDataModel, Dashboard],
-        column_lineage: List[ColumnLineage] = None,
-        sql: Optional[str] = None,
-    ) -> Optional[Either[AddLineageRequest]]:
+        to_entity: Union[Dashboard, DashboardDataModel, Chart],  # noqa: UP007
+        from_entity: Union[Table, DashboardDataModel, Dashboard],  # noqa: UP007
+        column_lineage: List[ColumnLineage] = None,  # noqa: RUF013, UP006
+        sql: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
         if from_entity and to_entity:
             return Either(
                 right=AddLineageRequest(
@@ -547,7 +549,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         return None
 
     @staticmethod
-    def _get_data_model_column_fqn(data_model_entity: DashboardDataModel, column: str) -> Optional[str]:
+    def _get_data_model_column_fqn(data_model_entity: DashboardDataModel, column: str) -> Optional[str]:  # noqa: UP045
         """
         Get fqn of column if exist in table entity
         """
@@ -629,7 +631,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_project_name(  # pylint: disable=unused-argument, useless-return
         self, dashboard_details: Any
-    ) -> Optional[str]:
+    ) -> Optional[str]:  # noqa: UP045
         """
         Get the project / workspace / folder / collection name of the dashboard
         """
@@ -638,7 +640,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_project_names(  # pylint: disable=unused-argument, useless-return
         self, dashboard_details: Any
-    ) -> Optional[str]:
+    ) -> Optional[str]:  # noqa: UP045
         """
         Get the project / workspace / folder / collection names of the dashboard
         """
@@ -687,8 +689,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self,
         om_table: Table,
         data_model_entity: DashboardDataModel,
-        columns_list: List[str],
-    ) -> List[ColumnLineage]:
+        columns_list: List[str],  # noqa: UP006
+    ) -> List[ColumnLineage]:  # noqa: UP006
         """
         Get the column lineage from the fields
         """
@@ -702,7 +704,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 )
                 if from_column and to_column:
                     column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))
-            return column_lineage
+            return column_lineage  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error to get column lineage: {exc}")
             logger.debug(traceback.format_exc())

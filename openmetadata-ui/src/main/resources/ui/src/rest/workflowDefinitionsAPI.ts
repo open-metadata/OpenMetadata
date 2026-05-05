@@ -64,6 +64,7 @@ export const getWorkflowDefinitionByFQN = async (fqn: string) => {
 export interface WorkflowInstancesParams {
   limit?: number;
   offset?: string;
+  scheduleRunId?: string;
 }
 
 export const getWorkflowInstancesByFQN = async (
@@ -90,7 +91,14 @@ export const getWorkflowInstanceDetails = async (
   instanceId: string
 ) => {
   const res = await APIClient.get(
-    `governance/workflowInstanceStates/${fqn}/${instanceId}`
+    `governance/workflowInstanceStates/${fqn}/${instanceId}`,
+    {
+      params: {
+        startTs: 0,
+        endTs: Date.now(),
+        limit: 1000000,
+      },
+    }
   );
 
   return res.data;

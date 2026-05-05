@@ -17,7 +17,7 @@ import time
 import traceback
 from datetime import datetime
 from multiprocessing import Queue
-from typing import Dict, Iterable, List, Optional, Union
+from typing import Dict, Iterable, List, Optional, Union  # noqa: UP035
 
 import networkx as nx
 from pydantic import BaseModel, ConfigDict, Field
@@ -56,15 +56,15 @@ class QueryByProcedure(BaseModel):
 
     procedure_name: str = Field(None, alias="PROCEDURE_NAME")
     query_type: str = Field(..., alias="QUERY_TYPE")
-    query_database_name: Optional[str] = Field(None, alias="QUERY_DATABASE_NAME")
-    query_schema_name: Optional[str] = Field(None, alias="QUERY_SCHEMA_NAME")
+    query_database_name: Optional[str] = Field(None, alias="QUERY_DATABASE_NAME")  # noqa: UP045
+    query_schema_name: Optional[str] = Field(None, alias="QUERY_SCHEMA_NAME")  # noqa: UP045
     procedure_text: str = Field(..., alias="PROCEDURE_TEXT")
     procedure_start_time: datetime = Field(..., alias="PROCEDURE_START_TIME")
     procedure_end_time: datetime = Field(..., alias="PROCEDURE_END_TIME")
-    query_start_time: Optional[datetime] = Field(None, alias="QUERY_START_TIME")
-    query_duration: Optional[float] = Field(None, alias="QUERY_DURATION")
+    query_start_time: Optional[datetime] = Field(None, alias="QUERY_START_TIME")  # noqa: UP045
+    query_duration: Optional[float] = Field(None, alias="QUERY_DURATION")  # noqa: UP045
     query_text: str = Field(..., alias="QUERY_TEXT")
-    query_user_name: Optional[str] = Field(None, alias="QUERY_USER_NAME")
+    query_user_name: Optional[str] = Field(None, alias="QUERY_USER_NAME")  # noqa: UP045
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -99,7 +99,7 @@ def is_lineage_query(query_type: str, query_text: str) -> bool:
     if query_type in ("MERGE", "UPDATE", "CREATE_TABLE_AS_SELECT"):
         return True
 
-    if query_type == "INSERT" and re.search("^.*insert.*into.*select.*$", query_text.replace("\n", " "), re.IGNORECASE):
+    if query_type == "INSERT" and re.search("^.*insert.*into.*select.*$", query_text.replace("\n", " "), re.IGNORECASE):  # noqa: SIM103
         return True
 
     return False
@@ -109,13 +109,13 @@ def _yield_procedure_lineage(
     metadata: OpenMetadata,
     service_name: str,
     dialect: Dialect,
-    processCrossDatabaseLineage: bool,
-    crossDatabaseServiceNames: List[str],
-    parsingTimeoutLimit: int,
+    processCrossDatabaseLineage: bool,  # noqa: N803
+    crossDatabaseServiceNames: List[str],  # noqa: N803, UP006
+    parsingTimeoutLimit: int,  # noqa: N803
     query_by_procedure: QueryByProcedure,
     procedure: StoredProcedure,
-    procedure_graph_map: Dict[str, ProcedureAndProcedureGraph],
-    enableTempTableLineage: bool,
+    procedure_graph_map: Dict[str, ProcedureAndProcedureGraph],  # noqa: UP006
+    enableTempTableLineage: bool,  # noqa: N803
     parser_type: QueryParserType,
 ) -> Iterable[Either[AddLineageRequest]]:
     """Add procedure lineage from its query"""
@@ -160,18 +160,18 @@ def _yield_procedure_lineage(
 
 
 def procedure_lineage_processor(
-    procedure_and_queries: List[ProcedureAndQuery],
+    procedure_and_queries: List[ProcedureAndQuery],  # noqa: UP006
     queue: Queue,
     metadata: OpenMetadata,
     service_name: str,
     dialect: Dialect,
-    processCrossDatabaseLineage: bool,
-    crossDatabaseServiceNames: List[str],
-    parsingTimeoutLimit: int,
-    procedure_graph_map: Dict[str, ProcedureAndProcedureGraph],
-    enableTempTableLineage: bool,
+    processCrossDatabaseLineage: bool,  # noqa: N803
+    crossDatabaseServiceNames: List[str],  # noqa: N803, UP006
+    parsingTimeoutLimit: int,  # noqa: N803
+    procedure_graph_map: Dict[str, ProcedureAndProcedureGraph],  # noqa: UP006
+    enableTempTableLineage: bool,  # noqa: N803
     parser_type: QueryParserType,
-) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
     """
     Process the procedure and its queries to add lineage
     """
@@ -264,7 +264,7 @@ def process_chunk_in_subprocess(chunk, processor_fn, queue, *args):
         # Process each item in the chunk
         processor_fn(chunk, queue, *args)
         time.sleep(0.1)
-        return True
+        return True  # noqa: TRY300
     except Exception as e:
         logger.error(f"Error processing chunk in subprocess: {e}")
         logger.error(traceback.format_exc())
@@ -283,17 +283,17 @@ def _query_already_processed(metadata: OpenMetadata, table_query: TableQuery) ->
 
 
 def query_lineage_processor(
-    table_queries: List[TableQuery],
+    table_queries: List[TableQuery],  # noqa: UP006
     queue: Queue,
     metadata: OpenMetadata,
     dialect: Dialect,
     graph: nx.DiGraph,
-    processCrossDatabaseLineage: bool,
-    crossDatabaseServiceNames: List[str],
-    parsingTimeoutLimit: int,
-    serviceName: str,
+    processCrossDatabaseLineage: bool,  # noqa: N803
+    crossDatabaseServiceNames: List[str],  # noqa: N803, UP006
+    parsingTimeoutLimit: int,  # noqa: N803
+    serviceName: str,  # noqa: N803
     parser_type: QueryParserType,
-) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
     """
     Generate lineage for a list of table queries
     """
@@ -336,15 +336,15 @@ def query_lineage_processor(
 
 
 def view_lineage_processor(
-    views: List[TableView],
+    views: List[TableView],  # noqa: UP006
     queue: Queue,
     metadata: OpenMetadata,
     service_name: str,
-    connectionType: str,
-    processCrossDatabaseLineage: bool,
-    crossDatabaseServiceNames: List[str],
-    parsingTimeoutLimit: int,
-    overrideViewLineage: bool,
+    connectionType: str,  # noqa: N803
+    processCrossDatabaseLineage: bool,  # noqa: N803
+    crossDatabaseServiceNames: List[str],  # noqa: N803, UP006
+    parsingTimeoutLimit: int,  # noqa: N803
+    overrideViewLineage: bool,  # noqa: N803
     parser_type: QueryParserType,
 ) -> Iterable[Either[AddLineageRequest]]:
     """

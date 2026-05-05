@@ -15,7 +15,7 @@ Module for sqlalchemy dialect utils
 """
 
 import traceback
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine, reflection
@@ -32,7 +32,7 @@ def get_all_table_comments(self, connection, query):
     """
     Method to fetch comment of all available tables
     """
-    self.all_table_comments: Dict[Tuple[str, str], str] = {}
+    self.all_table_comments: Dict[Tuple[str, str], str] = {}  # noqa: UP006
     self.current_db: str = connection.engine.url.database
     result = connection.execute(text(query) if isinstance(query, str) else query)
     for table in result:
@@ -51,7 +51,7 @@ def get_all_table_owners(self, connection, query, schema_name, **kw):  # pylint:
     """
     Method to fetch owners of all available tables
     """
-    self.all_table_owners: Dict[Tuple[str, str], str] = {}
+    self.all_table_owners: Dict[Tuple[str, str], str] = {}  # noqa: UP006
     result = connection.execute(text(query) if isinstance(query, str) else query)
     for table in result:
         self.all_table_owners[(table[0], table[1])] = table[2]
@@ -68,7 +68,7 @@ def get_all_view_definitions(self, connection, query):
     """
     Method to fetch view definition of all available views
     """
-    self.all_view_definitions: Dict[Tuple[str, str], str] = {}
+    self.all_view_definitions: Dict[Tuple[str, str], str] = {}  # noqa: UP006
     self.current_db: str = connection.engine.url.database  # type: ignore
     result = connection.execute(text(query) if isinstance(query, str) else query)
     for view in result:
@@ -104,15 +104,15 @@ def is_complex_type(col_type: str):
 
 def get_display_datatype(
     col_type: str,
-    char_len: Optional[int],
-    precision: Optional[int],
-    scale: Optional[int],
+    char_len: Optional[int],  # noqa: UP045
+    precision: Optional[int],  # noqa: UP045
+    scale: Optional[int],  # noqa: UP045
 ):
     if char_len or (precision is not None and scale is None):
         length = char_len or scale
-        return f"{col_type}({str(length)})"
+        return f"{col_type}({str(length)})"  # noqa: RUF010
     if scale is not None and precision is not None:
-        return f"{col_type}({str(precision)},{str(scale)})"
+        return f"{col_type}({str(precision)},{str(scale)})"  # noqa: RUF010
     return col_type
 
 
@@ -120,7 +120,7 @@ def convert_numpy_to_list(data):
     """
     Recursively converts numpy arrays to lists in a nested data structure.
     """
-    import numpy as np  # pylint: disable=import-outside-toplevel
+    import numpy as np  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
     if isinstance(data, np.ndarray):
         return data.tolist()
@@ -137,7 +137,7 @@ def get_all_table_ddls(self, connection, query, schema_name, **kw):  # pylint: d
     Method to fetch ddl of all available tables
     """
     try:
-        self.all_table_ddls: Dict[Tuple[str, str], str] = {}
+        self.all_table_ddls: Dict[Tuple[str, str], str] = {}  # noqa: UP006
         self.current_db: str = schema_name
         meta = MetaData()
         meta.reflect(bind=connection, schema=schema_name)
@@ -150,11 +150,11 @@ def get_all_table_ddls(self, connection, query, schema_name, **kw):  # pylint: d
         # for subsequent queries (e.g. get_table_comment). Without this,
         # psycopg2 raises InFailedSqlTransaction on every query that follows.
         if isinstance(exc, ProgrammingError):
-            try:
+            try:  # noqa: SIM105
                 connection.rollback()
             except Exception:
                 pass
-        try:
+        try:  # noqa: SIM105
             connection.rollback()
         except Exception:
             pass
@@ -181,7 +181,7 @@ def get_schema_comment_results(self, connection, query, database, schema=None):
     """
     Method to fetch comment of all available schemas
     """
-    self.schema_comment_result: Dict[str, str] = {}
+    self.schema_comment_result: Dict[str, str] = {}  # noqa: UP006
     self.current_db: str = database
     result = connection.execute(text(query) if isinstance(query, str) else query).fetchall()
     self.schema_comment_result[schema] = result
@@ -192,7 +192,7 @@ def get_table_comment_results(self, connection, query, database, table_name, sch
     """
     Method to fetch comment of all available tables
     """
-    self.table_comment_result: Dict[Tuple[str, str], str] = {}
+    self.table_comment_result: Dict[Tuple[str, str], str] = {}  # noqa: UP006
     self.current_db: str = database
     result = connection.execute(text(query) if isinstance(query, str) else query).fetchall()
     self.table_comment_result[(table_name, schema)] = result
@@ -211,8 +211,8 @@ def get_table_comment_result_wrapper(self, connection, query, database, table_na
 def get_schema_comment_result_wrapper(self, connection, query, database, schema=None):
     if (
         not hasattr(self, "schema_comment_result")
-        or self.schema_comment_result.get((schema)) is None
+        or self.schema_comment_result.get((schema)) is None  # noqa: UP034
         or self.current_db != database
     ):
         self.get_schema_comment_results(connection, query, database, schema)
-    return self.schema_comment_result.get((schema))
+    return self.schema_comment_result.get((schema))  # noqa: UP034

@@ -56,11 +56,11 @@ class BaseTableRowInsertedCountToBeBetweenValidator(BaseTestValidator):
 
         try:
             if any(var is None for var in [column_name, range_type, range_interval]):
-                raise ValueError("No value found for columnName, rangeType or rangeInterval")
+                raise ValueError("No value found for columnName, rangeType or rangeInterval")  # noqa: TRY301
 
-            range_interval = cast(int, range_interval)
-            column_name = cast(str, column_name)
-            range_type = cast(str, range_type)
+            range_interval = cast(int, range_interval)  # noqa: TC006
+            column_name = cast(str, column_name)  # noqa: TC006
+            range_type = cast(str, range_type)  # noqa: TC006
 
             res = self._run_results(column_name, range_type, range_interval)
 

@@ -7603,7 +7603,7 @@ public class WorkflowDefinitionResourceIT {
                   "events": ["Created"],
                   "filter": {}
                 },
-                "output": ["relatedEntity"]
+                "output": ["entityList", "updatedBy"]
               },
               "nodes": [
                 {
@@ -7639,9 +7639,9 @@ public class WorkflowDefinitionResourceIT {
                     "approvalThreshold": 2,
                     "rejectionThreshold": 1
                   },
-                  "input": ["relatedEntity"],
+                  "input": ["entityList"],
                   "inputNamespaceMap": {
-                    "relatedEntity": "global"
+                    "entityList": "global"
                   },
                   "output": ["result"],
                   "branches": ["true", "false"]

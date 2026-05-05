@@ -73,7 +73,7 @@ class TestGetConnectionClass:
     """
 
     # Services that use camelCase in file names (most services)
-    CAMELCASE_SERVICES = [
+    CAMELCASE_SERVICES = [  # noqa: RUF012
         "AzureSQL",
         "BigQuery",
         "BigTable",
@@ -91,14 +91,14 @@ class TestGetConnectionClass:
     ]
 
     # Services that use all-lowercase in file names (exceptions)
-    LOWERCASE_SERVICES = [
+    LOWERCASE_SERVICES = [  # noqa: RUF012
         "SAS",  # sasConnection.py
         "SQLite",  # sqliteConnection.py
         "SSAS",  # ssasConnection.py
     ]
 
     # Services that worked with simple casing (first char lowercase only)
-    SIMPLE_CASE_SERVICES = [
+    SIMPLE_CASE_SERVICES = [  # noqa: RUF012
         "Athena",
         "Cassandra",
         "Clickhouse",

@@ -13,7 +13,7 @@
 Python Dependencies
 """
 
-from typing import Dict, List, Set
+from typing import Dict, List, Set  # noqa: UP035
 
 from setuptools import setup
 
@@ -48,7 +48,8 @@ VERSIONS = {
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
     "databricks-sdk": "databricks-sdk~=0.20.0",
-    "databricks-sql-connector": "databricks-sql-connector>=2.0",
+    "databricks-sql-connector": "databricks-sql-connector>=4.0.0",
+    "databricks-sqlalchemy": "databricks-sqlalchemy~=2.0.9",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy<3.8",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
@@ -169,6 +170,10 @@ base_requirements = {
     "setuptools>=78.1.1,<81",  # <81 required: pkg_resources removed in setuptools 81+
     "shapely",
     "collate-data-diff>=0.11.9",
+    # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
+    # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
+    # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
+    "dbt-extractor>=0.5.0",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     "jaraco.context==6.0.1",
     # TODO: Remove one once we have updated datadiff version
@@ -177,7 +182,7 @@ base_requirements = {
     "httpx~=0.28.0",
 }
 
-plugins: Dict[str, Set[str]] = {
+plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "airflow": {
         "opentelemetry-exporter-otlp==1.37.0",
         "attrs",
@@ -231,14 +236,12 @@ plugins: Dict[str, Set[str]] = {
         # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict)
     },
     "databricks": {
-        # sqlalchemy-databricks is pre-installed with --no-deps (SA<2 metadata conflict)
+        VERSIONS["databricks-sqlalchemy"],
         VERSIONS["databricks-sdk"],
         VERSIONS["databricks-sql-connector"],
         "ndg-httpsclient~=0.5.1",
         "pyOpenSSL~=24.1.0",
         "pyasn1~=0.6.0",
-        # databricks has a dependency on pyhive for metadata as well as profiler
-        VERSIONS["pyhive"],
     },
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
@@ -357,7 +360,7 @@ plugins: Dict[str, Set[str]] = {
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
-        # sqlalchemy-redshift is pre-installed with --no-deps (SA<2 metadata conflict)
+        "sqlalchemy-redshift~=1.0.0",
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },
@@ -401,8 +404,7 @@ dev = {
     "mypy-boto3-glue",
     "nox",
     "pre-commit",
-    "pylint~=3.2.0",  # 3.3.0+ breaks our current linting
-    "basedpyright~=1.39.0",
+    "basedpyright==1.39.3",
     # For publishing
     "twine",
     "build",
@@ -520,7 +522,7 @@ playwright_dependencies = {
 }
 
 
-def filter_requirements(filtered: Set[str]) -> List[str]:
+def filter_requirements(filtered: Set[str]) -> List[str]:  # noqa: UP006
     """Filter out requirements from base_requirements"""
     return list(
         base_requirements.union(*[requirements for plugin, requirements in plugins.items() if plugin not in filtered])

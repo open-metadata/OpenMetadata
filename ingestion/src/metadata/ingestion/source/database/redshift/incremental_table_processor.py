@@ -15,7 +15,7 @@ Incremental Processor for Redshift
 
 import re
 from datetime import datetime
-from typing import Dict, FrozenSet, Iterable, List, Optional, Tuple
+from typing import Dict, FrozenSet, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy.engine import Connection
 from sqlalchemy.sql import text
@@ -85,7 +85,7 @@ REGEX_LIST = [
 # single-pass; keyword dispatch achieves the same reduction more predictably.
 _FIRST_KW_RE = re.compile(r"\b(ALTER|CREATE|DROP|COMMENT)\b", re.IGNORECASE)
 
-_KW_TO_CANDIDATES: Dict[str, List[RedshiftTableChangeQueryRegex]] = {
+_KW_TO_CANDIDATES: Dict[str, List[RedshiftTableChangeQueryRegex]] = {  # noqa: UP006
     "ALTER": [_ALTER_TABLE_RE, _ALTER_VIEW_RE],
     "CREATE": [_CREATE_TABLE_RE, _CREATE_VIEW_RE],
     "DROP": [_DROP_TABLE_RE, _DROP_VIEW_RE],
@@ -102,7 +102,7 @@ class RedshiftIncrementalTableProcessor:
         self,
         table_map: RedshiftTableMap,
         table_changes_query: str,
-        regex_list: List[RedshiftTableChangeQueryRegex],
+        regex_list: List[RedshiftTableChangeQueryRegex],  # noqa: UP006
         connection: Connection,
         default_schema: SchemaName,
     ):
@@ -141,7 +141,7 @@ class RedshiftIncrementalTableProcessor:
         """
         return statement.translate(_CLEAN_TABLE)
 
-    def _get_schema_and_table(self, full_table_name: str, statement: str) -> Tuple[SchemaName, TableName]:
+    def _get_schema_and_table(self, full_table_name: str, statement: str) -> Tuple[SchemaName, TableName]:  # noqa: UP006
         """From the full table name, retrieves the Schema and Table Name.
         If no Schema is present, falls back to the default schema."""
         full_table_name_as_list = full_table_name.split(".")
@@ -174,7 +174,7 @@ class RedshiftIncrementalTableProcessor:
         case: statement has been heavily mangled or starts with an unknown verb).
         """
         for statement in self._query_for_changes(database, start_date):
-            statement = self._clean_statement(statement)
+            statement = self._clean_statement(statement)  # noqa: PLW2901
 
             kw_match = _FIRST_KW_RE.search(statement)
             if kw_match:
@@ -199,10 +199,10 @@ class RedshiftIncrementalTableProcessor:
             if not match_found:
                 logger.debug("Match not found for %s", statement)
 
-    def get_deleted(self, schema_name: Optional[SchemaName] = None) -> List[Tuple[SchemaName, TableName]]:
+    def get_deleted(self, schema_name: Optional[SchemaName] = None) -> List[Tuple[SchemaName, TableName]]:  # noqa: UP006, UP045
         """Returns the deleted table names present in the table_map for a given schema."""
         return self.table_map.get_deleted(schema_name)
 
-    def get_not_deleted(self, schema_name: SchemaName) -> FrozenSet[TableName]:
+    def get_not_deleted(self, schema_name: SchemaName) -> FrozenSet[TableName]:  # noqa: UP006
         """Returns the not deleted table names present in the table_map for a given schema."""
         return self.table_map.get_not_deleted(schema_name)

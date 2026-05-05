@@ -13,7 +13,6 @@
 Module to parse source connecetion config, to handle validation error
 """
 
-from openmetadata_managed_apis.utils.logger import utils_logger
 from pydantic import ValidationError
 
 from metadata.ingestion.api.parser import (
@@ -23,6 +22,7 @@ from metadata.ingestion.api.parser import (
     get_connection_class,
     get_service_type,
 )
+from openmetadata_managed_apis.utils.logger import utils_logger
 
 logger = utils_logger()
 

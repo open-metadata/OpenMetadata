@@ -141,7 +141,7 @@ class LookerUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_LOOKER_CONFIG)
@@ -199,7 +199,7 @@ class LookerUnitTest(TestCase):
             raise RuntimeError("Something bad")
 
         with patch.object(Looker40SDK, "all_dashboards", side_effect=raise_something_bad):
-            self.assertRaises(Exception, LookerSource.get_dashboards_list)
+            self.assertRaises(Exception, LookerSource.get_dashboards_list)  # noqa: B017
 
     def test_get_dashboard_name(self):
         """
@@ -268,7 +268,7 @@ class LookerUnitTest(TestCase):
             raise RuntimeError("Something bad")
 
         with patch.object(Looker40SDK, "user", side_effect=raise_something_bad):
-            self.assertRaises(Exception, LookerSource.get_owner_ref)
+            self.assertRaises(Exception, LookerSource.get_owner_ref)  # noqa: B017
 
     def test_yield_dashboard(self):
         """
@@ -518,7 +518,7 @@ class LookerUnitTest(TestCase):
         # We don't blow up if the chart cannot be built.
         # Let's mock a random function exploding
         def something_bad():
-            raise Exception("something bad")
+            raise Exception("something bad")  # noqa: TRY002
 
         with patch.object(LookerSource, "build_chart_description", side_effect=something_bad):
             self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD)
@@ -653,7 +653,7 @@ class LookerUnitTest(TestCase):
         mock_user = User(email="test@example.com")
 
         # Mock the client.user method to return our mock user
-        with patch.object(self.looker.client, "user", return_value=mock_user):
+        with patch.object(self.looker.client, "user", return_value=mock_user):  # noqa: SIM117
             # Mock the metadata.get_reference_by_email method
             with patch.object(self.looker.metadata, "get_reference_by_email") as mock_get_ref:
                 mock_get_ref.return_value = EntityReferenceList(

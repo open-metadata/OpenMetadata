@@ -65,7 +65,7 @@ SNOWFLAKE_CONFIGURATION = {
 
 SNOWFLAKE_CONFIGURATION_CUSTOM_HOST = {
     **SNOWFLAKE_CONFIGURATION,
-    **{
+    **{  # noqa: PIE800
         "source": {
             **SNOWFLAKE_CONFIGURATION["source"],
             "serviceConnection": {
@@ -81,7 +81,7 @@ SNOWFLAKE_CONFIGURATION_CUSTOM_HOST = {
 
 SNOWFLAKE_INCREMENTAL_CONFIGURATION = {
     **SNOWFLAKE_CONFIGURATION,
-    **{
+    **{  # noqa: PIE800
         "source": {
             **SNOWFLAKE_CONFIGURATION["source"],
             "sourceConfig": {"config": {"type": "DatabaseMetadata", "incremental": {"enabled": True}}},
@@ -208,7 +208,7 @@ class SnowflakeUnitTest(TestCase):
     Unit test for snowflake source
     """
 
-    def __init__(self, methodName) -> None:
+    def __init__(self, methodName) -> None:  # noqa: N803
         super().__init__(methodName)
         self.sources = get_snowflake_sources()
 
@@ -392,7 +392,7 @@ class SnowflakeUnitTest(TestCase):
         """
         Test source URL generation with custom snowflakeSourceHost
         """
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             SnowflakeSource,
             "account",
             return_value="random_account",

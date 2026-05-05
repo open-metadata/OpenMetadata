@@ -58,7 +58,7 @@ def _clean_cert_value(cert_data: str) -> str:
 
 
 def write_data_to_file(file_path: Path, cert_data: str) -> None:
-    with open(
+    with open(  # noqa: PTH123
         file_path,
         "w+",
         encoding=UTF_8,
@@ -173,8 +173,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: OpenSearch,
     service_connection: OpenSearchConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection for OpenSearch. This can be executed either as part

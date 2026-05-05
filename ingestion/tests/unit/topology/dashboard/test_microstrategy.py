@@ -112,7 +112,7 @@ class MicroStrategyUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.microstrategy.metadata.MicrostrategySource.test_connection")
     @patch("metadata.ingestion.source.dashboard.microstrategy.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:
+    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         get_connection.return_value = False
@@ -189,7 +189,7 @@ class MicroStrategyUnitTest(TestCase):
 
     def test_chart_source_state_populated(self):
         """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
-        MOCK_DASHBOARD_SERVICE = DashboardService(
+        MOCK_DASHBOARD_SERVICE = DashboardService(  # noqa: N806
             id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
             name="mock_microstrategy",
             fullyQualifiedName=FullyQualifiedEntityName("mock_microstrategy"),

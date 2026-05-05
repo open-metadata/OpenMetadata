@@ -53,7 +53,7 @@ When your task touches multiple layers, ensure all are synchronized:
 - [ ] Backend API changes → update frontend API client
 - [ ] New UI strings → add to `locale/languages/en-us.json` then run `yarn i18n`
 - [ ] Java files → run `mvn spotless:apply`
-- [ ] Python files → run `make py_format && make lint`
+- [ ] Python files → run `make py_format && make py_format_check`
 - [ ] TypeScript/React files → run `yarn organize-imports:cli && yarn lint:fix && yarn pretty:base --write`
 - [ ] New source files → ensure Apache 2.0 license header (run `yarn license-header-fix`)
 - [ ] Application changes → run `yarn generate:app-docs`

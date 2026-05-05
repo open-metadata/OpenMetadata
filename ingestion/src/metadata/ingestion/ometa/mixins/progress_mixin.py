@@ -73,7 +73,7 @@ class OMetaProgressMixin:
         except Exception as exc:
             logger.debug(f"Failed to send operation metrics batch: {exc}")
 
-    def get_progress_state(self, pipeline_fqn: str, run_id: str) -> Optional[ProgressUpdate]:
+    def get_progress_state(self, pipeline_fqn: str, run_id: str) -> Optional[ProgressUpdate]:  # noqa: UP045
         """
         Get the current progress state for a pipeline run.
 
@@ -92,7 +92,7 @@ class OMetaProgressMixin:
             )
             if response:
                 return ProgressUpdate.model_validate(response)
-            return None
+            return None  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Failed to get progress state: {exc}")
             return None

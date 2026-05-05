@@ -13,7 +13,7 @@ Integration tests for Rule Library SQL Expression validator on MySQL
 """
 
 from dataclasses import dataclass
-from typing import List
+from typing import List  # noqa: UP035
 
 import pytest
 
@@ -40,7 +40,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..integration_base import generate_name
+from ..integration_base import generate_name  # noqa: TID252
 
 NUMERIC_DATA_TYPES = [
     DataType.INT,
@@ -92,7 +92,7 @@ def mysql_rule_library_test_definition(
 
 @pytest.fixture()
 def get_mysql_rule_library_test_suite_config(workflow_config, sink_config):
-    def inner(entity_fqn: str, test_case_definitions: List[TestCaseDefinition]):
+    def inner(entity_fqn: str, test_case_definitions: List[TestCaseDefinition]):  # noqa: UP006
         return {
             "source": {
                 "type": "mysql",

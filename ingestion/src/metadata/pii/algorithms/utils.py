@@ -12,7 +12,7 @@
 Utility functions for PII algorithms
 """
 
-from typing import Mapping, Sequence, TypeVar
+from typing import Mapping, Sequence, TypeVar  # noqa: UP035
 
 T = TypeVar("T")
 

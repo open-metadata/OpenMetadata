@@ -16,13 +16,6 @@ import json
 import tempfile
 
 from airflow import DAG
-from openmetadata_managed_apis.utils.logger import set_operator_logger
-from openmetadata_managed_apis.workflows.ingestion.common import (
-    build_dag,
-    build_source,
-    build_workflow_config_property,
-    execute_workflow,
-)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -34,6 +27,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Stage,
 )
 from metadata.workflow.usage import UsageWorkflow
+from openmetadata_managed_apis.utils.logger import set_operator_logger
+from openmetadata_managed_apis.workflows.ingestion.common import (
+    build_dag,
+    build_source,
+    build_workflow_config_property,
+    execute_workflow,
+)
 
 
 def usage_workflow(
@@ -114,4 +114,4 @@ def build_usage_dag(airflow_pipeline: IngestionPipeline) -> DAG:
         workflow_fn=usage_workflow,
     )
 
-    return dag
+    return dag  # noqa: RET504

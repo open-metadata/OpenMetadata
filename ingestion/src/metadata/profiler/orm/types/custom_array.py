@@ -43,7 +43,7 @@ class CustomArray(TypeDecorator):
         Returns:
             python list conversion of ndarray
         """
-        import numpy as np  # pylint: disable=import-outside-toplevel
+        import numpy as np  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         if isinstance(value, np.ndarray):
             return value.tolist()

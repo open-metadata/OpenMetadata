@@ -15,7 +15,7 @@ DBTcloud source to extract metadata from OM UI
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -79,7 +79,7 @@ class DbtcloudSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DBTCloudConnection = config.serviceConnection.root.config
         if not isinstance(connection, DBTCloudConnection):
@@ -89,11 +89,11 @@ class DbtcloudSource(PipelineServiceSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
         # Cache for observability data: {(job_id, run_id): {models, parents, pipeline_entity, ...}}
-        self.observability_cache: Dict[Tuple[int, str], Dict[str, Any]] = {}
+        self.observability_cache: Dict[Tuple[int, str], Dict[str, Any]] = {}  # noqa: UP006
         # Cache for table entity lookups to avoid redundant API calls
-        self._table_entity_cache: Dict[str, Optional[Table]] = {}
+        self._table_entity_cache: Dict[str, Optional[Table]] = {}  # noqa: UP006, UP045
 
-    def _get_table_entity(self, table_fqn: str) -> Optional[Table]:
+    def _get_table_entity(self, table_fqn: str) -> Optional[Table]:  # noqa: UP045
         """
         Cached table entity lookup to avoid redundant API calls.
         """
@@ -101,7 +101,7 @@ class DbtcloudSource(PipelineServiceSource):
             self._table_entity_cache[table_fqn] = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
         return self._table_entity_cache[table_fqn]
 
-    def _get_task_list(self, job_id: int) -> Optional[List[Task]]:
+    def _get_task_list(self, job_id: int) -> Optional[List[Task]]:  # noqa: UP006, UP045
         """
         Method to collect all the tasks from dbt cloud job and return it in a task list
         """
@@ -110,8 +110,8 @@ class DbtcloudSource(PipelineServiceSource):
         self.context.get().current_job_id = job_id
         self.context.get().current_runs = None
         try:
-            task_list: List[Task] = []
-            runs_list: List = []
+            task_list: List[Task] = []  # noqa: UP006
+            runs_list: List = []  # noqa: UP006
             # Consume generator and store runs for later use
             for run in self.client.get_runs(job_id=job_id):
                 runs_list.append(run)
@@ -128,7 +128,7 @@ class DbtcloudSource(PipelineServiceSource):
                 # Store full run object and all runs for observability
                 self.context.get().latest_run = runs_list[0] if runs_list else None
                 self.context.get().current_runs = runs_list
-            return task_list or None
+            return task_list or None  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to get tasks list due to : {exc}")
@@ -164,7 +164,7 @@ class DbtcloudSource(PipelineServiceSource):
                 )
             )
 
-    def yield_pipeline_lineage_details(self, pipeline_details: DBTJob) -> Iterable[Either[AddLineageRequest]]:
+    def yield_pipeline_lineage_details(self, pipeline_details: DBTJob) -> Iterable[Either[AddLineageRequest]]:  # noqa: C901
         """
         Get lineage between pipeline and data sources.
         Uses combined GraphQL call for models and seeds, with optimized caching.
@@ -346,7 +346,7 @@ class DbtcloudSource(PipelineServiceSource):
 
         return None
 
-    def _parse_timestamp(self, timestamp_str: str) -> Optional[Timestamp]:
+    def _parse_timestamp(self, timestamp_str: str) -> Optional[Timestamp]:  # noqa: UP045
         """Parse ISO timestamp string to Timestamp."""
         try:
             # Try primary format
@@ -378,7 +378,10 @@ class DbtcloudSource(PipelineServiceSource):
         return status_map.get(status, StatusType.Pending.value)
 
     def _build_observability_from_run(
-        self, run, pipeline_entity: Pipeline, schedule_interval: Optional[str] = None
+        self,
+        run,
+        pipeline_entity: Pipeline,
+        schedule_interval: Optional[str] = None,  # noqa: UP045
     ) -> PipelineObservability:
         """Build PipelineObservability object from run data."""
         return PipelineObservability(
@@ -398,13 +401,13 @@ class DbtcloudSource(PipelineServiceSource):
 
     def get_table_pipeline_observability(
         self, pipeline_details: DBTJob
-    ) -> Iterable[Dict[str, List[PipelineObservability]]]:
+    ) -> Iterable[Dict[str, List[PipelineObservability]]]:  # noqa: UP006
         """
         Extract pipeline observability data from cached lineage artifacts.
         Uses context data first (current job), falls back to cache for historical data.
         """
         try:
-            table_pipeline_map: Dict[str, List[PipelineObservability]] = defaultdict(list)
+            table_pipeline_map: Dict[str, List[PipelineObservability]] = defaultdict(list)  # noqa: UP006
 
             ctx = self.context.get()
             if (

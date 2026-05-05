@@ -33,7 +33,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.client import REST
 
-from ..integration_base import generate_name
+from ..integration_base import generate_name  # noqa: TID252
 
 BAD_DOMAIN_RESPONSE = {
     "data": [
@@ -137,7 +137,7 @@ def domain_dashboard(metadata, dashboard_service):
         )
     )
 
-    return dashboard
+    return dashboard  # noqa: RET504
 
 
 class TestOMetaDomainsAPI:
@@ -496,7 +496,7 @@ class TestOMetaDomainsAPI:
             assert before_entity_list.entities == entity_list.entities
         finally:
             for domain in created_domains:
-                try:
+                try:  # noqa: SIM105
                     metadata.delete(
                         entity=Domain,
                         entity_id=domain.id,
@@ -510,7 +510,7 @@ class TestOMetaDomainsAPI:
         """
         Validate generator utility to fetch all domains even when some are broken
         """
-        with patch.object(REST, "get", return_value=BAD_DOMAIN_RESPONSE):
+        with patch.object(REST, "get", return_value=BAD_DOMAIN_RESPONSE):  # noqa: SIM117
             with pytest.raises(ValidationError):
                 res = metadata.list_all_entities(
                     entity=Domain,
@@ -557,7 +557,7 @@ class TestOMetaDomainsAPI:
         """
         We can list all our Domains even when some of them are broken
         """
-        with patch.object(REST, "get", return_value=BAD_DOMAIN_RESPONSE):
+        with patch.object(REST, "get", return_value=BAD_DOMAIN_RESPONSE):  # noqa: SIM117
             with pytest.raises(ValidationError):
                 metadata.list_entities(entity=Domain)
 

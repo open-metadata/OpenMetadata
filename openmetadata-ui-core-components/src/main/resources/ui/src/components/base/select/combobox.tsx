@@ -3,7 +3,7 @@ import type {
   PointerEventHandler,
   RefAttributes,
 } from 'react';
-import { useCallback, useContext, useRef, useState } from 'react';
+import { useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { SearchLg as SearchIcon } from '@untitledui/icons';
 import type {
   ComboBoxProps as AriaComboBoxProps,
@@ -165,8 +165,13 @@ export const ComboBox = ({
     onResize,
   });
 
+  const selectContextValue = useMemo(
+    () => ({ fontSize, size }),
+    [fontSize, size]
+  );
+
   return (
-    <SelectContext.Provider value={{ fontSize, size }}>
+    <SelectContext.Provider value={selectContextValue}>
       <AriaComboBox menuTrigger="focus" {...otherProps}>
         {(state) => (
           <div className="tw:flex tw:flex-col tw:gap-1.5">

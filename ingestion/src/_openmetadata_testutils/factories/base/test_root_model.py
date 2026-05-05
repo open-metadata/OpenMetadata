@@ -1,4 +1,4 @@
-from typing import Any, Mapping
+from typing import Any, Mapping  # noqa: UP035
 
 import factory.fuzzy
 import pytest

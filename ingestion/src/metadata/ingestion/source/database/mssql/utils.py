@@ -94,7 +94,7 @@ def db_plus_owner(fn):
 
 @reflection.cache
 @db_plus_owner
-def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements
+def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements  # noqa: C901
     """
     This function overrides to add support for column comments
     """
@@ -452,7 +452,7 @@ def get_table_names(self, connection, dbname, owner, schema, **kw):  # pylint: d
         .order_by(tables.c.table_name)
     )
     table_names = [r[0] for r in connection.execute(query_)]
-    return table_names
+    return table_names  # noqa: RET504
 
 
 @reflection.cache
@@ -470,10 +470,10 @@ def get_view_names(self, connection, dbname, owner, schema, **kw):  # pylint: di
         .order_by(tables.c.table_name)
     )
     view_names = [r[0] for r in connection.execute(query_)]
-    return view_names
+    return view_names  # noqa: RET504
 
 
-def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:
+def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: UP045
     """
     returns sqlaclhemdy engine date format by running config query
     """
@@ -483,4 +483,4 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:
         row_dict = row._asdict()
         if row_dict.get("Set Option") == "dateformat":
             return row_dict.get("Value")
-    return
+    return  # noqa: RET502

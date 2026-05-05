@@ -13,7 +13,7 @@ Spline source to extract metadata
 """
 
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -57,7 +57,7 @@ class SplineSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SplineConnection = config.serviceConnection.root.config
         if not isinstance(connection, SplineConnection):
@@ -101,7 +101,7 @@ class SplineSource(PipelineServiceSource):
     def yield_pipeline_status(self, pipeline_details: ExecutionEvent) -> Iterable[Either[OMetaPipelineStatus]]:
         """pipeline status not supported for spline connector"""
 
-    def _get_table_entity(self, database_name: str, schema_name: str, table_name: str) -> Optional[Table]:
+    def _get_table_entity(self, database_name: str, schema_name: str, table_name: str) -> Optional[Table]:  # noqa: UP045
         if not table_name:
             return None
         for service_name in self.get_db_service_names():
@@ -119,7 +119,7 @@ class SplineSource(PipelineServiceSource):
                     return table_entity
         return None
 
-    def _get_table_from_datasource_name(self, datasource: str) -> Optional[Table]:
+    def _get_table_from_datasource_name(self, datasource: str) -> Optional[Table]:  # noqa: UP045
         if not datasource and not datasource.startswith("dbfs") and not datasource.startswith("jdbc"):
             return None
 
@@ -218,7 +218,7 @@ class SplineSource(PipelineServiceSource):
 
     def get_pipelines_list(self) -> Iterable[ExecutionEvent]:
         for pipelines in self.client.get_pipelines() or []:
-            for pipeline in pipelines.items or []:
+            for pipeline in pipelines.items or []:  # noqa: UP028
                 yield pipeline
 
     def get_pipeline_name(self, pipeline_details: ExecutionEvent) -> str:

@@ -584,10 +584,18 @@ public class SearchResource {
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @DefaultValue("false")
           @QueryParam("deleted")
-          boolean deleted)
+          boolean deleted,
+      @Parameter(description = "From field to paginate the results, defaults to 0")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
+          @DefaultValue("10")
+          @QueryParam("size")
+          int size)
       throws IOException {
 
-    return searchRepository.searchByField(fieldName, fieldValue, index, deleted);
+    return searchRepository.searchByField(fieldName, fieldValue, index, deleted, from, size);
   }
 
   @GET

@@ -17,10 +17,10 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 from metadata.ingestion.api.status import Status
-from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.metadata import MetadataWorkflow  # noqa: TC001
 
-from ..base.test_cli import PATH_TO_RESOURCES
-from ..base.test_cli_dashboard import CliDashboardBase
+from ..base.test_cli import PATH_TO_RESOURCES  # noqa: TID252
+from ..base.test_cli_dashboard import CliDashboardBase  # noqa: TID252
 
 
 class CliCommonDashboard:

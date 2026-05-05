@@ -27,6 +27,6 @@ from metadata.profiler.metrics.registry import Metrics
 class TableRowCountToEqualValidator(BaseTableRowCountToEqualValidator, PandasValidatorMixin):
     """Validator for table row count to be equal test case"""
 
-    def _run_results(self, metric: Metrics) -> Optional[int]:
+    def _run_results(self, metric: Metrics) -> Optional[int]:  # noqa: UP045
         """compute result of the test case"""
         return self.run_dataframe_results(self.runner, metric)

@@ -12,7 +12,7 @@
 Patch the Presidio recognizer results to make adapt them to specific use cases.
 """
 
-from typing import List, Protocol, Sequence
+from typing import List, Protocol, Sequence  # noqa: UP035
 
 from dateutil.parser import parse
 from presidio_analyzer import RecognizerResult
@@ -52,9 +52,9 @@ def url_patcher(recognizer_results: Sequence[RecognizerResult], text: str) -> Se
     """
     Patch the recognizer result to remove URL false positive with email address.
     """
-    patched_result: List[RecognizerResult] = []
+    patched_result: List[RecognizerResult] = []  # noqa: UP006
     for result in recognizer_results:
-        if result.entity_type == "URL":
+        if result.entity_type == "URL":  # noqa: SIM102
             if text[: result.start].endswith("@"):
                 # probably an email address, skip the URL
                 continue
@@ -66,7 +66,7 @@ def date_time_patcher(recognizer_results: Sequence[RecognizerResult], text: str)
     """
     Patch the recognizer result to remove date time false positive with date.
     """
-    patched_result: List[RecognizerResult] = []
+    patched_result: List[RecognizerResult] = []  # noqa: UP006
     for result in recognizer_results:
         if result.entity_type == "DATE_TIME":
             # try to parse using dateutils, if it fails, skip the result
@@ -83,7 +83,7 @@ def date_time_patcher(recognizer_results: Sequence[RecognizerResult], text: str)
 
 
 class ResultCapturingPatcher:
-    recognizer_results: List[RecognizerResult]
+    recognizer_results: List[RecognizerResult]  # noqa: UP006
 
     def __init__(self) -> None:
         self.recognizer_results = []

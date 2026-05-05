@@ -99,7 +99,8 @@ class SetEntityAttributeImplTest {
                   eq(false),
                   eq(null)));
       verify(mockRepo)
-          .bulkUpdateEntitiesForGovernanceWorkflow(anyList(), anyMap(), eq("governance-bot"));
+          .bulkUpdateEntitiesForGovernanceWorkflow(
+              anyList(), anyMap(), eq("governance-bot"), eq(null));
     }
   }
 
@@ -145,7 +146,8 @@ class SetEntityAttributeImplTest {
                   eq(false),
                   eq("governance-bot")));
       verify(mockRepo)
-          .bulkUpdateEntitiesForGovernanceWorkflow(anyList(), anyMap(), eq("actualUser"));
+          .bulkUpdateEntitiesForGovernanceWorkflow(
+              anyList(), anyMap(), eq("actualUser"), eq("governance-bot"));
     }
   }
 

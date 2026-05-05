@@ -12,7 +12,7 @@
 factory for NoSQL adaptors that are used in the NoSQLProfiler.
 """
 
-from typing import Callable
+from typing import Callable  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,

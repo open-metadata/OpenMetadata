@@ -26,6 +26,6 @@ class MssqlStoredProcedure(BaseModel):
     """MSSQL stored procedure list query results"""
 
     name: str = Field(...)
-    owner: Optional[str] = Field(None)
+    owner: Optional[str] = Field(None)  # noqa: UP045
     language: str = Field(Language.SQL)
-    definition: Optional[str] = Field(None)
+    definition: Optional[str] = Field(None)  # noqa: UP045

@@ -43,7 +43,7 @@ class CustomTimestamp(TypeDecorator):
         Returns:
             python rowversion conversion to timestamp
         """
-        import struct  # pylint: disable=import-outside-toplevel
+        import struct  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         if dialect.name == "mssql" and isinstance(value, bytes):
             unpacked_value = struct.unpack("@Q", value)

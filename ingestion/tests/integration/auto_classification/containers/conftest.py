@@ -49,7 +49,7 @@ from metadata.ingestion.source.storage.storage_service import (
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ...containers import MinioContainerConfigs, get_minio_container
+from ...containers import MinioContainerConfigs, get_minio_container  # noqa: TID252
 
 
 @pytest.fixture(scope="module")

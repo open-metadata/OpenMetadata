@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from typing import Mapping, Optional
+from typing import Mapping, Optional  # noqa: UP035
 
 from metadata.pii.algorithms.column_patterns import get_pii_column_name_patterns
 from metadata.pii.algorithms.feature_extraction import (
@@ -20,7 +20,7 @@ from metadata.pii.algorithms.presidio_patches import date_time_patcher, url_patc
 from metadata.pii.algorithms.tags import PIITag
 
 
-def get_top_pii_tag(extracted: Mapping[PIITag, float]) -> Optional[PIITag]:
+def get_top_pii_tag(extracted: Mapping[PIITag, float]) -> Optional[PIITag]:  # noqa: UP045
     return max(extracted, key=extracted.get, default=None)
 
 

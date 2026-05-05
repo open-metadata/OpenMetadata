@@ -26,7 +26,6 @@ dependencies = [
 dev = [
     "ruff~=0.15.12",
     "pytest",
-    "pylint",
     "pytest-cov",
 ]
 

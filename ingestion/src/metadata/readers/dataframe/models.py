@@ -13,10 +13,10 @@
 Module to define pydentic models related to datalake
 """
 
-from typing import Any, List, Optional
+from typing import Any, List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import Column
 
@@ -29,10 +29,10 @@ class DatalakeColumnWrapper(BaseModel):
     which can be used by both profiler and metadata ingestion
     """
 
-    columns: Annotated[Optional[List[Column]], Field(None, description="List of columns")]
+    columns: Annotated[Optional[List[Column]], Field(None, description="List of columns")]  # noqa: UP006, UP045
     # pandas.Dataframe does not have any validators
     dataframes: Annotated[
-        Optional[Any],
+        Optional[Any],  # noqa: UP045
         Field(None, description="Iterator or list of dataframes"),
     ]
     raw_data: Annotated[
@@ -51,13 +51,13 @@ class DatalakeTableSchemaWrapper(BaseModel):
 
     key: Annotated[str, Field(..., description="Key of the file in the bucket")]
     bucket_name: Annotated[str, Field(..., description="Name of the bucket")]
-    file_extension: Annotated[Optional[Any], Field(None, description="File extension of the file")]
+    file_extension: Annotated[Optional[Any], Field(None, description="File extension of the file")]  # noqa: UP045
     separator: Annotated[
-        Optional[str],
+        Optional[str],  # noqa: UP045
         Field(None, description="Used for DSV readers to identify the separator"),
     ]
     file_size: Annotated[
-        Optional[int],
+        Optional[int],  # noqa: UP045
         Field(
             None,
             description="File size in bytes from listing. Avoids redundant HEAD requests.",
@@ -72,4 +72,4 @@ class DatalakeTableMetadata(BaseModel):
 
     table: Annotated[str, Field(..., description="Name of the table")]
     table_type: Annotated[str, Field(..., description="Type of the table")]
-    file_extension: Annotated[Optional[Any], Field(None, description="File extension of the file")]
+    file_extension: Annotated[Optional[Any], Field(None, description="File extension of the file")]  # noqa: UP045

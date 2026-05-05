@@ -35,10 +35,10 @@ class ApiResponse:
     def standard_response(status, response_obj):
         json_data = json.dumps(response_obj)
         resp = Response(json_data, status=status, mimetype="application/json")
-        return resp
+        return resp  # noqa: RET504
 
     @staticmethod
-    def success(response_obj: Union[Optional[dict], Optional[list]] = None):
+    def success(response_obj: Union[Optional[dict], Optional[list]] = None):  # noqa: UP007, UP045
         response_body = response_obj if response_obj is not None else {}
         return ApiResponse.standard_response(ApiResponse.STATUS_OK, response_body)
 

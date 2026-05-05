@@ -53,8 +53,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: MongoClient,
     service_connection: MongoDBConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -62,11 +62,11 @@ def test_connection(
     """
 
     class SchemaHolder(BaseModel):
-        database: Optional[str] = None
+        database: Optional[str] = None  # noqa: UP045
 
     holder = SchemaHolder()
 
-    def test_get_databases(client_: MongoClient, holder_: SchemaHolder, database_name: Optional[str] = None):
+    def test_get_databases(client_: MongoClient, holder_: SchemaHolder, database_name: Optional[str] = None):  # noqa: UP045
         # If database name is provided, use it directly instead of listing all databases
         if database_name:
             holder_.database = database_name

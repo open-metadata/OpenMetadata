@@ -82,7 +82,7 @@ class TestBufferClearedOnFlushException:
             call_count += 1
             entities_per_call.append([e.displayName for e in entities])
             if call_count == 1:
-                raise Exception("Transient failure")
+                raise Exception("Transient failure")  # noqa: TRY002
             result = MagicMock()
             result.status.value = "success"
             result.numberOfRowsProcessed.root = len(entities)
@@ -147,7 +147,7 @@ class TestBufferClearedOnFlushException:
             call_count += 1
             entities_per_call.append(len(entities))
             if call_count <= 2:
-                raise Exception("Transient failure")
+                raise Exception("Transient failure")  # noqa: TRY002
             result = MagicMock()
             result.status.value = "success"
             result.numberOfRowsProcessed.root = len(entities)

@@ -13,7 +13,7 @@ Salesforce source ingestion
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -39,7 +39,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+    DatabaseServiceMetadataPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -86,7 +86,7 @@ class SalesforceSource(DatabaseServiceSource):
         self.database_source_state = set()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SalesforceConnection = config.serviceConnection.root.config
         if not isinstance(connection, SalesforceConnection):
@@ -142,7 +142,7 @@ class SalesforceSource(DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
         """
         Handle table and views.
 
@@ -167,7 +167,7 @@ class SalesforceSource(DatabaseServiceSource):
                 object_names = [salesforce_object["name"] for salesforce_object in self.client.describe()["sobjects"]]
 
             for table_name in object_names:
-                table_name = self.standardize_table_name(schema_name, table_name)
+                table_name = self.standardize_table_name(schema_name, table_name)  # noqa: PLW2901
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
@@ -196,7 +196,7 @@ class SalesforceSource(DatabaseServiceSource):
                 )
             )
 
-    def get_table_description(self, table_name: str) -> Optional[str]:
+    def get_table_description(self, table_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to get the table description for salesforce with Tooling API
         """
@@ -215,7 +215,7 @@ class SalesforceSource(DatabaseServiceSource):
             logger.warning(f"Unable to get description with Tooling API for table [{table_name}]: {exc}")
         return table_description
 
-    def get_table_column_description(self, table_name: str) -> Optional[List]:
+    def get_table_column_description(self, table_name: str) -> Optional[List]:  # noqa: UP006, UP045
         """
         Method to get the all columns' (field) description for Salesforce with the Tooling API.
         """
@@ -233,7 +233,7 @@ class SalesforceSource(DatabaseServiceSource):
             logger.warning(f"Unable to get column description with Tooling API for table [{table_name}]: {exc}")
         return all_column_description
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
+    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -277,7 +277,7 @@ class SalesforceSource(DatabaseServiceSource):
                 )
             )
 
-    def get_columns(self, table_name: str, salesforce_fields: List):
+    def get_columns(self, table_name: str, salesforce_fields: List):  # noqa: UP006
         """
         Method to handle column details
         """
@@ -292,7 +292,7 @@ class SalesforceSource(DatabaseServiceSource):
                         column_name = item["QualifiedApiName"]
                         column_description_mapping.update({column_name: item["Description"]})
                 except Exception as ex:
-                    logger.debug(f"Error creating column description mapping: {str(ex)}")
+                    logger.debug(f"Error creating column description mapping: {str(ex)}")  # noqa: RUF010
         for column in salesforce_fields:
             col_constraint = None
             if column["nillable"]:
@@ -356,8 +356,8 @@ class SalesforceSource(DatabaseServiceSource):
 
     def get_source_url(
         self,
-        table_name: Optional[str] = None,
-    ) -> Optional[str]:
+        table_name: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[str]:  # noqa: UP045
         """
         Method to get the source url for salesforce
         """

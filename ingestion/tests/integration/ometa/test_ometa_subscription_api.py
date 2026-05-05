@@ -36,7 +36,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.client import REST
 
-from ..integration_base import generate_name
+from ..integration_base import generate_name  # noqa: TID252
 
 # Mock response with invalid EventSubscription data
 BAD_SUBSCRIPTION_RESPONSE = {
@@ -207,7 +207,7 @@ class TestOMetaSubscriptionAPI:
         Validate generator utility to fetch all event subscriptions
         """
         base_name = subscription_request.name.root
-        for i in range(0, 10):
+        for i in range(0, 10):  # noqa: PIE808
             fake_create = deepcopy(subscription_request)
             fake_create.name = EntityName(base_name + str(i))
             create_subscription(fake_create)
@@ -302,7 +302,7 @@ class TestOMetaSubscriptionAPI:
         """
         We can list all our EventSubscriptions even when some of them are broken
         """
-        with patch.object(REST, "get", return_value=BAD_SUBSCRIPTION_RESPONSE):
+        with patch.object(REST, "get", return_value=BAD_SUBSCRIPTION_RESPONSE):  # noqa: SIM117
             with pytest.raises(ValidationError):
                 metadata.list_entities(entity=EventSubscription)
 
@@ -315,7 +315,7 @@ class TestOMetaSubscriptionAPI:
         """
         Validate generator utility to fetch all event subscriptions even when some are broken
         """
-        with patch.object(REST, "get", return_value=BAD_SUBSCRIPTION_RESPONSE):
+        with patch.object(REST, "get", return_value=BAD_SUBSCRIPTION_RESPONSE):  # noqa: SIM117
             with pytest.raises(ValidationError):
                 res = metadata.list_all_entities(
                     entity=EventSubscription,

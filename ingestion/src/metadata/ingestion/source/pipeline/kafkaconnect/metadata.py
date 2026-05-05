@@ -14,7 +14,7 @@ KafkaConnect source to extract metadata from OM UI
 
 import traceback
 from datetime import datetime
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -108,7 +108,7 @@ class KafkaconnectSource(PipelineServiceSource):
         self._topics_cache = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: KafkaConnectConnection = config.serviceConnection.root.config
         if not isinstance(connection, KafkaConnectConnection):
@@ -116,7 +116,7 @@ class KafkaconnectSource(PipelineServiceSource):
         return cls(config, metadata)
 
     @property
-    def database_services(self) -> List[DatabaseService]:
+    def database_services(self) -> List[DatabaseService]:  # noqa: UP006
         """Lazily load and cache database services for hostname matching"""
         if self._database_services_cache is None:
             self._database_services_cache = list(self.metadata.list_all_entities(entity=DatabaseService, limit=100))
@@ -124,7 +124,7 @@ class KafkaconnectSource(PipelineServiceSource):
         return self._database_services_cache
 
     @property
-    def messaging_services(self) -> List[MessagingService]:
+    def messaging_services(self) -> List[MessagingService]:  # noqa: UP006
         """Lazily load and cache messaging services for broker matching"""
         if self._messaging_services_cache is None:
             self._messaging_services_cache = list(self.metadata.list_all_entities(entity=MessagingService, limit=100))
@@ -154,7 +154,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return host_string.strip()
 
-    def find_database_service_by_hostname(self, service_type: str, hostname: str) -> Optional[str]:
+    def find_database_service_by_hostname(self, service_type: str, hostname: str) -> Optional[str]:  # noqa: UP045
         """
         Find database service by matching serviceType and hostname.
 
@@ -209,14 +209,14 @@ class KafkaconnectSource(PipelineServiceSource):
                         return model_str(service.name)
 
             logger.debug(f"No database service found matching serviceType={service_type}, hostname={connector_host}")
-            return None
+            return None  # noqa: TRY300
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to find database service by hostname: {exc}")
             return None
 
-    def find_messaging_service_by_brokers(self, brokers: str) -> Optional[str]:
+    def find_messaging_service_by_brokers(self, brokers: str) -> Optional[str]:  # noqa: UP045
         """
         Find messaging service by matching broker endpoints.
 
@@ -234,7 +234,7 @@ class KafkaconnectSource(PipelineServiceSource):
             logger.debug(f"Searching for messaging service matching brokers: {brokers}")
 
             # Parse connector brokers into a set of hostnames (no protocol, no port)
-            connector_brokers = set(self._extract_hostname(broker.strip()).lower() for broker in brokers.split(","))
+            connector_brokers = set(self._extract_hostname(broker.strip()).lower() for broker in brokers.split(","))  # noqa: C401
 
             # Match by brokers in service connection config
             for service in all_services:
@@ -246,7 +246,7 @@ class KafkaconnectSource(PipelineServiceSource):
                 # Extract bootstrapServers from Kafka connection
                 if hasattr(service_config, "bootstrapServers") and service_config.bootstrapServers:
                     # Parse service brokers into hostnames (no protocol, no port)
-                    service_brokers = set(
+                    service_brokers = set(  # noqa: C401
                         self._extract_hostname(broker.strip()).lower()
                         for broker in service_config.bootstrapServers.split(",")
                     )
@@ -260,7 +260,7 @@ class KafkaconnectSource(PipelineServiceSource):
                         return model_str(service.name)
 
             logger.debug(f"No messaging service found matching broker hostnames: {connector_brokers}")
-            return None
+            return None  # noqa: TRY300
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -333,7 +333,7 @@ class KafkaconnectSource(PipelineServiceSource):
             logger.warning(f"Unable to extract service names from connector config: {exc}")
             return ServiceResolutionResult(database_service_name=None, messaging_service_name=None)
 
-    def _resolve_messaging_service(self, pipeline_details: KafkaConnectPipelineDetails) -> Optional[str]:
+    def _resolve_messaging_service(self, pipeline_details: KafkaConnectPipelineDetails) -> Optional[str]:  # noqa: UP045
         """
         Resolve messaging service name from connector config or service connection.
         """
@@ -358,8 +358,8 @@ class KafkaconnectSource(PipelineServiceSource):
     def _parse_and_resolve_topics(
         self,
         pipeline_details: KafkaConnectPipelineDetails,
-        database_server_name: Optional[str],
-        effective_messaging_service: Optional[str],
+        database_server_name: Optional[str],  # noqa: UP045
+        effective_messaging_service: Optional[str],  # noqa: UP045
         is_storage_sink: bool,
     ) -> TopicResolutionResult:
         """
@@ -483,7 +483,7 @@ class KafkaconnectSource(PipelineServiceSource):
         self,
         pipeline_details: KafkaConnectPipelineDetails,
         dataset_details: KafkaConnectDatasetDetails,
-    ) -> Optional[T]:
+    ) -> Optional[T]:  # noqa: UP045
         """
         Get lineage dataset entity for a specific dataset configuration.
         """
@@ -597,7 +597,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return None
 
-    def _get_entity_column_fqn(self, entity: T, column_name: str) -> Optional[str]:
+    def _get_entity_column_fqn(self, entity: T, column_name: str) -> Optional[str]:  # noqa: UP045
         """
         Get column FQN for any supported entity type.
         Dispatch based on entity type.
@@ -611,13 +611,13 @@ class KafkaconnectSource(PipelineServiceSource):
         """
         if isinstance(entity, Topic):
             return self._get_topic_field_fqn(entity, column_name)
-        elif isinstance(entity, Table):
+        elif isinstance(entity, Table):  # noqa: RET505
             return get_column_fqn(table_entity=entity, column=column_name)
         else:
             logger.warning(f"Unsupported entity type for column FQN: {type(entity).__name__}")
             return None
 
-    def _parse_cdc_schema_columns(self, schema_text: str) -> List[str]:
+    def _parse_cdc_schema_columns(self, schema_text: str) -> List[str]:  # noqa: UP006
         """
         Parse Debezium CDC schema JSON to extract table column names.
 
@@ -631,7 +631,7 @@ class KafkaconnectSource(PipelineServiceSource):
             List of column names, or empty list if parsing fails
         """
         try:
-            import json
+            import json  # noqa: PLC0415
 
             schema_dict = json.loads(schema_text)
 
@@ -657,7 +657,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return []
 
-    def _extract_columns_from_entity(self, entity: T) -> List[str]:
+    def _extract_columns_from_entity(self, entity: T) -> List[str]:  # noqa: C901, UP006
         """
         Extract column/field names from Table or Topic entity.
 
@@ -684,7 +684,7 @@ class KafkaconnectSource(PipelineServiceSource):
             # Fallback: Check schemaText for CDC structure if schemaFields doesn't indicate CDC
             if not is_debezium_cdc and entity.messageSchema.schemaText:
                 try:
-                    import json
+                    import json  # noqa: PLC0415
 
                     schema_dict = json.loads(entity.messageSchema.schemaText)
                     schema_props = schema_dict.get("properties", {})
@@ -747,7 +747,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return []
 
-    def _get_topic_field_fqn(self, topic_entity: Topic, field_name: str) -> Optional[str]:
+    def _get_topic_field_fqn(self, topic_entity: Topic, field_name: str) -> Optional[str]:  # noqa: C901, UP045
         """
         Get the fully qualified name for a field in a Topic's schema.
         Handles nested structures where fields may be children of a parent RECORD.
@@ -815,7 +815,7 @@ class KafkaconnectSource(PipelineServiceSource):
         topic_entity: Topic,
         pipeline_details: KafkaConnectPipelineDetails,
         dataset_details: KafkaConnectDatasetDetails,
-    ) -> Optional[List[ColumnLineage]]:
+    ) -> Optional[List[ColumnLineage]]:  # noqa: UP006, UP045
         """
         Build column-level lineage between source table, topic, and target table.
         For source connectors: Table columns -> Topic schema fields
@@ -896,7 +896,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
             if column_lineages:
                 logger.debug(f"Created {len(column_lineages)} column lineages for {pipeline_details.name}")
-            return column_lineages if column_lineages else None
+            return column_lineages if column_lineages else None  # noqa: TRY300
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -905,8 +905,10 @@ class KafkaconnectSource(PipelineServiceSource):
         return None
 
     def _search_topics_by_prefix(
-        self, database_server_name: str, messaging_service_name: Optional[str] = None
-    ) -> List[KafkaConnectTopics]:
+        self,
+        database_server_name: str,
+        messaging_service_name: Optional[str] = None,  # noqa: UP045
+    ) -> List[KafkaConnectTopics]:  # noqa: UP006
         """
         Search for topics in the messaging service that match the database.server.name prefix.
 
@@ -978,13 +980,15 @@ class KafkaconnectSource(PipelineServiceSource):
         return topics_found
 
     def _search_topics_by_regex(
-        self, topics_regex: str, messaging_service_name: Optional[str] = None
-    ) -> List[KafkaConnectTopics]:
+        self,
+        topics_regex: str,
+        messaging_service_name: Optional[str] = None,  # noqa: UP045
+    ) -> List[KafkaConnectTopics]:  # noqa: UP006
         """
         Search for topics matching a regex pattern.
         Used for S3 sink connectors with topics.regex config.
         """
-        import re  # pylint: disable=import-outside-toplevel
+        import re  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         topics_found = []
 
@@ -1028,7 +1032,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return topics_found
 
-    def _parse_datasets_from_config(self, connector_config: dict) -> List[KafkaConnectDatasetDetails]:
+    def _parse_datasets_from_config(self, connector_config: dict) -> List[KafkaConnectDatasetDetails]:  # noqa: C901, UP006
         """
         Parse dataset information from connector config.
         Handles single values, comma-separated lists, and mapping configs.
@@ -1100,8 +1104,8 @@ class KafkaconnectSource(PipelineServiceSource):
         dataset_details: KafkaConnectDatasetDetails,
         topic_entities_map: dict,
         pipeline_details: KafkaConnectPipelineDetails,
-        database_server_name: Optional[str] = None,
-    ) -> Optional[Topic]:
+        database_server_name: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[Topic]:  # noqa: UP045
         """
         Match a dataset to its corresponding topic entity.
 
@@ -1174,7 +1178,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
     def _parse_cdc_topics_from_config(
         self, pipeline_details: KafkaConnectPipelineDetails, database_server_name: str
-    ) -> List[KafkaConnectTopics]:
+    ) -> List[KafkaConnectTopics]:  # noqa: UP006
         """
         Parse CDC topic names from connector config using table.include.list.
 
@@ -1212,7 +1216,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
             # Parse table list (format: "schema1.table1,schema2.table2")
             for table_entry in table_include_list.split(","):
-                table_entry = table_entry.strip()
+                table_entry = table_entry.strip()  # noqa: PLW2901
                 if not table_entry:
                     continue
 
@@ -1231,7 +1235,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return topics_found
 
-    def yield_pipeline_lineage_details(
+    def yield_pipeline_lineage_details(  # noqa: C901
         self, pipeline_details: KafkaConnectPipelineDetails
     ) -> Iterable[Either[AddLineageRequest]]:
         """
@@ -1464,7 +1468,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     if matched_topic_entity:
                         # Topic exists - use actual FQN
                         topic_fqn_str = model_str(matched_topic_entity.fullyQualifiedName)
-                    else:
+                    else:  # noqa: PLR5501
                         # Topic not found - show which table we were trying to match
                         if dataset_details.table:
                             topic_fqn_str = f"NOT FOUND (looking for topic matching table: {dataset_details.table})"

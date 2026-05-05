@@ -14,7 +14,7 @@ BetweenBoundsChecker implements the checker for any metric that should be betwee
 """
 
 import math
-from typing import TYPE_CHECKING, Any, List, Mapping
+from typing import TYPE_CHECKING, Any, List, Mapping  # noqa: UP035
 
 from metadata.data_quality.validations.checkers.base_checker import (
     BaseValidationChecker,
@@ -43,7 +43,7 @@ class BetweenBoundsChecker(BaseValidationChecker):
         Returns:
             Boolean or Series of booleans indicating violations (True = violates)
         """
-        import pandas as pd
+        import pandas as pd  # noqa: PLC0415
 
         return ~pd.isna(values) & ((values < self.min_bound) | (values > self.max_bound))
 
@@ -76,9 +76,9 @@ class BetweenBoundsChecker(BaseValidationChecker):
         """Check if any value is outside [min_bound, max_bound]. Used on Pandas Data Quality."""
         return any(self._value_violates(value) for value in metrics.values())
 
-    def build_violation_sqa(self, metrics: List["ClauseElement"]) -> "ClauseElement":
+    def build_violation_sqa(self, metrics: List["ClauseElement"]) -> "ClauseElement":  # noqa: UP006
         """Build SQA Violation Expression"""
-        from sqlalchemy import and_, literal, or_
+        from sqlalchemy import and_, literal, or_  # noqa: PLC0415
 
         conditions = []
         for expr in metrics:
@@ -109,7 +109,7 @@ class BetweenBoundsChecker(BaseValidationChecker):
         Returns:
             SQLAlchemy expression that sums up row-level violations
         """
-        from sqlalchemy import and_, case, func, literal, or_
+        from sqlalchemy import and_, case, func, literal, or_  # noqa: PLC0415
 
         # Build condition: value NOT NULL AND (value < min OR value > max)
         conditions = []

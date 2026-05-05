@@ -126,7 +126,7 @@ EXPECTED_PIPELINE = [
 class FlinkUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("metadata.ingestion.source.pipeline.flink.connection.get_connection")
-    def __init__(self, methodName, flink_client, test_connection) -> None:
+    def __init__(self, methodName, flink_client, test_connection) -> None:  # noqa: N803
 
         super().__init__(methodName)
         test_connection.return_value = False
@@ -146,9 +146,9 @@ class FlinkUnitTest(TestCase):
         pipelines_list = []
         results = self.flink.yield_pipeline(MOCK_PIPELINE)
         for result in results:
-            pipelines_list.append(result.right)
+            pipelines_list.append(result.right)  # noqa: PERF401
 
-        for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE, pipelines_list)):
+        for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE, pipelines_list)):  # noqa: B905
             expected.sourceUrl = original.sourceUrl
             self.assertEqual(expected, original)
 

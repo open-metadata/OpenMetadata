@@ -13,7 +13,7 @@ Hive source methods.
 """
 
 import traceback
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union  # noqa: UP035
 
 from pydantic import ValidationError
 from pyhive.sqlalchemy_hive import HiveDialect
@@ -66,21 +66,21 @@ class HiveSource(CommonDbSourceService):
     service_connection: HiveConnection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config = WorkflowSource.model_validate(config_dict)
         connection: HiveConnection = config.serviceConnection.root.config
         if not isinstance(connection, HiveConnection):
             raise InvalidSourceException(f"Expected HiveConnection, but got {connection}")
         return cls(config, metadata)
 
-    def _parse_version(self, version: str) -> Tuple:
+    def _parse_version(self, version: str) -> Tuple:  # noqa: UP006
         if "-" in version:
             version = version.replace("-", ".")
         return tuple(map(int, (version.split(".")[:3])))
 
     def _get_validated_metastore_connection(
         self,
-    ) -> Optional[Union[PostgresConnection, MysqlConnection]]:
+    ) -> Optional[Union[PostgresConnection, MysqlConnection]]:  # noqa: UP007, UP045
         """
         Validate and return the metastore connection if it exists.
         Handles cases where the connection may be a raw dict that needs validation.
@@ -132,7 +132,7 @@ class HiveSource(CommonDbSourceService):
 
     def get_schema_definition(  # pylint: disable=unused-argument
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Optional[str]:
+    ) -> Optional[str]:  # noqa: UP045
         """
         Get the DDL statement or View Definition for a table
         """
@@ -144,7 +144,7 @@ class HiveSource(CommonDbSourceService):
             ):
                 schema_definition = inspector.get_view_definition(table_name, schema_name)
             schema_definition = str(schema_definition).strip() if schema_definition is not None else None
-            return schema_definition
+            return schema_definition  # noqa: RET504, TRY300
 
         except NotImplementedError:
             logger.warning("Schema definition not implemented")

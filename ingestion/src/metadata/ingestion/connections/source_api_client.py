@@ -41,7 +41,7 @@ class TrackedREST(REST):
     Metrics are recorded asynchronously to minimize latency impact.
     """
 
-    def __init__(self, config: ClientConfig, source_name: Optional[str] = None):
+    def __init__(self, config: ClientConfig, source_name: Optional[str] = None):  # noqa: UP045
         """
         Initialize TrackedREST client.
 
@@ -76,9 +76,9 @@ class TrackedREST(REST):
         Replaces IDs and UUIDs with placeholders for better aggregation.
         Example: /dashboard/123-abc -> /dashboard/{id}
         """
-        import re
+        import re  # noqa: PLC0415
 
-        parts = path.split("?")[0].split("/")
+        parts = path.split("?")[0].split("/")  # noqa: PLC0207
         cleaned_parts = []
         for part in parts:
             if not part:

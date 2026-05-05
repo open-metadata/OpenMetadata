@@ -13,7 +13,7 @@
 OpenMetadata Airflow Provider utilities
 """
 
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING, Dict, List  # noqa: UP035
 
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
@@ -38,7 +38,7 @@ STATUS_MAP = {
 }
 
 
-def get_dag_status(all_tasks: List[str], task_status: List[TaskStatus]):
+def get_dag_status(all_tasks: List[str], task_status: List[TaskStatus]):  # noqa: UP006
     """
     Based on the task information and the total DAG tasks, cook the
     DAG status.
@@ -64,15 +64,15 @@ def add_status(
     operator: "BaseOperator",
     pipeline: Pipeline,
     metadata: OpenMetadata,
-    context: Dict,
+    context: Dict,  # noqa: UP006
 ) -> None:
     """
     Add status information for this execution date
     """
 
-    dag: "DAG" = context["dag"]
-    dag_run: "DagRun" = context["dag_run"]
-    task_instance: "TaskInstance" = context["task_instance"]
+    dag: "DAG" = context["dag"]  # noqa: UP037
+    dag_run: "DagRun" = context["dag_run"]  # noqa: UP037
+    task_instance: "TaskInstance" = context["task_instance"]  # noqa: UP037
 
     # Airflow 3.x uses logical_date instead of execution_date
     # Let this fail if we cannot properly extract & cast the start_date
