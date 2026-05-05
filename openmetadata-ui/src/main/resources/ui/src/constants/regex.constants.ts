@@ -25,7 +25,7 @@ export const ENTITY_NAME_REGEX = /^((?!::).)*$/;
 /**
  * Custom property name validation:
  * - Must start with an alphanumeric character
- * - Allowed characters: alphanumeric, _ - . / % # @ ! , ; = | ' space ( ) [ ] { }
+ * - Allowed characters: alphanumeric, _ - . / % # @ ! , ; = | ' + ? ~ ` space ( ) [ ] { }
  * - Disallowed: " * : ^ $ \ < > &
  */
 export const CUSTOM_PROPERTY_NAME_REGEX =
