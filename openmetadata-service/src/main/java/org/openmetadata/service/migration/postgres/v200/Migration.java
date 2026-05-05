@@ -2,10 +2,12 @@ package org.openmetadata.service.migration.postgres.v200;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import static org.openmetadata.service.migration.utils.v1130.MigrationUtil.addTableColumnSearchSettings;
+import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addWorkflowChangeEventIndex;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.backfillAnnouncementRelationships;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateLegacyActivityThreadsToActivityStream;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateSuggestionsToTaskEntity;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateThreadTasksToTaskEntity;
+import static org.openmetadata.service.migration.utils.v200.MigrationUtil.widenChangeEventConsumersId;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -31,5 +33,7 @@ public class Migration extends MigrationProcessImpl {
     migrateThreadTasksToTaskEntity(handle, POSTGRES);
     migrateLegacyActivityThreadsToActivityStream(handle, POSTGRES);
     backfillAnnouncementRelationships(handle);
+    addWorkflowChangeEventIndex(handle, POSTGRES);
+    widenChangeEventConsumersId(handle, POSTGRES);
   }
 }
