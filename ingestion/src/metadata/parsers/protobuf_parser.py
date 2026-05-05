@@ -19,7 +19,7 @@ import sys
 import traceback
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 import grpc_tools.protoc
 from google.protobuf.message import Message
@@ -214,12 +214,13 @@ class ProtobufParser:
         when the message name does not match the schema/topic name."""
         try:
             # compile the .proto file and create python class
+            Path(self.generated_src_dir).mkdir(parents=True, exist_ok=True)
             grpc_tools.protoc.main(
                 [
                     "protoc",
                     file_path,
                     f"--proto_path={proto_path}",
-                    f"--python_out={self.config.base_file_path}",
+                    f"--python_out={self.generated_src_dir}",
                 ]
             )
 
@@ -295,9 +296,9 @@ class ProtobufParser:
                     )
                 ]
             else:
-                field_models = [
+                field_models = [     
                     FieldModel(
-                        name=instance.DESCRIPTOR.name,
+                        name=instance.DESCRIPTOR.name,   # type: ignore[arg-type]
                         displayName=instance.DESCRIPTOR.name,
                         dataType=DataTypeTopic.RECORD,
                         dataTypeDisplay=None,
@@ -386,7 +387,7 @@ class ProtobufParser:
             try:
                 result.append(
                     FieldModel(
-                        name=field.name,  # plain string, FieldName does not exist in this repo
+                        name=field.name,  # type: ignore[arg-type]
                         displayName=field.name,
                         dataType=self._get_field_type_for_field_model(
                             field.type
@@ -412,9 +413,7 @@ class ProtobufParser:
         self,
         fields: Any,
         cls: type[FieldModel | Column] = FieldModel,
-    ) -> list[FieldModel | Column] | None:
+    ) -> Sequence[FieldModel | Column] | None:
         if cls is Column:
-            result = self._get_column_fields(fields)
-            return list(result) if result is not None else None
-        result = self._get_field_models(fields)
-        return list(result) if result is not None else None
+            return self._get_column_fields(fields)
+        return self._get_field_models(fields)
