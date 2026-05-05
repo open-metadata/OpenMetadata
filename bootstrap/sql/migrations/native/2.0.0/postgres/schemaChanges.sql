@@ -150,7 +150,7 @@ CREATE INDEX IF NOT EXISTS idx_change_event_entity_type_offset ON change_event (
 ALTER TABLE change_event_consumers ALTER COLUMN id TYPE VARCHAR(500);
 
 -- Add scheduleRunId column and index to workflow_instance_time_series
-ALTER TABLE workflow_instance_state_time_series
+ALTER TABLE workflow_instance_time_series
     ADD COLUMN scheduleRunId VARCHAR(36)
     GENERATED ALWAYS AS ((json ->> 'scheduleRunId')) STORED;
 CREATE INDEX idx_workflow_instance_schedule_run_id
