@@ -3657,6 +3657,20 @@ test.describe('Custom property name validation', () => {
     );
   });
 
+  test('should show error when name contains an asterisk', async ({
+    page,
+  }) => {
+    test.slow();
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_ASTERISK
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
   test('should accept a valid name starting with a letter', async ({
     page,
   }) => {
@@ -3669,7 +3683,7 @@ test.describe('Custom property name validation', () => {
     page,
   }) => {
     test.slow();
-    await page.fill(nameInput, "valid Name.!@#%`*()_-=+{}[]~|;',.?/");
+    await page.fill(nameInput, "valid Name.!@#%`()_-=+{}[]~|;',.?/");
 
     await expect(page.locator(nameError)).not.toBeVisible();
   });

@@ -356,7 +356,6 @@ public class TypeResourceIT {
       prefix + "with}rbrace",
       prefix + "with+plus",
       prefix + "with?question",
-      prefix + "with*asterisk",
       prefix + "with~tilde",
       prefix + "with`backtick",
       prefix + "withMatched(pair)",
@@ -393,6 +392,7 @@ public class TypeResourceIT {
       prefix + "with&amp",
       prefix + "with<lt",
       prefix + "with>gt",
+      prefix + "with*asterisk",
     };
 
     for (String name : disallowedNames) {
