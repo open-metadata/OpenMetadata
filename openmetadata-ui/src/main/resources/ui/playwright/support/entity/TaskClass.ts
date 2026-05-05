@@ -24,6 +24,7 @@ export interface CreateTaskData {
   about?: string;
   aboutType?: string;
   domain?: string;
+  payload?: Record<string, unknown>;
 }
 
 export interface TaskResponseData {
@@ -58,6 +59,7 @@ export class TaskClass {
       about: data?.about,
       aboutType: data?.aboutType,
       domain: data?.domain,
+      payload: data?.payload,
     };
   }
 

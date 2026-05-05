@@ -186,7 +186,8 @@ public class DataAccessRequestIT {
 
     assertEquals(TaskEntityStatus.Rejected, rejected.getStatus());
     assertEquals(TaskResolutionType.Rejected, rejected.getResolution().getType());
-    assertFalse(rejected.getAvailableTransitions().stream().anyMatch(t -> "revoke".equals(t.getId())));
+    assertFalse(
+        rejected.getAvailableTransitions().stream().anyMatch(t -> "revoke".equals(t.getId())));
   }
 
   @Test
@@ -230,7 +231,6 @@ public class DataAccessRequestIT {
             .withPayload(Map.of("reason", "I need it"));
 
     assertThrows(
-        InvalidRequestException.class,
-        () -> SdkClients.adminClient().tasks().create(invalid));
+        InvalidRequestException.class, () -> SdkClients.adminClient().tasks().create(invalid));
   }
 }
