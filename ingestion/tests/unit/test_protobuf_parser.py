@@ -85,9 +85,7 @@ def test_descriptor_fallback_when_message_name_differs():
     """
 
     parser = ProtobufParser(
-        ProtobufParserConfig(
-            schema_name="loans", schema_text=schema, base_file_path="/tmp/test_proto"
-        )
+        ProtobufParserConfig(schema_name="loans", schema_text=schema, base_file_path="/tmp/test_proto")
     )
 
     result = parser.parse_protobuf_schema()
@@ -134,9 +132,7 @@ class TestProtobufParser:
         We'll read the files under ./ingestion/tests/unit/resources/protobuf_parser and parse them
         This will be similar in way to how we get the data from kafka source
         """
-        resource_path = (
-            f"{os.path.dirname(__file__)}/resources/protobuf_parser/"  # noqa: PTH120
-        )
+        resource_path = f"{os.path.dirname(__file__)}/resources/protobuf_parser/"  # noqa: PTH120
         schema_name = "employee"
         file_list = os.listdir(resource_path)  # noqa: PTH208
         schema_text = ""
