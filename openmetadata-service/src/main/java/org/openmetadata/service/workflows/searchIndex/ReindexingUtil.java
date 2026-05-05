@@ -239,74 +239,12 @@ public class ReindexingUtil {
       // as the pre-selective-fields code path.
       return List.of("*");
     }
-    return new ArrayList<>(repo.getSearchIndexFactory().getReindexFieldsFor(entityType));
+    List<String> allFields =
+        new ArrayList<>(repo.getSearchIndexFactory().getReindexFieldsFor(entityType));
+    return new ArrayList<>(Entity.getOnlySupportedFields(entityType, allFields).getFieldList());
   }
 
   public static String escapeDoubleQuotes(String str) {
     return str.replace("\"", "\\\"");
-  }
-
-  /**
-   * Resolve the minimal field set the reindex path must request from {@code
-   * EntityRepository.setFields}. Time-series entities don't go through the entity-fields machinery,
-   * so they get an empty list. For everything else, ask the index class via {@link
-   * org.openmetadata.service.search.SearchIndexFactory#getReindexFieldsFor(String)} for exactly
-   * the fields its document needs, then intersect with the entity's {@code allowedFields} so we
-   * never request a field the JSON schema doesn't declare. Single source of truth shared by
-   * {@code EntityReader} (single-server pipeline) and {@code PartitionWorker} (distributed
-   * pipeline).
-   *
-   * <p><b>Why the allowedFields intersection matters.</b> {@link
-   * org.openmetadata.service.search.indexes.SearchIndex#COMMON_REINDEX_FIELDS} is the union of
-   * relationship/enrichment fields that <i>could</i> appear on any entity ({@code owners},
-   * {@code domains}, {@code reviewers}, {@code followers}, {@code votes}, {@code extension},
-   * {@code certification}, {@code dataProducts}). Many entity schemas omit one or more of these:
-   * a {@code storageService} has no {@code reviewers}/{@code votes}/{@code extension}/{@code
-   * certification}; an {@code ingestionPipeline} has no {@code reviewers}/{@code dataProducts};
-   * a {@code user}/{@code team} omits most of them. Without filtering, {@link
-   * org.openmetadata.service.Entity#getFields(String, java.util.List)} routes through {@link
-   * org.openmetadata.service.util.EntityUtil.Fields#Fields(java.util.Set, String)} which throws
-   * {@code IllegalArgumentException("Invalid field name <x>")} on the first unknown field, killing
-   * the whole batch. Filtering here keeps the helper safe to call for any registered entity type.
-   */
-  public static List<String> getSearchIndexFields(String entityType) {
-    if (TIME_SERIES_ENTITIES.contains(entityType)) {
-      return List.of();
-    }
-    org.openmetadata.service.search.SearchRepository repo = Entity.getSearchRepository();
-    if (repo == null || repo.getSearchIndexFactory() == null) {
-      // Fallback for environments without a bootstrapped search subsystem (unit tests) — keep
-      // pre-selective-fields behaviour.
-      return List.of("*");
-    }
-    Set<String> required = repo.getSearchIndexFactory().getReindexFieldsFor(entityType);
-    Set<String> allowed = lookupAllowedFields(entityType);
-    if (allowed == null) {
-      return new ArrayList<>(required);
-    }
-    List<String> filtered = new ArrayList<>(required.size());
-    for (String field : required) {
-      if (allowed.contains(field)) {
-        filtered.add(field);
-      } else {
-        LOG.debug(
-            "Dropping reindex field '{}' for entityType '{}': not in allowedFields",
-            field,
-            entityType);
-      }
-    }
-    return filtered;
-  }
-
-  /** Returns the entity's {@code allowedFields}, or {@code null} if the repository isn't
-   *  registered (test boot, plugin not loaded). Callers fall back to the unfiltered set. */
-  private static Set<String> lookupAllowedFields(String entityType) {
-    try {
-      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-      return repository == null ? null : repository.getAllowedFieldsCopy();
-    } catch (Exception e) {
-      LOG.debug("Failed to resolve allowedFields for {}: {}", entityType, e.getMessage());
-      return null;
-    }
   }
 }
