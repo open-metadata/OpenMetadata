@@ -20,7 +20,9 @@ import java.io.*;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -681,6 +683,24 @@ public class S3LogStorageTest {
     assertNotNull(locks.get(streamKey), "stream lock should be created on first appendLogs");
     assertFalse(
         locks.get(streamKey).isLocked(), "lock should be released after appendLogs returns");
+  }
+
+  @Test
+  void testAppendLogsPopulatesPendingFlushAndCounter() throws Exception {
+    mockActiveStreamCreation();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "line 1\nline 2\nline 3");
+    String streamKey = testPipelineFQN + "/" + testRunId;
+
+    @SuppressWarnings("unchecked")
+    Map<String, List<String>> pending =
+        (Map<String, List<String>>) getPrivateField(s3LogStorage, "pendingFlush");
+    @SuppressWarnings("unchecked")
+    Map<String, AtomicLong> counters =
+        (Map<String, AtomicLong>) getPrivateField(s3LogStorage, "totalLinesAppended");
+
+    assertNotNull(pending.get(streamKey));
+    assertEquals(3, pending.get(streamKey).size());
+    assertEquals(3L, counters.get(streamKey).get());
   }
 
   private static Object getPrivateField(Object target, String name) throws Exception {

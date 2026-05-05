@@ -43,6 +43,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
@@ -126,6 +127,21 @@ public class S3LogStorage implements LogStorageInterface {
   // lifetime of the run; cleanup is added in Task 7 (cleanupAbandonedStreams) and
   // at the end of /close (Task 8). Until then, this map grows monotonically.
   private final Map<String, ReentrantLock> streamLocks = new ConcurrentHashMap<>();
+
+  // Lines accumulated since last successful partial.txt PUT, per stream.
+  // Drained by writePartialLogsForStream (rewritten in Task 5).
+  private final Map<String, List<String>> pendingFlush = new ConcurrentHashMap<>();
+
+  // Bytes pending in pendingFlush, per stream — drives the early-flush watermark in Task 5.
+  private final Map<String, AtomicLong> pendingFlushBytes = new ConcurrentHashMap<>();
+
+  // Monotonic logical line counter, per stream. Survives buffer eviction; never decrements.
+  // Source of truth for offsets in the new flush logic (Task 5).
+  private final Map<String, AtomicLong> totalLinesAppended = new ConcurrentHashMap<>();
+
+  // Per-stream consecutive flush failure count for alerting (consumed in Task 5).
+  private final Map<String, Integer> consecutiveFlushFailures = new ConcurrentHashMap<>();
+
   private ScheduledExecutorService cleanupExecutor;
 
   private final Cache<String, SimpleLogBuffer> recentLogsCache =
@@ -356,6 +372,27 @@ public class S3LogStorage implements LogStorageInterface {
       // Update memory cache for real-time log viewing
       SimpleLogBuffer recentLogs = recentLogsCache.get(streamKey, k -> new SimpleLogBuffer(1000));
       recentLogs.append(logContent);
+
+      // Track lines for the new pendingFlush + totalLinesAppended pipeline.
+      // (Consumed in Task 5; current task only populates the state.)
+      String[] splitLines = logContent.split("\n", -1);
+      int lineCount = splitLines.length;
+      if (lineCount > 0 && splitLines[lineCount - 1].isEmpty()) {
+        lineCount--;
+      }
+      if (lineCount > 0) {
+        List<String> queue = pendingFlush.computeIfAbsent(streamKey, k -> new ArrayList<>());
+        AtomicLong bytes = pendingFlushBytes.computeIfAbsent(streamKey, k -> new AtomicLong());
+        AtomicLong counter = totalLinesAppended.computeIfAbsent(streamKey, k -> new AtomicLong());
+        long addedBytes = 0;
+        for (int i = 0; i < lineCount; i++) {
+          queue.add(splitLines[i]);
+          addedBytes += splitLines[i].length() + 1L; // +1 for the join newline at flush time
+        }
+        bytes.addAndGet(addedBytes);
+        counter.addAndGet(lineCount);
+      }
+
       // Notify listeners for SSE/WebSocket streaming
       notifyListeners(streamKey, logContent);
 
