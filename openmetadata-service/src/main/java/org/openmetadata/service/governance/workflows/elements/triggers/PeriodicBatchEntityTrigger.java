@@ -126,7 +126,10 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
 
   private CallActivity getWorkflowTriggerCallActivity(
       String triggerWorkflowId, String mainWorkflowName, boolean singleExecution) {
-    String cardinality = String.format("${%s}", NUMBER_OF_ENTITIES_VARIABLE);
+    String cardinality =
+        singleExecution
+            ? "${entityList != null && !entityList.isEmpty() ? 1 : 0}"
+            : String.format("${%s}", NUMBER_OF_ENTITIES_VARIABLE);
 
     MultiInstanceLoopCharacteristics multiInstance =
         new MultiInstanceLoopCharacteristicsBuilder()

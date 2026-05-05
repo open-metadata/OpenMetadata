@@ -75,7 +75,9 @@ class PeriodicBatchEntityTriggerTest {
     assertNotNull(loopChars, "Loop characteristics should be set");
 
     assertEquals(
-        "1", loopChars.getLoopCardinality(), "In single execution mode, cardinality should be 1");
+        "${entityList != null && !entityList.isEmpty() ? 1 : 0}",
+        loopChars.getLoopCardinality(),
+        "In single execution mode, cardinality should guard against empty entityList");
   }
 
   @Test
