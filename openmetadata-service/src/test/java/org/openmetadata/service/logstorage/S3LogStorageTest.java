@@ -721,6 +721,112 @@ public class S3LogStorageTest {
     assertEquals(2L, counters.get(streamKey).get());
   }
 
+  @Test
+  void testFlushMergesExistingPartialAfterOffsetReset() throws Exception {
+    String streamKey = testPipelineFQN + "/" + testRunId;
+    String partialKey =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + testRunId
+            + "/partial.txt";
+
+    String existingBody = "old-line-1\nold-line-2\nold-line-3\n";
+    when(mockS3Client.getObject(
+            argThat((GetObjectRequest req) -> req != null && partialKey.equals(req.key()))))
+        .thenReturn(
+            new ResponseInputStream<>(
+                GetObjectResponse.builder().build(),
+                AbortableInputStream.create(
+                    new ByteArrayInputStream(existingBody.getBytes(StandardCharsets.UTF_8)))));
+
+    mockActiveStreamCreation();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "new-line-1\nnew-line-2\n");
+
+    java.lang.reflect.Method m =
+        S3LogStorage.class.getDeclaredMethod("writePartialLogsForStream", String.class);
+    m.setAccessible(true);
+    m.invoke(s3LogStorage, streamKey);
+
+    org.mockito.ArgumentCaptor<PutObjectRequest> reqCaptor =
+        org.mockito.ArgumentCaptor.forClass(PutObjectRequest.class);
+    org.mockito.ArgumentCaptor<software.amazon.awssdk.core.sync.RequestBody> bodyCaptor =
+        org.mockito.ArgumentCaptor.forClass(software.amazon.awssdk.core.sync.RequestBody.class);
+    verify(mockS3Client, atLeastOnce()).putObject(reqCaptor.capture(), bodyCaptor.capture());
+
+    boolean foundMerged = false;
+    for (int i = 0; i < reqCaptor.getAllValues().size(); i++) {
+      PutObjectRequest req = reqCaptor.getAllValues().get(i);
+      if (partialKey.equals(req.key())) {
+        String body =
+            new String(
+                bodyCaptor.getAllValues().get(i).contentStreamProvider().newStream().readAllBytes(),
+                StandardCharsets.UTF_8);
+        assertTrue(body.contains("old-line-1"), "merged body must contain prior content");
+        assertTrue(body.contains("new-line-1"), "merged body must contain new content");
+        assertNotNull(req.metadata().get("last-flushed-line"));
+        assertNotNull(req.metadata().get("total-bytes"));
+        assertNotNull(req.metadata().get("writer-epoch"));
+        foundMerged = true;
+        break;
+      }
+    }
+    assertTrue(foundMerged, "expected at least one PUT to partial.txt with merged body");
+  }
+
+  @Test
+  void testRestartResumeReadsLastFlushedLineFromMetadata() throws Exception {
+    String partialKey =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + testRunId
+            + "/partial.txt";
+    String existingBody = "L1\nL2\nL3\nL4\nL5\n";
+
+    GetObjectResponse getResponse =
+        GetObjectResponse.builder()
+            .metadata(
+                java.util.Map.of(
+                    "last-flushed-line", "5",
+                    "total-bytes", Integer.toString(existingBody.length()),
+                    "writer-epoch", "1",
+                    "writer-version", "streamable-logs-v2"))
+            .build();
+    when(mockS3Client.getObject(
+            argThat((GetObjectRequest req) -> req != null && partialKey.equals(req.key()))))
+        .thenReturn(
+            new ResponseInputStream<>(
+                getResponse,
+                AbortableInputStream.create(
+                    new ByteArrayInputStream(existingBody.getBytes(StandardCharsets.UTF_8)))));
+
+    mockActiveStreamCreation();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "L6\nL7\n");
+
+    java.lang.reflect.Method m =
+        S3LogStorage.class.getDeclaredMethod("writePartialLogsForStream", String.class);
+    m.setAccessible(true);
+    m.invoke(s3LogStorage, testPipelineFQN + "/" + testRunId);
+
+    org.mockito.ArgumentCaptor<software.amazon.awssdk.core.sync.RequestBody> bodyCaptor =
+        org.mockito.ArgumentCaptor.forClass(software.amazon.awssdk.core.sync.RequestBody.class);
+    verify(mockS3Client, atLeastOnce())
+        .putObject(any(PutObjectRequest.class), bodyCaptor.capture());
+    boolean foundFullBody = false;
+    for (software.amazon.awssdk.core.sync.RequestBody b : bodyCaptor.getAllValues()) {
+      String body =
+          new String(b.contentStreamProvider().newStream().readAllBytes(), StandardCharsets.UTF_8);
+      if (body.contains("L1") && body.contains("L7")) {
+        foundFullBody = true;
+        break;
+      }
+    }
+    assertTrue(foundFullBody, "merged body must contain pre-restart and post-restart lines");
+  }
+
   private static Object getPrivateField(Object target, String name) throws Exception {
     Field f = target.getClass().getDeclaredField(name);
     f.setAccessible(true);

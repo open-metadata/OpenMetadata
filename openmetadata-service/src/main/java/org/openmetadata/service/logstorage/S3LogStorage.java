@@ -122,8 +122,10 @@ public class S3LogStorage implements LogStorageInterface {
   private long earlyFlushWatermarkBytes;
   private int pendingFlushAlertAfterFailures;
 
+  // Bumped on each fresh OM-server start; surfaced in partial.txt metadata for debugging.
+  private final long writerEpoch = System.currentTimeMillis();
+
   private final Map<String, StreamContext> activeStreams = new ConcurrentHashMap<>();
-  private final Map<String, Long> partialLogOffsets = new ConcurrentHashMap<>();
   // Per-stream coordination lock. Entries accumulate one per (fqn, runId) for the
   // lifetime of the run; cleanup is added in Task 7 (cleanupAbandonedStreams) and
   // at the end of /close (Task 8). Until then, this map grows monotonically.
@@ -398,6 +400,10 @@ public class S3LogStorage implements LogStorageInterface {
         }
         bytes.addAndGet(addedBytes);
         counter.addAndGet(lineCount);
+        if (bytes.get() >= earlyFlushWatermarkBytes) {
+          final String key = streamKey;
+          cleanupExecutor.execute(() -> writePartialLogsForStream(key));
+        }
       }
 
       // Notify listeners for SSE/WebSocket streaming
@@ -733,9 +739,6 @@ public class S3LogStorage implements LogStorageInterface {
       }
     }
 
-    // Clean up partial log offset tracking
-    partialLogOffsets.remove(streamKey);
-
     // Clear memory cache for this stream
     recentLogsCache.invalidate(streamKey);
 
@@ -772,8 +775,6 @@ public class S3LogStorage implements LogStorageInterface {
               if (entry.getKey().startsWith(pipelineFQN + "/")) {
                 try {
                   entry.getValue().close();
-                  // Clean up partial log offset tracking
-                  partialLogOffsets.remove(entry.getKey());
                 } catch (Exception e) {
                   LOG.warn("Error closing stream during deleteAll: {}", e.getMessage());
                 }
@@ -784,7 +785,6 @@ public class S3LogStorage implements LogStorageInterface {
 
     recentLogsCache.asMap().keySet().removeIf(streamKey -> streamKey.startsWith(streamKeyPrefix));
     activeListeners.keySet().removeIf(streamKey -> streamKey.startsWith(streamKeyPrefix));
-    partialLogOffsets.keySet().removeIf(streamKey -> streamKey.startsWith(streamKeyPrefix));
 
     try {
       ListObjectsV2Request request =
@@ -984,9 +984,6 @@ public class S3LogStorage implements LogStorageInterface {
         try {
           LOG.debug("Closing expired stream: {}", entry.getKey());
           context.close();
-
-          // Clean up partial log offset tracking
-          partialLogOffsets.remove(entry.getKey());
           iterator.remove();
         } catch (Exception e) {
           LOG.error("Error closing expired stream: {}", entry.getKey(), e);
@@ -1012,85 +1009,111 @@ public class S3LogStorage implements LogStorageInterface {
   }
 
   private void writePartialLogsForStream(String streamKey) {
-    // streamKey format is "pipelineFQN/runId" where runId is the last part after "/"
     int lastSlashIndex = streamKey.lastIndexOf('/');
     if (lastSlashIndex == -1) {
       LOG.warn("Invalid stream key format: {}", streamKey);
       return;
     }
 
+    String pipelineFQN = streamKey.substring(0, lastSlashIndex);
+    UUID runId = UUID.fromString(streamKey.substring(lastSlashIndex + 1));
+
     ReentrantLock lock = acquireStreamLock(streamKey);
     try {
-      String pipelineFQN = streamKey.substring(0, lastSlashIndex);
-      UUID runId = UUID.fromString(streamKey.substring(lastSlashIndex + 1));
-
-      SimpleLogBuffer buffer = recentLogsCache.getIfPresent(streamKey);
-      if (buffer == null) {
-        return; // No logs to write
-      }
-
-      List<String> allLines = buffer.getAllLines();
-      if (allLines.isEmpty()) {
+      List<String> queue = pendingFlush.get(streamKey);
+      if (queue == null || queue.isEmpty()) {
         return;
       }
 
-      Long currentOffset = partialLogOffsets.getOrDefault(streamKey, 0L);
-      if (currentOffset >= allLines.size()) {
-        return; // No new logs since last write
-      }
-
-      // Get new lines since last partial write
-      List<String> newLines = allLines.subList(currentOffset.intValue(), allLines.size());
-      if (newLines.isEmpty()) {
-        return;
+      List<String> snapshot = new ArrayList<>(queue);
+      queue.clear();
+      AtomicLong bytes = pendingFlushBytes.get(streamKey);
+      if (bytes != null) {
+        bytes.set(0);
       }
 
       String partialKey = buildPartialS3Key(pipelineFQN, runId);
-      String newContent = String.join("\n", newLines) + "\n";
 
-      // Append to existing partial file or create new one
-      if (currentOffset > 0) {
-        // Append mode: get existing content and append new content
-        try {
-          GetObjectRequest getRequest =
-              GetObjectRequest.builder().bucket(bucketName).key(partialKey).build();
-          String existingContent;
-          try (InputStream objectContent = s3Client.getObject(getRequest)) {
-            existingContent = new String(objectContent.readAllBytes(), StandardCharsets.UTF_8);
-          }
-          newContent = existingContent + newContent;
-        } catch (NoSuchKeyException e) {
-          // File doesn't exist, create new one
+      String existingBody = "";
+      try {
+        GetObjectRequest getRequest =
+            GetObjectRequest.builder().bucket(bucketName).key(partialKey).build();
+        try (InputStream in = s3Client.getObject(getRequest)) {
+          existingBody = new String(in.readAllBytes(), StandardCharsets.UTF_8);
         }
+      } catch (NoSuchKeyException e) {
+        existingBody = "";
+      } catch (Exception e) {
+        restorePendingFlush(streamKey, snapshot);
+        recordFlushFailure(streamKey, e);
+        return;
       }
 
-      // Write to S3
-      PutObjectRequest.Builder putRequestBuilder =
-          PutObjectRequest.builder().bucket(bucketName).key(partialKey).contentType("text/plain");
+      String newContent = String.join("\n", snapshot) + "\n";
+      String mergedBody = existingBody + newContent;
 
-      // Apply SSE configuration
-      applySSEConfiguration(putRequestBuilder);
+      AtomicLong counter = totalLinesAppended.computeIfAbsent(streamKey, k -> new AtomicLong());
+      long lastFlushedLine = counter.get();
 
-      PutObjectRequest putRequest = putRequestBuilder.build();
+      Map<String, String> metadata = new HashMap<>();
+      metadata.put("last-flushed-line", Long.toString(lastFlushedLine));
+      metadata.put("total-bytes", Integer.toString(mergedBody.length()));
+      metadata.put("writer-epoch", Long.toString(writerEpoch));
+      metadata.put("writer-version", "streamable-logs-v2");
 
-      s3Client.putObject(
-          putRequest, software.amazon.awssdk.core.sync.RequestBody.fromString(newContent));
+      PutObjectRequest.Builder putBuilder =
+          PutObjectRequest.builder()
+              .bucket(bucketName)
+              .key(partialKey)
+              .contentType("text/plain")
+              .metadata(metadata);
+      applySSEConfiguration(putBuilder);
 
-      // Record S3 write metrics
-      if (metrics != null) {
-        metrics.recordS3Write();
+      try {
+        s3Client.putObject(
+            putBuilder.build(),
+            software.amazon.awssdk.core.sync.RequestBody.fromString(mergedBody));
+        if (metrics != null) {
+          metrics.recordS3Write();
+        }
+        consecutiveFlushFailures.put(streamKey, new AtomicInteger(0));
+      } catch (Exception e) {
+        restorePendingFlush(streamKey, snapshot);
+        recordFlushFailure(streamKey, e);
       }
-
-      // Update offset
-      partialLogOffsets.put(streamKey, (long) allLines.size());
-
-      LOG.debug(
-          "Wrote {} new log lines to partial file for stream: {}", newLines.size(), streamKey);
-
-    } catch (Exception e) {
-      LOG.warn("Failed to write partial logs for stream: {}", streamKey, e);
     } finally {
       releaseStreamLock(streamKey, lock);
+    }
+  }
+
+  private void restorePendingFlush(String streamKey, List<String> snapshot) {
+    List<String> queue = pendingFlush.computeIfAbsent(streamKey, k -> new ArrayList<>());
+    queue.addAll(0, snapshot);
+    AtomicLong bytes = pendingFlushBytes.computeIfAbsent(streamKey, k -> new AtomicLong());
+    long restoredBytes = 0;
+    for (String line : snapshot) {
+      restoredBytes += line.length() + 1L;
+    }
+    bytes.addAndGet(restoredBytes);
+  }
+
+  private void recordFlushFailure(String streamKey, Exception e) {
+    int count =
+        consecutiveFlushFailures
+            .computeIfAbsent(streamKey, k -> new AtomicInteger(0))
+            .incrementAndGet();
+    if (count >= pendingFlushAlertAfterFailures) {
+      LOG.error(
+          "Persistent flush failure for stream {} ({} consecutive failures): {}",
+          streamKey,
+          count,
+          e.getMessage(),
+          e);
+    } else {
+      LOG.warn("Flush failure for stream {} (attempt {}): {}", streamKey, count, e.getMessage());
+    }
+    if (metrics != null) {
+      metrics.recordS3Error();
     }
   }
 
@@ -1112,7 +1135,6 @@ public class S3LogStorage implements LogStorageInterface {
       }
     }
     activeStreams.clear();
-    partialLogOffsets.clear();
   }
 
   /**
@@ -1139,7 +1161,6 @@ public class S3LogStorage implements LogStorageInterface {
     ReentrantLock lock = acquireStreamLock(streamKey);
     try {
       StreamContext context = activeStreams.remove(streamKey);
-      partialLogOffsets.remove(streamKey);
 
       if (context != null) {
         try {
