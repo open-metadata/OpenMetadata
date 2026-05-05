@@ -20,7 +20,6 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.micrometer.core.instrument.Timer;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -36,13 +35,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
@@ -62,13 +59,8 @@ import software.amazon.awssdk.services.s3.S3AsyncClientBuilder;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.model.AbortIncompleteMultipartUpload;
-import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.BucketLifecycleConfiguration;
-import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
-import software.amazon.awssdk.services.s3.model.CompletedMultipartUpload;
-import software.amazon.awssdk.services.s3.model.CompletedPart;
-import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
-import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.Delete;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
@@ -90,14 +82,15 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.model.ServerSideEncryption;
 import software.amazon.awssdk.services.s3.model.StorageClass;
-import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 
 /**
  * S3-based implementation of LogStorageInterface for storing pipeline logs.
  * Logs are organized as: bucket/prefix/pipelineFQN/runId/logs.txt
  *
- * This implementation uses async processing to avoid blocking application threads
- * and includes proper resource management to prevent memory leaks.
+ * appendLogs writes only to in-memory state (SimpleLogBuffer, pendingFlush) and notifies SSE
+ * listeners. closeStream produces logs.txt by doing a final flush to partial.txt, then a
+ * server-side S3 copy from partial.txt to logs.txt, followed by cleanup of partial.txt and
+ * in-memory state.
  */
 @Slf4j
 public class S3LogStorage implements LogStorageInterface {
@@ -111,7 +104,6 @@ public class S3LogStorage implements LogStorageInterface {
   private int expirationDays;
   private int maxConcurrentStreams;
   private long streamTimeoutMs;
-  private int asyncBufferSize;
   private boolean isCustomEndpoint = false;
   private ServerSideEncryption sseAlgorithm = null;
   private String kmsKeyId = null;
@@ -195,10 +187,6 @@ public class S3LogStorage implements LogStorageInterface {
           s3Config.getStreamTimeoutMinutes() != null
               ? s3Config.getStreamTimeoutMinutes() * 60000L
               : 300000L; // 5 minutes default
-      this.asyncBufferSize =
-          s3Config.getAsyncBufferSizeMB() != null
-              ? s3Config.getAsyncBufferSizeMB() * 1024 * 1024
-              : 5 * 1024 * 1024;
 
       this.streamTimeoutHours =
           s3Config.getStreamTimeoutHours() != null ? s3Config.getStreamTimeoutHours() : 24;
@@ -277,9 +265,6 @@ public class S3LogStorage implements LogStorageInterface {
 
       cleanupExecutor.scheduleWithFixedDelay(this::cleanupExpiredStreams, 1, 1, TimeUnit.MINUTES);
 
-      // Update metrics every 30 seconds
-      cleanupExecutor.scheduleWithFixedDelay(this::updateStreamMetrics, 30, 30, TimeUnit.SECONDS);
-
       // Write partial logs every 2 minutes to make them available for reading
       cleanupExecutor.scheduleWithFixedDelay(this::writePartialLogs, 2, 2, TimeUnit.MINUTES);
 
@@ -327,39 +312,9 @@ public class S3LogStorage implements LogStorageInterface {
   }
 
   @Override
-  public OutputStream getLogOutputStream(String pipelineFQN, UUID runId) throws IOException {
-    String streamKey = pipelineFQN + "/" + runId;
-
-    if (activeStreams.size() >= maxConcurrentStreams) {
-      cleanupExpiredStreams();
-      if (activeStreams.size() >= maxConcurrentStreams) {
-        throw new IOException("Maximum concurrent log streams reached: " + maxConcurrentStreams);
-      }
-    }
-
-    StreamContext existingContext = activeStreams.get(streamKey);
-    if (existingContext != null) {
-      existingContext.close();
-      activeStreams.remove(streamKey);
-    }
-
-    String key = buildS3Key(pipelineFQN, runId);
-    MultipartS3OutputStream stream =
-        new MultipartS3OutputStream(
-            s3AsyncClient,
-            bucketName,
-            key,
-            enableSSE,
-            storageClass,
-            isCustomEndpoint,
-            sseAlgorithm,
-            kmsKeyId,
-            metrics);
-
-    StreamContext context = new StreamContext(stream, System.currentTimeMillis(), metrics);
-    activeStreams.put(streamKey, context);
-
-    return stream;
+  public OutputStream getLogOutputStream(String pipelineFQN, UUID runId) {
+    throw new UnsupportedOperationException(
+        "Streaming output is no longer supported; use appendLogs.");
   }
 
   @Override
@@ -380,6 +335,13 @@ public class S3LogStorage implements LogStorageInterface {
       // Update memory cache for real-time log viewing
       SimpleLogBuffer recentLogs = recentLogsCache.get(streamKey, k -> new SimpleLogBuffer(1000));
       recentLogs.append(logContent);
+
+      // Track the run as live (no multipart upload here — bytes flow through pendingFlush ->
+      // partial.txt).
+      StreamContext ctx =
+          activeStreams.computeIfAbsent(
+              streamKey, k -> new StreamContext(System.currentTimeMillis(), metrics));
+      ctx.updateAccessTime();
 
       // Track lines for the durable-pending flush queue and the logical line counter.
       String[] splitLines = logContent.split("\n", -1);
@@ -407,42 +369,6 @@ public class S3LogStorage implements LogStorageInterface {
       // Notify listeners for SSE/WebSocket streaming
       notifyListeners(streamKey, logContent);
 
-      StreamContext context =
-          activeStreams.computeIfAbsent(
-              streamKey,
-              k -> {
-                try {
-                  if (activeStreams.size() >= maxConcurrentStreams) {
-                    cleanupExpiredStreams();
-                    if (activeStreams.size() >= maxConcurrentStreams) {
-                      throw new IOException(
-                          "Maximum concurrent log streams reached: " + maxConcurrentStreams);
-                    }
-                  }
-
-                  String key = buildS3Key(pipelineFQN, runId);
-                  MultipartS3OutputStream stream =
-                      new MultipartS3OutputStream(
-                          s3AsyncClient,
-                          bucketName,
-                          key,
-                          enableSSE,
-                          storageClass,
-                          isCustomEndpoint,
-                          sseAlgorithm,
-                          kmsKeyId,
-                          metrics);
-                  LOG.info("Created multipart upload stream for {}/{}", pipelineFQN, runId);
-                  return new StreamContext(stream, System.currentTimeMillis(), metrics);
-                } catch (IOException e) {
-                  throw new RuntimeException("Failed to create multipart upload stream", e);
-                }
-              });
-
-      byte[] logBytes = logContent.getBytes(StandardCharsets.UTF_8);
-      context.stream.write(logBytes);
-      context.updateAccessTime();
-
       if (metrics != null) {
         metrics.recordLogsSent(1);
         if (sample != null) {
@@ -465,7 +391,7 @@ public class S3LogStorage implements LogStorageInterface {
   public InputStream getLogInputStream(String pipelineFQN, UUID runId) throws IOException {
     String streamKey = pipelineFQN + "/" + runId;
 
-    // Check if pipeline is still running (active multipart upload in progress)
+    // Check if pipeline is still running (active stream in progress)
     StreamContext activeStream = activeStreams.get(streamKey);
     if (activeStream != null) {
       // Pipeline is still running - read from memory cache
@@ -514,7 +440,7 @@ public class S3LogStorage implements LogStorageInterface {
     String streamKey = pipelineFQN + "/" + runId;
     Map<String, Object> result = new HashMap<>();
 
-    // Check if pipeline is still running (active multipart upload in progress)
+    // Check if pipeline is still running (active stream in progress)
     StreamContext activeStream = activeStreams.get(streamKey);
     if (activeStream != null) {
       // Pipeline is still running - combine completed logs from S3 + recent logs from memory
@@ -728,14 +654,8 @@ public class S3LogStorage implements LogStorageInterface {
 
     // Clean up active stream if exists
     String streamKey = pipelineFQN + "/" + runId;
-    StreamContext context = activeStreams.remove(streamKey);
-    if (context != null) {
-      try {
-        context.close();
-      } catch (Exception e) {
-        LOG.warn("Error closing stream during delete: {}", e.getMessage());
-      }
-    }
+    activeStreams.remove(streamKey);
+    dropStreamState(streamKey);
 
     // Clear memory cache for this stream
     recentLogsCache.invalidate(streamKey);
@@ -771,11 +691,7 @@ public class S3LogStorage implements LogStorageInterface {
         .removeIf(
             entry -> {
               if (entry.getKey().startsWith(pipelineFQN + "/")) {
-                try {
-                  entry.getValue().close();
-                } catch (Exception e) {
-                  LOG.warn("Error closing stream during deleteAll: {}", e.getMessage());
-                }
+                dropStreamState(entry.getKey());
                 return true;
               }
               return false;
@@ -843,14 +759,6 @@ public class S3LogStorage implements LogStorageInterface {
 
   @Override
   public void close() {
-    // Close all active multipart upload streams
-    for (StreamContext context : activeStreams.values()) {
-      try {
-        context.close();
-      } catch (Exception e) {
-        LOG.error("Error closing S3 output stream", e);
-      }
-    }
     activeStreams.clear();
 
     if (cleanupExecutor != null) {
@@ -950,25 +858,6 @@ public class S3LogStorage implements LogStorageInterface {
     }
   }
 
-  /**
-   * Apply SSE configuration to CreateMultipartUploadRequest builders based on current settings.
-   * This centralizes the logic for applying server-side encryption consistently across multipart uploads.
-   *
-   * @param requestBuilder The CreateMultipartUploadRequest.Builder to apply SSE configuration to
-   */
-  private void applySSEConfiguration(CreateMultipartUploadRequest.Builder requestBuilder) {
-    if (enableSSE && !isCustomEndpoint) {
-      if (sseAlgorithm != null) {
-        requestBuilder.serverSideEncryption(sseAlgorithm);
-        if (sseAlgorithm == ServerSideEncryption.AWS_KMS && kmsKeyId != null) {
-          requestBuilder.ssekmsKeyId(kmsKeyId);
-        }
-      } else {
-        requestBuilder.serverSideEncryption(ServerSideEncryption.AES256);
-      }
-    }
-  }
-
   private void cleanupExpiredStreams() {
     long now = System.currentTimeMillis();
     Iterator<Map.Entry<String, StreamContext>> iterator = activeStreams.entrySet().iterator();
@@ -980,11 +869,16 @@ public class S3LogStorage implements LogStorageInterface {
       if (now - context.lastAccessTime > streamTimeoutMs) {
         ReentrantLock lock = acquireStreamLock(entry.getKey());
         try {
-          LOG.debug("Closing expired stream: {}", entry.getKey());
-          context.close();
+          LOG.debug("Removing expired stream state: {}", entry.getKey());
+          // Drop in-memory state only. Task 7 will rewrite this as cleanupAbandonedStreams
+          // which also finalizes logs.txt via server-side copy.
+          pendingFlush.remove(entry.getKey());
+          pendingFlushBytes.remove(entry.getKey());
+          totalLinesAppended.remove(entry.getKey());
+          consecutiveFlushFailures.remove(entry.getKey());
           iterator.remove();
         } catch (Exception e) {
-          LOG.error("Error closing expired stream: {}", entry.getKey(), e);
+          LOG.error("Error during stream cleanup: {}", entry.getKey(), e);
         } finally {
           releaseStreamLock(entry.getKey(), lock);
         }
@@ -1020,71 +914,74 @@ public class S3LogStorage implements LogStorageInterface {
 
     ReentrantLock lock = acquireStreamLock(streamKey);
     try {
-      List<String> queue = pendingFlush.get(streamKey);
-      if (queue == null || queue.isEmpty()) {
-        return;
-      }
-
-      List<String> snapshot = new ArrayList<>(queue);
-      queue.clear();
-      AtomicLong bytes = pendingFlushBytes.get(streamKey);
-      if (bytes != null) {
-        // Counter is reset under the lock; restorePendingFlush below adds back to it on failure.
-        // If this lock scope is ever narrowed, revisit the atomicity of clear+set+restore.
-        bytes.set(0);
-      }
-
-      String partialKey = buildPartialS3Key(pipelineFQN, runId);
-
-      String existingBody = "";
-      try {
-        GetObjectRequest getRequest =
-            GetObjectRequest.builder().bucket(bucketName).key(partialKey).build();
-        try (InputStream in = s3Client.getObject(getRequest)) {
-          existingBody = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        }
-      } catch (NoSuchKeyException e) {
-        existingBody = "";
-      } catch (Exception e) {
-        restorePendingFlush(streamKey, snapshot);
-        recordFlushFailure(streamKey, e);
-        return;
-      }
-
-      String newContent = String.join("\n", snapshot) + "\n";
-      String mergedBody = existingBody + newContent;
-
-      AtomicLong counter = totalLinesAppended.computeIfAbsent(streamKey, k -> new AtomicLong());
-      long lastFlushedLine = counter.get();
-
-      Map<String, String> metadata = new HashMap<>();
-      metadata.put("last-flushed-line", Long.toString(lastFlushedLine));
-      metadata.put("total-bytes", Integer.toString(mergedBody.length()));
-      metadata.put("writer-epoch", Long.toString(writerEpoch));
-      metadata.put("writer-version", "streamable-logs-v2");
-
-      PutObjectRequest.Builder putBuilder =
-          PutObjectRequest.builder()
-              .bucket(bucketName)
-              .key(partialKey)
-              .contentType("text/plain")
-              .metadata(metadata);
-      applySSEConfiguration(putBuilder);
-
-      try {
-        s3Client.putObject(
-            putBuilder.build(),
-            software.amazon.awssdk.core.sync.RequestBody.fromString(mergedBody));
-        if (metrics != null) {
-          metrics.recordS3Write();
-        }
-        consecutiveFlushFailures.put(streamKey, new AtomicInteger(0));
-      } catch (Exception e) {
-        restorePendingFlush(streamKey, snapshot);
-        recordFlushFailure(streamKey, e);
-      }
+      writePartialLogsForStreamLocked(streamKey, pipelineFQN, runId);
     } finally {
       releaseStreamLock(streamKey, lock);
+    }
+  }
+
+  private void writePartialLogsForStreamLocked(String streamKey, String pipelineFQN, UUID runId) {
+    List<String> queue = pendingFlush.get(streamKey);
+    if (queue == null || queue.isEmpty()) {
+      return;
+    }
+
+    List<String> snapshot = new ArrayList<>(queue);
+    queue.clear();
+    AtomicLong bytes = pendingFlushBytes.get(streamKey);
+    if (bytes != null) {
+      // Counter is reset under the lock; restorePendingFlush below adds back to it on failure.
+      // If this lock scope is ever narrowed, revisit the atomicity of clear+set+restore.
+      bytes.set(0);
+    }
+
+    String partialKey = buildPartialS3Key(pipelineFQN, runId);
+
+    String existingBody = "";
+    try {
+      GetObjectRequest getRequest =
+          GetObjectRequest.builder().bucket(bucketName).key(partialKey).build();
+      try (InputStream in = s3Client.getObject(getRequest)) {
+        existingBody = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+      }
+    } catch (NoSuchKeyException e) {
+      existingBody = "";
+    } catch (Exception e) {
+      restorePendingFlush(streamKey, snapshot);
+      recordFlushFailure(streamKey, e);
+      return;
+    }
+
+    String newContent = String.join("\n", snapshot) + "\n";
+    String mergedBody = existingBody + newContent;
+
+    AtomicLong counter = totalLinesAppended.computeIfAbsent(streamKey, k -> new AtomicLong());
+    long lastFlushedLine = counter.get();
+
+    Map<String, String> metadata = new HashMap<>();
+    metadata.put("last-flushed-line", Long.toString(lastFlushedLine));
+    metadata.put("total-bytes", Integer.toString(mergedBody.length()));
+    metadata.put("writer-epoch", Long.toString(writerEpoch));
+    metadata.put("writer-version", "streamable-logs-v2");
+
+    PutObjectRequest.Builder putBuilder =
+        PutObjectRequest.builder()
+            .bucket(bucketName)
+            .key(partialKey)
+            .contentType("text/plain")
+            .metadata(metadata);
+    applySSEConfiguration(putBuilder);
+
+    try {
+      s3Client.putObject(
+          putBuilder.build(), software.amazon.awssdk.core.sync.RequestBody.fromString(mergedBody));
+      if (metrics != null) {
+        metrics.recordS3Write();
+      }
+      consecutiveFlushFailures.put(streamKey, new AtomicInteger(0));
+    } catch (Exception e) {
+      restorePendingFlush(streamKey, snapshot);
+      recordFlushFailure(streamKey, e);
     }
   }
 
@@ -1120,89 +1017,107 @@ public class S3LogStorage implements LogStorageInterface {
   }
 
   /**
-   * Flush all active streams by closing them to finalize multipart uploads.
-   * This is called by tests to ensure logs are written to S3.
+   * Flush all active streams. Writes pending logs to partial.txt for each active stream and
+   * clears all in-memory state. Called by tests to ensure logs are persisted.
    */
   public void flush() {
-    // Write final partial logs before closing
     writePartialLogs();
-
-    // Close all active streams to finalize multipart uploads
-    for (Map.Entry<String, StreamContext> entry : activeStreams.entrySet()) {
-      try {
-        LOG.debug("Flushing stream: {}", entry.getKey());
-        entry.getValue().close();
-      } catch (Exception e) {
-        LOG.error("Error flushing stream: {}", entry.getKey(), e);
-      }
-    }
     activeStreams.clear();
+    pendingFlush.clear();
+    pendingFlushBytes.clear();
+    totalLinesAppended.clear();
+    consecutiveFlushFailures.clear();
+    streamLocks.clear();
   }
 
   /**
-   * Flush a specific pipeline run's stream to finalize multipart upload.
-   * This allows scoped flushing without affecting other active streams.
+   * Flush a specific pipeline run's stream. Delegates to closeStream for backward compatibility.
    *
    * @param pipelineFQN Fully qualified pipeline name
    * @param runId Run identifier
    */
   public void flush(String pipelineFQN, UUID runId) throws IOException {
-    String streamKey = pipelineFQN + "/" + runId;
-
-    // The final partial-flush is invoked outside the outer lock to keep the lock-held window
-    // narrow; writePartialLogsForStream re-acquires the same per-stream lock internally.
-    try {
-      writePartialLogsForStream(streamKey);
-    } catch (Exception e) {
-      LOG.warn("Failed to write final partial logs for {}: {}", streamKey, e.getMessage());
-    }
-
-    ReentrantLock lock = acquireStreamLock(streamKey);
-    try {
-      StreamContext context = activeStreams.remove(streamKey);
-
-      if (context != null) {
-        try {
-          LOG.debug("Flushing stream for pipeline: {}, runId: {}", pipelineFQN, runId);
-          context.close();
-        } catch (Exception e) {
-          throw new IOException("Failed to flush stream for " + streamKey, e);
-        }
-      }
-    } finally {
-      releaseStreamLock(streamKey, lock);
-    }
+    closeStream(pipelineFQN, runId);
   }
 
   @Override
   public void closeStream(String pipelineFQN, UUID runId) throws IOException {
-    flush(pipelineFQN, runId);
+    String streamKey = pipelineFQN + "/" + runId;
+    ReentrantLock lock = acquireStreamLock(streamKey);
+    try {
+      // Final flush: drain remaining pendingFlush to partial.txt.
+      writePartialLogsForStreamLocked(streamKey, pipelineFQN, runId);
+
+      // Server-side copy partial.txt -> logs.txt.
+      try {
+        copyPartialToLogs(pipelineFQN, runId);
+      } catch (NoSuchKeyException e) {
+        // Idempotent close: partial.txt already absent (likely a retry of a prior /close).
+        LOG.debug("closeStream no-op for {}: partial.txt already absent", streamKey);
+        dropStreamState(streamKey);
+        return;
+      } catch (Exception e) {
+        throw new IOException("Failed to copy partial.txt to logs.txt for " + streamKey, e);
+      }
+
+      // Delete partial.txt.
+      try {
+        s3Client.deleteObject(
+            DeleteObjectRequest.builder()
+                .bucket(bucketName)
+                .key(buildPartialS3Key(pipelineFQN, runId))
+                .build());
+      } catch (Exception e) {
+        LOG.warn("Failed to delete partial.txt for {}: {}", streamKey, e.getMessage());
+        // Non-fatal; logs.txt exists.
+      }
+
+      // Best-effort delete .active marker.
+      try {
+        String markerKey =
+            String.format(
+                "%s/.active/%s/%s/%s",
+                prefix != null ? prefix : "pipeline-logs",
+                pipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_"),
+                runId,
+                getServerId());
+        s3Client.deleteObject(
+            DeleteObjectRequest.builder().bucket(bucketName).key(markerKey).build());
+      } catch (Exception ignored) {
+        // Best-effort.
+      }
+
+      dropStreamState(streamKey);
+    } finally {
+      releaseStreamLock(streamKey, lock);
+      streamLocks.remove(streamKey);
+    }
   }
 
-  /**
-   * Update metrics for all active streams. This provides visibility into:
-   * - Number of active multipart uploads
-   * - Total pending part uploads across all streams
-   */
-  public void updateStreamMetrics() {
+  private void copyPartialToLogs(String pipelineFQN, UUID runId) {
+    String partialKey = buildPartialS3Key(pipelineFQN, runId);
+    String logsKey = buildS3Key(pipelineFQN, runId);
+    CopyObjectRequest req =
+        CopyObjectRequest.builder()
+            .sourceBucket(bucketName)
+            .sourceKey(partialKey)
+            .destinationBucket(bucketName)
+            .destinationKey(logsKey)
+            .build();
+    s3Client.copyObject(req);
     if (metrics != null) {
-      // Track active multipart uploads
-      metrics.updatePendingPartUploads(0); // Reset first
-
-      int totalPendingParts = 0;
-      for (StreamContext context : activeStreams.values()) {
-        totalPendingParts += context.stream.getPendingUploadsCount();
-      }
-
-      metrics.updatePendingPartUploads(totalPendingParts);
-      metrics.incrementMultipartUploads();
-      metrics.decrementMultipartUploads();
-      // Set to actual count
-      int activeCount = activeStreams.size();
-      for (int i = 0; i < activeCount; i++) {
-        metrics.incrementMultipartUploads();
-      }
+      metrics.recordS3Write();
     }
+  }
+
+  private void dropStreamState(String streamKey) {
+    activeStreams.remove(streamKey);
+    pendingFlush.remove(streamKey);
+    pendingFlushBytes.remove(streamKey);
+    totalLinesAppended.remove(streamKey);
+    consecutiveFlushFailures.remove(streamKey);
+    recentLogsCache.invalidate(streamKey);
+    // Note: streamLocks entry is removed by the caller AFTER releasing the lock.
   }
 
   private void markRunAsActive(String pipelineFQN, UUID runId) {
@@ -1214,7 +1129,6 @@ public class S3LogStorage implements LogStorageInterface {
             runId,
             getServerId());
 
-    // Mark run as active asynchronously using S3AsyncClient
     PutObjectRequest.Builder requestBuilder =
         PutObjectRequest.builder()
             .bucket(bucketName)
@@ -1226,7 +1140,6 @@ public class S3LogStorage implements LogStorageInterface {
                     "timestamp", String.valueOf(System.currentTimeMillis()),
                     "pipeline", pipelineFQN));
 
-    // Apply SSE configuration
     applySSEConfiguration(requestBuilder);
 
     PutObjectRequest request = requestBuilder.build();
@@ -1269,242 +1182,16 @@ public class S3LogStorage implements LogStorageInterface {
    * Context for tracking active streams with TTL
    */
   private static class StreamContext {
-    final MultipartS3OutputStream stream;
     volatile long lastAccessTime;
     private final StreamableLogsMetrics metrics;
 
-    StreamContext(
-        MultipartS3OutputStream stream, long creationTime, StreamableLogsMetrics metrics) {
-      this.stream = stream;
+    StreamContext(long creationTime, StreamableLogsMetrics metrics) {
       this.lastAccessTime = creationTime;
       this.metrics = metrics;
     }
 
     void updateAccessTime() {
       this.lastAccessTime = System.currentTimeMillis();
-    }
-
-    void close() throws IOException {
-      stream.close();
-    }
-  }
-
-  /**
-   * Custom OutputStream for streaming data to S3 using multipart uploads
-   * This properly handles append operations without data loss
-   */
-  private class MultipartS3OutputStream extends OutputStream {
-    private final S3AsyncClient s3AsyncClient;
-    private final String bucketName;
-    private final String key;
-    private final boolean enableSSE;
-    private final StorageClass storageClass;
-    private final boolean isCustomEndpoint;
-    private final ServerSideEncryption sseAlgorithm;
-    private final String kmsKeyId;
-    private final List<CompletedPart> completedParts;
-    private final List<CompletableFuture<CompletedPart>> pendingUploads;
-    private final ByteArrayOutputStream buffer;
-    private final StreamableLogsMetrics metrics;
-    private String uploadId;
-    private int partNumber = 1;
-    private final AtomicBoolean closed = new AtomicBoolean(false);
-    private static final int PART_SIZE = 5 * 1024 * 1024; // 5MB minimum for multipart
-
-    public MultipartS3OutputStream(
-        S3AsyncClient s3AsyncClient,
-        String bucketName,
-        String key,
-        boolean enableSSE,
-        StorageClass storageClass,
-        boolean isCustomEndpoint,
-        ServerSideEncryption sseAlgorithm,
-        String kmsKeyId,
-        StreamableLogsMetrics metrics)
-        throws IOException {
-      this.s3AsyncClient = s3AsyncClient;
-      this.bucketName = bucketName;
-      this.key = key;
-      this.enableSSE = enableSSE;
-      this.storageClass = storageClass;
-      this.isCustomEndpoint = isCustomEndpoint;
-      this.sseAlgorithm = sseAlgorithm;
-      this.kmsKeyId = kmsKeyId;
-      this.metrics = metrics;
-      this.completedParts = new ArrayList<>();
-      this.pendingUploads = new ArrayList<>();
-      this.buffer = new ByteArrayOutputStream(PART_SIZE);
-
-      initializeMultipartUpload();
-    }
-
-    private void initializeMultipartUpload() throws IOException {
-      try {
-        CreateMultipartUploadRequest.Builder requestBuilder =
-            CreateMultipartUploadRequest.builder()
-                .bucket(bucketName)
-                .key(key)
-                .contentType("text/plain");
-
-        if (!isCustomEndpoint && storageClass != null) {
-          requestBuilder.storageClass(storageClass);
-        }
-
-        // Apply SSE configuration using centralized logic
-        applySSEConfiguration(requestBuilder);
-
-        CreateMultipartUploadResponse response =
-            s3AsyncClient.createMultipartUpload(requestBuilder.build()).join();
-        this.uploadId = response.uploadId();
-      } catch (Exception e) {
-        throw new IOException("Failed to initialize multipart upload", e);
-      }
-    }
-
-    @Override
-    public void write(int b) throws IOException {
-      if (closed.get()) {
-        throw new IOException("Stream is closed");
-      }
-      buffer.write(b);
-      if (buffer.size() >= PART_SIZE) {
-        uploadPart();
-      }
-    }
-
-    @Override
-    public void write(byte[] b, int off, int len) throws IOException {
-      if (closed.get()) {
-        throw new IOException("Stream is closed");
-      }
-      buffer.write(b, off, len);
-      if (buffer.size() >= PART_SIZE) {
-        uploadPart();
-      }
-    }
-
-    @Override
-    public void flush() {}
-
-    @Override
-    public void close() throws IOException {
-      if (closed.compareAndSet(false, true)) {
-        try {
-          // Upload any remaining data
-          if (buffer.size() > 0) {
-            uploadPart();
-          }
-
-          // Wait for all pending uploads to complete
-          if (!pendingUploads.isEmpty()) {
-            CompletableFuture.allOf(pendingUploads.toArray(new CompletableFuture[0])).join();
-          }
-
-          if (uploadId != null && !completedParts.isEmpty()) {
-            // Sort parts by part number before completing
-            List<CompletedPart> sortedParts = new ArrayList<>(completedParts);
-            sortedParts.sort((p1, p2) -> Integer.compare(p1.partNumber(), p2.partNumber()));
-
-            CompleteMultipartUploadRequest completeRequest =
-                CompleteMultipartUploadRequest.builder()
-                    .bucket(bucketName)
-                    .key(key)
-                    .uploadId(uploadId)
-                    .multipartUpload(CompletedMultipartUpload.builder().parts(sortedParts).build())
-                    .build();
-
-            s3AsyncClient.completeMultipartUpload(completeRequest).join();
-
-            // Record S3 write metrics for multipart upload completion
-            if (metrics != null) {
-              metrics.recordS3Write();
-            }
-          } else if (uploadId != null) {
-            AbortMultipartUploadRequest abortRequest =
-                AbortMultipartUploadRequest.builder()
-                    .bucket(bucketName)
-                    .key(key)
-                    .uploadId(uploadId)
-                    .build();
-
-            s3AsyncClient.abortMultipartUpload(abortRequest).join();
-          }
-        } catch (Exception e) {
-          if (uploadId != null) {
-            try {
-              s3AsyncClient
-                  .abortMultipartUpload(
-                      AbortMultipartUploadRequest.builder()
-                          .bucket(bucketName)
-                          .key(key)
-                          .uploadId(uploadId)
-                          .build())
-                  .join();
-            } catch (Exception abortEx) {
-              LOG.error("Failed to abort multipart upload", abortEx);
-            }
-          }
-          throw new IOException("Failed to complete multipart upload", e);
-        } finally {
-          buffer.close();
-        }
-      }
-    }
-
-    private void uploadPart() throws IOException {
-      if (buffer.size() == 0) {
-        return;
-      }
-
-      byte[] data = buffer.toByteArray();
-      buffer.reset();
-      final int currentPartNumber = partNumber++;
-
-      try {
-        UploadPartRequest uploadRequest =
-            UploadPartRequest.builder()
-                .bucket(bucketName)
-                .key(key)
-                .uploadId(uploadId)
-                .partNumber(currentPartNumber)
-                .build();
-
-        // Upload asynchronously without blocking
-        CompletableFuture<CompletedPart> uploadFuture =
-            s3AsyncClient
-                .uploadPart(uploadRequest, AsyncRequestBody.fromBytes(data))
-                .thenApply(
-                    response ->
-                        CompletedPart.builder()
-                            .partNumber(currentPartNumber)
-                            .eTag(response.eTag())
-                            .build());
-
-        // Track pending uploads
-        pendingUploads.add(uploadFuture);
-
-        // Store completed part when ready
-        uploadFuture.whenComplete(
-            (part, throwable) -> {
-              if (throwable == null) {
-                synchronized (completedParts) {
-                  completedParts.add(part);
-                }
-              } else {
-                LOG.error("Failed to upload part {} ", currentPartNumber, throwable);
-              }
-            });
-
-      } catch (Exception e) {
-        throw new IOException("Failed to upload part " + currentPartNumber, e);
-      }
-    }
-
-    /**
-     * Get the count of pending part uploads for monitoring
-     */
-    public int getPendingUploadsCount() {
-      return pendingUploads.size();
     }
   }
 
