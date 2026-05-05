@@ -6,6 +6,7 @@ import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.ResponseException;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
 import java.io.InputStream;
@@ -200,16 +201,32 @@ public class ElasticSearchVectorService implements VectorIndexService {
       if (body != null) {
         request.setJsonEntity(body);
       }
+      // Rest5Client.performRequest only throws ResponseException on 5xx (its internal
+      // isCorrectServerResponse is `code < 500`). 4xx responses are returned normally,
+      // so we still need a manual status-code check below for client errors.
       Response response = restClient.performRequest(request);
       int statusCode = response.getStatusCode();
+      String responseBody;
       try (InputStream is = response.getEntity().getContent()) {
-        String responseBody = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-        if (statusCode >= 400) {
-          throw new IOException(
-              "Elasticsearch request failed with status " + statusCode + ": " + responseBody);
-        }
-        return responseBody;
+        responseBody = new String(is.readAllBytes(), StandardCharsets.UTF_8);
       }
+      if (statusCode >= 400) {
+        throw new IOException(
+            "Elasticsearch request failed with status " + statusCode + ": " + responseBody);
+      }
+      return responseBody;
+    } catch (ResponseException e) {
+      // 5xx path: format symmetrically with the OS generic-client error message.
+      int statusCode = e.getResponse().getStatusCode();
+      String errorBody;
+      try (InputStream is = e.getResponse().getEntity().getContent()) {
+        errorBody = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+      } catch (Exception ignored) {
+        errorBody = "no body";
+      }
+      LOG.error("Generic request failed: {} {}", method, endpoint, e);
+      throw new RuntimeException(
+          "Elasticsearch request failed with status " + statusCode + ": " + errorBody, e);
     } catch (Exception e) {
       LOG.error("Generic request failed: {} {}", method, endpoint, e);
       throw new RuntimeException("Elasticsearch generic request failed", e);
