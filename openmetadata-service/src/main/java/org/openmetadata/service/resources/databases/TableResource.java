@@ -88,6 +88,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Path("/v1/tables")
@@ -589,12 +590,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       summary = "Export table in CSV format",
       responses = {
         @ApiResponse(
-            responseCode = "200",
-            description = "Exported csv with columns from the table",
+            responseCode = "202",
+            description = "Export initiated successfully",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = String.class)))
+                    schema = @Schema(implementation = CSVExportResponse.class)))
       })
   public Response exportCsvAsync(
       @Context SecurityContext securityContext,
