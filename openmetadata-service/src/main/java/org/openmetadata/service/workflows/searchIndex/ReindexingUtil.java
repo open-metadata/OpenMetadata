@@ -23,6 +23,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.SneakyThrows;
@@ -63,6 +64,59 @@ public class ReindexingUtil {
     stats.setFailedRecords(stats.getFailedRecords() + currentFailed);
     stats.setWarningRecords(
         (stats.getWarningRecords() != null ? stats.getWarningRecords() : 0) + currentWarnings);
+  }
+
+  /**
+   * Returns true when an EntityError represents a stale reference — either a missing entity
+   * (canonical {@code EntityNotFoundException}) or a missing entity_relationship row (raised by
+   * {@code EntityRepository.ensureSingleRelationship} as "does not have expected relationship
+   * ..."). Both are expected during reindexing of long-lived records: e.g. a
+   * {@code testCaseResolutionStatus} migrated without a corresponding {@code parentOf} row, or
+   * an entity hard-deleted out-of-band leaving its relationship rows behind. Such records
+   * cannot be meaningfully indexed and are reported as warnings rather than failing the entire
+   * batch.
+   *
+   * <p>The patterns are deliberately specific so we do not misclassify unrelated errors that
+   * happen to contain {@code "not found"} (e.g. {@code "Column 'foo' not found in result set"}
+   * or {@code "SSL certificate not found"}). They cover every {@code EntityNotFoundException}
+   * factory message ({@code byId}, {@code byName}, {@code byFilter}, {@code byVersion},
+   * {@code byParserSchema}) plus the legacy {@code CatalogExceptionMessage.entityNotFound}
+   * format and the relationship-not-found shape.
+   */
+  public static boolean isStaleReferenceError(EntityError error) {
+    if (error == null || error.getMessage() == null) {
+      return false;
+    }
+    String message = error.getMessage().toLowerCase(java.util.Locale.ROOT);
+    return message.contains("instance for")
+        || message.contains("entity not found")
+        || message.contains("entity with id")
+        || message.contains("entity with name")
+        || message.contains("parser schema not found")
+        || message.contains("does not exist")
+        || message.contains("entitynotfoundexception")
+        || message.contains("expected relationship");
+  }
+
+  /**
+   * Splits {@code errors} into stale-relationship warnings (appended to {@code warningsOut}) and
+   * real failures (returned). Both lists must be mutable; {@code warningsOut} must be non-null.
+   */
+  public static List<EntityError> partitionErrors(
+      List<EntityError> errors, List<EntityError> warningsOut) {
+    Objects.requireNonNull(warningsOut, "warningsOut must not be null");
+    if (CommonUtil.nullOrEmpty(errors)) {
+      return new ArrayList<>();
+    }
+    List<EntityError> realErrors = new ArrayList<>(errors.size());
+    for (EntityError error : errors) {
+      if (isStaleReferenceError(error)) {
+        warningsOut.add(error);
+      } else {
+        realErrors.add(error);
+      }
+    }
+    return realErrors;
   }
 
   public static boolean isDataInsightIndex(String entityType) {
@@ -173,71 +227,44 @@ public class ReindexingUtil {
     return entities;
   }
 
-  public static String escapeDoubleQuotes(String str) {
-    return str.replace("\"", "\\\"");
-  }
-
-  /**
-   * Resolve the minimal field set the reindex path must request from {@code
-   * EntityRepository.setFields}. Time-series entities don't go through the entity-fields machinery,
-   * so they get an empty list. For everything else, ask the index class via {@link
-   * org.openmetadata.service.search.SearchIndexFactory#getReindexFieldsFor(String)} for exactly
-   * the fields its document needs, then intersect with the entity's {@code allowedFields} so we
-   * never request a field the JSON schema doesn't declare. Single source of truth shared by
-   * {@code EntityReader} (single-server pipeline) and {@code PartitionWorker} (distributed
-   * pipeline).
-   *
-   * <p><b>Why the allowedFields intersection matters.</b> {@link
-   * org.openmetadata.service.search.indexes.SearchIndex#COMMON_REINDEX_FIELDS} is the union of
-   * relationship/enrichment fields that <i>could</i> appear on any entity ({@code owners},
-   * {@code domains}, {@code reviewers}, {@code followers}, {@code votes}, {@code extension},
-   * {@code certification}, {@code dataProducts}). Many entity schemas omit one or more of these:
-   * a {@code storageService} has no {@code reviewers}/{@code votes}/{@code extension}/{@code
-   * certification}; an {@code ingestionPipeline} has no {@code reviewers}/{@code dataProducts};
-   * a {@code user}/{@code team} omits most of them. Without filtering, {@link
-   * org.openmetadata.service.Entity#getFields(String, java.util.List)} routes through {@link
-   * org.openmetadata.service.util.EntityUtil.Fields#Fields(java.util.Set, String)} which throws
-   * {@code IllegalArgumentException("Invalid field name <x>")} on the first unknown field, killing
-   * the whole batch. Filtering here keeps the helper safe to call for any registered entity type.
-   */
   public static List<String> getSearchIndexFields(String entityType) {
     if (TIME_SERIES_ENTITIES.contains(entityType)) {
       return List.of();
     }
-    org.openmetadata.service.search.SearchRepository repo = Entity.getSearchRepository();
+    org.openmetadata.service.search.SearchRepository repo =
+        org.openmetadata.service.Entity.getSearchRepository();
     if (repo == null || repo.getSearchIndexFactory() == null) {
-      // Fallback for environments without a bootstrapped search subsystem (unit tests) — keep
-      // pre-selective-fields behaviour.
+      // Search subsystem isn't bootstrapped (e.g. unit tests that exercise the reader without the
+      // full Entity registry). Behaves the same as the pre-selective-fields code path.
       return List.of("*");
     }
-    Set<String> required = repo.getSearchIndexFactory().getReindexFieldsFor(entityType);
-    Set<String> allowed = lookupAllowedFields(entityType);
-    if (allowed == null) {
-      return new ArrayList<>(required);
+    List<String> allFields;
+    try {
+      allFields = new ArrayList<>(repo.getSearchIndexFactory().getReindexFieldsFor(entityType));
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to look up reindex fields for {}: {}; falling back to all-fields wildcard",
+          entityType,
+          e.getMessage());
+      return List.of("*");
     }
-    List<String> filtered = new ArrayList<>(required.size());
-    for (String field : required) {
-      if (allowed.contains(field)) {
-        filtered.add(field);
-      } else {
-        LOG.debug(
-            "Dropping reindex field '{}' for entityType '{}': not in allowedFields",
-            field,
-            entityType);
-      }
+    try {
+      return new ArrayList<>(Entity.getOnlySupportedFields(entityType, allFields).getFieldList());
+    } catch (Exception e) {
+      // Filtering failed (typically because the EntityRepository isn't registered yet —
+      // happens during boot or in tests). Fall back to the unfiltered required set rather than
+      // "*": this keeps the per-entity intent intact and lets PaginatedEntitiesSource surface
+      // any drift loudly instead of silently sending every field.
+      LOG.warn(
+          "Could not filter reindex fields for {} against EntityRepository.allowedFields ({}); "
+              + "returning unfiltered required set",
+          entityType,
+          e.getMessage());
+      return allFields;
     }
-    return filtered;
   }
 
-  /** Returns the entity's {@code allowedFields}, or {@code null} if the repository isn't
-   *  registered (test boot, plugin not loaded). Callers fall back to the unfiltered set. */
-  private static Set<String> lookupAllowedFields(String entityType) {
-    try {
-      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-      return repository == null ? null : repository.getAllowedFieldsCopy();
-    } catch (Exception e) {
-      LOG.debug("Failed to resolve allowedFields for {}: {}", entityType, e.getMessage());
-      return null;
-    }
+  public static String escapeDoubleQuotes(String str) {
+    return str.replace("\"", "\\\"");
   }
 }
