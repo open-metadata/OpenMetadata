@@ -69,7 +69,10 @@ class TriggerFactoryTest {
 
     MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
     assertNotNull(loopChars, "Loop characteristics should exist");
-    assertEquals("1", loopChars.getLoopCardinality(), "Cardinality should be 1 for batch mode");
+    assertEquals(
+        "${entityList != null && !entityList.isEmpty() ? 1 : 0}",
+        loopChars.getLoopCardinality(),
+        "Cardinality should guard empty list for batch mode");
   }
 
   @Test
@@ -90,9 +93,9 @@ class TriggerFactoryTest {
     MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
     assertNotNull(loopChars, "Loop characteristics should exist");
     assertEquals(
-        "1",
+        "${entityList != null && !entityList.isEmpty() ? 1 : 0}",
         loopChars.getLoopCardinality(),
-        "Cardinality should be 1 for sink task regardless of batchMode config");
+        "Cardinality should guard empty list for sink task regardless of batchMode config");
   }
 
   @Test
@@ -150,9 +153,9 @@ class TriggerFactoryTest {
     MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
 
     assertEquals(
-        "1",
+        "${entityList != null && !entityList.isEmpty() ? 1 : 0}",
         loopChars.getLoopCardinality(),
-        "Cardinality should be 1 when any batch-capable node type is present");
+        "Cardinality should guard empty list when any batch-capable node type is present");
   }
 
   @Test
@@ -169,9 +172,9 @@ class TriggerFactoryTest {
     MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
 
     assertEquals(
-        "1",
+        "${entityList != null && !entityList.isEmpty() ? 1 : 0}",
         loopChars.getLoopCardinality(),
-        "Cardinality should be 1 when a batch-capable node type is present");
+        "Cardinality should guard empty list when a batch-capable node type is present");
   }
 
   private CallActivity findCallActivity(BpmnModel model) {
