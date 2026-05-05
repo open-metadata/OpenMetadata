@@ -779,7 +779,7 @@ const KnowledgePagesHierarchy = forwardRef<
             allowSoftDelete={false}
             entityId={deletePage.id}
             entityName={deletePage.displayName || t('label.untitled')}
-            entityType={EntityType.KNOWLEDGE_PAGE as unknown as EntityType}
+            entityType={EntityType.KNOWLEDGE_CENTER}
             prepareType={false}
             successMessage={t('server.entity-deleted-successfully', {
               entity: t('label.article'),
