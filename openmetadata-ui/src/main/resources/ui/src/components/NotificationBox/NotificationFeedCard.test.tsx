@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Thread } from '../../generated/entity/feed/thread';
@@ -31,21 +31,30 @@ jest.mock('../../utils/FeedUtils', () => ({
 jest.mock('../../utils/TasksUtils', () => ({
   getTaskDetailPath: (...args: any[]) => mockGetTaskDetailPath(...args),
 }));
-jest.mock('../common/ProfilePicture/ProfilePicture', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<p data-testid="profile-picture">ProfilePicture</p>);
-});
+jest.mock('../common/ProfilePicture/ProfilePicture', () =>
+  jest.fn().mockReturnValue(<p data-testid="profile-picture">ProfilePicture</p>)
+);
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
     .mockImplementation(
-      ({ children, to }: { children: React.ReactNode; to: string }) => (
-        <p data-testid="link" data-to={to}>
+      ({
+        children,
+        to,
+        onClick,
+      }: {
+        children: React.ReactNode;
+        to: string;
+        onClick?: (e: React.MouseEvent) => void;
+      }) => (
+        <span data-testid="link" data-to={to} onClick={onClick}>
           {children}
-        </p>
+        </span>
       )
     ),
+  useNavigate: jest.fn(() => mockNavigate),
 }));
 jest.mock('../../utils/EntityUtils', () => ({
   getEntityLinkFromType: jest.fn().mockReturnValue('/mock-entity-link'),
@@ -148,7 +157,40 @@ describe('Test NotificationFeedCard Component', () => {
     expect(screen.getByText(conversationProps.entityType)).toBeInTheDocument();
   });
 
-  it('should renders entityRef data is available', async () => {
+  it('calls navigate with tasksRefreshKey state when the task notification card is clicked', async () => {
+    mockGetTaskDetailPath.mockReturnValue('/mock-task-link');
+
+    await act(async () => {
+      render(<NotificationFeedCard {...mockProps} />);
+    });
+
+    const outerLink = screen.getAllByTestId('link')[0];
+    fireEvent.click(outerLink);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/mock-task-link', {
+      state: { tasksRefreshKey: expect.any(Number) },
+    });
+  });
+
+  it('calls navigate with tasksRefreshKey state when the inner task ID link is clicked', async () => {
+    mockGetTaskDetailPath.mockReturnValue('/mock-task-link');
+
+    await act(async () => {
+      render(<NotificationFeedCard {...mockProps} />);
+    });
+
+    const links = screen.getAllByTestId('link');
+    const innerTaskLink = links[links.length - 1];
+    fireEvent.click(innerTaskLink);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/mock-task-link', {
+      state: { tasksRefreshKey: expect.any(Number) },
+    });
+  });
+
+  it('falls back to entity display name when mention thread has no entityRef', async () => {
+    mockPrepareFeedLink.mockReturnValue('/entity/activity_feed/all');
+
     const conversationProps = {
       ...mockProps,
       feedType: ThreadType.Conversation,
