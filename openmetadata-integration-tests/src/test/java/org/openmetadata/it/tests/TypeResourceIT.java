@@ -338,7 +338,6 @@ public class TypeResourceIT {
       prefix + ".dot",
       prefix + "with space",
       prefix + "with/slash",
-      prefix + "with&amp",
       prefix + "with%percent",
       prefix + "with#hash",
       prefix + "with@at",
@@ -350,8 +349,6 @@ public class TypeResourceIT {
       prefix + "with'quote",
       prefix + "with(lparen",
       prefix + "with)rparen",
-      prefix + "with<lt",
-      prefix + "with>gt",
       prefix + "with[lbrack",
       prefix + "with]rbrack",
       prefix + "with{lbrace",
@@ -361,7 +358,7 @@ public class TypeResourceIT {
       prefix + "with*asterisk",
       prefix + "with~tilde",
       prefix + "with`backtick",
-      prefix + "withMatched(pair)And<more>",
+      prefix + "withMatched(pair)",
       prefix + "withDigits123",
     };
 
@@ -392,6 +389,9 @@ public class TypeResourceIT {
       prefix + "with^caret",
       prefix + "with$dollar",
       prefix + "with\\backslash",
+      prefix + "with&amp",
+      prefix + "with<lt",
+      prefix + "with>gt",
     };
 
     for (String name : disallowedNames) {
@@ -414,7 +414,7 @@ public class TypeResourceIT {
     String prefix = ns.prefix("lead");
 
     String[] invalidLeads = {
-      "_" + prefix, "-" + prefix, "." + prefix, " " + prefix, "(" + prefix, "<" + prefix,
+      "_" + prefix, "-" + prefix, "." + prefix, " " + prefix, "(" + prefix,
     };
 
     for (String name : invalidLeads) {
@@ -460,8 +460,6 @@ public class TypeResourceIT {
     String[] unbalancedNames = {
       prefix + "openParen(",
       prefix + "closeParen)",
-      prefix + "openLt<",
-      prefix + "closeGt>",
       prefix + "openLbrack[",
       prefix + "closeRbrack]",
       prefix + "openLbrace{",
