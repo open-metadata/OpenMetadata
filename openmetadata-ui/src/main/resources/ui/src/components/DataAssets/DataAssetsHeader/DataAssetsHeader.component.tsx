@@ -1013,7 +1013,8 @@ export const DataAssetsHeader = ({
         () => setIsRequestDataAccessOpen(false),
         dataAsset.fullyQualifiedName ?? '',
         getEntityName(dataAsset),
-        entityType
+        entityType,
+        fetchExistingDar
       )}
     </>
   );
