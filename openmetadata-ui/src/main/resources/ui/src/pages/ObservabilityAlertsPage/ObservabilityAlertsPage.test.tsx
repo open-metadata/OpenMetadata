@@ -320,7 +320,6 @@ describe('Observability Alerts Page Tests', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/observability/alerts/add');
   });
 
-
   it('should render table border separator wrapper', async () => {
     await act(async () => {
       render(<ObservabilityAlertsPage />, {

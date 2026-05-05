@@ -38,4 +38,3 @@ export const ALERT_TABLE_CELL_VERTICAL_ALIGN_CLASS = 'tw:[vertical-align:top]';
 
 export const ALERT_TABLE_HEADER_VERTICAL_ALIGN_CLASS =
   'tw:[vertical-align:middle]';
-

@@ -17,7 +17,6 @@ import {
   ALERT_TABLE_HEADER_VERTICAL_ALIGN_CLASS,
 } from './ObservabilityAlertsPage.constants';
 
-
 const getAlertTableLayoutClassName = (
   columnId: AlertTableColumnId,
   verticalAlignClassName: string
@@ -26,10 +25,15 @@ const getAlertTableLayoutClassName = (
     .filter(Boolean)
     .join(' ');
 
-export const getAlertTableCellLayoutClassName = (columnId: AlertTableColumnId) =>
+export const getAlertTableCellLayoutClassName = (
+  columnId: AlertTableColumnId
+) =>
   getAlertTableLayoutClassName(columnId, ALERT_TABLE_CELL_VERTICAL_ALIGN_CLASS);
 
 export const getAlertTableHeaderLayoutClassName = (
   columnId: AlertTableColumnId
 ) =>
-  getAlertTableLayoutClassName(columnId, ALERT_TABLE_HEADER_VERTICAL_ALIGN_CLASS);
+  getAlertTableLayoutClassName(
+    columnId,
+    ALERT_TABLE_HEADER_VERTICAL_ALIGN_CLASS
+  );

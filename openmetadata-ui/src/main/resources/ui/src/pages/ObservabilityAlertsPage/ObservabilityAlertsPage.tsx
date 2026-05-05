@@ -19,11 +19,11 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
@@ -53,8 +53,8 @@ import { getEntityName } from '../../utils/EntityUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
-  ALERT_TABLE_COLUMN_IDS,
   AlertTableColumn,
+  ALERT_TABLE_COLUMN_IDS,
 } from './ObservabilityAlertsPage.constants';
 import {
   getAlertTableCellLayoutClassName,
