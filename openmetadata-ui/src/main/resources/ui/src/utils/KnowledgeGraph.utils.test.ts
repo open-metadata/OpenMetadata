@@ -606,6 +606,7 @@ describe('KnowledgeGraph.utils', () => {
       expect(ctx.setEdgeTooltip).toHaveBeenCalledWith({
         x: 100,
         y: 200,
+        edgeId: 'e1',
         labels: ['owns'],
         sourceLabel: 'A',
         targetLabel: 'B',
