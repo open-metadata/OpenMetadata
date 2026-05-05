@@ -124,6 +124,16 @@ class ClientCredentialsExtractorTest {
   }
 
   @Test
+  void testHeaderAndBody_clientSecretOnlyAndMatching_returnsHeaderCredentials() throws Exception {
+    HttpServletRequest request = requestWithAuthHeader(basicHeader("hdr-client", "hdr-secret"));
+
+    Credentials credentials = ClientCredentialsExtractor.extract(request, null, "hdr-secret");
+
+    assertThat(credentials.clientId()).isEqualTo("hdr-client");
+    assertThat(credentials.clientSecret()).isEqualTo("hdr-secret");
+  }
+
+  @Test
   void testBasicHeader_missingColon_throws() {
     String header =
         "Basic " + Base64.getEncoder().encodeToString("nocolon".getBytes(StandardCharsets.UTF_8));
