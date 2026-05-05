@@ -185,6 +185,35 @@ class FetchChangeEventsImplTest {
   }
 
   // -------------------------------------------------------------------------
+  // execute — records present but all filtered (null FQN) → hasFinished=true
+  // Guards against NoSuchElementException when singleExecution mode (loopCardinality=1)
+  // tries to iterate an empty ENTITY_LIST_VARIABLE.
+  // -------------------------------------------------------------------------
+
+  @Test
+  void testExecute_allRecordsFiltered_setsHasFinishedTrue() {
+    when(execution.getVariable(CURRENT_BATCH_OFFSET_VARIABLE)).thenReturn(null);
+    when(execution.getVariable(MAX_PROCESSED_OFFSET_VARIABLE)).thenReturn(null);
+
+    ChangeEvent noFqn = new ChangeEvent();
+    noFqn.setEntityType("table");
+    // intentionally no FQN — deduplicateByFqn skips it → entityList stays empty
+    ChangeEventRecord record = new ChangeEventRecord(99L, JsonUtils.pojoToJson(noFqn));
+
+    when(changeEventDAO.listByEntityTypesWithOffset(anyList(), anyLong(), any(int.class)))
+        .thenReturn(List.of(record));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      impl.execute(execution);
+    }
+
+    verify(execution).setVariable(eq(HAS_FINISHED_VARIABLE), eq(true));
+    verify(execution).setVariable(eq(ENTITY_LIST_VARIABLE), eq(List.of()));
+    verify(execution).setVariable(eq(CURRENT_BATCH_OFFSET_VARIABLE), eq(99L));
+  }
+
+  // -------------------------------------------------------------------------
   // execute — offset stored in execution variable is reused
   // -------------------------------------------------------------------------
 
