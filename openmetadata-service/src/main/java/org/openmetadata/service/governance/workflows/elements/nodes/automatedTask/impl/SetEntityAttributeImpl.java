@@ -103,7 +103,7 @@ public class SetEntityAttributeImpl implements JavaDelegate {
     EntityRepository<EntityInterface> repo =
         (EntityRepository<EntityInterface>) Entity.getEntityRepository(ctx.entityType());
     Map<String, EntityInterface> loadedByLink =
-        Entity.getEntitiesByLinks(entityLinks, "*", Include.ALL);
+        Entity.getEntitiesByLinks(entityLinks, "*", Include.NON_DELETED);
 
     for (String link : entityLinks) {
       if (!loadedByLink.containsKey(link)) {
