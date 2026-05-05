@@ -19,6 +19,7 @@ import {
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { DIRECTORY_DUMMY_DATA } from '../constants/Directory.constant';
@@ -327,7 +328,7 @@ describe('DirectoryClassBase', () => {
     it('should return correct widget list', () => {
       const result = directoryClass.getCommonWidgetList();
 
-      expect(result).toHaveLength(6);
+      expect(result).toHaveLength(7);
       expect(result[0]).toBe(DESCRIPTION_WIDGET);
       expect(result[1]).toEqual({
         fullyQualifiedName: DetailPageWidgetKeys.DIRECTORY_CHILDREN,
@@ -340,6 +341,7 @@ describe('DirectoryClassBase', () => {
       expect(result[3]).toBe(TAGS_WIDGET);
       expect(result[4]).toBe(GLOSSARY_TERMS_WIDGET);
       expect(result[5]).toBe(CUSTOM_PROPERTIES_WIDGET);
+      expect(result[6]).toBe(KNOWLEDGE_ARTICLE_WIDGET);
     });
   });
 

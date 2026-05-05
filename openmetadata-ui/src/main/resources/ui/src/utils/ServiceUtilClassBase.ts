@@ -12,6 +12,8 @@
  */
 
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
+import { PageType } from 'interface/knowledge-center.interface';
+import { KnowledgePageSearchSource } from 'interface/search.interface';
 import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
 import GlossaryIcon from '../assets/svg/book.svg';
@@ -19,6 +21,7 @@ import ChartIcon from '../assets/svg/chart.svg';
 import KnowledgePageIcon from '../assets/svg/ic-articles.svg';
 import DataProductIcon from '../assets/svg/ic-data-product.svg';
 import DatabaseIcon from '../assets/svg/ic-database.svg';
+import LinkIcon from '../assets/svg/ic-link.svg';
 import DatabaseSchemaIcon from '../assets/svg/ic-schema.svg';
 import MetricIcon from '../assets/svg/metric.svg';
 import TagIcon from '../assets/svg/tag-grey.svg';
@@ -365,6 +368,14 @@ class ServiceUtilClassBase {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
 
+    if (searchSource?.entityType === EntityType.KNOWLEDGE_PAGE) {
+      const isQuickLink =
+        (searchSource as KnowledgePageSearchSource)?.pageType ===
+        PageType.QUICK_LINK;
+
+      return isQuickLink ? LinkIcon : KnowledgePageIcon;
+    }
+
     // Handle entities that don't have serviceType by using entity-specific icons
     if (isEmpty(type)) {
       switch (entityType) {
@@ -380,8 +391,6 @@ class ServiceUtilClassBase {
           return MetricIcon;
         case EntityType.DATA_PRODUCT:
           return DataProductIcon;
-        case EntityType.KNOWLEDGE_PAGE:
-          return KnowledgePageIcon;
         default:
           return this.getServiceLogo('');
       }

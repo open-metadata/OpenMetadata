@@ -38,7 +38,7 @@ import { Query } from '../generated/entity/data/query';
 import { SearchIndex as SearchIndexEntity } from '../generated/entity/data/searchIndex';
 import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import { StoredProcedure } from '../generated/entity/data/storedProcedure';
-import { Column as TableColumn, Table } from '../generated/entity/data/table';
+import { Table, Column as TableColumn } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { Worksheet } from '../generated/entity/data/worksheet';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
@@ -61,6 +61,7 @@ import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionS
 import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
 import { AggregatedCostAnalysisReportDataSearchSource } from './data-insight.interface';
+import { KnowledgePage } from './knowledge-center.interface';
 
 /**
  * The `keyof` operator, when applied to a union type, expands to the keys are common for
@@ -233,6 +234,10 @@ export interface SpreadsheetSearchSource
 
 export interface WorksheetSearchSource extends SearchSourceBase, Worksheet {}
 
+export interface KnowledgePageSearchSource
+  extends SearchSourceBase,
+    KnowledgePage {}
+
 export type ExploreSearchSource =
   | TableSearchSource
   | DashboardSearchSource
@@ -264,7 +269,8 @@ export type ExploreSearchSource =
   | APICollectionSearchSource
   | APIEndpointSearchSource
   | MetricSearchSource
-  | TableColumnSearchSource;
+  | TableColumnSearchSource
+  | KnowledgePageSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.ALL]: TableSearchSource;
@@ -310,19 +316,14 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.SPREADSHEET]: SpreadsheetSearchSource;
   [SearchIndex.WORKSHEET]: WorksheetSearchSource;
   [SearchIndex.COLUMN]: TableColumnSearchSource;
+  [SearchIndex.KNOWLEDGE_PAGE_INDEX]: KnowledgePageSearchSource;
 };
 
 export type SearchRequest<
   SI extends SearchIndex | SearchIndex[],
   TIncludeFields extends KeysOfUnion<
-    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-      ? SI[number]
-      : SI]
-  > = KeysOfUnion<
-    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-      ? SI[number]
-      : SI]
-  >
+    SearchIndexSearchSourceMapping[SI]
+  > = KeysOfUnion<SearchIndexSearchSourceMapping[SI]>
 > = {
   pageNumber?: number;
   pageSize?: number;
@@ -348,11 +349,7 @@ export type SearchRequest<
 
 export type SuggestRequest<
   SI extends SearchIndex | SearchIndex[],
-  TIncludeFields extends KeysOfUnion<
-    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-      ? SI[number]
-      : SI]
-  >
+  TIncludeFields extends KeysOfUnion<SearchIndexSearchSourceMapping[SI]>
 > = {
   query?: string;
   searchIndex?: SI;

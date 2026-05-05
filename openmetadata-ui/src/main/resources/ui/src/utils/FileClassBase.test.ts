@@ -18,6 +18,7 @@ import {
   DATA_PRODUCTS_WIDGET,
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
+  KNOWLEDGE_ARTICLE_WIDGET,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { FILE_DUMMY_DATA } from '../constants/File.constant';
@@ -352,12 +353,13 @@ describe('FileClassBase', () => {
     it('should return correct widget list', () => {
       const result = fileClass.getCommonWidgetList();
 
-      expect(result).toHaveLength(5);
+      expect(result).toHaveLength(6);
       expect(result[0]).toBe(DESCRIPTION_WIDGET);
       expect(result[1]).toBe(DATA_PRODUCTS_WIDGET);
       expect(result[2]).toBe(TAGS_WIDGET);
       expect(result[3]).toBe(GLOSSARY_TERMS_WIDGET);
       expect(result[4]).toBe(CUSTOM_PROPERTIES_WIDGET);
+      expect(result[5]).toBe(KNOWLEDGE_ARTICLE_WIDGET);
     });
 
     it('should not include file-specific widgets in common list', () => {

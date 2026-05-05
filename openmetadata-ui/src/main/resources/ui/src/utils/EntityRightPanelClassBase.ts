@@ -18,10 +18,7 @@ class EntityRightPanelClassBase {
     entityId: string;
     entityType: string;
   }> | null {
-    return KnowledgePages as unknown as FC<{
-      entityId: string;
-      entityType: string;
-    }>;
+    return KnowledgePages;
   }
 }
 

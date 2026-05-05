@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { SearchOutlined } from '@ant-design/icons';
+import { QuickLink } from 'generated/api/data/createPage';
+import { PageType } from 'interface/knowledge-center.interface';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
@@ -25,6 +27,7 @@ import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as DriveIcon } from '../assets/svg/ic-drive-service.svg';
+import { ReactComponent as KnowledgeCenterIcon } from '../assets/svg/ic-knowledge-page.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
@@ -34,8 +37,8 @@ import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-p
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
 import {
-  ReactComponent as KnowledgeCenterIcon,
   ReactComponent as KnowledgeCenterIconComponent,
+  ReactComponent as KnowledgePageIcon,
 } from '../assets/svg/knowledge-center.svg';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
@@ -52,6 +55,7 @@ import {
   DATA_ASSET_DROPDOWN_ITEMS,
   DATA_PRODUCT_DROPDOWN_ITEMS,
   GLOSSARY_DROPDOWN_ITEMS,
+  KNOWLEDGE_PAGE_DROPDOWN_ITEMS,
   ML_MODEL_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
   SEARCH_INDEX_DROPDOWN_ITEMS,
@@ -64,8 +68,8 @@ import {
   entitySortingFields,
   INITIAL_SORT_FIELD,
   tableSortingFields,
-  tagSortingFields,
   TAGS_INITIAL_SORT_FIELD,
+  tagSortingFields,
 } from '../constants/explore.constants';
 import {
   Option,
@@ -76,6 +80,7 @@ import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { TestSuite } from '../generated/tests/testCase';
 import {
+  KnowledgePageSearchSource,
   SearchSourceAlias,
   TableSearchSource,
 } from '../interface/search.interface';
@@ -86,6 +91,8 @@ import {
   getEntityName,
 } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
+import { getPageSummaryComponent } from './KnowledgeComponentUtils';
+import { getKnowledgePagePath } from './KnowledgePageUtils';
 import { getChartDetailsPath } from './RouterUtils';
 import { getEntityIcon, getServiceIcon } from './TableUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
@@ -179,6 +186,7 @@ class SearchClassBase {
       [SearchIndex.SPREADSHEET]: EntityType.SPREADSHEET,
       [SearchIndex.WORKSHEET]: EntityType.WORKSHEET,
       [SearchIndex.COLUMN]: EntityType.TABLE_COLUMN,
+      [SearchIndex.KNOWLEDGE_PAGE_INDEX]: EntityType.KNOWLEDGE_PAGE,
     };
   }
 
@@ -236,6 +244,10 @@ class SearchClassBase {
       {
         value: SearchIndex.WORKSHEET,
         label: t('label.worksheet'),
+      },
+      {
+        label: t('label.knowledge-center'),
+        value: SearchIndex.KNOWLEDGE_PAGE_INDEX,
       },
     ];
   }
@@ -396,7 +408,7 @@ class SearchClassBase {
           isRoot: true,
           childEntities: [EntityType.KNOWLEDGE_PAGE],
         },
-        icon: KnowledgeCenterIcon,
+        icon: KnowledgePageIcon,
         children: [
           {
             title: t('label.knowledge-page'),
@@ -649,6 +661,8 @@ class SearchClassBase {
         return COMMON_DROPDOWN_ITEMS;
       case SearchIndex.DATA_ASSET:
         return DATA_ASSET_DROPDOWN_ITEMS;
+      case SearchIndex.KNOWLEDGE_PAGE_INDEX:
+        return KNOWLEDGE_PAGE_DROPDOWN_ITEMS;
 
       default:
         return [];
@@ -656,7 +670,12 @@ class SearchClassBase {
   }
 
   public getListOfEntitiesWithoutTier() {
-    return [EntityType.GLOSSARY_TERM, EntityType.TAG, EntityType.TEST_CASE];
+    return [
+      EntityType.GLOSSARY_TERM,
+      EntityType.TAG,
+      EntityType.TEST_CASE,
+      EntityType.KNOWLEDGE_PAGE,
+    ];
   }
 
   public getServiceIcon(source: SearchSourceAlias) {
@@ -668,7 +687,12 @@ class SearchClassBase {
   }
 
   public getListOfEntitiesWithoutDomain(): string[] {
-    return [EntityType.TEST_CASE, EntityType.DOMAIN, EntityType.TABLE_COLUMN];
+    return [
+      EntityType.TEST_CASE,
+      EntityType.DOMAIN,
+      EntityType.TABLE_COLUMN,
+      EntityType.KNOWLEDGE_PAGE,
+    ];
   }
 
   public getEntityBreadcrumbs(
@@ -705,6 +729,16 @@ class SearchClassBase {
       }
     }
 
+    if (entity?.entityType === EntityType.KNOWLEDGE_PAGE) {
+      const pageEntity = entity as KnowledgePageSearchSource;
+      const isQuickLink = pageEntity.pageType === PageType.QUICK_LINK;
+      const link = isQuickLink
+        ? (pageEntity?.page as QuickLink)?.url
+        : getKnowledgePagePath(pageEntity.fullyQualifiedName ?? '');
+
+      return link ?? '';
+    }
+
     if (entity.fullyQualifiedName && entity.entityType) {
       return getEntityLinkFromType(
         entity.fullyQualifiedName,
@@ -728,10 +762,21 @@ class SearchClassBase {
     _source: SearchSourceAlias,
     openEntityInNewPage?: boolean
   ) {
+    if (_source?.entityType === EntityType.KNOWLEDGE_PAGE) {
+      const isQuickLink =
+        (_source as KnowledgePageSearchSource).pageType === PageType.QUICK_LINK;
+
+      return isQuickLink || openEntityInNewPage ? '_blank' : '_self';
+    }
+
     return openEntityInNewPage ? '_blank' : '_self';
   }
 
   public getEntitySummaryComponent(_entity: SourceType): JSX.Element | null {
+    if (_entity?.entityType === EntityType.KNOWLEDGE_PAGE) {
+      return getPageSummaryComponent(_entity as KnowledgePageSearchSource);
+    }
+
     return null;
   }
 
@@ -761,6 +806,7 @@ class SearchClassBase {
       EntityType.GLOSSARY_TERM,
       EntityType.TAG,
       EntityType.DATA_PRODUCT,
+      EntityType.KNOWLEDGE_PAGE,
       EntityType.KNOWLEDGE_PAGE,
     ];
   }

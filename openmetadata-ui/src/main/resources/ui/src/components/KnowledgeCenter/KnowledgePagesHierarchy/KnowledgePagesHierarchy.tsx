@@ -13,7 +13,7 @@
 import { Button, Modal, Skeleton, Tree, Typography } from 'antd';
 import { DataNode } from 'antd/es/tree';
 import { AntTreeNodeProps, DirectoryTreeProps, TreeProps } from 'antd/lib/tree';
-import { ReactComponent as KnowledgeCenterIcon } from 'assets/svg/ic-knowledge-center.svg';
+import { ReactComponent as KnowledgeCenterIcon } from 'assets/svg/ic-knowledge-page.svg';
 import { AxiosError } from 'axios';
 import { CREATE_PAGE_HASH, ROUTES } from 'constants/constants';
 import {

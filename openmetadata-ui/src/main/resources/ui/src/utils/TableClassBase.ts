@@ -18,6 +18,7 @@ import {
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { TABLE_DUMMY_DATA } from '../constants/Table.constants';
@@ -67,6 +68,7 @@ type TableWidgetKeys =
   | DetailPageWidgetKeys.TAGS
   | DetailPageWidgetKeys.GLOSSARY_TERMS
   | DetailPageWidgetKeys.CUSTOM_PROPERTIES
+  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE
   | DetailPageWidgetKeys.TABLE_CONSTRAINTS
   | DetailPageWidgetKeys.PARTITIONED_KEYS;
 
@@ -82,6 +84,7 @@ class TableClassBase {
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
       [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: 2,
       [DetailPageWidgetKeys.PARTITIONED_KEYS]: 2,
     };
@@ -187,11 +190,19 @@ class TableClassBase {
         static: false,
       },
       {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.KNOWLEDGE_ARTICLE],
+        i: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
+        w: 2,
+        x: 6,
+        y: 4,
+        static: false,
+      },
+      {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
-        y: 4,
+        y: 5,
         static: false,
       },
       {
@@ -199,20 +210,12 @@ class TableClassBase {
         i: DetailPageWidgetKeys.PARTITIONED_KEYS,
         w: 2,
         x: 6,
-        y: 5,
+        y: 6,
         static: false,
       },
       {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_CONSTRAINTS],
         i: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
-        w: 2,
-        x: 6,
-        y: 6,
-        static: false,
-      },
-      {
-        h: 2,
-        i: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
         w: 2,
         x: 6,
         y: 7,
@@ -278,6 +281,7 @@ class TableClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 

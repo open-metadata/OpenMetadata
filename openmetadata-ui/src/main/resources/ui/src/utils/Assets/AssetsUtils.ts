@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import { Operation } from 'fast-json-patch';
+import {
+  getKnowledgePageByFqn,
+  patchKnowledgePage,
+} from 'rest/knowledgeCenterAPI';
 import { MapPatchAPIResponse } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from '../../enums/entity.enum';
@@ -149,6 +153,8 @@ export const getAPIfromSource = (
     case EntityType.WORKSHEET:
       return (id: string, data: Operation[]) =>
         patchDriveAssetDetails<Worksheet>(id, data, EntityType.WORKSHEET);
+    case EntityType.KNOWLEDGE_PAGE:
+      return patchKnowledgePage;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -250,6 +256,8 @@ export const getEntityAPIfromSource = (
           params?.fields,
           params?.include
         );
+    case EntityType.KNOWLEDGE_PAGE:
+      return getKnowledgePageByFqn;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:

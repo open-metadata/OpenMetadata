@@ -15,7 +15,7 @@ import { VotingDataProps } from 'components/Entity/Voting/voting.interface';
 import { Operation } from 'fast-json-patch';
 import { EntityReference } from 'generated/entity/type';
 import { EntityHistory } from 'generated/type/entityHistory';
-import { Include } from 'generated/type/include';
+import { ListParams } from 'interface/API.interface';
 import { PagingResponse } from 'Models';
 import APIClient from 'rest/index';
 import {
@@ -26,18 +26,6 @@ import {
   PageHierarchy,
   PageType,
 } from '../interface/knowledge-center.interface';
-
-export type ListParams = {
-  fields?: string;
-  limit?: number;
-  before?: string;
-  after?: string;
-  include?: Include;
-  pageType?: PageType;
-  tagFQN?: string;
-  entityType?: string;
-  entityId?: string;
-};
 
 export interface KnowledgePageHierarchyParams {
   parent?: string;

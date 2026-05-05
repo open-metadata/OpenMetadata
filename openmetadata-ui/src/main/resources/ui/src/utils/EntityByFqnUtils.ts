@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getKnowledgePageByFqn } from 'rest/knowledgeCenterAPI';
 import { EntityUnion } from '../components/Explore/ExplorePage.interface';
 import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { ServiceCategoryPlural } from '../enums/service.enum';
@@ -208,6 +209,10 @@ export const getEntityByFqnUtil = (
 
     case EntityType.QUERY:
       return getQueryByFqn(entityFQN);
+
+    case EntityType.KNOWLEDGE_PAGE:
+    case EntityType.KNOWLEDGE_CENTER:
+      return getKnowledgePageByFqn(entityFQN);
 
     default:
       return null;

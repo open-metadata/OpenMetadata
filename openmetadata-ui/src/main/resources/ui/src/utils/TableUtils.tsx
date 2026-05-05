@@ -80,7 +80,6 @@ import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint
 import { ReactComponent as APIServiceIcon } from '../assets/svg/ic-api-service-default.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
-import { ReactComponent as KnowledgePageIcon } from '../assets/svg/ic-articles.svg';
 import { ReactComponent as IconTestCase } from '../assets/svg/ic-checklist.svg';
 import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
@@ -92,6 +91,7 @@ import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as DriveServiceIcon } from '../assets/svg/ic-drive-service.svg';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as FileIcon } from '../assets/svg/ic-file.svg';
+import { ReactComponent as KnowledgePageIcon } from '../assets/svg/ic-knowledge-page.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
@@ -502,6 +502,8 @@ const entityIconMapping: Record<string, SvgComponent> = {
   [EntityType.WORKSHEET]: WorksheetIcon,
   [EntityType.DRIVE_SERVICE]: DriveServiceIcon,
   [EntityType.KNOWLEDGE_PAGE]: KnowledgePageIcon,
+  [EntityType.KNOWLEDGE_CENTER]: KnowledgePageIcon,
+  [EntityType.knowledgePanels]: KnowledgePageIcon,
 };
 
 export const getEntityIcon = (
