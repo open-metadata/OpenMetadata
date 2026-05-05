@@ -29,6 +29,7 @@ from metadata.cli.dataquality import run_test
 from metadata.cli.ingest import run_ingest
 from metadata.cli.ingest_dbt import run_ingest_dbt
 from metadata.cli.lineage import run_lineage
+from metadata.cli.policy_agent import run_policy
 from metadata.cli.profile import run_profiler
 from metadata.cli.scaffold import (
     AUTH_CHOICES,
@@ -67,6 +68,7 @@ RUN_PATH_METHODS = {
     MetadataCommands.TEST.value: run_test,
     MetadataCommands.APP.value: run_app,
     MetadataCommands.AUTO_CLASSIFICATION.value: run_classification,
+    MetadataCommands.POLICY.value: run_policy,
 }
 
 
