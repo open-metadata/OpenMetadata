@@ -414,12 +414,13 @@ public class S3LogStorageTest {
 
     assertEquals("Line 1\nLine 2", result.get("logs"));
     assertEquals("2", result.get("after"));
-    // pendingFlush is now appended unconditionally in both branches to prevent data loss when
-    // recentLogsCache evicts at its 1000-line cap. In the !foundPartialFile branch both sources
-    // hold the same lines, so duplicates appear (6 = 3 from cache + 3 from pendingFlush).
-    // This is the documented trade-off: duplicates for ~2 minutes vs. losing lines.
-    assertEquals(6L, result.get("total"));
+    // No partial.txt yet: pendingFlush is the canonical source (3 lines, no duplicates).
+    assertEquals(3L, result.get("total"));
     assertEquals(true, result.get("streaming"));
+
+    String body = (String) result.get("logs");
+    assertEquals(1, countOccurrences(body, "Line 1"));
+    assertEquals(1, countOccurrences(body, "Line 2"));
   }
 
   @Test
@@ -944,5 +945,18 @@ public class S3LogStorageTest {
     Field f = target.getClass().getDeclaredField(name);
     f.setAccessible(true);
     return f.get(target);
+  }
+
+  private static int countOccurrences(String haystack, String needle) {
+    if (haystack == null || needle == null || needle.isEmpty()) {
+      return 0;
+    }
+    int count = 0;
+    int index = 0;
+    while ((index = haystack.indexOf(needle, index)) != -1) {
+      count++;
+      index += needle.length();
+    }
+    return count;
   }
 }

@@ -1346,8 +1346,8 @@ public class S3LogStorage implements LogStorageInterface {
   }
 
   /**
-   * Get logs for active streams: try S3 partial file first, fallback to memory cache
-   * This provides the best experience: processed logs when available, recent logs when not
+   * Get logs for active streams: try S3 partial file first, fallback to pendingFlush then memory
+   * cache. This provides the best experience: processed logs when available, recent logs when not.
    */
   private Map<String, Object> getCombinedLogsForActiveStream(
       String pipelineFQN, UUID runId, String afterCursor, int limit) {
@@ -1387,57 +1387,37 @@ public class S3LogStorage implements LogStorageInterface {
           e.getMessage());
     }
 
-    // If no S3 partial file, fallback to memory cache. The cache and pendingFlush are
-    // populated by the same appendLogs path, so they hold the same lines as long as we
-    // haven't crossed the buffer cap (in practice the early-flush watermark drains
-    // pendingFlush long before that).
-    if (!foundPartialFile) {
-      String streamKey = pipelineFQN + "/" + runId;
-      SimpleLogBuffer buffer = recentLogsCache.getIfPresent(streamKey);
-      if (buffer != null) {
-        if (afterCursor != null && !afterCursor.isEmpty()) {
-          // Cursor provided - this is pagination, use all lines
-          allLines.addAll(buffer.getAllLines());
-        } else {
-          // No cursor - check if this looks like pagination (reasonable page size) or live logs
-          List<String> allBufferLines = buffer.getAllLines();
-          if (limit > 0 && limit < allBufferLines.size() && limit <= 100) {
-            // Looks like pagination starting from beginning - use all lines
-            allLines.addAll(allBufferLines);
+    if (foundPartialFile) {
+      // Append pendingFlush tail: lines written AFTER the last partial.txt snapshot are not
+      // yet in S3, so appending pendingFlush here is non-overlapping by construction.
+      appendPendingFlushUnderLock(pipelineFQN, runId, allLines);
+    } else {
+      // No partial.txt yet (run hasn't had its first flush). Use pendingFlush as the
+      // canonical source — it holds the complete set of unflushed lines. recentLogsCache
+      // is for SSE live tail and may have evicted the oldest lines at its 1000-line cap.
+      appendPendingFlushUnderLock(pipelineFQN, runId, allLines);
+      if (allLines.isEmpty()) {
+        // Defensive fallback: pendingFlush was empty (e.g., a flush just ran but partial.txt
+        // was not yet visible due to S3 eventual consistency). Fall back to the cache tail.
+        String streamKey = pipelineFQN + "/" + runId;
+        SimpleLogBuffer buffer = recentLogsCache.getIfPresent(streamKey);
+        if (buffer != null) {
+          if (afterCursor != null && !afterCursor.isEmpty()) {
+            allLines.addAll(buffer.getAllLines());
           } else {
-            // Looks like live logs request - use recent lines for performance
-            allLines.addAll(buffer.getRecentLines(limit));
+            List<String> allBufferLines = buffer.getAllLines();
+            if (limit > 0 && limit < allBufferLines.size() && limit <= 100) {
+              allLines.addAll(allBufferLines);
+            } else {
+              allLines.addAll(buffer.getRecentLines(limit));
+            }
           }
+          LOG.debug(
+              "Using {} lines from memory cache (pendingFlush empty) for active pipeline {}/{}",
+              allLines.size(),
+              pipelineFQN,
+              runId);
         }
-        LOG.debug(
-            "Using {} lines from memory cache for active pipeline {}/{}",
-            allLines.size(),
-            pipelineFQN,
-            runId);
-      }
-    }
-
-    // Always append the in-memory pendingFlush tail. The recentLogsCache
-    // (used in the !foundPartialFile branch) may have evicted older lines
-    // at its 1000-line cap; pendingFlush is unbounded and complete.
-    // Read under the per-stream lock — the value list is a plain ArrayList and is
-    // only safe to access while the lock is held. If the lock entry is missing
-    // for any reason (a lifecycle invariant we expect to hold), skip the append
-    // rather than reading without synchronization.
-    // Note: in the !foundPartialFile branch, the recentLogsCache and pendingFlush
-    // hold the same lines, so some duplicates may appear in the rare overlap case;
-    // the user-visible cost is showing some lines twice for ~2 minutes, vs. losing them.
-    String streamKeyForPending = pipelineFQN + "/" + runId;
-    ReentrantLock pendingLock = streamLocks.get(streamKeyForPending);
-    if (pendingLock != null) {
-      pendingLock.lock();
-      try {
-        List<String> livePending = pendingFlush.get(streamKeyForPending);
-        if (livePending != null && !livePending.isEmpty()) {
-          allLines.addAll(new ArrayList<>(livePending));
-        }
-      } finally {
-        pendingLock.unlock();
       }
     }
 
@@ -1462,6 +1442,23 @@ public class S3LogStorage implements LogStorageInterface {
     result.put("total", (long) allLines.size());
 
     return result;
+  }
+
+  private void appendPendingFlushUnderLock(String pipelineFQN, UUID runId, List<String> target) {
+    String streamKey = pipelineFQN + "/" + runId;
+    ReentrantLock pendingLock = streamLocks.get(streamKey);
+    if (pendingLock == null) {
+      return;
+    }
+    pendingLock.lock();
+    try {
+      List<String> livePending = pendingFlush.get(streamKey);
+      if (livePending != null && !livePending.isEmpty()) {
+        target.addAll(new ArrayList<>(livePending));
+      }
+    } finally {
+      pendingLock.unlock();
+    }
   }
 
   /**
