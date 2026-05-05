@@ -283,12 +283,18 @@ class JsonUtilsTest {
   void testTagLabelAppliedAtAcceptsBareSecondPrecision() {
     String withoutFractional = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"2026-04-24T10:27:06Z\"}";
     String withMicros = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"2026-04-24T10:27:06.918000Z\"}";
+    String sdfLeftPaddedMs = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"2026-04-24T10:27:06.000918Z\"}";
 
     TagLabel bare = JsonUtils.readValue(withoutFractional, TagLabel.class);
     TagLabel withFrac = JsonUtils.readValue(withMicros, TagLabel.class);
+    TagLabel sdfForm = JsonUtils.readValue(sdfLeftPaddedMs, TagLabel.class);
 
     assertEquals(0L, bare.getAppliedAt().getTime() % 1000, "bare-second form parses to ms=0");
     assertEquals(918L, withFrac.getAppliedAt().getTime() % 1000, "fractional form preserves ms");
+    assertEquals(
+        918L,
+        sdfForm.getAppliedAt().getTime() % 1000,
+        "SDF left-padded ms form (server's own emitter) preserves ms");
     assertEquals(
         918L,
         withFrac.getAppliedAt().getTime() - bare.getAppliedAt().getTime(),
@@ -313,5 +319,24 @@ class JsonUtilsTest {
     assertTrue(
         cause.getMessage().contains("appliedAt") || cause.getMessage().contains("ISO-8601"),
         "error should mention the field or expected format: " + cause.getMessage());
+  }
+
+  /**
+   * The global ObjectMapper formats Date with SimpleDateFormat("…SSSSSS'Z'"), where SSSSSS is
+   * 6-digit zero-padded milliseconds (a Java quirk). For a Date with ms=918 the server emits
+   * ".000918Z". Instant.parse interprets ".000918" as a fractional second (= 918 microseconds = 0
+   * ms), so the lenient deserializer breaks round-trips of every server-emitted appliedAt value.
+   */
+  @Test
+  void testTagLabelAppliedAtRoundTripPreservesMillis() throws Exception {
+    TagLabel original =
+        new TagLabel().withTagFQN("x.y").withAppliedAt(new java.util.Date(1714000000918L));
+    String serialized = JsonUtils.pojoToJson(original);
+    LOG.info("Server-emitted appliedAt JSON: {}", serialized);
+    TagLabel roundTripped = JsonUtils.readValue(serialized, TagLabel.class);
+    assertEquals(
+        original.getAppliedAt().getTime(),
+        roundTripped.getAppliedAt().getTime(),
+        "appliedAt must survive ObjectMapper round-trip; serialized=" + serialized);
   }
 }

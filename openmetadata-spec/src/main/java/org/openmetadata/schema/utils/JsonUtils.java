@@ -908,6 +908,14 @@ public final class JsonUtils {
    * Java's {@link SimpleDateFormat} configured globally with pattern "…SSSSSS'Z'"
    * rejects the no-fractional form, which Python clients can emit when a datetime's
    * microsecond is 0.
+   *
+   * <p>The global SimpleDateFormat pattern "SSSSSS" means "milliseconds left-padded to
+   * 6 digits" (a Java quirk), not microseconds-as-fraction. So a Date with ms=918 is
+   * emitted as ".000918Z". {@link Instant#parse} would interpret that fractional as
+   * 918 µs ≈ 0 ms and silently drop ms precision on every server-side round-trip. We
+   * detect the SDF form by its three leading zeros in a 6-digit fractional and parse
+   * it as left-padded ms; everything else (no fractional, 3-digit ms, Pydantic's
+   * non-zero-leading microseconds) falls through to standard {@link Instant#parse}.
    */
   public static final class LenientIsoDateDeserializer extends JsonDeserializer<Date> {
     @Override
@@ -916,12 +924,34 @@ public final class JsonUtils {
       if (value == null || value.isEmpty()) {
         return null;
       }
+      Date sdfForm = tryParseSdfLeftPaddedMillis(value);
+      if (sdfForm != null) {
+        return sdfForm;
+      }
       try {
         return Date.from(Instant.parse(value));
       } catch (DateTimeParseException e) {
         return (Date)
             ctxt.handleWeirdStringValue(
                 Date.class, value, "Expected ISO-8601 date-time: %s", e.getMessage());
+      }
+    }
+
+    private static Date tryParseSdfLeftPaddedMillis(String value) {
+      int dot = value.indexOf('.');
+      if (dot < 0 || !value.endsWith("Z")) {
+        return null;
+      }
+      String fractional = value.substring(dot + 1, value.length() - 1);
+      if (fractional.length() != 6 || !fractional.startsWith("000")) {
+        return null;
+      }
+      try {
+        long millis = Long.parseLong(fractional);
+        Instant base = Instant.parse(value.substring(0, dot) + "Z");
+        return Date.from(base.plusMillis(millis));
+      } catch (DateTimeParseException | NumberFormatException ignored) {
+        return null;
       }
     }
   }
