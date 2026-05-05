@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.io.*;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -669,7 +670,7 @@ public class S3LogStorageTest {
   }
 
   private static Object getPrivateField(Object target, String name) throws Exception {
-    java.lang.reflect.Field f = target.getClass().getDeclaredField(name);
+    Field f = target.getClass().getDeclaredField(name);
     f.setAccessible(true);
     return f.get(target);
   }

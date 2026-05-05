@@ -188,12 +188,10 @@ public class S3LogStorage implements LogStorageInterface {
               ? s3Config.getPendingFlushAlertAfterFailures()
               : 10;
 
-      // Deprecation warning: if streamTimeoutMinutes is explicitly set to a small value,
-      // log it. Operators on legacy configs should migrate to streamTimeoutHours.
-      if (s3Config.getStreamTimeoutMinutes() != null && s3Config.getStreamTimeoutMinutes() < 30) {
+      if (s3Config.getStreamTimeoutMinutes() != null) {
         LOG.warn(
-            "streamTimeoutMinutes={} is deprecated and may cause stream churn under slow connectors. "
-                + "Migrate to streamTimeoutHours (current value: {}h).",
+            "streamTimeoutMinutes={} is deprecated; migrate to streamTimeoutHours "
+                + "(current effective value: {}h). Values below 30 min may cause stream churn.",
             s3Config.getStreamTimeoutMinutes(),
             streamTimeoutHours);
       }
