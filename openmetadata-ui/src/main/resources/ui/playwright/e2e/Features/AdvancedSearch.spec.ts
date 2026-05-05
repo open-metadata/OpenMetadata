@@ -645,7 +645,7 @@ test.describe(
     test.beforeAll(
       'Setup – create table with unique description',
       async ({ browser }) => {
-        WORD_TO_SEARCH = `oscilloscope-${uuid()}`;
+        WORD_TO_SEARCH = `the word oscilloscope-${uuid()} to test`;
         DESCRIPTION_TEXT = `This is a table description containing the word ${WORD_TO_SEARCH} to test the advanced search functionality.`;
         const { apiContext, afterAction } = await performAdminLogin(browser);
 
