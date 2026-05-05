@@ -351,4 +351,14 @@ public class CsvUtilTest {
     assertEquals("", CsvUtil.stripUtf8Bom(""));
     assertNull(CsvUtil.stripUtf8Bom(null));
   }
+
+  @Test
+  void testWithUtf8Bom() {
+    String csv = "name,description\nunicode-name,unicode-description";
+
+    assertEquals(CsvUtil.UTF8_BOM + csv, CsvUtil.withUtf8Bom(csv));
+    assertEquals(CsvUtil.UTF8_BOM + csv, CsvUtil.withUtf8Bom(CsvUtil.UTF8_BOM + csv));
+    assertEquals(CsvUtil.UTF8_BOM, CsvUtil.withUtf8Bom(""));
+    assertNull(CsvUtil.withUtf8Bom(null));
+  }
 }

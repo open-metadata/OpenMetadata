@@ -74,6 +74,17 @@ describe('UploadFile Component', () => {
 
   it('should call onCSVUploaded when file is uploaded successfully', async () => {
     const mockOnCSVUploaded = jest.fn();
+    const originalFileReader = global.FileReader;
+    const readAsText = jest.fn(function (this: FileReader) {
+      this.onload?.({ target: this } as ProgressEvent<FileReader>);
+    });
+    const MockFileReader = jest.fn().mockImplementation(() => ({
+      error: null,
+      onerror: null,
+      onload: null,
+      readAsText,
+    }));
+    global.FileReader = MockFileReader as unknown as typeof FileReader;
 
     render(<UploadFile {...defaultProps} onCSVUploaded={mockOnCSVUploaded} />);
 
@@ -91,6 +102,10 @@ describe('UploadFile Component', () => {
     await waitFor(() => {
       expect(mockOnCSVUploaded).toHaveBeenCalled();
     });
+
+    expect(readAsText).toHaveBeenCalledWith(file, 'utf-8');
+
+    global.FileReader = originalFileReader;
   });
 
   it('should handle file upload error', async () => {
@@ -112,7 +127,7 @@ describe('UploadFile Component', () => {
         throw new Error('File read error');
       }),
       onerror: null,
-    })) as any;
+    })) as unknown as typeof FileReader;
 
     fireEvent.drop(uploadWidget, {
       dataTransfer: {
@@ -125,6 +140,43 @@ describe('UploadFile Component', () => {
     });
 
     // Restore original FileReader
+    global.FileReader = originalFileReader;
+  });
+
+  it('should show error toast when onCSVUploaded rejects', async () => {
+    const error = new Error('Upload failed');
+    const mockOnCSVUploaded = jest.fn().mockRejectedValue(error);
+    const originalFileReader = global.FileReader;
+    const readAsText = jest.fn(function (this: FileReader) {
+      this.onload?.({ target: this } as ProgressEvent<FileReader>);
+    });
+    const MockFileReader = jest.fn().mockImplementation(() => ({
+      error: null,
+      onerror: null,
+      onload: null,
+      readAsText,
+    }));
+    global.FileReader = MockFileReader as unknown as typeof FileReader;
+
+    render(<UploadFile {...defaultProps} onCSVUploaded={mockOnCSVUploaded} />);
+
+    const uploadWidget = screen.getByTestId('upload-file-widget');
+    const file = new File(['test,csv,content'], 'test.csv', {
+      type: 'text/csv',
+    });
+
+    fireEvent.drop(uploadWidget, {
+      dataTransfer: {
+        files: [file],
+      },
+    });
+
+    await waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalledWith(error);
+    });
+
+    expect(readAsText).toHaveBeenCalledWith(file, 'utf-8');
+
     global.FileReader = originalFileReader;
   });
 

@@ -803,11 +803,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                             jobId, securityContext, exported, total, message);
 
                 String csvData =
-                    repository.exportToCsv(
-                        name,
-                        securityContext.getUserPrincipal().getName(),
-                        recursive,
-                        progressCallback);
+                    CsvUtil.withUtf8Bom(
+                        repository.exportToCsv(
+                            name,
+                            securityContext.getUserPrincipal().getName(),
+                            recursive,
+                            progressCallback));
                 WebsocketNotificationHandler.sendCsvExportCompleteNotification(
                     jobId, securityContext, csvData);
               } catch (Exception e) {
@@ -990,7 +991,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return repository.exportToCsv(name, securityContext.getUserPrincipal().getName(), recursive);
+    return CsvUtil.withUtf8Bom(
+        repository.exportToCsv(name, securityContext.getUserPrincipal().getName(), recursive));
   }
 
   protected CsvImportResult importCsvInternal(
