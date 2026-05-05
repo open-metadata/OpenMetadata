@@ -49,6 +49,24 @@ public class HttpServletStatelessServerTransport extends HttpServlet
 
   public static final String FAILED_TO_SEND_ERROR_RESPONSE = "Failed to send error response: {}";
 
+  static final String HEADER_CACHE_CONTROL = "Cache-Control";
+
+  static final String HEADER_CONNECTION = "Connection";
+
+  static final String HEADER_X_ACCEL_BUFFERING = "X-Accel-Buffering";
+
+  static final String CACHE_CONTROL_NO_CACHE = "no-cache";
+
+  static final String CONNECTION_KEEP_ALIVE = "keep-alive";
+
+  static final String X_ACCEL_BUFFERING_NO = "no";
+
+  static final String SSE_DATA_PREFIX = "data: ";
+
+  static final String SSE_LINE_TERMINATOR = "\n";
+
+  static final String SSE_EVENT_TERMINATOR = "\n\n";
+
   private final ObjectMapper objectMapper;
 
   private final McpJsonMapper jsonMapper;
@@ -255,19 +273,27 @@ public class HttpServletStatelessServerTransport extends HttpServlet
    * Streamable HTTP clients (e.g. Databricks Supervisor Agent's "databricks" v1.0.0 client) that
    * negotiate {@code text/event-stream} via the {@code Accept} header and refuse to parse plain
    * {@code application/json} responses.
+   *
+   * <p>Per the W3C SSE spec, payloads containing line breaks must prefix every line with
+   * {@code data: }. The default {@code McpJsonMapper} produces compact JSON, but this method
+   * splits defensively so that any embedded newline (e.g., a literal {@code \n} inside an error
+   * message) cannot truncate the event for the client.
    */
   static void writeSseResponse(HttpServletResponse response, String jsonResponseText)
       throws IOException {
     response.setContentType(TEXT_EVENT_STREAM);
     response.setCharacterEncoding(UTF_8);
-    response.setHeader("Cache-Control", "no-cache");
-    response.setHeader("Connection", "keep-alive");
-    response.setHeader("X-Accel-Buffering", "no");
+    response.setHeader(HEADER_CACHE_CONTROL, CACHE_CONTROL_NO_CACHE);
+    response.setHeader(HEADER_CONNECTION, CONNECTION_KEEP_ALIVE);
+    response.setHeader(HEADER_X_ACCEL_BUFFERING, X_ACCEL_BUFFERING_NO);
     response.setStatus(HttpServletResponse.SC_OK);
     PrintWriter writer = response.getWriter();
-    writer.write("data: ");
-    writer.write(jsonResponseText);
-    writer.write("\n\n");
+    for (String line : jsonResponseText.split("\\R", -1)) {
+      writer.write(SSE_DATA_PREFIX);
+      writer.write(line);
+      writer.write(SSE_LINE_TERMINATOR);
+    }
+    writer.write(SSE_LINE_TERMINATOR);
     writer.flush();
   }
 

@@ -64,9 +64,36 @@ class HttpServletStatelessServerTransportTest {
   void writeSseResponse_setsStreamingHeaders() throws Exception {
     HttpServletStatelessServerTransport.writeSseResponse(response, JSON_RESPONSE);
 
-    verify(response).setHeader("Cache-Control", "no-cache");
-    verify(response).setHeader("Connection", "keep-alive");
-    verify(response).setHeader("X-Accel-Buffering", "no");
+    verify(response)
+        .setHeader(
+            HttpServletStatelessServerTransport.HEADER_CACHE_CONTROL,
+            HttpServletStatelessServerTransport.CACHE_CONTROL_NO_CACHE);
+    verify(response)
+        .setHeader(
+            HttpServletStatelessServerTransport.HEADER_CONNECTION,
+            HttpServletStatelessServerTransport.CONNECTION_KEEP_ALIVE);
+    verify(response)
+        .setHeader(
+            HttpServletStatelessServerTransport.HEADER_X_ACCEL_BUFFERING,
+            HttpServletStatelessServerTransport.X_ACCEL_BUFFERING_NO);
+  }
+
+  @Test
+  void writeSseResponse_payloadWithNewlines_prefixesEachLine() throws Exception {
+    String multiLineJson = "{\n  \"jsonrpc\": \"2.0\"\n}";
+
+    HttpServletStatelessServerTransport.writeSseResponse(response, multiLineJson);
+
+    assertThat(body.toString()).isEqualTo("data: {\ndata:   \"jsonrpc\": \"2.0\"\ndata: }\n\n");
+  }
+
+  @Test
+  void writeSseResponse_payloadWithCarriageReturnLineFeed_prefixesEachLine() throws Exception {
+    String windowsJson = "{\r\n  \"x\": 1\r\n}";
+
+    HttpServletStatelessServerTransport.writeSseResponse(response, windowsJson);
+
+    assertThat(body.toString()).isEqualTo("data: {\ndata:   \"x\": 1\ndata: }\n\n");
   }
 
   @Test
