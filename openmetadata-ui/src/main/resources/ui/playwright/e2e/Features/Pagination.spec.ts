@@ -425,6 +425,17 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       page,
     }) => {
       await page.goto('/observability/alerts?pageSize=15');
+
+      const alertsTable = page.getByTestId('alert-table');
+
+      await expect(alertsTable).toBeVisible();
+      await expect(
+        page.locator('[data-testid^="alert-edit-"]').first()
+      ).toBeVisible();
+      await expect(
+        page.locator('[data-testid^="alert-delete-"]').first()
+      ).toBeVisible();
+
       await testPaginationNavigation(
         page,
         '/api/v1/events/subscriptions',
