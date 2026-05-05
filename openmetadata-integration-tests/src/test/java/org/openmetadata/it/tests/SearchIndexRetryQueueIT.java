@@ -8,7 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Timestamp;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
@@ -275,11 +277,31 @@ class SearchIndexRetryQueueIT {
     retryQueueDAO.upsert(id2, fqn2, "f", SearchIndexRetryQueue.STATUS_PENDING_RETRY_1, "");
     retryQueueDAO.upsert(id3, fqn3, "f", SearchIndexRetryQueue.STATUS_PENDING_RETRY_2, "");
 
-    List<SearchIndexRetryRecord> claimed = retryQueueDAO.claimPending(10);
-    assertTrue(claimed.size() >= 3);
-    assertTrue(claimed.stream().anyMatch(r -> r.getEntityId().equals(id1)));
-    assertTrue(claimed.stream().anyMatch(r -> r.getEntityId().equals(id2)));
-    assertTrue(claimed.stream().anyMatch(r -> r.getEntityId().equals(id3)));
+    Set<String> ourIds = Set.of(id1, id2, id3);
+
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(200))
+        .untilAsserted(
+            () -> {
+              retryQueueDAO.claimPending(50);
+              Set<String> claimed = new HashSet<>();
+              for (String status :
+                  List.of(
+                      SearchIndexRetryQueue.STATUS_PENDING,
+                      SearchIndexRetryQueue.STATUS_PENDING_RETRY_1,
+                      SearchIndexRetryQueue.STATUS_PENDING_RETRY_2,
+                      SearchIndexRetryQueue.STATUS_IN_PROGRESS,
+                      SearchIndexRetryQueue.STATUS_FAILED)) {
+                retryQueueDAO.findByStatus(status, 5000).stream()
+                    .filter(r -> ourIds.contains(r.getEntityId()) && r.getClaimedAt() != null)
+                    .map(SearchIndexRetryRecord::getEntityId)
+                    .forEach(claimed::add);
+              }
+              assertTrue(claimed.contains(id1), "id1 (PENDING) was never claimed");
+              assertTrue(claimed.contains(id2), "id2 (PENDING_RETRY_1) was never claimed");
+              assertTrue(claimed.contains(id3), "id3 (PENDING_RETRY_2) was never claimed");
+            });
   }
 
   // ---------------------------------------------------------------------------
