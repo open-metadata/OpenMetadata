@@ -28,6 +28,7 @@ export enum TaskEntityStatus {
   Completed = 'Completed',
   Cancelled = 'Cancelled',
   Failed = 'Failed',
+  Revoked = 'Revoked',
 }
 
 // Task category enum - matches backend TaskCategory
