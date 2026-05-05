@@ -133,12 +133,14 @@ public class HttpServletStatelessServerTransport extends HttpServlet
     McpTransportContext transportContext = this.contextExtractor.extract(request);
 
     String accept = request.getHeader(ACCEPT);
-    if (accept == null || !accept.contains(APPLICATION_JSON)) {
+    boolean acceptsJson = accept != null && accept.contains(APPLICATION_JSON);
+    boolean acceptsSse = accept != null && accept.contains(TEXT_EVENT_STREAM);
+    if (!acceptsJson && !acceptsSse) {
       this.responseError(
           response,
           HttpServletResponse.SC_BAD_REQUEST,
           McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST)
-              .message("application/json required in Accept header")
+              .message("Accept header must include application/json or text/event-stream")
               .build());
       return;
     }
@@ -162,14 +164,12 @@ public class HttpServletStatelessServerTransport extends HttpServlet
                   .contextWrite(ctx -> ctx.put(McpTransportContext.KEY, transportContext))
                   .block();
 
-          response.setContentType(APPLICATION_JSON);
-          response.setCharacterEncoding(UTF_8);
-          response.setStatus(HttpServletResponse.SC_OK);
-
           String jsonResponseText = jsonMapper.writeValueAsString(jsonrpcResponse);
-          PrintWriter writer = response.getWriter();
-          writer.write(jsonResponseText);
-          writer.flush();
+          if (acceptsSse) {
+            writeSseResponse(response, jsonResponseText);
+          } else {
+            writeJsonResponse(response, jsonResponseText);
+          }
         } catch (Exception e) {
           logger.error("Failed to handle request: {}", e.getMessage());
           this.responseError(
@@ -237,6 +237,37 @@ public class HttpServletStatelessServerTransport extends HttpServlet
     String jsonError = jsonMapper.writeValueAsString(mcpError);
     PrintWriter writer = response.getWriter();
     writer.write(jsonError);
+    writer.flush();
+  }
+
+  static void writeJsonResponse(HttpServletResponse response, String jsonResponseText)
+      throws IOException {
+    response.setContentType(APPLICATION_JSON);
+    response.setCharacterEncoding(UTF_8);
+    response.setStatus(HttpServletResponse.SC_OK);
+    PrintWriter writer = response.getWriter();
+    writer.write(jsonResponseText);
+    writer.flush();
+  }
+
+  /**
+   * Writes a JSON-RPC response as a one-shot Server-Sent Events stream. Required for MCP
+   * Streamable HTTP clients (e.g. Databricks Supervisor Agent's "databricks" v1.0.0 client) that
+   * negotiate {@code text/event-stream} via the {@code Accept} header and refuse to parse plain
+   * {@code application/json} responses.
+   */
+  static void writeSseResponse(HttpServletResponse response, String jsonResponseText)
+      throws IOException {
+    response.setContentType(TEXT_EVENT_STREAM);
+    response.setCharacterEncoding(UTF_8);
+    response.setHeader("Cache-Control", "no-cache");
+    response.setHeader("Connection", "keep-alive");
+    response.setHeader("X-Accel-Buffering", "no");
+    response.setStatus(HttpServletResponse.SC_OK);
+    PrintWriter writer = response.getWriter();
+    writer.write("data: ");
+    writer.write(jsonResponseText);
+    writer.write("\n\n");
     writer.flush();
   }
 
