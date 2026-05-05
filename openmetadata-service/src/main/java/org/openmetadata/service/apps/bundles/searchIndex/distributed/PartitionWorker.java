@@ -37,12 +37,14 @@ import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
+import org.openmetadata.service.cache.EntityCacheBypass;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesSource;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 /**
  * Worker that processes a single partition of entities for search indexing.
@@ -146,6 +148,19 @@ public class PartitionWorker {
    * @return Result containing success and failure counts
    */
   public PartitionResult processPartition(SearchIndexPartition partition) {
+    // Reindex worker threads opt out of the Redis-backed entity cache. Cache hit rate during a
+    // bulk reindex is ~0 (every entity read exactly once) and the write-through tax is ~2-3M
+    // Redis ops per 580k-entity reindex; on an unhealthy Redis the indexer crawls at ~0.6 r/s
+    // because every relationship lookup pays a 300ms timeout. Bypassing for the duration of
+    // the partition keeps the reindex independent of cache health and removes the unwanted
+    // write-through pollution. Other code paths (UI requests, etc.) on other threads keep
+    // using the cache normally.
+    try (EntityCacheBypass.Handle ignored = EntityCacheBypass.skip()) {
+      return processPartitionInternal(partition);
+    }
+  }
+
+  private PartitionResult processPartitionInternal(SearchIndexPartition partition) {
     String entityType = partition.getEntityType();
     long rangeStart = partition.getRangeStart();
     long rangeEnd = partition.getRangeEnd();
@@ -568,7 +583,12 @@ public class PartitionWorker {
   private ResultList<?> readEntitiesKeyset(String entityType, String keysetCursor, int limit)
       throws SearchIndexException {
 
-    List<String> fields = TIME_SERIES_ENTITIES.contains(entityType) ? List.of() : List.of("*");
+    // Selective fields, not "*". Asking for "*" runs every registered fieldFetcher in
+    // setFieldsInBulk — including expensive ones like fetchAndSetOwns on Team/User where every
+    // owned entity becomes an Entity.getEntityReferenceById round-trip — and the index class then
+    // strips most of those out via getExcludedFields anyway. Mirror what EntityReader does on the
+    // single-server pipeline (PR #27723) so both paths request the same minimal set.
+    List<String> fields = ReindexingUtil.getSearchIndexFields(entityType);
 
     if (!TIME_SERIES_ENTITIES.contains(entityType)) {
       PaginatedEntitiesSource source = new PaginatedEntitiesSource(entityType, limit, fields, 0);

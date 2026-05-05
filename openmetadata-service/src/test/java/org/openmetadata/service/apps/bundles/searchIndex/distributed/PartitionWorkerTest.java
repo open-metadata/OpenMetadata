@@ -477,6 +477,63 @@ class PartitionWorkerTest {
   }
 
   @Test
+  void readEntitiesKeysetPassesSelectiveFieldsNotWildcard() throws Exception {
+    // Regression guard for the distributed-pipeline drift documented in PR #27876:
+    // PartitionWorker.readEntitiesKeyset used to construct PaginatedEntitiesSource with
+    // List.of("*"), which fans out every fieldFetcher in setFieldsInBulk on hot relationship
+    // types like Team/User. The fix is to share ReindexingUtil.getSearchIndexFields with the
+    // single-server path. We stub the helper here so the test stays focused on the
+    // PartitionWorker invocation contract; ReindexingUtilTest covers the helper's own
+    // filter/fallback logic.
+    ResultList<EntityInterface> resultList = new ResultList<>();
+    resultList.setData(List.of(mock(EntityInterface.class)));
+    AtomicReference<List<?>> constructorArgs = new AtomicReference<>();
+    List<String> selectiveFields = List.of("owners", "domains", "tags", "dataModel");
+
+    try (org.mockito.MockedStatic<org.openmetadata.service.workflows.searchIndex.ReindexingUtil>
+            reindexingUtilMock =
+                mockStatic(
+                    org.openmetadata.service.workflows.searchIndex.ReindexingUtil.class,
+                    org.mockito.Mockito.CALLS_REAL_METHODS);
+        MockedConstruction<PaginatedEntitiesSource> ignored =
+            mockConstruction(
+                PaginatedEntitiesSource.class,
+                (mock, context) -> {
+                  constructorArgs.set(List.copyOf(context.arguments()));
+                  doReturn(resultList).when(mock).readNextKeyset(any());
+                })) {
+      reindexingUtilMock
+          .when(
+              () ->
+                  org.openmetadata.service.workflows.searchIndex.ReindexingUtil
+                      .getSearchIndexFields(eq(Entity.CONTAINER)))
+          .thenReturn(selectiveFields);
+
+      invokePrivate(
+          worker,
+          "readEntitiesKeyset",
+          new Class<?>[] {String.class, String.class, int.class},
+          Entity.CONTAINER,
+          "cursor",
+          BATCH_SIZE);
+    }
+
+    assertEquals(Entity.CONTAINER, constructorArgs.get().get(0));
+    @SuppressWarnings("unchecked")
+    List<String> fields = (List<String>) constructorArgs.get().get(2);
+    assertEquals(
+        selectiveFields,
+        fields,
+        () ->
+            "Distributed reader did not pass the ReindexingUtil result through to"
+                + " PaginatedEntitiesSource. Got: "
+                + fields);
+    assertFalse(
+        fields.contains("*"),
+        () -> "Distributed reader regressed to wildcard fields. Got: " + fields);
+  }
+
+  @Test
   void readEntitiesKeysetUsesTimeSeriesSourceWithConfiguredWindow() throws Exception {
     PartitionWorker timeSeriesWorker =
         new PartitionWorker(
