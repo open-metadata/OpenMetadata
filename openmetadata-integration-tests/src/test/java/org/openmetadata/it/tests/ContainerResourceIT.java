@@ -1739,7 +1739,11 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
    * common foot-gun than {@code %}, but both wildcards are escaped uniformly via the
    * {@link
    * org.openmetadata.service.jdbi3.ContainerRepository#buildNameLikeBind(String)}
-   * helper which prepends {@code \\} to {@code %}, {@code _}, and {@code \\} itself.
+   * helper which prepends {@code !} to {@code %}, {@code _}, and {@code !} itself, and
+   * the SQL declares {@code ESCAPE '!'} explicitly. {@code !} is preferred over
+   * backslash because JDBI's ColonPrefixSqlParser mishandles literal {@code '\'} inside
+   * single-quoted SQL strings and silently drops a downstream {@code :includeDeleted}
+   * bind.
    */
   @Test
   void test_listChildren_filterByQuery_escapesLikeWildcards(TestNamespace ns) throws Exception {

@@ -97,15 +97,20 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
     [t]
   );
 
-  // Track the FQN of the latest in-flight fetch so a slow earlier response for a
-  // previous container does not overwrite the newer container's data when the
-  // user navigates between containers.
-  const latestFetchFqn = useRef<string>('');
+  // Stale-response guard: every fetch issued from this component bumps a
+  // monotonically-increasing token, and only the response whose token still
+  // matches the latest one allowed to write to state. Keying on the parent FQN
+  // alone (the previous approach) caught navigation-between-containers but not
+  // overlapping fetches against the SAME container — which happen routinely
+  // when the user types into the search box (debounced 500ms) or flips the
+  // Deleted toggle while a slower request is still in-flight. Without this,
+  // an older response can overwrite a newer one's filtered result set.
+  const fetchTokenRef = useRef(0);
 
   const fetchContainerChildren = useCallback(
     async (pagingOffset?: number) => {
       const fetchFqn = decodedContainerName;
-      latestFetchFqn.current = fetchFqn;
+      const token = ++fetchTokenRef.current;
       setIsChildrenLoading(true);
       try {
         const trimmedQuery = searchValue.trim();
@@ -115,18 +120,18 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
           include: showDeleted ? Include.Deleted : Include.NonDeleted,
           ...(trimmedQuery ? { q: trimmedQuery } : {}),
         });
-        if (latestFetchFqn.current !== fetchFqn) {
+        if (fetchTokenRef.current !== token) {
           return;
         }
         setContainerChildrenData(data ?? []);
         handlePagingChange(paging);
         onChildrenCountChange?.(paging.total);
       } catch (error) {
-        if (latestFetchFqn.current === fetchFqn) {
+        if (fetchTokenRef.current === token) {
           showErrorToast(error as AxiosError);
         }
       } finally {
-        if (latestFetchFqn.current === fetchFqn) {
+        if (fetchTokenRef.current === token) {
           setIsChildrenLoading(false);
         }
       }
@@ -161,6 +166,17 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
     },
     [handlePageChange]
   );
+
+  // Clear filters when navigating between containers. Without this, filters
+  // set on the previous container (a search query, a Deleted toggle that was
+  // ON) silently carry over to the next container's listing — making the new
+  // page look empty even though it has children, and there's no URL state to
+  // reflect that a filter is active. Reset before the fetch so the next
+  // useEffect sees the cleared values and queries the unfiltered page.
+  useEffect(() => {
+    setSearchValue('');
+    setShowDeleted(false);
+  }, [decodedContainerName]);
 
   useEffect(() => {
     if (isReadOnly) {

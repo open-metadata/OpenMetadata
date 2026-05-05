@@ -96,7 +96,14 @@ class ContainerDetailsClassBase {
     ].map((tab: EntityTabs) => ({
       id: tab,
       name: tab,
-      displayName: getTabLabelFromId(tab),
+      // Container-specific override: TAB_LABEL_MAP renders EntityTabs.CHILDREN as
+      // "Children" globally (used by other entity types like Directory), but for
+      // Container detail pages the tab is displayed as "Containers" — keep the
+      // customize-page editor in sync with what the live page shows.
+      displayName:
+        tab === EntityTabs.CHILDREN
+          ? i18n.t('label.container-plural')
+          : getTabLabelFromId(tab),
       layout: this.getDefaultLayout(tab),
       editable: tab === EntityTabs.CHILDREN || tab === EntityTabs.SCHEMA,
     }));
