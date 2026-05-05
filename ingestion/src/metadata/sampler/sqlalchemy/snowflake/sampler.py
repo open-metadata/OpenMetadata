@@ -75,6 +75,9 @@ class SnowflakeSampler(SQASampler):
             static (StaticSamplingConfig | None): sampling configuration
             selectable (Table): table to sample
         """
+        if static is None:
+            return selectable
+
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
             return selectable.tablesample(self.sampling_method_type(static.profileSample or 100))
 

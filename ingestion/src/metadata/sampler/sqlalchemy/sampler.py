@@ -16,10 +16,11 @@ for the profiler
 import hashlib
 from typing import List, Optional, Union, cast  # noqa: UP035
 
-from sqlalchemy import Column, TableSample, inspect, select, text
+from sqlalchemy import Column, inspect, select, text
 from sqlalchemy.orm import Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
+from sqlalchemy.sql.selectable import TableSample
 from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (

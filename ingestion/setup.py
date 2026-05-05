@@ -490,6 +490,8 @@ test = {
     VERSIONS["kafka-connect"],
     VERSIONS["factory-boy"],
     "locust~=2.32.0",
+    *plugins["exasol"],
+    *plugins["teradata"],
 }
 
 docs = {
