@@ -1290,4 +1290,58 @@ public class MigrationUtil {
       }
     }
   }
+
+  public static void addWorkflowChangeEventIndex(Handle handle, ConnectionType connectionType) {
+    String indexName = "idx_change_event_entity_type_offset";
+    String checkQuery =
+        connectionType == ConnectionType.MYSQL
+            ? "SELECT COUNT(*) FROM information_schema.statistics "
+                + "WHERE table_schema = DATABASE() AND table_name = 'change_event' "
+                + "AND index_name = '"
+                + indexName
+                + "'"
+            : "SELECT COUNT(*) FROM pg_indexes WHERE tablename = 'change_event' AND indexname = '"
+                + indexName
+                + "'";
+
+    Integer count = handle.createQuery(checkQuery).mapTo(Integer.class).one();
+    if (count != null && count > 0) {
+      LOG.info("Index {} on change_event already exists, skipping", indexName);
+      return;
+    }
+
+    String createSql =
+        connectionType == ConnectionType.MYSQL
+            ? "CREATE INDEX " + indexName + " ON change_event (entityType, `offset`)"
+            : "CREATE INDEX " + indexName + " ON change_event (entitytype, \"offset\")";
+
+    LOG.info("Creating index {} on change_event", indexName);
+    handle.execute(createSql);
+  }
+
+  public static void widenChangeEventConsumersId(Handle handle, ConnectionType connectionType) {
+    String checkQuery =
+        connectionType == ConnectionType.MYSQL
+            ? "SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.columns "
+                + "WHERE table_schema = DATABASE() AND table_name = 'change_event_consumers' "
+                + "AND column_name = 'id'"
+            : "SELECT character_maximum_length FROM information_schema.columns "
+                + "WHERE table_schema = current_schema() AND table_name = 'change_event_consumers' "
+                + "AND column_name = 'id'";
+
+    Integer currentLength =
+        handle.createQuery(checkQuery).mapTo(Integer.class).findOne().orElse(null);
+    if (currentLength != null && currentLength >= 500) {
+      LOG.info("change_event_consumers.id is already VARCHAR({}), skipping", currentLength);
+      return;
+    }
+
+    String alterSql =
+        connectionType == ConnectionType.MYSQL
+            ? "ALTER TABLE change_event_consumers MODIFY COLUMN id VARCHAR(500) NOT NULL"
+            : "ALTER TABLE change_event_consumers ALTER COLUMN id TYPE VARCHAR(500)";
+
+    LOG.info("Widening change_event_consumers.id to VARCHAR(500)");
+    handle.execute(alterSql);
+  }
 }
