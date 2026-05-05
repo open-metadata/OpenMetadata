@@ -29,7 +29,7 @@ class PolicyAgentWorkflow(IngestionWorkflow):
     def set_steps(self):
         self.source = self._get_source()
         # The Policy Agent has no downstream steps; the source applies the grants directly.
-        self.steps = ()
+        self.steps = ()  # pyright: ignore[reportAttributeAccessIssue]
 
     def _get_source(self) -> Source:
         source_type = self.config.source.type.lower()
@@ -37,7 +37,9 @@ class PolicyAgentWorkflow(IngestionWorkflow):
             raise WorkflowExecutionError("ServiceName is required field for executing the Policy Agent Workflow.")
 
         source_class = self.import_source_class()
-        source: Source = source_class.create(self.config.source.model_dump(), self.metadata)
+        source: Source = source_class.create(  # pyright: ignore[reportAssignmentType]
+            self.config.source.model_dump(), self.metadata
+        )
         logger.debug(f"Source type:{source_type},{source_class} configured")
         source.prepare()
         logger.debug(f"Source type:{source_type},{source_class} prepared")

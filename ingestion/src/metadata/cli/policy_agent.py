@@ -36,7 +36,7 @@ def run_policy(config_path: Path) -> None:
     :param config_path: Path to load JSON config
     """
 
-    config_dict = None
+    config_dict: dict = {}
     try:
         config_dict = load_config_file(config_path)
         logger.debug("Using workflow config:\n%s", redacted_config(config_dict))
