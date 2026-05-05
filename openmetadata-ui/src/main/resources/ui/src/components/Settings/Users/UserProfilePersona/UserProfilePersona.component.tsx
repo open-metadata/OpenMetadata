@@ -60,8 +60,11 @@ const UserProfilePersonas = ({
   );
 
   const isInherited = useMemo(
-    () => !userData.defaultPersona && !!userData.inheritedPersonas?.length,
-    [userData]
+    () =>
+      !!userData.inheritedPersonas?.some(
+        (p) => p.id === activeDefaultPersona?.id
+      ),
+    [userData.inheritedPersonas, activeDefaultPersona]
   );
 
   const handleDefaultPersonaUpdate = useCallback(

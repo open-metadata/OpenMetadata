@@ -663,6 +663,10 @@ public class UserRepository extends EntityRepository<User> {
     if (userDefaultPersona != null) {
       return userDefaultPersona;
     }
+    List<EntityReference> inheritedPersonas = getInheritedPersonas(user);
+    if (!inheritedPersonas.isEmpty()) {
+      return inheritedPersonas.get(0);
+    }
     PersonaRepository personaRepository =
         (PersonaRepository) Entity.getEntityRepository(Entity.PERSONA);
     Persona systemDefault = personaRepository.getSystemDefaultPersona();
