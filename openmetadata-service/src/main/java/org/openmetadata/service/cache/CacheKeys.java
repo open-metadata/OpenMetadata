@@ -56,6 +56,15 @@ public final class CacheKeys {
   }
 
   /**
+   * Redis hash key holding cached listing totals for an entity type. Each ListFilter variant
+   * lives as a field (hash of its WHERE clause + bound params) under this single key, so a
+   * single DEL atomically clears every filter variant on create/delete/restore.
+   */
+  public String listCount(String entityType) {
+    return ns + ":lc:" + entityType;
+  }
+
+  /**
    * Cached ancestor chain (topology only) for hierarchical entities, keyed by the descendant's
    * FQN hash. The value is the ordered list of ancestor FQNs.
    *
@@ -94,9 +103,28 @@ public final class CacheKeys {
    * Cached page of {@code /v1/&lt;entityType&gt;/name/{parentFqn}/children}. Keyed by the
    * parent's FQN hash + the per-parent version + page coordinates so a single version bump
    * orphans every cached page in one shot.
+   *
+   * <p>{@code include} (a 1-2 char tag — "nd" / "a" / "d", derived from the
+   * {@link org.openmetadata.schema.type.Include} enum value) is part of the key because the
+   * page result depends on whether soft-deleted children are included. Without this,
+   * toggling the UI's "Deleted" switch would return a stale page from the other side until
+   * the version stamp rotates.
    */
-  public String childrenPage(String type, String parentFqn, String version, int limit, int offset) {
+  public String childrenPage(
+      String type, String parentFqn, String version, int limit, int offset, String includeTag) {
     String fqnHash = FullyQualifiedName.buildHash(parentFqn);
-    return ns + ":kids:" + type + ":" + fqnHash + ":v" + version + ":l" + limit + ":o" + offset;
+    return ns
+        + ":kids:"
+        + type
+        + ":"
+        + fqnHash
+        + ":v"
+        + version
+        + ":i"
+        + includeTag
+        + ":l"
+        + limit
+        + ":o"
+        + offset;
   }
 }

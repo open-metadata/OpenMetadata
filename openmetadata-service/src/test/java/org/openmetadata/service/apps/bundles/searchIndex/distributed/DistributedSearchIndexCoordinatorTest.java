@@ -67,6 +67,7 @@ class DistributedSearchIndexCoordinatorTest {
   @Mock private SearchIndexJobDAO jobDAO;
   @Mock private SearchIndexPartitionDAO partitionDAO;
   @Mock private SearchReindexLockDAO lockDAO;
+  @Mock private CollectionDAO.SearchIndexServerStatsDAO serverStatsDAO;
   @Mock private PartitionCalculator partitionCalculator;
 
   private DistributedSearchIndexCoordinator coordinator;
@@ -90,6 +91,12 @@ class DistributedSearchIndexCoordinatorTest {
     when(collectionDAO.searchIndexJobDAO()).thenReturn(jobDAO);
     when(collectionDAO.searchIndexPartitionDAO()).thenReturn(partitionDAO);
     when(collectionDAO.searchReindexLockDAO()).thenReturn(lockDAO);
+    // getJobWithAggregatedStats now joins partition stats with per-stage timing pulled
+    // from search_index_server_stats. Stub the DAO so the timing lookups return empty
+    // collections — tests focused on count semantics don't need to assert timing.
+    when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(serverStatsDAO);
+    when(serverStatsDAO.getStatsByEntityType(anyString())).thenReturn(java.util.List.of());
+    when(serverStatsDAO.getStatsByServer(anyString())).thenReturn(java.util.List.of());
 
     coordinator = new DistributedSearchIndexCoordinator(collectionDAO, partitionCalculator);
   }

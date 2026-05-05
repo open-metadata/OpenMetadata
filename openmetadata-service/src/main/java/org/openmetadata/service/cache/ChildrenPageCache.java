@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 
@@ -41,12 +42,14 @@ public class ChildrenPageCache {
     this.config = config;
   }
 
-  public ResultList<Container> get(String entityType, String parentFqn, int limit, int offset) {
-    if (parentFqn == null) {
+  public ResultList<Container> get(
+      String entityType, String parentFqn, int limit, int offset, Include include) {
+    if (parentFqn == null || EntityCacheBypass.isSkipped()) {
       return null;
     }
     String version = currentVersion(entityType, parentFqn);
-    String pageKey = keys.childrenPage(entityType, parentFqn, version, limit, offset);
+    String pageKey =
+        keys.childrenPage(entityType, parentFqn, version, limit, offset, includeTag(include));
     try {
       Optional<String> json = cache.get(pageKey);
       if (json.isEmpty()) {
@@ -62,15 +65,21 @@ public class ChildrenPageCache {
   }
 
   public void put(
-      String entityType, String parentFqn, int limit, int offset, ResultList<Container> page) {
-    if (parentFqn == null || page == null) {
+      String entityType,
+      String parentFqn,
+      int limit,
+      int offset,
+      Include include,
+      ResultList<Container> page) {
+    if (parentFqn == null || page == null || EntityCacheBypass.isSkipped()) {
       return;
     }
     // Re-read the version: if a writer rotated between our DB fetch and now, populate against
     // the fresh stamp so the next reader at the new stamp consumes our page. The previous
     // version's slot would be unreachable and TTL out anyway.
     String version = currentVersion(entityType, parentFqn);
-    String pageKey = keys.childrenPage(entityType, parentFqn, version, limit, offset);
+    String pageKey =
+        keys.childrenPage(entityType, parentFqn, version, limit, offset, includeTag(include));
     try {
       String json = JsonUtils.pojoToJson(page);
       cache.set(pageKey, json, Duration.ofSeconds(config.entityTtlSeconds));
@@ -80,13 +89,30 @@ public class ChildrenPageCache {
   }
 
   /**
+   * Compact tag for the page key. Kept short to keep Redis keys readable in {@code MONITOR}
+   * and {@code SCAN} output. Three values, fixed: {@code nd} (non-deleted, default),
+   * {@code a} (all), {@code d} (deleted-only). Single-letter tags also keep the cache-key
+   * "1-2 char" promise documented on {@link CacheKeys#childrenPage}.
+   */
+  private static String includeTag(Include include) {
+    if (include == null) {
+      return "nd";
+    }
+    return switch (include) {
+      case ALL -> "a";
+      case DELETED -> "d";
+      default -> "nd";
+    };
+  }
+
+  /**
    * Rotate the version stamp for {@code parentFqn} so every page cached under the previous
    * stamp is unreachable. The version key carries a long TTL — outliving the page TTL — so
    * a parent that goes idle doesn't drop back to {@link #DEFAULT_VERSION} while stale pages
    * are still in Redis.
    */
   public void invalidate(String entityType, String parentFqn) {
-    if (parentFqn == null) {
+    if (parentFqn == null || EntityCacheBypass.isSkipped()) {
       return;
     }
     String verKey = keys.childrenVersion(entityType, parentFqn);
@@ -100,6 +126,9 @@ public class ChildrenPageCache {
   }
 
   private String currentVersion(String entityType, String parentFqn) {
+    if (EntityCacheBypass.isSkipped()) {
+      return DEFAULT_VERSION;
+    }
     String verKey = keys.childrenVersion(entityType, parentFqn);
     try {
       return cache.get(verKey).orElse(DEFAULT_VERSION);
