@@ -25,10 +25,19 @@ import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
 import { DataQualityTabProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import DataQualityTab from './DataQualityTab';
 
+// Context for dropdown and sort state in mocks
 const DropdownContext = React.createContext<{
   isOpen: boolean;
   onOpenChange?: (isOpen: boolean) => void;
 }>({ isOpen: false });
+
+const SortContext = React.createContext<{
+  sortDescriptor?: { column?: string; direction?: string };
+  onSortChange?: (desc: {
+    column?: string;
+    direction?: 'ascending' | 'descending';
+  }) => void;
+}>({});
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const DropdownRoot = ({
@@ -98,9 +107,104 @@ jest.mock('@openmetadata/ui-core-components', () => {
     );
   };
 
+  const MockTableHead = ({
+    label,
+    id,
+    allowsSorting,
+  }: {
+    label?: string;
+    id?: string;
+    allowsSorting?: boolean;
+  }) => {
+    const { onSortChange, sortDescriptor } = React.useContext(SortContext);
+    const handleClick = () => {
+      if (!allowsSorting || !onSortChange) {
+        return;
+      }
+      const currentDir =
+        sortDescriptor?.column === id ? sortDescriptor?.direction : undefined;
+      const newDir = currentDir === 'ascending' ? 'descending' : 'ascending';
+      onSortChange({ column: id, direction: newDir });
+    };
+
+    return (
+      <th id={id} onClick={handleClick}>
+        {label}
+      </th>
+    );
+  };
+
+  const MockTable = ({
+    children,
+    'data-testid': testId,
+    onSortChange,
+    sortDescriptor,
+  }: React.PropsWithChildren<{
+    'data-testid'?: string;
+    onSortChange?: (desc: {
+      column?: string;
+      direction?: 'ascending' | 'descending';
+    }) => void;
+    sortDescriptor?: { column?: string; direction?: string };
+    [key: string]: unknown;
+  }>) => (
+    <SortContext.Provider value={{ sortDescriptor, onSortChange }}>
+      <table data-testid={testId}>{children}</table>
+    </SortContext.Provider>
+  );
+
+  MockTable.Header = ({
+    columns,
+    children,
+  }: {
+    columns: unknown[];
+    children: (col: unknown) => React.ReactNode;
+  }) => (
+    <thead>
+      <tr>{(columns || []).map((col) => children(col))}</tr>
+    </thead>
+  );
+
+  MockTable.Head = MockTableHead;
+
+  MockTable.Body = ({
+    items,
+    children,
+    renderEmptyState,
+  }: {
+    items?: unknown[];
+    children: (item: unknown) => React.ReactNode;
+    renderEmptyState?: () => React.ReactNode;
+    dependencies?: unknown[];
+  }) => (
+    <tbody>
+      {items && items.length > 0
+        ? items.map((item) => children(item))
+        : renderEmptyState?.()}
+    </tbody>
+  );
+
+  MockTable.Row = ({
+    children,
+    id,
+  }: React.PropsWithChildren<{ id?: string }>) => <tr id={id}>{children}</tr>;
+
+  MockTable.Cell = ({
+    children,
+    className,
+  }: React.PropsWithChildren<{ className?: string }>) => (
+    <td className={className}>{children}</td>
+  );
+
+  const MockBox = ({ children }: React.PropsWithChildren) => (
+    <div>{children}</div>
+  );
+
   return {
+    Box: MockBox,
     Button: MockButton,
-    Skeleton: () => <span>Loading...</span>,
+    Skeleton: () => <span data-testid="skeleton">Loading...</span>,
+    Table: MockTable,
     Tooltip: ({
       children,
       title,
@@ -126,16 +230,68 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
+jest.mock('../../../../rest/incidentManagerAPI', () => ({
+  getListTestCaseIncidentByStateId: jest.fn().mockResolvedValue({ data: [] }),
+}));
+
+jest.mock('../../../../rest/testAPI', () => ({
+  removeTestCaseFromTestSuite: jest.fn().mockResolvedValue({}),
+}));
+
+jest.mock('../../../common/NextPrevious/NextPrevious', () =>
+  jest.fn().mockImplementation(() => <div data-testid="next-previous" />)
+);
+
+jest.mock(
+  '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder',
+  () => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="filter-table-placeholder" />),
+  })
+);
+
+jest.mock(
+  '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(() => <div data-testid="incident-manager-status" />)
+);
+
+jest.mock(
+  '../../../DataQuality/AddToBundleSuiteModal/AddToBundleSuiteModal.component',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ open }) =>
+        open ? <div data-testid="add-to-bundle-suite-modal" /> : null
+      )
+);
+
+jest.mock('../../../DataQuality/BundleSuiteForm/BundleSuiteForm', () =>
+  jest.fn().mockImplementation(() => <div data-testid="bundle-suite-form" />)
+);
+
+jest.mock('../../../common/StatusBadge/StatusBadge.component', () =>
+  jest
+    .fn()
+    .mockImplementation(({ dataTestId, label }) => (
+      <span data-testid={dataTestId}>{label}</span>
+    ))
+);
+
+jest.mock('../../../common/DateTimeDisplay/DateTimeDisplay', () =>
+  jest.fn().mockImplementation(() => <span data-testid="date-time-display" />)
+);
+
 const mockProps: DataQualityTabProps = {
   testCases: MOCK_TEST_CASE,
   onTestUpdate: jest.fn(),
   fetchTestCases: jest.fn(),
 };
 const mockPermissionsData = MOCK_PERMISSIONS;
-const mockAuthData = {
-  isAdminUser: true,
-  isAuthDisabled: false,
-};
 const mockNavigateDataQualityTab = jest.fn();
 
 jest.mock('react-router-dom', () => {
@@ -152,13 +308,13 @@ jest.mock('react-router-dom', () => {
     useNavigate: () => mockNavigateDataQualityTab,
   };
 });
+
 jest.mock('../../../../hooks/authHooks', () => ({
-  useAuth: () => {
-    return {
-      isAdminUser: mockAuthData.isAdminUser,
-    };
-  },
+  useAuth: () => ({
+    isAdminUser: true,
+  }),
 }));
+
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({
     getEntityPermissionByFqn: jest
@@ -166,60 +322,60 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
       .mockImplementation(() => mockPermissionsData),
   }),
 }));
-jest.mock('../../../common/Loader/Loader', () => {
-  return jest.fn().mockImplementation(() => {
-    return <span>Loader</span>;
-  });
-});
-jest.mock('../../../common/DeleteWidget/DeleteWidgetModal', () => {
-  return jest.fn().mockImplementation(({ visible, onCancel }) => {
-    return (
-      visible && (
-        <div>
-          <p>DeleteWidgetModal</p>
-          <button onClick={onCancel}>cancel</button>
-        </div>
-      )
-    );
-  });
-});
-jest.mock('../../../DataQuality/AddDataQualityTest/EditTestCaseModal', () => {
-  return jest.fn().mockImplementation(({ visible, onCancel, onUpdate }) => {
-    return (
-      visible && (
+
+jest.mock('../../../common/Loader/Loader', () =>
+  jest.fn().mockImplementation(() => <span>Loader</span>)
+);
+
+jest.mock('../../../common/DeleteWidget/DeleteWidgetModal', () =>
+  jest.fn().mockImplementation(({ visible, onCancel }) =>
+    visible ? (
+      <div>
+        <p>DeleteWidgetModal</p>
+        <button onClick={onCancel}>cancel</button>
+      </div>
+    ) : null
+  )
+);
+
+jest.mock(
+  '../../../DataQuality/AddDataQualityTest/components/EditTestCaseModalV1',
+  () =>
+    jest.fn().mockImplementation(({ open, onCancel, onUpdate }) =>
+      open ? (
         <div>
           <p>EditTestCaseModal</p>
           <button onClick={onCancel}>cancel</button>
           <button onClick={onUpdate}>submit</button>
         </div>
-      )
-    );
-  });
-});
-jest.mock('../../../Modals/ConfirmationModal/ConfirmationModal', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ visible, onCancel, onConfirm, isLoading }) => {
-      return (
-        visible && (
-          <div>
-            <p>ConfirmationModal</p>
-            <button onClick={onCancel}>cancel</button>
-            <button onClick={onConfirm}>
-              {isLoading ? (
-                <span data-testid="submit-btn-loading">Loading</span>
-              ) : (
-                ''
-              )}
-              submit
-            </button>
-          </div>
-        )
-      );
-    });
-});
+      ) : null
+    )
+);
+
+jest.mock('../../../Modals/ConfirmationModal/ConfirmationModal', () =>
+  jest.fn().mockImplementation(({ visible, onCancel, onConfirm, isLoading }) =>
+    visible ? (
+      <div>
+        <p>ConfirmationModal</p>
+        <button onClick={onCancel}>cancel</button>
+        <button onClick={onConfirm}>
+          {isLoading ? (
+            <span data-testid="submit-btn-loading">Loading</span>
+          ) : (
+            ''
+          )}
+          submit
+        </button>
+      </div>
+    ) : null
+  )
+);
 
 describe('DataQualityTab test', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('Component should render', async () => {
     await act(async () => {
       render(<DataQualityTab {...mockProps} />);
@@ -248,7 +404,18 @@ describe('DataQualityTab test', () => {
     expect(await findByText(header, 'label.incident')).toBeInTheDocument();
   });
 
-  it('Should send API request with sort params on click of last-run', async () => {
+  it('Should not render table column header when showTableColumn is false', async () => {
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} showTableColumn={false} />);
+    });
+    const tableRows = await screen.findAllByRole('row');
+    const header = tableRows[0];
+
+    expect(await findByText(header, 'label.name')).toBeInTheDocument();
+    expect(screen.queryByText('label.table')).not.toBeInTheDocument();
+  });
+
+  it('Should send API request with sort params on click of last-run (ascending then descending)', async () => {
     await act(async () => {
       render(<DataQualityTab {...mockProps} />);
     });
@@ -275,26 +442,20 @@ describe('DataQualityTab test', () => {
       sortField: 'testCaseResult.timestamp',
       sortType: 'desc',
     });
-
-    await act(async () => {
-      fireEvent.click(lastRunHeader);
-    });
-
-    expect(mockProps.fetchTestCases).toHaveBeenCalledWith(undefined);
   });
 
-  it('Should send API request with sort params on click of name', async () => {
+  it('Should send API request with sort params on click of name (ascending then descending)', async () => {
     await act(async () => {
       render(<DataQualityTab {...mockProps} />);
     });
     const tableRows = await screen.findAllByRole('row');
     const header = tableRows[0];
-    const lastRunHeader = await findByText(header, 'label.name');
+    const nameHeader = await findByText(header, 'label.name');
 
-    expect(lastRunHeader).toBeInTheDocument();
+    expect(nameHeader).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(lastRunHeader);
+      fireEvent.click(nameHeader);
     });
 
     expect(mockProps.fetchTestCases).toHaveBeenCalledWith({
@@ -303,19 +464,13 @@ describe('DataQualityTab test', () => {
     });
 
     await act(async () => {
-      fireEvent.click(lastRunHeader);
+      fireEvent.click(nameHeader);
     });
 
     expect(mockProps.fetchTestCases).toHaveBeenCalledWith({
       sortField: 'name.keyword',
       sortType: 'desc',
     });
-
-    await act(async () => {
-      fireEvent.click(lastRunHeader);
-    });
-
-    expect(mockProps.fetchTestCases).toHaveBeenCalledWith(undefined);
   });
 
   it('Table data should be render as per data props', async () => {
@@ -353,6 +508,78 @@ describe('DataQualityTab test', () => {
 
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();
+  });
+
+  it('Should show loading skeletons when isLoading is true', async () => {
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} isLoading />);
+    });
+
+    const skeletons = await screen.findAllByTestId('skeleton');
+
+    expect(skeletons.length).toBeGreaterThan(0);
+  });
+
+  it('Should show empty placeholder when testCases is empty', async () => {
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} testCases={[]} />);
+    });
+
+    expect(
+      await screen.findByTestId('filter-table-placeholder')
+    ).toBeInTheDocument();
+  });
+
+  it('Should show NextPrevious when pagingData and showPagination are provided', async () => {
+    const pagingData = {
+      paging: { total: 50 },
+      currentPage: 1,
+      pageSize: 10,
+      pagingHandler: jest.fn(),
+    };
+    await act(async () => {
+      render(
+        <DataQualityTab
+          {...mockProps}
+          showPagination
+          pagingData={pagingData as never}
+        />
+      );
+    });
+
+    expect(await screen.findByTestId('next-previous')).toBeInTheDocument();
+  });
+
+  it('Should not show NextPrevious when showPagination is false', async () => {
+    const pagingData = {
+      paging: { total: 50 },
+      currentPage: 1,
+      pageSize: 10,
+      pagingHandler: jest.fn(),
+    };
+    await act(async () => {
+      render(
+        <DataQualityTab
+          {...mockProps}
+          pagingData={pagingData as never}
+          showPagination={false}
+        />
+      );
+    });
+
+    expect(screen.queryByTestId('next-previous')).not.toBeInTheDocument();
+  });
+
+  it('Should render incident status cell with stop-propagation wrapper', async () => {
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+    const tableRows = await screen.findAllByRole('row');
+    const firstRow = tableRows[1];
+
+    const incidentStatusDiv = firstRow.querySelector('[role="presentation"]');
+
+    expect(incidentStatusDiv).toBeInTheDocument();
   });
 
   it('Remove functionality', async () => {
