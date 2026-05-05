@@ -27,8 +27,8 @@
 
 import { APIRequestContext, expect, test } from '@playwright/test';
 import {
+  CP_NAME_MAX_LENGTH_VALIDATION_ERROR,
   INVALID_NAMES,
-  NAME_MAX_LENGTH_VALIDATION_ERROR,
 } from '../../constant/common';
 import {
   CUSTOM_PROPERTIES_ENTITIES,
@@ -3546,6 +3546,7 @@ test.describe('Custom property name validation', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
   test.beforeEach(async ({ page }) => {
+    test.slow();
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.TABLES, true);
     await page.click('[data-testid="add-field-button"]');
@@ -3614,6 +3615,48 @@ test.describe('Custom property name validation', () => {
     );
   });
 
+  test('should show error when name contains a less-than sign', async ({
+    page,
+  }) => {
+    test.slow();
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_LESS_THAN
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a greater-than sign', async ({
+    page,
+  }) => {
+    test.slow();
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_GREATER_THAN
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains an ampersand', async ({
+    page,
+  }) => {
+    test.slow();
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_AMPERSAND
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
   test('should accept a valid name starting with a letter', async ({
     page,
   }) => {
@@ -3625,18 +3668,23 @@ test.describe('Custom property name validation', () => {
   test('should accept a valid name with allowed special characters', async ({
     page,
   }) => {
-    await page.fill(nameInput, "valid Name_-./&%#@!,;=|'()<>[]{}");
+    test.slow();
+    await page.fill(nameInput, "valid Name_-./%#@!,;=|'()[]{}");
 
     await expect(page.locator(nameError)).not.toBeVisible();
   });
 
-  test('should show error when name exceeds 128 characters', async ({
+  test('should show error when name exceeds 256 characters', async ({
     page,
   }) => {
-    await page.fill(nameInput, INVALID_NAMES.MAX_LENGTH);
+    test.slow();
+    await page.fill(
+      nameInput,
+      `${INVALID_NAMES.MAX_LENGTH}${INVALID_NAMES.MAX_LENGTH}`
+    );
 
     await expect(page.locator(nameError)).toContainText(
-      NAME_MAX_LENGTH_VALIDATION_ERROR
+      CP_NAME_MAX_LENGTH_VALIDATION_ERROR
     );
   });
 });

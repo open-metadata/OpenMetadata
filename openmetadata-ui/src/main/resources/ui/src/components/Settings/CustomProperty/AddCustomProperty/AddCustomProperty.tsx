@@ -266,16 +266,15 @@ const AddCustomProperty = ({
         props: {
           'data-testid': 'name',
           autoComplete: 'off',
-          shouldSanitize: false,
         },
         placeholder: t('label.name'),
         rules: [
           {
-            max: 128,
+            max: 256,
             message: t('message.entity-size-in-between', {
               entity: t('label.name'),
               min: 1,
-              max: 128,
+              max: 256,
             }),
           },
           {
@@ -293,7 +292,6 @@ const AddCustomProperty = ({
         type: FieldTypes.TEXT_MUI,
         props: {
           'data-testid': 'display-name',
-          shouldSanitize: false,
         },
       },
       {
