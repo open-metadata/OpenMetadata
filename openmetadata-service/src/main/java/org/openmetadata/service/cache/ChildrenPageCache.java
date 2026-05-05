@@ -44,7 +44,7 @@ public class ChildrenPageCache {
 
   public ResultList<Container> get(
       String entityType, String parentFqn, int limit, int offset, Include include) {
-    if (parentFqn == null) {
+    if (parentFqn == null || EntityCacheBypass.isSkipped()) {
       return null;
     }
     String version = currentVersion(entityType, parentFqn);
@@ -71,7 +71,7 @@ public class ChildrenPageCache {
       int offset,
       Include include,
       ResultList<Container> page) {
-    if (parentFqn == null || page == null) {
+    if (parentFqn == null || page == null || EntityCacheBypass.isSkipped()) {
       return;
     }
     // Re-read the version: if a writer rotated between our DB fetch and now, populate against
@@ -112,7 +112,7 @@ public class ChildrenPageCache {
    * are still in Redis.
    */
   public void invalidate(String entityType, String parentFqn) {
-    if (parentFqn == null) {
+    if (parentFqn == null || EntityCacheBypass.isSkipped()) {
       return;
     }
     String verKey = keys.childrenVersion(entityType, parentFqn);
@@ -126,6 +126,9 @@ public class ChildrenPageCache {
   }
 
   private String currentVersion(String entityType, String parentFqn) {
+    if (EntityCacheBypass.isSkipped()) {
+      return DEFAULT_VERSION;
+    }
     String verKey = keys.childrenVersion(entityType, parentFqn);
     try {
       return cache.get(verKey).orElse(DEFAULT_VERSION);
