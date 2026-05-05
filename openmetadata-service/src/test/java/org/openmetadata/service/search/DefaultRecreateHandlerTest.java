@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -24,9 +25,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.system.BulkIndexOverrides;
+import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
@@ -439,6 +443,59 @@ class DefaultRecreateHandlerTest {
       }
 
       verify(metrics).recordPromotionFailure("table");
+    }
+
+    @Test
+    @DisplayName("Should restore live serving settings on staged index before alias swap")
+    void testPromoteEntityIndexAppliesLiveServingSettingsBeforeSwap() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index_rebuild_old", Set.of("table"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+
+      EventPublisherJob jobData =
+          new EventPublisherJob()
+              .withBulkIndexSettings(
+                  new BulkIndexOverrides()
+                      .withNumberOfReplicas(0)
+                      .withRefreshInterval("-1")
+                      .withTranslogDurability(BulkIndexOverrides.TranslogDurability.ASYNC)
+                      .withTranslogSyncInterval("30s"));
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().withJobData(jobData).promoteEntityIndex(context, true);
+      }
+
+      ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+      verify(client).updateIndexSettings(eq("table_search_index_rebuild_new"), body.capture());
+      String json = body.getValue();
+      assertTrue(json.contains("\"refresh_interval\":\"1s\""), json);
+      assertTrue(json.contains("\"number_of_replicas\":1"), json);
+      assertTrue(json.contains("\"durability\":\"request\""), json);
+      assertTrue(
+          aliasState.indexAliases.get("table_search_index_rebuild_new").contains("table"),
+          "alias swap should still happen after settings revert");
     }
   }
 
