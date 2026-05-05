@@ -895,6 +895,7 @@ public class S3LogStorage implements LogStorageInterface {
     }
 
     ReentrantLock lock = acquireStreamLock(streamKey);
+    boolean finalized = false;
     try {
       writePartialLogsForStreamLocked(streamKey, pipelineFQN, runId);
 
@@ -934,9 +935,12 @@ public class S3LogStorage implements LogStorageInterface {
       }
 
       dropStreamState(streamKey);
+      finalized = true;
     } finally {
       releaseStreamLock(streamKey, lock);
-      streamLocks.remove(streamKey);
+      if (finalized) {
+        streamLocks.remove(streamKey);
+      }
     }
   }
 
