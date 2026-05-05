@@ -1065,9 +1065,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertNotNull(updated2.getReviewers());
     assertTrue(updated2.getReviewers().size() >= 2);
 
-    // Remove a reviewer
-    updated2.setReviewers(List.of(testUser2().getEntityReference()));
-    GlossaryTerm updated3 = patchEntity(updated2.getId().toString(), updated2);
+    // Remove a reviewer — re-fetch to pick up any async entityStatus change from the approval
+    // workflow so the patch diff contains only the reviewer removal, not an unintended status
+    // change
+    GlossaryTerm fresh2 = SdkClients.adminClient().glossaryTerms().get(updated2.getId().toString());
+    fresh2.setReviewers(List.of(testUser2().getEntityReference()));
+    GlossaryTerm updated3 = patchEntity(fresh2.getId().toString(), fresh2);
     assertNotNull(updated3.getReviewers());
     assertEquals(1, updated3.getReviewers().size());
   }
