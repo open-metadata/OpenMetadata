@@ -89,8 +89,7 @@ public class VectorSearchQueryBuilder {
     // Compute in long to avoid int overflow when k * numCandidatesMultiplier exceeds
     // Integer.MAX_VALUE; clamp to Integer.MAX_VALUE so num_candidates is always positive.
     long candidatesLong = (long) k * (long) numCandidatesMultiplier;
-    int numCandidates =
-        (int) Math.max(100, Math.min(candidatesLong, (long) Integer.MAX_VALUE));
+    int numCandidates = (int) Math.max(100, Math.min(candidatesLong, (long) Integer.MAX_VALUE));
     StringBuilder sb =
         new StringBuilder(512)
             .append("{\"size\":")

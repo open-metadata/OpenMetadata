@@ -757,14 +757,14 @@ class VectorSearchQueryBuilderTest {
 
     // k * multiplier > Integer.MAX_VALUE → must clamp, never emit a negative value.
     String query =
-        VectorSearchQueryBuilder.buildNativeESQuery(
-            vector, 10, 0, 1_000_000, Map.of(), 100_000);
+        VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 1_000_000, Map.of(), 100_000);
 
     JsonNode root = MAPPER.readTree(query);
     int numCandidates = root.get("knn").get("num_candidates").asInt();
 
     assertTrue(numCandidates > 0, "num_candidates must be positive even on overflow");
-    assertEquals(Integer.MAX_VALUE, numCandidates, "num_candidates must clamp to Integer.MAX_VALUE");
+    assertEquals(
+        Integer.MAX_VALUE, numCandidates, "num_candidates must clamp to Integer.MAX_VALUE");
   }
 
   @Test
