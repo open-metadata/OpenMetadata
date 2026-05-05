@@ -13,9 +13,9 @@
 
 import { List, Space, Typography } from 'antd';
 import { startCase } from 'lodash';
-import { FC, useMemo } from 'react';
+import { FC, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   formatDateTime,
   getRelativeTime,
@@ -40,10 +40,22 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
   taskEntity,
 }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const lastNavigatedKeyRef = useRef<number | undefined>(undefined);
   const isMentionNotification = Boolean(mentionNotification && !taskEntity);
   const taskLink = useMemo(() => {
     return taskEntity ? getTaskDetailPathFromTask(taskEntity) : '';
   }, [taskEntity]);
+
+  const handleTaskLinkClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const key = Date.now();
+      lastNavigatedKeyRef.current = key;
+      navigate(taskLink, { state: { tasksRefreshKey: key } });
+    },
+    [navigate, taskLink]
+  );
 
   const taskContent = useMemo(() => {
     return (
@@ -51,14 +63,19 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
         <span className="p-x-xss">
           {t('message.assigned-you-a-new-task-lowercase')}
         </span>
-        <Link to={taskLink}>
+        <Link
+          to={taskLink}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleTaskLinkClick(e);
+          }}>
           {`#${getTaskDisplayId(taskEntity?.taskId ?? '')} ${startCase(
             taskEntity?.type ?? ''
           )}`}
         </Link>
       </>
     );
-  }, [taskEntity, taskLink, t]);
+  }, [taskEntity, taskLink, handleTaskLinkClick, t]);
 
   const entityName = useMemo(() => {
     const entityRef = (taskEntity?.about ?? mentionNotification?.entityRef) as
@@ -77,7 +94,8 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
         isMentionNotification
           ? prepareFeedLink(entityType, entityFQN, ActivityFeedTabs.ALL)
           : taskLink
-      }>
+      }
+      onClick={!isMentionNotification ? handleTaskLinkClick : undefined}>
       <List.Item.Meta
         avatar={<ProfilePicture name={createdBy} width="32" />}
         className="m-0"
