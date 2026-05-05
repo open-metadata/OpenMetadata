@@ -235,6 +235,10 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "glossaryTerms": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
