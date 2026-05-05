@@ -210,7 +210,7 @@ export const selectOption = async (
   // Use .first() to handle multiple matches (acceptable when scoped to visible dropdown)
   const optionLocator = page
     .locator('.ant-select-dropdown:visible')
-    .locator(`[title="${optionTitle}"]`)
+    .getByTitle(optionTitle, { exact: true })
     .first();
   await expect(optionLocator).toBeVisible();
 
