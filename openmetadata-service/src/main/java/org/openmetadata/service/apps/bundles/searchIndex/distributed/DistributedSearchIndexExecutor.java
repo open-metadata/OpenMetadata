@@ -129,7 +129,7 @@ public class DistributedSearchIndexExecutor {
 
   // Per-entity index promotion
   private EntityCompletionTracker entityTracker;
-  private RecreateIndexHandler recreateIndexHandler;
+  @Getter private RecreateIndexHandler recreateIndexHandler;
   private ReindexContext recreateContext;
 
   // Reader stats tracking (accumulated across all worker threads)

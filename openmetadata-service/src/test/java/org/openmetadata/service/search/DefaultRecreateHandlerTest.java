@@ -602,6 +602,174 @@ class DefaultRecreateHandlerTest {
 
       verify(repo).unregisterStagedIndex("table", "table_search_index_rebuild_new");
     }
+
+    @Test
+    @DisplayName(
+        "Empty aliases is a hard failure: no canonical delete, no success log, marked failed")
+    void testPromoteEntityIndexEmptyAliasesIsHardFailure() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index", Set.of());
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table")).thenReturn(null);
+
+      ReindexingMetrics metrics = mock(ReindexingMetrics.class);
+      DefaultRecreateHandler handler = new DefaultRecreateHandler();
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+          MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        metricsMock.when(ReindexingMetrics::getInstance).thenReturn(metrics);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        handler.promoteEntityIndex(context, true);
+      }
+
+      assertFalse(
+          aliasState.deletedIndices.contains("table_search_index"),
+          "Canonical index must NOT be deleted when aliases are empty");
+      verify(client, never()).swapAliases(anySet(), anyString(), anySet());
+      verify(metrics, never()).recordPromotionSuccess(anyString());
+      verify(metrics).recordPromotionFailure("table");
+      assertTrue(handler.getFailedPromotions().contains("table"));
+      assertFalse(handler.getDataLossPromotions().contains("table"));
+    }
+
+    @Test
+    @DisplayName("Canonical not deleted when step-1 swap fails")
+    void testPromoteEntityIndexCanonicalNotDeletedWhenStep1Fails() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index", Set.of("table_search_index"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      when(client.swapAliases(anySet(), anyString(), anySet())).thenReturn(false);
+
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+
+      DefaultRecreateHandler handler = new DefaultRecreateHandler();
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        handler.promoteEntityIndex(context, true);
+      }
+
+      assertFalse(
+          aliasState.deletedIndices.contains("table_search_index"),
+          "Canonical index must NOT be deleted when step-1 swap fails — old index still serves");
+      verify(client, never()).deleteIndexWithBackoff(eq("table_search_index"));
+      assertTrue(handler.getFailedPromotions().contains("table"));
+      assertFalse(handler.getDataLossPromotions().contains("table"));
+    }
+
+    @Test
+    @DisplayName("Three-step swap order: parent aliases → delete canonical → add canonical alias")
+    void testPromoteEntityIndexThreeStepSwapOrder() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index", Set.of("table_search_index"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().promoteEntityIndex(context, true);
+      }
+
+      org.mockito.InOrder order = org.mockito.Mockito.inOrder(client);
+      order.verify(client).swapAliases(anySet(), eq("table_search_index_rebuild_new"), anySet());
+      order.verify(client).deleteIndexWithBackoff("table_search_index");
+      order.verify(client).addAliases(eq("table_search_index_rebuild_new"), anySet());
+    }
+
+    @Test
+    @DisplayName("Data loss flagged when canonical deleted but addAliases throws")
+    void testPromoteEntityIndexFlagsDataLossOnAddAliasFailure() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index", Set.of("table_search_index"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      org.mockito.Mockito.doThrow(new IllegalStateException("connection reset"))
+          .when(client)
+          .addAliases(eq("table_search_index_rebuild_new"), anySet());
+
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+
+      DefaultRecreateHandler handler = new DefaultRecreateHandler();
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        handler.promoteEntityIndex(context, true);
+      }
+
+      assertTrue(handler.getFailedPromotions().contains("table"));
+      assertTrue(
+          handler.getDataLossPromotions().contains("table"),
+          "swap2 (addAliases) failure after canonical delete is data unavailability");
+    }
   }
 
   @Nested

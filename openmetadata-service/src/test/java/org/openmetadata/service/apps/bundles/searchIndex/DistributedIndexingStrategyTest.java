@@ -309,7 +309,11 @@ class DistributedIndexingStrategyTest {
 
     assertEquals(
         ExecutionResult.Status.COMPLETED,
-        invokePrivate("determineStatus", new Class<?>[] {Stats.class}, complete));
+        invokePrivate(
+            "determineStatus",
+            new Class<?>[] {Stats.class, RecreateIndexHandler.class},
+            complete,
+            null));
     assertFalse(
         (Boolean) invokePrivate("hasIncompleteProcessing", new Class<?>[] {Stats.class}, complete));
 
@@ -320,7 +324,11 @@ class DistributedIndexingStrategyTest {
 
     assertEquals(
         ExecutionResult.Status.COMPLETED_WITH_ERRORS,
-        invokePrivate("determineStatus", new Class<?>[] {Stats.class}, incomplete));
+        invokePrivate(
+            "determineStatus",
+            new Class<?>[] {Stats.class, RecreateIndexHandler.class},
+            incomplete,
+            null));
     assertTrue(
         (Boolean)
             invokePrivate("hasIncompleteProcessing", new Class<?>[] {Stats.class}, incomplete));
@@ -328,7 +336,57 @@ class DistributedIndexingStrategyTest {
     strategy.stop();
     assertEquals(
         ExecutionResult.Status.STOPPED,
-        invokePrivate("determineStatus", new Class<?>[] {Stats.class}, complete));
+        invokePrivate(
+            "determineStatus",
+            new Class<?>[] {Stats.class, RecreateIndexHandler.class},
+            complete,
+            null));
+  }
+
+  @Test
+  void determineStatusFlagsPromotionFailuresFromEitherHandler() throws Exception {
+    Stats clean = createBaseStats("table", 10);
+    clean.getJobStats().setTotalRecords(10);
+    clean.getJobStats().setSuccessRecords(10);
+    clean.getJobStats().setFailedRecords(0);
+
+    RecreateIndexHandler strategyHandler = mock(RecreateIndexHandler.class);
+    when(strategyHandler.getFailedPromotions()).thenReturn(Set.of("table"));
+    when(strategyHandler.getDataLossPromotions()).thenReturn(Set.of());
+    assertEquals(
+        ExecutionResult.Status.COMPLETED_WITH_ERRORS,
+        invokePrivate(
+            "determineStatus",
+            new Class<?>[] {Stats.class, RecreateIndexHandler.class},
+            clean,
+            strategyHandler));
+
+    DistributedSearchIndexExecutor executorMock = mock(DistributedSearchIndexExecutor.class);
+    RecreateIndexHandler executorHandler = mock(RecreateIndexHandler.class);
+    when(executorHandler.getFailedPromotions()).thenReturn(Set.of("dashboard"));
+    when(executorHandler.getDataLossPromotions()).thenReturn(Set.of());
+    when(executorMock.getRecreateIndexHandler()).thenReturn(executorHandler);
+    setField("distributedExecutor", executorMock);
+
+    RecreateIndexHandler cleanStrategy = mock(RecreateIndexHandler.class);
+    when(cleanStrategy.getFailedPromotions()).thenReturn(Set.of());
+    when(cleanStrategy.getDataLossPromotions()).thenReturn(Set.of());
+    assertEquals(
+        ExecutionResult.Status.COMPLETED_WITH_ERRORS,
+        invokePrivate(
+            "determineStatus",
+            new Class<?>[] {Stats.class, RecreateIndexHandler.class},
+            clean,
+            cleanStrategy));
+
+    when(executorHandler.getDataLossPromotions()).thenReturn(Set.of("dashboard"));
+    assertEquals(
+        ExecutionResult.Status.FAILED,
+        invokePrivate(
+            "determineStatus",
+            new Class<?>[] {Stats.class, RecreateIndexHandler.class},
+            clean,
+            cleanStrategy));
   }
 
   @Test

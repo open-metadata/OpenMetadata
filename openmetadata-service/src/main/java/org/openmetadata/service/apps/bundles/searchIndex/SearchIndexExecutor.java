@@ -1771,18 +1771,19 @@ public class SearchIndexExecutor implements AutoCloseable {
     if (stopped.get()) {
       return ExecutionResult.Status.STOPPED;
     }
-
+    if (hasDataLossPromotions()) {
+      return ExecutionResult.Status.FAILED;
+    }
     if (hasIncompleteProcessing()) {
       return ExecutionResult.Status.COMPLETED_WITH_ERRORS;
     }
-
     return ExecutionResult.Status.COMPLETED;
   }
 
   private boolean hasIncompleteProcessing() {
     Stats currentStats = stats.get();
     if (currentStats == null || currentStats.getJobStats() == null) {
-      return false;
+      return hasFailedPromotions();
     }
 
     StepStats jobStats = currentStats.getJobStats();
@@ -1790,7 +1791,15 @@ public class SearchIndexExecutor implements AutoCloseable {
     long processed = jobStats.getSuccessRecords() != null ? jobStats.getSuccessRecords() : 0;
     long total = jobStats.getTotalRecords() != null ? jobStats.getTotalRecords() : 0;
 
-    return failed > 0 || (total > 0 && processed < total);
+    return failed > 0 || (total > 0 && processed < total) || hasFailedPromotions();
+  }
+
+  private boolean hasFailedPromotions() {
+    return recreateIndexHandler != null && !recreateIndexHandler.getFailedPromotions().isEmpty();
+  }
+
+  private boolean hasDataLossPromotions() {
+    return recreateIndexHandler != null && !recreateIndexHandler.getDataLossPromotions().isEmpty();
   }
 
   public void stop() {

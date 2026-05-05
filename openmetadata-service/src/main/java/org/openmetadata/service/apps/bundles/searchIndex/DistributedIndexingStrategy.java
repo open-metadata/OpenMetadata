@@ -185,7 +185,7 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
             recreateContext,
             !stopped.get() && !hasIncompleteProcessing(stats));
 
-    ExecutionResult.Status resultStatus = determineStatus(stats);
+    ExecutionResult.Status resultStatus = determineStatus(stats, recreateIndexHandler);
 
     StatsReconciler.reconcile(stats);
 
@@ -452,11 +452,15 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     return (int) Math.min(value, Integer.MAX_VALUE);
   }
 
-  private ExecutionResult.Status determineStatus(Stats stats) {
+  private ExecutionResult.Status determineStatus(
+      Stats stats, RecreateIndexHandler strategyHandler) {
     if (stopped.get()) {
       return ExecutionResult.Status.STOPPED;
     }
-    if (hasIncompleteProcessing(stats)) {
+    if (hasDataLossPromotions(strategyHandler)) {
+      return ExecutionResult.Status.FAILED;
+    }
+    if (hasIncompleteProcessing(stats) || hasFailedPromotions(strategyHandler)) {
       return ExecutionResult.Status.COMPLETED_WITH_ERRORS;
     }
     return ExecutionResult.Status.COMPLETED;
@@ -471,6 +475,24 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     long processed = jobStats.getSuccessRecords() != null ? jobStats.getSuccessRecords() : 0;
     long total = jobStats.getTotalRecords() != null ? jobStats.getTotalRecords() : 0;
     return failed > 0 || (total > 0 && processed < total);
+  }
+
+  private boolean hasFailedPromotions(RecreateIndexHandler strategyHandler) {
+    if (strategyHandler != null && !strategyHandler.getFailedPromotions().isEmpty()) {
+      return true;
+    }
+    RecreateIndexHandler executorHandler =
+        distributedExecutor != null ? distributedExecutor.getRecreateIndexHandler() : null;
+    return executorHandler != null && !executorHandler.getFailedPromotions().isEmpty();
+  }
+
+  private boolean hasDataLossPromotions(RecreateIndexHandler strategyHandler) {
+    if (strategyHandler != null && !strategyHandler.getDataLossPromotions().isEmpty()) {
+      return true;
+    }
+    RecreateIndexHandler executorHandler =
+        distributedExecutor != null ? distributedExecutor.getRecreateIndexHandler() : null;
+    return executorHandler != null && !executorHandler.getDataLossPromotions().isEmpty();
   }
 
   private boolean finalizeAllEntityReindex(
