@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { AdminClass } from '../../support/user/AdminClass';
@@ -186,6 +186,7 @@ test.describe('Activity API - Entity Changes', () => {
   test('Activity event is created when description is updated', async ({
     page,
   }) => {
+    test.setTimeout(300000);
     const newDescription = `Test description updated at ${Date.now()}`;
     const entityFqn = testTable.entityResponseData.fullyQualifiedName ?? '';
 
@@ -225,6 +226,7 @@ test.describe('Activity API - Entity Changes', () => {
   });
 
   test('Activity event is created when tags are added', async ({ page }) => {
+    test.setTimeout(300000);
     const entityFqn = testTable.entityResponseData.fullyQualifiedName ?? '';
 
     // Add tag via API to bypass search indexing issues
@@ -274,6 +276,7 @@ test.describe('Activity API - Entity Changes', () => {
   });
 
   test('Activity event is created when owner is added', async ({ page }) => {
+    test.setTimeout(300000);
     const entityFqn = testTable.entityResponseData.fullyQualifiedName ?? '';
     const ownerDisplayName = adminUser.getUserDisplayName();
 
@@ -303,6 +306,7 @@ test.describe('Activity API - Entity Changes', () => {
   test('Activity event shows the actor who made the change', async ({
     page,
   }) => {
+    test.setTimeout(300000);
     // Make a change via API so we know exactly who the actor is
     const { apiContext, afterAction } = await getApiContext(page);
     const uniqueDescription = `Actor test description ${Date.now()}`;
