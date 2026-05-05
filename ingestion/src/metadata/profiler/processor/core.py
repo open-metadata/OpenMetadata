@@ -522,7 +522,9 @@ class Profiler(Generic[TMetric]):
                 sizeInByte=self._table_results.get("sizeInBytes"),
                 profileSample=(sample_config.profileSample if sample_config else None),
                 profileSampleType=TableProfileSampleType(
-                    sample_config.profileSampleType if sample_config else ProfileSampleType.PERCENTAGE
+                    sample_config.profileSampleType
+                    if sample_config and sample_config.profileSampleType
+                    else ProfileSampleType.PERCENTAGE
                 ),
                 customMetrics=self._table_results.get("customMetrics"),
             )

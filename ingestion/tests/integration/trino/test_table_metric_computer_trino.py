@@ -111,10 +111,11 @@ class TestTrinoTableMetricComputer:
         """empty table had stats dropped — SHOW STATS returns NULL row_count.
         Should fall back to COUNT(*)."""
         computer = _build_computer(trino_session, EmptyModel)
+        original = BaseTableMetricComputer.compute.__get__(computer)
         with patch.object(
             BaseTableMetricComputer,
             "compute",
-            wraps=BaseTableMetricComputer.compute,
+            wraps=original,
         ) as fallback:
             result = computer.compute()
         assert result is not None
