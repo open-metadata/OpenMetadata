@@ -95,54 +95,11 @@ import {
   TERM_LABEL_BG_PADDING,
 } from '../OntologyExplorer.constants';
 import './ontologyComboAwarePolylineEdge';
+import { measureTextWidth, truncateToFit } from './textMeasure';
 
 const cssColorCache = new Map<string, string>();
 const COMBO_LABEL_CHAR_WIDTH = 7;
 const COMBO_LABEL_MEASURE_FONT = `${COMBO_LABEL_FONT_WEIGHT} ${COMBO_LABEL_FONT_SIZE}px sans-serif`;
-const COMBO_HEADER_MAX_WIDTH = 200;
-
-function measureComboLabelWidth(label: string): number {
-  const ctx = getMeasureTextContext2d();
-  if (!ctx) {
-    return label.length * COMBO_LABEL_CHAR_WIDTH;
-  }
-  try {
-    ctx.font = COMBO_LABEL_MEASURE_FONT;
-
-    return Math.ceil(ctx.measureText(label).width);
-  } catch {
-    return label.length * COMBO_LABEL_CHAR_WIDTH;
-  }
-}
-
-function truncateComboLabel(label: string, maxPx: number): string {
-  const ctx = getMeasureTextContext2d();
-  if (!ctx) {
-    const maxChars = Math.max(1, Math.floor(maxPx / COMBO_LABEL_CHAR_WIDTH));
-
-    return label.length > maxChars
-      ? `${label.slice(0, Math.max(1, maxChars - 1))}...`
-      : label;
-  }
-  ctx.font = COMBO_LABEL_MEASURE_FONT;
-  if (ctx.measureText(label).width <= maxPx) {
-    return label;
-  }
-  const ellipsisWidth = ctx.measureText('...').width;
-  const budget = maxPx - ellipsisWidth;
-  let lo = 0;
-  let hi = label.length - 1;
-  while (lo < hi) {
-    const mid = Math.ceil((lo + hi) / 2);
-    if (ctx.measureText(label.slice(0, mid)).width <= budget) {
-      lo = mid;
-    } else {
-      hi = mid - 1;
-    }
-  }
-
-  return lo === 0 ? '...' : `${label.slice(0, lo)}...`;
-}
 
 function parseVarName(cssVar: string): string {
   const inner = cssVar.slice(4, -1).trim();
@@ -340,7 +297,12 @@ export class GlossaryCombo extends RectCombo {
         16,
         headerW - COMBO_LABEL_PADDING_LEFT * 2
       );
-      const truncatedLabelText = truncateComboLabel(labelText, maxLabelWidth);
+      const truncatedLabelText = truncateToFit(
+        labelText,
+        maxLabelWidth,
+        COMBO_LABEL_MEASURE_FONT,
+        COMBO_LABEL_CHAR_WIDTH
+      );
 
       this.upsert(
         'combo-label',
@@ -497,9 +459,6 @@ export function buildDefaultRectNodeStyle(
   size: [number, number],
   pos?: NodeStylePosition
 ): Record<string, unknown> {
-  const labelPadH = NODE_LABEL_PADDING[1] + NODE_LABEL_PADDING[3];
-  const labelMaxWidthPx = Math.max(16, size[0] - labelPadH);
-
   return {
     size,
     fill: NODE_FILL_DEFAULT,
@@ -513,10 +472,6 @@ export function buildDefaultRectNodeStyle(
     labelFontWeight: NODE_LABEL_FONT_WEIGHT,
     labelPlacement: LABEL_PLACEMENT_CENTER,
     labelPadding: NODE_LABEL_PADDING,
-    labelMaxLines: 1,
-    labelMaxWidth: labelMaxWidthPx,
-    labelTextOverflow: '...',
-    labelWordWrap: true,
     shadowColor: getColor(NODE_SHADOW_COLOR, NODE_SHADOW_COLOR_FALLBACK),
     shadowBlur: NODE_SHADOW_BLUR,
     shadowOffsetY: NODE_SHADOW_OFFSET_Y,
@@ -529,18 +484,8 @@ const DATA_MODE_ENTITY_TYPE_CHAR_WIDTH_EST = 5.5;
 const DATA_MODE_ENTITY_BADGE_H_PAD = 4;
 const DATA_MODE_ENTITY_BADGE_V_PAD = 2;
 
-let measureTextContext: CanvasRenderingContext2D | null = null;
-
 function getMeasureTextContext2d(): CanvasRenderingContext2D | null {
-  if (typeof document === 'undefined') {
-    return null;
-  }
-  if (!measureTextContext) {
-    const canvas = document.createElement('canvas');
-    measureTextContext = canvas.getContext('2d');
-  }
-
-  return measureTextContext;
+  return getCanvasContext();
 }
 
 function measureCanvasTextWidthPx(
@@ -889,15 +834,15 @@ export function buildComboStyle(
   labelText: string,
   color: string
 ): Record<string, unknown> {
-  const textWidth = measureComboLabelWidth(labelText);
-  const minWidth = Math.min(
-    textWidth + COMBO_LABEL_PADDING_LEFT * 2,
-    COMBO_HEADER_MAX_WIDTH
+  const labelPx = measureTextWidth(
+    labelText,
+    COMBO_LABEL_MEASURE_FONT,
+    COMBO_LABEL_CHAR_WIDTH
   );
+  const minWidth = labelPx + COMBO_LABEL_PADDING_LEFT * 2;
 
   return {
     fill: COMBO_FILL_DEFAULT,
-    minWidth,
     stroke: color,
     lineWidth: COMBO_LINE_WIDTH,
     radius: COMBO_RADIUS,
@@ -916,5 +861,6 @@ export function buildComboStyle(
     labelOffsetX: COMBO_LABEL_PADDING_LEFT,
     labelOffsetY: COMBO_LABEL_PADDING_TOP_BOTTOM,
     labelTextAlign: LABEL_TEXT_ALIGN_LEFT,
+    minWidth,
   };
 }
