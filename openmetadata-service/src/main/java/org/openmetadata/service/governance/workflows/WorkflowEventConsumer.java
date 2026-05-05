@@ -215,7 +215,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       EntityReference entityReference;
       try {
         entityReference =
-            Entity.getEntityReferenceById(entityType, event.getEntityId(), Include.ALL);
+            Entity.getEntityReferenceById(entityType, event.getEntityId(), Include.NON_DELETED);
       } catch (EntityNotFoundException e) {
         // Entity was deleted between event creation and processing - skip workflow trigger
         LOG.debug(

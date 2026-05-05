@@ -79,7 +79,7 @@ class SetEntityAttributeImplTest {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<EntityFieldUtils> fieldUtilsMock = mockStatic(EntityFieldUtils.class)) {
       entityMock
-          .when(() -> Entity.getEntitiesByLinks(anyList(), eq("*"), eq(Include.ALL)))
+          .when(() -> Entity.getEntitiesByLinks(anyList(), eq("*"), eq(Include.NON_DELETED)))
           .thenReturn(Map.of("<#E::table::test.db.table>", table));
       entityMock.when(() -> Entity.getEntityRepository(anyString())).thenReturn(mockRepo);
 
@@ -126,7 +126,7 @@ class SetEntityAttributeImplTest {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<EntityFieldUtils> fieldUtilsMock = mockStatic(EntityFieldUtils.class)) {
       entityMock
-          .when(() -> Entity.getEntitiesByLinks(anyList(), eq("*"), eq(Include.ALL)))
+          .when(() -> Entity.getEntitiesByLinks(anyList(), eq("*"), eq(Include.NON_DELETED)))
           .thenReturn(Map.of("<#E::table::test.db.table>", table));
       entityMock.when(() -> Entity.getEntityRepository(anyString())).thenReturn(mockRepo);
 
