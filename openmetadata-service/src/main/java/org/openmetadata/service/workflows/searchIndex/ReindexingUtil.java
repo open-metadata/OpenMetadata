@@ -239,9 +239,14 @@ public class ReindexingUtil {
       // as the pre-selective-fields code path.
       return List.of("*");
     }
-    List<String> allFields =
-        new ArrayList<>(repo.getSearchIndexFactory().getReindexFieldsFor(entityType));
-    return new ArrayList<>(Entity.getOnlySupportedFields(entityType, allFields).getFieldList());
+    try {
+      List<String> allFields =
+          new ArrayList<>(repo.getSearchIndexFactory().getReindexFieldsFor(entityType));
+      return new ArrayList<>(Entity.getOnlySupportedFields(entityType, allFields).getFieldList());
+    } catch (Exception e) {
+      LOG.error("Failed while looking for indexing fields. Message : {}", e.getMessage());
+      return List.of("*");
+    }
   }
 
   public static String escapeDoubleQuotes(String str) {
