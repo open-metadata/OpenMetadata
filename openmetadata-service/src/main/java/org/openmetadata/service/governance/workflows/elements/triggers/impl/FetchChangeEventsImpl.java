@@ -15,7 +15,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.resilience4j.retry.Retry;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -47,6 +46,11 @@ public class FetchChangeEventsImpl implements JavaDelegate {
   static final int PROCESSED_FQNS_MAX_SIZE = 10_000;
   private static final String CARDINALITY_VARIABLE = "numberOfEntities";
 
+  // Variable name written to the Flowable execution scope when parallelism > 1.
+  // PeriodicBatchEntityTrigger reads this as the inputDataItem for its parallel MultiInstance
+  // CallActivity, giving each instance one sub-batch as its entityList.
+  public static final String BATCHES_VARIABLE = "batches";
+
   private static final Set<String> ENTITIES_NEEDING_KEYWORD_FQN =
       Set.of("testCase", "user", "team");
 
@@ -54,12 +58,24 @@ public class FetchChangeEventsImpl implements JavaDelegate {
   private Expression batchSizeExpr;
   private Expression workflowFqnExpr;
   private Expression searchFilterExpr;
+  // Injected by PeriodicBatchEntityTrigger via BPMN field extension. When > 1, the fetch
+  // retrieves parallelism * batchSize records and splits them into parallel sub-batches so
+  // the trigger can fire that many CallActivities concurrently. Absent expression means 1.
+  private Expression parallelismExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
     String entityType = (String) entityTypesExpr.getValue(execution);
     int batchSize = Integer.parseInt((String) batchSizeExpr.getValue(execution));
     String workflowFqn = (String) workflowFqnExpr.getValue(execution);
+    // When parallelism > 1 we fetch parallelism * batchSize records in one DB call and split
+    // them into sub-batches. All dedup and offset logic runs once (in this single-threaded step)
+    // so there are no cross-batch races on processedFqns or the offset cursor.
+    int parallelism =
+        parallelismExpr != null
+            ? Integer.parseInt((String) parallelismExpr.getValue(execution))
+            : 1;
+    int fetchSize = batchSize * parallelism;
 
     Retry retry = Retry.of("fetch-change-events", TASK_RETRY_CONFIG);
 
@@ -71,7 +87,7 @@ public class FetchChangeEventsImpl implements JavaDelegate {
                 () ->
                     Entity.getCollectionDAO()
                         .changeEventDAO()
-                        .listByEntityTypesWithOffset(List.of(entityType), currentOffset, batchSize))
+                        .listByEntityTypesWithOffset(List.of(entityType), currentOffset, fetchSize))
             .get();
 
     if (records.isEmpty() && currentOffset > 0) {
@@ -98,7 +114,7 @@ public class FetchChangeEventsImpl implements JavaDelegate {
                         Entity.getCollectionDAO()
                             .changeEventDAO()
                             .listByEntityTypesWithOffset(
-                                List.of(entityType), resumeOffset, batchSize))
+                                List.of(entityType), resumeOffset, fetchSize))
                 .get();
       }
     }
@@ -136,11 +152,9 @@ public class FetchChangeEventsImpl implements JavaDelegate {
     evictOverflow(processedFqns);
 
     List<String> entityList = new ArrayList<>();
-    Map<String, List<String>> entityToListMap = new HashMap<>();
     for (String fqn : fqnToMaxOffset.keySet()) {
       String entityLink = new MessageParser.EntityLink(entityType, fqn).getLinkString();
       entityList.add(entityLink);
-      entityToListMap.put(entityLink, List.of(entityLink));
     }
 
     execution.setVariable(PROCESSED_FQNS_VARIABLE, processedFqns);
@@ -159,7 +173,23 @@ public class FetchChangeEventsImpl implements JavaDelegate {
     execution.setVariable(CARDINALITY_VARIABLE, entityList.size());
     execution.setVariable(HAS_FINISHED_VARIABLE, records.isEmpty());
     execution.setVariable(ENTITY_LIST_VARIABLE, entityList);
-    execution.setVariable("entityToListMap", entityToListMap);
+
+    // When parallelism > 1, split into sub-batches so PeriodicBatchEntityTrigger can dispatch
+    // them as parallel MultiInstance CallActivities. The split happens here (single-threaded)
+    // so dedup and offset state never race with parallel workers.
+    if (parallelism > 1) {
+      execution.setVariable(BATCHES_VARIABLE, splitIntoBatches(entityList, batchSize));
+    }
+  }
+
+  // Visible for testing.
+  static List<List<String>> splitIntoBatches(List<String> entityList, int batchSize) {
+    List<List<String>> batches = new ArrayList<>();
+    for (int i = 0; i < entityList.size(); i += batchSize) {
+      batches.add(
+          new ArrayList<>(entityList.subList(i, Math.min(i + batchSize, entityList.size()))));
+    }
+    return batches;
   }
 
   private long resolveStartingOffset(

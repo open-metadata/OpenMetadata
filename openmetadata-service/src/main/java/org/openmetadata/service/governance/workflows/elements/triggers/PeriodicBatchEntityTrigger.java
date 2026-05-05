@@ -53,7 +53,14 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
   private final boolean singleExecutionMode;
   private final String resolvedWorkflowFqn;
   public static final String HAS_FINISHED_VARIABLE = "hasFinished";
-  private static final String NUMBER_OF_ENTITIES_VARIABLE = "numberOfEntities";
+
+  // Number of MainWorkflow CallActivities to run concurrently per fetch iteration.
+  // Governance workflows run during live traffic, so this is kept at 2 to avoid saturating
+  // the DB connection pool (each parallel batch uses ~2 connections: getEntitiesByLinks +
+  // bulkUpdate). To increase throughput further, raise this value alongside the DB pool size.
+  // This is intentionally a code-level constant rather than a config field to prevent
+  // accidental over-provisioning by end users.
+  static final int BATCH_PARALLELISM = 2;
 
   public PeriodicBatchEntityTrigger(
       String mainWorkflowName,
@@ -92,7 +99,8 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
       process.addFlowElement(endEvent);
 
       ServiceTask fetchTask =
-          getFetchChangeEventsTask(processId, entityType, triggerDefinition, resolvedWorkflowFqn);
+          getFetchChangeEventsTask(
+              processId, entityType, triggerDefinition, resolvedWorkflowFqn, singleExecutionMode);
       process.addFlowElement(fetchTask);
 
       ServiceTask commitTask = getCommitOffsetTask(processId, entityType, resolvedWorkflowFqn);
@@ -137,16 +145,6 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
 
   private CallActivity getWorkflowTriggerCallActivity(
       String triggerWorkflowId, String mainWorkflowName, boolean singleExecution) {
-    String cardinality =
-        singleExecution ? "1" : String.format("${%s}", NUMBER_OF_ENTITIES_VARIABLE);
-
-    MultiInstanceLoopCharacteristics multiInstance =
-        new MultiInstanceLoopCharacteristicsBuilder()
-            .loopCardinality(cardinality)
-            .inputDataItem(ENTITY_LIST_VARIABLE)
-            .elementVariable(RELATED_ENTITY_VARIABLE)
-            .build();
-
     CallActivity workflowTrigger =
         new CallActivityBuilder()
             .id(getFlowableElementId(triggerWorkflowId, "workflowTrigger"))
@@ -154,10 +152,10 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
             .inheritBusinessKey(true)
             .build();
 
-    IOParameter relatedEntityParameter = new IOParameter();
-    relatedEntityParameter.setSource(RELATED_ENTITY_VARIABLE);
-    relatedEntityParameter.setTarget(
-        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
+    IOParameter entityListParameter = new IOParameter();
+    entityListParameter.setSource(ENTITY_LIST_VARIABLE);
+    entityListParameter.setTarget(
+        getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE));
 
     IOParameter outputParameter = new IOParameter();
     outputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
@@ -174,10 +172,19 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
 
     List<IOParameter> inParameters;
     if (singleExecution) {
-      IOParameter entityListParameter = new IOParameter();
-      entityListParameter.setSource(ENTITY_LIST_VARIABLE);
-      entityListParameter.setTarget(
-          getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE));
+      IOParameter relatedEntityParameter = new IOParameter();
+      relatedEntityParameter.setSource(RELATED_ENTITY_VARIABLE);
+      relatedEntityParameter.setTarget(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
+
+      MultiInstanceLoopCharacteristics multiInstance =
+          new MultiInstanceLoopCharacteristicsBuilder()
+              .loopCardinality("1")
+              .inputDataItem(ENTITY_LIST_VARIABLE)
+              .elementVariable(RELATED_ENTITY_VARIABLE)
+              .build();
+      workflowTrigger.setLoopCharacteristics(multiInstance);
+
       inParameters =
           List.of(
               relatedEntityParameter,
@@ -185,22 +192,31 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
               updatedByParameter,
               scheduleRunIdParameter);
     } else {
-      IOParameter entityListParameter = new IOParameter();
-      entityListParameter.setSourceExpression(
-          String.format("${entityToListMap[%s]}", RELATED_ENTITY_VARIABLE));
-      entityListParameter.setTarget(
-          getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE));
-      inParameters =
-          List.of(
-              relatedEntityParameter,
-              entityListParameter,
-              updatedByParameter,
-              scheduleRunIdParameter);
+      // Parallel batch mode: FetchChangeEventsImpl produces a "batches" list of sub-lists,
+      // one per BATCH_PARALLELISM slot. MultiInstance iterates over that collection, running
+      // BATCH_PARALLELISM CallActivities concurrently. Each instance receives one sub-batch
+      // as its entityList via the elementVariable → IOParameter mapping below.
+      // All dedup and offset logic stays in the single-threaded fetch step, so there are
+      // no races on processedFqns or the offset cursor across parallel instances.
+      MultiInstanceLoopCharacteristics multiInstance =
+          new MultiInstanceLoopCharacteristicsBuilder()
+              .inputDataItem(FetchChangeEventsImpl.BATCHES_VARIABLE)
+              .elementVariable(ENTITY_LIST_VARIABLE)
+              .build();
+      // sequential=false means all instances run in parallel via Flowable's job executor,
+      // which already manages its own thread pool. We don't create additional thread pools
+      // here to avoid the thread-count explosion seen in early SearchIndexingApplication designs.
+      multiInstance.setSequential(false);
+      workflowTrigger.setLoopCharacteristics(multiInstance);
+      // Release the engine thread between parallel instances so other workflows and API
+      // requests are not blocked during the batch processing window.
+      workflowTrigger.setAsynchronousLeave(true);
+
+      inParameters = List.of(entityListParameter, updatedByParameter, scheduleRunIdParameter);
     }
 
     workflowTrigger.setInParameters(inParameters);
     workflowTrigger.setOutParameters(List.of(outputParameter));
-    workflowTrigger.setLoopCharacteristics(multiInstance);
 
     return workflowTrigger;
   }
@@ -209,7 +225,8 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
       String workflowTriggerId,
       String entityType,
       PeriodicBatchEntityTriggerDefinition triggerDefinition,
-      String workflowFqn) {
+      String workflowFqn,
+      boolean singleExecution) {
     FieldExtension entityTypesExpr =
         new FieldExtensionBuilder().fieldName("entityTypesExpr").fieldValue(entityType).build();
 
@@ -238,6 +255,18 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
       FieldExtension searchFilterExpr =
           new FieldExtensionBuilder().fieldName("searchFilterExpr").fieldValue(filtersJson).build();
       serviceTask.getFieldExtensions().add(searchFilterExpr);
+    }
+
+    if (!singleExecution) {
+      // Tell FetchChangeEventsImpl to fetch BATCH_PARALLELISM * batchSize records and split
+      // them into sub-batches. Not injected for singleExecution mode because that path uses
+      // per-entity MultiInstance (one entity per CallActivity) and has no concept of sub-batches.
+      FieldExtension parallelismExpr =
+          new FieldExtensionBuilder()
+              .fieldName("parallelismExpr")
+              .fieldValue(String.valueOf(BATCH_PARALLELISM))
+              .build();
+      serviceTask.getFieldExtensions().add(parallelismExpr);
     }
 
     serviceTask.setAsynchronousLeave(true);
