@@ -3669,7 +3669,7 @@ test.describe('Custom property name validation', () => {
     page,
   }) => {
     test.slow();
-    await page.fill(nameInput, "valid Name_-./%#@!,;=|'()[]{}");
+    await page.fill(nameInput, "valid Name.!@#%`*()_-=+{}[]~|;',.?/");
 
     await expect(page.locator(nameError)).not.toBeVisible();
   });

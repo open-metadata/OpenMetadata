@@ -226,4 +226,4 @@ export const CUSTOM_PROPERTY_INVALID_NAMES = {
   DISALLOWED_AMPERSAND: 'name&invalid',
 };
 
-export const NAME_SUFFIX = ".!@#%`&*()_-=+{}[]~|;'<>,.?/";
+export const NAME_SUFFIX = ".!@#%`*()_-=+{}[]~|;',.?/";
