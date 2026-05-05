@@ -145,3 +145,21 @@ CREATE INDEX idx_change_event_entity_type_offset ON change_event (entityType, `o
 -- VARCHAR(500) keeps the composite UNIQUE(id, extension) key within MySQL's 3072-byte limit
 -- (500 * 4 + 256 * 4 = 3024 bytes with utf8mb4).
 ALTER TABLE change_event_consumers MODIFY COLUMN id VARCHAR(500) NOT NULL;
+
+-- Add scheduleRunId column and index to workflow_instance_time_series
+ALTER TABLE workflow_instance_time_series
+    ADD COLUMN scheduleRunId VARCHAR(36)
+    GENERATED ALWAYS AS (json ->> '$.scheduleRunId');
+ALTER TABLE workflow_instance_time_series
+    ADD INDEX idx_workflow_instance_schedule_run_id (scheduleRunId);
+
+-- Add scheduleRunId column and index to workflow_instance_state_time_series
+ALTER TABLE workflow_instance_state_time_series
+    ADD COLUMN scheduleRunId VARCHAR(36)
+    GENERATED ALWAYS AS (json ->> '$.scheduleRunId');
+ALTER TABLE workflow_instance_state_time_series
+    ADD INDEX idx_workflow_instance_state_schedule_run_id (scheduleRunId);
+
+-- Update entityLink generated column to read from global_entityList[0] instead of global_relatedEntity
+ALTER TABLE workflow_instance_time_series
+MODIFY COLUMN entityLink TEXT GENERATED ALWAYS AS (json ->> '$.variables.global_entityList[0]');

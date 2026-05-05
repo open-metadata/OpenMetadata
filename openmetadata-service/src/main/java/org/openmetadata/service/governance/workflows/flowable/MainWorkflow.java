@@ -87,13 +87,27 @@ public class MainWorkflow {
     Map<String, List<EdgeDefinition>> incomingEdges = buildIncomingEdgesMap(edges);
     Set<String> splitNodes = detectSplitNodes(outgoingEdges, nodeInstanceMap);
     Set<String> joinNodes = detectJoinNodes(incomingEdges, splitNodes);
+    Map<String, String> splitToJoin = buildSplitToJoinMap(incomingEdges, splitNodes, joinNodes);
 
     // Add split gateways and their outgoing conditional flows
     for (String splitNode : splitNodes) {
       String gatewayId = splitGatewayId(splitNode);
-      InclusiveGateway gateway = new InclusiveGatewayBuilder().id(gatewayId).build();
+      String joinNode = splitToJoin.get(splitNode);
+      String defaultFlowId = joinNode != null ? gatewayId + "_default" : null;
+
+      InclusiveGatewayBuilder builder = new InclusiveGatewayBuilder().id(gatewayId);
+      if (defaultFlowId != null) {
+        builder = builder.defaultFlow(defaultFlowId);
+      }
+      InclusiveGateway gateway = builder.build();
       process.addFlowElement(gateway);
       process.addFlowElement(new SequenceFlow(splitNode, gatewayId));
+
+      if (defaultFlowId != null) {
+        SequenceFlow defaultFlow = new SequenceFlow(gatewayId, joinGatewayId(joinNode));
+        defaultFlow.setId(defaultFlowId);
+        process.addFlowElement(defaultFlow);
+      }
 
       for (EdgeDefinition edge : outgoingEdges.get(splitNode)) {
         String targetId =
@@ -245,6 +259,25 @@ public class MainWorkflow {
     return ancestors;
   }
 
+  private Map<String, String> buildSplitToJoinMap(
+      Map<String, List<EdgeDefinition>> incomingEdges,
+      Set<String> splitNodes,
+      Set<String> joinNodes) {
+    Map<String, String> result = new HashMap<>();
+    for (String joinNode : joinNodes) {
+      List<EdgeDefinition> incoming = incomingEdges.getOrDefault(joinNode, List.of());
+      if (incoming.isEmpty()) {
+        continue;
+      }
+      Set<String> ancestors =
+          findSplitAncestors(incoming.get(0).getFrom(), incomingEdges, splitNodes, new HashSet<>());
+      for (String split : ancestors) {
+        result.putIfAbsent(split, joinNode);
+      }
+    }
+    return result;
+  }
+
   /**
    * Generates the inclusive gateway condition expression for an outgoing edge from a split node.
    * Maps the edge condition value to the appropriate boolean flag variable set by the node impl.
@@ -263,7 +296,7 @@ public class MainWorkflow {
       flagVariable =
           getNamespacedVariableName(nodeName, DataCompletenessImpl.bandFlagVariable(edgeCondition));
     }
-    return String.format("${%s}", flagVariable);
+    return String.format("${%s == true}", flagVariable);
   }
 
   private static String splitGatewayId(String nodeName) {

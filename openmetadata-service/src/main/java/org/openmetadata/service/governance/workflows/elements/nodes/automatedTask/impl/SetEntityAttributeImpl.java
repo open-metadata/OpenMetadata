@@ -16,7 +16,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -38,30 +37,17 @@ public class SetEntityAttributeImpl implements JavaDelegate {
   private Expression fieldValueExpr;
   private Expression inputNamespaceMapExpr;
 
-  // Governance workflows run during live application traffic, unlike SearchIndexing which runs
-  // in maintenance windows. Cap at cores/2 so the deepCopy pool does not compete with
-  // Dropwizard's API serving threads and Flowable's job executor under peak load.
-  // Platform threads (not virtual): Jackson deepCopy + reflection is CPU-bound, so virtual
-  // threads would add scheduler overhead without enabling true parallelism.
   private static final int DEEP_COPY_PARALLELISM =
       Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
-  // Single long-lived pool shared across all task invocations. Allocating a new pool per
-  // workflow fire (as seen in early SearchIndexingApplication designs) causes thread leak and
-  // GC churn under concurrent workflow runs.
   private static final ExecutorService DEEP_COPY_EXECUTOR =
       Executors.newFixedThreadPool(
           DEEP_COPY_PARALLELISM,
           Thread.ofPlatform()
               .name("gov-set-attr-", 0)
-              .priority(Thread.MIN_PRIORITY)
+              .priority(Thread.NORM_PRIORITY - 2)
               .daemon(true)
               .factory());
-
-  // Defense-in-depth: even if the executor's queue grows, this semaphore ensures at most
-  // DEEP_COPY_PARALLELISM Jackson clones are in memory simultaneously. This bounds the
-  // per-batch heap spike to DEEP_COPY_PARALLELISM * avg_entity_size regardless of batch size.
-  private static final Semaphore IN_FLIGHT_SEMAPHORE = new Semaphore(DEEP_COPY_PARALLELISM);
 
   // Instance field so unit tests can inject a same-thread executor (Runnable::run) to keep
   // MockedStatic visible on the test thread. Production always uses the shared pool above.
@@ -160,14 +146,6 @@ public class SetEntityAttributeImpl implements JavaDelegate {
       BatchContext ctx,
       List<EntityInterface> modified,
       Map<String, EntityInterface> existingForModified) {
-    // IN_FLIGHT_SEMAPHORE bounds concurrent in-flight clones to DEEP_COPY_PARALLELISM even
-    // when the executor queue has more tasks pending, protecting heap at peak batch load.
-    try {
-      IN_FLIGHT_SEMAPHORE.acquire();
-    } catch (InterruptedException ie) {
-      Thread.currentThread().interrupt();
-      return;
-    }
     try {
       EntityInterface copy = JsonUtils.deepCopy(entity, (Class<EntityInterface>) entity.getClass());
       EntityFieldUtils.setEntityField(
@@ -186,8 +164,6 @@ public class SetEntityAttributeImpl implements JavaDelegate {
           ctx.fieldName(),
           entity.getFullyQualifiedName(),
           e.getMessage());
-    } finally {
-      IN_FLIGHT_SEMAPHORE.release();
     }
   }
 

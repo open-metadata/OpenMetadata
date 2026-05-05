@@ -100,37 +100,37 @@ class RunIngestionPipelineImplTest {
 
   @Test
   void testExecuteRetriesOnFailure() throws Exception {
-    when(mockRepository.get(any(), any(UUID.class), any())).thenReturn(testPipeline);
-    when(mockRepository.getOpenMetadataApplicationConfig()).thenReturn(null);
+    long previousInterval = RunIngestionPipelineImpl.runRetryIntervalMillis;
+    RunIngestionPipelineImpl.runRetryIntervalMillis = 10;
+    try {
+      when(mockRepository.get(any(), any(UUID.class), any())).thenReturn(testPipeline);
+      when(mockRepository.getOpenMetadataApplicationConfig()).thenReturn(null);
 
-    doThrow(new IngestionPipelineDeploymentException("First failure"))
-        .doThrow(new IngestionPipelineDeploymentException("Second failure"))
-        .doReturn(null)
-        .when(mockPipelineServiceClient)
-        .runPipeline(any(), any());
+      doThrow(new IngestionPipelineDeploymentException("First failure"))
+          .doThrow(new IngestionPipelineDeploymentException("Second failure"))
+          .doReturn(null)
+          .when(mockPipelineServiceClient)
+          .runPipeline(any(), any());
 
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
-        MockedConstruction<OpenMetadataConnectionBuilder> ignored =
-            mockConstruction(
-                OpenMetadataConnectionBuilder.class,
-                (mock, ctx) -> when(mock.build()).thenReturn(null))) {
-      entityMock
-          .when(() -> Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
-          .thenReturn(mockRepository);
-      entityMock
-          .when(() -> Entity.getEntity(any(EntityReference.class), anyString(), any()))
-          .thenReturn(null);
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+          MockedConstruction<OpenMetadataConnectionBuilder> ignored =
+              mockConstruction(
+                  OpenMetadataConnectionBuilder.class,
+                  (mock, ctx) -> when(mock.build()).thenReturn(null))) {
+        entityMock
+            .when(() -> Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
+            .thenReturn(mockRepository);
+        entityMock
+            .when(() -> Entity.getEntity(any(EntityReference.class), anyString(), any()))
+            .thenReturn(null);
 
-      long startTime = System.currentTimeMillis();
-      boolean result = runIngestionPipelineImpl.execute(testPipeline.getId(), false, 3600);
-      long duration = System.currentTimeMillis() - startTime;
+        boolean result = runIngestionPipelineImpl.execute(testPipeline.getId(), false, 3600);
 
-      assertTrue(result);
-      verify(mockPipelineServiceClient, times(3)).runPipeline(any(), any());
-
-      assertTrue(duration >= 30000, "Expected at least 30 seconds for 2 retry waits");
-      assertTrue(
-          duration < 35000, "Expected less than 35 seconds (allowing for execution overhead)");
+        assertTrue(result);
+        verify(mockPipelineServiceClient, times(3)).runPipeline(any(), any());
+      }
+    } finally {
+      RunIngestionPipelineImpl.runRetryIntervalMillis = previousInterval;
     }
   }
 

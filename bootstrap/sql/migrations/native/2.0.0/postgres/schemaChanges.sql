@@ -148,3 +148,22 @@ CREATE INDEX IF NOT EXISTS idx_change_event_entity_type_offset ON change_event (
 -- Widen change_event_consumers.id from VARCHAR(36) to VARCHAR(500) to support workflow consumer IDs
 -- which follow the pattern {workflowFQN}Trigger-{entityType} and can exceed 36 characters.
 ALTER TABLE change_event_consumers ALTER COLUMN id TYPE VARCHAR(500);
+
+-- Add scheduleRunId column and index to workflow_instance_time_series
+ALTER TABLE workflow_instance_state_time_series
+    ADD COLUMN scheduleRunId VARCHAR(36)
+    GENERATED ALWAYS AS ((json ->> 'scheduleRunId')) STORED;
+CREATE INDEX idx_workflow_instance_schedule_run_id
+    ON workflow_instance_time_series (scheduleRunId);
+
+-- Add scheduleRunId column and index to workflow_instance_state_time_series
+ALTER TABLE workflow_instance_state_time_series
+    ADD COLUMN scheduleRunId VARCHAR(36)
+    GENERATED ALWAYS AS ((json ->> 'scheduleRunId')) STORED;
+CREATE INDEX idx_workflow_instance_state_schedule_run_id
+    ON workflow_instance_state_time_series (scheduleRunId);
+
+-- Update entityLink generated column to read from global_entityList[0] instead of global_relatedEntity
+ALTER TABLE workflow_instance_time_series DROP COLUMN entityLink;
+ALTER TABLE workflow_instance_time_series
+ADD COLUMN entityLink TEXT GENERATED ALWAYS AS ((json -> 'variables' -> 'global_entityList' ->> 0)) STORED;

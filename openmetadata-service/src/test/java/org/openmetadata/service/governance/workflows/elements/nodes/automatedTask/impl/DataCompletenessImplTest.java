@@ -53,7 +53,7 @@ class DataCompletenessImplTest {
   }
 
   @Test
-  void testExecute_EmptyEntityList_ActivatesLowestBand() {
+  void testExecute_EmptyEntityList_SetsAllFlagsToFalse() {
     when(execution.getVariable("global_entityList")).thenReturn(List.of());
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
@@ -64,12 +64,13 @@ class DataCompletenessImplTest {
       impl.execute(execution);
     }
 
-    // Silver has the lowest minimumScore (0.5) — it should be activated as the fallback
-    verify(execution).setVariable(eq("process_has_silver_entities"), eq(true));
+    // All band flags must be false — the split gateway's defaultFlow handles the empty case
+    verify(execution).setVariable(eq("process_has_gold_entities"), eq(false));
+    verify(execution).setVariable(eq("process_has_silver_entities"), eq(false));
   }
 
   @Test
-  void testExecute_AllEntitiesFailProcessing_ActivatesLowestBand() {
+  void testExecute_AllEntitiesFailProcessing_SetsAllFlagsToFalse() {
     List<String> entityList = List.of("<#E::table::test.db.table>");
     when(execution.getVariable("global_entityList")).thenReturn(entityList);
 
@@ -82,8 +83,9 @@ class DataCompletenessImplTest {
       impl.execute(execution);
     }
 
-    // Silver has the lowest minimumScore (0.5) — it should be activated as the fallback
-    verify(execution).setVariable(eq("process_has_silver_entities"), eq(true));
+    // All band flags must be false — the split gateway's defaultFlow handles the empty case
+    verify(execution).setVariable(eq("process_has_gold_entities"), eq(false));
+    verify(execution).setVariable(eq("process_has_silver_entities"), eq(false));
   }
 
   private void injectExpression(Object target, String fieldName, Expression value)

@@ -27,6 +27,7 @@ import org.flowable.bpmn.model.Process;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
@@ -51,7 +52,7 @@ class TriggerFactoryTest {
 
   @Test
   void testPeriodicBatchTrigger_CreatesCorrectTriggerType() {
-    WorkflowDefinition workflow = createWorkflow();
+    WorkflowDefinition workflow = createWorkflowWithBatchSink(true);
 
     TriggerInterface trigger = TriggerFactory.createTrigger(workflow);
 
@@ -60,8 +61,93 @@ class TriggerFactoryTest {
   }
 
   @Test
-  void testPeriodicBatchTrigger_MultiInstanceLoop_WhenNoSinkTask() {
-    WorkflowDefinition workflow = createWorkflow();
+  void testPeriodicBatchTrigger_WithBatchModeNode_UsesSingleExecution() {
+    WorkflowDefinition workflow = createWorkflowWithBatchSink(true);
+
+    TriggerInterface trigger = TriggerFactory.createTrigger(workflow);
+
+    assertNotNull(trigger);
+    assertInstanceOf(PeriodicBatchEntityTrigger.class, trigger);
+
+    BpmnModel model = new BpmnModel();
+    trigger.addToWorkflow(model);
+
+    CallActivity callActivity = findCallActivity(model);
+    assertNotNull(callActivity, "CallActivity should exist");
+
+    MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
+    assertNotNull(loopChars, "Loop characteristics should exist");
+    assertEquals("1", loopChars.getLoopCardinality(), "Cardinality should be 1 for batch mode");
+  }
+
+  @Test
+  void testPeriodicBatchTrigger_WithSinkTaskBatchModeDisabled_StillUsesSingleExecution() {
+    WorkflowDefinition workflow = createWorkflowWithBatchSink(false);
+
+    TriggerInterface trigger = TriggerFactory.createTrigger(workflow);
+
+    assertNotNull(trigger);
+    assertInstanceOf(PeriodicBatchEntityTrigger.class, trigger);
+
+    BpmnModel model = new BpmnModel();
+    trigger.addToWorkflow(model);
+
+    CallActivity callActivity = findCallActivity(model);
+    assertNotNull(callActivity, "CallActivity should exist");
+
+    MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
+    assertNotNull(loopChars, "Loop characteristics should exist");
+    assertEquals(
+        "1",
+        loopChars.getLoopCardinality(),
+        "Cardinality should be 1 for sink task regardless of batchMode config");
+  }
+
+  @Test
+  void testPeriodicBatchTrigger_WithNoSinkNodes_UsesMultipleExecutions() {
+    WorkflowDefinition workflow = createWorkflowWithoutSink();
+
+    TriggerInterface trigger = TriggerFactory.createTrigger(workflow);
+
+    assertNotNull(trigger);
+
+    BpmnModel model = new BpmnModel();
+    trigger.addToWorkflow(model);
+
+    CallActivity callActivity = findCallActivity(model);
+    assertNotNull(callActivity, "CallActivity should exist");
+
+    MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
+    assertEquals(
+        "${numberOfEntities}",
+        loopChars.getLoopCardinality(),
+        "Cardinality should be ${numberOfEntities} when no sink nodes");
+  }
+
+  @Test
+  void testPeriodicBatchTrigger_WithNullNodes_UsesMultipleExecutions() {
+    WorkflowDefinition workflow = createWorkflowWithNullNodes();
+
+    TriggerInterface trigger = TriggerFactory.createTrigger(workflow);
+
+    assertNotNull(trigger);
+
+    BpmnModel model = new BpmnModel();
+    trigger.addToWorkflow(model);
+
+    CallActivity callActivity = findCallActivity(model);
+    assertNotNull(callActivity, "CallActivity should exist");
+
+    MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
+    assertEquals(
+        "${numberOfEntities}",
+        loopChars.getLoopCardinality(),
+        "Cardinality should be ${numberOfEntities} when nodes is null");
+  }
+
+  @Test
+  void testPeriodicBatchTrigger_WithMultipleSinkNodes_OneBatchMode_UsesSingleExecution() {
+    WorkflowDefinition workflow = createWorkflowWithMultipleSinks();
 
     TriggerInterface trigger = TriggerFactory.createTrigger(workflow);
 
@@ -69,14 +155,30 @@ class TriggerFactoryTest {
     trigger.addToWorkflow(model);
 
     CallActivity callActivity = findCallActivity(model);
-    assertNotNull(callActivity, "CallActivity should exist");
-    MultiInstanceLoopCharacteristics loopChars =
-        (MultiInstanceLoopCharacteristics) callActivity.getLoopCharacteristics();
-    assertNotNull(loopChars, "CallActivity should have multi-instance loop when no SinkTask");
+    MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
+
     assertEquals(
-        "${numberOfEntities}",
+        "1",
         loopChars.getLoopCardinality(),
-        "Cardinality should be ${numberOfEntities} when no SinkTask batch mode");
+        "Cardinality should be 1 when any batch-capable node type is present");
+  }
+
+  @Test
+  void testPeriodicBatchTrigger_WithSinkBatchModeNotSet_DefaultsToSingleExecution() {
+    WorkflowDefinition workflow = createWorkflowWithSinkBatchModeNotSet();
+
+    TriggerInterface trigger = TriggerFactory.createTrigger(workflow);
+
+    BpmnModel model = new BpmnModel();
+    trigger.addToWorkflow(model);
+
+    CallActivity callActivity = findCallActivity(model);
+    MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
+
+    assertEquals(
+        "1",
+        loopChars.getLoopCardinality(),
+        "Cardinality should be 1 when a batch-capable node type is present");
   }
 
   private CallActivity findCallActivity(BpmnModel model) {
@@ -90,7 +192,7 @@ class TriggerFactoryTest {
     return null;
   }
 
-  private WorkflowDefinition createWorkflow() {
+  private WorkflowDefinition createWorkflowWithBatchSink(boolean batchMode) {
     WorkflowDefinition workflow = new WorkflowDefinition();
     workflow.setName("TestBatchWorkflow");
     workflow.setFullyQualifiedName("TestBatchWorkflow");
@@ -98,6 +200,61 @@ class TriggerFactoryTest {
 
     List<WorkflowNodeDefinitionInterface> nodes = new ArrayList<>();
     nodes.add(createStartEvent());
+    nodes.add(createSinkTask("gitSink", batchMode));
+    nodes.add(createEndEvent());
+    workflow.setNodes(nodes);
+
+    return workflow;
+  }
+
+  private WorkflowDefinition createWorkflowWithoutSink() {
+    WorkflowDefinition workflow = new WorkflowDefinition();
+    workflow.setName("TestNoSinkWorkflow");
+    workflow.setFullyQualifiedName("TestNoSinkWorkflow");
+    workflow.setTrigger(createPeriodicBatchTrigger());
+
+    List<WorkflowNodeDefinitionInterface> nodes = new ArrayList<>();
+    nodes.add(createStartEvent());
+    nodes.add(createEndEvent());
+    workflow.setNodes(nodes);
+
+    return workflow;
+  }
+
+  private WorkflowDefinition createWorkflowWithNullNodes() {
+    WorkflowDefinition workflow = new WorkflowDefinition();
+    workflow.setName("TestNullNodesWorkflow");
+    workflow.setFullyQualifiedName("TestNullNodesWorkflow");
+    workflow.setTrigger(createPeriodicBatchTrigger());
+    workflow.setNodes(null);
+    return workflow;
+  }
+
+  private WorkflowDefinition createWorkflowWithMultipleSinks() {
+    WorkflowDefinition workflow = new WorkflowDefinition();
+    workflow.setName("TestMultiSinkWorkflow");
+    workflow.setFullyQualifiedName("TestMultiSinkWorkflow");
+    workflow.setTrigger(createPeriodicBatchTrigger());
+
+    List<WorkflowNodeDefinitionInterface> nodes = new ArrayList<>();
+    nodes.add(createStartEvent());
+    nodes.add(createSinkTask("webhookSink", false));
+    nodes.add(createSinkTask("gitSink", true));
+    nodes.add(createEndEvent());
+    workflow.setNodes(nodes);
+
+    return workflow;
+  }
+
+  private WorkflowDefinition createWorkflowWithSinkBatchModeNotSet() {
+    WorkflowDefinition workflow = new WorkflowDefinition();
+    workflow.setName("TestDefaultBatchModeWorkflow");
+    workflow.setFullyQualifiedName("TestDefaultBatchModeWorkflow");
+    workflow.setTrigger(createPeriodicBatchTrigger());
+
+    List<WorkflowNodeDefinitionInterface> nodes = new ArrayList<>();
+    nodes.add(createStartEvent());
+    nodes.add(createSinkTaskWithoutBatchMode("gitSink"));
     nodes.add(createEndEvent());
     workflow.setNodes(nodes);
 
@@ -132,5 +289,50 @@ class TriggerFactoryTest {
     EndEventDefinition endEvent = new EndEventDefinition();
     endEvent.setName("end");
     return endEvent;
+  }
+
+  private SinkTaskDefinition createSinkTask(String name, boolean batchMode) {
+    String sinkTaskJson =
+        """
+        {
+          "name": "%s",
+          "type": "automatedTask",
+          "subType": "sinkTask",
+          "config": {
+            "sinkType": "git",
+            "syncMode": "overwrite",
+            "outputFormat": "yaml",
+            "batchMode": %s,
+            "timeoutSeconds": 300,
+            "sinkConfig": {
+              "repositoryUrl": "https://github.com/org/repo.git"
+            }
+          }
+        }
+        """
+            .formatted(name, batchMode);
+    return JsonUtils.readValue(sinkTaskJson, SinkTaskDefinition.class);
+  }
+
+  private SinkTaskDefinition createSinkTaskWithoutBatchMode(String name) {
+    String sinkTaskJson =
+        """
+        {
+          "name": "%s",
+          "type": "automatedTask",
+          "subType": "sinkTask",
+          "config": {
+            "sinkType": "git",
+            "syncMode": "overwrite",
+            "outputFormat": "yaml",
+            "timeoutSeconds": 300,
+            "sinkConfig": {
+              "repositoryUrl": "https://github.com/org/repo.git"
+            }
+          }
+        }
+        """
+            .formatted(name);
+    return JsonUtils.readValue(sinkTaskJson, SinkTaskDefinition.class);
   }
 }

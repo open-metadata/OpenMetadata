@@ -66,9 +66,12 @@ class MainWorkflowInclusiveGatewayTest {
             .toList();
 
     assertEquals(2, conditions.size());
-    assertTrue(conditions.contains("${check_hasTrueEntities}"), "True branch uses hasTrueEntities");
     assertTrue(
-        conditions.contains("${check_hasFalseEntities}"), "False branch uses hasFalseEntities");
+        conditions.contains("${check_hasTrueEntities == true}"),
+        "True branch uses hasTrueEntities");
+    assertTrue(
+        conditions.contains("${check_hasFalseEntities == true}"),
+        "False branch uses hasFalseEntities");
   }
 
   @Test
@@ -86,8 +89,12 @@ class MainWorkflowInclusiveGatewayTest {
     MainWorkflow mainWorkflow = new MainWorkflow(workflow);
     Process process = mainWorkflow.getModel().getProcesses().get(0);
 
+    FlowElement splitElement = process.getFlowElement("check_inclusiveSplit");
+    assertNotNull(splitElement, "Split gateway should be present");
+    InclusiveGateway splitGateway = (InclusiveGateway) splitElement;
     assertNotNull(
-        process.getFlowElement("check_inclusiveSplit"), "Split gateway should be present");
+        splitGateway.getDefaultFlow(),
+        "Split gateway must have a defaultFlow for the empty-condition case");
 
     FlowElement joinGateway = process.getFlowElement("end_inclusiveJoin");
     assertNotNull(joinGateway, "Join gateway should exist before end");
@@ -99,7 +106,11 @@ class MainWorkflowInclusiveGatewayTest {
             .map(e -> (SequenceFlow) e)
             .filter(f -> "end_inclusiveJoin".equals(f.getTargetRef()))
             .count();
-    assertEquals(2, flowsToJoin, "Both conditional branches should flow into the join gateway");
+    // 2 conditional branches + 1 defaultFlow (skip-path when all conditions false)
+    assertEquals(
+        3,
+        flowsToJoin,
+        "Both conditional branches and defaultFlow should flow into the join gateway");
 
     long flowsFromJoin =
         process.getFlowElements().stream()
@@ -177,8 +188,10 @@ class MainWorkflowInclusiveGatewayTest {
             .map(SequenceFlow::getConditionExpression)
             .toList();
 
-    assertTrue(conditions.contains("${dataQuality_has_gold_entities}"), "Gold band condition");
-    assertTrue(conditions.contains("${dataQuality_has_silver_entities}"), "Silver band condition");
+    assertTrue(
+        conditions.contains("${dataQuality_has_gold_entities == true}"), "Gold band condition");
+    assertTrue(
+        conditions.contains("${dataQuality_has_silver_entities == true}"), "Silver band condition");
   }
 
   // --- Helpers ---
