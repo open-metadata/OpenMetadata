@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -61,6 +62,10 @@ public class SetEntityAttributeImpl implements JavaDelegate {
   // DEEP_COPY_PARALLELISM Jackson clones are in memory simultaneously. This bounds the
   // per-batch heap spike to DEEP_COPY_PARALLELISM * avg_entity_size regardless of batch size.
   private static final Semaphore IN_FLIGHT_SEMAPHORE = new Semaphore(DEEP_COPY_PARALLELISM);
+
+  // Instance field so unit tests can inject a same-thread executor (Runnable::run) to keep
+  // MockedStatic visible on the test thread. Production always uses the shared pool above.
+  private Executor taskExecutor = DEEP_COPY_EXECUTOR;
 
   private record BatchContext(
       String entityType,
@@ -136,8 +141,7 @@ public class SetEntityAttributeImpl implements JavaDelegate {
     for (EntityInterface entity : existingByFqn.values()) {
       futures.add(
           CompletableFuture.runAsync(
-              () -> applyFieldToEntity(entity, ctx, modified, existingForModified),
-              DEEP_COPY_EXECUTOR));
+              () -> applyFieldToEntity(entity, ctx, modified, existingForModified), taskExecutor));
     }
 
     // Natural barrier: wait for all per-entity clones and field mutations before bulk writing.
