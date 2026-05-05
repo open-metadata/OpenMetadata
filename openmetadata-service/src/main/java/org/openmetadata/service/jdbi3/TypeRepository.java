@@ -96,13 +96,6 @@ public class TypeRepository extends EntityRepository<Type> {
   @Override
   public void prepare(Type type, boolean update) {
     TypeRegistry.instance().validateCustomProperties(type);
-    // PATCH carries an opaque JsonPatch; @Valid can't reach into it. Run it ourselves.
-    for (CustomProperty property : listOrEmpty(type.getCustomProperties())) {
-      String violations = ValidatorUtil.validate(property);
-      if (violations != null) {
-        throw new IllegalArgumentException(violations);
-      }
-    }
   }
 
   @Override
@@ -352,6 +345,13 @@ public class TypeRepository extends EntityRepository<Type> {
       List<CustomProperty> deleted = new ArrayList<>();
       recordListChange(
           "customProperties", origProperties, updatedProperties, added, deleted, customFieldMatch);
+      // Legacy names from existing data are not re-validated; only newly added ones.
+      for (CustomProperty property : added) {
+        String violations = ValidatorUtil.validate(property);
+        if (violations != null) {
+          throw new IllegalArgumentException(violations);
+        }
+      }
       for (CustomProperty property : added) {
         storeCustomProperty(property);
       }
