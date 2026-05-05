@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
+import { Include } from '../../../generated/type/include';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { getContainerChildrenByName } from '../../../rest/storageAPI';
@@ -64,6 +67,8 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
   const [containerChildrenData, setContainerChildrenData] = useState<
     ContainerChildRow[]
   >([]);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
 
   const columns: ColumnsType<ContainerChildRow> = useMemo(
     () => [
@@ -103,9 +108,12 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
       latestFetchFqn.current = fetchFqn;
       setIsChildrenLoading(true);
       try {
+        const trimmedQuery = searchValue.trim();
         const { data, paging } = await getContainerChildrenByName(fetchFqn, {
           limit: pageSize,
           offset: pagingOffset ?? 0,
+          include: showDeleted ? Include.Deleted : Include.NonDeleted,
+          ...(trimmedQuery ? { q: trimmedQuery } : {}),
         });
         if (latestFetchFqn.current !== fetchFqn) {
           return;
@@ -123,13 +131,36 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
         }
       }
     },
-    [decodedContainerName, pageSize, handlePagingChange, onChildrenCountChange]
+    [
+      decodedContainerName,
+      pageSize,
+      handlePagingChange,
+      onChildrenCountChange,
+      showDeleted,
+      searchValue,
+    ]
   );
 
   const handleChildrenPageChange = (data: PagingHandlerParams) => {
     handlePageChange(data.currentPage);
     fetchContainerChildren((data.currentPage - 1) * pageSize);
   };
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchValue(value);
+      handlePageChange(INITIAL_PAGING_VALUE);
+    },
+    [handlePageChange]
+  );
+
+  const handleShowDeletedChange = useCallback(
+    (checked: boolean) => {
+      setShowDeleted(checked);
+      handlePageChange(INITIAL_PAGING_VALUE);
+    },
+    [handlePageChange]
+  );
 
   useEffect(() => {
     if (isReadOnly) {
@@ -151,6 +182,18 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
     onChildrenCountChange?.(children.length);
   }, [isReadOnly, container?.children, onChildrenCountChange]);
 
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('label.search-for-type', {
+        type: t('label.container-plural'),
+      }),
+      typingInterval: 500,
+      searchValue,
+      onSearch: handleSearchChange,
+    }),
+    [handleSearchChange, searchValue, t]
+  );
+
   return (
     <Table
       columns={columns}
@@ -166,12 +209,27 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
       }}
       data-testid="container-list-table"
       dataSource={containerChildrenData}
+      extraTableFilters={
+        !isReadOnly && (
+          <span>
+            <Switch
+              checked={showDeleted}
+              data-testid="show-deleted"
+              onClick={handleShowDeletedChange}
+            />
+            <Typography.Text className="m-l-xs">
+              {t('label.deleted')}
+            </Typography.Text>
+          </span>
+        )
+      }
       loading={isChildrenLoading}
       locale={{
         emptyText: <ErrorPlaceHolder className="p-y-md" />,
       }}
       pagination={false}
       rowKey="id"
+      searchProps={isReadOnly ? undefined : searchProps}
       size="small"
     />
   );

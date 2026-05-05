@@ -201,7 +201,7 @@ class ContainerDetailsClassBase {
       },
       {
         fullyQualifiedName: DetailPageWidgetKeys.CONTAINER_CHILDREN,
-        name: i18n.t('label.children'),
+        name: i18n.t('label.container-plural'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },
