@@ -2,6 +2,8 @@ package org.openmetadata.service.governance.workflows;
 
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -59,7 +61,7 @@ public class WorkflowInstanceListener implements JavaDelegate {
           String businessKey = execution.getProcessInstanceBusinessKey();
           if (businessKey != null && !businessKey.isEmpty()) {
             UUID workflowInstanceId = UUID.fromString(businessKey);
-            java.util.Map<String, Object> errorVariables = new java.util.HashMap<>();
+            Map<String, Object> errorVariables = new HashMap<>();
             errorVariables.put("status", "FAILURE");
             errorVariables.put("error", exc.getMessage());
             errorVariables.put("errorClass", exc.getClass().getSimpleName());
@@ -98,16 +100,12 @@ public class WorkflowInstanceListener implements JavaDelegate {
     String processKey = getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
     String workflowDefinitionName = getMainWorkflowDefinitionNameFromTrigger(processKey);
     String existingKey = execution.getProcessInstanceBusinessKey();
-    if (existingKey != null && !existingKey.isEmpty()) {
-      LOG.debug(
-          "[WORKFLOW_INSTANCE_SKIP] ProcessInstance: {} - business key already set by trigger, skipping",
-          execution.getProcessInstanceId());
+    UUID workflowInstanceId =
+        resolveWorkflowInstanceId(execution, workflowInstanceRepository, existingKey);
+    if (workflowInstanceId == null) {
       return;
     }
-    updateBusinessKey(execution.getProcessInstanceId());
-    UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
     UUID scheduleRunId = WorkflowScheduleRunIdReader.readFrom(execution);
-
     workflowInstanceRepository.addNewWorkflowInstance(
         workflowDefinitionName,
         workflowInstanceId,
@@ -119,6 +117,25 @@ public class WorkflowInstanceListener implements JavaDelegate {
         workflowDefinitionName,
         workflowInstanceId,
         execution.getProcessInstanceId());
+  }
+
+  private UUID resolveWorkflowInstanceId(
+      DelegateExecution execution,
+      WorkflowInstanceRepository workflowInstanceRepository,
+      String existingKey) {
+    if (existingKey == null || existingKey.isEmpty()) {
+      updateBusinessKey(execution.getProcessInstanceId());
+      return UUID.fromString(execution.getProcessInstanceBusinessKey());
+    }
+    UUID existingId = UUID.fromString(existingKey);
+    if (workflowInstanceRepository.getById(existingId) != null) {
+      LOG.debug(
+          "[WORKFLOW_INSTANCE_SKIP] ProcessInstance: {} - record already exists for id {}, skipping",
+          execution.getProcessInstanceId(),
+          existingId);
+      return null;
+    }
+    return existingId;
   }
 
   private void updateWorkflowInstance(
@@ -135,7 +152,7 @@ public class WorkflowInstanceListener implements JavaDelegate {
     UUID workflowInstanceId = UUID.fromString(businessKeyForUpdate);
 
     // Capture all variables including any failure indicators
-    java.util.Map<String, Object> variables = new java.util.HashMap<>(execution.getVariables());
+    Map<String, Object> variables = new HashMap<>(execution.getVariables());
 
     // Determine final status based on what happened during execution
     String status = "FINISHED"; // Default

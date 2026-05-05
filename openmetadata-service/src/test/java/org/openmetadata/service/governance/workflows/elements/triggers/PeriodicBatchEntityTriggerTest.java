@@ -30,6 +30,7 @@ import org.flowable.bpmn.model.StartEvent;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchChangeEventsImpl;
 
 class PeriodicBatchEntityTriggerTest {
 
@@ -79,7 +80,7 @@ class PeriodicBatchEntityTriggerTest {
   }
 
   @Test
-  void testMultipleExecutionMode_CardinalityIsVariable() {
+  void testMultipleExecutionMode_IteratesOverBatches() {
     PeriodicBatchEntityTriggerDefinition triggerDef = createTriggerDefinition();
 
     PeriodicBatchEntityTrigger trigger =
@@ -93,11 +94,15 @@ class PeriodicBatchEntityTriggerTest {
     assertNotNull(callActivity, "CallActivity should exist");
 
     MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
+    assertNotNull(loopChars, "Loop characteristics should be set");
 
     assertEquals(
-        "${numberOfEntities}",
-        loopChars.getLoopCardinality(),
-        "In multiple execution mode, cardinality should be ${numberOfEntities}");
+        FetchChangeEventsImpl.BATCHES_VARIABLE,
+        loopChars.getInputDataItem(),
+        "In multiple execution mode, multiInstance should iterate over the batches collection");
+    assertFalse(
+        loopChars.isSequential(),
+        "In multiple execution mode, parallel execution should be enabled");
   }
 
   @Test

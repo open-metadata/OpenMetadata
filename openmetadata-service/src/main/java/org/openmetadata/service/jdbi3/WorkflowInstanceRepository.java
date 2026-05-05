@@ -12,12 +12,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.governance.WorkflowInstanceResource;
 
+@Slf4j
 public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<WorkflowInstance> {
   public WorkflowInstanceRepository() {
     super(
@@ -62,6 +64,13 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
       UUID workflowInstanceId, Long endedAt, Map<String, Object> variables) {
     WorkflowInstance workflowInstance =
         JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
+
+    if (workflowInstance == null) {
+      LOG.warn(
+          "[WORKFLOW_INSTANCE_ERROR] WorkflowInstance record not found for id: {}. Skipping update.",
+          workflowInstanceId);
+      return;
+    }
 
     workflowInstance.setEndedAt(endedAt);
     workflowInstance.setEntityList(extractFinalEntityList(variables));
