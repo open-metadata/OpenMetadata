@@ -1390,6 +1390,24 @@ public class S3LogStorage implements LogStorageInterface {
             pipelineFQN,
             runId);
       }
+    } else {
+      // Append the in-memory pendingFlush tail even when we have a partial file.
+      // Lines may have been appended after the last flush (up to 2 minutes' worth).
+      String streamKeyForPending = pipelineFQN + "/" + runId;
+      List<String> pendingSnapshot = pendingFlush.get(streamKeyForPending);
+      if (pendingSnapshot != null) {
+        ReentrantLock pendingLock = streamLocks.get(streamKeyForPending);
+        if (pendingLock != null) {
+          pendingLock.lock();
+          try {
+            allLines.addAll(new ArrayList<>(pendingSnapshot));
+          } finally {
+            pendingLock.unlock();
+          }
+        } else {
+          allLines.addAll(new ArrayList<>(pendingSnapshot));
+        }
+      }
     }
 
     // Apply pagination if needed

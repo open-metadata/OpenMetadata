@@ -398,7 +398,8 @@ public class S3LogStorageTest {
 
     assertEquals("Processed 2", result.get("logs"));
     assertEquals("2", result.get("after"));
-    assertEquals(3L, result.get("total"));
+    // Now includes pending lines (2 from memory): 3 from S3 partial + 2 pending = 5 total
+    assertEquals(5L, result.get("total"));
     assertEquals(true, result.get("streaming"));
   }
 
@@ -413,6 +414,7 @@ public class S3LogStorageTest {
 
     assertEquals("Line 1\nLine 2", result.get("logs"));
     assertEquals("2", result.get("after"));
+    // recentLogsCache already includes the pendingFlush lines, so total is 3
     assertEquals(3L, result.get("total"));
     assertEquals(true, result.get("streaming"));
   }
@@ -880,6 +882,36 @@ public class S3LogStorageTest {
             argThat((DeleteObjectRequest req) -> req != null && partialKey.equals(req.key())));
 
     assertNull(active.get(streamKey));
+  }
+
+  @Test
+  void testGetLogsMidRunIncludesPendingFlushTail() throws Exception {
+    String partialKey =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + testRunId
+            + "/partial.txt";
+
+    GetObjectResponse getResponse = GetObjectResponse.builder().build();
+    when(mockS3Client.getObject(
+            argThat((GetObjectRequest req) -> req != null && partialKey.equals(req.key()))))
+        .thenReturn(
+            new ResponseInputStream<>(
+                getResponse,
+                AbortableInputStream.create(
+                    new ByteArrayInputStream(
+                        "flushed-1\nflushed-2\n".getBytes(StandardCharsets.UTF_8)))));
+
+    mockAsyncPutObject();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "tail-1\ntail-2\n");
+
+    Map<String, Object> result = s3LogStorage.getLogs(testPipelineFQN, testRunId, null, 100);
+    String body = (String) result.get("logs");
+    assertTrue(body.contains("flushed-1"), "should include flushed lines");
+    assertTrue(body.contains("tail-1"), "should include in-memory tail line 1");
+    assertTrue(body.contains("tail-2"), "should include in-memory tail line 2");
   }
 
   private static Object getPrivateField(Object target, String name) throws Exception {
