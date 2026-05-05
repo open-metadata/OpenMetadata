@@ -1005,7 +1005,7 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'name',
       key: 'name',
       width: 200,
-      render: (name: string, record: Record<string, any>) => (
+      render: (name: string, record: Record<string, unknown>) => (
         <div className="d-inline-flex" style={{ maxWidth: '68%' }}>
           <span className="break-word">{record.displayName || name}</span>
         </div>
@@ -1016,7 +1016,7 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'dataType',
       key: 'dataType',
       width: 150,
-      render: (dataType: string, record: Record<string, any>) => (
+      render: (dataType: string, record: Record<string, unknown>) => (
         <Typography as="span" className="tw:text-xs">
           {record.dataTypeDisplay || dataType || 'Unknown'}
         </Typography>

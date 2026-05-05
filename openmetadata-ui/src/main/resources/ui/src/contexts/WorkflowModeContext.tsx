@@ -20,7 +20,7 @@ import {
 interface WorkflowModeContextProps {
   children: ReactNode;
   workflowFqn?: string;
-  workflowDefinition?: any;
+  workflowDefinition?: Record<string, unknown>;
 }
 
 const WorkflowModeContext = createContext<UseWorkflowModeReturn | undefined>(

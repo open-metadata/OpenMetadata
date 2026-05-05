@@ -264,7 +264,7 @@ export const getJsonTreePropertyFromQueryFilter = (
   fields?: Fields
 ) => {
   const convertedObj = queryFilter.reduce(
-    (acc, curr: QueryFieldInterface): Record<string, any> => {
+    (acc, curr: QueryFieldInterface): Record<string, unknown> => {
       if (!isUndefined(curr.term?.deleted)) {
         return {
           ...acc,
@@ -385,7 +385,7 @@ export const getJsonTreePropertyFromQueryFilter = (
 
       return acc;
     },
-    {} as Record<string, any>
+    {} as Record<string, unknown>
   );
 
   return convertedObj;

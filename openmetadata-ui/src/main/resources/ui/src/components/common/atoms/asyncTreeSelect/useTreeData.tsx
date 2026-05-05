@@ -39,6 +39,29 @@ interface UseTreeDataReturn<T> {
   hasCache: (parentId: string) => boolean;
 }
 
+function insertChildrenIntoTree<T>(
+  nodes: TreeNode<T>[],
+  parentId: string,
+  children: TreeNode<T>[]
+): TreeNode<T>[] {
+  return nodes.map((node) => {
+    if (node.id === parentId) {
+      return {
+        ...node,
+        children: children,
+      };
+    }
+    if (node.children) {
+      return {
+        ...node,
+        children: insertChildrenIntoTree(node.children, parentId, children),
+      };
+    }
+
+    return node;
+  });
+}
+
 export const useTreeData = <T = unknown,>({
   fetchData,
   searchTerm = '',
@@ -203,26 +226,3 @@ export const useTreeData = <T = unknown,>({
     hasCache,
   };
 };
-
-function insertChildrenIntoTree<T>(
-  nodes: TreeNode<T>[],
-  parentId: string,
-  children: TreeNode<T>[]
-): TreeNode<T>[] {
-  return nodes.map((node) => {
-    if (node.id === parentId) {
-      return {
-        ...node,
-        children: children,
-      };
-    }
-    if (node.children) {
-      return {
-        ...node,
-        children: insertChildrenIntoTree(node.children, parentId, children),
-      };
-    }
-
-    return node;
-  });
-}

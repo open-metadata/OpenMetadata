@@ -26,7 +26,7 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
 
-const TeamsSelectableNew = forwardRef<any, TeamsSelectableProps>(
+const TeamsSelectableNew = forwardRef<HTMLDivElement, TeamsSelectableProps>(
   (
     {
       showTeamsAlert,
@@ -129,7 +129,7 @@ const TeamsSelectableNew = forwardRef<any, TeamsSelectableProps>(
           placeholder={placeholder}
           placement="bottomLeft"
           popupClassName="teams-custom-dropdown-class"
-          ref={ref as any}
+          ref={ref as React.Ref<HTMLDivElement> | undefined}
           showCheckedStrategy={TreeSelect.SHOW_CHILD}
           style={{ width: '100%' }}
           tagRender={TagRenderer}

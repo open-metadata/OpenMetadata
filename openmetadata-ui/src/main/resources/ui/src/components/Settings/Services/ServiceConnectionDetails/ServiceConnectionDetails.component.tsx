@@ -48,7 +48,7 @@ const ServiceConnectionDetails = ({
   serviceFQN,
   extraInfo,
 }: Readonly<ServiceConnectionDetailsProps>) => {
-  const [schema, setSchema] = useState<Record<string, any>>({});
+  const [schema, setSchema] = useState<Record<string, unknown>>({});
   const [data, setData] = useState<ReactNode>();
 
   useEffect(() => {

@@ -84,11 +84,11 @@ interface RapiDocProps
   'api-key-value'?: string | null;
   'fetch-credentials'?: 'omit' | 'same-origin' | 'include';
   // Events
-  beforeRender?: (spec: any) => void;
-  specLoaded?: (spec: any) => void;
-  beforeTry?: (request: any) => any;
-  afterTry?: (data: any) => any;
-  apiServerChange?: (server: any) => any;
+  beforeRender?: (spec: Record<string, unknown>) => void;
+  specLoaded?: (spec: Record<string, unknown>) => void;
+  beforeTry?: (request: Record<string, unknown>) => unknown;
+  afterTry?: (data: Record<string, unknown>) => unknown;
+  apiServerChange?: (server: Record<string, unknown>) => unknown;
 }
 
 declare global {
@@ -124,23 +124,23 @@ const RapiDocReact = React.forwardRef<HTMLDivElement, RapiDocProps>(
           ? ref?.current
           : localRef.current;
 
-      const handleBeforeRender = (spec: any) => {
+      const handleBeforeRender = (spec: Record<string, unknown>) => {
         beforeRender?.(spec);
       };
 
-      const handleSpecLoaded = (spec: any) => {
+      const handleSpecLoaded = (spec: Record<string, unknown>) => {
         specLoaded?.(spec);
       };
 
-      const handleBeforeTry = (request: any) => {
+      const handleBeforeTry = (request: Record<string, unknown>) => {
         beforeTry?.(request);
       };
 
-      const handleAfterTry = (data: any) => {
+      const handleAfterTry = (data: Record<string, unknown>) => {
         afterTry?.(data);
       };
 
-      const handleApiServerChange = (server: any) => {
+      const handleApiServerChange = (server: Record<string, unknown>) => {
         apiServerChange?.(server);
       };
 

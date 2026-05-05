@@ -109,7 +109,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
     }
   };
 
-  const handleTagChange = (value: string, option: any) => {
+  const handleTagChange = (value: string, option: { field: string }) => {
     const updatedData = {
       ...termBoostData,
       field: option.field,

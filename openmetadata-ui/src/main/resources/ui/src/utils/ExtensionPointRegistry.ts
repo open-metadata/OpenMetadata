@@ -21,7 +21,7 @@
 /**
  * A contribution from a plugin to an extension point
  */
-export interface ExtensionContribution<T = any> {
+export interface ExtensionContribution<T = unknown> {
   /** The extension point this contribution is for */
   extensionPointId: string;
   /** The actual contribution data */

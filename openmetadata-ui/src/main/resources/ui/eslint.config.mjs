@@ -22,6 +22,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 import jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
+import customRules from './eslint-rules/index.js';
 
 export default [
   // Base recommended configs
@@ -98,6 +99,7 @@ export default [
       jest,
       'jest-formatting': jestFormatting,
       i18next,
+      'custom-rules': customRules,
     },
 
     rules: {
@@ -185,11 +187,20 @@ export default [
           varsIgnorePattern: '^_',
         },
       ],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
 
-      // i18next rules - temporarily disabled due to ESLint 9 compatibility issues
-      // TODO: Re-enable when eslint-plugin-i18next fully supports ESLint 9 flat config
-      'i18next/no-literal-string': 'off',
+      // Custom rules for OpenMetadata
+      // Detects duplicate API calls in the same component (anti-pattern)
+      // Automatically disabled for test files (see test files config below)
+      'custom-rules/no-duplicate-api-calls': [
+        'warn',
+        {
+          threshold: 2,
+          checkUseEffect: true,
+          checkCallbacks: true,
+          allowedDuplicates: [],
+        },
+      ],
     },
   },
 
@@ -277,9 +288,16 @@ export default [
       'src/**/*.test.{js,jsx,ts,tsx}',
       'src/**/*.spec.{js,jsx,ts,tsx}',
       'playwright/**/*.spec.{js,jsx,ts,tsx}',
+      '**/*.test.{js,jsx,ts,tsx}',
+      '**/*.spec.{js,jsx,ts,tsx}',
+      '**/__tests__/**',
+      '**/__mocks__/**',
+      'eslint-rules/**/*.tsx',
     ],
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
+      'custom-rules/no-duplicate-api-calls': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 ];

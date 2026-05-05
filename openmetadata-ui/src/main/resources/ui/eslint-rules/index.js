@@ -10,21 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-interface WorkflowStage {
-  name: string;
-  startedAt: number;
-  endedAt: number;
-  tasks: string[];
-  variables: Record<string, unknown>;
-}
 
-export interface WorkflowHistoryItem {
-  id: string;
-  workflowInstanceId: string;
-  workflowInstanceExecutionId: string;
-  workflowDefinitionId: string;
-  stage: WorkflowStage;
-  timestamp: number;
-  status: 'RUNNING' | 'COMPLETED' | 'FAILED' | 'PENDING' | 'CANCELLED';
-  exception?: string;
-}
+/**
+ * Custom ESLint rules for OpenMetadata UI
+ */
+module.exports = {
+  rules: {
+    'no-duplicate-api-calls': require('./no-duplicate-api-calls'),
+  },
+};

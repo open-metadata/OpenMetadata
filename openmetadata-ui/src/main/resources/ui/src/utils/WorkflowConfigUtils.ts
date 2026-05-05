@@ -16,7 +16,7 @@ import { NodeConfig } from '../interface/workflow-builder-components.interface';
 
 export const getSelectedEntityTypes = (
   config: NodeConfig,
-  workflowDefinition: any
+  workflowDefinition: Record<string, unknown>
 ): EntityType | EntityType[] => {
   if (config.dataAssets && config.dataAssets.length > 0) {
     const entityTypes = config.dataAssets.filter(Boolean);

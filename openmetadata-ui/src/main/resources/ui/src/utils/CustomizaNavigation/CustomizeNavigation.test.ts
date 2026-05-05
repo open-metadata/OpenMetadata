@@ -706,7 +706,7 @@ describe('CustomizeNavigation Utils', () => {
 
       const result = mergePluginSidebarItems(
         mockBaseItems,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         pluginItems as any,
         navItems
       );

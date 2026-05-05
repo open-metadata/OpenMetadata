@@ -224,9 +224,9 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
             toggleMentionList(true);
           },
           onSelect: (
-            item: Record<string, any>,
+            item: Record<string, unknown>,
 
-            insertItem: (item: Record<string, any>) => void
+            insertItem: (item: Record<string, unknown>) => void
           ) => {
             toggleMentionList(true);
             insertItem(item);
