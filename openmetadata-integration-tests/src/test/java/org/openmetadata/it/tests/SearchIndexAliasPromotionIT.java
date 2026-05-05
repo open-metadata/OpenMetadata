@@ -247,24 +247,25 @@ public class SearchIndexAliasPromotionIT {
    * underlying concrete index, which may include the rebuild-suffixed staged-then-promoted index.
    */
   private static Map<String, JsonNode> readIndexSettings(String indexOrAlias) throws Exception {
-    Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
-    Request request = new Request("GET", "/" + indexOrAlias + "/_settings");
-    Response response = searchClient.performRequest(request);
-    assertEquals(200, response.getStatusCode());
-    String body =
-        new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
-    JsonNode root = MAPPER.readTree(body);
-    Map<String, JsonNode> result = new HashMap<>();
-    Iterator<Map.Entry<String, JsonNode>> it = root.fields();
-    while (it.hasNext()) {
-      Map.Entry<String, JsonNode> entry = it.next();
-      JsonNode indexSettings = entry.getValue().path("settings").path("index");
-      if (indexSettings.isMissingNode() || indexSettings.isNull()) {
-        continue;
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Request request = new Request("GET", "/" + indexOrAlias + "/_settings");
+      Response response = searchClient.performRequest(request);
+      assertEquals(200, response.getStatusCode());
+      String body =
+          new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
+      JsonNode root = MAPPER.readTree(body);
+      Map<String, JsonNode> result = new HashMap<>();
+      Iterator<Map.Entry<String, JsonNode>> it = root.fields();
+      while (it.hasNext()) {
+        Map.Entry<String, JsonNode> entry = it.next();
+        JsonNode indexSettings = entry.getValue().path("settings").path("index");
+        if (indexSettings.isMissingNode() || indexSettings.isNull()) {
+          continue;
+        }
+        result.put(entry.getKey(), indexSettings);
       }
-      result.put(entry.getKey(), indexSettings);
+      return result;
     }
-    return result;
   }
 
   private static String textOrNull(JsonNode node) {
