@@ -120,6 +120,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -259,6 +260,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import software.amazon.awssdk.utils.Either;
 
 /**
@@ -2918,6 +2920,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entityType == null || id == null) {
       return;
     }
+    // Skip every Redis op for entity types that are never cached. Bot/domain/data-product
+    // deletes cascade through many addRelationship/deleteRelationship calls; without this
+    // short-circuit each cascade pays for a pub/sub publish + multiple DELs that touch keys
+    // we never wrote — under heavy parallel load that pushes test budgets like
+    // TaskResourceIT.testDeletingBotCreatorCleansUpOpenSuggestionTasks past their 30 s window.
+    if (!isCacheableEntityType(entityType)) {
+      // Guava L1 still has to be cleared for the rare uncached read path that populates it,
+      // but we skip the Redis hash, relationship, bundle, and pub/sub work entirely.
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+      if (fqn != null) {
+        CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
+      }
+      return;
+    }
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
     if (fqn != null) {
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
@@ -2958,6 +2974,104 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     invalidateCacheForEntity(record.getType(), record.getId(), extractFqn(record.getJson()));
+  }
+
+  /**
+   * Drop cached entity JSON, bundle, and relationship caches for every entity that carries the
+   * given tag FQN. The {@code tag_usage} table only stores {@code targetFQNHash}, so we cannot
+   * cheaply derive (type, id, fqn) from it; we lean on the search index instead — the same source
+   * the search-side {@code updateClassificationTagByFqnPrefix} reindex uses to find affected
+   * documents. Run this BEFORE the async search reindex starts so the search query still matches
+   * documents by the old tag FQN.
+   *
+   * <p><b>Consistency tradeoff:</b> coverage is bounded by search-index freshness. Entities
+   * tagged recently enough that the indexer hasn't picked them up are missed and fall back to
+   * the entity TTL (default 48h). On busy clusters with replication lag this can be minutes.
+   * If strict consistency is ever required, a direct {@code tag_usage} table query joined back
+   * to each candidate entity table would be more reliable at the cost of one round-trip per
+   * candidate type.
+   */
+  public static int invalidateCacheForTaggedEntities(String tagFqn) {
+    if (nullOrEmpty(tagFqn)) {
+      return 0;
+    }
+    int total = 0;
+    int from = 0;
+    while (true) {
+      List<EntityReference> page;
+      try {
+        page =
+            ReindexingUtil.findReferenceInElasticSearchAcrossAllIndexes(
+                "tags.tagFQN", ReindexingUtil.escapeDoubleQuotes(tagFqn), from);
+      } catch (Exception e) {
+        LOG.warn("Search-based cache invalidation failed for tag={}", tagFqn, e);
+        return total;
+      }
+      if (page.isEmpty()) {
+        break;
+      }
+      for (EntityReference ref : page) {
+        invalidateCacheForEntity(ref.getType(), ref.getId(), ref.getFullyQualifiedName());
+        total++;
+      }
+      from += page.size();
+    }
+    if (total > 0) {
+      LOG.info("Invalidated cache for {} entities tagged with: {}", total, tagFqn);
+    }
+    return total;
+  }
+
+  /** Bulk variant — invalidates entities tagged with any of the supplied tag FQNs. */
+  public static int invalidateCacheForTaggedEntities(Collection<String> tagFqns) {
+    if (tagFqns == null || tagFqns.isEmpty()) {
+      return 0;
+    }
+    int total = 0;
+    for (String fqn : tagFqns) {
+      total += invalidateCacheForTaggedEntities(fqn);
+    }
+    if (total > 0) {
+      LOG.info(
+          "Invalidated cache for {} entities across {} renamed tag FQNs", total, tagFqns.size());
+    }
+    return total;
+  }
+
+  /**
+   * Convenience wrapper for tag-like entity renames (Tag, GlossaryTerm) where the rename cascades
+   * to descendants in the same entity table. Enumerates the descendant FQNs from the entity DAO
+   * BEFORE the DB rename rewrites them, then invalidates cached entities tagged with the prefix or
+   * any descendant. For Classification (where children live in a different entity table), enumerate
+   * child tag FQNs at the call site and pass them to {@link
+   * #invalidateCacheForTaggedEntities(Collection)} directly.
+   */
+  public static int invalidateCacheForTaggedEntitiesAndDescendants(
+      String entityType, String oldPrefix) {
+    if (entityType == null || nullOrEmpty(oldPrefix)) {
+      return 0;
+    }
+    List<String> fqns = new ArrayList<>();
+    fqns.add(oldPrefix);
+    try {
+      EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+      if (repo != null && repo.getDao() != null) {
+        List<EntityDAO.EntityIdFqnPair> descendants =
+            repo.getDao().listDescendantIdFqnByPrefix(oldPrefix);
+        for (EntityDAO.EntityIdFqnPair pair : descendants) {
+          if (pair.fqn != null && !pair.fqn.equals(oldPrefix)) {
+            fqns.add(pair.fqn);
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to enumerate descendants for tagged-entity invalidation: type={} fqn={}",
+          entityType,
+          oldPrefix,
+          e);
+    }
+    return invalidateCacheForTaggedEntities(fqns);
   }
 
   private static String extractFqn(String json) {
@@ -4136,7 +4250,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * Process a batch of entities for deletion
+   * Process a batch of entities for hard deletion. Entered only via
+   * {@link #batchDeleteChildren}, which only fires for {@code hardDelete=true} and
+   * {@code children.size() > 100}; the soft-delete and small-batch paths stay on the
+   * sequential {@link Entity#deleteEntity} flow.
+   *
+   * <p>Each child is removed via {@link #cleanup}, which deletes the entity row, all
+   * {@code (id, *)} and {@code (*, id)} entity_relationship rows, extensions, tag usage,
+   * threads, and caches as one atomic unit per child (cleanup opens its own JDBI
+   * transaction via {@code Entity.getJdbi().inTransaction(...)}). The previous
+   * implementation pre-deleted relationships in two batched queries before this loop and
+   * swallowed exceptions in the per-child cleanup, which is exactly what produced the
+   * orphan pattern: a failed cleanup left an entity row alive after its relationships
+   * had been wiped, surfacing in {@code /containers?root=true} and breaking
+   * {@code /children} traversal.
+   *
+   * <p><b>Failure semantics:</b> per-child atomicity, not whole-batch atomicity. If
+   * cleanup for child <em>k</em> throws, children {@code 0..k-1} have already committed
+   * via their own transactions and cannot be rolled back by the {@code @Transaction} on
+   * this method (cleanup's inner transaction is independent). The exception propagates
+   * so the loop stops; children {@code k..N-1} keep both their rows and their parent
+   * CONTAINS relationships intact. The retry path is to reissue the recursive delete on
+   * the parent — remaining children re-enter this loop. Crucially, no orphan-without-
+   * relationships row can result from an exception in this method, which is the bug
+   * this change exists to fix; achieving true all-or-nothing rollback across the batch
+   * would require sharing one JDBI handle across every cleanup call, a wider refactor
+   * deliberately scoped out of this fix.
    */
   @Transaction
   private void processDeletionBatch(
@@ -4169,35 +4308,37 @@ public abstract class EntityRepository<T extends EntityInterface> {
       deleteChildren(allGrandchildren, hardDelete, updatedBy);
     }
 
-    // Now batch delete the entities at this level (reuse stringIds from above)
-    // Only delete relationships for hard delete
-    // For soft delete, relationships must be preserved for restoration
-    if (hardDelete) {
-      // Batch delete relationships for all entities
-      daoCollection.relationshipDAO().batchDeleteFrom(stringIds, entityType);
-      daoCollection.relationshipDAO().batchDeleteTo(stringIds, entityType);
-    }
-
-    // Delete or soft-delete the entities themselves
+    // cleanup() per entity is the source of truth: it removes the row, its relationships
+    // (deleteAllFrom + deleteAllTo on (id, *) and (*, id)), extensions, tag usage, feed
+    // threads, and caches within ONE JDBI transaction owned by cleanup itself. The
+    // previous pre-batch-delete of relationships made the row-and-relationship pairing
+    // non-atomic across the loop, which is why a swallowed mid-loop exception produced
+    // the orphan-without-relationships pattern. Letting cleanup own both halves and
+    // letting exceptions propagate stops the loop early on failure; see the failure
+    // semantics note in the Javadoc above for what "stops the loop" actually guarantees.
+    @SuppressWarnings("rawtypes")
+    EntityRepository repository = Entity.getEntityRepository(entityType);
     for (UUID entityId : entityIds) {
       try {
-        @SuppressWarnings("rawtypes")
-        EntityRepository repository = Entity.getEntityRepository(entityType);
-        if (repository.supportsSoftDelete && !hardDelete) {
-          // Soft delete
-          EntityInterface entity = repository.find(entityId, Include.ALL);
-          entity.setUpdatedBy(updatedBy);
-          entity.setUpdatedAt(System.currentTimeMillis());
-          entity.setDeleted(true);
-          repository.dao.update(entity);
-          invalidateCacheForEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
-        } else {
-          // Hard delete
-          EntityInterface entity = repository.find(entityId, Include.ALL);
-          repository.cleanup(entity);
-        }
-      } catch (Exception e) {
-        LOG.error("Error deleting entity {} of type {}: {}", entityId, entityType, e.getMessage());
+        EntityInterface entity = repository.find(entityId, Include.ALL);
+        repository.cleanup(entity);
+      } catch (RuntimeException e) {
+        LOG.error(
+            "Failed to delete {} '{}' during recursive batch delete: {}",
+            entityType,
+            entityId,
+            e.getMessage(),
+            e);
+        // Wrap with entity context before re-throwing so the operator can identify
+        // the row that blocked a large recursive delete. The exception still
+        // propagates — the loop still stops, the failure-semantics contract in the
+        // Javadoc still holds — we just trade an opaque stack trace for one that
+        // names the offending child.
+        throw new RuntimeException(
+            String.format(
+                "Failed to delete %s '%s' during recursive batch delete: %s",
+                entityType, entityId, e.getMessage()),
+            e);
       }
     }
   }
@@ -5466,6 +5607,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .withRelationshipType(relationship);
       RdfUpdater.addRelationship(reverseRelationship);
     }
+    // Drop cached bundle/owners/domains/container for both sides — relationship just changed and
+    // any cached EntityReference list on either side is now stale. The FQN is unknown here so
+    // by-name eviction is skipped; by-id and bundle eviction is what callers actually need.
+    invalidateCacheForEntity(fromEntity, fromId, null);
+    invalidateCacheForEntity(toEntity, toId, null);
   }
 
   @Transaction
@@ -5474,6 +5620,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection
         .relationshipDAO()
         .bulkInsertToRelationship(fromId, toId, fromEntity, toEntity, relationship.ordinal());
+    invalidateForBulkRelationship(fromId, toId, fromEntity, toEntity);
   }
 
   @Transaction
@@ -5482,6 +5629,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection
         .relationshipDAO()
         .bulkRemoveToRelationship(fromId, toId, fromEntity, toEntity, relationship.ordinal());
+    invalidateForBulkRelationship(fromId, toId, fromEntity, toEntity);
+  }
+
+  private static void invalidateForBulkRelationship(
+      UUID fromId, List<UUID> toIds, String fromEntity, String toEntity) {
+    invalidateCacheForEntity(fromEntity, fromId, null);
+    if (toIds == null) {
+      return;
+    }
+    for (UUID toId : toIds) {
+      invalidateCacheForEntity(toEntity, toId, null);
+    }
   }
 
   public final List<EntityReference> findBoth(
@@ -5782,6 +5941,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withToEntity(toEntityType)
             .withRelationshipType(relationship);
     RdfUpdater.removeRelationship(entityRelationship);
+    // Drop cached bundle/owners/domains/container on both sides — same reason as addRelationship.
+    invalidateCacheForEntity(fromEntityType, fromId, null);
+    invalidateCacheForEntity(toEntityType, toId, null);
   }
 
   public final void deleteTo(
@@ -6443,6 +6605,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return new Fields(allowedFields, String.join(",", allowedFields));
     }
     return new Fields(allowedFields, fields);
+  }
+
+  public final Fields getOnlySupportedFields(String fields) {
+    if ("*".equals(fields)) {
+      return new Fields(allowedFields, String.join(",", allowedFields), true);
+    }
+    return new Fields(allowedFields, fields, true);
   }
 
   protected final Fields getFields(Set<String> fields) {
