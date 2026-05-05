@@ -141,7 +141,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               batchSize,
               cursor,
               true,
-              Entity.getFields(entityType, fields),
+              Entity.getOnlySupportedFields(entityType, fields),
               null);
 
       // Filter out EntityNotFoundExceptions from errors - these are expected when relationships
@@ -241,7 +241,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               batchSize,
               currentCursor,
               true,
-              Entity.getFields(entityType, fields),
+              Entity.getOnlySupportedFields(entityType, fields),
               null);
 
       // Filter out EntityNotFoundExceptions from errors - same as in read() method
