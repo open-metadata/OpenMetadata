@@ -1365,7 +1365,10 @@ public class S3LogStorage implements LogStorageInterface {
           e.getMessage());
     }
 
-    // If no S3 partial file, fallback to memory cache
+    // If no S3 partial file, fallback to memory cache. The cache and pendingFlush are
+    // populated by the same appendLogs path, so they hold the same lines as long as we
+    // haven't crossed the buffer cap (in practice the early-flush watermark drains
+    // pendingFlush long before that).
     if (!foundPartialFile) {
       String streamKey = pipelineFQN + "/" + runId;
       SimpleLogBuffer buffer = recentLogsCache.getIfPresent(streamKey);
@@ -1391,21 +1394,22 @@ public class S3LogStorage implements LogStorageInterface {
             runId);
       }
     } else {
-      // Append the in-memory pendingFlush tail even when we have a partial file.
-      // Lines may have been appended after the last flush (up to 2 minutes' worth).
+      // Append the in-memory pendingFlush tail (lines appended but not yet flushed).
+      // Read under the per-stream lock — the value list is a plain ArrayList and is
+      // only safe to access while the lock is held. If the lock entry is missing
+      // for any reason (a lifecycle invariant we expect to hold), skip the append
+      // rather than reading without synchronization.
       String streamKeyForPending = pipelineFQN + "/" + runId;
-      List<String> pendingSnapshot = pendingFlush.get(streamKeyForPending);
-      if (pendingSnapshot != null) {
-        ReentrantLock pendingLock = streamLocks.get(streamKeyForPending);
-        if (pendingLock != null) {
-          pendingLock.lock();
-          try {
-            allLines.addAll(new ArrayList<>(pendingSnapshot));
-          } finally {
-            pendingLock.unlock();
+      ReentrantLock pendingLock = streamLocks.get(streamKeyForPending);
+      if (pendingLock != null) {
+        pendingLock.lock();
+        try {
+          List<String> livePending = pendingFlush.get(streamKeyForPending);
+          if (livePending != null && !livePending.isEmpty()) {
+            allLines.addAll(new ArrayList<>(livePending));
           }
-        } else {
-          allLines.addAll(new ArrayList<>(pendingSnapshot));
+        } finally {
+          pendingLock.unlock();
         }
       }
     }

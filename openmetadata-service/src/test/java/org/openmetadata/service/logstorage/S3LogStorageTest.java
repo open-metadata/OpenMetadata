@@ -912,6 +912,7 @@ public class S3LogStorageTest {
     assertTrue(body.contains("flushed-1"), "should include flushed lines");
     assertTrue(body.contains("tail-1"), "should include in-memory tail line 1");
     assertTrue(body.contains("tail-2"), "should include in-memory tail line 2");
+    assertEquals(4L, result.get("total"));
   }
 
   private static Object getPrivateField(Object target, String name) throws Exception {
