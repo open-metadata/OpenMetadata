@@ -497,6 +497,118 @@ class DefaultRecreateHandlerTest {
           aliasState.indexAliases.get("table_search_index_rebuild_new").contains("table"),
           "alias swap should still happen after settings revert");
     }
+
+    @Test
+    @DisplayName("Should apply live serving settings before alias swap, never after")
+    void testPromoteEntityIndexAppliesSettingsBeforeAliasSwap() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index_rebuild_old", Set.of("table"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+
+      EventPublisherJob jobData =
+          new EventPublisherJob()
+              .withBulkIndexSettings(
+                  new BulkIndexOverrides().withNumberOfReplicas(0).withRefreshInterval("-1"));
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().withJobData(jobData).promoteEntityIndex(context, true);
+      }
+
+      org.mockito.InOrder order = org.mockito.Mockito.inOrder(client);
+      order.verify(client).updateIndexSettings(eq("table_search_index_rebuild_new"), anyString());
+      order.verify(client).swapAliases(anySet(), eq("table_search_index_rebuild_new"), anySet());
+    }
+
+    @Test
+    @DisplayName("Should force-merge staged index before alias swap when forceMergeOnPromote=true")
+    void testPromoteEntityIndexForceMergesWhenConfigured() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder().indexName("table_search_index").alias("table").build());
+
+      EventPublisherJob jobData =
+          new EventPublisherJob()
+              .withBulkIndexSettings(
+                  new BulkIndexOverrides()
+                      .withNumberOfReplicas(0)
+                      .withRefreshInterval("-1")
+                      .withForceMergeOnPromote(true));
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().withJobData(jobData).promoteEntityIndex(context, true);
+      }
+
+      verify(client).forceMerge("table_search_index_rebuild_new", 1);
+    }
+
+    @Test
+    @DisplayName("Should not call updateIndexSettings when handler has no jobData")
+    void testPromoteEntityIndexSkipsSettingsWithoutJobData() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder().indexName("table_search_index").alias("table").build());
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().promoteEntityIndex(context, true);
+      }
+
+      verify(client, never()).updateIndexSettings(anyString(), anyString());
+      verify(client, never()).forceMerge(anyString(), org.mockito.ArgumentMatchers.anyInt());
+    }
   }
 
   @Nested
