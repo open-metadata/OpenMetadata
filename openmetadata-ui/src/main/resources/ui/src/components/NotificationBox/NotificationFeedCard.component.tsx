@@ -13,7 +13,7 @@
 
 import { List, Space, Typography } from 'antd';
 import { startCase } from 'lodash';
-import { FC, useCallback, useMemo, useRef } from 'react';
+import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -41,7 +41,6 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const lastNavigatedKeyRef = useRef<number | undefined>(undefined);
   const isMentionNotification = Boolean(mentionNotification && !taskEntity);
   const taskLink = useMemo(() => {
     return taskEntity ? getTaskDetailPathFromTask(taskEntity) : '';
@@ -50,9 +49,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
   const handleTaskLinkClick = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
-      const key = Date.now();
-      lastNavigatedKeyRef.current = key;
-      navigate(taskLink, { state: { tasksRefreshKey: key } });
+      navigate(taskLink, { state: { tasksRefreshKey: Date.now() } });
     },
     [navigate, taskLink]
   );

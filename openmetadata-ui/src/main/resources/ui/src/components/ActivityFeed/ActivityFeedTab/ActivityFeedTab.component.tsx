@@ -373,6 +373,7 @@ export const ActivityFeedTab = ({
     ) {
       processedRefreshKeyRef.current = refreshKey;
       getTaskData(feedFilter, undefined, entityType, fqn, taskFilter);
+      navigate('.', { replace: true, state: {} });
     }
   }, [
     entityType,
@@ -382,6 +383,7 @@ export const ActivityFeedTab = ({
     isTaskActiveTab,
     location.key,
     location.state,
+    navigate,
     taskFilter,
   ]);
 
