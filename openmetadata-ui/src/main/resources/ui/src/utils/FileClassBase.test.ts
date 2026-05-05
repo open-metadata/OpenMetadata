@@ -29,35 +29,6 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import fileClassBase, { FileClassBase } from './FileClassBase';
 import { FileDetailPageTabProps } from './FileDetailsUtils';
 
-// Mock dependencies
-jest.mock('../constants/CustomizeWidgets.constants', () => ({
-  CUSTOM_PROPERTIES_WIDGET: {
-    fullyQualifiedName: 'customProperties',
-    name: 'Custom Properties',
-    data: { gridSizes: ['small', 'medium', 'large'] },
-  },
-  DATA_PRODUCTS_WIDGET: {
-    fullyQualifiedName: 'dataProducts',
-    name: 'Data Products',
-    data: { gridSizes: ['medium', 'large'] },
-  },
-  DESCRIPTION_WIDGET: {
-    fullyQualifiedName: 'description',
-    name: 'Description',
-    data: { gridSizes: ['small', 'medium', 'large'] },
-  },
-  GLOSSARY_TERMS_WIDGET: {
-    fullyQualifiedName: 'glossaryTerms',
-    name: 'Glossary Terms',
-    data: { gridSizes: ['medium', 'large'] },
-  },
-  TAGS_WIDGET: {
-    fullyQualifiedName: 'tags',
-    name: 'Tags',
-    data: { gridSizes: ['medium', 'large'] },
-  },
-}));
-
 jest.mock('../constants/File.constant', () => ({
   FILE_DUMMY_DATA: {
     id: 'test-file-id',
@@ -144,6 +115,7 @@ describe('FileClassBase', () => {
         [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
         [DetailPageWidgetKeys.TAGS]: 2,
         [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+        [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
         [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
       });
     });
@@ -260,7 +232,7 @@ describe('FileClassBase', () => {
     it('should return default layout for OVERVIEW tab', () => {
       const result = fileClass.getDefaultLayout(EntityTabs.OVERVIEW);
 
-      expect(result).toHaveLength(5);
+      expect(result).toHaveLength(6);
 
       // Check left panel
       const leftPanel = result[0];
@@ -280,7 +252,7 @@ describe('FileClassBase', () => {
     it('should return default layout for undefined tab', () => {
       const result = fileClass.getDefaultLayout(undefined);
 
-      expect(result).toHaveLength(5);
+      expect(result).toHaveLength(6);
       expect(result[0].i).toBe(DetailPageWidgetKeys.LEFT_PANEL);
     });
 
