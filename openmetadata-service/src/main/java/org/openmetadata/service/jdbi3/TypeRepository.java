@@ -60,6 +60,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.ValidatorUtil;
 
 @Slf4j
 public class TypeRepository extends EntityRepository<Type> {
@@ -95,6 +96,13 @@ public class TypeRepository extends EntityRepository<Type> {
   @Override
   public void prepare(Type type, boolean update) {
     TypeRegistry.instance().validateCustomProperties(type);
+    // PATCH carries an opaque JsonPatch; @Valid can't reach into it. Run it ourselves.
+    for (CustomProperty property : listOrEmpty(type.getCustomProperties())) {
+      String violations = ValidatorUtil.validate(property);
+      if (violations != null) {
+        throw new IllegalArgumentException(violations);
+      }
+    }
   }
 
   @Override

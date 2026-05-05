@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for Type entity operations.
@@ -479,6 +480,81 @@ public class TypeResourceIT {
           updatedType.getCustomProperties().stream().anyMatch(cp -> name.equals(cp.getName()));
       assertTrue(present, "Unbalanced bracket name '" + name + "' should be saved");
     }
+  }
+
+  @Test
+  void test_patchCannotAddCustomPropertyWithDisallowedName(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Type topicType = getTypeByName(client, "topic", "customProperties");
+
+    // Seed a valid property so /customProperties is guaranteed to exist as a non-null array.
+    CustomProperty seed = new CustomProperty();
+    seed.setName(ns.prefix("seedForPatch"));
+    seed.setDescription("Seed for PATCH bypass test");
+    seed.setPropertyType(STRING_TYPE.getEntityReference());
+    addCustomProperty(client, topicType.getId(), seed);
+
+    String badName = ns.prefix("patched:bad");
+    String patchJson =
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/customProperties/-\","
+                + "\"value\":{\"name\":\"%s\",\"description\":\"probe\","
+                + "\"propertyType\":{\"id\":\"%s\",\"type\":\"type\",\"name\":\"string\"}}}]",
+            badName, STRING_TYPE.getId());
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            client
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.PATCH,
+                    "/v1/metadata/types/" + topicType.getId(),
+                    patchJson,
+                    RequestOptions.builder()
+                        .header("Content-Type", "application/json-patch+json")
+                        .build()),
+        "PATCH that adds a custom property with disallowed character must return 400");
+
+    Type after = getTypeByName(client, "topic", "customProperties");
+    boolean persisted =
+        after.getCustomProperties() != null
+            && after.getCustomProperties().stream().anyMatch(cp -> badName.equals(cp.getName()));
+    assertFalse(persisted, "Bad-name custom property must not be persisted via PATCH");
+  }
+
+  @Test
+  void test_patchCanAddCustomPropertyWithValidName(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Type topicType = getTypeByName(client, "topic", "customProperties");
+
+    CustomProperty seed = new CustomProperty();
+    seed.setName(ns.prefix("seedForValidPatch"));
+    seed.setDescription("Seed for valid-PATCH test");
+    seed.setPropertyType(STRING_TYPE.getEntityReference());
+    addCustomProperty(client, topicType.getId(), seed);
+
+    String goodName = ns.prefix("patchedGood");
+    String patchJson =
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/customProperties/-\","
+                + "\"value\":{\"name\":\"%s\",\"description\":\"probe\","
+                + "\"propertyType\":{\"id\":\"%s\",\"type\":\"type\",\"name\":\"string\"}}}]",
+            goodName, STRING_TYPE.getId());
+
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/metadata/types/" + topicType.getId(),
+            patchJson,
+            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    Type after = getTypeByName(client, "topic", "customProperties");
+    boolean persisted =
+        after.getCustomProperties() != null
+            && after.getCustomProperties().stream().anyMatch(cp -> goodName.equals(cp.getName()));
+    assertTrue(persisted, "Valid-name custom property added via PATCH should be persisted");
   }
 
   @Test
