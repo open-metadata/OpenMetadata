@@ -47,6 +47,45 @@ public class OmAppJobListener implements JobListener {
     this.repository = new AppRepository();
   }
 
+  /**
+   * Populate {@code endTime} and {@code executionTime} on a terminal-state run record. Each field
+   * is filled independently and only if currently null:
+   *
+   * <ul>
+   *   <li>{@code endTime} defaults to {@code System.currentTimeMillis()} if absent.
+   *   <li>{@code executionTime} is computed from {@code endTime - startTime} if absent and both
+   *       endpoints are available — this means callers that pre-populated {@code endTime} (e.g.
+   *       from {@code job.getCompletedAt()}) still get an accurate {@code executionTime}.
+   * </ul>
+   *
+   * <p>The method is a no-op for non-terminal statuses, so it is safe to call from progress
+   * listeners that may persist before {@link #jobWasExecuted} runs. Without this, mid-flight
+   * writes by progress listeners (e.g. {@code QuartzProgressListener} firing {@code onJobFailed})
+   * would persist a terminal status to the DB without timings; if the job dies before {@code
+   * jobWasExecuted} fires, polling consumers would see {@code status=FAILED} with no
+   * {@code endTime} / {@code executionTime}.
+   */
+  public static void fillTerminalTimings(AppRunRecord record) {
+    if (record == null || record.getStatus() == null || !isTerminalStatus(record.getStatus())) {
+      return;
+    }
+    if (record.getEndTime() == null) {
+      record.withEndTime(System.currentTimeMillis());
+    }
+    if (record.getExecutionTime() == null
+        && record.getStartTime() != null
+        && record.getEndTime() != null) {
+      record.setExecutionTime(record.getEndTime() - record.getStartTime());
+    }
+  }
+
+  private static boolean isTerminalStatus(AppRunRecord.Status status) {
+    return switch (status) {
+      case SUCCESS, FAILED, ACTIVE_ERROR, STOPPED, COMPLETED -> true;
+      default -> false;
+    };
+  }
+
   @Override
   public String getName() {
     return JOB_LISTENER_NAME;

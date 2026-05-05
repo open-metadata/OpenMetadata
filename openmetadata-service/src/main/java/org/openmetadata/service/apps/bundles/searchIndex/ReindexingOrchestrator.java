@@ -24,6 +24,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.listeners.LoggingProgressListener;
 import org.openmetadata.service.apps.bundles.searchIndex.listeners.SlackProgressListener;
+import org.openmetadata.service.apps.scheduler.OmAppJobListener;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.search.SearchRepository;
@@ -109,7 +110,7 @@ public class ReindexingOrchestrator {
 
     AppRunRecord appRecord = context.getJobRecord();
     appRecord.setStatus(AppRunRecord.Status.STOPPED);
-    appRecord.setEndTime(System.currentTimeMillis());
+    OmAppJobListener.fillTerminalTimings(appRecord);
     context.storeRunRecord(JsonUtils.pojoToJson(appRecord));
     context.pushStatusUpdate(appRecord, true);
     sendUpdates();
@@ -358,6 +359,7 @@ public class ReindexingOrchestrator {
     if (stopped) {
       AppRunRecord appRecord = context.getJobRecord();
       appRecord.setStatus(AppRunRecord.Status.STOPPED);
+      OmAppJobListener.fillTerminalTimings(appRecord);
       context.storeRunRecord(JsonUtils.pojoToJson(appRecord));
     }
   }
@@ -373,6 +375,7 @@ public class ReindexingOrchestrator {
   private void updateRecordToDbAndNotify() {
     AppRunRecord appRecord = context.getJobRecord();
     appRecord.setStatus(AppRunRecord.Status.fromValue(jobData.getStatus().value()));
+    OmAppJobListener.fillTerminalTimings(appRecord);
 
     if (jobData.getFailure() != null) {
       appRecord.setFailureContext(

@@ -486,42 +486,31 @@ public class PartitionWorker {
     ResultList<?> resultList = readEntitiesKeyset(entityType, keysetCursor, batchSize);
     long t1 = System.currentTimeMillis();
 
-    if (resultList == null || resultList.getData() == null || resultList.getData().isEmpty()) {
-      LOG.debug("{} read={}ms returned empty", entityType, t1 - t0);
-      return new BatchResult(0, 0, 0, null);
-    }
-
-    String nextCursor = resultList.getPaging() != null ? resultList.getPaging().getAfter() : null;
-    int readSuccessCount = listOrEmpty(resultList.getData()).size();
-    int readErrorCount = listOrEmpty(resultList.getErrors()).size();
-    int warningsCount = resultList.getWarningsCount() != null ? resultList.getWarningsCount() : 0;
+    int readSuccessCount = resultList != null ? listOrEmpty(resultList.getData()).size() : 0;
+    int readErrorCount = resultList != null ? listOrEmpty(resultList.getErrors()).size() : 0;
+    int warningsCount =
+        (resultList != null && resultList.getWarningsCount() != null)
+            ? resultList.getWarningsCount()
+            : 0;
+    String nextCursor =
+        (resultList != null && resultList.getPaging() != null)
+            ? resultList.getPaging().getAfter()
+            : null;
 
     if (statsTracker != null) {
       statsTracker.recordReaderBatch(readSuccessCount, readErrorCount, warningsCount);
     }
 
-    if (failureRecorder != null && readErrorCount > 0) {
-      for (EntityError entityError : listOrEmpty(resultList.getErrors())) {
-        Object rawEntity = entityError.getEntity();
-        String entityId = null;
-        if (rawEntity instanceof EntityInterface) {
-          UUID id = ((EntityInterface) rawEntity).getId();
-          if (id != null) {
-            entityId = id.toString();
-          }
-        } else if (rawEntity != null) {
-          entityId = rawEntity.toString();
-        }
-        if (entityId == null) {
-          LOG.warn(
-              "Skipping reader failure record for entityType={}: entityId is null, message={}",
-              entityType,
-              entityError.getMessage());
-          continue;
-        }
-        failureRecorder.recordReaderEntityFailure(
-            entityType, entityId, null, entityError.getMessage());
-      }
+    recordReaderFailures(entityType, resultList, readErrorCount);
+
+    if (readSuccessCount == 0) {
+      LOG.debug(
+          "{} read={}ms returned no indexable rows (warnings={}, errors={})",
+          entityType,
+          t1 - t0,
+          warningsCount,
+          readErrorCount);
+      return new BatchResult(0, readErrorCount, warningsCount, nextCursor);
     }
 
     Map<String, Object> contextData = createContextData(entityType, statsTracker);
@@ -544,6 +533,44 @@ public class PartitionWorker {
               .withSubmittedCount(readSuccessCount)
               .withFailedCount(readSuccessCount)
               .withMessage("Failed to write batch to search index: " + e.getMessage()));
+    }
+  }
+
+  /**
+   * Persist per-entity reader failures so that downstream tooling (e.g. the failures dashboard)
+   * can show which specific records the reader could not hydrate. Runs whether or not the batch
+   * has any successful rows — losing failure diagnostics for "all-error" batches would defeat
+   * the point of the recorder.
+   */
+  private void recordReaderFailures(
+      String entityType, ResultList<?> resultList, int readErrorCount) {
+    if (failureRecorder == null || readErrorCount == 0 || resultList == null) {
+      return;
+    }
+    for (EntityError entityError : listOrEmpty(resultList.getErrors())) {
+      Object rawEntity = entityError.getEntity();
+      String entityId = null;
+      if (rawEntity instanceof EntityInterface) {
+        UUID id = ((EntityInterface) rawEntity).getId();
+        if (id != null) {
+          entityId = id.toString();
+        }
+      } else if (rawEntity != null) {
+        entityId = rawEntity.toString();
+      }
+      if (entityId == null) {
+        // Time-series readers (EntityTimeSeriesRepository) build EntityError without an id —
+        // they only have access to the JSON row, not the entity reference. Per-entity recording
+        // requires an id, so log at DEBUG (not WARN) to avoid spamming logs for every error in
+        // large time-series batches.
+        LOG.debug(
+            "No entityId on reader failure for entityType={} — skipping per-entity record. message={}",
+            entityType,
+            entityError.getMessage());
+        continue;
+      }
+      failureRecorder.recordReaderEntityFailure(
+          entityType, entityId, null, entityError.getMessage());
     }
   }
 
