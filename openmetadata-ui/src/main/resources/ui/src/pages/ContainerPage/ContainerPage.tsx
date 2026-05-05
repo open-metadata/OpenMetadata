@@ -551,6 +551,7 @@ const ContainerPage = () => {
     handleFeedCount,
     handleExtensionUpdate,
     customizedPage?.tabs,
+    childrenCount,
   ]);
 
   const updateVote = async (data: QueryVote, id: string) => {
