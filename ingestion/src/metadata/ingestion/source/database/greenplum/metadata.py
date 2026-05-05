@@ -128,8 +128,8 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
         yield from self._execute_database_query(GREENPLUM_GET_DB_NAMES)
 
     def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.root.config.ingestAllDatabases:
-            configured_db = self.config.serviceConnection.root.config.database
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
+            configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:

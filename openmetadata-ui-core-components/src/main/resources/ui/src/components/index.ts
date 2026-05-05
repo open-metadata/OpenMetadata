@@ -105,6 +105,7 @@ export type {
   NavItemDividerType,
   NavItemType,
 } from './application/app-navigation/config';
+export * from './application/file-upload/file-upload';
 export * from './application/date-picker/calendar';
 export * from './application/date-picker/cell';
 export * from './application/date-picker/date-input';

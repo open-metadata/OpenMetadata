@@ -1231,6 +1231,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         return;
       }
 
+      if (node.data?.node?.isTempTable) {
+        return;
+      }
+
       if (node.type === EntityLineageNodeType.LOAD_MORE) {
         selectLoadMoreNode(node);
       } else {

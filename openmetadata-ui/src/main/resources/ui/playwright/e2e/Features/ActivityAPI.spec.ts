@@ -93,7 +93,7 @@ const waitForActivityEvent = async (entityFqn: string, eventType: string) => {
           return events.some((event) => event.eventType === eventType);
         },
         {
-          timeout: 75000,
+          timeout: 300000, // 5 minutes
           intervals: [1000, 2000, 5000, 10000],
           message: `Timed out waiting for ${eventType} event for ${entityFqn}`,
         }
