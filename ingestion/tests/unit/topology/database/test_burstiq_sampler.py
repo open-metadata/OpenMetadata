@@ -34,11 +34,9 @@ from metadata.generated.schema.entity.services.connections.database.burstIQConne
 )
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sampler.models import (
-    ProfileSampleConfig,
-    SampleConfig,
-    StaticSamplingConfig,
-)
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
+from metadata.sampler.models import SampleConfig
 from metadata.sampler.pandas.burstiq.sampler import _PAGE_SIZE, BurstIQSampler
 from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 from metadata.utils.sqa_like_column import SQALikeColumn

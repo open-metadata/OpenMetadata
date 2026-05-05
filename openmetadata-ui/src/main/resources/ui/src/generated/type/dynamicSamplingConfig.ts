@@ -18,7 +18,7 @@ export interface DynamicSamplingConfig {
      * Set to true to dynamically determine sampling percentage based on row count thresholds.
      * If false, the thresholds values passed will be used as the sampling configuration.
      */
-    smartSampling: boolean;
+    smartSampling?: boolean;
     /**
      * Row count thresholds for sampling. Evaluated in order from highest to lowest threshold.
      * Tables below the lowest threshold are profiled at 100% (no sampling).

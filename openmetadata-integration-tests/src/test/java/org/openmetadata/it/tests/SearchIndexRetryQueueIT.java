@@ -110,12 +110,12 @@ class SearchIndexRetryQueueIT {
     String entityId = UUID.randomUUID().toString();
     String entityFqn = ns.prefix("rq") + ".entity";
 
-    retryQueueDAO.upsert(entityId, entityFqn, "first", SearchIndexRetryQueue.STATUS_PENDING, "");
+    retryQueueDAO.upsert(entityId, entityFqn, "first", SearchIndexRetryQueue.STATUS_COMPLETED, "");
     retryQueueDAO.upsert(
-        entityId, entityFqn, "second", SearchIndexRetryQueue.STATUS_PENDING, "table");
+        entityId, entityFqn, "second", SearchIndexRetryQueue.STATUS_COMPLETED, "table");
 
     List<SearchIndexRetryRecord> records =
-        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_COMPLETED, 1000);
     long count = records.stream().filter(r -> r.getEntityId().equals(entityId)).count();
     assertEquals(1, count);
 
