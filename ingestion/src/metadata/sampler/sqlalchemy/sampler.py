@@ -212,9 +212,10 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 ).cte(f"{self.get_sampler_table_name()}_rnd")
                 session_query = client.query(rnd)
-                return session_query.where(rnd.c.random <= static.profileSample).cte(
-                    f"{self.get_sampler_table_name()}_sample"
-                )
+                session_query = session_query.where(rnd.c.random <= static.profileSample)
+                if static.profileSample == 100 and self.sample_config.randomizedSample is True:
+                    session_query = session_query.order_by(rnd.c.random)
+                return session_query.cte(f"{self.get_sampler_table_name()}_sample")
 
             table_query = client.query(self.raw_dataset)
             if self.partition_details:

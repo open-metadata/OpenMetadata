@@ -34,7 +34,6 @@ class MssqlSampler(SQASampler):
             static (StaticSamplingConfig): sampling configuration
             selectable (Table): table to sample
         """
-        static = self._resolve_sample_config
         if self.entity.tableType != TableType.View:
             if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
                 return selectable.tablesample(text(f"{static.profileSample or 100} PERCENT"))

@@ -98,7 +98,7 @@ class SampleTest(TestCase):
                 )
             ),
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
             'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id \n'
             "FROM users AS users_1 TABLESAMPLE system(50.0 PERCENT))\n "
@@ -124,7 +124,7 @@ class SampleTest(TestCase):
                 )
             ),
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
             'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id '
             "\nFROM users AS users_1 TABLESAMPLE system(50 ROWS))\n "
@@ -156,7 +156,7 @@ class SampleTest(TestCase):
                 partitionValues=["1", "2"],
             ),
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
             'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id \n'
             "FROM users AS users_1 TABLESAMPLE system(50.0 PERCENT) "

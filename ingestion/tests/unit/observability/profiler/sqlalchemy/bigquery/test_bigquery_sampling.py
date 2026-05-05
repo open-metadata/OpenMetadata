@@ -127,7 +127,7 @@ class SampleTest(TestCase):
             ),
             table_type=TableType.Regular,
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE system(50.0 PERCENT)"
         assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
 
@@ -162,7 +162,7 @@ class SampleTest(TestCase):
                 )
             ),
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
             'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users.id AS id, ABS(RANDOM()) * 100 %% 100 AS random \n'
             'FROM users)\n SELECT "9bc65c2abec141778ffaa729489f3e87_rnd".id, "9bc65c2abec141778ffaa729489f3e87_rnd".random \n'
@@ -208,7 +208,7 @@ class SampleTest(TestCase):
             ),
             table_type=TableType.View,
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
             'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users.id AS id, ABS(RANDOM()) * 100 %% 100 AS random \n'
             "FROM users \nWHERE id in ('1', '2'))\n SELECT \"9bc65c2abec141778ffaa729489f3e87_rnd\".id, \"9bc65c2abec141778ffaa729489f3e87_rnd\".random \n"
@@ -240,7 +240,7 @@ class SampleTest(TestCase):
                 partitionValues=["1", "2"],
             ),
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
             "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE system(50.0 PERCENT) \nWHERE id IN ('1', '2')"
         )
