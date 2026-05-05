@@ -317,6 +317,42 @@ class DistributedSearchIndexExecutorTest {
     verify(coordinator, times(1)).requestStop(job.getId());
   }
 
+  /**
+   * Regression: clicking Stop in the UI used to "do nothing" because workers blocked inside the
+   * bulk-sink semaphore, slow DB queries, or {@code waitForSinkOperations} (5-min deadline)
+   * never observed the {@code stopped} boolean. {@code stop()} must also call
+   * {@code workerExecutor.shutdownNow()} so blocked threads get interrupted and exit promptly.
+   */
+  @Test
+  void stopShutsDownWorkerExecutorImmediately() throws Exception {
+    SearchIndexJob job =
+        SearchIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.RUNNING).build();
+    setField("currentJob", job);
+    java.util.concurrent.ExecutorService workerExecutor =
+        mock(java.util.concurrent.ExecutorService.class);
+    when(workerExecutor.isShutdown()).thenReturn(false);
+    setField("workerExecutor", workerExecutor);
+
+    executor.stop();
+
+    verify(workerExecutor, times(1)).shutdownNow();
+  }
+
+  @Test
+  void stopSkipsShutdownNowIfWorkerExecutorAlreadyShutDown() throws Exception {
+    SearchIndexJob job =
+        SearchIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.RUNNING).build();
+    setField("currentJob", job);
+    java.util.concurrent.ExecutorService workerExecutor =
+        mock(java.util.concurrent.ExecutorService.class);
+    when(workerExecutor.isShutdown()).thenReturn(true);
+    setField("workerExecutor", workerExecutor);
+
+    executor.stop();
+
+    verify(workerExecutor, never()).shutdownNow();
+  }
+
   @Test
   void getFreshStatsAndUpdateStagedIndexMappingUseCurrentJob() throws Exception {
     UUID jobId = UUID.randomUUID();

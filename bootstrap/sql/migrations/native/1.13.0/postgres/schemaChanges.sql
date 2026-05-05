@@ -151,6 +151,13 @@ WHERE ue.name = 'mcpapplicationbot'
   AND re.name = 'ApplicationBotImpersonationRole'
 ON CONFLICT DO NOTHING;
 
+-- Update Databricks and Unity Catalog connection schemes from 'databricks+connector' to 'databricks'
+-- as part of migration from sqlalchemy-databricks to databricks-sqlalchemy package
+UPDATE dbservice_entity
+SET json = jsonb_set(json, '{connection,config,scheme}', '"databricks"')
+WHERE serviceType IN ('Databricks', 'UnityCatalog')
+  AND json #>> '{connection,config,scheme}' = 'databricks+connector';
+
 -- Migrate profiler sampling config: move flat profileSample/profileSampleType/samplingMethodType
 -- into the new profileSampleConfig structure. Default to STATIC since DYNAMIC is new.
 
