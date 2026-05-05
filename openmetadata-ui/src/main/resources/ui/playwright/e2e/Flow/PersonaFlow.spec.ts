@@ -760,8 +760,9 @@ const curatedTable = new TableClass();
 
 test.describe('Curated Assets – Description filter', () => {
   test.beforeAll('Setup', async ({ browser }) => {
-    WORD_TO_SEARCH = `table with a unique description oscilloscope-${uuid()}.`;
-    CURATED_DESCRIPTION_TEXT = `This is a curated table with a unique description ${WORD_TO_SEARCH}. It is bioluminescent and not an oscilloscope.`;
+    const UNIQUE_WORD = `unique-word-${uuid()}`;
+    WORD_TO_SEARCH = `table with a unique description ${UNIQUE_WORD}.`;
+    CURATED_DESCRIPTION_TEXT = `This is a curated table with a unique description ${UNIQUE_WORD}. It is bioluminescent and not an oscilloscope.`;
 
     const { afterAction, apiContext } = await createNewPage(browser);
 
