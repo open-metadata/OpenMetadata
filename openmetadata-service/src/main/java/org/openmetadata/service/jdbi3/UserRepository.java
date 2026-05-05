@@ -700,6 +700,7 @@ public class UserRepository extends EntityRepository<User> {
         }
       }
     }
+    inherited.sort(Comparator.comparing(EntityReference::getName));
     return inherited;
   }
 
