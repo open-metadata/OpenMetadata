@@ -2272,14 +2272,16 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertNotNull(updated1.getReviewers());
     assertEquals(1, updated1.getReviewers().size());
 
-    updated1.setReviewers(
+    GlossaryTerm fresh1 = SdkClients.adminClient().glossaryTerms().get(updated1.getId().toString());
+    fresh1.setReviewers(
         List.of(testUser1().getEntityReference(), testUser2().getEntityReference()));
-    GlossaryTerm updated2 = patchEntity(updated1.getId().toString(), updated1);
+    GlossaryTerm updated2 = patchEntity(fresh1.getId().toString(), fresh1);
     assertNotNull(updated2.getReviewers());
     assertTrue(updated2.getReviewers().size() >= 2);
 
-    updated2.setReviewers(List.of(testUser2().getEntityReference()));
-    GlossaryTerm updated3 = patchEntity(updated2.getId().toString(), updated2);
+    GlossaryTerm fresh2 = SdkClients.adminClient().glossaryTerms().get(updated2.getId().toString());
+    fresh2.setReviewers(List.of(testUser2().getEntityReference()));
+    GlossaryTerm updated3 = patchEntity(fresh2.getId().toString(), fresh2);
     assertNotNull(updated3.getReviewers());
     assertEquals(1, updated3.getReviewers().size());
   }
