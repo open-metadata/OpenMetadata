@@ -1670,6 +1670,183 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   }
 
   /**
+   * The {@code ?q=} substring filter on {@code /children} narrows a parent's direct-child
+   * page to names containing the query (case-insensitive). Asserts both that matches are
+   * returned and that non-matching siblings under the same parent are excluded — so a UI
+   * that issues both an unfiltered and a filtered request hits two distinct result sets.
+   * Also pins the count semantics: {@code paging.total} must reflect the filtered count,
+   * not the parent's full child count, so the table footer doesn't lie about the result
+   * size when the user has typed in the search box.
+   */
+  @Test
+  void test_listChildren_filterByQuery_matchesByNameSubstring(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer parentRequest = new CreateContainer();
+    parentRequest.setName(ns.prefix("kids_q_parent"));
+    parentRequest.setService(service.getFullyQualifiedName());
+    Container parent = createEntity(parentRequest);
+
+    Container alpha = createChild(ns, service, parent, "kids_q_AlphaReports");
+    Container beta = createChild(ns, service, parent, "kids_q_betaReports");
+    Container gamma = createChild(ns, service, parent, "kids_q_gamma_log");
+
+    String basePath = "/v1/containers/name/" + parent.getFullyQualifiedName() + "/children";
+
+    ContainerResultList allPage =
+        client.getHttpClient().execute(HttpMethod.GET, basePath, null, ContainerResultList.class);
+    assertEquals(
+        3,
+        allPage.getPaging().getTotal().intValue(),
+        "without ?q= every direct child counts toward total");
+
+    // Substring match — the query "report" should hit both alpha and beta (different
+    // capitalisations) but never the gamma_log child whose name has no overlap.
+    ContainerResultList reportsPage =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.GET, basePath + "?q=report", null, ContainerResultList.class);
+    Set<UUID> reportIds =
+        reportsPage.getData().stream()
+            .map(Container::getId)
+            .collect(java.util.stream.Collectors.toSet());
+    assertTrue(reportIds.contains(alpha.getId()), "AlphaReports must match q=report");
+    assertTrue(reportIds.contains(beta.getId()), "betaReports must match q=report");
+    assertFalse(reportIds.contains(gamma.getId()), "gamma_log must not match q=report");
+    assertEquals(
+        2,
+        reportsPage.getPaging().getTotal().intValue(),
+        "paging.total must reflect the filtered count, not the parent's full child count");
+
+    // No-result query: a substring that no sibling contains returns an empty page with a
+    // zero total, not a failure or the unfiltered list.
+    ContainerResultList emptyPage =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.GET, basePath + "?q=zzznomatch", null, ContainerResultList.class);
+    assertTrue(
+        emptyPage.getData().isEmpty(),
+        "no children should be returned when the query matches nothing");
+    assertEquals(0, emptyPage.getPaging().getTotal().intValue(), "filtered total is 0");
+  }
+
+  /**
+   * Verify that {@code _} and {@code %} in the query are escaped before being sent to the
+   * SQL LIKE clause — without escaping, {@code _} would match any single character and a
+   * search for "foo_bar" would also return "fooXbar". OpenMetadata container/folder names
+   * frequently contain underscores (e.g. {@code etl_run_2024_07}) so this is the more
+   * common foot-gun than {@code %}, but both wildcards are escaped uniformly via the
+   * {@link
+   * org.openmetadata.service.jdbi3.ContainerRepository#buildNameLikeBind(String)}
+   * helper which prepends {@code !} to {@code %}, {@code _}, and {@code !} itself, and
+   * the SQL declares {@code ESCAPE '!'} explicitly. {@code !} is preferred over
+   * backslash because JDBI's ColonPrefixSqlParser mishandles literal {@code '\'} inside
+   * single-quoted SQL strings and silently drops a downstream {@code :includeDeleted}
+   * bind.
+   */
+  @Test
+  void test_listChildren_filterByQuery_escapesLikeWildcards(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer parentRequest = new CreateContainer();
+    parentRequest.setName(ns.prefix("kids_q_escape_parent"));
+    parentRequest.setService(service.getFullyQualifiedName());
+    Container parent = createEntity(parentRequest);
+
+    Container literal = createChild(ns, service, parent, "kids_q_foo_bar");
+    Container wildcardImpostor = createChild(ns, service, parent, "kids_q_fooXbar");
+
+    String basePath = "/v1/containers/name/" + parent.getFullyQualifiedName() + "/children";
+
+    ContainerResultList page =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.GET, basePath + "?q=foo_bar", null, ContainerResultList.class);
+    Set<UUID> ids =
+        page.getData().stream().map(Container::getId).collect(java.util.stream.Collectors.toSet());
+    assertTrue(
+        ids.contains(literal.getId()),
+        "literal underscore in the query must match the literal-underscore name");
+    assertFalse(
+        ids.contains(wildcardImpostor.getId()),
+        "underscore in the query must not behave as a single-char LIKE wildcard");
+  }
+
+  /**
+   * Pins the rule that {@code ?include=deleted} is scoped per-level — at level X, the
+   * toggle returns only direct children of X whose own {@code deleted=true}. A
+   * soft-deleted descendant deeper than one level below X must NOT appear at X's
+   * {@code /children} listing, regardless of the include toggle. Each parent shows
+   * only its own direct children; the toggle filters that direct-children set by
+   * deleted flag, never recurses.
+   *
+   * <p>Both the direct-children-only depth predicate
+   * ({@code fqnHash NOT LIKE :parentHashChild}) and the include filter contribute to
+   * this guarantee; a regression that drops the depth check while keeping the include
+   * check would silently start surfacing deleted descendants from deeper levels at
+   * ancestor /children listings.
+   *
+   * <p>Builds chain root → l1 → l2 → l3 (l3 soft-deleted), then asserts /children at
+   * each level under all three include modes. l3 must only appear under l2 with
+   * include=deleted or include=all; never under root or l1.
+   */
+  @Test
+  void test_listChildren_includeDeleted_scopedToDirectChildrenAtEachLevel(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer rootRequest = new CreateContainer();
+    rootRequest.setName(ns.prefix("delete_scoping_root"));
+    rootRequest.setService(service.getFullyQualifiedName());
+    Container root = createEntity(rootRequest);
+
+    Container l1 = createChild(ns, service, root, "delete_scoping_l1");
+    Container l2 = createChild(ns, service, l1, "delete_scoping_l2");
+    Container l3 = createChild(ns, service, l2, "delete_scoping_l3");
+    deleteEntity(l3.getId().toString());
+
+    assertChildren(client, root, "include=non-deleted (default)", "", Set.of(l1.getId()));
+    assertChildren(
+        client, root, "include=deleted at root", "?include=deleted", Set.of() /* none */);
+    assertChildren(client, root, "include=all at root", "?include=all", Set.of(l1.getId()));
+
+    assertChildren(client, l1, "include=non-deleted (default)", "", Set.of(l2.getId()));
+    assertChildren(client, l1, "include=deleted at l1", "?include=deleted", Set.of() /* none */);
+    assertChildren(client, l1, "include=all at l1", "?include=all", Set.of(l2.getId()));
+
+    assertChildren(client, l2, "include=non-deleted (default)", "", Set.of() /* none */);
+    assertChildren(client, l2, "include=deleted at l2", "?include=deleted", Set.of(l3.getId()));
+    assertChildren(client, l2, "include=all at l2", "?include=all", Set.of(l3.getId()));
+  }
+
+  private void assertChildren(
+      OpenMetadataClient client, Container parent, String label, String query, Set<UUID> expected)
+      throws Exception {
+    String basePath = "/v1/containers/name/" + parent.getFullyQualifiedName() + "/children" + query;
+    ContainerResultList page =
+        client.getHttpClient().execute(HttpMethod.GET, basePath, null, ContainerResultList.class);
+    Set<UUID> actual =
+        page.getData().stream().map(Container::getId).collect(java.util.stream.Collectors.toSet());
+    assertEquals(
+        expected,
+        actual,
+        () ->
+            String.format(
+                "/children of %s with %s — expected %s, got %s",
+                parent.getName(), label, expected, actual));
+    assertEquals(
+        expected.size(),
+        page.getPaging().getTotal().intValue(),
+        () ->
+            String.format(
+                "paging.total at %s with %s must reflect filtered direct-children count",
+                parent.getName(), label));
+  }
+
+  /**
    * The FQN-depth predicate must produce direct-children-only at <em>any</em> level of
    * the hierarchy, not just the service root. Build a 5-level chain
    * (root → l1 → l2 → l3 → l4) and walk down, asserting at each non-leaf level that

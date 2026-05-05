@@ -910,7 +910,15 @@ public interface CollectionDAO {
     // segment below the parent — same shape used by the root listing in listRootAfter, just
     // without the cursor pagination. Returns the slim projection used by the children table
     // UI; the caller restores the service reference separately. `:includeDeleted` is a
-    // tri-state: 'NON_DELETED' (default), 'DELETED', or 'ALL'.
+    // tri-state: 'NON_DELETED' (default), 'DELETED', or 'ALL'. `:nameLike` is a LIKE pattern
+    // applied to LOWER(name); callers pass '%' for "no filter" or '%<lowercased-escaped>%'
+    // for a substring search. ESCAPE '!' is set explicitly so the same pattern semantics
+    // hold on MySQL (default escape is '\') and PostgreSQL (default has no escape char).
+    // '!' is preferred over '\' because the JDBI ColonPrefixSqlParser scans string literals
+    // to skip ':' bind markers inside them, and a literal {@code '\'} confuses the scanner
+    // (it treats the trailing backslash as an escape and consumes the closing quote),
+    // leaving a downstream {@code :includeDeleted} bind un-substituted and the prepared
+    // statement malformed.
     @ConnectionAwareSqlQuery(
         value =
             "SELECT id, name, "
@@ -920,6 +928,7 @@ public interface CollectionDAO {
                 + "deleted "
                 + "FROM storage_container_entity "
                 + "WHERE fqnHash LIKE :parentHash AND fqnHash NOT LIKE :parentHashChild "
+                + "  AND LOWER(name) LIKE :nameLike ESCAPE '!' "
                 + "  AND (:includeDeleted = 'ALL' "
                 + "       OR (:includeDeleted = 'DELETED' AND deleted = TRUE) "
                 + "       OR (:includeDeleted = 'NON_DELETED' AND deleted = FALSE)) "
@@ -934,6 +943,7 @@ public interface CollectionDAO {
                 + "deleted "
                 + "FROM storage_container_entity "
                 + "WHERE fqnHash LIKE :parentHash AND fqnHash NOT LIKE :parentHashChild "
+                + "  AND LOWER(name) LIKE :nameLike ESCAPE '!' "
                 + "  AND (:includeDeleted = 'ALL' "
                 + "       OR (:includeDeleted = 'DELETED' AND deleted = TRUE) "
                 + "       OR (:includeDeleted = 'NON_DELETED' AND deleted = FALSE)) "
@@ -943,6 +953,7 @@ public interface CollectionDAO {
     List<Container> listDirectChildSummariesByParentHash(
         @Bind("parentHash") String parentHash,
         @Bind("parentHashChild") String parentHashChild,
+        @Bind("nameLike") String nameLike,
         @Bind("includeDeleted") String includeDeleted,
         @Bind("limit") int limit,
         @Bind("offset") int offset);
@@ -951,6 +962,7 @@ public interface CollectionDAO {
         value =
             "SELECT count(fqnHash) FROM storage_container_entity "
                 + "WHERE fqnHash LIKE :parentHash AND fqnHash NOT LIKE :parentHashChild "
+                + "  AND LOWER(name) LIKE :nameLike ESCAPE '!' "
                 + "  AND (:includeDeleted = 'ALL' "
                 + "       OR (:includeDeleted = 'DELETED' AND deleted = TRUE) "
                 + "       OR (:includeDeleted = 'NON_DELETED' AND deleted = FALSE))",
@@ -959,6 +971,7 @@ public interface CollectionDAO {
         value =
             "SELECT count(*) FROM storage_container_entity "
                 + "WHERE fqnHash LIKE :parentHash AND fqnHash NOT LIKE :parentHashChild "
+                + "  AND LOWER(name) LIKE :nameLike ESCAPE '!' "
                 + "  AND (:includeDeleted = 'ALL' "
                 + "       OR (:includeDeleted = 'DELETED' AND deleted = TRUE) "
                 + "       OR (:includeDeleted = 'NON_DELETED' AND deleted = FALSE))",
@@ -966,6 +979,7 @@ public interface CollectionDAO {
     int countDirectChildrenByParentHash(
         @Bind("parentHash") String parentHash,
         @Bind("parentHashChild") String parentHashChild,
+        @Bind("nameLike") String nameLike,
         @Bind("includeDeleted") String includeDeleted);
   }
 
