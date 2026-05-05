@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -52,6 +53,9 @@ class SetEntityAttributeImplTest {
     injectExpression(impl, "fieldNameExpr", fieldNameExpr);
     injectExpression(impl, "fieldValueExpr", fieldValueExpr);
     injectExpression(impl, "inputNamespaceMapExpr", inputNamespaceMapExpr);
+    // MockedStatic is thread-local: inject a same-thread executor so applyFieldToEntity
+    // runs on the test thread where the static mocks are active.
+    injectExpression(impl, "taskExecutor", (Executor) Runnable::run);
 
     when(execution.getProcessDefinitionId()).thenReturn("process:1:test");
     when(execution.getCurrentActivityId()).thenReturn("process.setEntityAttribute");
@@ -174,8 +178,7 @@ class SetEntityAttributeImplTest {
     Assertions.assertThrows(BpmnError.class, () -> impl.execute(execution));
   }
 
-  private void injectExpression(Object target, String fieldName, Expression value)
-      throws Exception {
+  private void injectExpression(Object target, String fieldName, Object value) throws Exception {
     Field field = SetEntityAttributeImpl.class.getDeclaredField(fieldName);
     field.setAccessible(true);
     field.set(target, value);
