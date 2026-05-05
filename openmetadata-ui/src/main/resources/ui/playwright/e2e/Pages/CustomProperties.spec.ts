@@ -3657,9 +3657,7 @@ test.describe('Custom property name validation', () => {
     );
   });
 
-  test('should show error when name contains an asterisk', async ({
-    page,
-  }) => {
+  test('should show error when name contains an asterisk', async ({ page }) => {
     test.slow();
     await page.fill(
       nameInput,
