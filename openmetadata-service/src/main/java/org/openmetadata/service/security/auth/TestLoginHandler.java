@@ -15,6 +15,9 @@ package org.openmetadata.service.security.auth;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.oauth2.sdk.AuthorizationCode;
@@ -43,7 +46,12 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.configuration.SecurityConfiguration;
+import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.pac4j.oidc.config.OidcConfiguration;
 
 @Slf4j
@@ -61,9 +69,11 @@ public class TestLoginHandler {
 
   private static final String TEST_LOGIN_CODE_VERIFIER = "testLoginCodeVerifier";
   private static final String TEST_LOGIN_CLIENT_AUTH_METHOD = "testLoginClientAuthMethod";
+  public static final String MODE_EXISTING = "existing";
 
   public static Response handleInitiate(
       HttpServletRequest req,
+      String mode,
       String discoveryUri,
       String clientId,
       String clientSecret,
@@ -76,6 +86,55 @@ public class TestLoginHandler {
       String useNonce,
       String customParams) {
     try {
+      // Existing-config mode: overlay the admin's edits onto saved config via
+      // the shared deep-merge in SystemRepository. Form fields that are blank
+      // or contain the masked placeholder are skipped from the sparse request,
+      // so saved values fall through automatically.
+      if (MODE_EXISTING.equalsIgnoreCase(mode)) {
+        JsonNode sparseRequest =
+            buildSparseOidcRequest(
+                discoveryUri,
+                clientId,
+                clientSecret,
+                scope,
+                callbackUrl,
+                prompt,
+                maxAge,
+                clientAuthMethod,
+                disablePkce,
+                useNonce,
+                customParams);
+        SecurityConfiguration merged =
+            Entity.getSystemRepository().overlayOnSavedSecurityConfig(sparseRequest);
+        AuthenticationConfiguration mergedAuth = merged.getAuthenticationConfiguration();
+        if (mergedAuth != null) {
+          discoveryUri = mergedAuth.getDiscoveryUri();
+          callbackUrl = mergedAuth.getCallbackUrl();
+          OidcClientConfig mergedOidc = mergedAuth.getOidcConfiguration();
+          if (mergedOidc != null) {
+            clientId = mergedOidc.getId();
+            clientSecret = mergedOidc.getSecret();
+            scope = mergedOidc.getScope();
+            prompt = mergedOidc.getPrompt();
+            maxAge = mergedOidc.getMaxAge();
+            useNonce = mergedOidc.getUseNonce();
+            if (mergedOidc.getClientAuthenticationMethod() != null) {
+              clientAuthMethod = mergedOidc.getClientAuthenticationMethod().value();
+            }
+            if (mergedOidc.getDisablePkce() != null) {
+              disablePkce = String.valueOf(mergedOidc.getDisablePkce());
+            }
+            if (mergedOidc.getCustomParams() != null) {
+              try {
+                customParams = JsonUtils.pojoToJson(mergedOidc.getCustomParams());
+              } catch (Exception e) {
+                LOG.warn("[Test Login] Failed to serialize merged customParams", e);
+              }
+            }
+          }
+        }
+      }
+
       if (nullOrEmpty(discoveryUri)) {
         return buildHtmlErrorResponse("Discovery URI is required for Test Login.");
       }
@@ -338,6 +397,76 @@ public class TestLoginHandler {
       LOG.error("[Test Login] LDAP test login failed", e);
 
       return Map.of("success", false, "error", "LDAP authentication failed: " + e.getMessage());
+    }
+  }
+
+  /**
+   * Build a sparse SecurityConfiguration JsonNode from OIDC Test Login form
+   * params. Only includes fields whose value is present and not the masked
+   * placeholder. Designed for {@link
+   * org.openmetadata.service.jdbi3.SystemRepository#overlayOnSavedSecurityConfig}
+   * — absent fields naturally fall through to saved values.
+   */
+  static JsonNode buildSparseOidcRequest(
+      String discoveryUri,
+      String clientId,
+      String clientSecret,
+      String scope,
+      String callbackUrl,
+      String prompt,
+      String maxAge,
+      String clientAuthMethod,
+      String disablePkce,
+      String useNonce,
+      String customParams) {
+    ObjectMapper mapper = JsonUtils.getObjectMapper();
+    ObjectNode root = mapper.createObjectNode();
+    ObjectNode authConfig = mapper.createObjectNode();
+    ObjectNode oidc = mapper.createObjectNode();
+
+    putIfPresent(authConfig, "discoveryUri", discoveryUri);
+    putIfPresent(authConfig, "callbackUrl", callbackUrl);
+
+    putIfPresent(oidc, "id", clientId);
+    putIfPresentNonMasked(oidc, "secret", clientSecret);
+    putIfPresent(oidc, "scope", scope);
+    putIfPresent(oidc, "callbackUrl", callbackUrl);
+    putIfPresent(oidc, "prompt", prompt);
+    putIfPresent(oidc, "maxAge", maxAge);
+    putIfPresent(oidc, "useNonce", useNonce);
+    putIfPresent(oidc, "clientAuthenticationMethod", clientAuthMethod);
+    if (!nullOrEmpty(disablePkce)) {
+      oidc.put("disablePkce", Boolean.parseBoolean(disablePkce));
+    }
+    if (!nullOrEmpty(customParams)) {
+      try {
+        JsonNode customParamsNode = mapper.readTree(customParams);
+        if (customParamsNode != null && !customParamsNode.isNull()) {
+          oidc.set("customParams", customParamsNode);
+        }
+      } catch (Exception e) {
+        LOG.warn("[Test Login] Failed to parse customParams for sparse merge", e);
+      }
+    }
+
+    if (!oidc.isEmpty()) {
+      authConfig.set("oidcConfiguration", oidc);
+    }
+    if (!authConfig.isEmpty()) {
+      root.set("authenticationConfiguration", authConfig);
+    }
+    return root;
+  }
+
+  private static void putIfPresent(ObjectNode node, String key, String value) {
+    if (!nullOrEmpty(value)) {
+      node.put(key, value);
+    }
+  }
+
+  private static void putIfPresentNonMasked(ObjectNode node, String key, String value) {
+    if (!nullOrEmpty(value) && !PasswordEntityMasker.PASSWORD_MASK.equals(value)) {
+      node.put(key, value);
     }
   }
 

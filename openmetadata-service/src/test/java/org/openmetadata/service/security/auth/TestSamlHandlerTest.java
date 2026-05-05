@@ -52,7 +52,8 @@ class TestSamlHandlerTest {
   void handleInitiate_missingIdpEntityId_returnsHtmlError() {
     HttpServletRequest req = mock(HttpServletRequest.class);
     Response resp =
-        TestSamlHandler.handleInitiate(req, null, null, IDP_SSO_URL, IDP_CERT, null, null, null);
+        TestSamlHandler.handleInitiate(
+            req, null, null, null, IDP_SSO_URL, IDP_CERT, null, null, null);
 
     assertEquals(400, resp.getStatus());
     assertTrue(((String) resp.getEntity()).contains("IdP Entity ID is required"));
@@ -62,7 +63,8 @@ class TestSamlHandlerTest {
   void handleInitiate_missingIdpSsoLoginUrl_returnsHtmlError() {
     HttpServletRequest req = mock(HttpServletRequest.class);
     Response resp =
-        TestSamlHandler.handleInitiate(req, null, IDP_ENTITY_ID, null, IDP_CERT, null, null, null);
+        TestSamlHandler.handleInitiate(
+            req, null, null, IDP_ENTITY_ID, null, IDP_CERT, null, null, null);
 
     assertEquals(400, resp.getStatus());
     assertTrue(((String) resp.getEntity()).contains("IdP SSO Login URL is required"));
@@ -73,7 +75,7 @@ class TestSamlHandlerTest {
     HttpServletRequest req = mock(HttpServletRequest.class);
     Response resp =
         TestSamlHandler.handleInitiate(
-            req, null, IDP_ENTITY_ID, IDP_SSO_URL, null, null, null, null);
+            req, null, null, IDP_ENTITY_ID, IDP_SSO_URL, null, null, null, null);
 
     assertEquals(400, resp.getStatus());
     assertTrue(((String) resp.getEntity()).contains("IdP X.509 Certificate is required"));

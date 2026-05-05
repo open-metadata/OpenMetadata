@@ -115,7 +115,7 @@ class TestLdapHandlerTest {
   @Test
   void handleLdapTestLogin_nullConfig_returnsError() {
     Map<String, Object> result =
-        TestLdapHandler.handleLdapTestLogin(null, ALICE_EMAIL, ALICE_PASSWORD);
+        TestLdapHandler.handleLdapTestLogin(null, null, ALICE_EMAIL, ALICE_PASSWORD);
 
     assertEquals(false, result.get("success"));
     assertTrue(((String) result.get("error")).contains("LDAP configuration is required"));
@@ -124,7 +124,7 @@ class TestLdapHandlerTest {
   @Test
   void handleLdapTestLogin_emptyEmail_returnsError() {
     Map<String, Object> result =
-        TestLdapHandler.handleLdapTestLogin(buildLdapConfig(), "", ALICE_PASSWORD);
+        TestLdapHandler.handleLdapTestLogin(null, buildLdapConfig(), "", ALICE_PASSWORD);
 
     assertEquals(false, result.get("success"));
     assertTrue(((String) result.get("error")).contains("Email and password are required"));
@@ -133,7 +133,7 @@ class TestLdapHandlerTest {
   @Test
   void handleLdapTestLogin_emptyPassword_returnsError() {
     Map<String, Object> result =
-        TestLdapHandler.handleLdapTestLogin(buildLdapConfig(), ALICE_EMAIL, "");
+        TestLdapHandler.handleLdapTestLogin(null, buildLdapConfig(), ALICE_EMAIL, "");
 
     assertEquals(false, result.get("success"));
     assertTrue(((String) result.get("error")).contains("Email and password are required"));
@@ -144,7 +144,7 @@ class TestLdapHandlerTest {
     LdapConfiguration config = buildLdapConfig().withHost(null);
 
     Map<String, Object> result =
-        TestLdapHandler.handleLdapTestLogin(config, ALICE_EMAIL, ALICE_PASSWORD);
+        TestLdapHandler.handleLdapTestLogin(null, config, ALICE_EMAIL, ALICE_PASSWORD);
 
     assertEquals(false, result.get("success"));
     assertTrue(((String) result.get("error")).contains("missing required fields"));
@@ -155,7 +155,7 @@ class TestLdapHandlerTest {
     LdapConfiguration config = buildLdapConfig().withMailAttributeName(null);
 
     Map<String, Object> result =
-        TestLdapHandler.handleLdapTestLogin(config, ALICE_EMAIL, ALICE_PASSWORD);
+        TestLdapHandler.handleLdapTestLogin(null, config, ALICE_EMAIL, ALICE_PASSWORD);
 
     assertEquals(false, result.get("success"));
     assertTrue(((String) result.get("error")).contains("missing required fields"));
@@ -166,7 +166,7 @@ class TestLdapHandlerTest {
   @Test
   void handleLdapTestLogin_validCredentials_returnsSuccessWithDerivedFields() {
     Map<String, Object> result =
-        TestLdapHandler.handleLdapTestLogin(buildLdapConfig(), ALICE_EMAIL, ALICE_PASSWORD);
+        TestLdapHandler.handleLdapTestLogin(null, buildLdapConfig(), ALICE_EMAIL, ALICE_PASSWORD);
 
     assertEquals(true, result.get("success"));
     assertEquals(ALICE_EMAIL, result.get("email"));
@@ -182,7 +182,7 @@ class TestLdapHandlerTest {
     LdapConfiguration config = buildLdapConfig().withDnAdminPassword("wrong-admin-pass");
 
     Map<String, Object> result =
-        TestLdapHandler.handleLdapTestLogin(config, ALICE_EMAIL, ALICE_PASSWORD);
+        TestLdapHandler.handleLdapTestLogin(null, config, ALICE_EMAIL, ALICE_PASSWORD);
 
     assertEquals(false, result.get("success"));
     assertTrue(((String) result.get("error")).contains("LDAP test failed"));
@@ -192,7 +192,7 @@ class TestLdapHandlerTest {
   void handleLdapTestLogin_userNotFound_returnsError() {
     Map<String, Object> result =
         TestLdapHandler.handleLdapTestLogin(
-            buildLdapConfig(), "nobody@company.com", ALICE_PASSWORD);
+            null, buildLdapConfig(), "nobody@company.com", ALICE_PASSWORD);
 
     assertEquals(false, result.get("success"));
     assertTrue(((String) result.get("error")).contains("not found"));
@@ -201,7 +201,8 @@ class TestLdapHandlerTest {
   @Test
   void handleLdapTestLogin_wrongUserPassword_returnsInvalidCredentialsError() {
     Map<String, Object> result =
-        TestLdapHandler.handleLdapTestLogin(buildLdapConfig(), ALICE_EMAIL, "wrong-alice-password");
+        TestLdapHandler.handleLdapTestLogin(
+            null, buildLdapConfig(), ALICE_EMAIL, "wrong-alice-password");
 
     assertEquals(false, result.get("success"));
     assertEquals("Invalid username or password", result.get("error"));
@@ -212,7 +213,7 @@ class TestLdapHandlerTest {
     LdapConfiguration config = buildLdapConfig().withUserBaseDN("ou=nonexistent," + BASE_DN);
 
     Map<String, Object> result =
-        TestLdapHandler.handleLdapTestLogin(config, ALICE_EMAIL, ALICE_PASSWORD);
+        TestLdapHandler.handleLdapTestLogin(null, config, ALICE_EMAIL, ALICE_PASSWORD);
 
     assertEquals(false, result.get("success"));
     assertTrue(((String) result.get("error")).contains("LDAP test failed"));
@@ -223,7 +224,7 @@ class TestLdapHandlerTest {
     LdapConfiguration config = buildLdapConfig().withMailAttributeName("emailAddress");
 
     Map<String, Object> result =
-        TestLdapHandler.handleLdapTestLogin(config, ALICE_EMAIL, ALICE_PASSWORD);
+        TestLdapHandler.handleLdapTestLogin(null, config, ALICE_EMAIL, ALICE_PASSWORD);
 
     assertEquals(false, result.get("success"));
     assertTrue(((String) result.get("error")).contains("not found"));
@@ -235,7 +236,7 @@ class TestLdapHandlerTest {
   void handleLdapTestLogin_userFoundByDifferentAttribute_returnsError() {
     // "bob-no-mail" has no mail attribute — search by mail=... won't find him.
     Map<String, Object> result =
-        TestLdapHandler.handleLdapTestLogin(buildLdapConfig(), "bob@company.com", "bob-pass");
+        TestLdapHandler.handleLdapTestLogin(null, buildLdapConfig(), "bob@company.com", "bob-pass");
 
     assertEquals(false, result.get("success"));
     assertTrue(((String) result.get("error")).contains("not found"));
@@ -248,7 +249,7 @@ class TestLdapHandlerTest {
     LdapConfiguration config = buildLdapConfig().withHost("localhost").withPort(1);
 
     Map<String, Object> result =
-        TestLdapHandler.handleLdapTestLogin(config, ALICE_EMAIL, ALICE_PASSWORD);
+        TestLdapHandler.handleLdapTestLogin(null, config, ALICE_EMAIL, ALICE_PASSWORD);
 
     assertEquals(false, result.get("success"));
     assertFalse(((String) result.get("error")).isEmpty());
