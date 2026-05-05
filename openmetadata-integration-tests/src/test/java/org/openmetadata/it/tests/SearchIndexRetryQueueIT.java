@@ -285,7 +285,10 @@ class SearchIndexRetryQueueIT {
         .untilAsserted(
             () -> {
               retryQueueDAO.claimPending(50);
+              // IDs still visible in the queue with proof of claiming
               Set<String> claimed = new HashSet<>();
+              // IDs still present in any status (not yet deleted or fully processed)
+              Set<String> stillPresent = new HashSet<>();
               for (String status :
                   List.of(
                       SearchIndexRetryQueue.STATUS_PENDING,
@@ -294,12 +297,22 @@ class SearchIndexRetryQueueIT {
                       SearchIndexRetryQueue.STATUS_IN_PROGRESS,
                       SearchIndexRetryQueue.STATUS_FAILED)) {
                 retryQueueDAO.findByStatus(status, 5000).stream()
-                    .filter(
-                        r ->
-                            ourIds.contains(r.getEntityId())
-                                && (r.getClaimedAt() != null || r.getRetryCount() > 0))
-                    .map(SearchIndexRetryRecord::getEntityId)
-                    .forEach(claimed::add);
+                    .filter(r -> ourIds.contains(r.getEntityId()))
+                    .forEach(
+                        r -> {
+                          stillPresent.add(r.getEntityId());
+                          if (r.getClaimedAt() != null || r.getRetryCount() > 0) {
+                            claimed.add(r.getEntityId());
+                          }
+                        });
+              }
+              // A record absent from all statuses was deleted by the worker after a successful
+              // claim — deleteByEntity is only reached after claimPending accepted the record,
+              // so absence is also proof that claimPending's SQL filter worked.
+              for (String id : ourIds) {
+                if (!stillPresent.contains(id)) {
+                  claimed.add(id);
+                }
               }
               assertTrue(claimed.contains(id1), "id1 (PENDING) was never claimed");
               assertTrue(claimed.contains(id2), "id2 (PENDING_RETRY_1) was never claimed");
