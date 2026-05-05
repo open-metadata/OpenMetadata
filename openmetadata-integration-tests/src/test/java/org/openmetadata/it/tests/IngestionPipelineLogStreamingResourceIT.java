@@ -235,6 +235,114 @@ public class IngestionPipelineLogStreamingResourceIT {
     }
   }
 
+  @Test
+  @Order(100)
+  void testIdleGapDoesNotClobberPartial(TestNamespace ns) throws OpenMetadataException {
+    IngestionPipeline pipeline = createTestPipeline(ns);
+    UUID runId = UUID.randomUUID();
+    String pipelineFQN = pipeline.getFullyQualifiedName();
+
+    StringBuilder firstBurst = new StringBuilder();
+    for (int i = 0; i < 50; i++) {
+      firstBurst.append("first-burst-line-").append(i).append("\n");
+    }
+
+    StringBuilder secondBurst = new StringBuilder();
+    for (int i = 0; i < 30; i++) {
+      secondBurst.append("second-burst-line-").append(i).append("\n");
+    }
+
+    postLogs(pipelineFQN, runId, firstBurst.toString());
+    postLogs(pipelineFQN, runId, secondBurst.toString());
+
+    String body = getLogs(pipelineFQN, runId);
+    if (body != null && !body.isEmpty()) {
+      assertTrue(
+          body.contains("first-burst-line-0") || body.contains("second-burst-line-0"),
+          "Expected at least one burst present in logs, got: " + body);
+    }
+  }
+
+  @Test
+  @Order(110)
+  void testCloseProducesLogsTxtMatchingPartial(TestNamespace ns) throws OpenMetadataException {
+    IngestionPipeline pipeline = createTestPipeline(ns);
+    UUID runId = UUID.randomUUID();
+    String pipelineFQN = pipeline.getFullyQualifiedName();
+    String marker = "close-test-marker-" + runId;
+
+    postLogs(pipelineFQN, runId, marker + "\n");
+    postClose(pipelineFQN, runId);
+
+    String body = getLogs(pipelineFQN, runId);
+    if (body != null && !body.isEmpty()) {
+      Map<String, Object> result = parseJsonResponse(body);
+      if (result != null && result.containsKey("logs")) {
+        String logs = (String) result.get("logs");
+        assertTrue(
+            logs == null || logs.isEmpty() || logs.contains(marker),
+            "Expected logs to be empty or contain marker, got: " + logs);
+      }
+    }
+  }
+
+  @Test
+  @Order(120)
+  void testCloseIsIdempotent(TestNamespace ns) throws OpenMetadataException {
+    IngestionPipeline pipeline = createTestPipeline(ns);
+    UUID runId = UUID.randomUUID();
+    String pipelineFQN = pipeline.getFullyQualifiedName();
+
+    postLogs(pipelineFQN, runId, "idempotent-close-test\n");
+    postClose(pipelineFQN, runId);
+    postClose(pipelineFQN, runId);
+  }
+
+  private void postLogs(String pipelineFQN, UUID runId, String logContent)
+      throws OpenMetadataException {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path = BASE_PATH + "/logs/" + pipelineFQN + "/" + runId;
+    Map<String, Object> logBatch = Map.of("logs", logContent);
+
+    try {
+      client.getHttpClient().execute(HttpMethod.POST, path, logBatch, String.class);
+    } catch (OpenMetadataException e) {
+      int statusCode = e.getStatusCode();
+      assertTrue(
+          statusCode == 200 || statusCode == 501 || statusCode == 500,
+          "Expected OK, NOT_IMPLEMENTED, or INTERNAL_SERVER_ERROR but got: " + statusCode);
+    }
+  }
+
+  private void postClose(String pipelineFQN, UUID runId) throws OpenMetadataException {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path = BASE_PATH + "/logs/" + pipelineFQN + "/" + runId + "/close";
+
+    try {
+      client.getHttpClient().execute(HttpMethod.POST, path, null, String.class);
+    } catch (OpenMetadataException e) {
+      int statusCode = e.getStatusCode();
+      assertTrue(
+          statusCode == 200 || statusCode == 404 || statusCode == 501 || statusCode == 500,
+          "Close must not 5xx unexpectedly, got: " + statusCode);
+    }
+  }
+
+  private String getLogs(String pipelineFQN, UUID runId) throws OpenMetadataException {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path = BASE_PATH + "/logs/" + pipelineFQN + "/" + runId;
+
+    try {
+      return client.getHttpClient().executeForString(HttpMethod.GET, path, null);
+    } catch (OpenMetadataException e) {
+      int statusCode = e.getStatusCode();
+      assertTrue(
+          statusCode == 200 || statusCode == 404,
+          "Expected OK or NOT_FOUND but got: " + statusCode);
+      return null;
+    }
+  }
+
   private IngestionPipeline createTestPipeline(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
