@@ -120,21 +120,12 @@ public class DataCompletenessImpl implements JavaDelegate {
             entityList.size());
       }
 
-      // Per-band entity lists — ALL bands stored, empty or not (inclusive gateway ready)
+      // Per-band entity lists — ALL bands stored, empty or not.
+      // When all flags are false the split gateway falls through to its defaultFlow.
       for (QualityBand band : qualityBands) {
         List<String> bandEntities = entitiesByBand.getOrDefault(band.getName(), List.of());
         varHandler.setNodeVariable(band.getName() + "_" + ENTITY_LIST_VARIABLE, bandEntities);
         varHandler.setNodeVariable(bandFlagVariable(band.getName()), !bandEntities.isEmpty());
-      }
-
-      // If no entities were assigned to any band (empty input or all failed), activate the
-      // lowest-score band so the inclusive split gateway always has at least one active branch.
-      boolean anyBandActive =
-          qualityBands.stream().anyMatch(b -> entitiesByBand.containsKey(b.getName()));
-      if (!anyBandActive) {
-        qualityBands.stream()
-            .min(Comparator.comparingDouble(QualityBand::getMinimumScore))
-            .ifPresent(b -> varHandler.setNodeVariable(bandFlagVariable(b.getName()), true));
       }
 
       // Priority band = highest minimumScore band that has entities

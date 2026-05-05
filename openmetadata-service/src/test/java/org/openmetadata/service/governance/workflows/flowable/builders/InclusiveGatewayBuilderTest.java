@@ -11,13 +11,12 @@ import org.junit.jupiter.api.Test;
 class InclusiveGatewayBuilderTest {
 
   @Test
-  void testBuildDefaultsToSyncExclusive() {
+  void testBuildDefaultsToSync() {
     InclusiveGateway gateway = new InclusiveGatewayBuilder().id("splitGateway").build();
 
     assertEquals("splitGateway", gateway.getId());
     assertEquals("splitGateway", gateway.getName());
     assertFalse(gateway.isAsynchronous());
-    assertTrue(gateway.isExclusive());
     assertNull(gateway.getDefaultFlow());
   }
 

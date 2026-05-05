@@ -23,7 +23,6 @@ public class InclusiveGatewayBuilder extends FlowableElementBuilder<InclusiveGat
     gateway.setId(id);
     gateway.setName(id);
     gateway.setAsynchronous(async);
-    gateway.setExclusive(true);
     if (defaultFlow != null) {
       gateway.setDefaultFlow(defaultFlow);
     }
