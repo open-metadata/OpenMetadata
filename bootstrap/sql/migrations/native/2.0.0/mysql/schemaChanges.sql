@@ -138,7 +138,7 @@ CREATE TABLE IF NOT EXISTS task_form_schema_entity (
 
 -- Add composite index on change_event(entityType, offset) for efficient incremental
 -- change-event-driven workflow processing (filters by entityType + offset range).
-CREATE INDEX IF NOT EXISTS idx_change_event_entity_type_offset ON change_event (entityType, `offset`);
+CREATE INDEX idx_change_event_entity_type_offset ON change_event (entityType, `offset`);
 
 -- Widen change_event_consumers.id from VARCHAR(36) to VARCHAR(500) to support workflow consumer IDs
 -- which follow the pattern {workflowFQN}Trigger-{entityType} and can exceed 36 characters.
