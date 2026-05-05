@@ -16,7 +16,7 @@ Datalake GCS Client
 import os
 from copy import deepcopy
 from functools import partial
-from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple  # noqa: UP035
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple  # noqa: UP035
 
 from google.cloud import storage
 
@@ -108,13 +108,13 @@ class DatalakeGcsClient(DatalakeBaseClient):
                 yield bucket.name
 
     @staticmethod
-    def _should_skip_gcs_cold_storage(blob) -> bool:
+    def _should_skip_gcs_cold_storage(blob: Any) -> bool:
         storage_class = getattr(blob, "storage_class", None)
         return bool(storage_class and storage_class in GCS_COLD_STORAGE_CLASSES)
 
     def _discover_iceberg_dirs(
         self,
-        bucket,
+        bucket: Any,
         prefix: Optional[str],  # noqa: UP045
         skip_cold_storage: bool,
     ) -> Tuple[Dict[str, Tuple[int, str, int | None]], Set[str]]:  # noqa: UP006
@@ -127,9 +127,9 @@ class DatalakeGcsClient(DatalakeBaseClient):
                 logger.debug(
                     f"Skipping cold storage object: {blob.name} (storage_class: {getattr(blob, 'storage_class', None)})"
                 )
-                match = self._ICEBERG_METADATA_RE.match(blob.name)
-                if match:
-                    cold_iceberg_dirs.add(match.group(1))
+                parsed = self._parse_iceberg_metadata(blob.name)
+                if parsed:
+                    cold_iceberg_dirs.add(parsed[0])
                 continue
             self._update_iceberg_entry(iceberg_tables, blob.name, blob.size)
 
@@ -137,7 +137,7 @@ class DatalakeGcsClient(DatalakeBaseClient):
 
     def _yield_regular_files(
         self,
-        bucket,
+        bucket: Any,
         prefix: Optional[str],  # noqa: UP045
         skip_cold_storage: bool,
         iceberg_dirs: Set[str],  # noqa: UP006
@@ -147,7 +147,8 @@ class DatalakeGcsClient(DatalakeBaseClient):
             if skip_cold_storage and self._should_skip_gcs_cold_storage(blob):
                 continue
             if iceberg_dirs and (
-                self._ICEBERG_METADATA_RE.match(blob.name) or any(blob.name.startswith(d + "/") for d in iceberg_dirs)
+                self._parse_iceberg_metadata(blob.name) is not None
+                or any(blob.name.startswith(d + "/") for d in iceberg_dirs)
             ):
                 continue
             yield blob.name, blob.size

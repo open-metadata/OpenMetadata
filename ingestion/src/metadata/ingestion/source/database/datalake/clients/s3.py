@@ -88,9 +88,9 @@ class DatalakeS3Client(DatalakeBaseClient):
                     f"(StorageClass: {key.get('StorageClass', 'STANDARD')}, "
                     f"ArchiveStatus: {key.get('ArchiveStatus', '')})"
                 )
-                match = self._ICEBERG_METADATA_RE.match(key_name)
-                if match:
-                    cold_iceberg_dirs.add(match.group(1))
+                parsed = self._parse_iceberg_metadata(key_name)
+                if parsed:
+                    cold_iceberg_dirs.add(parsed[0])
                 continue
             self._update_iceberg_entry(iceberg_tables, key_name, size)
 
@@ -109,7 +109,8 @@ class DatalakeS3Client(DatalakeBaseClient):
             if skip_cold_storage and self._should_skip_s3_cold_storage(key):
                 continue
             if iceberg_dirs and (
-                self._ICEBERG_METADATA_RE.match(key_name) or any(key_name.startswith(d + "/") for d in iceberg_dirs)
+                self._parse_iceberg_metadata(key_name) is not None
+                or any(key_name.startswith(d + "/") for d in iceberg_dirs)
             ):
                 continue
             yield key_name, size

@@ -17,7 +17,6 @@ from different auths and different file systems.
 import ast
 import json
 import random
-import re
 import traceback
 from typing import Any, Dict, List, Optional, cast  # noqa: UP035
 
@@ -160,7 +159,8 @@ def fetch_dataframe_first_chunk(
     return None
 
 
-_ICEBERG_METADATA_PATH_RE = re.compile(r"([^/]+)/metadata/v\d+\.metadata\.json$")
+_ICEBERG_METADATA_SUFFIX = ".metadata.json"
+_ICEBERG_METADATA_SEGMENT = "/metadata/v"
 
 
 def get_iceberg_table_name_from_metadata_path(metadata_path: str) -> str | None:
@@ -175,8 +175,17 @@ def get_iceberg_table_name_from_metadata_path(metadata_path: str) -> str | None:
 
     Returns None if the path does not match the Iceberg metadata pattern.
     """
-    match = _ICEBERG_METADATA_PATH_RE.search(metadata_path)
-    return match.group(1) if match else None
+    if not metadata_path.endswith(_ICEBERG_METADATA_SUFFIX):
+        return None
+    idx = metadata_path.rfind(_ICEBERG_METADATA_SEGMENT)
+    if idx < 0:
+        return None
+    version_str = metadata_path[idx + len(_ICEBERG_METADATA_SEGMENT) : -len(_ICEBERG_METADATA_SUFFIX)]
+    if not version_str.isdigit():
+        return None
+    table_dir = metadata_path[:idx]
+    last_slash = table_dir.rfind("/")
+    return table_dir[last_slash + 1 :] if last_slash >= 0 else table_dir
 
 
 def get_file_format_type(key_name, metadata_entry=None):
@@ -302,7 +311,7 @@ class GenericDataFrameColumnParser:
         return self._get_columns(self.data_frame)
 
     @classmethod
-    def _parse_column(cls, data_frame: "DataFrame", column: str) -> Optional[Column]:  # noqa: F821, UP045
+    def _parse_column(cls, data_frame: Any, column: str) -> Optional[Column]:  # noqa: UP045
         # use String by default
         data_type = DataType.STRING
         try:

@@ -16,7 +16,7 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 import json
 import traceback
 from hashlib import md5
-from typing import Any, Iterable, Optional, Tuple  # noqa: UP035
+from typing import Any, Dict, Iterable, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -59,7 +59,7 @@ from metadata.ingestion.source.storage.storage_service import (
     OPENMETADATA_TEMPLATE_FILE_NAME,
 )
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
-from metadata.readers.dataframe.reader_factory import SupportedTypes
+from metadata.readers.dataframe.reader_factory import SupportedTypes  # noqa: TC001
 from metadata.readers.file.base import ReadException
 from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils import fqn
@@ -96,6 +96,7 @@ class DatalakeSource(DatabaseServiceSource):
         self.connection_obj = self.client
         self.test_connection()
         self.reader = get_reader(config_source=self.config_source, client=self.client.client)
+        self._table_info: Dict[str, Tuple[SupportedTypes, Optional[int], str]] = {}  # noqa: UP006, UP045
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -202,7 +203,7 @@ class DatalakeSource(DatabaseServiceSource):
 
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,
-    ) -> Iterable[Tuple[str, TableType, SupportedTypes, Optional[int], str]]:  # noqa: UP006, UP045
+    ) -> Optional[Iterable[Tuple[str, TableType]]]:  # noqa: UP006, UP045
         """
         Handle table and views.
 
@@ -244,24 +245,20 @@ class DatalakeSource(DatabaseServiceSource):
                     if get_iceberg_table_name_from_metadata_path(key_name) is not None
                     else TableType.Regular
                 )
-                yield table_name, table_type, file_extension, file_size, key_name
+                self._table_info[table_name] = (file_extension, file_size, key_name)
+                yield table_name, table_type
 
     def yield_table(
         self,
-        table_name_and_type: Tuple[str, TableType, SupportedTypes, Optional[int], str],  # noqa: UP006, UP045
+        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink.
         Uses first chunk only for schema inference to avoid loading entire file.
         """
-        (
-            table_name,
-            table_type,
-            table_extension,
-            file_size,
-            fetch_key,
-        ) = table_name_and_type
+        table_name, table_type = table_name_and_type
+        table_extension, file_size, fetch_key = self._table_info.pop(table_name, (None, None, table_name))
         schema_name = self.context.get().database_schema
         try:
             table_constraints = None

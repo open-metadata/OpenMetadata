@@ -13,7 +13,6 @@
 Datalake Base Client
 """
 
-import re
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple  # noqa: UP035
 
@@ -21,7 +20,23 @@ from typing import Any, Callable, Dict, Iterable, Optional, Tuple  # noqa: UP035
 class DatalakeBaseClient(ABC):
     """Base DL client implementation"""
 
-    _ICEBERG_METADATA_RE = re.compile(r"^(.*)/metadata/v(\d+)\.metadata\.json$")
+    _ICEBERG_METADATA_SUFFIX = ".metadata.json"
+    _ICEBERG_METADATA_SEGMENT = "/metadata/v"
+
+    @staticmethod
+    def _parse_iceberg_metadata(name: str) -> Optional[Tuple[str, int]]:  # noqa: UP006, UP045
+        """Parse an Iceberg metadata path, returning (table_dir, version) or None."""
+        if not name.endswith(DatalakeBaseClient._ICEBERG_METADATA_SUFFIX):
+            return None
+        idx = name.rfind(DatalakeBaseClient._ICEBERG_METADATA_SEGMENT)
+        if idx < 0:
+            return None
+        version_str = name[
+            idx + len(DatalakeBaseClient._ICEBERG_METADATA_SEGMENT) : -len(DatalakeBaseClient._ICEBERG_METADATA_SUFFIX)
+        ]
+        if not version_str.isdigit():
+            return None
+        return name[:idx], int(version_str)
 
     def _update_iceberg_entry(
         self,
@@ -33,10 +48,10 @@ class DatalakeBaseClient(ABC):
         If name matches the Iceberg metadata pattern, update iceberg_tables with
         the highest-version entry and return True. Otherwise return False.
         """
-        match = self._ICEBERG_METADATA_RE.match(name)
-        if not match:
+        parsed = self._parse_iceberg_metadata(name)
+        if not parsed:
             return False
-        table_dir, version = match.group(1), int(match.group(2))
+        table_dir, version = parsed
         existing = iceberg_tables.get(table_dir)
         if existing is None or version > existing[0]:
             iceberg_tables[table_dir] = (version, name, size)
