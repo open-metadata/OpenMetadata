@@ -4,6 +4,7 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -9199,6 +9200,18 @@ public class WorkflowDefinitionResourceIT {
             });
     LOG.info("✓ Approval task created for tag change");
 
+    // Capture the workflowInstanceId of the tag-change task to verify it is replaced when the
+    // domain-change workflow takes over (design: "last event wins" — the tag-change workflow
+    // instance is terminated and the existing approval task is reassigned).
+    Map<String, String> taskWithInstanceIdQuery = new HashMap<>();
+    taskWithInstanceIdQuery.put("status", TaskEntityStatus.Open.value());
+    taskWithInstanceIdQuery.put("category", TaskCategory.Approval.value());
+    taskWithInstanceIdQuery.put("aboutEntity", tableFqn);
+    taskWithInstanceIdQuery.put("fields", "workflowInstanceId");
+    ListResponse<Task> tagChangeTasks = client.tasks().listWithFilters(taskWithInstanceIdQuery);
+    UUID tagChangeWorkflowInstanceId = tagChangeTasks.getData().get(0).getWorkflowInstanceId();
+    assertNotNull(tagChangeWorkflowInstanceId, "Tag change task should have a workflowInstanceId");
+
     // Test 2: Update table with domain - should also trigger workflow
     String domainPatchJson =
         String.format(
@@ -9212,20 +9225,27 @@ public class WorkflowDefinitionResourceIT {
 
     LOG.info("✓ Table updated with domain: {}", domain.getFullyQualifiedName());
 
-    // Wait for workflow to process and check if approval task was created for domain change
+    // Domain change triggers a new workflow that terminates the tag-change workflow and updates
+    // the existing approval task (not creates a duplicate). Verify: count stays at 1 and the
+    // workflowInstanceId on the task changes, proving the domain workflow ran and took over.
     await()
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofSeconds(2))
         .pollDelay(Duration.ofSeconds(1))
         .untilAsserted(
             () -> {
-              ListResponse<Task> tasks = listOpenApprovalTasks(client, tableFqn);
-              assertTrue(
-                  tasks.getData().size() >= 2,
-                  "Approval task should be created for domain field change");
+              ListResponse<Task> tasks = client.tasks().listWithFilters(taskWithInstanceIdQuery);
+              assertEquals(
+                  1,
+                  tasks.getData().size(),
+                  "Domain field change should update the existing task, not create a duplicate");
+              assertNotEquals(
+                  tagChangeWorkflowInstanceId,
+                  tasks.getData().get(0).getWorkflowInstanceId(),
+                  "workflowInstanceId must change when domain-change workflow takes over the task");
             });
     LOG.info(
-        "✓ Approval task created for domain change - OR logic verified for multiple include fields");
+        "✓ Domain change updated existing approval task (workflowInstanceId changed) — OR logic verified for multiple include fields");
 
     // Cleanup workflow
     try {
