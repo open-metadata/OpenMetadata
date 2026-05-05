@@ -73,9 +73,8 @@ export const getColorSetForType = (
   type: string
 ): { main: string; light: string } => {
   let hash = 0;
-  for (let i = 0; i < type.length; i++) {
-    // codePointAt instead of charCodeAt to handle multi-byte Unicode (emoji, CJK)
-    hash = (hash * 31 + (type.codePointAt(i) ?? 0)) >>> 0;
+  for (const ch of type) {
+    hash = (hash * 31 + (ch.codePointAt(0) ?? 0)) >>> 0;
   }
 
   return COLOR_SETS[hash % COLOR_SETS.length];
@@ -914,9 +913,11 @@ export const setupGraphEventHandlers = (ctx: GraphInteractionCtx): void => {
     const srcId = String(edge.source);
     const tgtId = String(edge.target);
     const rawLabels = edge.data?.['mergedLabels'];
-    const labels: string[] = Array.isArray(rawLabels)
-      ? (rawLabels as string[])
-      : [String(edge.data?.['label'] ?? '')];
+    const labels: string[] = (
+      Array.isArray(rawLabels)
+        ? (rawLabels as string[])
+        : [String(edge.data?.['label'] ?? '')]
+    ).filter((s) => s.length > 0);
 
     // Restore previous edge's visual state before applying the new one;
     // prevents permanently-highlighted edges when switching edges without a gap.
@@ -964,6 +965,7 @@ export const setupGraphEventHandlers = (ctx: GraphInteractionCtx): void => {
       labels,
       sourceLabel: nodeLabelMap.get(srcId) ?? srcId,
       targetLabel: nodeLabelMap.get(tgtId) ?? tgtId,
+      edgeId,
     });
   });
 

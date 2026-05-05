@@ -71,6 +71,7 @@ export interface EdgeTooltipState {
   labels: string[];
   sourceLabel: string;
   targetLabel: string;
+  edgeId: string;
 }
 
 export type KnowledgeGraphLayout = 'dagre' | 'radial';

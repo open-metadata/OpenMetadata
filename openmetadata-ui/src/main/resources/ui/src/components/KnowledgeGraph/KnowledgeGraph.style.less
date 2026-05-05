@@ -125,16 +125,16 @@
   z-index: 1200;
   pointer-events: none;
   background: @white;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: @global-border;
   border-radius: 6px;
   padding: 6px 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: @box-shadow-base;
   max-width: 280px;
   font-size: 12px;
   line-height: 1.5;
 
   &__direction {
-    color: rgba(0, 0, 0, 0.45);
+    color: @text-color-tertiary;
     margin-bottom: 4px;
     white-space: nowrap;
     overflow: hidden;
@@ -142,7 +142,7 @@
   }
 
   &__label {
-    color: rgba(0, 0, 0, 0.85);
+    color: @text-color;
     font-weight: 500;
     word-break: break-word;
   }
