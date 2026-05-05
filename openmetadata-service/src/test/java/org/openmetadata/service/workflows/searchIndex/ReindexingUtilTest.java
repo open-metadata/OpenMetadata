@@ -15,6 +15,7 @@ package org.openmetadata.service.workflows.searchIndex;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -37,6 +38,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexFactory;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.EntityUtil;
 
 /**
  * Unit tests for {@link ReindexingUtil#getSearchIndexFields(String)}. The interesting
@@ -148,8 +150,7 @@ class ReindexingUtilTest {
     when(searchRepository.getSearchIndexFactory()).thenReturn(new SearchIndexFactory());
     Set<String> declared = Entity.getEntityFields(entityClass);
 
-    EntityRepository<?> repo = mock(EntityRepository.class);
-    when(repo.getAllowedFieldsCopy()).thenReturn(new HashSet<>(declared));
+    EntityRepository<?> repo = mockRepoWithAllowedFields(declared);
 
     List<String> filtered;
     try (MockedStatic<Entity> entityMock =
@@ -260,12 +261,27 @@ class ReindexingUtilTest {
   }
 
   private List<String> withAllowedFields(String entityType, Set<String> allowed) {
-    EntityRepository<?> repo = mock(EntityRepository.class);
-    when(repo.getAllowedFieldsCopy()).thenReturn(new HashSet<>(allowed));
+    EntityRepository<?> repo = mockRepoWithAllowedFields(allowed);
     try (MockedStatic<Entity> entityMock =
         mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
       entityMock.when(() -> Entity.getEntityRepository(eq(entityType))).thenReturn(repo);
       return ReindexingUtil.getSearchIndexFields(entityType);
     }
+  }
+
+  /**
+   * Build a mock EntityRepository whose {@code getOnlySupportedFields(...)} returns a real
+   * {@link EntityUtil.Fields} built against {@code allowed} with extras silently dropped — the
+   * same contract as the production method (see {@code EntityRepository#getOnlySupportedFields}).
+   * {@code ReindexingUtil.getSearchIndexFields} reaches into the repository through {@code
+   * Entity.getOnlySupportedFields(...)}, so this is the method that has to be stubbed.
+   */
+  private static EntityRepository<?> mockRepoWithAllowedFields(Set<String> allowed) {
+    EntityRepository<?> repo = mock(EntityRepository.class);
+    Set<String> allowedCopy = new HashSet<>(allowed);
+    when(repo.getAllowedFieldsCopy()).thenReturn(allowedCopy);
+    when(repo.getOnlySupportedFields(anyString()))
+        .thenAnswer(inv -> new EntityUtil.Fields(allowedCopy, inv.getArgument(0), true));
+    return repo;
   }
 }

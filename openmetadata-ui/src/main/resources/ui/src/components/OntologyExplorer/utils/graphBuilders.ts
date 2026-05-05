@@ -291,7 +291,6 @@ export function buildGraphFromCounts(
       fullyQualifiedName: fqn,
       glossaryId: glossary?.id,
       group: glossary?.name ?? glossaryFqn,
-      originalLabel: fqn,
     });
 
     if (parts.length > 2) {
