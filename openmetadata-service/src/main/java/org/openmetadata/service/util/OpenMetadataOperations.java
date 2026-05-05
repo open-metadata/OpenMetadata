@@ -134,10 +134,14 @@ import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.dbtune.AutoTuner;
+import org.openmetadata.service.util.dbtune.DbTuneDiagnosis;
 import org.openmetadata.service.util.dbtune.DbTuneReport;
 import org.openmetadata.service.util.dbtune.DbTuneResult;
+import org.openmetadata.service.util.dbtune.Diagnostic;
 import org.openmetadata.service.util.dbtune.MysqlAutoTuner;
+import org.openmetadata.service.util.dbtune.MysqlDiagnostic;
 import org.openmetadata.service.util.dbtune.PostgresAutoTuner;
+import org.openmetadata.service.util.dbtune.PostgresDiagnostic;
 import org.openmetadata.service.util.dbtune.TableRecommendation;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.openmetadata.service.util.jdbi.JdbiUtils;
@@ -186,7 +190,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     LOG.info(
         "Use 'db-tune' for a per-table autovacuum / InnoDB stats tuning report; add --apply to "
-            + "execute the recommendations and --analyze to refresh planner stats on changed tables");
+            + "execute the recommendations, --analyze to refresh planner stats on changed tables, "
+            + "and --diagnose to surface unused indexes, bloat, slow queries, and other DBA findings");
     LOG.info(
         "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000' for Flowable cleanup with custom options");
     LOG.info(
@@ -2482,8 +2487,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
       name = "db-tune",
       description =
           "Generate a per-table autovacuum / InnoDB stats tuning report and optionally apply it. "
-              + "Default mode is read-only — pass --apply to execute the ALTER TABLE statements "
-              + "and --analyze to refresh planner stats on changed tables.")
+              + "Default mode is read-only — pass --apply to execute the ALTER TABLE statements, "
+              + "--analyze to refresh planner stats on changed tables, and --diagnose to also "
+              + "surface unused indexes, bloat, slow queries, and other read-only DBA findings.")
   public Integer dbTune(
       @Option(
               names = {"--apply"},
@@ -2501,7 +2507,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
               defaultValue = "false",
               description =
                   "After --apply, run ANALYZE on each changed table so planner stats reflect the new settings.")
-          boolean runAnalyze) {
+          boolean runAnalyze,
+      @Option(
+              names = {"--diagnose"},
+              defaultValue = "false",
+              description =
+                  "Also run a read-only diagnostic pass (unused indexes, bloat, low cache hit, "
+                      + "stale ANALYZE, seq-scan-heavy tables, slow queries). Pure inspection — "
+                      + "never modifies anything.")
+          boolean runDiagnose) {
     try {
       parseConfig();
       String driverClass = config.getDataSourceFactory().getDriverClass();
@@ -2515,6 +2529,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
       AutoTuner tuner = autoTunerFor(connType);
       DbTuneResult result = jdbi.withHandle(tuner::analyze);
       LOG.info("\n{}", DbTuneReport.render(result));
+      if (runDiagnose) {
+        Diagnostic diagnostic = diagnosticFor(connType);
+        DbTuneDiagnosis diagnosis = jdbi.withHandle(diagnostic::diagnose);
+        LOG.info("\n{}", DbTuneReport.renderDiagnosis(diagnosis));
+      }
       if (!apply) {
         return 0;
       }
@@ -2544,6 +2563,13 @@ public class OpenMetadataOperations implements Callable<Integer> {
     return switch (connType) {
       case POSTGRES -> new PostgresAutoTuner();
       case MYSQL -> new MysqlAutoTuner();
+    };
+  }
+
+  private Diagnostic diagnosticFor(final ConnectionType connType) {
+    return switch (connType) {
+      case POSTGRES -> new PostgresDiagnostic();
+      case MYSQL -> new MysqlDiagnostic();
     };
   }
 

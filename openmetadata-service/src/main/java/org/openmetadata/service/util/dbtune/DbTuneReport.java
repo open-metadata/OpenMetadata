@@ -150,4 +150,54 @@ public final class DbTuneReport {
     }
     return String.join("\n", lines);
   }
+
+  /**
+   * Renders read-only diagnostic findings grouped by category. Each category that produced at
+   * least one finding gets its own section with a category-specific column layout. Categories with
+   * zero findings are suppressed; the {@code notes} list is appended at the end so an operator sees
+   * what couldn't be checked (missing extension, permissions, etc.).
+   */
+  public static String renderDiagnosis(final DbTuneDiagnosis diagnosis) {
+    StringBuilder out = new StringBuilder();
+    out.append("=== Diagnostic findings ===\n");
+    Map<DiagnosticCategory, List<Finding>> grouped = diagnosis.findingsByCategory();
+    if (grouped.isEmpty()) {
+      out.append("(no findings — every check returned a clean result)\n");
+    }
+    for (Map.Entry<DiagnosticCategory, List<Finding>> e : grouped.entrySet()) {
+      appendCategorySection(out, e.getKey(), e.getValue());
+    }
+    appendNotes(out, diagnosis.notes());
+    return out.toString();
+  }
+
+  private static void appendCategorySection(
+      final StringBuilder out, final DiagnosticCategory category, final List<Finding> findings) {
+    out.append('\n')
+        .append(category.title())
+        .append(" (")
+        .append(findings.size())
+        .append(" found):\n");
+    out.append("  ").append(category.description()).append('\n');
+    List<List<String>> rows = new ArrayList<>();
+    for (Finding f : findings) {
+      List<String> row = new ArrayList<>(category.columns().size());
+      for (String col : category.columns()) {
+        row.add(nullToBlank(f.attributes().get(col)));
+      }
+      rows.add(row);
+    }
+    out.append(new AsciiTable(category.columns(), rows, true, "", "(empty)").render());
+    out.append('\n');
+  }
+
+  private static void appendNotes(final StringBuilder out, final List<String> notes) {
+    if (notes == null || notes.isEmpty()) {
+      return;
+    }
+    out.append("\nNotes:\n");
+    for (String note : notes) {
+      out.append("  - ").append(note).append('\n');
+    }
+  }
 }

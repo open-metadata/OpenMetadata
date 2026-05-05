@@ -28,9 +28,13 @@ import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.util.dbtune.Action;
 import org.openmetadata.service.util.dbtune.AutoTuner;
+import org.openmetadata.service.util.dbtune.DbTuneDiagnosis;
 import org.openmetadata.service.util.dbtune.DbTuneResult;
+import org.openmetadata.service.util.dbtune.Diagnostic;
 import org.openmetadata.service.util.dbtune.MysqlAutoTuner;
+import org.openmetadata.service.util.dbtune.MysqlDiagnostic;
 import org.openmetadata.service.util.dbtune.PostgresAutoTuner;
+import org.openmetadata.service.util.dbtune.PostgresDiagnostic;
 import org.openmetadata.service.util.dbtune.TableRecommendation;
 
 /**
@@ -132,6 +136,23 @@ class DbTuneIT {
   }
 
   @Test
+  void diagnoseCompletesWithoutErrorAndReturnsStructuredResult() {
+    Diagnostic diagnostic = currentDiagnostic();
+    Jdbi jdbi = TestSuiteBootstrap.getJdbi();
+
+    DbTuneDiagnosis diagnosis = jdbi.withHandle(diagnostic::diagnose);
+
+    assertNotNull(diagnosis, "diagnose() must return a non-null diagnosis");
+    assertNotNull(diagnosis.findings(), "findings list must be present (empty allowed)");
+    assertNotNull(diagnosis.notes(), "notes list must be present (empty allowed)");
+    // On a freshly-bootstrapped IT DB we expect either:
+    //   - an empty diagnosis (nothing has accumulated yet to flag), OR
+    //   - notes about missing optional extensions like pg_stat_statements.
+    // Either is fine — what we're really asserting is the diagnostic ran end-to-end without
+    // throwing on the live schema.
+  }
+
+  @Test
   void dryRunDoesNotMutateReloptions() {
     AutoTuner tuner = currentTuner();
     Jdbi jdbi = TestSuiteBootstrap.getJdbi();
@@ -151,6 +172,12 @@ class DbTuneIT {
     return currentConnectionType() == ConnectionType.POSTGRES
         ? new PostgresAutoTuner()
         : new MysqlAutoTuner();
+  }
+
+  private Diagnostic currentDiagnostic() {
+    return currentConnectionType() == ConnectionType.POSTGRES
+        ? new PostgresDiagnostic()
+        : new MysqlDiagnostic();
   }
 
   private ConnectionType currentConnectionType() {
