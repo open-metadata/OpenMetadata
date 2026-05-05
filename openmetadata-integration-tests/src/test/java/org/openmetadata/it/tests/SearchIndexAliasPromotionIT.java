@@ -95,6 +95,19 @@ public class SearchIndexAliasPromotionIT {
                 + SETTINGS_INDEX
                 + "'. Expected the reindex to produce a staged index that now serves the alias.");
 
+    boolean anyRebuildIndex =
+        settingsByIndex.keySet().stream().anyMatch(name -> name.contains("_rebuild_"));
+    assertTrue(
+        anyRebuildIndex,
+        () ->
+            "Alias '"
+                + SETTINGS_INDEX
+                + "' resolves only to "
+                + settingsByIndex.keySet()
+                + ", none of which is a *_rebuild_* index. The promotion did not move the alias"
+                + " to a freshly staged index — assertions below would pass against the"
+                + " pre-existing live index and miss the regression.");
+
     for (Map.Entry<String, JsonNode> entry : settingsByIndex.entrySet()) {
       String concreteIndex = entry.getKey();
       JsonNode indexSettings = entry.getValue();
@@ -198,7 +211,15 @@ public class SearchIndexAliasPromotionIT {
             });
     AppRunRecord run = holder[0];
     String status = run.getStatus().value().toLowerCase();
-    assertNotEquals("failed", status, () -> "Reindex job failed: " + run);
+    assertTrue(
+        "success".equals(status) || "completed".equals(status),
+        () ->
+            "Reindex run finished in non-success state '"
+                + status
+                + "'. activeError / completedWithErrors paths can leave the alias on the old"
+                + " live index, which already has live settings — the post-run assertions"
+                + " would pass without proving anything. Run="
+                + run);
     return run;
   }
 
