@@ -950,8 +950,12 @@ public final class JsonUtils {
     }
 
     private static boolean looksLikeEpochMillis(String s) {
+      // Epoch-ms for any modern date is 13 digits; 10 digits covers ≥ year 2001.
+      // Reject shorter all-digit strings (e.g. compact "YYYYMMDD") to avoid
+      // misinterpreting them as epoch-ms. Upper bound matches Long.MAX_VALUE width.
       int start = !s.isEmpty() && s.charAt(0) == '-' ? 1 : 0;
-      if (start == s.length()) {
+      int digits = s.length() - start;
+      if (digits < 10 || digits > 19) {
         return false;
       }
       for (int i = start; i < s.length(); i++) {
