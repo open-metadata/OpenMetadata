@@ -43,6 +43,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
@@ -121,6 +122,7 @@ public class S3LogStorage implements LogStorageInterface {
 
   private final Map<String, StreamContext> activeStreams = new ConcurrentHashMap<>();
   private final Map<String, Long> partialLogOffsets = new ConcurrentHashMap<>();
+  private final Map<String, ReentrantLock> streamLocks = new ConcurrentHashMap<>();
   private ScheduledExecutorService cleanupExecutor;
 
   private final Cache<String, SimpleLogBuffer> recentLogsCache =
@@ -346,7 +348,7 @@ public class S3LogStorage implements LogStorageInterface {
     }
 
     String streamKey = pipelineFQN + "/" + runId;
-
+    ReentrantLock lock = acquireStreamLock(streamKey);
     try {
       // Update memory cache for real-time log viewing
       SimpleLogBuffer recentLogs = recentLogsCache.get(streamKey, k -> new SimpleLogBuffer(1000));
@@ -401,6 +403,8 @@ public class S3LogStorage implements LogStorageInterface {
         metrics.recordLogsFailed();
       }
       throw new IOException("Failed to append logs for " + pipelineFQN + "/" + runId, e);
+    } finally {
+      releaseStreamLock(streamKey, lock);
     }
 
     markRunAsActive(pipelineFQN, runId);
@@ -929,6 +933,7 @@ public class S3LogStorage implements LogStorageInterface {
       StreamContext context = entry.getValue();
 
       if (now - context.lastAccessTime > streamTimeoutMs) {
+        ReentrantLock lock = acquireStreamLock(entry.getKey());
         try {
           LOG.debug("Closing expired stream: {}", entry.getKey());
           context.close();
@@ -937,6 +942,8 @@ public class S3LogStorage implements LogStorageInterface {
           partialLogOffsets.remove(entry.getKey());
         } catch (Exception e) {
           LOG.error("Error closing expired stream: {}", entry.getKey(), e);
+        } finally {
+          releaseStreamLock(entry.getKey(), lock);
         }
         iterator.remove();
       }
@@ -958,14 +965,15 @@ public class S3LogStorage implements LogStorageInterface {
   }
 
   private void writePartialLogsForStream(String streamKey) {
-    try {
-      // streamKey format is "pipelineFQN/runId" where runId is the last part after "/"
-      int lastSlashIndex = streamKey.lastIndexOf('/');
-      if (lastSlashIndex == -1) {
-        LOG.warn("Invalid stream key format: {}", streamKey);
-        return;
-      }
+    // streamKey format is "pipelineFQN/runId" where runId is the last part after "/"
+    int lastSlashIndex = streamKey.lastIndexOf('/');
+    if (lastSlashIndex == -1) {
+      LOG.warn("Invalid stream key format: {}", streamKey);
+      return;
+    }
 
+    ReentrantLock lock = acquireStreamLock(streamKey);
+    try {
       String pipelineFQN = streamKey.substring(0, lastSlashIndex);
       UUID runId = UUID.fromString(streamKey.substring(lastSlashIndex + 1));
 
@@ -1034,6 +1042,8 @@ public class S3LogStorage implements LogStorageInterface {
 
     } catch (Exception e) {
       LOG.warn("Failed to write partial logs for stream: {}", streamKey, e);
+    } finally {
+      releaseStreamLock(streamKey, lock);
     }
   }
 
@@ -1068,23 +1078,29 @@ public class S3LogStorage implements LogStorageInterface {
   public void flush(String pipelineFQN, UUID runId) throws IOException {
     String streamKey = pipelineFQN + "/" + runId;
 
-    // Write final partial logs for this specific stream
+    // writePartialLogsForStream acquires the lock internally, so call it before our lock block
+    // to avoid re-entrant nesting across method boundaries.
     try {
       writePartialLogsForStream(streamKey);
     } catch (Exception e) {
       LOG.warn("Failed to write final partial logs for {}: {}", streamKey, e.getMessage());
     }
 
-    StreamContext context = activeStreams.remove(streamKey);
-    partialLogOffsets.remove(streamKey);
+    ReentrantLock lock = acquireStreamLock(streamKey);
+    try {
+      StreamContext context = activeStreams.remove(streamKey);
+      partialLogOffsets.remove(streamKey);
 
-    if (context != null) {
-      try {
-        LOG.debug("Flushing stream for pipeline: {}, runId: {}", pipelineFQN, runId);
-        context.close();
-      } catch (Exception e) {
-        throw new IOException("Failed to flush stream for " + streamKey, e);
+      if (context != null) {
+        try {
+          LOG.debug("Flushing stream for pipeline: {}, runId: {}", pipelineFQN, runId);
+          context.close();
+        } catch (Exception e) {
+          throw new IOException("Failed to flush stream for " + streamKey, e);
+        }
       }
+    } finally {
+      releaseStreamLock(streamKey, lock);
     }
   }
 
@@ -1165,6 +1181,18 @@ public class S3LogStorage implements LogStorageInterface {
       }
     }
     return serverId;
+  }
+
+  private ReentrantLock acquireStreamLock(String streamKey) {
+    ReentrantLock lock = streamLocks.computeIfAbsent(streamKey, k -> new ReentrantLock());
+    lock.lock();
+    return lock;
+  }
+
+  private void releaseStreamLock(String streamKey, ReentrantLock lock) {
+    if (lock != null && lock.isHeldByCurrentThread()) {
+      lock.unlock();
+    }
   }
 
   /**

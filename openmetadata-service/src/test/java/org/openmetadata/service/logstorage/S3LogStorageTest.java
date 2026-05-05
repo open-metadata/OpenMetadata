@@ -21,6 +21,7 @@ import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.locks.ReentrantLock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -667,6 +668,19 @@ public class S3LogStorageTest {
       storage.initialize(config);
       return storage;
     }
+  }
+
+  @Test
+  void testAppendLogsAcquiresPerStreamLock() throws Exception {
+    mockActiveStreamCreation();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "line 1");
+    @SuppressWarnings("unchecked")
+    Map<String, ReentrantLock> locks =
+        (Map<String, ReentrantLock>) getPrivateField(s3LogStorage, "streamLocks");
+    String streamKey = testPipelineFQN + "/" + testRunId;
+    assertNotNull(locks.get(streamKey), "stream lock should be created on first appendLogs");
+    assertFalse(
+        locks.get(streamKey).isLocked(), "lock should be released after appendLogs returns");
   }
 
   private static Object getPrivateField(Object target, String name) throws Exception {
