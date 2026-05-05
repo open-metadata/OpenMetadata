@@ -502,11 +502,11 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         profile_sample = static.profileSample if static else None
         profile_sample_type = static.profileSampleType if static else None
         if profile_sample_type == ProfileSampleType.PERCENTAGE:
-            return int(max_nounce * profile_sample / 100)
+            return int(max_nounce * ((profile_sample or 100) / 100))
         if profile_sample_type == ProfileSampleType.ROWS:
             if row_count is None:
                 raise ValueError("Row count is required for ROWS profile sample type")
-            return int(max_nounce * (profile_sample / row_count))
+            return int(max_nounce * ((profile_sample or row_count) / row_count))
         raise ValueError("Invalid profile sample type")
 
     def get_row_diff_test_case_result(

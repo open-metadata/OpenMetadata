@@ -35,6 +35,9 @@ from metadata.generated.schema.entity.data.table import (
     SystemProfile,
     TableProfile,
 )
+from metadata.generated.schema.entity.data.table import (
+    ProfileSampleType as TableProfileSampleType,
+)
 from metadata.generated.schema.settings.settings import Settings  # noqa: TC001
 from metadata.generated.schema.tests.customMetric import (
     CustomMetric as CustomMetricEntity,  # noqa: TC001
@@ -518,7 +521,9 @@ class Profiler(Generic[TMetric]):
                 createDateTime=raw_create_date,
                 sizeInByte=self._table_results.get("sizeInBytes"),
                 profileSample=(sample_config.profileSample if sample_config else None),
-                profileSampleType=(sample_config.profileSampleType if sample_config else ProfileSampleType.PERCENTAGE),
+                profileSampleType=TableProfileSampleType(
+                    sample_config.profileSampleType if sample_config else ProfileSampleType.PERCENTAGE
+                ),
                 customMetrics=self._table_results.get("customMetrics"),
             )
 

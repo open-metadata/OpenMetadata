@@ -271,16 +271,27 @@ def get_tiered_sample(row_count: int) -> StaticSamplingConfig:
         return StaticSamplingConfig(
             profileSample=100,
             profileSampleType=ProfileSampleType.PERCENTAGE,
+            samplingMethodType=None,
         )
     if row_count <= 1_000_000:
-        return StaticSamplingConfig(profileSample=50, profileSampleType=ProfileSampleType.PERCENTAGE)
+        return StaticSamplingConfig(
+            profileSample=50, profileSampleType=ProfileSampleType.PERCENTAGE, samplingMethodType=None
+        )
     if row_count <= 10_000_000:
-        return StaticSamplingConfig(profileSample=10, profileSampleType=ProfileSampleType.PERCENTAGE)
+        return StaticSamplingConfig(
+            profileSample=10, profileSampleType=ProfileSampleType.PERCENTAGE, samplingMethodType=None
+        )
     if row_count <= 100_000_000:
-        return StaticSamplingConfig(profileSample=5, profileSampleType=ProfileSampleType.PERCENTAGE)
+        return StaticSamplingConfig(
+            profileSample=5, profileSampleType=ProfileSampleType.PERCENTAGE, samplingMethodType=None
+        )
     if row_count <= 1_000_000_000:
-        return StaticSamplingConfig(profileSample=1, profileSampleType=ProfileSampleType.PERCENTAGE)
-    return StaticSamplingConfig(profileSample=0.1, profileSampleType=ProfileSampleType.PERCENTAGE)
+        return StaticSamplingConfig(
+            profileSample=1, profileSampleType=ProfileSampleType.PERCENTAGE, samplingMethodType=None
+        )
+    return StaticSamplingConfig(
+        profileSample=0.1, profileSampleType=ProfileSampleType.PERCENTAGE, samplingMethodType=None
+    )
 
 
 def resolve_static_sampling_config(
