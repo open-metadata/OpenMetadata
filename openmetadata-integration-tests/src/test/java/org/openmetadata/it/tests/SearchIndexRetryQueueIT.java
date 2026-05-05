@@ -294,7 +294,10 @@ class SearchIndexRetryQueueIT {
                       SearchIndexRetryQueue.STATUS_IN_PROGRESS,
                       SearchIndexRetryQueue.STATUS_FAILED)) {
                 retryQueueDAO.findByStatus(status, 5000).stream()
-                    .filter(r -> ourIds.contains(r.getEntityId()) && r.getClaimedAt() != null)
+                    .filter(
+                        r ->
+                            ourIds.contains(r.getEntityId())
+                                && (r.getClaimedAt() != null || r.getRetryCount() > 0))
                     .map(SearchIndexRetryRecord::getEntityId)
                     .forEach(claimed::add);
               }
