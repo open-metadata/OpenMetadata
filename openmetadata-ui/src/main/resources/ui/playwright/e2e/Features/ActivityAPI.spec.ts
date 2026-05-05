@@ -156,8 +156,6 @@ test.afterAll('Cleanup delete admin user', async ({ browser }) => {
 });
 
 test.describe('Activity API - Entity Changes', () => {
-  test.describe.configure({ timeout: 120000 });
-
   test.beforeAll('Setup: create entities and users', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     testTable = new TableClass();
