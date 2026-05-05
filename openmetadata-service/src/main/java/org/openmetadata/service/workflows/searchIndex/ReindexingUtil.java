@@ -234,18 +234,33 @@ public class ReindexingUtil {
     org.openmetadata.service.search.SearchRepository repo =
         org.openmetadata.service.Entity.getSearchRepository();
     if (repo == null || repo.getSearchIndexFactory() == null) {
-      // Fallback for environments where the search subsystem isn't bootstrapped (e.g. unit
-      // tests that exercise the reader without the full Entity registry). Behaves the same
-      // as the pre-selective-fields code path.
+      // Search subsystem isn't bootstrapped (e.g. unit tests that exercise the reader without the
+      // full Entity registry). Behaves the same as the pre-selective-fields code path.
+      return List.of("*");
+    }
+    List<String> allFields;
+    try {
+      allFields = new ArrayList<>(repo.getSearchIndexFactory().getReindexFieldsFor(entityType));
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to look up reindex fields for {}: {}; falling back to all-fields wildcard",
+          entityType,
+          e.getMessage());
       return List.of("*");
     }
     try {
-      List<String> allFields =
-          new ArrayList<>(repo.getSearchIndexFactory().getReindexFieldsFor(entityType));
       return new ArrayList<>(Entity.getOnlySupportedFields(entityType, allFields).getFieldList());
     } catch (Exception e) {
-      LOG.error("Failed while looking for indexing fields. Message : {}", e.getMessage());
-      return List.of("*");
+      // Filtering failed (typically because the EntityRepository isn't registered yet —
+      // happens during boot or in tests). Fall back to the unfiltered required set rather than
+      // "*": this keeps the per-entity intent intact and lets PaginatedEntitiesSource surface
+      // any drift loudly instead of silently sending every field.
+      LOG.warn(
+          "Could not filter reindex fields for {} against EntityRepository.allowedFields ({}); "
+              + "returning unfiltered required set",
+          entityType,
+          e.getMessage());
+      return allFields;
     }
   }
 
