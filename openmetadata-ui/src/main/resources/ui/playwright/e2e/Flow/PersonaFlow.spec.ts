@@ -785,6 +785,16 @@ test.describe('Curated Assets – Description filter', () => {
     await afterAction();
   });
 
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { afterAction, apiContext } = await createNewPage(browser);
+
+    await curatedTable.delete(apiContext);
+    await curatedPersona.delete(apiContext);
+    await curatedAdminUser.delete(apiContext);
+
+    await afterAction();
+  });
+
   const addCuratedAssetWidget = async (
     adminPage: import('@playwright/test').Page
   ) => {
