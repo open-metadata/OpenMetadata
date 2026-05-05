@@ -751,53 +751,53 @@ export const WorkflowExecutionHistory: React.FC = () => {
       )}
 
       <div className="tw:overflow-y-auto tw:max-h-[600px]">
-      <TableCard.Root>
-        <Table
-          aria-label={t('label.execution-history')}
-          data-testid="workflow-execution-history-table">
-          <Table.Header>
-            <Table.Row>
-              <Table.Head
-                isRowHeader
-                id="executionDate"
-                label={t('label.execution-date')}
-              />
-              <Table.Head id="status" label={t('label.status')} />
-              <Table.Head id="duration" label={t('label.duration')} />
-              <Table.Head id="updatedBy" label={t('label.updated-by')} />
-              <Table.Head id="entities" label={t('label.entities')} />
-              <Table.Head id="scheduleRun" label={t('label.schedule-run')} />
-            </Table.Row>
-          </Table.Header>
-          <Table.Body
-            data-testid="workflow-execution-history-table-body"
-            items={rowItems}>
-            {(item) => {
-              if (item.kind === 'group-parent') {
-                return renderParentRow(item.group, item.id);
-              }
+        <TableCard.Root>
+          <Table
+            aria-label={t('label.execution-history')}
+            data-testid="workflow-execution-history-table">
+            <Table.Header>
+              <Table.Row>
+                <Table.Head
+                  isRowHeader
+                  id="executionDate"
+                  label={t('label.execution-date')}
+                />
+                <Table.Head id="status" label={t('label.status')} />
+                <Table.Head id="duration" label={t('label.duration')} />
+                <Table.Head id="updatedBy" label={t('label.updated-by')} />
+                <Table.Head id="entities" label={t('label.entities')} />
+                <Table.Head id="scheduleRun" label={t('label.schedule-run')} />
+              </Table.Row>
+            </Table.Header>
+            <Table.Body
+              data-testid="workflow-execution-history-table-body"
+              items={rowItems}>
+              {(item) => {
+                if (item.kind === 'group-parent') {
+                  return renderParentRow(item.group, item.id);
+                }
 
-              if (item.kind === 'group-child') {
-                return renderInstanceRow(item.instance, true, item.id);
-              }
+                if (item.kind === 'group-child') {
+                  return renderInstanceRow(item.instance, true, item.id);
+                }
 
-              if (item.kind === 'stage-loading') {
-                return renderStageLoadingRow();
-              }
+                if (item.kind === 'stage-loading') {
+                  return renderStageLoadingRow();
+                }
 
-              if (item.kind === 'stage-empty') {
-                return renderStageEmptyRow();
-              }
+                if (item.kind === 'stage-empty') {
+                  return renderStageEmptyRow();
+                }
 
-              if (item.kind === 'stage-state-row') {
-                return renderSingleStageRow(item.state);
-              }
+                if (item.kind === 'stage-state-row') {
+                  return renderSingleStageRow(item.state);
+                }
 
-              return renderInstanceRow(item.instance, false, item.id);
-            }}
-          </Table.Body>
-        </Table>
-      </TableCard.Root>
+                return renderInstanceRow(item.instance, false, item.id);
+              }}
+            </Table.Body>
+          </Table>
+        </TableCard.Root>
       </div>
 
       {paging.total > PAGE_SIZE && (
