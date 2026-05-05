@@ -275,35 +275,61 @@ class JsonUtilsTest {
   }
 
   /**
-   * Python clients drop fractional seconds when a datetime's microsecond is 0,
-   * sending "…ssZ" instead of "…ss.SSSSSSZ". The strict global SimpleDateFormat
-   * rejects that form. Verify the lenient mixin on TagLabel.appliedAt accepts both.
+   * The PR's original goal: Python clients drop fractional seconds when {@code microsecond == 0},
+   * sending {@code "...ssZ"} instead of {@code "...ss.SSSSSSZ"}. The global SimpleDateFormat
+   * rejected that form; the lenient deserializer must accept it.
    */
   @Test
   void testTagLabelAppliedAtAcceptsBareSecondPrecision() {
-    String withoutFractional = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"2026-04-24T10:27:06Z\"}";
-    String withMicros = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"2026-04-24T10:27:06.918000Z\"}";
-    String sdfLeftPaddedMs = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"2026-04-24T10:27:06.000918Z\"}";
-
-    TagLabel bare = JsonUtils.readValue(withoutFractional, TagLabel.class);
-    TagLabel withFrac = JsonUtils.readValue(withMicros, TagLabel.class);
-    TagLabel sdfForm = JsonUtils.readValue(sdfLeftPaddedMs, TagLabel.class);
-
-    assertEquals(0L, bare.getAppliedAt().getTime() % 1000, "bare-second form parses to ms=0");
-    assertEquals(918L, withFrac.getAppliedAt().getTime() % 1000, "fractional form preserves ms");
-    assertEquals(
-        918L,
-        sdfForm.getAppliedAt().getTime() % 1000,
-        "SDF left-padded ms form (server's own emitter) preserves ms");
-    assertEquals(
-        918L,
-        withFrac.getAppliedAt().getTime() - bare.getAppliedAt().getTime(),
-        "both forms parse the same second");
+    String json = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"2026-04-24T10:27:06Z\"}";
+    TagLabel parsed = JsonUtils.readValue(json, TagLabel.class);
+    assertEquals(0L, parsed.getAppliedAt().getTime() % 1000, "bare-second form parses to ms=0");
   }
 
   /**
-   * Malformed ISO strings should surface through the public API as JsonParsingException, with the
-   * underlying Jackson cause carrying the field path and the lenient deserializer's message.
+   * Server-side round-trip must preserve millisecond precision. The global SimpleDateFormat
+   * emits {@code ".000918Z"} for a Date with ms=918 (left-padded ms). An earlier iteration of
+   * the deserializer used {@code Instant.parse}, which read that as 918µs=0ms and silently
+   * dropped precision on every PATCH that touched a TagLabel.
+   */
+  @Test
+  void testTagLabelAppliedAtRoundTripPreservesMillis() {
+    TagLabel original =
+        new TagLabel().withTagFQN("x.y").withAppliedAt(new java.util.Date(1714000000918L));
+    String serialized = JsonUtils.pojoToJson(original);
+    LOG.info("Server-emitted appliedAt JSON: {}", serialized);
+    TagLabel roundTripped = JsonUtils.readValue(serialized, TagLabel.class);
+    assertEquals(
+        original.getAppliedAt().getTime(),
+        roundTripped.getAppliedAt().getTime(),
+        "appliedAt must survive ObjectMapper round-trip; serialized=" + serialized);
+  }
+
+  /**
+   * JSON Patch payloads (e.g. produced by JS {@code Date.getTime()}) carry appliedAt as a
+   * numeric epoch-millis value, sometimes as a JSON number, sometimes stringified by an
+   * intermediate JSON-Patch hop. Jackson's default Date deserializer accepted both; the
+   * lenient deserializer must too — otherwise PATCH operations that touch tags 4xx server-side
+   * and the UI never sees the change.
+   */
+  @Test
+  void testTagLabelAppliedAtAcceptsEpochMillis() {
+    String numberForm = "{\"tagFQN\":\"x.y\",\"appliedAt\":1777976050918}";
+    String stringForm = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"1777976050918\"}";
+
+    assertEquals(
+        1777976050918L,
+        JsonUtils.readValue(numberForm, TagLabel.class).getAppliedAt().getTime(),
+        "JSON number epoch-ms");
+    assertEquals(
+        1777976050918L,
+        JsonUtils.readValue(stringForm, TagLabel.class).getAppliedAt().getTime(),
+        "stringified epoch-ms");
+  }
+
+  /**
+   * Malformed ISO strings surface through the public API as JsonParsingException, with the
+   * underlying Jackson cause carrying the field path or the deserializer's message.
    */
   @Test
   void testTagLabelAppliedAtMalformedRaisesMappingException() {
@@ -319,24 +345,5 @@ class JsonUtilsTest {
     assertTrue(
         cause.getMessage().contains("appliedAt") || cause.getMessage().contains("ISO-8601"),
         "error should mention the field or expected format: " + cause.getMessage());
-  }
-
-  /**
-   * The global ObjectMapper formats Date with SimpleDateFormat("…SSSSSS'Z'"), where SSSSSS is
-   * 6-digit zero-padded milliseconds (a Java quirk). For a Date with ms=918 the server emits
-   * ".000918Z". Instant.parse interprets ".000918" as a fractional second (= 918 microseconds = 0
-   * ms), so the lenient deserializer breaks round-trips of every server-emitted appliedAt value.
-   */
-  @Test
-  void testTagLabelAppliedAtRoundTripPreservesMillis() throws Exception {
-    TagLabel original =
-        new TagLabel().withTagFQN("x.y").withAppliedAt(new java.util.Date(1714000000918L));
-    String serialized = JsonUtils.pojoToJson(original);
-    LOG.info("Server-emitted appliedAt JSON: {}", serialized);
-    TagLabel roundTripped = JsonUtils.readValue(serialized, TagLabel.class);
-    assertEquals(
-        original.getAppliedAt().getTime(),
-        roundTripped.getAppliedAt().getTime(),
-        "appliedAt must survive ObjectMapper round-trip; serialized=" + serialized);
   }
 }

@@ -54,8 +54,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.time.Instant;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -903,56 +901,80 @@ public final class JsonUtils {
   }
 
   /**
-   * Lenient deserializer for ISO-8601 instants. Accepts strings with or without
-   * fractional seconds, e.g. "2026-04-24T10:27:06Z" and "2026-04-24T10:27:06.918000Z".
-   * Java's {@link SimpleDateFormat} configured globally with pattern "…SSSSSS'Z'"
-   * rejects the no-fractional form, which Python clients can emit when a datetime's
-   * microsecond is 0.
+   * Tolerant Date deserializer for {@code TagLabel.appliedAt}. The global ObjectMapper uses
+   * {@code SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'")}, which strictly requires a
+   * 6-digit fractional. Python's {@code datetime.isoformat()} drops the fractional entirely
+   * when {@code microsecond == 0}, producing {@code "2026-04-24T10:27:06Z"} that the global
+   * format rejects.
    *
-   * <p>The global SimpleDateFormat pattern "SSSSSS" means "milliseconds left-padded to
-   * 6 digits" (a Java quirk), not microseconds-as-fraction. So a Date with ms=918 is
-   * emitted as ".000918Z". {@link Instant#parse} would interpret that fractional as
-   * 918 µs ≈ 0 ms and silently drop ms precision on every server-side round-trip. We
-   * detect the SDF form by its three leading zeros in a 6-digit fractional and parse
-   * it as left-padded ms; everything else (no fractional, 3-digit ms, Pydantic's
-   * non-zero-leading microseconds) falls through to standard {@link Instant#parse}.
+   * <p>This deserializer delegates everything to Jackson's normal path ({@link
+   * DeserializationContext#parseDate}, which uses the same global format) so all forms that
+   * worked before — JSON numbers, numeric strings, the SDF "…SSSSSSZ" form — keep working.
+   * The only addition is: if the value is the bare-second form, pad the fractional with
+   * {@code .000000} so the global format accepts it.
    */
   public static final class LenientIsoDateDeserializer extends JsonDeserializer<Date> {
     @Override
     public Date deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-      String value = p.getValueAsString();
-      if (value == null || value.isEmpty()) {
+      com.fasterxml.jackson.core.JsonToken t = p.currentToken();
+      if (t == com.fasterxml.jackson.core.JsonToken.VALUE_NUMBER_INT
+          || t == com.fasterxml.jackson.core.JsonToken.VALUE_NUMBER_FLOAT) {
+        return new Date(p.getLongValue());
+      }
+      if (t == com.fasterxml.jackson.core.JsonToken.VALUE_NULL) {
         return null;
       }
-      Date sdfForm = tryParseSdfLeftPaddedMillis(value);
-      if (sdfForm != null) {
-        return sdfForm;
+      String value = p.getValueAsString();
+      if (value == null) {
+        return null;
       }
+      String trimmed = value.trim();
+      if (trimmed.isEmpty()) {
+        return null;
+      }
+      if (looksLikeEpochMillis(trimmed)) {
+        try {
+          return new Date(Long.parseLong(trimmed));
+        } catch (NumberFormatException ignored) {
+          // fall through to date parsing
+        }
+      }
+      String normalized = padBareSecondIso(trimmed);
       try {
-        return Date.from(Instant.parse(value));
-      } catch (DateTimeParseException e) {
+        return ctxt.parseDate(normalized);
+      } catch (IllegalArgumentException e) {
         return (Date)
             ctxt.handleWeirdStringValue(
                 Date.class, value, "Expected ISO-8601 date-time: %s", e.getMessage());
       }
     }
 
-    private static Date tryParseSdfLeftPaddedMillis(String value) {
-      int dot = value.indexOf('.');
-      if (dot < 0 || !value.endsWith("Z")) {
-        return null;
+    private static boolean looksLikeEpochMillis(String s) {
+      int start = !s.isEmpty() && s.charAt(0) == '-' ? 1 : 0;
+      if (start == s.length()) {
+        return false;
       }
-      String fractional = value.substring(dot + 1, value.length() - 1);
-      if (fractional.length() != 6 || !fractional.startsWith("000")) {
-        return null;
+      for (int i = start; i < s.length(); i++) {
+        if (!Character.isDigit(s.charAt(i))) {
+          return false;
+        }
       }
-      try {
-        long millis = Long.parseLong(fractional);
-        Instant base = Instant.parse(value.substring(0, dot) + "Z");
-        return Date.from(base.plusMillis(millis));
-      } catch (DateTimeParseException | NumberFormatException ignored) {
-        return null;
+      return true;
+    }
+
+    /**
+     * If {@code value} matches the bare-second ISO form {@code "yyyy-MM-ddTHH:mm:ssZ"}, pad
+     * the fractional with six zeros so the global SimpleDateFormat ({@code "…SSSSSS'Z'"})
+     * accepts it. Otherwise return the input unchanged.
+     */
+    private static String padBareSecondIso(String value) {
+      if (value.length() != 20 || !value.endsWith("Z")) {
+        return value;
       }
+      if (value.charAt(10) != 'T' || value.charAt(13) != ':' || value.charAt(16) != ':') {
+        return value;
+      }
+      return value.substring(0, 19) + ".000000Z";
     }
   }
 
