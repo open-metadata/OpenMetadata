@@ -76,7 +76,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
     columns,
     children,
   }: {
-    columns: Array<{ id: string; name: React.ReactNode; headerContent?: React.ReactNode }>;
+    columns: Array<{
+      id: string;
+      name: React.ReactNode;
+      headerContent?: React.ReactNode;
+    }>;
     children: (col: {
       id: string;
       name: React.ReactNode;
@@ -137,14 +141,23 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Root: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
   };
 
-  const MockTooltip = ({ children }: React.PropsWithChildren) => <>{children}</>;
+  const MockTooltip = ({ children }: React.PropsWithChildren) => (
+    <>{children}</>
+  );
 
   const MockTooltipTrigger = ({
     children,
     ...props
-  }: React.PropsWithChildren<Record<string, unknown>>) => <span {...props}>{children}</span>;
+  }: React.PropsWithChildren<Record<string, unknown>>) => (
+    <span {...props}>{children}</span>
+  );
 
-  return { Table: MockTable, TableCard: MockTableCard, Tooltip: MockTooltip, TooltipTrigger: MockTooltipTrigger };
+  return {
+    Table: MockTable,
+    TableCard: MockTableCard,
+    Tooltip: MockTooltip,
+    TooltipTrigger: MockTooltipTrigger,
+  };
 });
 
 jest.mock('../../../../rest/ingestionPipelineAPI', () => {
@@ -206,26 +219,33 @@ jest.mock('../../../../hooks/paging/usePaging', () => ({
 
 jest.mock('../../../common/NextPrevious/NextPrevious', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(({ pagingHandler }) => (
-    <button onClick={() => pagingHandler({ cursorType: 'after', currentPage: 2 })}>
-      Next Page
-    </button>
-  )),
+  default: jest
+    .fn()
+    .mockImplementation(({ pagingHandler }) => (
+      <button
+        onClick={() => pagingHandler({ cursorType: 'after', currentPage: 2 })}>
+        Next Page
+      </button>
+    )),
 }));
 
 jest.mock(
   '../../../Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component',
   () => ({
-    IngestionRecentRuns: jest.fn().mockImplementation(() => <div>IngestionRecentRuns</div>),
+    IngestionRecentRuns: jest
+      .fn()
+      .mockImplementation(() => <div>IngestionRecentRuns</div>),
   })
 );
 
 jest.mock(
   '../../../Settings/Services/Ingestion/IngestionListTable/PipelineActions/PipelineActions',
   () =>
-    jest.fn().mockImplementation(() => (
-      <div data-testid="pipeline-actions">PipelineActions</div>
-    ))
+    jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="pipeline-actions">PipelineActions</div>
+      ))
 );
 
 jest.mock(
@@ -240,13 +260,15 @@ jest.mock('../../../Modals/EntityDeleteModal/EntityDeleteModal', () =>
 jest.mock(
   '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion',
   () => {
-    return jest.fn().mockImplementation(() => (
-      <div data-testid="error-placeholder-ingestion">Airflow not available</div>
-    ));
+    return jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="error-placeholder-ingestion">
+          Airflow not available
+        </div>
+      ));
   }
 );
-
-
 
 describe('TestSuite Pipeline component', () => {
   beforeEach(() => {
@@ -339,7 +361,11 @@ describe('TestSuite Pipeline component', () => {
     });
 
     expect(screen.getByText('label.test-case-plural')).toBeInTheDocument();
-    expect(screen.getByTestId('test-cases-info-tooltip-trigger')).toBeInTheDocument();
-    expect(screen.getByTestId('test-cases-info-tooltip-icon')).toHaveClass('tw:size-3');
+    expect(
+      screen.getByTestId('test-cases-info-tooltip-trigger')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('test-cases-info-tooltip-icon')).toHaveClass(
+      'tw:size-3'
+    );
   });
 });
