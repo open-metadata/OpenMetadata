@@ -7413,6 +7413,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updated.setDescription(original.getDescription());
         return;
       }
+      if (Objects.equals(original.getDescription(), updated.getDescription())) {
+        return;
+      }
       String sanitized =
           org.openmetadata.service.util.DescriptionSanitizer.sanitize(updated.getDescription());
       updated.setDescription(sanitized);
