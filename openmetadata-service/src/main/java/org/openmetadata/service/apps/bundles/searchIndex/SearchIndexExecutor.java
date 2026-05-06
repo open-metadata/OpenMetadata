@@ -1762,6 +1762,15 @@ public class SearchIndexExecutor implements AutoCloseable {
       listeners.onJobCompletedWithErrors(stats.get(), endTime - startTime);
     } else if (status == ExecutionResult.Status.STOPPED) {
       listeners.onJobStopped(stats.get());
+    } else if (status == ExecutionResult.Status.FAILED) {
+      Set<String> dataLoss =
+          recreateIndexHandler != null ? recreateIndexHandler.getDataLossPromotions() : Set.of();
+      listeners.onJobFailed(
+          stats.get(),
+          new IllegalStateException(
+              "Promotion data loss for entities: "
+                  + dataLoss
+                  + ". Canonical index was deleted but alias not re-attached."));
     }
 
     return ExecutionResult.fromStats(stats.get(), status, startTime);

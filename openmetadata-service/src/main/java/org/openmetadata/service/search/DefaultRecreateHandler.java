@@ -322,17 +322,32 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       }
     }
 
+    // deleteIndexWithBackoff and addAliases swallow transport exceptions and return void in
+    // both ES and OS clients (ElasticSearchIndexManager#deleteIndexWithBackoff,
+    // ElasticSearchIndexManager#addAliasesInternal — same shape on the OS side). A try/catch
+    // alone cannot detect failure. Verify outcome via post-state checks: the index is gone,
+    // the alias is attached.
     if (needsCanonicalAlias && searchClient.indexExists(canonicalIndex)) {
       try {
         searchClient.deleteIndexWithBackoff(canonicalIndex);
       } catch (Exception ex) {
         LOG.error(
-            "[ALIAS_PROMOTE_FAILED phase=delete-canonical entity={} stagedIndex={} canonicalIndex={}] "
+            "[ALIAS_PROMOTE_FAILED phase=delete-canonical entity={} stagedIndex={} canonicalIndex={} reason=exception] "
                 + "Parent aliases on staged; canonical-name lookups still hit old index until retry.",
             entityType,
             stagedIndex,
             canonicalIndex,
             ex);
+        markPromotionFailed(entityType, false);
+        return false;
+      }
+      if (searchClient.indexExists(canonicalIndex)) {
+        LOG.error(
+            "[ALIAS_PROMOTE_FAILED phase=delete-canonical entity={} stagedIndex={} canonicalIndex={} reason=delete-not-acknowledged] "
+                + "Client did not throw, but canonical index still exists. Old index keeps serving canonical-name lookups.",
+            entityType,
+            stagedIndex,
+            canonicalIndex);
         markPromotionFailed(entityType, false);
         return false;
       }
@@ -343,13 +358,24 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         searchClient.addAliases(stagedIndex, Set.of(canonicalIndex));
       } catch (Exception ex) {
         LOG.error(
-            "[ALIAS_PROMOTE_FAILED phase=swap2 entity={} stagedIndex={} canonicalIndex={}] "
+            "[ALIAS_PROMOTE_FAILED phase=swap2 entity={} stagedIndex={} canonicalIndex={} reason=exception] "
                 + "DATA UNAVAILABLE: canonical was deleted but canonical-name alias add failed. "
                 + "Parent aliases work; canonical-name lookups will 404 until manual repair.",
             entityType,
             stagedIndex,
             canonicalIndex,
             ex);
+        markPromotionFailed(entityType, true);
+        return false;
+      }
+      if (!searchClient.getAliases(stagedIndex).contains(canonicalIndex)) {
+        LOG.error(
+            "[ALIAS_PROMOTE_FAILED phase=swap2 entity={} stagedIndex={} canonicalIndex={} reason=alias-not-attached] "
+                + "DATA UNAVAILABLE: client did not throw, but canonical-name alias is not on staged index. "
+                + "Parent aliases work; canonical-name lookups will 404 until manual repair.",
+            entityType,
+            stagedIndex,
+            canonicalIndex);
         markPromotionFailed(entityType, true);
         return false;
       }

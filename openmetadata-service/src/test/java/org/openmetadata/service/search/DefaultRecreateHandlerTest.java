@@ -495,7 +495,9 @@ class DefaultRecreateHandlerTest {
         new DefaultRecreateHandler().withJobData(jobData).promoteEntityIndex(context, true);
       }
 
-      verify(client).forceMerge("table_search_index_rebuild_new", 1);
+      org.mockito.InOrder order = org.mockito.Mockito.inOrder(client);
+      order.verify(client).forceMerge("table_search_index_rebuild_new", 1);
+      order.verify(client).swapAliases(anySet(), eq("table_search_index_rebuild_new"), anySet());
     }
 
     @Test

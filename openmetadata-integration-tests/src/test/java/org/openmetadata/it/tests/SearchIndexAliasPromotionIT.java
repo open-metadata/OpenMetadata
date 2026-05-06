@@ -206,11 +206,19 @@ public class SearchIndexAliasPromotionIT {
     bulk.put("translogDurability", "async");
     bulk.put("translogSyncInterval", "30s");
 
+    Map<String, Object> live = new HashMap<>();
+    live.put("numberOfReplicas", 1);
+    live.put("refreshInterval", "1s");
+    live.put("translogDurability", "request");
+
     Map<String, Object> config = new HashMap<>();
     config.put("entities", List.of("table"));
     config.put("recreateIndex", true);
     config.put("batchSize", 100);
     config.put("bulkIndexSettings", bulk);
+    config.put("liveIndexSettings", live);
+    config.put("liveIndexSettingsByEntity", new HashMap<String, Object>());
+    config.put("useDistributedIndexing", true);
 
     Awaitility.await("Trigger " + APP_NAME)
         .atMost(Duration.ofMinutes(2))
