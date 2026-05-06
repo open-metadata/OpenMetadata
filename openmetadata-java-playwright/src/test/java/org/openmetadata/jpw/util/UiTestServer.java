@@ -1,6 +1,7 @@
 package org.openmetadata.jpw.util;
 
 import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.jpw.server.ContainerizedServer;
 import org.openmetadata.jpw.server.ExternalServer;
 import org.openmetadata.jpw.server.ServerHandle;
@@ -39,6 +40,7 @@ public final class UiTestServer {
     if (hasExternalConfig()) {
       LOG.info("UI test mode: external (OM_URL + OM_ADMIN_TOKEN detected)");
       cached = ExternalServer.fromEnv();
+      pointSdkClientsAt(cached);
       return cached;
     }
     LOG.info("UI test mode: containerized (building local image)");
@@ -50,9 +52,20 @@ public final class UiTestServer {
             new String[] {"admin"},
             ADMIN_TOKEN_TTL_SECONDS);
     cached = ownedContainer.handle(adminJwt);
+    pointSdkClientsAt(cached);
     Runtime.getRuntime()
         .addShutdownHook(new Thread(UiTestServer::tearDown, "UiTestServer-cleanup"));
     return cached;
+  }
+
+  /**
+   * Point the integration-tests {@link SdkClients} cache at this server. Without this, all
+   * factories (which call {@code SdkClients.adminClient()}) would post to the
+   * {@code localhost:8585} default and the browser would 404 because the entity doesn't
+   * exist on the testcontainers-mapped port the UI is actually loaded against.
+   */
+  private static void pointSdkClientsAt(final ServerHandle server) {
+    SdkClients.overrideBaseUrl(server.baseUrl().toString());
   }
 
   private static void tearDown() {

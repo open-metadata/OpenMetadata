@@ -51,7 +51,9 @@ public class SdkClients {
   private static final long INTEGRATION_TEST_TOKEN_TTL_SECONDS = 86400;
   private static final long CACHED_CLIENT_MAX_AGE_MILLIS = 15 * 60 * 1000;
 
-  private static final String BASE_URL =
+  // Mutable so UI test harnesses (containerized server, ephemeral port) can override at
+  // runtime via overrideBaseUrl(...) — that path also flushes the cached per-role clients.
+  private static volatile String BASE_URL =
       System.getProperty(
           "IT_BASE_URL", System.getenv().getOrDefault("IT_BASE_URL", "http://localhost:8585"));
 
@@ -246,6 +248,25 @@ public class SdkClients {
    */
   public static void useFluentApis(OpenMetadataClient client) {
     initializeFluentAPIs(client);
+  }
+
+  /**
+   * Point all subsequent {@link #adminClient()} (and other per-role) calls at the given URL,
+   * flushing the cached clients so existing references rebuild against the new endpoint.
+   *
+   * <p>Used by UI test harnesses where the server runs on an ephemeral testcontainers port
+   * not knowable at JVM start. Safe to call repeatedly.
+   */
+  public static synchronized void overrideBaseUrl(String url) {
+    BASE_URL = url;
+    ADMIN_CLIENT = null;
+    TEST_USER_CLIENT = null;
+    BOT_CLIENT = null;
+    DATA_STEWARD_CLIENT = null;
+    DATA_CONSUMER_CLIENT = null;
+    USER1_CLIENT = null;
+    USER2_CLIENT = null;
+    USER3_CLIENT = null;
   }
 
   /**
