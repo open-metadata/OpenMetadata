@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -317,6 +318,10 @@ class DefaultRecreateHandlerTest {
 
       Set<String> stagedAliases = aliasState.indexAliases.get("table_search_index_rebuild_new");
       assertTrue(stagedAliases.isEmpty(), "No swap should occur when context has no aliases");
+      // Empty-aliases is an error path — settings mutation and force-merge on a staged index
+      // that will never be swapped in is wasted I/O. Validate aliases first.
+      verify(client, never()).updateIndexSettings(anyString(), anyString());
+      verify(client, never()).forceMerge(anyString(), anyInt());
     }
 
     @Test
@@ -557,6 +562,7 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
+                .canonicalAliases("table")
                 .build();
 
         new DefaultRecreateHandler().withJobData(jobData).promoteEntityIndex(context, true);

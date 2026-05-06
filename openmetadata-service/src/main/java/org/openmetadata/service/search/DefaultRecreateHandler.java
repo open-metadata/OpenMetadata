@@ -154,12 +154,9 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     }
 
     try {
-      // Restore live serving settings on the staged index before alias swap. The bulk-build
-      // overrides (refresh=-1, replicas=0, async translog) must NOT be the new live settings,
-      // or newly indexed docs are buffered indefinitely until a manual _refresh.
-      applyLiveServingSettings(searchClient, stagedIndex, entityType);
-      maybeForceMerge(searchClient, stagedIndex, entityType);
-
+      // Validate aliases before mutating settings or force-merging. An empty-aliases context is
+      // an error path that aborts the swap, so applying live settings and force-merging on a
+      // staged index that will never be swapped in is wasted I/O and segment churn.
       Set<String> aliasesToAttach = buildAliasesToAttach(context);
       if (aliasesToAttach.isEmpty()) {
         LOG.error(
@@ -174,6 +171,12 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         markPromotionFailed(entityType, false);
         return;
       }
+
+      // Restore live serving settings on the staged index before alias swap. The bulk-build
+      // overrides (refresh=-1, replicas=0, async translog) must NOT be the new live settings,
+      // or newly indexed docs are buffered indefinitely until a manual _refresh.
+      applyLiveServingSettings(searchClient, stagedIndex, entityType);
+      maybeForceMerge(searchClient, stagedIndex, entityType);
 
       Set<String> oldIndicesToCleanup = new HashSet<>();
       for (String oldIndex : searchClient.listIndicesByPrefix(canonicalIndex)) {
@@ -482,8 +485,10 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
 
   /**
    * Tristate post-check used after addAliases. Returns TRUE if the alias is on the staged
-   * index, FALSE if missing, null if the check itself threw. The caller treats null as the
-   * worst case (data loss) because the canonical has already been deleted at this point.
+   * index, FALSE if missing, null if the check itself threw. The caller classifies null using
+   * positive-evidence canonicalDeleted: data loss when canonicalDeleted=true (the canonical is
+   * confirmed gone, alias state unknown), degraded when canonicalDeleted=false (canonical may
+   * still serve the alias, so retryable).
    */
   private Boolean checkAliasAttached(SearchClient searchClient, String stagedIndex, String alias) {
     try {
