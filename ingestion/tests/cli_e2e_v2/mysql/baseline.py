@@ -255,19 +255,22 @@ def get_admin_engine() -> Engine:
     """Build (and cache) the SQLAlchemy engine bound to ADMIN credentials.
 
     Distinct from the ingest credentials `build_mysql_config` uses for the
-    CLI subprocess: the ingest user (`openmetadata_user`) is a scoped
-    service account and typically lacks DDL + broad SELECT on user-created
-    schemas like `e2e`. ADMIN credentials are the DBA-level pair the
-    enforcer needs for CREATE SCHEMA / CREATE TABLE / INSERT / SELECT.
+    CLI subprocess: the ingest user (`om_user`) is a scoped account whose
+    GRANTs match the OM MySQL connector's documented minimum (SELECT,
+    SHOW VIEW, EXECUTE on the target schema; PROCESS globally). ADMIN
+    credentials are the container's `root` user, which the enforcer needs
+    for CREATE SCHEMA / CREATE TABLE / INSERT / SELECT.
 
     Tests that need to mutate the source out-of-band (e.g. drop a table
     to test mark-deleted; create a poisoned view to test error
     containment) consume this helper directly — keeps engine construction
     centralized so admin DSN never lives in two places.
 
-    E2E_MYSQL_ADMIN_USER / E2E_MYSQL_ADMIN_PASSWORD default to
-    `root` / `password` — matching the local Docker dev stack — so no
-    env plumbing is needed for local runs.
+    E2E_MYSQL_ADMIN_USER / E2E_MYSQL_ADMIN_PASSWORD / E2E_MYSQL_HOST_PORT
+    are populated automatically by the session-scoped `mysql_container`
+    fixture in conftest.py, which boots a dedicated MySQL via
+    testcontainers and creates the scoped `om_user` post-startup.
+    Teammates do not set these vars manually.
     """
     user = Env("E2E_MYSQL_ADMIN_USER", default="root").get()
     password = Env("E2E_MYSQL_ADMIN_PASSWORD", default="password").get()

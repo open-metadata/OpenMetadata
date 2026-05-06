@@ -63,39 +63,16 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Bootstrap MySQL grants for CLI E2E v2
-        if: matrix.connector == 'mysql'
-        # The bundled docker-compose mysql-script.sql provisions
-        # openmetadata_user with privileges scoped to openmetadata_db.* —
-        # which is correct for the OM server's metadata storage. The CLI
-        # E2E v2 framework needs additional read access on the e2e schema
-        # the baseline enforcer creates on demand. Grants are issued here
-        # (not in docker/mysql/mysql-script.sql) so the test framework's
-        # privilege footprint stays out of the shared infra image.
-        # MySQL stores the grant ahead of schema creation — they take
-        # effect once the enforcer creates `e2e`.
-        run: |
-          mysql -h 127.0.0.1 -P 3306 -uroot -ppassword <<'SQL'
-          GRANT SELECT, EXECUTE, SHOW VIEW ON e2e.* TO 'openmetadata_user'@'%';
-          GRANT SHOW_ROUTINE ON *.* TO 'openmetadata_user'@'%';
-          FLUSH PRIVILEGES;
-          SQL
-
       - name: Run CLI E2E v2 tests
         id: e2e-v2-test
         env:
-          # MySQL pilot runs against the Docker-Compose MySQL spun up by the
-          # setup action above. Values are public docker-compose defaults — not
-          # secrets. The two credential pairs below are documented in the
-          # spec §4.9 admin-vs-ingest split: the scoped ingest user can't
-          # CREATE SCHEMA / TABLE / INSERT, so the enforcer uses root.
-          E2E_MYSQL_HOST_PORT: localhost:3306
-          E2E_MYSQL_USER: openmetadata_user
-          E2E_MYSQL_PASSWORD: openmetadata_password
-          E2E_MYSQL_ADMIN_USER: root
-          E2E_MYSQL_ADMIN_PASSWORD: password
-          # OM admin minting the ingestion-bot JWT at session start. Baked
-          # into the bundled docker-compose; not secret.
+          # MySQL test data lives in a dedicated MySQL container that the
+          # session-scoped `mysql_container` pytest fixture (testcontainers)
+          # boots, bootstraps with the OM-doc minimum grants, and tears
+          # down. Teammates run the same way locally — no env plumbing.
+          # Only OM-server admin creds (used to mint the ingestion-bot
+          # JWT) need to be exported here; they come from the bundled
+          # docker-compose and are not secrets.
           OM_ADMIN_EMAIL: admin@open-metadata.org
           OM_ADMIN_PASSWORD: admin
         run: |
