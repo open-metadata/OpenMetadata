@@ -557,4 +557,191 @@ class VectorDocBuilderTest {
     table.setDeleted(false);
     return table;
   }
+
+  @Test
+  void testBuildColumnEmbeddingFieldsBasic() {
+    Table table = createTestTable("orders", "Orders", "Customer orders");
+    Column column = createTestColumn("user_email", "User Email", "Customer email", table);
+
+    Map<String, Object> fields =
+        VectorDocBuilder.buildColumnEmbeddingFields(column, table, MOCK_CLIENT);
+
+    assertNotNull(fields);
+    assertNotNull(fields.get("embedding"));
+    assertNotNull(fields.get("textToLLMContext"));
+    assertNotNull(fields.get("textToEmbed"));
+    assertNotNull(fields.get("fingerprint"));
+    assertEquals(0, fields.get("chunkIndex"));
+    assertTrue((int) fields.get("chunkCount") >= 1);
+  }
+
+  @Test
+  void testBuildColumnEmbeddingFieldsParentIdIsParentTableId() {
+    Table table = createTestTable("orders", null, "desc");
+    Column column = createTestColumn("amount", null, "Order amount", table);
+
+    Map<String, Object> fields =
+        VectorDocBuilder.buildColumnEmbeddingFields(column, table, MOCK_CLIENT);
+
+    assertEquals(
+        table.getId().toString(),
+        fields.get("parentId"),
+        "parentId must be the parent table id so columns collapse with their table on hybrid search");
+  }
+
+  @Test
+  void testBuildColumnEmbeddingFieldsContainsEmbeddingVector() {
+    Table table = createTestTable("vec_table", null, "table desc");
+    Column column = createTestColumn("vec_col", null, "column desc", table);
+
+    Map<String, Object> fields =
+        VectorDocBuilder.buildColumnEmbeddingFields(column, table, MOCK_CLIENT);
+
+    Object embedding = fields.get("embedding");
+    assertInstanceOf(float[].class, embedding);
+    assertEquals(384, ((float[]) embedding).length);
+  }
+
+  @Test
+  void testColumnFingerprintConsistency() {
+    Table table = createTestTable("fp_table", null, "table");
+    Column column = createTestColumn("fp_col", null, "Same description", table);
+
+    String fp1 = VectorDocBuilder.computeFingerprintForColumn(column, table);
+    String fp2 = VectorDocBuilder.computeFingerprintForColumn(column, table);
+
+    assertEquals(fp1, fp2);
+  }
+
+  @Test
+  void testColumnFingerprintChangesWithContent() {
+    Table table = createTestTable("fp_table", null, "table");
+    Column column = createTestColumn("fp_col", null, "Original description", table);
+    String fp1 = VectorDocBuilder.computeFingerprintForColumn(column, table);
+
+    column.setDescription("Modified description");
+    String fp2 = VectorDocBuilder.computeFingerprintForColumn(column, table);
+
+    assertNotEquals(fp1, fp2);
+  }
+
+  @Test
+  void testColumnFingerprintChangesWithDataType() {
+    Table table = createTestTable("fp_table", null, "table");
+    Column column = createTestColumn("fp_col", null, "desc", table);
+    column.setDataType(ColumnDataType.VARCHAR);
+    String fp1 = VectorDocBuilder.computeFingerprintForColumn(column, table);
+
+    column.setDataType(ColumnDataType.INT);
+    String fp2 = VectorDocBuilder.computeFingerprintForColumn(column, table);
+
+    assertNotEquals(fp1, fp2);
+  }
+
+  @Test
+  void testColumnSemanticTextIncludesParentTableContext() {
+    Table table = createTestTable("orders", "Orders", "desc");
+    Column column = createTestColumn("user_id", "User Id", "Foreign key to users", table);
+
+    String semantic = VectorDocBuilder.buildColumnSemanticMetaLightText(column, table);
+
+    assertTrue(semantic.contains("User Id"), "should include column display name");
+    assertTrue(semantic.contains("In table Orders"), "should include parent table context");
+  }
+
+  @Test
+  void testColumnSemanticTextDropsStructuralScaffolding() {
+    Table table = createTestTable("orders", null, "desc");
+    Column column = createTestColumn("amount", null, "Order amount in USD", table);
+
+    String semantic = VectorDocBuilder.buildColumnSemanticMetaLightText(column, table);
+
+    assertFalse(semantic.contains("name:"));
+    assertFalse(semantic.contains("dataType:"));
+    assertFalse(semantic.contains("entityType:"));
+    assertFalse(semantic.contains("[]"));
+    assertFalse(semantic.contains(" | "));
+  }
+
+  @Test
+  void testColumnSemanticTextIncludesTagsAsPhrases() {
+    Table table = createTestTable("orders", null, "desc");
+    Column column = createTestColumn("ssn", null, "Social security", table);
+    TagLabel tag = new TagLabel();
+    tag.setTagFQN("PII.Sensitive");
+    tag.setName("Sensitive");
+    column.setTags(List.of(tag));
+
+    String semantic = VectorDocBuilder.buildColumnSemanticMetaLightText(column, table);
+
+    assertTrue(semantic.contains("Tagged as PII Sensitive"));
+  }
+
+  @Test
+  void testColumnMetaLightContainsColumnInfo() {
+    Table table = createTestTable("meta_table", null, "desc");
+    table.setFullyQualifiedName("svc.db.schema.meta_table");
+    Column column = createTestColumn("user_email", "User Email", "email", table);
+    column.setDataType(ColumnDataType.VARCHAR);
+    column.setDataTypeDisplay("varchar(255)");
+
+    String metaLight = VectorDocBuilder.buildColumnMetaLightText(column, table);
+
+    assertTrue(metaLight.contains("name: user_email"));
+    assertTrue(metaLight.contains("displayName: User Email"));
+    assertTrue(metaLight.contains("entityType: tableColumn"));
+    assertTrue(metaLight.contains("dataType: VARCHAR"));
+    assertTrue(metaLight.contains("dataTypeDisplay: varchar(255)"));
+    assertTrue(metaLight.contains("table: svc.db.schema.meta_table"));
+    assertTrue(metaLight.endsWith(" | "));
+  }
+
+  @Test
+  void testColumnBodyTextContainsDescription() {
+    Table table = createTestTable("body_table", null, "table desc");
+    Column column = createTestColumn("body_col", null, "This is the column body", table);
+
+    String body = VectorDocBuilder.buildColumnBodyText(column);
+
+    assertTrue(body.contains("This is the column body"));
+  }
+
+  @Test
+  void testColumnTextToEmbedJoinsMetaAndBodyWithPeriod() {
+    Table table = createTestTable("orders", "Orders", "desc");
+    Column column = createTestColumn("amount", "Amount", "Order amount", table);
+
+    Map<String, Object> fields =
+        VectorDocBuilder.buildColumnEmbeddingFields(column, table, MOCK_CLIENT);
+    String semantic = (String) fields.get("textToEmbed");
+
+    assertTrue(semantic.startsWith("table Column Amount (amount)"));
+    assertTrue(semantic.contains("In table Orders"));
+    assertTrue(semantic.contains(". Order amount"));
+  }
+
+  @Test
+  void testColumnTextToLLMContextRetainsLegacyFormat() {
+    Table table = createTestTable("orders", null, "desc");
+    Column column = createTestColumn("amount", null, "Order amount", table);
+
+    Map<String, Object> fields =
+        VectorDocBuilder.buildColumnEmbeddingFields(column, table, MOCK_CLIENT);
+    String legacy = (String) fields.get("textToLLMContext");
+
+    assertTrue(legacy.contains("name: amount"));
+    assertTrue(legacy.contains("displayName: []"), "legacy keeps empty placeholders");
+    assertTrue(legacy.contains(" | chunk 1/"));
+  }
+
+  private Column createTestColumn(
+      String name, String displayName, String description, Table parentTable) {
+    Column column = new Column();
+    column.setName(name);
+    column.setDisplayName(displayName);
+    column.setDescription(description);
+    column.setFullyQualifiedName(parentTable.getFullyQualifiedName() + "." + name);
+    column.setDataType(ColumnDataType.VARCHAR);
+    return column;
+  }
 }
