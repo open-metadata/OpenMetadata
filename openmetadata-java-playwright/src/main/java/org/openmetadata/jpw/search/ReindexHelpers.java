@@ -22,7 +22,8 @@ public final class ReindexHelpers {
 
   public static final String SEARCH_INDEX_APP = "SearchIndexingApplication";
 
-  private static final Set<String> TERMINAL_STATUSES = Set.of("SUCCESS", "FAILED", "COMPLETED");
+  private static final Set<String> TERMINAL_STATUSES =
+      Set.of("success", "failed", "completed", "stopped", "activeError");
   private static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(5);
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
 
