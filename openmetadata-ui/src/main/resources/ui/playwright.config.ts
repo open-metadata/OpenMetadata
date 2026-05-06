@@ -101,9 +101,7 @@ export default defineConfig({
     },
     {
       name: 'search-nightly',
-      testMatch: process.env.PLAYWRIGHT_NIGHTLY
-        ? ['**/nightly/SearchNightly.spec.ts']
-        : [],
+      testMatch: ['**/nightly/SearchNightly.spec.ts'],
       use: {
         ...devices['Desktop Chrome'],
         storageState: 'playwright/.auth/admin.json',
