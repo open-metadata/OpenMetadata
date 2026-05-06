@@ -3,6 +3,7 @@ package org.openmetadata.service.search.vector;
 import java.util.Locale;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
@@ -73,9 +74,24 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
         return;
       }
       vectorService.updateEntityEmbedding(entity, entityIndexName);
+      // Columns are not entities and have no lifecycle events of their own. Their embeddings
+      // would otherwise drift on every table patch (description, columns, tags). Fan out from
+      // the parent table's lifecycle event so the column index stays in sync with the table.
+      if (entity instanceof Table table) {
+        refreshColumnEmbeddings(table);
+      }
     } catch (Exception e) {
       LOG.error("Failed to update embedding for entity {}: {}", entity.getId(), e.getMessage(), e);
     }
+  }
+
+  private void refreshColumnEmbeddings(Table table) {
+    String columnIndexName = resolveEntityIndexName(Entity.TABLE_COLUMN);
+    if (columnIndexName == null) {
+      LOG.debug("No index mapping for {} - skipping column embedding refresh", Entity.TABLE_COLUMN);
+      return;
+    }
+    vectorService.refreshTableColumnEmbeddings(table, columnIndexName);
   }
 
   private String resolveEntityIndexName(String entityType) {

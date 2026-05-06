@@ -182,6 +182,50 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   @Override
+  public void updateColumnEmbedding(Column column, Table parentTable, String columnIndexName) {
+    try {
+      String columnId =
+          org.openmetadata.service.search.indexes.ColumnSearchIndex.generateColumnId(
+              column.getFullyQualifiedName());
+      String existingFingerprint = getExistingFingerprint(columnIndexName, columnId);
+      String currentFingerprint = VectorDocBuilder.computeFingerprintForColumn(column, parentTable);
+
+      if (currentFingerprint.equals(existingFingerprint)) {
+        LOG.debug("Skipping column {} - fingerprint unchanged", columnId);
+        return;
+      }
+
+      Map<String, Object> embeddingFields = generateColumnEmbeddingFields(column, parentTable);
+      partialUpdateEntity(columnIndexName, columnId, embeddingFields);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to update embedding for column {}: {}",
+          column.getFullyQualifiedName(),
+          e.getMessage(),
+          e);
+    }
+  }
+
+  /**
+   * Fan out embedding refresh to every column on a table. Columns are not entities — they have no
+   * lifecycle event of their own, so their embeddings would otherwise drift whenever a user
+   * patches the parent table's description, columns, or tags. Called from the table lifecycle
+   * handler and the reembed CLI's table consumer.
+   */
+  @Override
+  public void refreshTableColumnEmbeddings(Table table, String columnIndexName) {
+    if (table == null || table.getColumns() == null || table.getColumns().isEmpty()) {
+      return;
+    }
+    List<Column> flattened =
+        org.openmetadata.service.search.indexes.ColumnSearchIndex.flattenColumns(
+            table.getColumns());
+    for (Column column : flattened) {
+      updateColumnEmbedding(column, table, columnIndexName);
+    }
+  }
+
+  @Override
   @SuppressWarnings("unchecked")
   public VectorSearchResponse search(
       String query,

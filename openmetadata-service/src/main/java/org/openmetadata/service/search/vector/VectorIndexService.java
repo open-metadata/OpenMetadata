@@ -17,6 +17,10 @@ public interface VectorIndexService {
 
   void updateEntityEmbedding(EntityInterface entity, String entityIndexName);
 
+  void updateColumnEmbedding(Column column, Table parentTable, String columnIndexName);
+
+  void refreshTableColumnEmbeddings(Table table, String columnIndexName);
+
   VectorSearchResponse search(
       String query, Map<String, List<String>> filters, int size, int from, int k, double threshold);
 }

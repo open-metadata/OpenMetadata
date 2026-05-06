@@ -1644,9 +1644,18 @@ public class OpenMetadataOperations implements Callable<Integer> {
           LOG.warn("No index mapping found for entity type: {}, skipping batch", entityType);
           continue;
         }
+        boolean isTable = Entity.TABLE.equals(entityType);
+        String columnIndexName = isTable ? resolveEntityIndexName(Entity.TABLE_COLUMN) : null;
         for (EntityInterface entity : task.batch().getData()) {
           try {
             vecService.updateEntityEmbedding(entity, entityIndexName);
+            // Columns aren't iterated as a top-level entity type — fan out from the parent
+            // table here so reembed refreshes both indexes in one pass.
+            if (isTable
+                && columnIndexName != null
+                && entity instanceof org.openmetadata.schema.entity.data.Table table) {
+              vecService.refreshTableColumnEmbeddings(table, columnIndexName);
+            }
             processedCounts
                 .computeIfAbsent(
                     entityType, key -> new java.util.concurrent.atomic.AtomicInteger(0))
