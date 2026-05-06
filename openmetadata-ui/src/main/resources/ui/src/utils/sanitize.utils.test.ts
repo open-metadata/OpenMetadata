@@ -107,9 +107,8 @@ describe('getSanitizeContent', () => {
     });
 
     it('should verify DOMPurify preserves span and class by default', () => {
-      const DOMPurify = require('dompurify');
       const input = '<span class="text-highlighter">test</span>';
-      const defaultResult = DOMPurify.sanitize(input);
+      const defaultResult = getSanitizeContent(input);
 
       // Default DOMPurify preserves both span tags and class attributes
       expect(defaultResult).toContain('<span');

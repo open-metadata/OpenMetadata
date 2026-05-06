@@ -80,7 +80,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const { isTourOpen } = useTourProvider();
 
     const source = useMemo(() => {
-      return highlightEntityNameAndDescription(_source, highlight);
+      return highlight
+        ? highlightEntityNameAndDescription(_source, highlight)
+        : _source;
     }, [_source, highlight]);
 
     const otherDetails = useMemo(() => {
@@ -282,6 +284,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   onCheckboxChange?.(e.target.checked);
                   e.stopPropagation();
                 }}
+                onClick={(e) => e.stopPropagation()}
               />
             </Col>
           )}

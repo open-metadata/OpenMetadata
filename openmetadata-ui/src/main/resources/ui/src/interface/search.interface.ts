@@ -38,7 +38,7 @@ import { Query } from '../generated/entity/data/query';
 import { SearchIndex as SearchIndexEntity } from '../generated/entity/data/searchIndex';
 import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import { StoredProcedure } from '../generated/entity/data/storedProcedure';
-import { Column as TableColumn, Table } from '../generated/entity/data/table';
+import { Table, Column as TableColumn } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { Worksheet } from '../generated/entity/data/worksheet';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
@@ -370,7 +370,7 @@ export type SuggestRequest<
 export interface SearchHitBody<SI extends SearchIndex | DataInsightIndex, T> {
   _index: SI;
   _type?: string;
-  _id?: string;
+  _id: string;
   _score?: number;
   highlight?: Record<string, string[]>;
   sort?: number[];
