@@ -260,8 +260,8 @@ class DatalakeSource(DatabaseServiceSource):
         key_name, table_type = table_name_and_type
         table_extension, file_size = self._table_info.pop(key_name, (None, None))
         fetch_key = key_name
-        table_name = self.standardize_table_name(self.context.get().database_schema, key_name)
         schema_name = self.context.get().database_schema
+        table_name = self.standardize_table_name(schema_name, key_name)
         try:
             table_constraints = None
             data_frame, raw_data = fetch_dataframe_first_chunk(
