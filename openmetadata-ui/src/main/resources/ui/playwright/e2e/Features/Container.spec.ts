@@ -14,7 +14,11 @@ import { expect } from '@playwright/test';
 import { CONTAINER_CHILDREN } from '../../constant/contianer';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import {
+  isContainerChildrenListRequest,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import {
   assignTagToChildren,
   copyAndGetClipboardText,
@@ -25,7 +29,6 @@ import {
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 import { DataType } from '../../../src/generated/entity/data/table';
-
 // Grant clipboard permissions for copy link tests
 test.use({
   contextOptions: {
@@ -106,11 +109,10 @@ test.describe('Container entity specific tests ', () => {
     // Check the second page pagination
     const childrenResponse = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/containers/name/*/children*') &&
-        response.url().includes('limit=15') &&
-        response.url().includes('offset=15') &&
-        response.request().method() === 'GET' &&
-        response.status() === 200
+        isContainerChildrenListRequest(response, {
+          limit: '15',
+          offset: '15',
+        })
     );
     await page.getByTestId('next').click();
     await childrenResponse;
@@ -123,11 +125,10 @@ test.describe('Container entity specific tests ', () => {
     // Check around the page sizing change
     const childrenResponseSizeChange = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/containers/name/*/children*') &&
-        response.url().includes('limit=25') &&
-        response.url().includes('offset=0') &&
-        response.request().method() === 'GET' &&
-        response.status() === 200
+        isContainerChildrenListRequest(response, {
+          limit: '25',
+          offset: '0',
+        })
     );
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('25 / Page').click();
@@ -145,7 +146,11 @@ test.describe('Container entity specific tests ', () => {
 
     // Back to the original page size
     const childrenResponseSizeChange2 = page.waitForResponse(
-      '/api/v1/containers/name/*/children?limit=15&offset=0'
+      (response) =>
+        isContainerChildrenListRequest(response, {
+          limit: '15',
+          offset: '0',
+        })
     );
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('15 / Page').click();

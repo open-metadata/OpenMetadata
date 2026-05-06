@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, expect, Locator, Page, request } from '@playwright/test';
+import {
+  Browser,
+  expect,
+  Locator,
+  Page,
+  request,
+  type Response,
+} from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { toLower } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
@@ -22,6 +29,30 @@ import { getToken as getTokenFromStorage } from './tokenStorage';
 
 export const uuid = () => randomUUID().split('-')[0];
 export const fullUuid = () => randomUUID();
+
+
+export const isContainerChildrenListRequest = (
+  response: Response,
+  expected: { limit: string; offset: string }
+) => {
+  if (response.request().method() !== 'GET') {
+    return false;
+  }
+
+  try {
+    const url = new URL(response.url());
+    if (!/^\/api\/v1\/containers\/name\/.+\/children$/.test(url.pathname)) {
+      return false;
+    }
+
+    return (
+      url.searchParams.get('limit') === expected.limit &&
+      url.searchParams.get('offset') === expected.offset
+    );
+  } catch {
+    return false;
+  }
+};
 
 export const descriptionBox = '.om-block-editor[contenteditable="true"]';
 export const descriptionBoxReadOnly =
