@@ -30,6 +30,7 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultLi
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.Function;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.search.dataInsightAggregators.DataInsightAggregatorFieldResolver;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.springframework.expression.Expression;
 
@@ -41,12 +42,18 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
   private static Aggregation getSubAggregationsByFunction(
       Function function, String field, int index) {
     return switch (function) {
-      case COUNT -> Aggregation.of(a -> a.valueCount(v -> v.field(field)));
+      case COUNT -> Aggregation.of(
+          a ->
+              a.valueCount(
+                  v -> v.field(DataInsightAggregatorFieldResolver.resolveCountField(field))));
       case SUM -> Aggregation.of(a -> a.sum(s -> s.field(field)));
       case AVG -> Aggregation.of(a -> a.avg(avg -> avg.field(field)));
       case MIN -> Aggregation.of(a -> a.min(m -> m.field(field)));
       case MAX -> Aggregation.of(a -> a.max(m -> m.field(field)));
-      case UNIQUE -> Aggregation.of(a -> a.cardinality(c -> c.field(field)));
+      case UNIQUE -> Aggregation.of(
+          a ->
+              a.cardinality(
+                  c -> c.field(DataInsightAggregatorFieldResolver.resolveCountField(field))));
     };
   }
 
