@@ -329,7 +329,7 @@ public class TypeResourceIT {
   @Test
   void test_customPropertyNameAllowedCharacters_succeeds(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    UUID tableTypeId = TABLE_ENTITY_TYPE.getId();
+    UUID tableTypeId = createEntityTypeForTest(client, ns, "safeCharsType").getId();
     String prefix = ns.prefix("safe");
 
     String[] allowedNames = {
@@ -376,9 +376,9 @@ public class TypeResourceIT {
   }
 
   @Test
-  void test_customPropertyNameDisallowedCharacters_fails(TestNamespace ns) {
+  void test_customPropertyNameDisallowedCharacters_fails(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    UUID tableTypeId = TABLE_ENTITY_TYPE.getId();
+    UUID tableTypeId = createEntityTypeForTest(client, ns, "badCharsType").getId();
     String prefix = ns.prefix("bad");
 
     String[] disallowedNames = {
@@ -412,9 +412,9 @@ public class TypeResourceIT {
   }
 
   @Test
-  void test_customPropertyNameMustStartWithAlphanumeric_fails(TestNamespace ns) {
+  void test_customPropertyNameMustStartWithAlphanumeric_fails(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    UUID tableTypeId = TABLE_ENTITY_TYPE.getId();
+    UUID tableTypeId = createEntityTypeForTest(client, ns, "leadCharType").getId();
     String prefix = ns.prefix("lead");
 
     String[] invalidLeads = {
@@ -435,9 +435,9 @@ public class TypeResourceIT {
   }
 
   @Test
-  void test_customPropertyNameTooLong_fails(TestNamespace ns) {
+  void test_customPropertyNameTooLong_fails(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    UUID tableTypeId = TABLE_ENTITY_TYPE.getId();
+    UUID tableTypeId = createEntityTypeForTest(client, ns, "longNameType").getId();
 
     StringBuilder longName = new StringBuilder(ns.prefix("long"));
     while (longName.length() <= 256) {
@@ -458,7 +458,7 @@ public class TypeResourceIT {
   @Test
   void test_customPropertyNameUnbalancedBrackets_succeeds(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    UUID tableTypeId = TABLE_ENTITY_TYPE.getId();
+    UUID tableTypeId = createEntityTypeForTest(client, ns, "bracketType").getId();
     String prefix = ns.prefix("bracket");
 
     String[] unbalancedNames = {
