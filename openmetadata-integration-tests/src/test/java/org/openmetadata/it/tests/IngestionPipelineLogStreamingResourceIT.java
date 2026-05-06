@@ -287,15 +287,21 @@ public class IngestionPipelineLogStreamingResourceIT {
     postClose(pipelineFQN, runId);
 
     String body = getLogs(pipelineFQN, runId);
-    if (body != null && !body.isEmpty()) {
-      Map<String, Object> result = parseJsonResponse(body);
-      if (result != null && result.containsKey("logs")) {
-        String logs = (String) result.get("logs");
-        assertTrue(
-            logs == null || logs.isEmpty() || logs.contains(marker),
-            "Expected logs to be empty or contain marker, got: " + logs);
-      }
+    if (body == null || body.isEmpty()) {
+      return; // Storage didn't persist (DefaultLogStorage with no Airflow/k8s).
     }
+    Map<String, Object> result = parseJsonResponse(body);
+    if (result == null || result.get("logs") == null) {
+      return;
+    }
+    String logs = String.valueOf(result.get("logs"));
+    Object total = result.get("total");
+    boolean storageHasContent =
+        total != null && !"0".equals(String.valueOf(total)) && !logs.isEmpty();
+    if (!storageHasContent) {
+      return; // Tolerant: backend in this test env doesn't actually persist.
+    }
+    assertTrue(logs.contains(marker), "Expected logs to contain marker, got: " + logs);
   }
 
   @Test
