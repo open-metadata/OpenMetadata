@@ -24,6 +24,7 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
+import { getPopupContainer } from '../../../utils/formUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
@@ -254,6 +255,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       data-testid="asset-select-list"
       dropdownRender={dropdownRender}
       filterOption={false}
+      getPopupContainer={getPopupContainer}
       mode={mode}
       notFoundContent={isLoading ? <Loader size="small" /> : null}
       optionLabelProp="displayName"
