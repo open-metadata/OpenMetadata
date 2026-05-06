@@ -48,7 +48,11 @@ public final class PlaywrightFixture implements AutoCloseable {
 
   public static PlaywrightFixture launch(final ServerHandle server) {
     final Playwright pw = Playwright.create();
-    final Browser browser = pw.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
+    final BrowserType.LaunchOptions options = new BrowserType.LaunchOptions().setHeadless(!isHeaded());
+    if (isHeaded()) {
+      options.setSlowMo(250);
+    }
+    final Browser browser = pw.chromium().launch(options);
     final BrowserContext context = browser.newContext();
     context
         .tracing()
@@ -62,6 +66,15 @@ public final class PlaywrightFixture implements AutoCloseable {
 
   public ServerHandle server() {
     return server;
+  }
+
+  private static boolean isHeaded() {
+    final String prop = System.getProperty("PW_HEADED");
+    if (prop != null && !prop.isBlank()) {
+      return Boolean.parseBoolean(prop);
+    }
+    final String env = System.getenv("PW_HEADED");
+    return env != null && Boolean.parseBoolean(env);
   }
 
   @Override
