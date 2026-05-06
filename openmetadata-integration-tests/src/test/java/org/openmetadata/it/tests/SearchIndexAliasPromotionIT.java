@@ -262,8 +262,11 @@ public class SearchIndexAliasPromotionIT {
       }
       return MAPPER.convertValue(cfg, Map.class);
     } catch (Exception ex) {
-      // Snapshot is best-effort; the test still runs even if we can't restore.
-      return Map.of();
+      // Distinguish "snapshot failed" from "config absent". On failure return null so the
+      // caller skips restore entirely; restoring with an empty map would no-op the merge and
+      // silently leak this test's bulk/live setting overrides into downstream tests, plus
+      // start a spurious app run.
+      return null;
     }
   }
 

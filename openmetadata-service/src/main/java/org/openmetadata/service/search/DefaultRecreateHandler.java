@@ -137,6 +137,11 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
           entityType,
           canonicalIndex,
           stagedIndex);
+      // If a staged index was registered for this entity, releasing it here keeps live
+      // writes from staying routed to the staged index after we bail.
+      if (stagedIndex != null) {
+        searchRepository.unregisterStagedIndex(entityType, stagedIndex);
+      }
       return;
     }
 

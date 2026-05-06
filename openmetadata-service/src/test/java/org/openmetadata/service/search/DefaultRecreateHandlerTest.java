@@ -197,6 +197,9 @@ class DefaultRecreateHandlerTest {
         new DefaultRecreateHandler().promoteEntityIndex(context, true);
 
         verify(client, never()).addAliases(anyString(), anySet());
+        // The early-return must still release the staged-index registration so live writes
+        // do not stay routed to it.
+        verify(repo).unregisterStagedIndex("table", "table_search_index_rebuild_new");
       }
     }
 
