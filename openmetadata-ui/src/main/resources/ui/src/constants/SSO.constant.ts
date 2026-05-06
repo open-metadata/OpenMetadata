@@ -208,7 +208,9 @@ export const LDAP_UI_SCHEMA = {
       'ui:field': 'RolesSelectField',
       'ui:placeholder': 'Select roles to reassign to users on every login',
     },
-    // Show truststoreConfigType when SSL is enabled
+    // truststoreFormat is redundant with trustStoreConfig sub-fields
+    truststoreFormat: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    // truststoreConfigType visibility is gated on sslEnabled in SSOConfigurationForm
     truststoreConfigType: {
       'ui:title': 'Trust Store Config Type',
     },
@@ -282,6 +284,8 @@ export const LDAP_UI_SCHEMA = {
   publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Hide tokenValidationAlgorithm for LDAP - global setting, default RS256 works correctly
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide enableAutoRedirect for LDAP - no external IdP redirect
+  enableAutoRedirect: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // SAML Configuration UI Schema
@@ -867,6 +871,8 @@ const SAML_SUBSECTION: SSOSectionLayout = {
 
 const LDAP_AUTH_ROOT: SSOSectionLayout = {
   ldapConfiguration: 'main',
+  responseType: 'advanced',
+  providerName: 'advanced',
 };
 
 const LDAP_SUBSECTION: SSOSectionLayout = {
@@ -880,7 +886,6 @@ const LDAP_SUBSECTION: SSOSectionLayout = {
   maxPoolSize: 'advanced',
   isFullDn: 'advanced',
   truststoreConfigType: 'advanced',
-  truststoreFormat: 'advanced',
   trustStoreConfig: 'advanced',
   groupBaseDN: 'advanced',
   groupAttributeName: 'advanced',

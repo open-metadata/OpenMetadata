@@ -783,6 +783,25 @@ const SSOConfigurationFormRJSF = ({
       }
     }
 
+    if (currentProvider === AuthProvider.LDAP) {
+      const sslEnabled = Boolean(
+        (
+          internalData?.authenticationConfiguration as
+            | { ldapConfiguration?: { sslEnabled?: boolean } }
+            | undefined
+        )?.ldapConfiguration?.sslEnabled
+      );
+
+      if (!sslEnabled) {
+        const ldapConfigSchema = {
+          ...((authConfig.ldapConfiguration as UISchemaObject) ?? {}),
+        } as UISchemaObject;
+        ldapConfigSchema.truststoreConfigType = { ...hidden };
+        ldapConfigSchema.trustStoreConfig = { ...hidden };
+        authConfig.ldapConfiguration = ldapConfigSchema;
+      }
+    }
+
     if (!hasExistingConfig) {
       authorizerConfig.adminPrincipals = {
         'ui:widget': 'hidden',
