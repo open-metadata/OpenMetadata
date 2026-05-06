@@ -19,7 +19,7 @@ import { Metric } from '../../../generated/entity/data/metric';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { TermRelation } from '../../../generated/type/termRelation';
-import { GraphData } from '../../../rest/rdfAPI';
+import { GraphData } from '../../../rest/rdfAPI.interface';
 import {
   OntologyEdge,
   OntologyExplorerProps,
@@ -291,7 +291,6 @@ export function buildGraphFromCounts(
       fullyQualifiedName: fqn,
       glossaryId: glossary?.id,
       group: glossary?.name ?? glossaryFqn,
-      originalLabel: fqn,
     });
 
     if (parts.length > 2) {
