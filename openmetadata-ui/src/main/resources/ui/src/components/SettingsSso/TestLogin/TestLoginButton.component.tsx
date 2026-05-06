@@ -27,7 +27,10 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { OIDC_SSO_DEFAULTS } from '../../../constants/SSO.constant';
+import { AuthProvider } from '../../../generated/settings/settings';
 import { validateSecurityConfiguration } from '../../../rest/securityConfigAPI';
+import { FormData, prepareOidcSubmitPayload } from '../../../utils/SSOUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   SecurityConfigForValidation,
@@ -265,11 +268,15 @@ const TestLoginButton = ({
 
   const startOidcTestLogin = useCallback(async () => {
     const discoveryUri =
-      formData?.discoveryUri ?? formData?.oidcConfiguration?.discoveryUri ?? '';
+      formData?.oidcConfiguration?.discoveryUri || formData?.discoveryUri || '';
     const clientId =
-      formData?.clientId ?? formData?.oidcConfiguration?.id ?? '';
+      formData?.oidcConfiguration?.id || formData?.clientId || '';
     const clientSecret = formData?.oidcConfiguration?.secret ?? '';
-    const scope = formData?.oidcConfiguration?.scope ?? 'openid email profile';
+    const defaultScope =
+      formData?.provider === AuthProvider.Azure
+        ? OIDC_SSO_DEFAULTS.azureScope
+        : OIDC_SSO_DEFAULTS.scope;
+    const scope = formData?.oidcConfiguration?.scope ?? defaultScope;
 
     if (!discoveryUri || !clientId) {
       setIsLoading(false);
@@ -291,8 +298,13 @@ const TestLoginButton = ({
 
     if (securityConfig) {
       try {
+        // Reshape OIDC payload to derive clientType from secret presence so
+        // the validator sees the same shape the save endpoint will receive.
+        const reshapedConfig =
+          prepareOidcSubmitPayload(securityConfig as unknown as FormData) ??
+          securityConfig;
         const response = await validateSecurityConfiguration(
-          securityConfig as never,
+          reshapedConfig as never,
           'testLogin'
         );
         const validationResult = response.data;
@@ -349,8 +361,10 @@ const TestLoginButton = ({
         callbackUrl,
         prompt: oidc?.prompt ?? '',
         maxAge: oidc?.maxAge ?? '',
-        clientAuthenticationMethod: oidc?.clientAuthenticationMethod ?? '',
-        disablePkce: String(oidc?.disablePkce ?? false),
+        clientAuthenticationMethod:
+          oidc?.clientAuthenticationMethod ??
+          (clientSecret ? 'client_secret_post' : ''),
+        disablePkce: String(oidc?.disablePkce ?? true),
         useNonce: String(oidc?.useNonce ?? true),
         customParams: JSON.stringify(oidc?.customParams ?? {}),
       }

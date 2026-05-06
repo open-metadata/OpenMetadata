@@ -27,6 +27,7 @@ import {
   FormValidation,
   RegistryFieldsType,
   RJSFSchema,
+  WidgetProps,
 } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Check, Copy01, UploadCloud02, X } from '@untitledui/icons';
@@ -56,7 +57,7 @@ import {
   VALIDATION_STATUS,
 } from '../../../constants/SSO.constant';
 import { User } from '../../../generated/entity/teams/user';
-import { AuthProvider, ClientType } from '../../../generated/settings/settings';
+import { AuthProvider } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import authenticationConfigSchema from '../../../jsons/configuration/authenticationConfiguration.json';
 import authorizerConfigSchema from '../../../jsons/configuration/authorizerConfiguration.json';
@@ -75,22 +76,25 @@ import {
 import { getCallbackUrl, getServerUrl } from '../../../utils/SSOURLUtils';
 import {
   applySamlConfiguration,
-  cleanupProviderSpecificFields,
   clearFieldError,
   createDOMClickHandler,
   createDOMFocusHandler,
   createFormKeyDownHandler,
   createFreshFormData,
+  fetchOidcDiscoveryDocument,
   findChangedFields,
   getProviderDisplayName,
   getProviderIcon,
   hasFieldValidationErrors,
   hasLockoutRiskChange,
   isValidNonBasicProvider,
+  liftPublicOidcToConfidentialShape,
   parseSamlMetadataXml,
   parseValidationErrors,
+  prepareOidcSubmitPayload,
   removeRequiredFields,
   removeSchemaFields,
+  resolveDiscoveryUri,
   updateLoadingState,
 } from '../../../utils/SSOUtils';
 import {
@@ -181,11 +185,6 @@ const MetadataUploadStatusCard = ({
   );
 };
 
-const widgets = {
-  SelectWidget: SelectWidget,
-  LdapRoleMappingWidget: LdapRoleMappingWidget,
-};
-
 const OIDC_PROVIDERS_WITH_CALLBACK_DISPLAY: ReadonlySet<AuthProvider> = new Set(
   [
     AuthProvider.Google,
@@ -235,6 +234,20 @@ const CopyableUrlField = ({ label, value, testId }: CopyableUrlFieldProps) => {
   );
 };
 
+const CallbackUrlWidget = ({ id, value }: WidgetProps) => (
+  <CopyableUrlField
+    label=""
+    testId={id}
+    value={typeof value === 'string' ? value : ''}
+  />
+);
+
+const widgets = {
+  SelectWidget: SelectWidget,
+  LdapRoleMappingWidget: LdapRoleMappingWidget,
+  CallbackUrlWidget: CallbackUrlWidget,
+};
+
 const SSOConfigurationFormRJSF = ({
   forceEditMode = false,
   onChangeProvider,
@@ -274,6 +287,7 @@ const SSOConfigurationFormRJSF = ({
   const [testLoginPassed, setTestLoginPassed] = useState<boolean>(false);
   const fieldErrorsRef = useRef<ErrorSchema>({});
   const testLoginTriggerRef = useRef<TestLoginButtonHandle | null>(null);
+  const lastFetchedDiscoveryRef = useRef<string | null>(null);
 
   // Helper function to setup configuration state - extracted to avoid redundancy
   const setupConfigurationState = useCallback(
@@ -295,6 +309,8 @@ const SSOConfigurationFormRJSF = ({
       if (config.authenticationConfiguration.provider === AuthProvider.Saml) {
         applySamlConfiguration(configData);
       }
+
+      liftPublicOidcToConfidentialShape(configData.authenticationConfiguration);
 
       setSavedData(configData);
       setInternalData(configData);
@@ -347,6 +363,59 @@ const SSOConfigurationFormRJSF = ({
       setupConfigurationState(securityConfig);
     }
   }, [securityConfig, selectedProvider, setupConfigurationState]);
+
+  useEffect(() => {
+    const authConfig = internalData?.authenticationConfiguration;
+    if (!authConfig) {
+      return;
+    }
+    const provider = authConfig.provider;
+    if (provider === AuthProvider.Saml || provider === AuthProvider.LDAP) {
+      return;
+    }
+    const discoveryUri = resolveDiscoveryUri(authConfig);
+    if (!discoveryUri || lastFetchedDiscoveryRef.current === discoveryUri) {
+      return;
+    }
+    let cancelled = false;
+    const handle = setTimeout(async () => {
+      const doc = await fetchOidcDiscoveryDocument(discoveryUri);
+      if (cancelled || !doc) {
+        return;
+      }
+      lastFetchedDiscoveryRef.current = discoveryUri;
+      const jwksUri = typeof doc.jwks_uri === 'string' ? doc.jwks_uri : null;
+      if (!jwksUri) {
+        return;
+      }
+      setInternalData((prev) => {
+        if (!prev?.authenticationConfiguration) {
+          return prev;
+        }
+        const existing = prev.authenticationConfiguration.publicKeyUrls;
+        if (existing && existing.length > 0) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          authenticationConfiguration: {
+            ...prev.authenticationConfiguration,
+            publicKeyUrls: [jwksUri],
+          },
+        };
+      });
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [
+    internalData?.authenticationConfiguration?.oidcConfiguration?.discoveryUri,
+    internalData?.authenticationConfiguration?.authority,
+    internalData?.authenticationConfiguration?.provider,
+  ]);
 
   // Handle selectedProvider prop - initialize fresh form when provider is selected
   useEffect(() => {
@@ -544,6 +613,21 @@ const SSOConfigurationFormRJSF = ({
       removeRequiredFields(authSchema, NON_OIDC_SPECIFIC_FIELDS);
     }
 
+    if (
+      ![AuthProvider.Saml, AuthProvider.LDAP].includes(provider as AuthProvider)
+    ) {
+      removeSchemaFields(authSchema, ['responseType']);
+      removeRequiredFields(authSchema, ['responseType']);
+      const oidcConfigSchema = (
+        authSchema.properties as Record<string, unknown> | undefined
+      )?.oidcConfiguration as Record<string, unknown> | undefined;
+      if (oidcConfigSchema) {
+        const oidcFieldsToRemove = ['responseType', 'tenant', 'serverUrl'];
+        removeSchemaFields(oidcConfigSchema, oidcFieldsToRemove);
+        removeRequiredFields(oidcConfigSchema, oidcFieldsToRemove);
+      }
+    }
+
     return createSchemaWithAuth(authSchema) as RJSFSchema;
   };
 
@@ -654,19 +738,49 @@ const SSOConfigurationFormRJSF = ({
     const isOidcProvider =
       currentProvider !== AuthProvider.Saml &&
       currentProvider !== AuthProvider.LDAP;
+    const hidden = { 'ui:widget': 'hidden', 'ui:hideError': true } as const;
 
     if (isOidcProvider) {
-      authConfig['oidcConfiguration'] ??= {
-        'ui:title': 'OIDC Configuration',
-      };
-      const hidden = { 'ui:widget': 'hidden', 'ui:hideError': true } as const;
+      const oidcConfigSchema = {
+        ...((authConfig.oidcConfiguration as UISchemaObject) ?? {}),
+      } as UISchemaObject;
+      (oidcConfigSchema as Record<string, unknown>)['ui:title'] = '';
+      authConfig.oidcConfiguration = oidcConfigSchema;
+      const emailClaim = (
+        internalData?.authenticationConfiguration as
+          | { emailClaim?: string }
+          | undefined
+      )?.emailClaim;
+      const principalClaimsMapping =
+        internalData?.authenticationConfiguration?.jwtPrincipalClaimsMapping;
+      const hasPrincipalClaimsMapping =
+        Array.isArray(principalClaimsMapping) &&
+        principalClaimsMapping.length > 0;
+      const canShowClientAuthMethod =
+        currentProvider === AuthProvider.Okta ||
+        currentProvider === AuthProvider.CustomOidc;
+
+      authConfig.providerName = { ...hidden };
       authConfig.clientId = { ...hidden };
-      authConfig.callbackUrl = { ...hidden };
       authConfig.authority = { ...hidden };
       authConfig.discoveryUri = { ...hidden };
       authConfig.publicKeyUrls = { ...hidden };
       authConfig.forceSecureSessionCookie = { ...hidden };
       authConfig.tokenValidationAlgorithm = { ...hidden };
+      authConfig.enableSelfSignup = { ...hidden };
+      authConfig.emailClaim = { ...hidden };
+
+      if (!canShowClientAuthMethod) {
+        oidcConfigSchema.clientAuthenticationMethod = { ...hidden };
+      }
+
+      if (!hasExistingConfig || emailClaim) {
+        authConfig.jwtPrincipalClaims = { ...hidden };
+      }
+
+      if (!hasExistingConfig || !hasPrincipalClaimsMapping) {
+        authConfig.jwtPrincipalClaimsMapping = { ...hidden };
+      }
     }
 
     if (!hasExistingConfig) {
@@ -695,15 +809,11 @@ const SSOConfigurationFormRJSF = ({
     };
 
     return finalSchema;
-  }, [currentProvider, hasExistingConfig, hideBorder]);
+  }, [currentProvider, hasExistingConfig, hideBorder, internalData]);
 
   const fieldLayout = useMemo(
-    () =>
-      getProviderFieldLayout(
-        currentProvider,
-        internalData?.authenticationConfiguration?.clientType
-      ),
-    [currentProvider, internalData?.authenticationConfiguration?.clientType]
+    () => getProviderFieldLayout(currentProvider),
+    [currentProvider]
   );
 
   const showAdvancedFieldsAccordion = useMemo(
@@ -743,23 +853,8 @@ const SSOConfigurationFormRJSF = ({
       return;
     }
     const newFormData = { ...e.formData };
-    const authConfig = newFormData.authenticationConfiguration;
 
     clearErrorsForChangedFields(newFormData);
-
-    if (authConfig) {
-      const provider = authConfig.provider;
-      const isOidcProvider =
-        provider !== AuthProvider.Saml && provider !== AuthProvider.LDAP;
-
-      if (isOidcProvider) {
-        const secret = authConfig.oidcConfiguration?.secret;
-        authConfig.clientType =
-          secret && String(secret).trim().length > 0
-            ? ClientType.Confidential
-            : ClientType.Public;
-      }
-    }
 
     // Invalidate Test Login freshness only when the user actually edits a
     // lockout-risk field. Spurious RJSF re-renders that don't touch
@@ -877,7 +972,15 @@ const SSOConfigurationFormRJSF = ({
         return false;
       }
 
-      const allPatches = compare(savedData, cleanedFormData);
+      // Reshape both sides to the network shape so the diff carries the right
+      // ops on a Confidential ↔ Public flip (drops oidcConfiguration, sets
+      // root clientId/authority).
+      const cleanedSavedData = prepareOidcSubmitPayload(savedData);
+      if (!cleanedSavedData) {
+        return false;
+      }
+
+      const allPatches = compare(cleanedSavedData, cleanedFormData);
       if (allPatches.length > 0) {
         await patchSecurityConfiguration(allPatches);
       }
@@ -1066,11 +1169,9 @@ const SSOConfigurationFormRJSF = ({
     setErrorClearTrigger(0);
 
     try {
-      // Prepare payload
-      const cleanedFormData = cleanupProviderSpecificFields(
-        internalData,
-        internalData?.authenticationConfiguration?.provider as string
-      );
+      // Prepare payload — derives clientType from secret presence and
+      // reshapes Confidential → Public when secret is blank.
+      const cleanedFormData = prepareOidcSubmitPayload(internalData);
 
       if (!cleanedFormData) {
         updateLoadingState(isModalSave, setIsLoading, false);
@@ -1375,21 +1476,6 @@ const SSOConfigurationFormRJSF = ({
             </AccordionPanel>
           </AccordionItem>
         </Accordion>
-      )}
-      {isEditMode && showForm && isOidcCallbackProvider && (
-        <div
-          className="oidc-callback-display m-t-md"
-          data-testid="oidc-callback-url-display">
-          <span className="font-medium">{t('label.callback-url')}</span>
-          <CopyableUrlField
-            label=""
-            testId="oidc-callback-url"
-            value={callbackUrl}
-          />
-          <span className="text-grey-muted text-xs d-block">
-            {t('message.oidc-callback-info')}
-          </span>
-        </div>
       )}
       {showForm && isOidcCallbackProvider && (
         <div className="m-t-md">
