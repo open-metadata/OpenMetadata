@@ -69,6 +69,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq
 
+      - name: Add /etc/hosts entry for mock OIDC server
+        # The SSO test infrastructure (MockOidcServer) needs `om-mock-idp` to resolve to
+        # loopback on the host so the same URL works inside the Docker network and from
+        # the host-side Playwright browser, keeping the issued tokens' `iss` claim
+        # consistent across actors.
+        run: echo "127.0.0.1 om-mock-idp" | sudo tee -a /etc/hosts
+
       - name: Build dependencies for Java Playwright module
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
