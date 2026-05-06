@@ -1101,8 +1101,9 @@ public class DistributedSearchIndexExecutor {
 
     if (recreateIndex && recreateContext != null) {
       this.recreateIndexHandler = Entity.getSearchRepository().createReindexHandler();
-      if (recreateIndexHandler
-              instanceof org.openmetadata.service.search.DefaultRecreateHandler defaultHandler
+      // Wire job configuration so applyLiveServingSettings can revert bulk-build overrides
+      // (refresh=-1, replicas=0, async translog) before the per-entity alias swap.
+      if (recreateIndexHandler instanceof DefaultRecreateHandler defaultHandler
           && currentJob != null
           && currentJob.getJobConfiguration() != null) {
         defaultHandler.withJobData(currentJob.getJobConfiguration());

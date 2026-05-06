@@ -149,6 +149,9 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     }
 
     try {
+      // Restore live serving settings on the staged index before alias swap. The bulk-build
+      // overrides (refresh=-1, replicas=0, async translog) must NOT be the new live settings,
+      // or newly indexed docs are buffered indefinitely until a manual _refresh.
       applyLiveServingSettings(searchClient, stagedIndex, entityType);
       maybeForceMerge(searchClient, stagedIndex, entityType);
 
