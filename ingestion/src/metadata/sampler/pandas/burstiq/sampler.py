@@ -17,13 +17,15 @@ so that PandasProfilerInterface can be used without any BurstIQ-specific
 profiler code.
 """
 
-from typing import TYPE_CHECKING, Iterator, cast  # noqa: UP035
+from typing import TYPE_CHECKING, Callable, Iterator, Optional, cast  # noqa: UP035
 
 import pandas as pd
 
 from metadata.generated.schema.entity.data.table import DataType
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.sampler.pandas.sampler import DatalakeSampler
 from metadata.utils.datalake.datalake_utils import DatalakeColumnWrapper
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 if TYPE_CHECKING:
     from metadata.ingestion.source.database.burstiq.client import BurstIQClient
@@ -77,22 +79,63 @@ class BurstIQSampler(DatalakeSampler):
 
         def chunk_generator() -> Iterator[pd.DataFrame]:
             chain = self.entity.name.root
+            total_limit = self._compute_total_limit(chain)
             skip = 0
+            yielded = False
             while True:
-                records = self.client.get_records_by_tql(chain, limit=_PAGE_SIZE, skip=skip)
+                page_size = min(_PAGE_SIZE, total_limit - skip) if total_limit else _PAGE_SIZE
+                records = self.client.get_records_by_tql(chain, limit=page_size, skip=skip)
                 if not records:
                     break
                 frame = self._cast_dataframe(pd.DataFrame(records))
                 skip += len(records)
+                yielded = True
                 yield frame
-                if len(records) < _PAGE_SIZE:
+                if len(records) < page_size:
                     break
+                if total_limit and skip >= total_limit:
+                    break
+            if not yielded:
+                yield pd.DataFrame()
 
         return DatalakeColumnWrapper(
             dataframes=chunk_generator,
             columns=None,
             raw_data=None,
         )
+
+    def get_col_row(
+        self,
+        df_iterator: Callable,
+        columns: list[SQALikeColumn] | None = None,
+        sample_query: str | None = None,
+    ):
+        """Override to filter columns to those present in the DataFrame.
+        BurstIQ TQL responses can omit columns that exist in entity metadata."""
+        cols = [col.name for col in columns] if columns else None
+        rows = []
+        for chunk in df_iterator():
+            if cols is None:
+                cols = chunk.columns.tolist()
+            available = [c for c in cols if c in chunk.columns]
+            if sample_query is not None:
+                chunk = chunk.query(sample_query)  # noqa: PLW2901
+            rows.extend(self._fetch_rows(chunk[available])[: self.sample_limit])
+            if len(rows) >= (self.sample_limit or 100):
+                break
+        return available if cols else [], rows
+
+    def _compute_total_limit(self, chain: str) -> Optional[int]:  # noqa: UP045
+        """Compute the total record limit based on the sampling config."""
+        static = self._resolve_sample_config
+        if not static or not static.profileSample:
+            return None
+        if static.profileSampleType == ProfileSampleType.ROWS:
+            return int(static.profileSample)
+        if static.profileSampleType == ProfileSampleType.PERCENTAGE:
+            total = self.client.get_chain_metrics().get(chain, 0)
+            return max(1, int(total * static.profileSample / 100))
+        return None
 
     def _cast_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """Cast DataFrame columns to their declared types from OM entity metadata.
