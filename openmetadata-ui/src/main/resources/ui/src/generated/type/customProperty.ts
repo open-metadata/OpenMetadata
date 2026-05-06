@@ -22,8 +22,9 @@ export interface CustomProperty {
     displayName?: string;
     /**
      * Name of the entity property. Must be unique for an entity. Allowed characters:
-     * alphanumeric, _ - . / % # @ ! , ; = | ' + ? ~ ` space ( ) [ ] { }. Must start with an
-     * alphanumeric character. Disallowed: " * & < > : ^ $ \.
+     * alphanumeric, _ - . % # @ ! , ; = | ' + ? ` space ( ) [ ] { }. Must start with an
+     * alphanumeric character. Disallowed: " * & < > : ^ $ \ / ~ (forward slash and tilde are
+     * reserved by JSON Pointer / RFC 6901).
      */
     name:         string;
     propertyType: EntityReference;
