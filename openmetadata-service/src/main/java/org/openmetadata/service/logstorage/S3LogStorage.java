@@ -58,7 +58,6 @@ import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3AsyncClientBuilder;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
-import software.amazon.awssdk.services.s3.model.AbortIncompleteMultipartUpload;
 import software.amazon.awssdk.services.s3.model.BucketLifecycleConfiguration;
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.Delete;
@@ -822,10 +821,6 @@ public class S3LogStorage implements LogStorageInterface {
               .id("pipeline-logs-expiration")
               .status(ExpirationStatus.ENABLED)
               .expiration(LifecycleExpiration.builder().days(expirationDays).build())
-              .abortIncompleteMultipartUpload(
-                  AbortIncompleteMultipartUpload.builder()
-                      .daysAfterInitiation(7) // Clean up orphaned multipart uploads after 7 days
-                      .build())
               .filter(LifecycleRuleFilter.builder().prefix(prefix).build())
               .build();
 
@@ -836,9 +831,7 @@ public class S3LogStorage implements LogStorageInterface {
               .build();
 
       s3Client.putBucketLifecycleConfiguration(request);
-      LOG.info(
-          "S3 lifecycle policy configured: {} days expiration, 7 days multipart cleanup",
-          expirationDays);
+      LOG.info("S3 lifecycle policy configured: {} days expiration", expirationDays);
     } catch (Exception e) {
       LOG.warn("Failed to configure S3 lifecycle policy", e);
     }

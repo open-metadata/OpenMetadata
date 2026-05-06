@@ -80,7 +80,6 @@ Each pipeline run is identified by a `(fqn, runId)` tuple. On S3 the layout is:
 
 A bucket lifecycle policy ensures cleanup:
 - `expirationDays` (default 30) on the `pipeline-logs/` prefix expires all logs after the retention window.
-- `abortIncompleteMultipartUpload(7 days)` cleans up any orphaned multipart uploads from the previous (multipart-based) write path during the migration window.
 
 ## Run Lifecycle
 
