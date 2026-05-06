@@ -345,6 +345,9 @@ describe('ExploreSearchCard - Highlight functionality', () => {
 
   it('memoizes source correctly when highlight changes', () => {
     const { rerender } = renderWithQueryClient(
+=======
+    const { rerender } = render(
+>>>>>>> 7b09368e72 (address comments)
       <MemoryRouter>
         <ExploreSearchCard
           {...defaultProps}
@@ -379,6 +382,7 @@ describe('ExploreSearchCard - Highlight functionality', () => {
     expect(highlightEntityNameAndDescription).toHaveBeenCalledTimes(2);
   });
 });
+<<<<<<< HEAD
 
 describe('ExploreSearchCard - Prefetch on hover', () => {
   beforeEach(() => {

@@ -86,7 +86,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const queryClient = useQueryClient();
 
     const source = useMemo(() => {
-      return highlightEntityNameAndDescription(_source, highlight);
+      return highlight
+        ? highlightEntityNameAndDescription(_source, highlight)
+        : _source;
     }, [_source, highlight]);
 
     const handlePrefetch = useCallback(() => {
@@ -316,6 +318,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   onCheckboxChange?.(e.target.checked);
                   e.stopPropagation();
                 }}
+                onClick={(e) => e.stopPropagation()}
               />
             </Col>
           )}
