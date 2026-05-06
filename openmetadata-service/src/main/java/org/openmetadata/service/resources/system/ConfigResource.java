@@ -242,6 +242,7 @@ public class ConfigResource {
               + "Opens in a popup window via hidden form POST with target=_blank.")
   public Response testLoginInitiate(
       @Context HttpServletRequest request,
+      @FormParam("mode") String mode,
       @FormParam("discoveryUri") String discoveryUri,
       @FormParam("clientId") String clientId,
       @FormParam("clientSecret") String clientSecret,
@@ -255,6 +256,7 @@ public class ConfigResource {
       @FormParam("customParams") String customParams) {
     return TestLoginHandler.handleInitiate(
         request,
+        mode,
         discoveryUri,
         clientId,
         clientSecret,
@@ -283,6 +285,7 @@ public class ConfigResource {
   public Response samlTestLoginInitiate(
       @Context HttpServletRequest request,
       @Context HttpServletResponse response,
+      @FormParam("mode") String mode,
       @FormParam("idpEntityId") String idpEntityId,
       @FormParam("idpSsoLoginUrl") String idpSsoLoginUrl,
       @FormParam("idpX509Certificate") String idpX509Certificate,
@@ -292,6 +295,7 @@ public class ConfigResource {
     return TestSamlHandler.handleInitiate(
         request,
         response,
+        mode,
         idpEntityId,
         idpSsoLoginUrl,
         idpX509Certificate,
@@ -328,21 +332,30 @@ public class ConfigResource {
               + "Binds as admin, searches for the user by mailAttributeName, binds as the user "
               + "to verify password, and returns the derived email + domain + admin principal.")
   public Response ldapTestLoginInitiate(LdapTestLoginRequest body) {
-    if (body == null || body.getLdapConfiguration() == null) {
+    if (body == null) {
       return Response.status(Response.Status.BAD_REQUEST)
-          .entity(Map.of("success", false, "error", "ldapConfiguration is required"))
+          .entity(Map.of("success", false, "error", "Request body is required"))
           .build();
     }
     Map<String, Object> result =
         TestLdapHandler.handleLdapTestLogin(
-            body.getLdapConfiguration(), body.getEmail(), body.getPassword());
+            body.getMode(), body.getLdapConfiguration(), body.getEmail(), body.getPassword());
     return Response.ok(result).build();
   }
 
   public static class LdapTestLoginRequest {
+    private String mode;
     private org.openmetadata.schema.auth.LdapConfiguration ldapConfiguration;
     private String email;
     private String password;
+
+    public String getMode() {
+      return mode;
+    }
+
+    public void setMode(String mode) {
+      this.mode = mode;
+    }
 
     public org.openmetadata.schema.auth.LdapConfiguration getLdapConfiguration() {
       return ldapConfiguration;

@@ -46,7 +46,7 @@ class TestLoginHandlerTest {
     HttpServletRequest req = mock(HttpServletRequest.class);
     Response resp =
         TestLoginHandler.handleInitiate(
-            req, null, "client-id", "secret", null, null, null, null, null, null, null, null);
+            req, null, null, "client-id", "secret", null, null, null, null, null, null, null, null);
 
     assertEquals(400, resp.getStatus());
     String body = (String) resp.getEntity();
@@ -58,7 +58,7 @@ class TestLoginHandlerTest {
     HttpServletRequest req = mock(HttpServletRequest.class);
     Response resp =
         TestLoginHandler.handleInitiate(
-            req, "", "client-id", "secret", null, null, null, null, null, null, null, null);
+            req, null, "", "client-id", "secret", null, null, null, null, null, null, null, null);
 
     assertEquals(400, resp.getStatus());
     assertTrue(((String) resp.getEntity()).contains("Discovery URI is required"));
@@ -70,6 +70,7 @@ class TestLoginHandlerTest {
     Response resp =
         TestLoginHandler.handleInitiate(
             req,
+            null,
             "https://example.com/.well-known/openid-configuration",
             null,
             "secret",

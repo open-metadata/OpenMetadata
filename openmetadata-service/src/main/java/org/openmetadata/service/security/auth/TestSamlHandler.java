@@ -15,6 +15,9 @@ package org.openmetadata.service.security.auth;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.onelogin.saml2.Auth;
 import com.onelogin.saml2.settings.Saml2Settings;
 import com.onelogin.saml2.settings.SettingsBuilder;
@@ -31,6 +34,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
 import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.IdentityProviderConfig;
+import org.openmetadata.catalog.type.ServiceProviderConfig;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.configuration.SecurityConfiguration;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 /**
  * Handles SAML Test Login flow. Parallel to {@link TestLoginHandler} for OIDC.
@@ -63,6 +74,7 @@ public final class TestSamlHandler {
   public static Response handleInitiate(
       HttpServletRequest req,
       HttpServletResponse resp,
+      String mode,
       String idpEntityId,
       String idpSsoLoginUrl,
       String idpX509Certificate,
@@ -70,6 +82,39 @@ public final class TestSamlHandler {
       String spAcsUrl,
       String nameIdFormat) {
     try {
+      // Existing-config mode: overlay form values onto saved SAML config via the
+      // shared deep-merge in SystemRepository. Form fields that are blank or
+      // the masked placeholder fall through to saved values automatically.
+      if (TestLoginHandler.MODE_EXISTING.equalsIgnoreCase(mode)) {
+        JsonNode sparseRequest =
+            buildSparseSamlRequest(
+                idpEntityId,
+                idpSsoLoginUrl,
+                idpX509Certificate,
+                spEntityId,
+                spAcsUrl,
+                nameIdFormat);
+        SecurityConfiguration merged =
+            Entity.getSystemRepository().overlayOnSavedSecurityConfig(sparseRequest);
+        AuthenticationConfiguration mergedAuth = merged.getAuthenticationConfiguration();
+        SamlSSOClientConfig mergedSaml =
+            mergedAuth != null ? mergedAuth.getSamlConfiguration() : null;
+        if (mergedSaml != null) {
+          IdentityProviderConfig mergedIdp = mergedSaml.getIdp();
+          if (mergedIdp != null) {
+            idpEntityId = mergedIdp.getEntityId();
+            idpSsoLoginUrl = mergedIdp.getSsoLoginUrl();
+            idpX509Certificate = mergedIdp.getIdpX509Certificate();
+            nameIdFormat = mergedIdp.getNameId();
+          }
+          ServiceProviderConfig mergedSp = mergedSaml.getSp();
+          if (mergedSp != null) {
+            spEntityId = mergedSp.getEntityId();
+            spAcsUrl = mergedSp.getAcs();
+          }
+        }
+      }
+
       if (nullOrEmpty(idpEntityId)) {
         return TestLoginResponses.buildHtmlErrorResponse(
             "IdP Entity ID is required for SAML Test Login.");
@@ -234,6 +279,61 @@ public final class TestSamlHandler {
     int port = req.getServerPort();
     boolean defaultPort = (port == 80 || port == 443);
     return req.getScheme() + "://" + req.getServerName() + (defaultPort ? "" : ":" + port);
+  }
+
+  /**
+   * Build a sparse SecurityConfiguration JsonNode from SAML Test Login form
+   * params. Only includes fields whose value is present and not the masked
+   * placeholder. Designed for {@link
+   * org.openmetadata.service.jdbi3.SystemRepository#overlayOnSavedSecurityConfig}.
+   */
+  static JsonNode buildSparseSamlRequest(
+      String idpEntityId,
+      String idpSsoLoginUrl,
+      String idpX509Certificate,
+      String spEntityId,
+      String spAcsUrl,
+      String nameIdFormat) {
+    ObjectMapper mapper = JsonUtils.getObjectMapper();
+    ObjectNode root = mapper.createObjectNode();
+    ObjectNode authConfig = mapper.createObjectNode();
+    ObjectNode saml = mapper.createObjectNode();
+    ObjectNode idp = mapper.createObjectNode();
+    ObjectNode sp = mapper.createObjectNode();
+
+    putIfPresent(idp, "entityId", idpEntityId);
+    putIfPresent(idp, "ssoLoginUrl", idpSsoLoginUrl);
+    putIfPresentNonMasked(idp, "idpX509Certificate", idpX509Certificate);
+    putIfPresent(idp, "nameId", nameIdFormat);
+
+    putIfPresent(sp, "entityId", spEntityId);
+    putIfPresent(sp, "acs", spAcsUrl);
+
+    if (!idp.isEmpty()) {
+      saml.set("idp", idp);
+    }
+    if (!sp.isEmpty()) {
+      saml.set("sp", sp);
+    }
+    if (!saml.isEmpty()) {
+      authConfig.set("samlConfiguration", saml);
+    }
+    if (!authConfig.isEmpty()) {
+      root.set("authenticationConfiguration", authConfig);
+    }
+    return root;
+  }
+
+  private static void putIfPresent(ObjectNode node, String key, String value) {
+    if (!nullOrEmpty(value)) {
+      node.put(key, value);
+    }
+  }
+
+  private static void putIfPresentNonMasked(ObjectNode node, String key, String value) {
+    if (!nullOrEmpty(value) && !PasswordEntityMasker.PASSWORD_MASK.equals(value)) {
+      node.put(key, value);
+    }
   }
 
   /**

@@ -9,6 +9,8 @@ import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.get
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
@@ -87,6 +89,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.validator.Auth0Validator;
 import org.openmetadata.service.security.auth.validator.AzureAuthValidator;
 import org.openmetadata.service.security.auth.validator.CognitoAuthValidator;
@@ -1405,6 +1408,95 @@ public class SystemRepository {
     } catch (Exception e) {
       return false;
     }
+  }
+
+  /**
+   * Overlays the request's edits on top of the saved SecurityConfiguration and
+   * returns the merged result. Used by /security/validate and Test Login flows
+   * in "existing" mode so admins can re-test or re-validate without retyping
+   * masked secrets.
+   *
+   * <p>Implementation: load saved → serialize both to JsonNode → recursively
+   * deep-merge (request fields win, missing/empty/masked fields fall through
+   * to saved) → deserialize back. Robust to schema additions because the
+   * merge walks the JSON tree rather than enumerating fields.
+   *
+   * <p>Conceptually a JSON Merge Patch (RFC 7396) of request onto saved, with
+   * three additional "treat as not-specified" rules: empty arrays, empty
+   * strings, and the {@link PasswordEntityMasker#PASSWORD_MASK} placeholder.
+   */
+  public SecurityConfiguration overlayOnSavedSecurityConfig(JsonNode requestBody) {
+    ObjectMapper mapper = JsonUtils.getObjectMapper();
+    if (requestBody == null || requestBody.isNull()) {
+      requestBody = mapper.createObjectNode();
+    }
+    SecurityConfiguration saved =
+        SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+    if (saved == null) {
+      // No saved config to merge with — just deserialize the request as-is
+      return mapper.convertValue(requestBody, SecurityConfiguration.class);
+    }
+    JsonNode savedNode = mapper.valueToTree(saved);
+    JsonNode merged = deepMerge(savedNode, requestBody);
+    try {
+      return mapper.treeToValue(merged, SecurityConfiguration.class);
+    } catch (Exception e) {
+      LOG.error("Failed to deserialize merged SecurityConfiguration; falling back to saved", e);
+      return saved;
+    }
+  }
+
+  /**
+   * Recursive JSON tree merge. For matching object nodes, recurse field-by-field.
+   * Otherwise, the patch value replaces the saved value — unless the patch value
+   * is "empty-ish" ({@link #shouldUsePatchValue}), in which case saved wins.
+   */
+  private static JsonNode deepMerge(JsonNode saved, JsonNode patch) {
+    if (!shouldUsePatchValue(patch)) {
+      return saved;
+    }
+    if (!saved.isObject() || !patch.isObject()) {
+      return patch;
+    }
+    ObjectNode result = saved.deepCopy();
+    patch
+        .fields()
+        .forEachRemaining(
+            entry -> {
+              String key = entry.getKey();
+              JsonNode patchValue = entry.getValue();
+              JsonNode savedValue = result.get(key);
+              if (!shouldUsePatchValue(patchValue)) {
+                return;
+              }
+              if (patchValue.isObject() && savedValue != null && savedValue.isObject()) {
+                result.set(key, deepMerge(savedValue, patchValue));
+              } else {
+                result.set(key, patchValue);
+              }
+            });
+    return result;
+  }
+
+  /**
+   * Returns false if the value should be treated as "not specified" — i.e., the
+   * caller wants the saved value to remain. Catches: null, JSON null, empty
+   * arrays, empty strings, and the password mask placeholder.
+   */
+  private static boolean shouldUsePatchValue(JsonNode value) {
+    if (value == null || value.isNull()) {
+      return false;
+    }
+    if (value.isArray() && value.isEmpty()) {
+      return false;
+    }
+    if (value.isTextual()) {
+      String text = value.asText();
+      if (text.isEmpty() || PasswordEntityMasker.PASSWORD_MASK.equals(text)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**

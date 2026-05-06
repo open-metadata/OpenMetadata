@@ -15,6 +15,8 @@ package org.openmetadata.service.security.auth;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
@@ -25,7 +27,11 @@ import com.unboundid.util.ssl.SSLUtil;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.LdapConfiguration;
+import org.openmetadata.schema.configuration.SecurityConfiguration;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.LdapUtil;
 
 /**
@@ -45,12 +51,15 @@ public final class TestLdapHandler {
   private TestLdapHandler() {}
 
   public static Map<String, Object> handleLdapTestLogin(
-      LdapConfiguration ldapConfig, String email, String password) {
-    if (ldapConfig == null) {
-      return error("LDAP configuration is required");
-    }
+      String mode, LdapConfiguration ldapConfig, String email, String password) {
     if (nullOrEmpty(email) || nullOrEmpty(password)) {
       return error("Email and password are required");
+    }
+    // Existing-config mode: merge form values onto saved LDAP config so admins
+    // can re-test without retyping the masked admin password.
+    ldapConfig = maybeMergeWithSaved(mode, ldapConfig);
+    if (ldapConfig == null) {
+      return error("LDAP configuration is required");
     }
     if (nullOrEmpty(ldapConfig.getHost())
         || ldapConfig.getPort() == null
@@ -157,5 +166,29 @@ public final class TestLdapHandler {
 
   private static Map<String, Object> error(String message) {
     return Map.of("success", false, "error", message);
+  }
+
+  /**
+   * When mode == "existing", overlay the incoming partial LDAP config onto
+   * saved via the shared deep-merge in SystemRepository. Returns the merged
+   * LdapConfiguration. Empty / null / masked values in the request fall
+   * through to saved automatically (via {@code shouldUsePatchValue}).
+   */
+  static LdapConfiguration maybeMergeWithSaved(String mode, LdapConfiguration formConfig) {
+    if (!TestLoginHandler.MODE_EXISTING.equalsIgnoreCase(mode)) {
+      return formConfig;
+    }
+    ObjectMapper mapper = JsonUtils.getObjectMapper();
+    ObjectNode root = mapper.createObjectNode();
+    ObjectNode authConfig = mapper.createObjectNode();
+    if (formConfig != null) {
+      authConfig.set("ldapConfiguration", mapper.valueToTree(formConfig));
+    }
+    if (!authConfig.isEmpty()) {
+      root.set("authenticationConfiguration", authConfig);
+    }
+    SecurityConfiguration merged = Entity.getSystemRepository().overlayOnSavedSecurityConfig(root);
+    AuthenticationConfiguration mergedAuth = merged.getAuthenticationConfiguration();
+    return mergedAuth != null ? mergedAuth.getLdapConfiguration() : formConfig;
   }
 }
