@@ -660,6 +660,15 @@ public class DistributedSearchIndexCoordinator {
     // Get per-entity stats
     List<EntityStatsRecord> entityStatsList = partitionDAO.getEntityStats(jobId.toString());
 
+    // Per-entity timing comes from search_index_server_stats (the per-stage tracker), keyed
+    // by entityType. Lookup once into a map to avoid an O(N*M) match in the loop below.
+    Map<String, CollectionDAO.SearchIndexServerStatsDAO.EntityStats> entityTimingByType =
+        new HashMap<>();
+    for (CollectionDAO.SearchIndexServerStatsDAO.EntityStats e :
+        collectionDAO.searchIndexServerStatsDAO().getStatsByEntityType(jobId.toString())) {
+      entityTimingByType.put(e.entityType(), e);
+    }
+
     Map<String, SearchIndexJob.EntityTypeStats> entityStatsMap = new HashMap<>();
     // Calculate totals from entity stats for consistency (entity stats are always accurate)
     long totalProcessed = 0;
@@ -667,6 +676,8 @@ public class DistributedSearchIndexCoordinator {
     long totalFailed = 0;
 
     for (EntityStatsRecord es : entityStatsList) {
+      CollectionDAO.SearchIndexServerStatsDAO.EntityStats timing =
+          entityTimingByType.get(es.entityType());
       entityStatsMap.put(
           es.entityType(),
           SearchIndexJob.EntityTypeStats.builder()
@@ -678,10 +689,22 @@ public class DistributedSearchIndexCoordinator {
               .totalPartitions(es.totalPartitions())
               .completedPartitions(es.completedPartitions())
               .failedPartitions(es.failedPartitions())
+              .readerTimeMs(timing != null ? timing.readerTimeMs() : 0)
+              .processTimeMs(timing != null ? timing.processTimeMs() : 0)
+              .sinkTimeMs(timing != null ? timing.sinkTimeMs() : 0)
+              .vectorTimeMs(timing != null ? timing.vectorTimeMs() : 0)
               .build());
       totalProcessed += es.processedRecords();
       totalSuccess += es.successRecords();
       totalFailed += es.failedRecords();
+    }
+
+    // Per-server timing comes from search_index_server_stats grouped by serverId.
+    Map<String, CollectionDAO.SearchIndexServerStatsDAO.ServerTimingStats> serverTimingById =
+        new HashMap<>();
+    for (CollectionDAO.SearchIndexServerStatsDAO.ServerTimingStats s :
+        collectionDAO.searchIndexServerStatsDAO().getStatsByServer(jobId.toString())) {
+      serverTimingById.put(s.serverId(), s);
     }
 
     // Get per-server stats for distributed visibility
@@ -695,6 +718,8 @@ public class DistributedSearchIndexCoordinator {
           ss.processedRecords(),
           ss.successRecords(),
           ss.failedRecords());
+      CollectionDAO.SearchIndexServerStatsDAO.ServerTimingStats timing =
+          serverTimingById.get(ss.serverId());
       serverStatsMap.put(
           ss.serverId(),
           SearchIndexJob.ServerStats.builder()
@@ -705,6 +730,10 @@ public class DistributedSearchIndexCoordinator {
               .totalPartitions(ss.totalPartitions())
               .completedPartitions(ss.completedPartitions())
               .processingPartitions(ss.processingPartitions())
+              .readerTimeMs(timing != null ? timing.readerTimeMs() : 0)
+              .processTimeMs(timing != null ? timing.processTimeMs() : 0)
+              .sinkTimeMs(timing != null ? timing.sinkTimeMs() : 0)
+              .vectorTimeMs(timing != null ? timing.vectorTimeMs() : 0)
               .build());
     }
 

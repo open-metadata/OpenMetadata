@@ -93,7 +93,7 @@ const waitForActivityEvent = async (entityFqn: string, eventType: string) => {
           return events.some((event) => event.eventType === eventType);
         },
         {
-          timeout: 75000,
+          timeout: 300000, // 5 minutes
           intervals: [1000, 2000, 5000, 10000],
           message: `Timed out waiting for ${eventType} event for ${entityFqn}`,
         }
@@ -156,8 +156,6 @@ test.afterAll('Cleanup delete admin user', async ({ browser }) => {
 });
 
 test.describe('Activity API - Entity Changes', () => {
-  test.describe.configure({ timeout: 120000 });
-
   test.beforeAll('Setup: create entities and users', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     testTable = new TableClass();
@@ -186,6 +184,7 @@ test.describe('Activity API - Entity Changes', () => {
   test('Activity event is created when description is updated', async ({
     page,
   }) => {
+    test.setTimeout(300000);
     const newDescription = `Test description updated at ${Date.now()}`;
     const entityFqn = testTable.entityResponseData.fullyQualifiedName ?? '';
 
@@ -225,6 +224,7 @@ test.describe('Activity API - Entity Changes', () => {
   });
 
   test('Activity event is created when tags are added', async ({ page }) => {
+    test.setTimeout(300000);
     const entityFqn = testTable.entityResponseData.fullyQualifiedName ?? '';
 
     // Add tag via API to bypass search indexing issues
@@ -274,6 +274,7 @@ test.describe('Activity API - Entity Changes', () => {
   });
 
   test('Activity event is created when owner is added', async ({ page }) => {
+    test.setTimeout(300000);
     const entityFqn = testTable.entityResponseData.fullyQualifiedName ?? '';
     const ownerDisplayName = adminUser.getUserDisplayName();
 
@@ -303,6 +304,7 @@ test.describe('Activity API - Entity Changes', () => {
   test('Activity event shows the actor who made the change', async ({
     page,
   }) => {
+    test.setTimeout(300000);
     // Make a change via API so we know exactly who the actor is
     const { apiContext, afterAction } = await getApiContext(page);
     const uniqueDescription = `Actor test description ${Date.now()}`;

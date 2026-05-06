@@ -219,7 +219,9 @@ public class RegistrationHandler {
   }
 
   private boolean isSupportedAuthMethod(String authMethod) {
-    return "client_secret_post".equals(authMethod) || "none".equals(authMethod);
+    return "client_secret_post".equals(authMethod)
+        || "client_secret_basic".equals(authMethod)
+        || "none".equals(authMethod);
   }
 
   /**
