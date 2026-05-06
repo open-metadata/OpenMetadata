@@ -190,6 +190,13 @@
                 <searchType>opensearch</searchType>
                 <searchImage>opensearchproject/opensearch:2.13.0</searchImage>
                 <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                <!-- Per-method parallel execution; classes serial to keep BeforeAll setup cheap.
+                     Tests opt out via @Execution(SAME_THREAD) or @ResourceLock. -->
+                <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                <junit.jupiter.execution.parallel.mode.default>concurrent</junit.jupiter.execution.parallel.mode.default>
+                <junit.jupiter.execution.parallel.mode.classes.default>same_thread</junit.jupiter.execution.parallel.mode.classes.default>
+                <junit.jupiter.execution.parallel.config.strategy>dynamic</junit.jupiter.execution.parallel.config.strategy>
+                <junit.jupiter.execution.parallel.config.dynamic.factor>0.5</junit.jupiter.execution.parallel.config.dynamic.factor>
               </systemPropertyVariables>
             </configuration>
           </execution>

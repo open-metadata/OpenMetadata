@@ -2,59 +2,46 @@ package org.openmetadata.jpw.scenarios.ui;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
-import com.microsoft.playwright.Page;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.jpw.search.ReindexHelpers;
-import org.openmetadata.jpw.server.ServerHandle;
-import org.openmetadata.jpw.ui.PlaywrightFixture;
+import org.openmetadata.jpw.ui.UiSession;
+import org.openmetadata.jpw.ui.UiSessionExtension;
+import org.openmetadata.jpw.ui.pages.ExplorePage;
 import org.openmetadata.jpw.util.UiTestServer;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.sdk.fluent.Apps;
 
 /**
- * End-to-end UI scenario: seed a table via the SDK, trigger a reindex, then drive Explore
- * in a real browser and assert the seeded table appears in search results.
- *
- * <p>Mode-agnostic — {@link UiTestServer} picks containerized (default) or external (when
- * {@code OM_URL} + {@code OM_ADMIN_TOKEN} are set) and the test doesn't care which.
+ * Reference port for the new UI pattern: Chromium reused via {@code SessionBrowser},
+ * per-test isolation via {@code UiSessionExtension}, page interaction via {@code ExplorePage}.
  */
-@Execution(ExecutionMode.SAME_THREAD)
-@ExtendWith(TestNamespaceExtension.class)
+@ExtendWith({UiSessionExtension.class, TestNamespaceExtension.class})
 class SearchAfterReindexUIIT {
-
-  private static ServerHandle server;
 
   @BeforeAll
   static void setup() {
-    server = UiTestServer.get();
-    SdkClients.useFluentApis(server.sdk());
-    Apps.setDefaultClient(server.sdk());
+    SdkClients.useFluentApis(UiTestServer.get().sdk());
+    Apps.setDefaultClient(UiTestServer.get().sdk());
   }
 
   @Test
-  void seededTableAppearsInExploreSearchAfterReindex(final TestNamespace ns) {
+  void seededTableAppearsInExploreSearchAfterReindex(
+      final UiSession ui, final TestNamespace ns) {
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
     final Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
 
-    ReindexHelpers.triggerSearchIndexAndWait(server);
+    ReindexHelpers.triggerSearchIndexAndWait(ui.server());
 
-    try (PlaywrightFixture pw = PlaywrightFixture.launch(server)) {
-      final Page page = pw.newPage();
-      page.navigate(server.baseUrl().resolve("/explore/tables").toString());
-      page.getByPlaceholder("Search").first().fill(table.getName());
-      page.keyboard().press("Enter");
+    final ExplorePage explore = ExplorePage.open(ui, ExplorePage.Tab.TABLES).search(table.getName());
 
-      assertThat(page.getByText(table.getName()).first()).isVisible();
-    }
+    assertThat(explore.firstResultByName(table.getName())).isVisible();
   }
 }
