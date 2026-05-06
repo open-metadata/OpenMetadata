@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
+import { Include } from '../../../generated/type/include';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { getContainerChildrenByName } from '../../../rest/storageAPI';
@@ -64,6 +67,8 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
   const [containerChildrenData, setContainerChildrenData] = useState<
     ContainerChildRow[]
   >([]);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
 
   const columns: ColumnsType<ContainerChildRow> = useMemo(
     () => [
@@ -92,44 +97,86 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
     [t]
   );
 
-  // Track the FQN of the latest in-flight fetch so a slow earlier response for a
-  // previous container does not overwrite the newer container's data when the
-  // user navigates between containers.
-  const latestFetchFqn = useRef<string>('');
+  // Stale-response guard: every fetch issued from this component bumps a
+  // monotonically-increasing token, and only the response whose token still
+  // matches the latest one allowed to write to state. Keying on the parent FQN
+  // alone (the previous approach) caught navigation-between-containers but not
+  // overlapping fetches against the SAME container — which happen routinely
+  // when the user types into the search box (debounced 500ms) or flips the
+  // Deleted toggle while a slower request is still in-flight. Without this,
+  // an older response can overwrite a newer one's filtered result set.
+  const fetchTokenRef = useRef(0);
 
   const fetchContainerChildren = useCallback(
     async (pagingOffset?: number) => {
       const fetchFqn = decodedContainerName;
-      latestFetchFqn.current = fetchFqn;
+      const token = ++fetchTokenRef.current;
       setIsChildrenLoading(true);
       try {
+        const trimmedQuery = searchValue.trim();
         const { data, paging } = await getContainerChildrenByName(fetchFqn, {
           limit: pageSize,
           offset: pagingOffset ?? 0,
+          include: showDeleted ? Include.Deleted : Include.NonDeleted,
+          ...(trimmedQuery ? { q: trimmedQuery } : {}),
         });
-        if (latestFetchFqn.current !== fetchFqn) {
+        if (fetchTokenRef.current !== token) {
           return;
         }
         setContainerChildrenData(data ?? []);
         handlePagingChange(paging);
         onChildrenCountChange?.(paging.total);
       } catch (error) {
-        if (latestFetchFqn.current === fetchFqn) {
+        if (fetchTokenRef.current === token) {
           showErrorToast(error as AxiosError);
         }
       } finally {
-        if (latestFetchFqn.current === fetchFqn) {
+        if (fetchTokenRef.current === token) {
           setIsChildrenLoading(false);
         }
       }
     },
-    [decodedContainerName, pageSize, handlePagingChange, onChildrenCountChange]
+    [
+      decodedContainerName,
+      pageSize,
+      handlePagingChange,
+      onChildrenCountChange,
+      showDeleted,
+      searchValue,
+    ]
   );
 
   const handleChildrenPageChange = (data: PagingHandlerParams) => {
     handlePageChange(data.currentPage);
     fetchContainerChildren((data.currentPage - 1) * pageSize);
   };
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchValue(value);
+      handlePageChange(INITIAL_PAGING_VALUE);
+    },
+    [handlePageChange]
+  );
+
+  const handleShowDeletedChange = useCallback(
+    (checked: boolean) => {
+      setShowDeleted(checked);
+      handlePageChange(INITIAL_PAGING_VALUE);
+    },
+    [handlePageChange]
+  );
+
+  // Clear filters when navigating between containers. Without this, filters
+  // set on the previous container (a search query, a Deleted toggle that was
+  // ON) silently carry over to the next container's listing — making the new
+  // page look empty even though it has children, and there's no URL state to
+  // reflect that a filter is active. Reset before the fetch so the next
+  // useEffect sees the cleared values and queries the unfiltered page.
+  useEffect(() => {
+    setSearchValue('');
+    setShowDeleted(false);
+  }, [decodedContainerName]);
 
   useEffect(() => {
     if (isReadOnly) {
@@ -151,6 +198,18 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
     onChildrenCountChange?.(children.length);
   }, [isReadOnly, container?.children, onChildrenCountChange]);
 
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('label.search-for-type', {
+        type: t('label.container-plural'),
+      }),
+      typingInterval: 500,
+      searchValue,
+      onSearch: handleSearchChange,
+    }),
+    [handleSearchChange, searchValue, t]
+  );
+
   return (
     <Table
       columns={columns}
@@ -166,12 +225,27 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
       }}
       data-testid="container-list-table"
       dataSource={containerChildrenData}
+      extraTableFilters={
+        !isReadOnly && (
+          <span>
+            <Switch
+              checked={showDeleted}
+              data-testid="show-deleted"
+              onClick={handleShowDeletedChange}
+            />
+            <Typography.Text className="m-l-xs">
+              {t('label.deleted')}
+            </Typography.Text>
+          </span>
+        )
+      }
       loading={isChildrenLoading}
       locale={{
         emptyText: <ErrorPlaceHolder className="p-y-md" />,
       }}
       pagination={false}
       rowKey="id"
+      searchProps={isReadOnly ? undefined : searchProps}
       size="small"
     />
   );
