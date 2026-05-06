@@ -157,7 +157,8 @@
     "parentAliases": [
       "storageService",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
