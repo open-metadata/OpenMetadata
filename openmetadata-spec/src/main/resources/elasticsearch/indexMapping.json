@@ -273,7 +273,8 @@
       "domain",
       "all",
       "dataAsset",
-      "dataAssetEmbeddings"
+      "dataAssetEmbeddings",
+      "marketplace"
     ],
     "childAliases": []
   },
@@ -281,7 +282,7 @@
     "indexName": "domain_search_index",
     "indexMappingFile": "/elasticsearch/%s/domain_index_mapping.json",
     "alias": "domain",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "marketplace"],
     "childAliases": ["dataProduct"]
   },
   "metric": {
