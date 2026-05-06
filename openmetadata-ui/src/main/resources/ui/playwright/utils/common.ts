@@ -30,7 +30,6 @@ import { getToken as getTokenFromStorage } from './tokenStorage';
 export const uuid = () => randomUUID().split('-')[0];
 export const fullUuid = () => randomUUID();
 
-
 export const isContainerChildrenListRequest = (
   response: Response,
   expected: { limit: string; offset: string }
