@@ -31,13 +31,39 @@ public final class SessionBrowser {
     }
     playwright = Playwright.create();
     final BrowserType.LaunchOptions options = new BrowserType.LaunchOptions().setHeadless(!isHeaded());
-    if (isHeaded()) {
-      options.setSlowMo(250);
+    final int slowMoMs = resolveSlowMo();
+    if (slowMoMs > 0) {
+      options.setSlowMo(slowMoMs);
     }
     browser = playwright.chromium().launch(options);
     Runtime.getRuntime().addShutdownHook(new Thread(SessionBrowser::tearDown, "SessionBrowser-cleanup"));
-    LOG.info("SessionBrowser launched: chromium headed={}", isHeaded());
+    LOG.info("SessionBrowser launched: chromium headed={} slowMo={}ms", isHeaded(), slowMoMs);
     return browser;
+  }
+
+  /**
+   * Resolves the inter-action delay applied to every Playwright operation. {@code PW_SLOWMO}
+   * (env or system property) wins; otherwise headed mode defaults to 250ms and headless to 0.
+   */
+  private static int resolveSlowMo() {
+    final String raw = lookup("PW_SLOWMO");
+    if (raw != null) {
+      try {
+        return Math.max(0, Integer.parseInt(raw.trim()));
+      } catch (NumberFormatException e) {
+        LOG.warn("Ignoring non-numeric PW_SLOWMO={}", raw);
+      }
+    }
+    return isHeaded() ? 250 : 0;
+  }
+
+  private static String lookup(final String name) {
+    final String prop = System.getProperty(name);
+    if (prop != null && !prop.isBlank()) {
+      return prop;
+    }
+    final String env = System.getenv(name);
+    return (env != null && !env.isBlank()) ? env : null;
   }
 
   private static synchronized void tearDown() {

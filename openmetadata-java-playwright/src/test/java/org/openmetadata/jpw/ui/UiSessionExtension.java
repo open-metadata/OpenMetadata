@@ -1,6 +1,15 @@
 package org.openmetadata.jpw.ui;
 
+import com.microsoft.playwright.Browser.NewContextOptions;
 import com.microsoft.playwright.BrowserContext;
+import com.microsoft.playwright.Page;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.List;
+import java.util.Objects;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -10,6 +19,8 @@ import org.openmetadata.jpw.server.ServerHandle;
 import org.openmetadata.jpw.ui.auth.AdminJwtAuth;
 import org.openmetadata.jpw.ui.auth.AuthStrategy;
 import org.openmetadata.jpw.util.UiTestServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Orchestrates per-test {@link UiSession} lifecycle.
@@ -25,6 +36,7 @@ import org.openmetadata.jpw.util.UiTestServer;
 public final class UiSessionExtension
     implements BeforeEachCallback, AfterEachCallback, ParameterResolver {
 
+  private static final Logger LOG = LoggerFactory.getLogger(UiSessionExtension.class);
   private static final ExtensionContext.Namespace NAMESPACE =
       ExtensionContext.Namespace.create(UiSessionExtension.class);
   private static final String SESSION_KEY = "uiSession";
@@ -32,11 +44,12 @@ public final class UiSessionExtension
   private static final String RECORDER_KEY = "traceRecorder";
 
   private static final AuthStrategy DEFAULT_AUTH = new AdminJwtAuth();
+  private static final Path VIDEO_DIR = Paths.get("target", "playwright-videos");
 
   @Override
   public void beforeEach(final ExtensionContext extensionContext) {
     final ServerHandle server = UiTestServer.get();
-    final BrowserContext context = SessionBrowser.get().newContext();
+    final BrowserContext context = SessionBrowser.get().newContext(buildContextOptions());
     DEFAULT_AUTH.inject(context);
     final TraceRecorder recorder = TraceRecorder.start(context);
     final UiSession session = new UiSession(context, server);
@@ -54,9 +67,12 @@ public final class UiSessionExtension
     if (recorder != null) {
       finishRecording(extensionContext, recorder);
     }
-    if (context != null) {
-      context.close();
+    if (context == null) {
+      return;
     }
+    final List<Path> videosBeforeClose = collectVideoPaths(context);
+    context.close();
+    renameVideos(videosBeforeClose, traceStem(extensionContext));
   }
 
   @Override
@@ -86,5 +102,55 @@ public final class UiSessionExtension
     final String className =
         extensionContext.getTestClass().map(Class::getSimpleName).orElse("Test");
     return "trace-" + className + "-" + testName;
+  }
+
+  private static NewContextOptions buildContextOptions() {
+    final NewContextOptions options =
+        new NewContextOptions().setPermissions(List.of("clipboard-read", "clipboard-write"));
+    if (isVideoEnabled()) {
+      options.setRecordVideoDir(VIDEO_DIR);
+    }
+    return options;
+  }
+
+  private static boolean isVideoEnabled() {
+    final String prop = System.getProperty("PW_VIDEO");
+    if (prop != null && !prop.isBlank()) {
+      return Boolean.parseBoolean(prop);
+    }
+    final String env = System.getenv("PW_VIDEO");
+    return Boolean.parseBoolean(env);
+  }
+
+  private static List<Path> collectVideoPaths(final BrowserContext context) {
+    if (!isVideoEnabled()) {
+      return List.of();
+    }
+    return context.pages().stream()
+        .map(Page::video)
+        .filter(Objects::nonNull)
+        .map(video -> {
+          try {
+            return video.path();
+          } catch (RuntimeException e) {
+            LOG.warn("Could not resolve video path: {}", e.getMessage());
+            return null;
+          }
+        })
+        .filter(Objects::nonNull)
+        .toList();
+  }
+
+  private static void renameVideos(final List<Path> videoPaths, final String stem) {
+    for (int i = 0; i < videoPaths.size(); i++) {
+      final Path src = videoPaths.get(i);
+      final String suffix = videoPaths.size() == 1 ? "" : "-" + i;
+      final Path dst = src.resolveSibling(stem + suffix + "-" + System.currentTimeMillis() + ".webm");
+      try {
+        Files.move(src, dst, StandardCopyOption.REPLACE_EXISTING);
+      } catch (IOException e) {
+        LOG.warn("Could not rename video {} -> {}: {}", src, dst, e.getMessage());
+      }
+    }
   }
 }

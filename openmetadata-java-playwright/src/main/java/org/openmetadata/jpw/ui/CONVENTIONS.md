@@ -84,11 +84,24 @@ Setup via SDK. Cleanup via `TestNamespace`. Never click through the UI to seed s
 
 ## Headed debugging
 
-- `PW_HEADED=true` (env or `-DPW_HEADED=true`) — visible Chromium with 250ms slowMo.
-- Trace zips for failed runs are saved to `target/playwright-traces/`. Replay:
-  ```
-  npx playwright show-trace target/playwright-traces/trace-<class>-<test>-<ts>.zip
-  ```
+Knobs (all available as env var or `-D<name>=...` system property):
+
+| Knob | Effect |
+|---|---|
+| `PW_HEADED=true` | Visible Chromium |
+| `PW_SLOWMO=<ms>` | Inter-action delay; defaults to 250ms in headed, 0 in headless |
+| `PW_VIDEO=true` | Records every test, saves to `target/playwright-videos/<class>-<test>-<ts>.webm` |
+
+Trace zips for **failed** runs are saved to `target/playwright-traces/`. Replay any trace:
+```
+npx playwright show-trace target/playwright-traces/trace-<class>-<test>-<ts>.zip
+```
+
+Typical local debug recipe — slow it down enough to follow, capture video for review:
+```
+PW_HEADED=true PW_SLOWMO=500 PW_VIDEO=true mvn verify -pl :openmetadata-java-playwright \
+  -Dit.test=TopicUIIT
+```
 
 ## When in doubt
 
