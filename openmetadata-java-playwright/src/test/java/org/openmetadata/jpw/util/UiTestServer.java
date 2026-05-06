@@ -1,35 +1,41 @@
 package org.openmetadata.jpw.util;
 
-import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.jpw.auth.AuthBackend;
+import org.openmetadata.jpw.auth.AuthBackends;
+import org.openmetadata.jpw.auth.AuthSession;
+import org.openmetadata.jpw.auth.TokenRefresher;
+import org.openmetadata.jpw.auth.TokenSet;
 import org.openmetadata.jpw.server.ContainerizedServer;
 import org.openmetadata.jpw.server.ExternalServer;
 import org.openmetadata.jpw.server.ServerHandle;
+import org.openmetadata.jpw.server.sso.MockOidcServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Resolves a {@link ServerHandle} for UI scenarios. Transparent to the test — auto-picks
- * the right mode based on what's configured:
+ * Boots and caches the JVM-wide {@link ServerHandle} for UI scenarios, plus the auth
+ * machinery that drives token acquisition and refresh.
  *
+ * <p>Mode selection (transparent to tests):
  * <ul>
- *   <li>If {@code OM_URL} and {@code OM_ADMIN_TOKEN} are set → connect to that running stack
- *       ({@link ExternalServer}). Use this when iterating against {@code ./docker/run_local_docker.sh}.
- *   <li>Otherwise → build the OM server image from the local dist tarball, spin up
- *       MySQL + OpenSearch + server via Testcontainers ({@link ContainerizedServer}). This
- *       is the default; {@code mvn verify -Dit.test='*UIIT'} just works.
+ *   <li>{@code OM_URL} + {@code OM_ADMIN_TOKEN} set → {@link ExternalServer}, basic auth only
+ *   <li>otherwise → {@link ContainerizedServer} bringing up MySQL + OpenSearch + the OM
+ *       image; {@code jpw.auth} (system property or {@code JPW_AUTH} env) picks the
+ *       backend (default {@code basic}; {@code sso-google-confidential} boots the mock IdP
+ *       sidecar and acquires tokens via OAuth2 password grant).
  * </ul>
  *
- * <p>The handle is cached for the JVM lifetime; the first test triggers the boot and a
- * shutdown hook tears the stack down at session end.
+ * <p>Once initialized, {@link AuthSession#current()} holds the active token, and a daemon
+ * {@link TokenRefresher} keeps it valid for runs longer than a single token TTL.
  */
 public final class UiTestServer {
 
   private static final Logger LOG = LoggerFactory.getLogger(UiTestServer.class);
-  private static final long ADMIN_TOKEN_TTL_SECONDS = 24L * 60 * 60;
 
   private static volatile ServerHandle cached;
   private static volatile ContainerizedServer ownedContainer;
+  private static volatile TokenRefresher refresher;
 
   private UiTestServer() {}
 
@@ -37,38 +43,56 @@ public final class UiTestServer {
     if (cached != null) {
       return cached;
     }
+    final AuthBackend backend = AuthBackends.resolve();
+    LOG.info("UI test auth backend: {}", backend.name());
     if (hasExternalConfig()) {
-      LOG.info("UI test mode: external (OM_URL + OM_ADMIN_TOKEN detected)");
-      cached = ExternalServer.fromEnv();
-      pointSdkClientsAt(cached);
-      return cached;
+      cached = bootExternal(backend);
+    } else {
+      cached = bootContainerized(backend);
     }
-    LOG.info("UI test mode: containerized (building local image)");
-    ownedContainer = ContainerizedServer.launch();
-    final String adminJwt =
-        JwtAuthProvider.tokenFor(
-            "admin@open-metadata.org",
-            "admin@open-metadata.org",
-            new String[] {"admin"},
-            ADMIN_TOKEN_TTL_SECONDS);
-    cached = ownedContainer.handle(adminJwt);
     pointSdkClientsAt(cached);
+    final TokenSet initial = backend.acquireToken(cached, idp());
+    AuthSession.initialize(backend, initial);
+    SdkClients.overrideAdminToken(initial.accessToken());
+    refresher = TokenRefresher.start(backend, cached, idp());
     Runtime.getRuntime()
         .addShutdownHook(new Thread(UiTestServer::tearDown, "UiTestServer-cleanup"));
     return cached;
   }
 
-  /**
-   * Point the integration-tests {@link SdkClients} cache at this server. Without this, all
-   * factories (which call {@code SdkClients.adminClient()}) would post to the
-   * {@code localhost:8585} default and the browser would 404 because the entity doesn't
-   * exist on the testcontainers-mapped port the UI is actually loaded against.
-   */
+  private static ServerHandle bootExternal(final AuthBackend backend) {
+    if (backend.requiresIdp()) {
+      throw new IllegalStateException(
+          "External mode does not support SSO backends — point OM_URL at a stack that's "
+              + "already configured for the SSO provider you want to test");
+    }
+    LOG.info("UI test mode: external (OM_URL + OM_ADMIN_TOKEN detected)");
+    return ExternalServer.fromEnv();
+  }
+
+  private static ServerHandle bootContainerized(final AuthBackend backend) {
+    LOG.info("UI test mode: containerized");
+    ownedContainer =
+        backend.requiresIdp()
+            ? ContainerizedServer.launch(backend.ssoProfile())
+            : ContainerizedServer.launch();
+    // The token at this point is a placeholder — UiTestServer.get() acquires the real one
+    // from the backend right after this and propagates it via SdkClients.overrideAdminToken.
+    return ownedContainer.handle("");
+  }
+
+  private static MockOidcServer idp() {
+    return ownedContainer != null ? ownedContainer.ssoIdp() : null;
+  }
+
   private static void pointSdkClientsAt(final ServerHandle server) {
     SdkClients.overrideBaseUrl(server.baseUrl().toString());
   }
 
   private static void tearDown() {
+    if (refresher != null) {
+      refresher.close();
+    }
     if (ownedContainer != null) {
       ownedContainer.close();
     }

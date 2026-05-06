@@ -15,9 +15,8 @@ import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolver;
+import org.openmetadata.jpw.auth.AuthSession;
 import org.openmetadata.jpw.server.ServerHandle;
-import org.openmetadata.jpw.ui.auth.AdminJwtAuth;
-import org.openmetadata.jpw.ui.auth.AuthStrategy;
 import org.openmetadata.jpw.util.UiTestServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,14 +42,13 @@ public final class UiSessionExtension
   private static final String CONTEXT_KEY = "browserContext";
   private static final String RECORDER_KEY = "traceRecorder";
 
-  private static final AuthStrategy DEFAULT_AUTH = new AdminJwtAuth();
   private static final Path VIDEO_DIR = Paths.get("target", "playwright-videos");
 
   @Override
   public void beforeEach(final ExtensionContext extensionContext) {
     final ServerHandle server = UiTestServer.get();
     final BrowserContext context = SessionBrowser.get().newContext(buildContextOptions());
-    DEFAULT_AUTH.inject(context);
+    AuthSession.backend().injectIntoBrowser(context, AuthSession.current());
     final TraceRecorder recorder = TraceRecorder.start(context);
     final UiSession session = new UiSession(context, server);
     final ExtensionContext.Store store = extensionContext.getStore(NAMESPACE);
