@@ -186,14 +186,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         timeout-minutes: 60
 
+      - name: Set provider secret key
+        if: ${{ matrix.provider != 'mock-oidc' }}
+        id: provider_key
+        run: echo "key=$(echo '${{ matrix.provider }}' | tr '[:lower:]-' '[:upper:]_')" >> $GITHUB_OUTPUT
+
       - name: Run SSO Authentication Tests
         if: ${{ matrix.provider != 'mock-oidc' }}
         working-directory: openmetadata-ui/src/main/resources/ui
         run: npx playwright test --config=playwright.sso.config.ts --workers=1
         env:
           SSO_PROVIDER_TYPE: ${{ matrix.provider }}
-          SSO_USERNAME: ${{ secrets[format('{0}_SSO_USERNAME', upper(matrix.provider))] }}
-          SSO_PASSWORD: ${{ secrets[format('{0}_SSO_PASSWORD', upper(matrix.provider))] }}
+          SSO_USERNAME: ${{ secrets[format('{0}_SSO_USERNAME', steps.provider_key.outputs.key)] }}
+          SSO_PASSWORD: ${{ secrets[format('{0}_SSO_PASSWORD', steps.provider_key.outputs.key)] }}
           PLAYWRIGHT_IS_OSS: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         timeout-minutes: 60
