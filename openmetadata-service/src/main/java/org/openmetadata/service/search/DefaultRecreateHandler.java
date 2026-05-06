@@ -332,6 +332,12 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
 
     // Always clear staged-index routing on the way out — see the rationale in finalizeReindex.
     try {
+      // Restore live serving settings on the staged index before alias swap. The bulk-build
+      // overrides (refresh=-1, replicas=0, async translog) must NOT be the new live settings,
+      // or newly indexed docs are buffered indefinitely until a manual _refresh.
+      applyLiveServingSettings(searchClient, stagedIndex, entityType);
+      maybeForceMerge(searchClient, stagedIndex, entityType);
+
       Set<String> aliasesToAttach =
           getAliasesFromMapping(indexMapping, searchRepository.getClusterAlias());
 
