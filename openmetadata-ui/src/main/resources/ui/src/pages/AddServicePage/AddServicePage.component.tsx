@@ -17,7 +17,7 @@ import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -76,8 +76,23 @@ const AddServicePage = () => {
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
   const [activeField, setActiveField] = useState<string>('');
+  const { pathname } = useLocation();
+  const isEmbedded = pathname.startsWith('/askCollate');
 
-  const slashedBreadcrumb = getAddServiceEntityBreadcrumb(serviceCategory);
+  const slashedBreadcrumb = useMemo(() => {
+    const crumbs = getAddServiceEntityBreadcrumb(serviceCategory);
+    if (isEmbedded) {
+      return [
+        {
+          ...crumbs[0],
+          url: `/askCollate/connections/settings/services/${serviceCategory}`,
+        },
+        ...crumbs.slice(1),
+      ];
+    }
+
+    return crumbs;
+  }, [serviceCategory, isEmbedded]);
 
   const translatedSteps = useMemo(
     () =>
@@ -332,6 +347,7 @@ const AddServicePage = () => {
         cardClassName: 'max-width-md m-x-auto',
         allowScroll: true,
       }}
+      hideBgGrey={connectionsRouterClassBase.isEmbeddedMode()}
       hideSecondPanel={hideSecondPanel}
       pageTitle={t('label.add-entity', { entity: t('label.service') })}
       secondPanel={{
