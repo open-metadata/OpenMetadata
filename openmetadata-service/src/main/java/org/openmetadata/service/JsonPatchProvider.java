@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
 import jakarta.ws.rs.ext.ContextResolver;
 import jakarta.ws.rs.ext.Provider;
+import org.openmetadata.schema.utils.JsonUtils;
 
 @Provider
 public class JsonPatchProvider implements ContextResolver<ObjectMapper> {
@@ -27,6 +28,8 @@ public class JsonPatchProvider implements ContextResolver<ObjectMapper> {
     final ObjectMapper mapper = new ObjectMapper();
     mapper.registerModule(new JSR353Module());
     mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+    mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    mapper.setDateFormat(JsonUtils.DATE_TIME_FORMAT);
     // This feature allows the parser to accept non-numeric numbers such as NaN,
     // Infinity, and -Infinity in JSON input. ref:
     // https://github.com/FasterXML/jackson-core/wiki/JsonReadFeatures
