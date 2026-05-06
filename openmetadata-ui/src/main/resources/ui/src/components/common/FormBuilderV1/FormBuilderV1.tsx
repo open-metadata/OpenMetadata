@@ -19,6 +19,7 @@ import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { transformErrors } from '../../../utils/formUtils';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
+import CoreArrayField from './fields/CoreArrayField';
 import CoreBooleanField from './fields/CoreBooleanField';
 import CoreOneOfField from './fields/CoreOneOfField';
 import LayoutGridField from './fields/LayoutGridField';
@@ -37,6 +38,7 @@ import CoreTextAreaWidget from './widgets/CoreTextAreaWidget';
 
 const defaultFields = {
   AnyOfField: CoreOneOfField,
+  ArrayField: CoreArrayField,
   BooleanField: CoreBooleanField,
   OneOfField: CoreOneOfField,
   LayoutGridField,

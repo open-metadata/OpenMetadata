@@ -11,10 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
-import { ChevronDown, Plus } from '@untitledui/icons';
-import { Fragment, FunctionComponent, useState } from 'react';
+import { Plus } from '@untitledui/icons';
+import { Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const ADVANCED_PROPERTIES = new Set([
@@ -30,7 +37,6 @@ export const CoreObjectFieldTemplate: FunctionComponent<
   ObjectFieldTemplateProps
 > = ({ title, description, onAddClick, schema, properties, idSchema }) => {
   const { t } = useTranslation();
-  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const isRoot = idSchema.$id === 'root';
 
@@ -83,38 +89,20 @@ export const CoreObjectFieldTemplate: FunctionComponent<
 
       {advancedProperties.length > 0 && (
         <div className="tw:my-3">
-          <button
-            aria-expanded={advancedOpen}
-            className={`tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:rounded-lg tw:border tw:border-primary tw:bg-primary
-            tw:px-4 tw:py-3 tw:text-left tw:transition-colors hover:tw:bg-secondary ${
-              advancedOpen ? 'tw:border-b-0 tw:rounded-none' : ''
-            }`}
-            type="button"
-            onClick={() => setAdvancedOpen((v) => !v)}>
-            <Typography
-              as="span"
-              className="tw:text-primary"
-              size="text-sm"
-              weight="medium">
-              {title
-                ? `${title} ${t('label.advanced-config')}`
-                : t('label.advanced-config')}
-            </Typography>
-            <ChevronDown
-              data-icon
-              className={`tw:transition-transform tw:duration-200 ${
-                advancedOpen ? 'tw:rotate-180' : ''
-              }`}
-              size={16}
-            />
-          </button>
-          {advancedOpen && (
-            <div className="tw:flex tw:flex-col tw:gap-4  tw:border-1 tw:border-t-0 tw:border-primary tw:p-3">
-              {advancedProperties.map((element) => (
-                <div key={element.name}>{element.content}</div>
-              ))}
-            </div>
-          )}
+          <Accordion>
+            <AccordionItem id={`${idSchema.$id}-advanced`}>
+              <AccordionHeader>
+                {title
+                  ? `${title} ${t('label.advanced-config')}`
+                  : t('label.advanced-config')}
+              </AccordionHeader>
+              <AccordionPanel className="tw:flex tw:flex-col tw:gap-4">
+                {advancedProperties.map((element) => (
+                  <div key={element.name}>{element.content}</div>
+                ))}
+              </AccordionPanel>
+            </AccordionItem>
+          </Accordion>
         </div>
       )}
     </>

@@ -12,7 +12,7 @@
  */
 
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RegistryFieldsType } from '@rjsf/utils';
+import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Alert } from 'antd';
 
@@ -101,7 +101,7 @@ const ConnectionConfigForm = ({
 
   const customFields: RegistryFieldsType = {
     ...(isEmbeddedMode ? {} : { BooleanField: BooleanFieldTemplate }),
-    ArrayField: WorkflowArrayFieldTemplate,
+    ...(isEmbeddedMode ? {} : { ArrayField: WorkflowArrayFieldTemplate }),
   };
 
   const { connSch, validConfig } = useMemo(
@@ -113,6 +113,7 @@ const ConnectionConfigForm = ({
       }),
     [data, serviceCategory, serviceType]
   );
+  const connectionSchema = connSch.schema as RJSFSchema;
 
   const shouldShowIPAlert = useMemo(() => {
     return (
@@ -128,16 +129,20 @@ const ConnectionConfigForm = ({
   // Remove the filters property from the schema
   // Since it'll have a separate form in the next step
   const propertiesWithoutDefaultFilterPatternFields = useMemo(
-    () => getFilteredSchema(connSch.schema.properties),
-    [connSch.schema.properties]
+    () =>
+      getFilteredSchema(
+        connectionSchema.properties as Record<string, unknown> | undefined
+      ),
+    [connectionSchema.properties]
   );
 
-  const schemaWithoutDefaultFilterPatternFields = useMemo(
+  const schemaWithoutDefaultFilterPatternFields = useMemo<RJSFSchema>(
     () => ({
-      ...connSch.schema,
-      properties: propertiesWithoutDefaultFilterPatternFields,
+      ...connectionSchema,
+      properties:
+        propertiesWithoutDefaultFilterPatternFields as RJSFSchema['properties'],
     }),
-    [connSch.schema, propertiesWithoutDefaultFilterPatternFields]
+    [connectionSchema, propertiesWithoutDefaultFilterPatternFields]
   );
 
   // UI Schema to hide the nested default filter pattern fields
