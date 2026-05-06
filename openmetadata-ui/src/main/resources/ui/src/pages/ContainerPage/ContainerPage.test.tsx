@@ -470,7 +470,7 @@ describe('Container Page Component', () => {
     expect(screen.getByText('Loader')).toBeVisible();
 
     const childrenTab = await screen.findByRole('tab', {
-      name: 'label.children',
+      name: 'label.container-plural',
     });
 
     userEvent.click(childrenTab);
@@ -499,7 +499,7 @@ describe('Container Page Component', () => {
     expect(screen.getByText('Loader')).toBeVisible();
 
     const childrenTab = await screen.findByRole('tab', {
-      name: 'label.children',
+      name: 'label.container-plural',
     });
 
     expect(childrenTab).toHaveAttribute('aria-selected', 'true');
