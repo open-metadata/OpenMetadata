@@ -112,15 +112,24 @@ class DatalakeGcsClient(DatalakeBaseClient):
         storage_class = getattr(blob, "storage_class", None)
         return bool(storage_class and storage_class in GCS_COLD_STORAGE_CLASSES)
 
-    def _discover_iceberg_dirs(
+    def get_table_names(
         self,
-        bucket: Any,
+        bucket_name: str,
         prefix: Optional[str],  # noqa: UP045
-        skip_cold_storage: bool,
-    ) -> Tuple[Dict[str, Tuple[int, str, int | None]], Set[str]]:  # noqa: UP006
-        """Pass 1: discover Iceberg table directories and return (iceberg_tables, iceberg_dirs)."""
+        skip_cold_storage: bool = False,
+    ) -> Iterable[Tuple[str, Optional[int]]]:  # noqa: UP006, UP045
+        """
+        Lists tables in a GCS bucket using a single-pass approach.
+
+        Iterates all blobs once, collecting Iceberg metadata entries and
+        buffering regular files. After the pass, yields Iceberg tables
+        (highest version per directory) followed by regular files that
+        do not belong to any Iceberg directory.
+        """
+        bucket = self._client.get_bucket(bucket_name)
         iceberg_tables: Dict[str, Tuple[int, str, int | None]] = {}  # noqa: UP006
         cold_iceberg_dirs: Set[str] = set()  # noqa: UP006
+        regular_files: List[Tuple[str, Optional[int]]] = []  # noqa: UP006, UP045
 
         for blob in bucket.list_blobs(prefix=prefix):
             if skip_cold_storage and self._should_skip_gcs_cold_storage(blob):
@@ -131,48 +140,18 @@ class DatalakeGcsClient(DatalakeBaseClient):
                 if parsed:
                     cold_iceberg_dirs.add(parsed[0])
                 continue
-            self._update_iceberg_entry(iceberg_tables, blob.name, blob.size)
+            if not self._update_iceberg_entry(iceberg_tables, blob.name, blob.size):
+                regular_files.append((blob.name, blob.size))
 
-        return iceberg_tables, set(iceberg_tables.keys()) | cold_iceberg_dirs
-
-    def _yield_regular_files(
-        self,
-        bucket: Any,
-        prefix: Optional[str],  # noqa: UP045
-        skip_cold_storage: bool,
-        iceberg_dirs: Set[str],  # noqa: UP006
-    ) -> Iterable[Tuple[str, Optional[int]]]:  # noqa: UP006, UP045
-        """Pass 2: stream regular files, skipping Iceberg directory contents."""
-        for blob in bucket.list_blobs(prefix=prefix):
-            if skip_cold_storage and self._should_skip_gcs_cold_storage(blob):
-                continue
-            if iceberg_dirs and (
-                self._parse_iceberg_metadata(blob.name) is not None
-                or any(blob.name.startswith(d + "/") for d in iceberg_dirs)
-            ):
-                continue
-            yield blob.name, blob.size
-
-    def get_table_names(
-        self,
-        bucket_name: str,
-        prefix: Optional[str],  # noqa: UP045
-        skip_cold_storage: bool = False,
-    ) -> Iterable[Tuple[str, Optional[int]]]:  # noqa: UP006, UP045
-        """
-        Lists tables in a GCS bucket using a two-pass approach.
-
-        Pass 1 collects only the Iceberg table dict (memory proportional to the
-        number of Iceberg tables, which is always small). Pass 2 streams regular
-        files without accumulation, keeping memory overhead at O(1) per object.
-        """
-        bucket = self._client.get_bucket(bucket_name)
-        iceberg_tables, iceberg_dirs = self._discover_iceberg_dirs(bucket, prefix, skip_cold_storage)
+        iceberg_dirs: Set[str] = set(iceberg_tables.keys()) | cold_iceberg_dirs  # noqa: UP006
 
         for _, metadata_blob_path, size in iceberg_tables.values():
             yield metadata_blob_path, size
 
-        yield from self._yield_regular_files(bucket, prefix, skip_cold_storage, iceberg_dirs)
+        for name, size in regular_files:
+            if iceberg_dirs and any(name.startswith(d + "/") for d in iceberg_dirs):
+                continue
+            yield name, size
 
     def close(self, service_connection):
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")

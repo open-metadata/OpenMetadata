@@ -96,7 +96,7 @@ class DatalakeSource(DatabaseServiceSource):
         self.connection_obj = self.client
         self.test_connection()
         self.reader = get_reader(config_source=self.config_source, client=self.client.client)
-        self._table_info: Dict[str, Tuple[SupportedTypes, Optional[int], str]] = {}  # noqa: UP006, UP045
+        self._table_info: Dict[str, Tuple[SupportedTypes, Optional[int]]] = {}  # noqa: UP006, UP045
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -236,7 +236,7 @@ class DatalakeSource(DatabaseServiceSource):
                 logger.info(f"Processing table: {table_name}")
                 file_extension = get_file_format_type(key_name=key_name, metadata_entry=metadata_entry)
 
-                if table_name.endswith("/") or not file_extension:
+                if key_name.endswith("/") or not file_extension:
                     logger.debug(f"Object filtered due to unsupported file type: {key_name}")
                     continue
 
@@ -245,8 +245,8 @@ class DatalakeSource(DatabaseServiceSource):
                     if get_iceberg_table_name_from_metadata_path(key_name) is not None
                     else TableType.Regular
                 )
-                self._table_info[table_name] = (file_extension, file_size, key_name)
-                yield table_name, table_type
+                self._table_info[key_name] = (file_extension, file_size)
+                yield key_name, table_type
 
     def yield_table(
         self,
@@ -257,8 +257,10 @@ class DatalakeSource(DatabaseServiceSource):
         Prepare a table request and pass it to the sink.
         Uses first chunk only for schema inference to avoid loading entire file.
         """
-        table_name, table_type = table_name_and_type
-        table_extension, file_size, fetch_key = self._table_info.pop(table_name, (None, None, table_name))
+        key_name, table_type = table_name_and_type
+        table_extension, file_size = self._table_info.pop(key_name, (None, None))
+        fetch_key = key_name
+        table_name = self.standardize_table_name(self.context.get().database_schema, key_name)
         schema_name = self.context.get().database_schema
         try:
             table_constraints = None

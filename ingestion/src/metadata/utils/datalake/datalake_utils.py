@@ -160,30 +160,35 @@ def fetch_dataframe_first_chunk(
 
 
 _ICEBERG_METADATA_SUFFIX = ".metadata.json"
-_ICEBERG_METADATA_SEGMENT = "/metadata/v"
+_ICEBERG_METADATA_DIR = "/metadata/"
 
 
 def get_iceberg_table_name_from_metadata_path(metadata_path: str) -> str | None:
     """
     Extracts the Iceberg table directory name from a metadata file path.
 
-    Examples:
-      "warehouse/orders/metadata/v2.metadata.json"  -> "orders"
-      "my_prefix/sales/metadata/v1.metadata.json"   -> "sales"
-      "simple/metadata/v3.metadata.json"            -> "simple"
-      "data/orders.json"                            -> None
+    Supports all standard Iceberg metadata filename formats:
+      "warehouse/orders/metadata/v2.metadata.json"                           -> "orders"
+      "warehouse/orders/metadata/v1-abc123.metadata.json"                    -> "orders"
+      "warehouse/orders/metadata/00015-8a14161c-65ad.metadata.json"          -> "orders"
+      "data/orders.json"                                                     -> None
 
     Returns None if the path does not match the Iceberg metadata pattern.
     """
     if not metadata_path.endswith(_ICEBERG_METADATA_SUFFIX):
         return None
-    idx = metadata_path.rfind(_ICEBERG_METADATA_SEGMENT)
-    if idx < 0:
+    metadata_idx = metadata_path.rfind(_ICEBERG_METADATA_DIR)
+    if metadata_idx < 0:
         return None
-    version_str = metadata_path[idx + len(_ICEBERG_METADATA_SEGMENT) : -len(_ICEBERG_METADATA_SUFFIX)]
-    if not version_str.isdigit():
+    filename = metadata_path[metadata_idx + len(_ICEBERG_METADATA_DIR) : -len(_ICEBERG_METADATA_SUFFIX)]
+    if not filename:
         return None
-    table_dir = metadata_path[:idx]
+    raw = filename.lstrip("v")
+    dash_pos = raw.find("-")
+    version_part = raw[:dash_pos] if dash_pos > 0 else raw
+    if not version_part.isdigit():
+        return None
+    table_dir = metadata_path[:metadata_idx]
     last_slash = table_dir.rfind("/")
     return table_dir[last_slash + 1 :] if last_slash >= 0 else table_dir
 

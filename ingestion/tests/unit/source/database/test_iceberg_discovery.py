@@ -143,6 +143,21 @@ class TestGcsIcebergDiscovery:
         assert name == "warehouse/orders/metadata/v10.metadata.json"
         assert size == 600
 
+    def test_gcs_iceberg_uuid_metadata_filenames(self):
+        """UUID-based metadata filenames (REST/Nessie catalog) are detected."""
+        blobs = [
+            _make_blob("warehouse/orders/metadata/00015-8a14161c-65ad.metadata.json", size=700),
+            _make_blob("warehouse/orders/data/00000.parquet", size=8192),
+        ]
+        client = _make_gcs_client(blobs)
+
+        results = list(client.get_table_names("my-bucket", prefix="warehouse"))
+
+        assert len(results) == 1
+        name, size = results[0]
+        assert name == "warehouse/orders/metadata/00015-8a14161c-65ad.metadata.json"
+        assert size == 700
+
 
 class TestS3IcebergDiscovery:
     def _make_s3_client(self, keys: list, sizes: dict | None = None) -> DatalakeS3Client:
@@ -234,6 +249,22 @@ class TestIcebergTableNameHelper:
         assert get_iceberg_table_name_from_metadata_path("my_prefix/sales/metadata/v1.metadata.json") == "sales"
         assert get_iceberg_table_name_from_metadata_path("simple/metadata/v3.metadata.json") == "simple"
 
+    def test_uuid_based_metadata_filenames(self):
+        from metadata.utils.datalake.datalake_utils import (
+            get_iceberg_table_name_from_metadata_path,
+        )
+
+        assert (
+            get_iceberg_table_name_from_metadata_path("warehouse/orders/metadata/v1-abc123-def456.metadata.json")
+            == "orders"
+        )
+        assert (
+            get_iceberg_table_name_from_metadata_path(
+                "warehouse/orders/metadata/00015-8a14161c-65ad-45fc-b665-ec16dcbf647e.metadata.json"
+            )
+            == "orders"
+        )
+
     def test_non_iceberg_path_returns_none(self):
         from metadata.utils.datalake.datalake_utils import (
             get_iceberg_table_name_from_metadata_path,
@@ -280,52 +311,33 @@ class TestSlice4FetchKeyCorrectness:
 
     def test_yield_table_uses_metadata_path_not_display_name(self):
         """
-        The 5-tuple yielded by get_tables_name_and_type() must carry
-        key_name (original blob path) separately from table_name (display name).
-
-        For an Iceberg table:
-          table_name = "orders"          (display, from standardize_table_name)
-          key_name   = "warehouse/orders/metadata/v2.metadata.json"  (fetch path)
-
-        DatalakeTableSchemaWrapper must be constructed with key=key_name,
-        NOT key=table_name.
+        The key_name passed through the topology is the full blob path.
+        _table_info stores (file_extension, file_size) keyed by key_name.
+        yield_table must use key_name for DatalakeTableSchemaWrapper,
+        not the standardized display name.
         """
-        from metadata.generated.schema.entity.data.table import TableType
         from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
         from metadata.readers.dataframe.reader_factory import SupportedTypes
 
-        display_name = "orders"
         original_key = "warehouse/orders/metadata/v2.metadata.json"
         file_extension = SupportedTypes.JSON
         file_size = 1024
 
-        tuple_5 = (
-            display_name,
-            TableType.Iceberg,
-            file_extension,
-            file_size,
-            original_key,
-        )
-        table_name, _table_type, table_extension, t_file_size, fetch_key = tuple_5
-
         wrapper = DatalakeTableSchemaWrapper(
-            key=fetch_key,
+            key=original_key,
             bucket_name="my-bucket",
-            file_extension=table_extension,
-            file_size=t_file_size,
+            file_extension=file_extension,
+            file_size=file_size,
         )
 
-        assert wrapper.key == original_key, f"fetch key should be original blob path, got {wrapper.key!r}"
-        assert wrapper.key != display_name, f"fetch key must NOT be the display name '{display_name}'"
-        assert table_name == display_name
+        assert wrapper.key == original_key
+        assert wrapper.key != "orders"
 
     def test_non_iceberg_fetch_key_equals_table_name(self):
         """
         For non-Iceberg tables, key_name == table_name (standardize_table_name
-        returns the path unchanged), so the 5-tuple element is redundant but
-        harmless. This test confirms the invariant holds.
+        returns the path unchanged), so the fetch key is the same as the name.
         """
-        from metadata.generated.schema.entity.data.table import TableType
         from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
         from metadata.readers.dataframe.reader_factory import SupportedTypes
         from metadata.utils.datalake.datalake_utils import (
@@ -333,25 +345,14 @@ class TestSlice4FetchKeyCorrectness:
         )
 
         key_name = "data/orders.parquet"
-        table_name = key_name  # standardize_table_name returns unchanged for non-Iceberg
 
         assert get_iceberg_table_name_from_metadata_path(key_name) is None
 
-        tuple_5 = (
-            table_name,
-            TableType.Regular,
-            SupportedTypes.PARQUET,
-            2048,
-            key_name,
-        )
-        _, _, _, _, fetch_key = tuple_5
-
         wrapper = DatalakeTableSchemaWrapper(
-            key=fetch_key,
+            key=key_name,
             bucket_name="my-bucket",
             file_extension=SupportedTypes.PARQUET,
             file_size=2048,
         )
 
         assert wrapper.key == "data/orders.parquet"
-        assert wrapper.key == table_name

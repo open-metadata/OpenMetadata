@@ -21,22 +21,37 @@ class DatalakeBaseClient(ABC):
     """Base DL client implementation"""
 
     _ICEBERG_METADATA_SUFFIX = ".metadata.json"
-    _ICEBERG_METADATA_SEGMENT = "/metadata/v"
+    _ICEBERG_METADATA_DIR = "/metadata/"
 
     @staticmethod
     def _parse_iceberg_metadata(name: str) -> Optional[Tuple[str, int]]:  # noqa: UP006, UP045
-        """Parse an Iceberg metadata path, returning (table_dir, version) or None."""
+        """
+        Parse an Iceberg metadata path, returning (table_dir, version) or None.
+
+        Supports all standard Iceberg metadata filename formats:
+          - v{n}.metadata.json           (Hadoop catalog)
+          - v{n}-<UUID>.metadata.json    (Hive catalog)
+          - {n}-<UUID>.metadata.json     (REST/Nessie catalog)
+        """
         if not name.endswith(DatalakeBaseClient._ICEBERG_METADATA_SUFFIX):
             return None
-        idx = name.rfind(DatalakeBaseClient._ICEBERG_METADATA_SEGMENT)
-        if idx < 0:
+        metadata_idx = name.rfind(DatalakeBaseClient._ICEBERG_METADATA_DIR)
+        if metadata_idx < 0:
             return None
-        version_str = name[
-            idx + len(DatalakeBaseClient._ICEBERG_METADATA_SEGMENT) : -len(DatalakeBaseClient._ICEBERG_METADATA_SUFFIX)
+        table_dir = name[:metadata_idx]
+        filename = name[
+            metadata_idx + len(DatalakeBaseClient._ICEBERG_METADATA_DIR) : -len(
+                DatalakeBaseClient._ICEBERG_METADATA_SUFFIX
+            )
         ]
-        if not version_str.isdigit():
+        if not filename:
             return None
-        return name[:idx], int(version_str)
+        raw = filename.lstrip("v")
+        dash_pos = raw.find("-")
+        version_part = raw[:dash_pos] if dash_pos > 0 else raw
+        if not version_part.isdigit():
+            return None
+        return table_dir, int(version_part)
 
     def _update_iceberg_entry(
         self,
