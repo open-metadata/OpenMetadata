@@ -47,31 +47,19 @@
         },
         "databaseName": {
           "description": "Database on which the grant is applied.",
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 256,
-          "pattern": "^[^;'\" ]+$"
+          "$ref": "../type/basic.json#/definitions/entityName"
         },
         "schemaName": {
           "description": "Schema on which the grant is applied. If omitted, the grant is scoped to the database.",
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 256,
-          "pattern": "^[^;'\" ]+$"
+          "$ref": "../type/basic.json#/definitions/entityName"
         },
         "tableName": {
           "description": "Table on which the grant is applied. Requires schemaName.",
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 256,
-          "pattern": "^[^;'\" ]+$"
+          "$ref": "../type/basic.json#/definitions/entityName"
         },
         "columnName": {
           "description": "Column on which the grant is applied. Requires tableName. Supported only by connectors that allow column-level grants; ignored otherwise.",
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 256,
-          "pattern": "^[^;'\" ]+$"
+          "$ref": "../entity/data/table.json#/definitions/columnName"
         },
         "privilege": {
           "$ref": "#/definitions/privilege"
