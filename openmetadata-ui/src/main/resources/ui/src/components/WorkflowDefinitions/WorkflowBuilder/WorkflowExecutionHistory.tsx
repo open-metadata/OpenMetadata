@@ -438,22 +438,6 @@ export const WorkflowExecutionHistory: React.FC = () => {
     );
   }
 
-  if (instances.length === 0) {
-    if (loading) {
-      return (
-        <div className="tw:flex tw:justify-center tw:items-center tw:min-h-100">
-          <Loader />
-        </div>
-      );
-    }
-
-    return (
-      <div className="tw:flex tw:justify-center tw:items-center tw:min-h-100">
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
-      </div>
-    );
-  }
-
   const renderDuration = (
     startedAt?: number,
     endedAt?: number
@@ -771,7 +755,14 @@ export const WorkflowExecutionHistory: React.FC = () => {
             </Table.Header>
             <Table.Body
               data-testid="workflow-execution-history-table-body"
-              items={rowItems}>
+              items={rowItems}
+              renderEmptyState={() =>
+                !loading ? (
+                  <div className="tw:py-12 tw:flex tw:justify-center">
+                    <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
+                  </div>
+                ) : null
+              }>
               {(item) => {
                 if (item.kind === 'group-parent') {
                   return renderParentRow(item.group, item.id);
