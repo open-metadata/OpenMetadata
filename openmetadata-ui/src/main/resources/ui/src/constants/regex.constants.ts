@@ -26,10 +26,10 @@ export const ENTITY_NAME_REGEX = /^((?!::).)*$/;
  * Custom property name validation:
  * - Must start with an alphanumeric character
  * - Allowed characters: alphanumeric, _ - . / % # @ ! , ; = | ' + ? ~ ` space ( ) [ ] { }
- * - Disallowed: " * : ^ $ \ < > &
+ * - Disallowed: " * : ^ $ \ < > & ~ /
  */
 export const CUSTOM_PROPERTY_NAME_REGEX =
-  /^[A-Za-z0-9][A-Za-z0-9 _\-.,;/%#@!'(){}[\]|=+?~`]*$/;
+  /^[A-Za-z0-9][A-Za-z0-9 _\-.,;%#@!'(){}[\]|=+?`]*$/;
 
 /**
  * Matches any string that does NOT contain the following:

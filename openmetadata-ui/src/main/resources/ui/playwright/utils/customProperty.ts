@@ -15,11 +15,12 @@ import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   ENTITY_REFERENCE_PROPERTIES,
+  NAME_SUFFIX,
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
-  EntityTypeEndpoint,
   ENTITY_PATH,
+  EntityTypeEndpoint,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
@@ -530,7 +531,7 @@ export const createCustomPropertyForEntity = async (
   };
 
   for (const item of propertyList) {
-    const customPropertyName = `cp-${item.name}-${uuid()}`;
+    const customPropertyName = `cp-${item.name}-${uuid()}${NAME_SUFFIX}`;
     const payload = {
       name: customPropertyName,
       description: customPropertyName,

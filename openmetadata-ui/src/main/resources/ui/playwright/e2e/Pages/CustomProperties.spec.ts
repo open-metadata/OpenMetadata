@@ -3415,7 +3415,6 @@ test.describe('Custom property name validation', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
   test.beforeEach(async ({ page }) => {
-    test.slow();
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.TABLES, true);
     await page.click('[data-testid="add-field-button"]');
@@ -3487,7 +3486,6 @@ test.describe('Custom property name validation', () => {
   test('should show error when name contains a less-than sign', async ({
     page,
   }) => {
-    test.slow();
     await page.fill(
       nameInput,
       CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_LESS_THAN
@@ -3501,7 +3499,6 @@ test.describe('Custom property name validation', () => {
   test('should show error when name contains a greater-than sign', async ({
     page,
   }) => {
-    test.slow();
     await page.fill(
       nameInput,
       CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_GREATER_THAN
@@ -3515,7 +3512,6 @@ test.describe('Custom property name validation', () => {
   test('should show error when name contains an ampersand', async ({
     page,
   }) => {
-    test.slow();
     await page.fill(
       nameInput,
       CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_AMPERSAND
@@ -3527,11 +3523,31 @@ test.describe('Custom property name validation', () => {
   });
 
   test('should show error when name contains an asterisk', async ({ page }) => {
-    test.slow();
     await page.fill(
       nameInput,
       CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_ASTERISK
     );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains an forward slash', async ({
+    page,
+  }) => {
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_FORWARD_SLASH
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains an tilde', async ({ page }) => {
+    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_TILDE);
 
     await expect(page.locator(nameError)).toContainText(
       CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
@@ -3549,7 +3565,6 @@ test.describe('Custom property name validation', () => {
   test('should accept a valid name with allowed special characters', async ({
     page,
   }) => {
-    test.slow();
     await page.fill(nameInput, "valid Name.!@#%`()_-=+{}[]~|;',.?/");
 
     await expect(page.locator(nameError)).not.toBeVisible();
@@ -3558,7 +3573,6 @@ test.describe('Custom property name validation', () => {
   test('should show error when name exceeds 256 characters', async ({
     page,
   }) => {
-    test.slow();
     await page.fill(
       nameInput,
       `${INVALID_NAMES.MAX_LENGTH}${INVALID_NAMES.MAX_LENGTH}`
