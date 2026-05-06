@@ -1,0 +1,126 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Nightly run of the Java Playwright suite. Runs the same scenarios as the PR
+# workflow today; expands in Phase 3 to include the external-mode matrix
+# (ES+OS), distributed reindex coordination, and crash-recovery scenarios.
+# Tracks EPIC #3731, satisfies tickets #3767 / #3792.
+
+name: Java Playwright (Nightly)
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  java-playwright-nightly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        searchEngine: [opensearch, elasticsearch]
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Build dependencies for Java Playwright module
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -DskipTests clean install -pl :openmetadata-java-playwright -am
+
+      - name: Install Playwright browsers
+        run: |
+          mvn -pl :openmetadata-java-playwright dependency:build-classpath -Dmdep.outputFile=/tmp/cp.txt -q
+          java -cp "$(cat /tmp/cp.txt)" com.microsoft.playwright.CLI install --with-deps chromium
+
+      - name: Free build artifacts
+        run: |
+          rm -rf openmetadata-service/target/lib openmetadata-service/target/classes
+          rm -rf openmetadata-spec/target openmetadata-sdk/target common/target
+          rm -rf openmetadata-shaded-deps/*/target
+          df -h /
+
+      - name: Run Java Playwright scenarios (${{ matrix.searchEngine }})
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JPW_MODE: embedded
+        run: |
+          if [ "${{ matrix.searchEngine }}" = "elasticsearch" ]; then
+            mvn verify -pl :openmetadata-java-playwright \
+              -DsearchType=elasticsearch \
+              -DsearchImage=docker.elastic.co/elasticsearch/elasticsearch:9.3.0
+          else
+            mvn verify -pl :openmetadata-java-playwright
+          fi
+
+      - name: Upload Playwright traces
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces-${{ matrix.searchEngine }}-${{ github.run_id }}
+          path: openmetadata-java-playwright/target/playwright-traces
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Failsafe Reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: failsafe-reports-${{ matrix.searchEngine }}-${{ github.run_id }}
+          path: openmetadata-java-playwright/target/failsafe-reports
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Publish Test Report
+        if: ${{ always() }}
+        uses: scacap/action-surefire-report@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_test_failures: true
+          report_paths: 'openmetadata-java-playwright/target/failsafe-reports/TEST-*.xml'

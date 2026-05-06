@@ -191,6 +191,39 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>publish-test-harness</id>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+            <configuration>
+              <includes>
+                <include>org/openmetadata/it/bootstrap/**</include>
+                <include>org/openmetadata/it/auth/**</include>
+                <include>org/openmetadata/it/util/**</include>
+                <include>org/openmetadata/it/factories/**</include>
+                <include>org/openmetadata/it/tests/BaseEntityIT*</include>
+                <include>private_key.der</include>
+                <include>public_key.der</include>
+                <include>openmetadata-secure-test.yaml</include>
+                <include>logback.xml</include>
+                <include>junit-platform.properties</include>
+                <include>testcontainers.properties</include>
+                <include>docker-java.properties</include>
+                <include>META-INF/services/**</include>
+              </includes>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
   <profiles>
     <!-- MySQL + Elasticsearch (default) -->
     <profile>

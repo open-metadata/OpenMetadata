@@ -240,6 +240,15 @@ public class SdkClients {
   }
 
   /**
+   * Wire the supplied client as the default for all fluent API classes (Tables.create()...,
+   * Glossaries.create()..., etc.). Use this from external-mode tests where the client comes
+   * from a JWT obtained out-of-band, not from the embedded JwtAuthProvider.
+   */
+  public static void useFluentApis(OpenMetadataClient client) {
+    initializeFluentAPIs(client);
+  }
+
+  /**
    * Initialize all fluent API classes with the default client.
    * This allows using static methods like Tables.find(id).fetch()
    */

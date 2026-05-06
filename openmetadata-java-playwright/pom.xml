@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <parent>
+    <artifactId>platform</artifactId>
+    <groupId>org.open-metadata</groupId>
+    <version>1.12.0-SNAPSHOT</version>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>openmetadata-java-playwright</artifactId>
+  <name>OpenMetadata Java Playwright Scenario Tests</name>
+  <description>
+    Java-driven end-to-end scenario suite for OpenMetadata. Boots a real server
+    (embedded or external), seeds data via the SDK, and validates backend
+    behaviour — reindex, search, ingestion, governance — with optional
+    Playwright-Java browser checks. Satisfies EPIC #3731 / tickets #3767, #3792.
+  </description>
+  <packaging>jar</packaging>
+
+  <properties>
+    <maven.surefire.version>3.1.2</maven.surefire.version>
+    <maven.failsafe.version>3.1.2</maven.failsafe.version>
+    <playwright.version>1.49.0</playwright.version>
+  </properties>
+
+  <dependencies>
+    <!-- Harness deps (compile scope: harness is consumed by Collate's java-playwright module too) -->
+    <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>openmetadata-sdk</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>3.27.7</version>
+    </dependency>
+    <dependency>
+      <groupId>com.microsoft.playwright</groupId>
+      <artifactId>playwright</artifactId>
+      <version>${playwright.version}</version>
+    </dependency>
+    <!-- Testcontainers — needed at compile because ContainerizedServer (src/main) wraps them. -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <version>1.21.4</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>mysql</artifactId>
+      <version>1.21.4</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>1.21.4</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>k3s</artifactId>
+      <version>1.21.4</version>
+    </dependency>
+    <dependency>
+      <groupId>org.opensearch</groupId>
+      <artifactId>opensearch-testcontainers</artifactId>
+      <version>2.1.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.github.docker-java</groupId>
+      <artifactId>docker-java-api</artifactId>
+      <version>3.4.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <version>${org.junit.jupiter.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+
+    <!-- Test scope: integration-tests harness (TestSuiteBootstrap LauncherSessionListener auto-fires) -->
+    <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>openmetadata-integration-tests</artifactId>
+      <version>${project.version}</version>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <!-- Forces -am to build openmetadata-dist (which produces the tar.gz the docker image needs).
+         Marked optional so this artifact isn't placed on our classpath. -->
+    <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>openmetadata-dist</artifactId>
+      <version>${project.version}</version>
+      <type>pom</type>
+      <scope>test</scope>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>openmetadata-service</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>elasticsearch</artifactId>
+      <version>1.21.4</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>1.21.4</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Required so TestSuiteBootstrap (loaded via ServiceLoader) class-verifies even when
+         we suppress its execution. It transitively imports DropwizardAppExtension, Jdbi,
+         Apache HttpClient5, JWT, etc. -->
+    <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-testing</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.auth0</groupId>
+      <artifactId>java-jwt</artifactId>
+      <version>4.4.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${org.junit.jupiter.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-launcher</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>${maven.failsafe.version}</version>
+        <executions>
+          <execution>
+            <id>scenario-tests</id>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+            <configuration>
+              <forkCount>1</forkCount>
+              <reuseForks>true</reuseForks>
+              <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+              <includes>
+                <include>**/*IT.java</include>
+              </includes>
+              <systemPropertyVariables>
+                <databaseType>mysql</databaseType>
+                <databaseImage>mysql:8.3.0</databaseImage>
+                <searchType>opensearch</searchType>
+                <searchImage>opensearchproject/opensearch:2.13.0</searchImage>
+                <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+              </systemPropertyVariables>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
