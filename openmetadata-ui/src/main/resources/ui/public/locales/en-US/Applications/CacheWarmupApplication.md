@@ -17,21 +17,21 @@ $$
 $$section
 ### Warm Read Bundles $(id="warmBundles")
 
-Pre-warm the per-entity bundle cache with tags and certification.
+Pre-warm the per-entity bundle cache (tags + certification) so the first read after deploy doesn't fan out to the DB. Disable for very large installs.
 
 $$
 
 $$section
 ### Warm Relationships $(id="warmRelationships")
 
-Pre-warm common relationship fields in the read bundle cache. Requires Warm Read Bundles and can add extra warmup time on large installs.
+Optionally pre-warm common relationship fields in the read bundle cache. Requires Warm Read Bundles. This adds extra relationship-table and entity-reference reads during warmup, so enable it only when first-read relationship latency matters.
 
 $$
 
 $$section
 ### Enable Distributed Claim $(id="enableDistributedClaim")
 
-Claim each entity type through Redis so only one instance warms it.
+In multi-instance deployments, claim each entity type via Redis SETNX so only one instance warms it. Disable to let every instance warm independently (idempotent but redundant).
 
 $$
 

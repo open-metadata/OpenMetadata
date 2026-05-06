@@ -69,6 +69,16 @@ class CacheWarmupAppConfigParseTest {
   }
 
   @Test
+  @DisplayName("parses literal null config as defaults")
+  void parsesLiteralNullConfigAsDefaults() {
+    CacheWarmupAppConfig parsed =
+        assertDoesNotThrow(() -> CacheWarmupApp.normalizeAppConfig("null"));
+    assertNotNull(parsed.getType());
+    assertNotNull(parsed.getBatchSize());
+    assertNotNull(parsed.getEntities());
+  }
+
+  @Test
   @DisplayName("parses legacy persisted config with removed queue fields")
   void parsesLegacyConfigWithRemovedQueueFields() {
     Map<String, Object> saved = new LinkedHashMap<>();

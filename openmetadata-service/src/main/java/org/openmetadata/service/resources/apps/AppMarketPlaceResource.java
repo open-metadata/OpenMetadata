@@ -138,7 +138,7 @@ public class AppMarketPlaceResource
     ListFilter filter = new ListFilter(include);
     ResultList<AppMarketPlaceDefinition> applications =
         super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     applications
         .getData()
         .forEach(

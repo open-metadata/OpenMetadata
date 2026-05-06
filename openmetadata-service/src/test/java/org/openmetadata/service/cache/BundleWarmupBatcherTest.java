@@ -198,8 +198,7 @@ class BundleWarmupBatcherTest {
     verify(cache).pipelineSet(captor.capture(), any(Duration.class));
     CachedReadBundle.Dto dto =
         JsonUtils.readValue(
-            captor.getValue().get(keys.bundle("table", table.getId())),
-            CachedReadBundle.Dto.class);
+            captor.getValue().get(keys.bundle("table", table.getId())), CachedReadBundle.Dto.class);
     assertNotNull(dto.relations);
     assertEquals(1, dto.relations.get(FIELD_OWNERS).size());
     assertEquals(ownerId, dto.relations.get(FIELD_OWNERS).get(0).getId());

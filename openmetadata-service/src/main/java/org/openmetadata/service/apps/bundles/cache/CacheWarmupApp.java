@@ -154,16 +154,22 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     return normalizeAppConfig(raw);
   }
 
-  static CacheWarmupAppConfig normalizeAppConfig(Object raw) {
+  static CacheWarmupAppConfig normalizeAppConfig(final Object raw) {
     if (raw == null) {
       return new CacheWarmupAppConfig();
     }
-    Object rawConfig =
+    final Object rawConfig =
         raw instanceof String configJson
             ? JsonUtils.readValue(configJson, new TypeReference<Map<String, Object>>() {})
             : raw;
-    Map<String, Object> sanitized =
+    if (rawConfig == null) {
+      return new CacheWarmupAppConfig();
+    }
+    final Map<String, Object> sanitized =
         JsonUtils.convertValue(rawConfig, new TypeReference<Map<String, Object>>() {});
+    if (sanitized == null) {
+      return new CacheWarmupAppConfig();
+    }
     LEGACY_APP_CONFIG_FIELDS.forEach(sanitized::remove);
     return JsonUtils.convertValue(sanitized, CacheWarmupAppConfig.class);
   }
@@ -308,7 +314,8 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   private void initJobData(JobExecutionContext ctx) {
     boolean isOnDemand = ctx.getJobDetail().getKey().getName().equals(ON_DEMAND_JOB);
     // For on-demand runs, OmAppJobListener places the user-supplied config (with overrides
-    // for entities / batchSize / warmBundles / warmRelationships / enableDistributedClaim) into the Quartz
+    // for entities / batchSize / warmBundles / warmRelationships / enableDistributedClaim) into the
+    // Quartz
     // JobDataMap[APP_CONFIG]. {@code init(App)} ran earlier and cached the persisted App
     // config in {@code appConfig}; if we don't reload here, those manual overrides are
     // silently ignored. Always reload for on-demand; for scheduled runs the persisted config

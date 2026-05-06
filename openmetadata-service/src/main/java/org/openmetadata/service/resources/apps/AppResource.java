@@ -273,7 +273,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     ListFilter filter = new ListFilter(include).addQueryParam("agentType", agentTypes);
     ResultList<App> applications =
         super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     applications
         .getData()
         .forEach(app -> app.setEnabled(ApplicationHandler.getInstance().isEnabled(app.getName())));
