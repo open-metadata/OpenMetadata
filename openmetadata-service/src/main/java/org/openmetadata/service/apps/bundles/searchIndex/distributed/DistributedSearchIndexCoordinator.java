@@ -310,7 +310,7 @@ public class DistributedSearchIndexCoordinator {
         // future caller passes overlapping or out-of-order targets we still emit a
         // boundary instead of silently dropping the partition.
         if (!afterName.isEmpty()) {
-          result.put(nextTarget, encodeBoundaryCursor(repo, afterName, afterId));
+          result.put(nextTarget, encodeBoundaryCursor(afterName, afterId));
         }
         targetIdx++;
         nextTarget = (targetIdx < sortedTargets.size()) ? sortedTargets.get(targetIdx) : -1;
@@ -343,11 +343,10 @@ public class DistributedSearchIndexCoordinator {
     return JsonUtils.readValue(batch.get(batch.size() - 1), repo.getEntityClass());
   }
 
-  private <T extends org.openmetadata.schema.EntityInterface> String encodeBoundaryCursor(
-      EntityRepository<T> repo, String name, String id) {
-    // Reconstruct a minimal entity with the same cursor identity. We don't have the full
-    // entity here (we already advanced past it), so synthesize one of the right type via
-    // the repository. Used only on the unreachable defensive branch above.
+  private static String encodeBoundaryCursor(String name, String id) {
+    // Used only on the unreachable defensive branch in walkAndRecord — we've already
+    // advanced past the entity so we don't have the live object to call
+    // repo.getCursorValue() on. Build the {name,id} cursor map manually instead.
     Map<String, String> cursorMap = new HashMap<>();
     cursorMap.put("name", name);
     cursorMap.put("id", id);
@@ -685,24 +684,33 @@ public class DistributedSearchIndexCoordinator {
 
     long now = System.currentTimeMillis();
 
-    // Check if we should retry
+    // Status-guarded write — if requestStop already moved this row to CANCELLED,
+    // updateIfProcessing returns 0 and we leave the cancellation authoritative
+    // instead of resurrecting the row to PENDING (retry) or FAILED (terminal).
     if (record.retryCount() < MAX_PARTITION_RETRIES) {
-      // Reset to pending for retry
-      partitionDAO.update(
-          partitionId.toString(),
-          PartitionStatus.PENDING.name(),
-          record.cursor(),
-          record.processedCount(),
-          record.successCount(),
-          record.failedCount(),
-          null,
-          null,
-          null,
-          null,
-          now,
-          errorMessage,
-          record.retryCount() + 1);
-
+      int updated =
+          partitionDAO.updateIfProcessing(
+              partitionId.toString(),
+              PartitionStatus.PENDING.name(),
+              record.cursor(),
+              record.processedCount(),
+              record.successCount(),
+              record.failedCount(),
+              null,
+              null,
+              null,
+              null,
+              now,
+              errorMessage,
+              record.retryCount() + 1);
+      if (updated == 0) {
+        LOG.info(
+            "Skipped retry-requeue of partition {} (entity {}) — row no longer PROCESSING "
+                + "(likely cancelled by Stop); leaving authoritative state intact.",
+            partitionId,
+            record.entityType());
+        return;
+      }
       LOG.warn(
           "Partition {} failed, queued for retry ({}/{}): {}",
           partitionId,
@@ -710,21 +718,29 @@ public class DistributedSearchIndexCoordinator {
           MAX_PARTITION_RETRIES,
           errorMessage);
     } else {
-      // Mark as permanently failed
-      partitionDAO.update(
-          partitionId.toString(),
-          PartitionStatus.FAILED.name(),
-          record.cursor(),
-          record.processedCount(),
-          record.successCount(),
-          record.failedCount(),
-          record.assignedServer(),
-          record.claimedAt(),
-          record.startedAt(),
-          now,
-          now,
-          errorMessage,
-          record.retryCount());
+      int updated =
+          partitionDAO.updateIfProcessing(
+              partitionId.toString(),
+              PartitionStatus.FAILED.name(),
+              record.cursor(),
+              record.processedCount(),
+              record.successCount(),
+              record.failedCount(),
+              record.assignedServer(),
+              record.claimedAt(),
+              record.startedAt(),
+              now,
+              now,
+              errorMessage,
+              record.retryCount());
+      if (updated == 0) {
+        LOG.info(
+            "Skipped terminal-failure of partition {} (entity {}) — row no longer PROCESSING "
+                + "(likely cancelled by Stop); leaving authoritative state intact.",
+            partitionId,
+            record.entityType());
+        return;
+      }
 
       LOG.error(
           "Partition {} permanently failed after {} retries: {}",
@@ -1007,6 +1023,11 @@ public class DistributedSearchIndexCoordinator {
 
       updateJob(jobDAO, completed);
 
+      // Drop the precomputed cursor cache for this job — once terminal it can never be
+      // re-claimed, and long-running servers would otherwise leak ~one entry per reindex
+      // run for the lifetime of the process.
+      partitionStartCursors.remove(jobId);
+
       LOG.info(
           "Job {} completed with status {} (success: {}, failed: {})",
           jobId,
@@ -1236,6 +1257,10 @@ public class DistributedSearchIndexCoordinator {
 
     // Partitions are deleted via CASCADE
     jobDAO.delete(jobId.toString());
+    // Defensive: checkAndUpdateJobCompletion already evicts on terminal transition,
+    // but a job can be inserted, terminate, and then be deleted across server restarts —
+    // remove here too so this path is self-sufficient.
+    partitionStartCursors.remove(jobId);
 
     LOG.info("Deleted job {} and its partitions", jobId);
   }
