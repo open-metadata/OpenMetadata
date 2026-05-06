@@ -113,6 +113,7 @@ class BurstIQSampler(DatalakeSampler):
         """Override to filter columns to those present in the DataFrame.
         BurstIQ TQL responses can omit columns that exist in entity metadata."""
         cols = [col.name for col in columns] if columns else None
+        available: list[str] = []
         rows = []
         for chunk in df_iterator():
             if cols is None:
@@ -123,7 +124,7 @@ class BurstIQSampler(DatalakeSampler):
             rows.extend(self._fetch_rows(chunk[available])[: self.sample_limit])
             if len(rows) >= (self.sample_limit or 100):
                 break
-        return available if cols else [], rows
+        return available, rows
 
     def _compute_total_limit(self, chain: str) -> Optional[int]:  # noqa: UP045
         """Compute the total record limit based on the sampling config."""
