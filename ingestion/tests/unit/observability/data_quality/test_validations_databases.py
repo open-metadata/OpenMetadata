@@ -1169,7 +1169,7 @@ def test_table_column_count_to_be_between_result_message(
     test_case = test_case_table_column_count_to_be_between
 
     with patch(
-        "metadata.data_quality.validations.table.base.tableColumnCountToBeBetween.BaseTableColumnCountToBeBetweenValidator._run_results",
+        "metadata.data_quality.validations.table.sqlalchemy.tableColumnCountToBeBetween.TableColumnCountToBeBetweenValidator._run_results",
         return_value=column_count,
     ):
         test_handler_obj = import_test_case_class(
