@@ -15,7 +15,6 @@ import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   ENTITY_REFERENCE_PROPERTIES,
-  NAME_SUFFIX,
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
@@ -531,7 +530,7 @@ export const createCustomPropertyForEntity = async (
   };
 
   for (const item of propertyList) {
-    const customPropertyName = `cp-${item.name}-${uuid()}${NAME_SUFFIX}`;
+    const customPropertyName = `cp-${item.name}-${uuid()}`;
     const payload = {
       name: customPropertyName,
       description: customPropertyName,
