@@ -191,6 +191,14 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         if (canonicalIsAlias && oldIndex.equals(canonicalIndex)) continue;
         oldIndicesToCleanup.add(oldIndex);
       }
+      LOG.info(
+          "[ALIAS_PROMOTE_BEGIN entity={} stagedIndex={} canonicalIndex={} canonicalIsAlias={} oldIndicesToCleanup={} aliasesToAttach={}]",
+          entityType,
+          stagedIndex,
+          canonicalIndex,
+          canonicalIsAlias,
+          oldIndicesToCleanup,
+          aliasesToAttach);
 
       promoteWithDeferredCanonicalDelete(
           searchClient,
