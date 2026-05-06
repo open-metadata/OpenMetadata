@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -534,6 +535,21 @@ class DistributedSearchIndexCoordinatorTest {
             0L); // claimableAt
 
     when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
+    when(partitionDAO.updateIfProcessing(
+            eq(partitionId.toString()),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            anyInt()))
+        .thenReturn(1);
 
     // Mock that there are still pending partitions
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name()))
@@ -541,9 +557,11 @@ class DistributedSearchIndexCoordinatorTest {
 
     coordinator.completePartition(partitionId, 4900, 100);
 
-    // Verify partition was updated to COMPLETED
+    // Verify partition was updated to COMPLETED via the status-guarded SQL — the unguarded
+    // update() must NOT be called, so a late completion write can no longer overwrite a
+    // CANCELLED row written by requestStop on another server.
     verify(partitionDAO)
-        .update(
+        .updateIfProcessing(
             eq(partitionId.toString()),
             eq(PartitionStatus.COMPLETED.name()),
             eq(5000L), // cursor = rangeEnd
@@ -557,6 +575,78 @@ class DistributedSearchIndexCoordinatorTest {
             anyLong(),
             any(),
             anyInt());
+    verify(partitionDAO, never())
+        .update(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            anyInt());
+  }
+
+  @Test
+  void testCompletePartition_NoOpWhenAlreadyCancelled() {
+    UUID jobId = UUID.randomUUID();
+    UUID partitionId = UUID.randomUUID();
+    EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
+    coordinator.setEntityCompletionTracker(tracker);
+
+    SearchIndexPartitionRecord record =
+        new SearchIndexPartitionRecord(
+            partitionId.toString(),
+            jobId.toString(),
+            "table",
+            0,
+            0,
+            5000,
+            5000,
+            7500,
+            50,
+            PartitionStatus.PROCESSING.name(),
+            2500,
+            2500,
+            2400,
+            100,
+            TEST_SERVER_ID,
+            System.currentTimeMillis() - 10000,
+            System.currentTimeMillis() - 10000,
+            null,
+            System.currentTimeMillis() - 1000,
+            null,
+            0,
+            0L);
+
+    when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
+    // updateIfProcessing returns 0 — row is no longer PROCESSING (already CANCELLED by
+    // requestStop). The completion writer must not advance the tracker and must not
+    // touch job state, leaving STOPPED as the authoritative outcome.
+    when(partitionDAO.updateIfProcessing(
+            eq(partitionId.toString()),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            anyInt()))
+        .thenReturn(0);
+
+    coordinator.completePartition(partitionId, 4900, 100);
+
+    verify(tracker, never()).recordPartitionComplete(anyString(), anyBoolean());
   }
 
   @Test
@@ -592,6 +682,21 @@ class DistributedSearchIndexCoordinatorTest {
             0L);
 
     when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
+    when(partitionDAO.updateIfProcessing(
+            eq(partitionId.toString()),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            anyInt()))
+        .thenReturn(1);
     when(jobDAO.findById(jobId.toString()))
         .thenReturn(createJobRecord(jobId, IndexJobStatus.RUNNING, null, "{}"));
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name()))

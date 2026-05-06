@@ -286,25 +286,55 @@ class PartitionWorkerTest {
     @SuppressWarnings("unchecked")
     EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
 
+    UUID jobId = UUID.randomUUID();
+    SearchIndexPartition tablePartition =
+        SearchIndexPartition.builder()
+            .id(UUID.randomUUID())
+            .jobId(jobId)
+            .entityType("table")
+            .partitionIndex(0)
+            .rangeStart(5)
+            .rangeEnd(10)
+            .estimatedCount(5)
+            .workUnits(5)
+            .priority(50)
+            .status(PartitionStatus.PENDING)
+            .cursor(0)
+            .build();
+    SearchIndexPartition timeSeriesPartition =
+        SearchIndexPartition.builder()
+            .id(UUID.randomUUID())
+            .jobId(jobId)
+            .entityType(Entity.QUERY_COST_RECORD)
+            .partitionIndex(0)
+            .rangeStart(5)
+            .rangeEnd(10)
+            .estimatedCount(5)
+            .workUnits(5)
+            .priority(50)
+            .status(PartitionStatus.PENDING)
+            .cursor(0)
+            .build();
+
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
-      when(coordinator.getPartitionStartCursor("table", 5L)).thenReturn(null);
+      when(coordinator.getPartitionStartCursor(jobId, "table", 5L)).thenReturn(null);
       when(repository.getCursorAtOffset(any(ListFilter.class), eq(4))).thenReturn("cursor-4");
 
       assertNull(
           invokePrivate(
               worker,
               "initializeKeysetCursor",
-              new Class<?>[] {String.class, long.class},
-              "table",
+              new Class<?>[] {SearchIndexPartition.class, long.class},
+              tablePartition,
               0L));
       assertEquals(
           "cursor-4",
           invokePrivate(
               worker,
               "initializeKeysetCursor",
-              new Class<?>[] {String.class, long.class},
-              "table",
+              new Class<?>[] {SearchIndexPartition.class, long.class},
+              tablePartition,
               5L));
     }
 
@@ -313,8 +343,8 @@ class PartitionWorkerTest {
         invokePrivate(
             worker,
             "initializeKeysetCursor",
-            new Class<?>[] {String.class, long.class},
-            Entity.QUERY_COST_RECORD,
+            new Class<?>[] {SearchIndexPartition.class, long.class},
+            timeSeriesPartition,
             5L));
   }
 
@@ -322,27 +352,46 @@ class PartitionWorkerTest {
    * Bug 2 regression: precomputed cursor on the coordinator must short-circuit the
    * OFFSET-based fallback. Without this, every PartitionWorker pays SQL OFFSET cost at the
    * partition start (O(rangeStart) per partition, O(N²) across all partitions for a job).
-   * With it, workers hit the cache in O(1) and the slow path is never invoked.
+   * With it, workers hit the cache in O(1) and the slow path is never invoked. Cache key
+   * includes jobId so cursors precomputed for an earlier job on this server cannot
+   * falsely match a later job initialized elsewhere.
    */
   @Test
   void initializeKeysetCursorHitsPrecomputedCacheAndSkipsOffsetFallback() throws Exception {
     @SuppressWarnings("unchecked")
     EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
 
+    UUID jobId = UUID.randomUUID();
+    SearchIndexPartition partition =
+        SearchIndexPartition.builder()
+            .id(UUID.randomUUID())
+            .jobId(jobId)
+            .entityType("table")
+            .partitionIndex(1)
+            .rangeStart(10000)
+            .rangeEnd(20000)
+            .estimatedCount(10000)
+            .workUnits(10000)
+            .priority(50)
+            .status(PartitionStatus.PENDING)
+            .cursor(10000)
+            .build();
+
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
-      when(coordinator.getPartitionStartCursor("table", 10000L)).thenReturn("precomputed-10k");
+      when(coordinator.getPartitionStartCursor(jobId, "table", 10000L))
+          .thenReturn("precomputed-10k");
 
       Object cursor =
           invokePrivate(
               worker,
               "initializeKeysetCursor",
-              new Class<?>[] {String.class, long.class},
-              "table",
+              new Class<?>[] {SearchIndexPartition.class, long.class},
+              partition,
               10000L);
 
       assertEquals("precomputed-10k", cursor);
-      verify(coordinator).getPartitionStartCursor("table", 10000L);
+      verify(coordinator).getPartitionStartCursor(jobId, "table", 10000L);
       verify(repository, never()).getCursorAtOffset(any(ListFilter.class), anyInt());
     }
   }
@@ -920,6 +969,21 @@ class PartitionWorkerTest {
     @SuppressWarnings("unchecked")
     EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
 
+    SearchIndexPartition partition =
+        SearchIndexPartition.builder()
+            .id(UUID.randomUUID())
+            .jobId(UUID.randomUUID())
+            .entityType("table")
+            .partitionIndex(0)
+            .rangeStart(5)
+            .rangeEnd(10)
+            .estimatedCount(5)
+            .workUnits(5)
+            .priority(50)
+            .status(PartitionStatus.PENDING)
+            .cursor(0)
+            .build();
+
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
       when(repository.getCursorAtOffset(any(ListFilter.class), eq(4))).thenReturn(null);
@@ -928,14 +992,29 @@ class PartitionWorkerTest {
           invokePrivate(
               worker,
               "initializeKeysetCursor",
-              new Class<?>[] {String.class, long.class},
-              "table",
+              new Class<?>[] {SearchIndexPartition.class, long.class},
+              partition,
               5L));
     }
   }
 
   @Test
   void initializeKeysetCursorRejectsOffsetsBeyondSupportedRange() {
+    SearchIndexPartition partition =
+        SearchIndexPartition.builder()
+            .id(UUID.randomUUID())
+            .jobId(UUID.randomUUID())
+            .entityType("table")
+            .partitionIndex(0)
+            .rangeStart(0)
+            .rangeEnd(Integer.MAX_VALUE)
+            .estimatedCount(0)
+            .workUnits(0)
+            .priority(50)
+            .status(PartitionStatus.PENDING)
+            .cursor(0)
+            .build();
+
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class,
@@ -943,8 +1022,8 @@ class PartitionWorkerTest {
                 invokePrivate(
                     worker,
                     "initializeKeysetCursor",
-                    new Class<?>[] {String.class, long.class},
-                    "table",
+                    new Class<?>[] {SearchIndexPartition.class, long.class},
+                    partition,
                     (long) Integer.MAX_VALUE + 2L));
 
     assertTrue(exception.getMessage().contains("does not support offsets above"));

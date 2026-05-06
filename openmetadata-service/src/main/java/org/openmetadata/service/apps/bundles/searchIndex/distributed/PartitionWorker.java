@@ -203,7 +203,7 @@ public class PartitionWorker {
 
       // Initialize keyset cursor for efficient pagination (avoids OFFSET degradation)
       long cursorInitStart = System.currentTimeMillis();
-      String keysetCursor = initializeKeysetCursor(entityType, rangeStart);
+      String keysetCursor = initializeKeysetCursor(partition, rangeStart);
       LOG.debug(
           "initializeKeysetCursor for {} offset={} took {}ms",
           entityType,
@@ -244,7 +244,7 @@ public class PartitionWorker {
 
           // If keyset cursor exhausted, recompute or stop
           if (keysetCursor == null && currentOffset < rangeEnd) {
-            keysetCursor = initializeKeysetCursor(entityType, currentOffset);
+            keysetCursor = initializeKeysetCursor(partition, currentOffset);
             if (keysetCursor == null) {
               LOG.debug(
                   "{} partition {} data exhausted at offset {} (rangeEnd: {}), "
@@ -301,7 +301,7 @@ public class PartitionWorker {
 
           // Recompute keyset cursor after failure
           if (currentOffset < rangeEnd) {
-            keysetCursor = initializeKeysetCursor(entityType, currentOffset);
+            keysetCursor = initializeKeysetCursor(partition, currentOffset);
             if (keysetCursor == null) {
               break;
             }
@@ -639,10 +639,11 @@ public class PartitionWorker {
     }
   }
 
-  private String initializeKeysetCursor(String entityType, long offset) {
+  private String initializeKeysetCursor(SearchIndexPartition partition, long offset) {
     if (offset <= 0) {
       return null;
     }
+    String entityType = partition.getEntityType();
     if (TIME_SERIES_ENTITIES.contains(entityType)) {
       return RestUtil.encodeCursor(String.valueOf(offset));
     }
@@ -650,8 +651,10 @@ public class PartitionWorker {
     // rangeStart at job initialization (single keyset walk per entity type, O(N) total).
     // Only the partition's first call lands on a known rangeStart value; mid-partition
     // recomputes (after batch failure) won't hit this path and fall through to the
-    // OFFSET-based fallback below.
-    String precomputed = coordinator.getPartitionStartCursor(entityType, offset);
+    // OFFSET-based fallback below. Cache lookup is scoped by jobId to avoid stale hits
+    // from a previous job that ran on the same server.
+    String precomputed =
+        coordinator.getPartitionStartCursor(partition.getJobId(), entityType, offset);
     if (precomputed != null) {
       return precomputed;
     }
