@@ -86,16 +86,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const queryClient = useQueryClient();
 
     const source = useMemo(() => {
-      return highlight
-        ? highlightEntityNameAndDescription(_source, highlight)
-        : _source;
+      return highlightEntityNameAndDescription(_source, highlight);
     }, [_source, highlight]);
 
-    // Hover/focus on an entity card warms the React Query cache so the click that follows
-    // hits an already-populated slot. Dispatched on entityType because each detail page reads
-    // a slot keyed on its own {@code ['<type>', fqn, fields]} convention; entity types that
-    // haven't migrated to useQuery yet fall through as no-ops. {@code prefetchQuery} is
-    // idempotent within the configured {@code staleTime}, so repeated hovers don't re-fire.
     const handlePrefetch = useCallback(() => {
       const fqn = source.fullyQualifiedName;
       if (!fqn) {
@@ -122,6 +115,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           break;
       }
     }, [queryClient, source.entityType, source.fullyQualifiedName]);
+
 
     const otherDetails = useMemo(() => {
       if (source?.entityType === EntityType.TABLE_COLUMN) {
@@ -322,7 +316,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   onCheckboxChange?.(e.target.checked);
                   e.stopPropagation();
                 }}
-                onClick={(e) => e.stopPropagation()}
               />
             </Col>
           )}

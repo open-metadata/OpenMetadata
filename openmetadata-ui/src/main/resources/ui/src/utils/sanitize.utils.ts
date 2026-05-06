@@ -24,8 +24,12 @@ export const getSanitizeContent = (html: string): string => {
     return `__ENTITY_LINK_${entityLinkIndex++}__`;
   });
 
-  // Sanitize the content with standard DOMPurify settings
-  const sanitizedContent = DOMPurify.sanitize(protectedHtml);
+  // Sanitize the content while preserving class attributes and common inline elements
+  const sanitizedContent = DOMPurify.sanitize(protectedHtml, {
+    ADD_ATTR: ['class', 'style'],
+    ADD_TAGS: ['span'],
+    ALLOW_DATA_ATTR: true,
+  });
 
   // Restore entity links
   let restoredContent = sanitizedContent;

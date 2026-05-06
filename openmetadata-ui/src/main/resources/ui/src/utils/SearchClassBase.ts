@@ -70,8 +70,8 @@ import {
   entitySortingFields,
   INITIAL_SORT_FIELD,
   tableSortingFields,
-  tagSortingFields,
   TAGS_INITIAL_SORT_FIELD,
+  tagSortingFields,
 } from '../constants/explore.constants';
 import {
   Option,
