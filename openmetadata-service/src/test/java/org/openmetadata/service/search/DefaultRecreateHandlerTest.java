@@ -111,7 +111,7 @@ class DefaultRecreateHandlerTest {
         "Should promote partial data and record success metrics when failed reindex has documents")
     void testPromoteEntityIndexPromotesPartialData() {
       AliasState aliasState = new AliasState();
-      aliasState.put("table_search_index", Set.of("table_search_index"));
+      aliasState.put("table_search_index", Set.of());
       aliasState.put("table_search_index_rebuild_old", Set.of("legacy"));
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
@@ -614,7 +614,7 @@ class DefaultRecreateHandlerTest {
     @DisplayName("Canonical not deleted when step-1 swap fails")
     void testPromoteEntityIndexCanonicalNotDeletedWhenStep1Fails() {
       AliasState aliasState = new AliasState();
-      aliasState.put("table_search_index", Set.of("table_search_index"));
+      aliasState.put("table_search_index", Set.of());
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
@@ -652,7 +652,7 @@ class DefaultRecreateHandlerTest {
     @DisplayName("Three-step swap order: parent aliases → delete canonical → add canonical alias")
     void testPromoteEntityIndexThreeStepSwapOrder() {
       AliasState aliasState = new AliasState();
-      aliasState.put("table_search_index", Set.of("table_search_index"));
+      aliasState.put("table_search_index", Set.of());
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
@@ -685,7 +685,7 @@ class DefaultRecreateHandlerTest {
     @DisplayName("Data loss flagged when canonical deleted but addAliases throws")
     void testPromoteEntityIndexFlagsDataLossOnAddAliasFailure() {
       AliasState aliasState = new AliasState();
-      aliasState.put("table_search_index", Set.of("table_search_index"));
+      aliasState.put("table_search_index", Set.of());
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
@@ -723,7 +723,7 @@ class DefaultRecreateHandlerTest {
     @DisplayName("post-delete indexExists throwing → marked failed (not data loss)")
     void testPromoteEntityIndexHandlesIndexExistsPostCheckThrow() {
       AliasState aliasState = new AliasState();
-      aliasState.put("table_search_index", Set.of("table_search_index"));
+      aliasState.put("table_search_index", Set.of());
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
@@ -763,7 +763,7 @@ class DefaultRecreateHandlerTest {
     @DisplayName("post-add getAliases throwing → marked data-loss (canonical already gone)")
     void testPromoteEntityIndexHandlesGetAliasesPostCheckThrow() {
       AliasState aliasState = new AliasState();
-      aliasState.put("table_search_index", Set.of("table_search_index"));
+      aliasState.put("table_search_index", Set.of());
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
@@ -838,6 +838,57 @@ class DefaultRecreateHandlerTest {
       assertFalse(
           handler.getDataLossPromotions().contains("table"),
           "Gate said canonical doesn't exist; step 2 was skipped; we must NOT claim data loss");
+    }
+
+    @Test
+    @DisplayName(
+        "Canonical-is-alias path: atomic swap moves all aliases, no per-entity delete-by-alias-name")
+    void testPromoteEntityIndexAtomicSwapWhenCanonicalIsAlias() {
+      // On every reindex after the first, canonicalIndex is an alias on the previous staged.
+      // Deleting by canonical name fails in OS/ES (matches an alias, not a concrete index) — the
+      // bug that pushed Playwright CI past the 300s SearchIndexingApplication budget. This test
+      // locks the atomic-swap shape: one swapAliases call moves every alias from the previous
+      // staged to the new staged, and the canonical name is never passed to deleteIndexWithBackoff.
+      AliasState aliasState = new AliasState();
+      aliasState.put(
+          "table_search_index_rebuild_old",
+          new HashSet<>(Set.of("table_search_index", "table", "all")));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .canonicalAliases("table")
+                .existingAliases(new HashSet<>(Set.of("table_search_index", "table", "all")))
+                .parentAliases(new HashSet<>(Set.of("all")))
+                .build();
+
+        new DefaultRecreateHandler().promoteEntityIndex(context, true);
+      }
+
+      Set<String> newAliases = aliasState.indexAliases.get("table_search_index_rebuild_new");
+      assertTrue(
+          newAliases.contains("table_search_index"),
+          () -> "Canonical alias must end up on staged after atomic swap; got " + newAliases);
+      assertTrue(
+          newAliases.contains("table"),
+          () -> "Short alias must end up on staged after atomic swap; got " + newAliases);
+      assertTrue(
+          newAliases.contains("all"),
+          () -> "Parent alias must end up on staged after atomic swap; got " + newAliases);
+      verify(client, never()).deleteIndexWithBackoff("table_search_index");
+      assertTrue(
+          aliasState.deletedIndices.contains("table_search_index_rebuild_old"),
+          "Old concrete index must be cleaned up by the post-swap loop");
     }
   }
 
@@ -1018,7 +1069,7 @@ class DefaultRecreateHandlerTest {
     @DisplayName("Should promote partial data and record success when failed reindex has documents")
     void testFinalizeReindexPromotesPartialData() {
       AliasState aliasState = new AliasState();
-      aliasState.put("table_search_index", Set.of("table_search_index"));
+      aliasState.put("table_search_index", Set.of());
       aliasState.put("table_search_index_rebuild_old", Set.of("stale"));
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 

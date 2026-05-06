@@ -178,11 +178,18 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       applyLiveServingSettings(searchClient, stagedIndex, entityType);
       maybeForceMerge(searchClient, stagedIndex, entityType);
 
+      // listIndicesByPrefix can return the canonical name itself when it resolves as an alias
+      // (OS/ES return the matched alias name as one of the keys). Drop it then — the cleanup
+      // loop's delete-by-name fails with an alias-vs-concrete error and burns ~31s of backoff
+      // per entity. When canonical is a concrete index we keep it: the cleanup loop is the
+      // only path that deletes orphaned concrete canonicals (the three-step swap deletes it
+      // only when the existingAliases set carries the canonical name).
+      boolean canonicalIsAlias = !searchClient.getIndicesByAlias(canonicalIndex).isEmpty();
       Set<String> oldIndicesToCleanup = new HashSet<>();
       for (String oldIndex : searchClient.listIndicesByPrefix(canonicalIndex)) {
-        if (!oldIndex.equals(stagedIndex)) {
-          oldIndicesToCleanup.add(oldIndex);
-        }
+        if (oldIndex.equals(stagedIndex)) continue;
+        if (canonicalIsAlias && oldIndex.equals(canonicalIndex)) continue;
+        oldIndicesToCleanup.add(oldIndex);
       }
 
       promoteWithDeferredCanonicalDelete(
@@ -192,7 +199,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
           stagedIndex,
           aliasesToAttach,
           oldIndicesToCleanup,
-          reindexSuccess);
+          reindexSuccess,
+          canonicalIsAlias);
     } catch (Exception ex) {
       LOG.error(
           "[ALIAS_PROMOTE_FAILED phase=exception entity={} stagedIndex={} canonicalIndex={}] "
@@ -291,19 +299,32 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
   }
 
   /**
-   * Three-step alias swap that defers canonical-index deletion until after parent aliases are
-   * safely on the staged index. Returns true on full success.
+   * Promote staged with one of two shapes depending on whether the canonical name is currently
+   * a concrete index or an alias. The two cases need different operations because OS/ES forbids
+   * having an alias and a concrete index with the same name.
    *
-   * <p>Step 1: atomic swap of all non-canonical-name aliases (parents + short alias) from old
-   * indices to staged. If this fails, canonical still serves with all original aliases — no data
-   * loss.
+   * <p><b>Canonical-is-alias path (every reindex after the first):</b> the canonical name is an
+   * alias on the previous staged. We can atomically move all aliases (parents + canonical) from
+   * old → new in a single {@code swapAliases} call. The old concrete index is later deleted by
+   * the {@code oldIndicesToCleanup} loop. No name collision, no separate delete, no chance of
+   * data loss.
    *
-   * <p>Step 2: delete the canonical index to free its name. If this fails, parent aliases work
-   * but canonical-name lookups still hit the (stale) old canonical index — degraded, not lost.
+   * <p><b>Canonical-is-concrete path (first reindex on a fresh install):</b> the canonical name
+   * is a concrete index holding the original data. We can't add an alias with that name while
+   * the concrete index exists, so we use a three-step swap with a deferred canonical delete:
    *
-   * <p>Step 3: add the canonical name as an alias to staged. If this fails, canonical-name
-   * lookups return 404 — this is the only data-loss path, and it requires both the canonical
-   * being deleted and the alias-add failing transiently.
+   * <ul>
+   *   <li>Step 1: atomic swap of parent aliases from old → staged. If this fails, the original
+   *       canonical still serves with all aliases — no data loss.
+   *   <li>Step 2: delete the canonical concrete index to free its name. If this fails, parent
+   *       aliases work but canonical-name lookups still hit the stale concrete — degraded,
+   *       not lost.
+   *   <li>Step 3: add the canonical name as an alias to staged. If this fails, canonical-name
+   *       lookups return 404 — the only data-loss path, requiring both the concrete delete to
+   *       succeed and the alias-add to fail transiently.
+   * </ul>
+   *
+   * <p>Returns true on full success.
    */
   private boolean promoteWithDeferredCanonicalDelete(
       SearchClient searchClient,
@@ -312,7 +333,18 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       String stagedIndex,
       Set<String> aliasesToAttach,
       Set<String> oldIndicesToCleanup,
-      boolean reindexSuccess) {
+      boolean reindexSuccess,
+      boolean canonicalIsAlias) {
+    if (canonicalIsAlias) {
+      return promoteByAtomicAliasSwap(
+          searchClient,
+          entityType,
+          canonicalIndex,
+          stagedIndex,
+          aliasesToAttach,
+          oldIndicesToCleanup);
+    }
+
     boolean needsCanonicalAlias = aliasesToAttach.contains(canonicalIndex);
     Set<String> nonCanonicalAliases = new HashSet<>(aliasesToAttach);
     nonCanonicalAliases.remove(canonicalIndex);
@@ -425,6 +457,53 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       }
     }
 
+    recordPromotionSuccessAndCleanupOldIndices(
+        searchClient,
+        entityType,
+        stagedIndex,
+        aliasesToAttach,
+        oldIndicesToCleanup,
+        reindexSuccess);
+    return true;
+  }
+
+  /**
+   * Move all aliases atomically from old indices to the staged index. Used when the canonical
+   * name is already an alias (every reindex after the first), where deleting the canonical name
+   * is impossible — it is a label, not an index — and unnecessary, since the underlying old
+   * concrete index is cleaned up by {@link #recordPromotionSuccessAndCleanupOldIndices}.
+   */
+  private boolean promoteByAtomicAliasSwap(
+      SearchClient searchClient,
+      String entityType,
+      String canonicalIndex,
+      String stagedIndex,
+      Set<String> aliasesToAttach,
+      Set<String> oldIndicesToCleanup) {
+    boolean swapped = searchClient.swapAliases(oldIndicesToCleanup, stagedIndex, aliasesToAttach);
+    if (!swapped) {
+      LOG.error(
+          "[ALIAS_PROMOTE_FAILED phase=atomic-swap entity={} stagedIndex={} canonicalIndex={} aliases={}] "
+              + "Old indices still serve all original aliases.",
+          entityType,
+          stagedIndex,
+          canonicalIndex,
+          aliasesToAttach);
+      markPromotionFailed(entityType, false);
+      return false;
+    }
+    recordPromotionSuccessAndCleanupOldIndices(
+        searchClient, entityType, stagedIndex, aliasesToAttach, oldIndicesToCleanup, true);
+    return true;
+  }
+
+  private void recordPromotionSuccessAndCleanupOldIndices(
+      SearchClient searchClient,
+      String entityType,
+      String stagedIndex,
+      Set<String> aliasesToAttach,
+      Set<String> oldIndicesToCleanup,
+      boolean reindexSuccess) {
     LOG.info(
         "Promoted staged index '{}' to serve entity '{}' (aliases: {}, reindexSuccess: {}).",
         stagedIndex,
@@ -447,7 +526,6 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
             "Failed to delete old index '{}' for entity '{}'.", oldIndex, entityType, deleteEx);
       }
     }
-    return true;
   }
 
   /**
