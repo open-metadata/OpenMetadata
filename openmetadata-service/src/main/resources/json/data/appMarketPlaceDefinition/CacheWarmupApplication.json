@@ -22,6 +22,7 @@
     ],
     "batchSize": 100,
     "warmBundles": true,
+    "warmRelationships": false,
     "enableDistributedClaim": false
   }
 }

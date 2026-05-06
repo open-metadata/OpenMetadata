@@ -22,6 +22,13 @@ Pre-warm the per-entity bundle cache with tags and certification.
 $$
 
 $$section
+### Warm Relationships $(id="warmRelationships")
+
+Pre-warm common relationship fields in the read bundle cache. Requires Warm Read Bundles and can add extra warmup time on large installs.
+
+$$
+
+$$section
 ### Enable Distributed Claim $(id="enableDistributedClaim")
 
 Claim each entity type through Redis so only one instance warms it.

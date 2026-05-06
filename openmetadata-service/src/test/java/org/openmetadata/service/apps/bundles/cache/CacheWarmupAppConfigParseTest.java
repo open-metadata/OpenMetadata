@@ -42,6 +42,7 @@ class CacheWarmupAppConfigParseTest {
     saved.put("entities", List.of("all"));
     saved.put("batchSize", 1000);
     saved.put("warmBundles", true);
+    saved.put("warmRelationships", false);
     saved.put("enableDistributedClaim", false);
     saved.put("force", false);
 
@@ -52,6 +53,7 @@ class CacheWarmupAppConfigParseTest {
     assertEquals(1000, parsed.getBatchSize());
     assertTrue(parsed.getEntities().contains("all"));
     assertEquals(Boolean.TRUE, parsed.getWarmBundles());
+    assertEquals(Boolean.FALSE, parsed.getWarmRelationships());
     assertEquals(Boolean.FALSE, parsed.getEnableDistributedClaim());
   }
 

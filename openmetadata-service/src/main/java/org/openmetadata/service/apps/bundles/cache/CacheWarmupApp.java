@@ -77,12 +77,11 @@ import org.quartz.JobExecutionContext;
  *       worst case is redundant SETs of identical JSON.</li>
  * </ul>
  *
- * <p>The {@code bundle:{<uuid>}:<type>} entries are pre-warmed by default via
- * {@link org.openmetadata.service.cache.BundleWarmupBatcher}, which uses the cheap batched
- * tag_usage query to populate tags + certification (the parts of the bundle that don't require
- * full relationship hydration). Relations are left null so the {@link
- * org.openmetadata.service.cache.CachedReadBundle} read path lazily populates them on first
- * read. Set {@code warmBundles=false} in the app config (or
+ * <p>The {@code bundle:{<uuid>}:<type>} entries are pre-warmed by default via {@link
+ * org.openmetadata.service.cache.BundleWarmupBatcher}, which uses cheap batched queries to populate
+ * tags + certification. Operators can opt into {@code warmRelationships=true} to also batch-warm
+ * common low-cardinality relation fields in the bundle. Set {@code warmBundles=false} in the app
+ * config (or
  * {@code -Dom.cache.warmBundles=false} at JVM start) to skip the bundle pass for very large
  * installs.
  *
@@ -232,7 +231,8 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       claimKeyPrefix = ks + ":warmup:claim:";
     }
     if (warmBundlesEnabled() && cacheProvider != null && keys != null) {
-      bundleBatcher = new BundleWarmupBatcher(collectionDAO, cacheProvider, keys);
+      bundleBatcher =
+          new BundleWarmupBatcher(collectionDAO, cacheProvider, keys, warmRelationshipsEnabled());
     }
   }
 
@@ -241,6 +241,13 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       return appConfig.getWarmBundles();
     }
     return Boolean.parseBoolean(System.getProperty("om.cache.warmBundles", "true"));
+  }
+
+  private boolean warmRelationshipsEnabled() {
+    if (appConfig != null && appConfig.getWarmRelationships() != null) {
+      return appConfig.getWarmRelationships();
+    }
+    return Boolean.parseBoolean(System.getProperty("om.cache.warmRelationships", "false"));
   }
 
   private boolean distributedClaimEnabled() {
@@ -301,7 +308,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   private void initJobData(JobExecutionContext ctx) {
     boolean isOnDemand = ctx.getJobDetail().getKey().getName().equals(ON_DEMAND_JOB);
     // For on-demand runs, OmAppJobListener places the user-supplied config (with overrides
-    // for entities / batchSize / warmBundles / enableDistributedClaim) into the Quartz
+    // for entities / batchSize / warmBundles / warmRelationships / enableDistributedClaim) into the Quartz
     // JobDataMap[APP_CONFIG]. {@code init(App)} ran earlier and cached the persisted App
     // config in {@code appConfig}; if we don't reload here, those manual overrides are
     // silently ignored. Always reload for on-demand; for scheduled runs the persisted config
