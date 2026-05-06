@@ -132,7 +132,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
                 include: [],
                 filter: {},
               },
-              output: ['entityList', 'updatedBy'],
+              output: ['relatedEntity', 'updatedBy'],
             },
             nodes: [
               {
@@ -156,7 +156,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
                   rejectionThreshold: 1,
                 },
                 inputNamespaceMap: {
-                  entityList: 'global',
+                  relatedEntity: 'global',
                 },
               },
               {
@@ -542,7 +542,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
                       cronExpression: '',
                     },
                   },
-                  output: ['entityList'],
+                  output: ['relatedEntity'],
                 },
                 nodes: [
                   {
@@ -566,7 +566,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
                       rejectionThreshold: 1,
                     },
                     inputNamespaceMap: {
-                      entityList: 'global',
+                      relatedEntity: 'global',
                     },
                   },
                   {
