@@ -24,6 +24,7 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
+import { DataType } from '../../../src/generated/entity/data/table';
 
 // Grant clipboard permissions for copy link tests
 test.use({
@@ -104,7 +105,12 @@ test.describe('Container entity specific tests ', () => {
 
     // Check the second page pagination
     const childrenResponse = page.waitForResponse(
-      '/api/v1/containers/name/*/children?limit=15&offset=15'
+      (response) =>
+        response.url().includes('/api/v1/containers/name/*/children*') &&
+        response.url().includes('limit=15') &&
+        response.url().includes('offset=15') &&
+        response.request().method() === 'GET' &&
+        response.status() === 200
     );
     await page.getByTestId('next').click();
     await childrenResponse;
@@ -116,7 +122,12 @@ test.describe('Container entity specific tests ', () => {
 
     // Check around the page sizing change
     const childrenResponseSizeChange = page.waitForResponse(
-      '/api/v1/containers/name/*/children?limit=25&offset=0'
+      (response) =>
+        response.url().includes('/api/v1/containers/name/*/children*') &&
+        response.url().includes('limit=25') &&
+        response.url().includes('offset=0') &&
+        response.request().method() === 'GET' &&
+        response.status() === 200
     );
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('25 / Page').click();
@@ -164,7 +175,7 @@ test.describe('Container entity specific tests ', () => {
     nestedContainer.entity.dataModel.columns = [
       {
         name: structColName,
-        dataType: 'STRUCT',
+        dataType: DataType.Struct,
         dataTypeDisplay: 'struct',
         description: 'A struct column with nested fields.',
         tags: [],
@@ -172,7 +183,7 @@ test.describe('Container entity specific tests ', () => {
         children: [
           {
             name: nestedFieldName,
-            dataType: 'VARCHAR',
+            dataType: DataType.Varchar,
             dataLength: 100,
             dataTypeDisplay: 'varchar',
             description: 'A nested field inside the struct.',

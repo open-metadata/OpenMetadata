@@ -523,7 +523,10 @@ const TestSuitePipelineTab = ({
                   t('label.all');
 
                 return (
-                  <Table.Row id={record.id} key={record.id}>
+                  <Table.Row
+                    data-row-key={record.fullyQualifiedName}
+                    id={record.id}
+                    key={record.id}>
                     <Table.Cell className={getColumnClassName('name')}>
                       {renderNameField()(record.name, record)}
                     </Table.Cell>
