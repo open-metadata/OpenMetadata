@@ -223,7 +223,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         status = step.get_status()
         if not status.failures:
             return True
-        return status.calculate_success() >= self.workflow_config.successThreshold
+        return status.calculate_success() >= self.workflow_config.successThreshold  # pyright: ignore[reportOperatorIssue]
 
     def raise_from_status_internal(self, raise_warnings=False) -> None:
         """Based on the internal workflow status, raise a WorkflowExecutionError"""
@@ -429,8 +429,8 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         ingestion_status = self.build_ingestion_status()
         success = all(self._step_meets_success_threshold(step) for step in self.workflow_steps())
         payload = {
-            "pipeline_type": self.config.source.type,
-            "ingestion_pipeline_fqn": self.config.ingestionPipelineFQN,
+            "pipeline_type": self.config.source.type,  # pyright: ignore[reportAttributeAccessIssue]
+            "ingestion_pipeline_fqn": self.config.ingestionPipelineFQN,  # pyright: ignore[reportAttributeAccessIssue]
             "success": success,
             "steps": ingestion_status.model_dump(),
         }
