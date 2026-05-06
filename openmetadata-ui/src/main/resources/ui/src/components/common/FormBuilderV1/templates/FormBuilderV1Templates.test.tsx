@@ -33,32 +33,84 @@ const wrapIfAdditionalRegistry = {
   },
 } as unknown as FieldTemplateProps['registry'];
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Button: jest.fn(
-    ({
-      children,
-      onClick,
-      ...props
-    }: {
-      children: React.ReactNode;
-      onClick?: () => void;
-    }) => (
-      <button type="button" onClick={onClick} {...props}>
-        {children}
-      </button>
-    )
-  ),
-  Typography: jest.fn(
-    ({
-      children,
-      as: Tag = 'span',
-      ...props
-    }: {
-      children: React.ReactNode;
-      as?: React.ElementType;
-    }) => <Tag {...props}>{children}</Tag>
-  ),
-}));
+jest.mock('@openmetadata/ui-core-components', () => {
+  const ActualReact = jest.requireActual('react');
+  const AccordionContext = ActualReact.createContext({
+    expandedItem: undefined,
+    setExpandedItem: jest.fn(),
+  });
+  const AccordionItemContext = ActualReact.createContext(undefined);
+
+  return {
+    Accordion: jest.fn(({ children }: { children: React.ReactNode }) => {
+      const [expandedItem, setExpandedItem] = ActualReact.useState(
+        undefined as string | undefined
+      );
+
+      return (
+        <AccordionContext.Provider value={{ expandedItem, setExpandedItem }}>
+          {children}
+        </AccordionContext.Provider>
+      );
+    }),
+    AccordionHeader: jest.fn(({ children }: { children: React.ReactNode }) => {
+      const { expandedItem, setExpandedItem } =
+        ActualReact.useContext(AccordionContext);
+      const itemId = ActualReact.useContext(AccordionItemContext);
+      const isExpanded = expandedItem === itemId;
+
+      return (
+        <button
+          aria-expanded={isExpanded}
+          type="button"
+          onClick={() => setExpandedItem(isExpanded ? undefined : itemId)}>
+          {children}
+        </button>
+      );
+    }),
+    AccordionItem: jest.fn(
+      ({ children, id }: { children: React.ReactNode; id: string }) => (
+        <AccordionItemContext.Provider value={id}>
+          {children}
+        </AccordionItemContext.Provider>
+      )
+    ),
+    AccordionPanel: jest.fn(
+      ({ children, ...props }: { children: React.ReactNode }) => {
+        const { expandedItem } = ActualReact.useContext(AccordionContext);
+        const itemId = ActualReact.useContext(AccordionItemContext);
+
+        return expandedItem === itemId ? (
+          <div {...props}>{children}</div>
+        ) : null;
+      }
+    ),
+    Button: jest.fn(
+      ({
+        children,
+        onClick,
+        ...props
+      }: {
+        children: React.ReactNode;
+        onClick?: () => void;
+      }) => (
+        <button type="button" onClick={onClick} {...props}>
+          {children}
+        </button>
+      )
+    ),
+    Typography: jest.fn(
+      ({
+        children,
+        as: Tag = 'span',
+        ...props
+      }: {
+        children: React.ReactNode;
+        as?: React.ElementType;
+      }) => <Tag {...props}>{children}</Tag>
+    ),
+  };
+});
 
 jest.mock('@untitledui/icons', () => ({
   ChevronDown: () => <span aria-hidden="true">chevron-down-icon</span>,
