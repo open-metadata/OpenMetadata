@@ -321,3 +321,9 @@ ALTER TABLE search_index_server_stats
 -- already declared `CHARACTER SET ascii COLLATE ascii_bin`, a binary
 -- collation that lets the existing unique B-tree on `fqnHash` answer LIKE
 -- prefix predicates directly. No change required on the MySQL side.
+
+-- MCP OAuth: state parameter is opaque per RFC 6749 §4.1.1 and some clients (notably the
+-- Databricks MCP Proxy) send tokens longer than 255 characters. Widen mcp_state to TEXT to
+-- avoid INSERT failures on /mcp/authorize redirects.
+ALTER TABLE mcp_pending_auth_requests
+    MODIFY COLUMN mcp_state TEXT;
