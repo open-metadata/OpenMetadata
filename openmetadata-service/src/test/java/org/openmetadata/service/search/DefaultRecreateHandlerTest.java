@@ -787,6 +787,49 @@ class DefaultRecreateHandlerTest {
           handler.getDataLossPromotions().contains("table"),
           "post-add getAliases throw after canonical delete is data unavailability");
     }
+
+    @Test
+    @DisplayName(
+        "Gate indexExists returns false but canonical actually exists → step 3 collides → not data loss")
+    void testPromoteEntityIndexAmbiguousGateProbeIsNotDataLoss() {
+      // Simulate the case Copilot called out: ES/OS indexExists swallows transport errors and
+      // returns false even when the canonical is alive. Code skips delete (gate said no),
+      // hits step 3 addAliases which fails on name collision. Without canonicalDeleted tracking
+      // we'd misclassify this as dataLoss=true — but canonical is still serving the old data,
+      // so the correct classification is dataLoss=false.
+      SearchClient client = mock(SearchClient.class);
+      // Gate: indexExists returns false (lying — canonical actually exists). Subsequent
+      // addAliases throws (real ES would return a name-collision error, but the client
+      // implementation swallows; the post-state check then returns false).
+      when(client.indexExists("table_search_index")).thenReturn(false);
+      when(client.swapAliases(anySet(), anyString(), anySet())).thenReturn(true);
+      when(client.getAliases("table_search_index_rebuild_new")).thenReturn(new HashSet<>());
+
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+
+      DefaultRecreateHandler handler = new DefaultRecreateHandler();
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .canonicalAliases("table")
+                .existingAliases(new HashSet<>(Set.of("table_search_index")))
+                .parentAliases(new HashSet<>(Set.of("all")))
+                .build();
+
+        handler.promoteEntityIndex(context, true);
+      }
+
+      assertTrue(handler.getFailedPromotions().contains("table"));
+      assertFalse(
+          handler.getDataLossPromotions().contains("table"),
+          "Gate said canonical doesn't exist; step 2 was skipped; we must NOT claim data loss");
+    }
   }
 
   @Nested

@@ -327,6 +327,12 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     // ElasticSearchIndexManager#addAliasesInternal — same shape on the OS side). A try/catch
     // alone cannot detect failure. Verify outcome via post-state checks: the index is gone,
     // the alias is attached.
+    // Track canonical-deletion via POSITIVE evidence only. ES/OS clients swallow transport
+    // errors and return false on indexExists / empty on getAliases, so a probe returning
+    // "negative" can't be distinguished from "probe failed". We only claim data loss when we
+    // have actively confirmed canonical is gone — otherwise classify as degraded (dataLoss=
+    // false), which is retryable.
+    boolean canonicalDeleted = false;
     if (needsCanonicalAlias && safeIndexExists(searchClient, canonicalIndex, entityType)) {
       try {
         searchClient.deleteIndexWithBackoff(canonicalIndex);
@@ -343,7 +349,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       }
       Boolean stillExistsAfterDelete = checkIndexExists(searchClient, canonicalIndex);
       if (stillExistsAfterDelete == null) {
-        // post-check itself failed; conservatively assume not-deleted (dataLoss=false)
+        // post-check itself failed; we have no positive evidence of deletion; bail conservatively
         LOG.error(
             "[ALIAS_PROMOTE_FAILED phase=delete-canonical entity={} stagedIndex={} canonicalIndex={} reason=post-check-failed]",
             entityType,
@@ -362,6 +368,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         markPromotionFailed(entityType, false);
         return false;
       }
+      canonicalDeleted = true;
     }
 
     if (needsCanonicalAlias) {
@@ -369,37 +376,40 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         searchClient.addAliases(stagedIndex, Set.of(canonicalIndex));
       } catch (Exception ex) {
         LOG.error(
-            "[ALIAS_PROMOTE_FAILED phase=swap2 entity={} stagedIndex={} canonicalIndex={} reason=exception] "
-                + "DATA UNAVAILABLE: canonical was deleted but canonical-name alias add failed. "
-                + "Parent aliases work; canonical-name lookups will 404 until manual repair.",
+            "[ALIAS_PROMOTE_FAILED phase=swap2 entity={} stagedIndex={} canonicalIndex={} reason=exception canonicalDeleted={}] "
+                + "{}: canonical-name alias add failed.",
             entityType,
             stagedIndex,
             canonicalIndex,
+            canonicalDeleted,
+            canonicalDeleted ? "DATA UNAVAILABLE" : "DEGRADED",
             ex);
-        markPromotionFailed(entityType, true);
+        markPromotionFailed(entityType, canonicalDeleted);
         return false;
       }
       Boolean aliasAttached = checkAliasAttached(searchClient, stagedIndex, canonicalIndex);
       if (aliasAttached == null) {
-        // post-check itself failed AND canonical is already deleted → assume data loss
         LOG.error(
-            "[ALIAS_PROMOTE_FAILED phase=swap2 entity={} stagedIndex={} canonicalIndex={} reason=post-check-failed] "
-                + "DATA UNAVAILABLE: canonical was deleted, alias-attached check failed.",
+            "[ALIAS_PROMOTE_FAILED phase=swap2 entity={} stagedIndex={} canonicalIndex={} reason=post-check-failed canonicalDeleted={}] "
+                + "{}: alias-attached check failed.",
             entityType,
             stagedIndex,
-            canonicalIndex);
-        markPromotionFailed(entityType, true);
+            canonicalIndex,
+            canonicalDeleted,
+            canonicalDeleted ? "DATA UNAVAILABLE" : "DEGRADED");
+        markPromotionFailed(entityType, canonicalDeleted);
         return false;
       }
       if (!aliasAttached) {
         LOG.error(
-            "[ALIAS_PROMOTE_FAILED phase=swap2 entity={} stagedIndex={} canonicalIndex={} reason=alias-not-attached] "
-                + "DATA UNAVAILABLE: client did not throw, but canonical-name alias is not on staged index. "
-                + "Parent aliases work; canonical-name lookups will 404 until manual repair.",
+            "[ALIAS_PROMOTE_FAILED phase=swap2 entity={} stagedIndex={} canonicalIndex={} reason=alias-not-attached canonicalDeleted={}] "
+                + "{}: client did not throw, but canonical-name alias is not on staged index.",
             entityType,
             stagedIndex,
-            canonicalIndex);
-        markPromotionFailed(entityType, true);
+            canonicalIndex,
+            canonicalDeleted,
+            canonicalDeleted ? "DATA UNAVAILABLE" : "DEGRADED");
+        markPromotionFailed(entityType, canonicalDeleted);
         return false;
       }
     }

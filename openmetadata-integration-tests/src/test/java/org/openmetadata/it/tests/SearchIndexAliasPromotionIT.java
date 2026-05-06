@@ -82,10 +82,20 @@ public class SearchIndexAliasPromotionIT {
         TestSuiteBootstrap.isK8sEnabled(), "App trigger not compatible with K8s pipeline backend");
 
     HttpClient httpClient = SdkClients.adminClient().getHttpClient();
-    waitForCurrentRunCompletion(httpClient);
-    Long previousRunStartTime = readLatestRunStartTime(httpClient);
-    triggerWithBulkOverrides(httpClient);
-    waitForLatestRunSuccess(httpClient, previousRunStartTime);
+    Map<String, Object> savedConfig = snapshotAppConfig(httpClient);
+    try {
+      waitForCurrentRunCompletion(httpClient);
+      Long previousRunStartTime = readLatestRunStartTime(httpClient);
+      triggerWithBulkOverrides(httpClient);
+      waitForLatestRunSuccess(httpClient, previousRunStartTime);
+
+      runAssertions(httpClient);
+    } finally {
+      restoreAppConfig(httpClient, savedConfig);
+    }
+  }
+
+  private void runAssertions(HttpClient httpClient) throws Exception {
 
     Map<String, JsonNode> settingsByIndex = readIndexSettings(SETTINGS_INDEX);
     assertTrue(
@@ -95,60 +105,51 @@ public class SearchIndexAliasPromotionIT {
                 + SETTINGS_INDEX
                 + "'. Expected the reindex to produce a staged index that now serves the alias.");
 
-    boolean anyRebuildIndex =
-        settingsByIndex.keySet().stream().anyMatch(name -> name.contains("_rebuild_"));
-    assertTrue(
-        anyRebuildIndex,
+    assertEquals(
+        1,
+        settingsByIndex.size(),
         () ->
             "Alias '"
                 + SETTINGS_INDEX
-                + "' resolves only to "
+                + "' must resolve to exactly one concrete index after promotion; got "
                 + settingsByIndex.keySet()
-                + ", none of which is a *_rebuild_* index. The promotion did not move the alias"
-                + " to a freshly staged index — assertions below would pass against the"
-                + " pre-existing live index and miss the regression.");
+                + ". A broken swap that leaves the alias attached to both the old live index"
+                + " and the new rebuild would silently duplicate search results.");
+    String concreteIndex = settingsByIndex.keySet().iterator().next();
+    assertTrue(
+        concreteIndex.contains("_rebuild_"),
+        () ->
+            "Alias '"
+                + SETTINGS_INDEX
+                + "' resolves to '"
+                + concreteIndex
+                + "', which is not a *_rebuild_* index. The promotion did not move the alias to"
+                + " a freshly staged index — assertions below would pass against the pre-existing"
+                + " live index and miss the regression.");
 
-    for (Map.Entry<String, JsonNode> entry : settingsByIndex.entrySet()) {
-      String concreteIndex = entry.getKey();
-      JsonNode indexSettings = entry.getValue();
-      String refresh = textOrNull(indexSettings.path("refresh_interval"));
-      String replicas = textOrNull(indexSettings.path("number_of_replicas"));
-      String durability = textOrNull(indexSettings.path("translog").path("durability"));
+    JsonNode indexSettings = settingsByIndex.get(concreteIndex);
+    String refresh = textOrNull(indexSettings.path("refresh_interval"));
+    String replicas = textOrNull(indexSettings.path("number_of_replicas"));
+    String durability = textOrNull(indexSettings.path("translog").path("durability"));
 
-      assertNotEquals(
-          "-1",
-          refresh,
-          () ->
-              "Index '"
-                  + concreteIndex
-                  + "' kept bulk-build refresh_interval=-1 after promotion — "
-                  + "applyLiveServingSettings was not invoked on the per-entity promote path.");
-      assertNotEquals(
-          "0",
-          replicas,
-          () ->
-              "Index '"
-                  + concreteIndex
-                  + "' kept bulk-build number_of_replicas=0 after promotion.");
-      if (durability != null) {
-        assertNotEquals(
-            "async",
-            durability,
-            () ->
-                "Index '"
-                    + concreteIndex
-                    + "' kept bulk-build translog.durability=async after promotion.");
-      }
-
-      assertEquals(
-          "1s",
-          refresh,
-          () -> "Expected live refresh_interval=1s on '" + concreteIndex + "', got " + refresh);
-      assertEquals(
-          "1",
-          replicas,
-          () -> "Expected live number_of_replicas=1 on '" + concreteIndex + "', got " + replicas);
-    }
+    assertEquals(
+        "1s",
+        refresh,
+        () -> "Expected live refresh_interval=1s on '" + concreteIndex + "', got " + refresh);
+    assertEquals(
+        "1",
+        replicas,
+        () -> "Expected live number_of_replicas=1 on '" + concreteIndex + "', got " + replicas);
+    assertEquals(
+        "request",
+        durability,
+        () ->
+            "Expected configured live translog.durability=request on '"
+                + concreteIndex
+                + "', got "
+                + durability
+                + ". Asserting on the exact value prevents a silent translog-revert drop from"
+                + " passing the test if the cluster default happens to be a non-async value.");
   }
 
   /**
@@ -163,7 +164,15 @@ public class SearchIndexAliasPromotionIT {
         TestSuiteBootstrap.isK8sEnabled(), "App trigger not compatible with K8s pipeline backend");
 
     HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    Map<String, Object> savedConfig = snapshotAppConfig(httpClient);
+    try {
+      runIdempotencyAssertions(httpClient);
+    } finally {
+      restoreAppConfig(httpClient, savedConfig);
+    }
+  }
 
+  private void runIdempotencyAssertions(HttpClient httpClient) throws Exception {
     waitForCurrentRunCompletion(httpClient);
     Long firstRunPrev = readLatestRunStartTime(httpClient);
     triggerWithBulkOverrides(httpClient);
@@ -231,6 +240,52 @@ public class SearchIndexAliasPromotionIT {
                   HttpMethod.POST, "/v1/apps/trigger/" + APP_NAME, config, Void.class);
               return true;
             });
+  }
+
+  /**
+   * Snapshot the SearchIndexingApplication's currently persisted appConfiguration so the test
+   * can restore it after running. /v1/apps/trigger/{name} merges the request body into the
+   * persisted config — without this snapshot/restore later tests in the suite would inherit
+   * this test's bulkIndexSettings / liveIndexSettings / useDistributedIndexing values, making
+   * suite ordering change what those tests exercise.
+   */
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> snapshotAppConfig(HttpClient httpClient) {
+    try {
+      String body =
+          httpClient.executeForString(
+              HttpMethod.GET, "/v1/apps/name/" + APP_NAME + "?fields=appConfiguration", null, null);
+      JsonNode root = MAPPER.readTree(body);
+      JsonNode cfg = root.path("appConfiguration");
+      if (cfg.isMissingNode() || cfg.isNull()) {
+        return Map.of();
+      }
+      return MAPPER.convertValue(cfg, Map.class);
+    } catch (Exception ex) {
+      // Snapshot is best-effort; the test still runs even if we can't restore.
+      return Map.of();
+    }
+  }
+
+  private static void restoreAppConfig(HttpClient httpClient, Map<String, Object> savedConfig) {
+    if (savedConfig == null) {
+      return;
+    }
+    try {
+      Awaitility.await("Restore " + APP_NAME + " config")
+          .atMost(Duration.ofMinutes(1))
+          .pollInterval(Duration.ofSeconds(3))
+          .ignoreExceptionsMatching(
+              e -> e.getMessage() != null && e.getMessage().contains("already running"))
+          .until(
+              () -> {
+                httpClient.execute(
+                    HttpMethod.POST, "/v1/apps/trigger/" + APP_NAME, savedConfig, Void.class);
+                return true;
+              });
+    } catch (Exception ignored) {
+      // Best-effort restore. CI logs will surface persistent failures via the next test run.
+    }
   }
 
   private static AppRunRecord waitForLatestRunSuccess(

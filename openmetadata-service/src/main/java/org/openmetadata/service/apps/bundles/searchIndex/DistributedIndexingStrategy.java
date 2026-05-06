@@ -189,6 +189,16 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
 
     StatsReconciler.reconcile(stats);
 
+    if (resultStatus == ExecutionResult.Status.FAILED) {
+      Set<String> dataLoss = collectDataLossPromotions(recreateIndexHandler);
+      listeners.onJobFailed(
+          stats,
+          new IllegalStateException(
+              "Promotion data loss for entities: "
+                  + dataLoss
+                  + ". Canonical index was deleted but alias not re-attached."));
+    }
+
     return ExecutionResult.builder()
         .status(resultStatus)
         .totalRecords(stats.getJobStats().getTotalRecords())
@@ -199,6 +209,19 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
         .finalStats(stats)
         .metadata(metadata)
         .build();
+  }
+
+  private Set<String> collectDataLossPromotions(RecreateIndexHandler strategyHandler) {
+    Set<String> all = new HashSet<>();
+    if (strategyHandler != null) {
+      all.addAll(strategyHandler.getDataLossPromotions());
+    }
+    RecreateIndexHandler executorHandler =
+        distributedExecutor != null ? distributedExecutor.getRecreateIndexHandler() : null;
+    if (executorHandler != null) {
+      all.addAll(executorHandler.getDataLossPromotions());
+    }
+    return all;
   }
 
   private void flushAndAwaitSink() {
