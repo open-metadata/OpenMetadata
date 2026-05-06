@@ -91,7 +91,6 @@ const data = {
 };
 
 test.beforeAll(async ({ browser }) => {
-
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await commonPrerequisites({
     apiContext,
