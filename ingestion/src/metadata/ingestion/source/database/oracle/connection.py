@@ -136,12 +136,15 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
             return
         if root not in path.parents:
             raise ValueError(f"Refusing to create {path}: outside wallet root {root}.")
-        OracleConnection._mkdir_secure_within(path.parent, root)
-        try:
-            path.mkdir(mode=0o700, exist_ok=False)
-        except FileExistsError:
-            return
-        path.chmod(0o700)
+
+        current_path = root
+        for part in path.relative_to(root).parts:
+            current_path = current_path / part
+            try:
+                current_path.mkdir(mode=0o700, exist_ok=False)
+            except FileExistsError:
+                continue
+            current_path.chmod(0o700)
 
     def _extract_wallet_content(self, wallet_content: SecretStr) -> str:
         # Strip whitespace/newlines so wrapped base64 (e.g. from `base64 -i` on macOS,
