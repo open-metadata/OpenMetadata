@@ -3593,26 +3593,7 @@ describe('prepareOidcSubmitPayload', () => {
     expect(auth?.callbackUrl).toBe('http://localhost:8585/callback');
   });
 
-  it('keeps a slim oidcConfiguration on Public so the backend validator can read discoveryUri', () => {
-    const data: FormData = {
-      authenticationConfiguration: buildOidcAuthConfig({}, { secret: '' }),
-      authorizerConfiguration: buildAuthorizerConfig(),
-    };
-
-    const result = prepareOidcSubmitPayload(data);
-    const oidc = result?.authenticationConfiguration.oidcConfiguration;
-
-    expect(oidc).toBeDefined();
-    expect(oidc?.discoveryUri).toBe(
-      'https://idp.example.com/.well-known/openid-configuration'
-    );
-    expect(oidc?.id).toBe('client-abc');
-    expect(oidc?.secret).toBeUndefined();
-    expect(oidc?.scope).toBeUndefined();
-    expect(oidc?.useNonce).toBeUndefined();
-  });
-
-  it('mirrors nested discoveryUri to root on Public so backend re-derives publicKeyUrls', () => {
+  it('drops oidcConfiguration on Public — canonical shape is root-level only', () => {
     const data: FormData = {
       authenticationConfiguration: buildOidcAuthConfig({}, { secret: '' }),
       authorizerConfiguration: buildAuthorizerConfig(),
@@ -3624,9 +3605,13 @@ describe('prepareOidcSubmitPayload', () => {
       | undefined;
 
     expect(auth?.clientType).toBe(ClientType.Public);
+    expect(auth?.oidcConfiguration).toBeUndefined();
     expect(auth?.discoveryUri).toBe(
       'https://idp.example.com/.well-known/openid-configuration'
     );
+    expect(auth?.authority).toBe('https://idp.example.com');
+    expect(auth?.clientId).toBe('client-abc');
+    expect(auth?.callbackUrl).toBe('http://localhost:8585/callback');
   });
 
   it('does not mutate the input on the Public path', () => {

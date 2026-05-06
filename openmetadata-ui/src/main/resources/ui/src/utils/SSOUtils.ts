@@ -1104,24 +1104,15 @@ export const prepareOidcSubmitPayload = (
 
   handleConfidentialToPublicSwitch(authConfig);
 
-  const discoveryUri = authConfig.oidcConfiguration?.discoveryUri as
-    | string
-    | undefined;
-  const oidcId = authConfig.oidcConfiguration?.id as string | undefined;
-  const oidcCallbackUrl = authConfig.oidcConfiguration?.callbackUrl as
-    | string
-    | undefined;
-
   const cleaned = cleanupProviderSpecificFields(cloned, provider);
-  if (!cleaned || !discoveryUri) {
+  if (!cleaned) {
     return cleaned;
   }
 
-  cleaned.authenticationConfiguration.oidcConfiguration = {
-    discoveryUri,
-    ...(oidcId ? { id: oidcId } : {}),
-    ...(oidcCallbackUrl ? { callbackUrl: oidcCallbackUrl } : {}),
-  };
+  // Public OIDC's canonical shape is root-level only — matches the schema
+  // (Public requires only ["publicKeyUrls","authority","callbackUrl","clientId"])
+  // and the 5/6 sibling validators whose Public-path methods take only authConfig.
+  delete cleaned.authenticationConfiguration.oidcConfiguration;
 
   return cleaned;
 };
