@@ -338,7 +338,6 @@ public class TypeResourceIT {
       prefix + "-hyphen",
       prefix + ".dot",
       prefix + "with space",
-      prefix + "with/slash",
       prefix + "with%percent",
       prefix + "with#hash",
       prefix + "with@at",
@@ -356,7 +355,6 @@ public class TypeResourceIT {
       prefix + "with}rbrace",
       prefix + "with+plus",
       prefix + "with?question",
-      prefix + "with~tilde",
       prefix + "with`backtick",
       prefix + "withMatched(pair)",
       prefix + "withDigits123",
@@ -393,6 +391,11 @@ public class TypeResourceIT {
       prefix + "with<lt",
       prefix + "with>gt",
       prefix + "with*asterisk",
+      // / and ~ are reserved by JSON Pointer (RFC 6901). Allowing them in a
+      // property name silently corrupts JSON Patch paths like
+      // /extension/<propertyName>/rows when the name is interpolated raw.
+      prefix + "with/slash",
+      prefix + "with~tilde",
     };
 
     for (String name : disallowedNames) {
