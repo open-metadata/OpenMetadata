@@ -149,8 +149,6 @@ class AdvancedSearchClassBase {
             };
           case 'match_phrase':
             return { [fieldName]: newValue };
-          case 'not_match_phrase':
-            return { [fieldName]: newValue };
           default:
             return { [fieldName]: { value: newValue } };
         }
