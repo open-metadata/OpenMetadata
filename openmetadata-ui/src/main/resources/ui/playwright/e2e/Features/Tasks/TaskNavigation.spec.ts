@@ -573,92 +573,88 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
     }
   });
 
-  test(
-    'clicking task notification while on entity task tab refreshes the task list',
-    async ({ page }) => {
-      test.slow();
+  test('clicking task notification while on entity task tab refreshes the task list', async ({
+    page,
+  }) => {
+    test.slow();
 
-      await test.step('Log in and navigate to entity page', async () => {
-        await adminUser.login(page);
-        const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
-        await page.goto(`/table/${encodeURIComponent(entityFqn)}`);
-        await waitForPageLoaded(page);
-        await waitForAllLoadersToDisappear(page);
-      });
+    await test.step('Log in and navigate to entity page', async () => {
+      await adminUser.login(page);
+      const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
+      await page.goto(`/table/${encodeURIComponent(entityFqn)}`);
+      await waitForPageLoaded(page);
+      await waitForAllLoadersToDisappear(page);
+    });
 
-      await test.step('Open Activity Feed & Tasks tab and stay there', async () => {
-        const feedResponse = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/feed') && r.request().method() === 'GET'
-        );
-        await page.getByTestId('activity_feed').click();
-        await feedResponse;
-        await waitForAllLoadersToDisappear(page);
-      });
+    await test.step('Open Activity Feed & Tasks tab and stay there', async () => {
+      const feedResponse = page.waitForResponse(
+        (r) =>
+          r.url().includes('/api/v1/feed') && r.request().method() === 'GET'
+      );
+      await page.getByTestId('activity_feed').click();
+      await feedResponse;
+      await waitForAllLoadersToDisappear(page);
+    });
 
-      await test.step('Create task via API assigned to the logged-in user', async () => {
-        const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
-        const { apiContext, afterAction } = await getApiContext(page);
-        try {
-          const response = await apiContext.post('/api/v1/tasks', {
-            data: {
-              about: entityFqn,
-              aboutType: 'table',
-              type: 'DescriptionUpdate',
-              category: 'MetadataUpdate',
-              assignees: [adminUser.responseData.name],
-            },
-          });
-          const created = await response.json();
-          taskId = created.id;
-        } finally {
-          await afterAction();
-        }
-      });
+    await test.step('Create task via API assigned to the logged-in user', async () => {
+      const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
+      const { apiContext, afterAction } = await getApiContext(page);
+      try {
+        const response = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: entityFqn,
+            aboutType: 'table',
+            type: 'DescriptionUpdate',
+            category: 'MetadataUpdate',
+            assignees: [adminUser.responseData.name],
+          },
+        });
+        const created = await response.json();
+        taskId = created.id;
+      } finally {
+        await afterAction();
+      }
+    });
 
-      await test.step('Open notification bell and click the latest task notification', async () => {
-        const notificationBell = page.getByTestId('task-notifications');
-        await expect(notificationBell).toBeVisible();
+    await test.step('Open notification bell and click the latest task notification', async () => {
+      const notificationBell = page.getByTestId('task-notifications');
+      await expect(notificationBell).toBeVisible();
 
-        const notifFeedResponse = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/tasks/assigned') &&
-            r.url().includes('status=Open')
-        );
-        await notificationBell.click();
-        await notifFeedResponse;
+      const notifFeedResponse = page.waitForResponse(
+        (r) =>
+          r.url().includes('/api/v1/tasks/assigned') &&
+          r.url().includes('status=Open')
+      );
+      await notificationBell.click();
+      await notifFeedResponse;
 
-        const notificationBox = page.locator('.notification-box');
-        await expect(notificationBox).toBeVisible();
+      const notificationBox = page.locator('.notification-box');
+      await expect(notificationBox).toBeVisible();
 
-        const latestNotification = notificationBox
-          .locator('li.ant-list-item.notification-dropdown-list-btn')
-          .first();
-        await expect(latestNotification).toBeVisible();
+      const latestNotification = notificationBox
+        .locator('li.ant-list-item.notification-dropdown-list-btn')
+        .first();
+      await expect(latestNotification).toBeVisible();
 
-        const taskListRefresh = waitForTaskListResponse(page);
-        await latestNotification.click();
-        await taskListRefresh;
+      const taskListRefresh = waitForTaskListResponse(page);
+      await latestNotification.click();
+      await taskListRefresh;
 
-        await waitForAllLoadersToDisappear(page);
-      });
+      await waitForAllLoadersToDisappear(page);
+    });
 
-      await test.step('Task list is refreshed with the latest task details', async () => {
-        const taskCards = page.locator('[data-testid="task-feed-card"]');
+    await test.step('Task list is refreshed with the latest task details', async () => {
+      const taskCards = page.locator('[data-testid="task-feed-card"]');
 
-        await expect
-          .poll(
-            async () => taskCards.count(),
-            {
-              message: 'Waiting for refreshed task list to include the new task',
-              timeout: 30_000,
-              intervals: [1000, 2000, 3000],
-            }
-          )
-          .toBeGreaterThanOrEqual(1);
+      await expect
+        .poll(async () => taskCards.count(), {
+          message: 'Waiting for refreshed task list to include the new task',
+          timeout: 30_000,
+          intervals: [1000, 2000, 3000],
+        })
+        .toBeGreaterThanOrEqual(1);
 
-        expect(page.url()).not.toMatch(/\/table\/TASK-/);
-      });
-    }
-  );
+      expect(page.url()).not.toMatch(/\/table\/TASK-/);
+    });
+  });
 });
