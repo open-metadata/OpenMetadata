@@ -271,6 +271,7 @@ public class SearchIndexAliasPromotionIT {
     if (savedConfig == null) {
       return;
     }
+    Long previousRunStartTime = readLatestRunStartTime(httpClient);
     try {
       Awaitility.await("Restore " + APP_NAME + " config")
           .atMost(Duration.ofMinutes(1))
@@ -285,6 +286,43 @@ public class SearchIndexAliasPromotionIT {
               });
     } catch (Exception ignored) {
       // Best-effort restore. CI logs will surface persistent failures via the next test run.
+    }
+    // /v1/apps/trigger/{name} both merges the body into the persisted config AND starts a run.
+    // Wait for that run to terminate before exiting, otherwise other test classes in the suite
+    // (e.g. AppsResourceIT.test_triggerApp_200) inherit an "already running"
+    // SearchIndexingApplication
+    // and fail their own 2-minute trigger Awaitility.
+    waitForRestoreRunTerminal(httpClient, previousRunStartTime);
+  }
+
+  private static void waitForRestoreRunTerminal(HttpClient httpClient, Long previousRunStartTime) {
+    try {
+      Awaitility.await("Wait for restore run completion")
+          .atMost(Duration.ofMinutes(10))
+          .pollInterval(Duration.ofSeconds(3))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                AppRunRecord latest =
+                    httpClient.execute(
+                        HttpMethod.GET,
+                        "/v1/apps/name/" + APP_NAME + "/runs/latest",
+                        null,
+                        AppRunRecord.class);
+                if (latest == null || latest.getStatus() == null) {
+                  return true;
+                }
+                if (previousRunStartTime != null
+                    && latest.getStartTime() != null
+                    && latest.getStartTime() <= previousRunStartTime) {
+                  // Restore-triggered run has not been recorded yet; keep polling.
+                  return false;
+                }
+                String status = latest.getStatus().value().toLowerCase();
+                return !"running".equals(status) && !"started".equals(status);
+              });
+    } catch (org.awaitility.core.ConditionTimeoutException ignored) {
+      // Best-effort wait; downstream tests retry on "already running".
     }
   }
 
