@@ -959,7 +959,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       test('no duplicate card after update', async ({ page }) => {
         test.slow();
 
-        const propertyName = `\\ pw.edge.update.${uuid()} \\`;
+        const propertyName = `pw.edge.update.${uuid()}${NAME_SUFFIX}`;
 
         await test.step('Create property', async () => {
           await settingClick(
