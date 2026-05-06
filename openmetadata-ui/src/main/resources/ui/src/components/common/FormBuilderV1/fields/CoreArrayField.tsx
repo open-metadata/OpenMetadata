@@ -124,11 +124,11 @@ const CoreArrayField = (props: FieldProps) => {
         ]
           .filter(Boolean)
           .join(' ')}>
-        {value.map((v) => (
+        {value.map((v, idx) => (
           <span
             className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md
           tw:bg-utility-brand-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:text-brand-700 tw:ring-1 tw:ring-inset tw:ring-brand-200"
-            key={v}>
+            key={`${v}-${idx}`}>
             {v}
             {!isDisabled && (
               <button
